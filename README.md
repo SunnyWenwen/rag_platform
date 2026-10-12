@@ -8,6 +8,8 @@ Config-driven RAG System Factory 設計討論專案。
 
 ## 設計文件
 
+- [模組目的、方法與 I/O Contract（v0.1 草案）](docs/04_module_methods_io_contracts.md)：十個模組的輸入輸出、共用資料結構、相依卡控、自訂 Python 與 LangChain／LangGraph 分工；區分 MVP 與後續候選方法。
+
 - [UI Prototype](01_ui_prototype.html)：下載後以瀏覽器開啟，操作與指標均為模擬。
 - [Architecture Proposal](03_architecture_proposal.md)：模組介面、Config、API、生命週期與 MVP 規劃。
 - [L1 使用流程圖](diagrams/01_user_system_l1.png) · [Mermaid 原始檔](diagrams/01_user_system_l1.mmd)
