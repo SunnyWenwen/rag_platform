@@ -1,0 +1,53 @@
+flowchart TB
+  U[User Browser] --> UI[RAG Studio UI]
+  subgraph CP[Control Plane｜Platform Namespace]
+    UI --> API[API Gateway / Auth / RBAC]
+    API --> CONF[Blueprint & Config API]
+    API --> REG[Module Registry / Compatibility]
+    API --> RC[Runtime Controller]
+    API --> REL[Release / Helm Bundle Exporter]
+  end
+  CONF --> META[(PostgreSQL: Config / Runs / Releases)]
+  CONF --> OBJ[(Object Storage: Docs / Datasets / Artifacts)]
+  RC --> SANDBOX
+  subgraph SANDBOX[Sandbox｜Development / Testing Namespace]
+    direction LR
+    ING[Ingestion Job / Worker]
+    INF[Inference API Deployment]
+    EVAL[Evaluation Job]
+  end
+  ING --> OBJ
+  ING --> SEARCH[(Vector / Search Index)]
+  INF --> SEARCH
+  INF --> LLM[Model Gateway / Embedding / LLM]
+  EVAL --> INF
+  EVAL --> OBJ
+  ING --> LLM
+  ING --> OBS[Tracing / Metrics / Logs]
+  INF --> OBS
+  EVAL --> OBS
+  REL --> GIT[Git Repository / Artifact Registry]
+  GIT --> CD[CI / GitOps Argo CD]
+  CD --> PROD
+  subgraph PROD[Production K8s Namespace / Cluster]
+    direction LR
+    PAPI[Inference API Deployment + Service / HPA]
+    PJOB[Scheduled Ingestion Job / Worker]
+  end
+  PAPI --> SEARCH
+  PJOB --> SEARCH
+  PAPI --> LLM
+  PJOB --> OBJ
+  subgraph SHARED[Shared Enterprise Infrastructure]
+    META
+    OBJ
+    SEARCH
+    LLM
+    OBS
+  end
+  classDef control fill:#e8f0ff,stroke:#5881c8,color:#163459
+  classDef runtime fill:#ecf8f1,stroke:#58a389,color:#174633
+  classDef shared fill:#f5f4ff,stroke:#8c83c6,color:#372f6b
+  class UI,API,CONF,REG,RC,REL control
+  class ING,INF,EVAL,PAPI,PJOB runtime
+  class META,OBJ,SEARCH,LLM,OBS shared
