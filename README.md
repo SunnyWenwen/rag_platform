@@ -25,3 +25,16 @@ Config-driven RAG System Factory 設計討論專案。
 - 基本相依檢查：Chunk Overlap、數值範圍、Dense-only adapter 與 Retrieval、啟用 Rerank 時的 Top-N / Top-K。Qdrant 產品本身支援 Hybrid，此處限制只代表範例 adapter 的設定。
 
 驗證：JavaScript 語法檢查與 DOM 互動檢查通過（建立、切換 Group、相容性、Ingestion gate、Inference、Evaluation、狀態隔離、YAML 內容）。未完成瀏覽器視覺檢查；環境無可用 Chromium，下載未成功。
+
+## 相依卡控示範
+
+在 Create RAG System 彈窗展開「卡控示範」，可一鍵套用四組設定（會重設彈窗內的模組設定，保留名稱）：
+
+1. **Index 限制 Retrieval**：Qdrant Vector 範例 adapter 僅提供 Dense；Hybrid / BM25 仍顯示但停用，原 Hybrid 選擇保留並阻止建立。改選 Dense 後可建立。此為 adapter 配置限制，不代表 Qdrant 產品不支援 Hybrid。
+2. **Query Embedding 繼承**：Retrieval 顯示唯讀 Model / Dimension；修改 Embedding 後同步顯示。匯出時由同一來源推導，BM25 不使用 Query Embedding。
+3. **關閉 Rerank**：None 時 Top-N 保留顯示但停用；重新啟用恢復可編輯，匯出不包含未啟用的 Top-N。
+4. **Top-K 限制 Top-N**：Top-K=2、Top-N=3 會標示不相容；Top-N 輸入上限為 2，手動輸入超限亦阻止建立。
+
+另有條件欄位：Dense Weight 只在 Hybrid Search 可編輯，其他模式顯示但停用。以上 UI 規則僅為示範，正式 Engine 仍需後端再次驗證。
+
+驗證：四組 DOM 互動檢查及既有基本流程檢查通過；包含停用選項可見、失效值保留、繼承更新、選項恢復、數值上限與匯出設定。尚未完成瀏覽器視覺檢查。
