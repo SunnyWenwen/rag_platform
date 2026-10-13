@@ -1,5 +1,7 @@
 # RAG Platform — 模組目的、方法與 I/O Contract
 
+> **後續設計更新**：請先閱讀 [資料契約與索引設計討論結論（v0.3）](05_data_contracts_search_design.md)。其中 ParsedDocument 五個頂層 key、Chunk 六個頂層 key（含 vectors）、多欄位設定及搜尋後端設計取代本文相關舊提案；本文保留其餘模組契約與歷史設計，並非已遷移完成的實作規格。
+
 > Version 0.2 · 2026-10-13 · Discussion Draft
 >
 > 本文件為平台自訂規格草案，不是 LangChain 的原生 API，也不代表功能已實作。技術方向以部門既有 LangChain／LangGraph 生態系為基礎，搭配 Pydantic 明確驗證資料邊界。MVP 使用固定流程，暫不提供任意 DAG 編輯。
