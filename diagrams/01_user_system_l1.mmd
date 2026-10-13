@@ -1,31 +1,29 @@
 flowchart TB
-  subgraph USER[User｜RAG Platform 使用者]
-    direction LR
-    U1[1 建立 Project / RAG System]
-    U2[2 編輯與儲存 Ingestion / Inference Config]
-    U3[3 啟動 Sandbox Runtime]
-    U4[4 上傳文件 / 啟動 Ingestion]
-    U5[5 提問 / 檢視 Retrieval Trace]
-    U6[6 上傳 QA Set / 執行 Evaluation]
-    U7{7 評估通過?}
-    U8[8 核准 Release / Export]
-  end
-  subgraph SYS[System｜Control Plane + RAG Engine]
-    direction LR
-    S1[驗證 Schema / Component Compatibility]
-    S2[鎖定 Config Revision / 佈署 Sandbox]
-    S3[非同步 Import→Parse→Chunk→Embed→Index]
-    S4[Transform→Retrieve→Rerank→Generate]
-    S5[執行 Metrics / 產生報告與比較]
-    S6[建立 Immutable Release / 產生 Helm/K8s Bundle]
-  end
-  U1 --> U2 --> S1
-  S1 -->|Valid| U3
-  S1 -.->|Invalid 修正| U2
-  U3 --> S2 --> U4 --> S3 --> U5 --> S4 --> U6 --> S5 --> U7
-  U7 -->|No 調整設定| U2
-  U7 -->|Yes| U8 --> S6
-  classDef user fill:#e9f2ff,stroke:#6086c8,color:#143054
-  classDef system fill:#ecf8f2,stroke:#599d85,color:#153f32
-  class U1,U2,U3,U4,U5,U6,U7,U8 user
-  class S1,S2,S3,S4,S5,S6 system
+    subgraph User["User"]
+        direction LR
+        B["1. Build（設定 Config）"] --> I["2. Ingestion"]
+        I --> Q["3. Inference"]
+        Q --> E["4. Evaluation"]
+        E --> X["5. Export YAML"]
+        E --> C["修改 Config"]
+        C -->|如果有調整ingestion的設定, 需重新Ingestion| I
+        C -->|只調整inference設定, 不需重新ingestion| Q
+    end
+
+    S["RAG System"]
+    R["評估報告"]
+    Y["YAML 設定檔"]
+
+    B -. 建立 .-> S
+    I -. "建立 Chunks / Indexes" .-> S
+    Q -. 查詢 .-> S
+    E -. 評估 .-> S
+    C -. 更新設置 .-> S
+
+    E -. 產出 .-> R
+    X -. 產出 .-> Y
+
+    classDef user fill:#e9f2ff,stroke:#6086c8,color:#143054
+    classDef system fill:#ecf8f2,stroke:#599d85,color:#153f32
+    class B,I,Q,E,X,C user
+    class S,R,Y system
