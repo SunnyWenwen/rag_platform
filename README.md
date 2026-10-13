@@ -19,26 +19,26 @@ Config-driven RAG System Factory 設計討論專案。
 
 架構提案與圖保留初版設計；UI 已依下述流程簡化。提案提及的 deployment_example/ 獨立範例檔尚未納入；UI 可匯出示意 YAML，不代表可直接部署。
 
-## UI Prototype 更新
+## UI Prototype 更新（欄位設定版）
 
-- 單一主畫面：左側 Workspace Groups，中間 RAG System 卡片，右上角 Create RAG System。
-- Create RAG System 彈窗保留原有 Ingestion / Inference 模組選項與設定。
-- 各卡片以彈窗提供 Ingest、Inference、Evaluation；保留原先要求的示意 K8s YAML 匯出。
-- 移除 Draft Revision、手動 Start Sandbox、Approval 與獨立 Deployment 頁面。
-- Group 與 System 狀態各自隔離；重新整理會重設。所有執行與評估數據仍為模擬。
-- 基本相依檢查：Chunk Overlap、數值範圍、Dense-only adapter 與 Retrieval、啟用 Rerank 時的 Top-N / Top-K。Qdrant 產品本身支援 Hybrid，此處限制只代表範例 adapter 的設定。
+- 維持單一 Workspace Groups／RAG System 卡片介面，以及 Create RAG System 彈窗。
+- Import 顯示 Upload＋API 共用入口的設計；目前操作仍是檔案上傳模擬，未串接 API。
+- Parsing：依格式設定策略，新增／移除來源欄位到 Content Schema 的映射。
+- Chunking：選擇主要切分欄位、複製欄位與 metadata。
+- Embedding：新增／移除 fields → vectors 映射；目前共用一組模型與維度。
+- Indexing：ES／Local Search（FAISS＋BM25），選擇儲存、向量、全文與過濾欄位；Local Search 可選 Memory／MongoDB。
+- Retrieval：選擇已索引欄位，Dense／BM25／Hybrid，第一版融合固定 RRF；Query Embedding 唯讀繼承。
+- Rerank／Generation：分別選擇需要的內容欄位。
+- ParsedDocument 五個 key 與 Chunk 六個 key 的即時示意預覽。
+- 上游刪除／改名後保留失效選擇並阻止建立；不默默替換設定。
+- 匯出示意 YAML 包含欄位設定與有效參數；Local Search 固定單一副本，Ingestion／Inference 必須共用程序。
+- 所有操作仍為 UI 模擬，不解析文件、不呼叫模型或資料庫；重新整理重設操作。
 
-驗證：JavaScript 語法檢查與 DOM 互動檢查通過（建立、切換 Group、相容性、Ingestion gate、Inference、Evaluation、狀態隔離、YAML 內容）。未完成瀏覽器視覺檢查；環境無可用 Chromium，下載未成功。
+## 卡控示範
 
-## 相依卡控示範
+1. 缺少全文索引：Hybrid 不相容，選項仍可見但停用；需補全文索引或改 Dense。
+2. 多欄位 Hybrid：原文與摘要各自產生向量，全文搜尋原文。
+3. Local／Memory：切換保存模式並查看重啟語意。
+4. Top-K／Top-N：Top-K=2、Top-N=3 阻止建立。
 
-在 Create RAG System 彈窗展開「卡控示範」，可一鍵套用四組設定（會重設彈窗內的模組設定，保留名稱）：
-
-1. **Index 限制 Retrieval**：Qdrant Vector 範例 adapter 僅提供 Dense；Hybrid / BM25 仍顯示但停用，原 Hybrid 選擇保留並阻止建立。改選 Dense 後可建立。此為 adapter 配置限制，不代表 Qdrant 產品不支援 Hybrid。
-2. **Query Embedding 繼承**：Retrieval 顯示唯讀 Model / Dimension；修改 Embedding 後同步顯示。匯出時由同一來源推導，BM25 不使用 Query Embedding。
-3. **關閉 Rerank**：None 時 Top-N 保留顯示但停用；重新啟用恢復可編輯，匯出不包含未啟用的 Top-N。
-4. **Top-K 限制 Top-N**：Top-K=2、Top-N=3 會標示不相容；Top-N 輸入上限為 2，手動輸入超限亦阻止建立。
-
-另有條件欄位：Dense Weight 只在 Hybrid Search 可編輯，其他模式顯示但停用。以上 UI 規則僅為示範，正式 Engine 仍需後端再次驗證。
-
-驗證：四組 DOM 互動檢查及既有基本流程檢查通過；包含停用選項可見、失效值保留、繼承更新、選項恢復、數值上限與匯出設定。尚未完成瀏覽器視覺檢查。
+驗證：JavaScript 使用 VM 與 DOM stub 執行，通過模組設定渲染、預設有效性、上游欄位／向量改名、儲存欄位相依、建立系統、Local YAML 副本數、None Rerank 有效參數、Top-K 卡控及資料預覽檢查。此為邏輯驗證，非完整 DOM 或瀏覽器測試；環境缺少 Chromium，尚未完成視覺檢查。
