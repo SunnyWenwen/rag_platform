@@ -1,6 +1,6 @@
 # RAG Platform — 模組目的、方法與 I/O Contract
 
-> Version 0.1 · 2026-10-12 · Discussion Draft
+> Version 0.2 · 2026-10-13 · Discussion Draft
 >
 > 本文件為平台自訂規格草案，不是 LangChain 的原生 API，也不代表功能已實作。技術方向以部門既有 LangChain／LangGraph 生態系為基礎，搭配 Pydantic 明確驗證資料邊界。MVP 使用固定流程，暫不提供任意 DAG 編輯。
 
@@ -14,6 +14,40 @@
 - Platform Contract 為穩定邊界；Adapter 負責轉換 LangChain Runnable、Document 或自訂 Function／Class。不能把框架內部物件直接當作對外持久化格式。
 - Config、業務輸入與執行 Context 分離；Python Class／Type Hint 不會自動提供完整 Runtime Validation。
 - 下文的「MVP」是建議範圍；後續方法是候選，尚未承諾全部開發。
+
+### 1.1 十個模組目的、方法與 I/O 對照大表
+
+**讀法：相鄰模組的主要業務資料應接得起來；上一個模組的整個 Output，不一定等於下一個模組的整個 Input。** 下表保留 v0.1 欄位命名，明確列出直接傳遞、欄位映射及平台補入資料；本次不變更既有 Contract。
+
+- I/O 欄只列業務 Payload。所有 Output 外層仍包在 `ModuleResult[T]`；接線取用 `result.data`，不是將 status/errors/metrics 塞給下一個模組。
+- 每一步的 `ModuleConfig`、`RunContext` 由平台分別提供，不由上一個模組產生。
+- `[]` 表示清單；`?` 表示選填。方法中的「後續」不代表目前已支援。
+- I1–I5 是 Ingestion；Q1–Q4 是獨立的 Inference 請求；E1 是 Evaluation Job，並非十步連續執行。
+
+| 階段／模組 | 目的 | 方法：MVP；後續 | Input Contract（業務 Payload） | Output Contract（業務 Payload） | 前一步 O → 本步 I | 平台／其他來源補入與去向 |
+|---|---|---|---|---|---|---|
+| **I1 Data Import** | 取得原始檔及來源資訊 | MVP：File Upload；後續：Object Storage、HTTP/Website、Database Query | `ImportInput {source_spec: SourceSpec, cursor?: str, limit: int}` | `ImportOutput {assets: SourceAsset[], deletions: [{document_id,source_revision?}], next_cursor?: str, has_more: bool}` | 流程起點；沒有前一步 O | source_spec 來自匯入請求；cursor/limit 由 Job 管理。assets → I2；deletions 由平台保留並直接送 I5；cursor/has_more 留給分頁與 checkpoint 管理 |
+| **I2 Parsing** | 將檔案轉為文字／標題／表格區塊 | MVP：Native Text Extraction；後續：OCR、Layout-aware | `ParsingInput {assets: SourceAsset[]}` | `ParsingOutput {documents: ParsedDocument[]}` | `I1.assets → I2.assets`，同型別、同欄位名 | 以 ArtifactRef 取得檔案；Document ID、版本、Metadata、ACL 必須傳承至輸出 |
+| **I3 Chunking** | 切成適合檢索的 Chunks | MVP：Recursive、Header-aware；後續：Fixed-size、Sentence-based、Semantic、Parent–Child | `ChunkingInput {documents: ParsedDocument[]}` | `ChunkingOutput {chunks: Chunk[], parents?: Chunk[]}` | `I2.documents → I3.documents`，同型別、同欄位名 | parents 為後續能力；目前 I4/I5 契約未接收 parents，不能宣告 Parent–Child 已串接完成；啟用前須補父文件儲存接口 |
+| **I4 Embedding** | 將 Chunks 轉為向量，保留原文及編碼設定 | MVP：Dense；後續：Sparse、Dense＋Sparse | `EmbeddingInput {chunks: Chunk[]}` | `EmbeddingOutput {chunks: Chunk[], profiles: EmbeddingProfile[], vector_sets: VectorSet[]}` | `I3.chunks → I4.chunks`，同型別、同欄位名 | profiles 由所選模型／設定解析；成功 chunks 原文繼續帶往 I5，不能只回傳向量。BM25 路線略過 I4 |
+| **I5 Indexing** | 寫入索引並回報可搜尋狀態 | MVP：Dense、Full-text、Hybrid（先 Elasticsearch）；後續：其他 Backend／父文件儲存 | `IndexingInput {target: IndexBinding, chunks: Chunk[], profiles: EmbeddingProfile[], vector_sets: VectorSet[], deletions: [{document_id,source_revision?}]}` | `IndexingOutput {binding: IndexBinding, results: [{item_id,status}], write_acknowledged: bool, searchable: bool}` | `I4.chunks/profiles/vector_sets → I5.同名欄位`；BM25：`I3.chunks → I5.chunks`，profiles/vector_sets 為空 | target 由 Runtime Controller 提供；deletions 來自 I1、無刪除則 []。binding 與狀態由平台保存，供之後 Q2 使用；不是直接送 Q1 |
+| **Q1 Query Transformation** | 保留原始問題，產出檢索用 Query | MVP：None、Rewrite；後續：History-aware、Multi-query、HyDE、Decomposition | `QueryTransformInput {question: str, history: ChatMessage[]}` | `QueryTransformOutput {original_question: str, queries: SearchQuery[]}` | 新查詢起點；不是接在 I5 後的同一資料流 | question/history 來自使用者請求；平台保留 history，稍後補給 Q4。None 仍輸出同結構、單一原始 Query |
+| **Q2 Retrieval** | 搜尋並產生去重的候選內容 | MVP：Dense、BM25、Hybrid/RRF；後續：MMR、多 Query、Parent–Child、加權融合 | `RetrievalInput {query: QueryTransformOutput, index: IndexBinding, filter?: MetadataFilter}` | `RetrievalOutput {original_question: str, hits: SearchHit[], index: IndexBinding}` | `Q1.完整業務 Output → Q2.query`，以 query 欄位包裝 | index 來自平台保存／解析的 I5.binding；filter 來自請求，再與授權條件合併；Query Embedding 依 index Profile 執行。index 留在 Trace／版本綁定，不必傳入 Q3 |
+| **Q3 Rerank** | 重排並縮小候選內容 | MVP：None、Cross-Encoder；後續：LLM Rerank、自訂排序 | `RerankInput {original_question: str, hits: SearchHit[]}` | `RerankOutput {original_question: str, hits: SearchHit[], applied: bool}` | `Q2.original_question/hits → Q3.同名欄位`，選取子集 | 不需要額外業務輸入；None 時保留原 hits 且 applied=false。applied 留在 Trace，不是 Q4 的輸入 |
+| **Q4 Generation** | 組裝 Context，生成回答與引用 | MVP：Context-grounded；後續：Structured Output、多階段生成 | `GenerationInput {question: str, history: ChatMessage[], contexts: SearchHit[]}` | `GenerationOutput {answer: str, citations: Citation[], used_chunk_ids: str[], finish_reason: str, usage: TokenUsage, abstained: bool, structured_output?: JSON}` | `Q3.original_question → Q4.question`；`Q3.hits → Q4.contexts`，同型別但需欄位映射 | history 由平台從原始請求補入，無歷史為 []；回答交 UI/API。Evaluation 可收集回答、實際使用的 Context 與執行紀錄 |
+| **E1 Evaluation** | 批次評估檢索、答案與運行指標 | MVP：Deterministic Metrics、LLM Judge、Operational Metrics；後續：Custom Evaluator、Baseline Comparison | `EvaluationInput {dataset: DatasetRef, target: EvaluationTarget}` | `EvaluationOutput {evaluation_run_id, binding: EvaluationTarget, results_ref: ArtifactRef, summary: MetricSummary[], total, succeeded, failed, skipped}` | **獨立 Job，不是直接以 Q4 Output 作全部 Input** | dataset/target 由平台提供；Runner 逐題呼叫 Q1–Q2 或 Q1–Q4，收集檢索結果、實際 Context、答案與 Trace；Ground Truth 來自 Dataset |
+
+### 1.2 前一個 O 與下一個 I，哪些完全對得上？
+
+- **同欄位直接接**：assets、documents、chunks，以及 Retrieval → Rerank 的 original_question/hits。
+- **保留原資料並擴充**：Embedding 回傳 chunks＋profiles＋vector_sets，讓 Indexing 同時取得原文與向量。
+- **需要包裝／映射**：Query Transformation Output 放進 Retrieval.query；Rerank.original_question/hits 映射到 Generation.question/contexts。
+- **平台額外帶入**：IndexBinding、history、filter、deletions，以及各模組 Config／RunContext。
+- **跨執行批次的銜接**：Ingestion 將內容寫入索引，Inference 日後讀取該索引；兩條流程不直接串成同一次 function chain。
+- **MVP 尚未打通的延伸**：parents 的持久化／取回尚需額外接口；Multi-query 也需 Retrieval 明確支援。不能只看型別可容納便宣稱方法已支援。
+
+因此，設計原則是 **上游輸出必須足以提供下游所需的主資料，額外資料則有明確來源**。現階段透過 Compiler 的顯式欄位映射串接，保留窄而明確的模組接口；不為了表面上 O=I，強迫每個模組攜帶整份全域狀態。
+
 
 ## 2. 共用契約
 
