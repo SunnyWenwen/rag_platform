@@ -1,8 +1,8 @@
 # RAG Platform — 資料契約與索引設計討論結論
 
-> 2026-10-13 · 設計草案 v0.3
+> 2026-10-14 · 設計草案 v0.4
 >
-> 整理本輪 Import／Parsing／Chunking／Embedding／Indexing／Retrieval 討論。這是設計規格，不代表 Engine 或 UI 已實作。
+> 整理本輪 Import／Parsing／Chunking／Embedding／Indexing／Retrieval 討論。這是設計規格；UI Prototype 已加入互動示意，Engine／API／DB 尚未實作。
 > 本文取代《04_module_methods_io_contracts.md》v0.2 中關於 ParsedDocument、Chunk、獨立 VectorSet、多欄位與搜尋後端的舊提案；其他模組的執行、錯誤與評估契約仍沿用原文件。
 
 ## 1. 決策狀態
@@ -12,11 +12,11 @@
 | 統一資料物件 | ParsedDocument 五個頂層 key；Chunk 六個頂層 key，新增 vectors |
 | 模組分工 | Parsing 擷取及映射；Chunking 切分及繼承；Embedding 產生向量；Indexing 儲存及建索引 |
 | 多欄位 | 可分別選擇 Embedding、Indexing、Retrieval、Rerank、Generation 使用的欄位 |
-| 搜尋後端 | ES 已選定；第二個後端建議 Local Search（FAISS＋BM25），尚待實作驗證 |
+| 搜尋後端 | 已確認 ES／Local Search（FAISS＋BM25）；後端待實作驗證 |
 | 持久化 | Local Search 支援 Memory／MongoDB 的設計方向；MongoDB 不執行該模式的向量搜尋 |
 | 使用介面 | 後端共用設定流程，能力差異以顯示但停用及原因說明處理 |
-| Hybrid | 第一版建議 RRF；正規化後加權分數融合為後續選項 |
-| 第一版切分 | 建議一個主要切分欄位＋多個複製欄位 |
+| Hybrid | 第一版使用 RRF；正規化後加權分數融合為後續選項 |
+| 第一版切分 | 一個主要切分欄位＋多個複製欄位；Recursive／Header-aware，使用 Token 計量 |
 | 多模態 | 第一版建議文字 RAG；OCR 首批格式及實作待定，視覺描述／圖片 Embedding 暫列後續 |
 | 摘要 | 先使用輸入已有摘要；自動摘要 Enrichment 為後續能力 |
 | 客製化 | 優先考慮 Chunking、Query Transformation、Rerank、Evaluation；不代表已實作 |
@@ -142,7 +142,7 @@ Parsing 不產生向量。OCR 讀取文字，不保證理解流程箭頭、圖�
 - copy_fields：例如 fields.title、fields.summary，複製到每個 Chunk。
 - metadata_fields：選擇繼承的來源／分類資訊；必要權限強制保留。
 - locations：根據切分範圍與 structure 計算，可能跨多頁或多區塊。
-- size／overlap／length_unit：明確指定字元或 token 與 tokenizer。
+- size／overlap：統一以 Token 計量；Tokenizer 預設沿用 Embedding，也可自行指定。Recursive／Header-aware 的邊界設定見第 13 節。
 
 複製的文件摘要仍是文件層級摘要，不會自動變成 Chunk 摘要。若摘要重複出現在同文件的所有 Chunk，摘要向量搜尋可能回傳多個同文件片段；後續需依需求進行文件分組或片段 Rerank。
 
@@ -240,7 +240,7 @@ Hybrid 可採：
 - RRF：sum(1 / (k + rank))；未出現在某一路候選則該路貢獻為 0。k 是平滑常數，不是 Top-K。可擴充權重。
 - 加權分數融合：sum(weight × normalized_score)。需先統一方向與尺度；BM25、cosine 與距離不可直接假設可比較。
 
-第一版建議 RRF，逐路 Top-K 與融合後候選 Top-K 分開定義。ES 需配置查詢及融合；不是建好索引就自動 Hybrid。Local Search 由平台負責 BM25、FAISS 結果融合。
+第一版使用 RRF，逐路 Top-K 與融合後候選 Top-K 分開定義。ES 需配置查詢及融合；不是建好索引就自動 Hybrid。Local Search 由平台負責 BM25、FAISS 結果融合。
 
 | 操作 | 識別依據 | 責任 |
 |---|---|---|
@@ -275,14 +275,14 @@ Custom Python 保持固定 I/O、Config Schema 與語意驗證。優先開放 Ch
 尚待確認：
 1. 首批 Parser、OCR 與格式範圍。
 2. FAISS＋BM25 的具體套件、中文斷詞與索引規格。
-3. Local Search 第二後端及其 Hybrid 是否全部納入首版交付。
+3. Local Search 的 Hybrid／過濾效能與可支援資料量實測。
 4. metadata 的保留欄位、ACL 與 filter 實作。
 5. 缺欄位處理、文件／Chunk ID 規則與來源更新策略。
 6. 文件分組的預設位置、每文件片段數與評估方式。
 7. MongoDB 的索引版本、恢復流程及更新／刪除一致性。
 8. 是否保留原始檔及 ParsedDocument，供重新 Ingestion 使用。
 
-本次整理未修改 UI 或實作 Engine。實作時須同步更新舊 Contract 與 Registry，避免仍使用 Chunk.text、獨立 VectorSet 或單一向量 Profile 假設。
+本次同步修改 UI Prototype，尚未實作 Engine。實作時須同步更新舊 Contract 與 Registry，避免仍使用 Chunk.text、獨立 VectorSet 或單一向量 Profile 假設。
 
 ## 12. 官方參考
 
@@ -294,3 +294,130 @@ Custom Python 保持固定 I/O、Config Schema 與語意驗證。優先開放 Ch
 - Elasticsearch Collapse：https://www.elastic.co/docs/reference/elasticsearch/rest-apis/collapse-search-results
 - FAISS 索引讀寫：https://github.com/facebookresearch/faiss/wiki/Index-IO%2C-cloning-and-hyper-parameter-tuning
 - LangChain FAISS 整合：https://github.com/langchain-ai/langchain-community/blob/main/libs/community/langchain_community/vectorstores/faiss.py
+
+
+## 13. 2026-10-14 已確認：設定介面與服務來源
+
+本節整合本輪決策；UI Prototype 已提供互動示意，Engine／API／資料庫尚未實作。先前 v0.3 的候選設計若有衝突，以本節及更新後的決策表為準。
+
+### 13.1 Chunking：兩種方法，統一 Token 計量
+
+- Recursive：依分隔符優先順序切分過長內容。
+- Header-aware：先依標題層級切分，超長章節再使用 Recursive。
+- Sentence-aware 暫不納入；切分方法下方不再提供字元長度模式。
+- 參數：Chunk Size、Overlap（皆為 Tokens）、Tokenizer ID／revision、分隔符清單及順序、keep_separator。Header-aware 另有標題層級。
+- 預設沿用 Embedding 對應 Tokenizer，也允許自行指定；純 BM25 不需要 Embedding 呼叫，但切分仍需要 Tokenizer。
+- Size 是上限，不是每塊必須等長；保留自然邊界時，Overlap 是目標值。
+- 更換 Tokenizer 或切分參數需要重新切分。只有 Embedding 模型改變而 Tokenizer 相同時，理論上可重用 Chunk，但仍需重新 Embedding；prototype 統一標示需重新 Ingestion。
+- 輸入上限還要包含特殊 Token、前綴及組合內容。複製到 Chunk 的文件摘要未經主要欄位切分，Embedding 執行時要逐筆檢查，不能只檢查 Chunk Size。
+- Parser 未提供可靠標題結構，Header-aware 不能執行。Prototype 的「保留標題結構」是能力配置示意，並未驗證真實文件。
+
+### 13.2 共通服務來源：DEV test use／自行提供
+
+| 模組／條件 | 選項 | 自行提供時的設定 |
+|---|---|---|
+| Embedding | DEV test use／Embedding API | Base URL、Model ID、認證、Secret 引用、Timeout、維度、Tokenizer／revision、Token 上限、Batch Size |
+| Indexing = ES | DEV test use／Elasticsearch | URL、認證、Secret 引用、Timeout |
+| Local Search = Memory | 不需要 DB | 程序重啟需重新 Ingestion |
+| Local Search = MongoDB | DEV test use／MongoDB | 不含帳密的 URI、Database、Secret 引用、Timeout |
+| Query Rewrite／Multi-query | DEV test use／OpenAI-compatible API | Base URL、Model ID、認證、Secret 引用、Timeout |
+| Rerank | None／DEV test use／Rerank API | Base URL、Model ID、認證、Secret 引用、Timeout |
+| Generation | DEV test use／OpenAI-compatible API | Base URL、Model ID、認證、Secret 引用、Timeout、生成參數 |
+
+DEV 使用平台預先設定的資源，UI 顯示模型資訊而不暴露憑證。Prototype 不提供真實 DEV 服務：模型名稱及 Tokenizer 是示例；Check Settings 僅驗證格式，不會測試連線。正式 Engine 再實作實際測試 API／模型維度與連線的能力。
+
+Embedding API 第一版約定 OpenAI-compatible embeddings 介面（Base URL 下的 /embeddings），Generation／Query Transformation 約定 Chat Completions（/chat/completions）。API URL 不能取代 Request／Response 契約；其他格式需 Adapter。Authentication 與必要參數由具體 Adapter 實作。
+
+Prototype 僅填寫 secret-name/key 引用，不輸入或匯出真實憑證。DEV 下停用的 URL／認證草稿不進有效配置。部署環境需自行建立相關 Secret。
+
+### 13.3 Index collection 自動產生
+
+- 由 Workspace＋RAG System 顯示名稱正規化，再附穩定 System ID，以免同名或中文名稱正規化後碰撞。
+- 例如 customer-support-product-faq-a1b2c3。
+- UI 顯示唯讀名稱；ES index／Local Search 邏輯集合及 MongoDB Collection 由 Adapter 綁定。
+- 修改系統顯示名稱不改既有實體 collection；建立後保留穩定名稱。
+
+### 13.4 多 Query 與 Retrieval
+
+Query Transformation 提供 None／Rewrite／Multi-query。Rewrite 產生一個衍生問題，Multi-query 產生多個表述，另有「將原始問題也加入搜尋」選項。count 表示產生的 Query 數量，不含原始問題。原始問題永遠保留給 Rerank／Generation。
+
+各 Query × 各搜尋欄位建立搜尋路徑，各路取候選後，在 Retrieval 以 chunk_id 融合成一份清單，再進入 Rerank。Rerank 關閉也不影響融合。
+
+Retrieval 不再選 Implementation 或 Dense／BM25／Hybrid。直接選已建立索引的全文／向量欄位，平台顯示推導模式；後端從 Indexing 繼承。設定每路候選 Top-K、最終候選 Top-K；多路時提供 RRF 與平滑常數。多個向量欄位或多 Query 同樣需要融合，不以 Hybrid 作唯一啟用條件。
+
+### 13.5 Rerank 平台契約
+
+以下是平台選定的第一版格式，不宣稱是所有模型服務的共通標準。POST {Base URL}/rerank：
+
+```json
+{
+  "model": "reranker-a",
+  "query": "原始問題",
+  "documents": ["候選內容 A", "候選內容 B"],
+  "top_n": 2
+}
+```
+
+```json
+{
+  "results": [
+    {"index": 1, "score": 0.92},
+    {"index": 0, "score": 0.61}
+  ]
+}
+```
+
+documents 每個字串由一筆 Chunk 的選取欄位依序組合。index 是輸入候選的 0-based 序號；score 越大越相關。Adapter 驗證序號唯一、範圍合法及分數有限，對回 chunk_id。Rerank 輸出不能新增候選，Top-N 不超過 Retrieval Top-K；None 時不匯出 Top-N／模型連線設定。
+
+### 13.6 Generation：兩層模板
+
+「參考資料格式」逐筆套用：
+
+```text
+[{{citation_id}}] {{fields.title}}
+{{fields.text}}
+```
+
+多筆套用後組合為 context；回答 Prompt 使用：
+
+```text
+請根據以下參考資料回答問題，並標示來源編號。
+若資料不足，請明確說明。
+
+參考資料：
+{{context}}
+
+問題：{{query}}
+```
+
+- citation_id 由平台產生並對應 chunk_id；query 是原始問題。
+- 參考資料格式只可引用已儲存 fields；回答 Prompt 支援 context／query，聊天歷史另由 messages 傳入。
+- 可插入變數、檢查未知變數與空模板，並預覽替換後的示例。
+- 替換一次，不遞迴解析文件文字內的 {{...}}；不執行程式或任意模板邏輯。
+- Generation 的「模板說明與範例」按鈕展示兩筆 Chunk → 逐筆模板 → context → 完整 Prompt，並提供套用範例。
+- 具備 Temperature、輸出 Token 上限與 Context Budget。Runtime 需以生成模型的 Tokenizer 計算整體預算；prototype 預覽不執行 Tokenizer 或截斷。
+
+### 13.7 AI 設定助手與 Edit Config
+
+AI 設定助手：描述需求／提供樣本 → 產生建議 → 顯示差異 → Validator → 使用者套用到草稿 → Create／Save 才生效。助手只能使用平台支援的欄位與方法，不能猜測憑證或自動啟動 Ingestion。
+
+Prototype 使用明示的本機規則模擬，並非 LLM：可讀 ≤1 MB JSON／CSV／TXT／MD 的樣本欄位，支援 content／abstract／title 等映射；可示範改用 Local Search／MongoDB／Memory、原文切分且摘要複製、只搜尋原文及 Multi-query。未知需求會說明未支援；不假裝解析 PDF／PPTX／Excel。手動改動草稿後，舊建議不能覆蓋，需重新產生。
+
+已建立的系統提供 Edit Config，重用 Create 介面。編輯使用獨立草稿，取消不影響現有配置。儲存前列出變更模組及影響：
+
+| 變更 | 行為 |
+|---|---|
+| Parsing／Chunking／Embedding／Indexing 的有效配置 | 標記需重新 Ingestion，完成前阻止新版 Inference／Evaluation |
+| Query Transformation／Retrieval／Rerank／Generation | 不需重新 Ingestion，清除舊示意回答／評估結果並建議重測 |
+| 顯示名稱 | 更新名稱，collection 保持不變 |
+| 未啟用的服務草稿欄位 | 不納入有效配置比較，不因而標記重建 |
+
+ES／DB 連線更換也歸為需重新 Ingestion；不能假設目標環境已有相同資料。Prototype 不實作新舊索引雙版本切換；正式 Runtime 需定義其一致性策略。
+
+### 13.8 匯出與實作界線
+
+Export 對使用中的外部依賴逐項檢查。可下載含 DEV 標記的「待設定草稿」，或填寫自己的 URL／認證引用後下載「已填妥設定」；後者只是格式驗證通過，不代表服務可連線或可直接部署。
+
+部署覆寫不改平台內測試配置。若改 Embedding Model，先回 Edit Config 調整完整 Profile 並重新 Ingestion。即使模型名稱相同，實際服務仍需驗證模型版本、維度與 Tokenizer。匯出不包含 Chunk／向量資料，切換到自己的 ES／MongoDB 需準備資料或重新 Ingestion。
+
+YAML 仍使用示例 Engine Image；Local Search 固定單一副本，Ingestion／Inference 共用程序。Secret 以引用／Volume 掛載呈現，Runtime 解析是待實作契約。未部署、不建立真實 DB、不送出任何模型 API 呼叫。
