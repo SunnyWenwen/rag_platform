@@ -4,8 +4,8 @@ flowchart TB
         B["1. Build（設定 Config）"] --> I["2. Ingestion"]
         I --> Q["3. Inference"]
         Q --> E["4. Evaluation"]
-        E --> X["5. Export YAML"]
-        E --> C["修改 Config"]
+        E -->|準備部屬到k8s| X["5. Export YAML"]
+        E -->|驗證不達標,需調整| C["修改 Config"]
         C -->|如果有調整ingestion的設定, 需重新Ingestion| I
         C -->|只調整inference設定, 不需重新ingestion| Q
     end
