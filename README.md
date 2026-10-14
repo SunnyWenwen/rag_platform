@@ -1,10 +1,12 @@
-# RAG Platform
+# RAG Builder
 
-Config-driven RAG System Factory 設計討論專案。
+Config-driven RAG System 建立與測試平台。
 
 本專案規劃透過 UI 設定模組化 RAG、執行 Ingestion / Inference 測試、QA Evaluation，以及匯出 Kubernetes 部署設定。
 
 目前為架構提案與模擬原型，尚未實作可部署的 RAG Engine。
+
+**名詞**：RAG Builder 是開發平台；RAG System 是使用者建立的個別系統；RAG Runtime 是可獨立部署的 API 執行服務；RAG Engine 是其 Pipeline 核心。
 
 ## 設計文件
 
@@ -13,7 +15,7 @@ Config-driven RAG System Factory 設計討論專案。
 - [模組目的、方法與 I/O Contract（v0.2 草案；資料契約見 v0.5）](docs/04_module_methods_io_contracts.md)：十個模組的輸入輸出、共用資料結構、相依卡控、自訂 Python 與 LangChain／LangGraph 分工；區分 MVP 與後續候選方法。
 
 - [UI Prototype](01_ui_prototype.html)：下載後以瀏覽器開啟，操作與指標均為模擬。
-- [Architecture Proposal v0.2](03_architecture_proposal.md)：Dev Platform／獨立 Runtime 分工、共用 Engine／API、外部服務環境設定、模組契約與 MVP 規劃。
+- [Architecture Proposal v0.2](03_architecture_proposal.md)：RAG Builder／獨立 Runtime 分工、共用 Engine／API、外部服務環境設定、模組契約與 MVP 規劃。
 - [L1 使用流程圖](diagrams/01_user_system_l1.png) · [Mermaid 原始檔](diagrams/01_user_system_l1.mmd)
 - [Infra 架構圖](diagrams/02_infra_architecture.png) · [Mermaid 原始檔](diagrams/02_infra_architecture.mmd)
 
@@ -53,4 +55,5 @@ Config-driven RAG System Factory 設計討論專案。
 
 
 共用 LLM／Prompt 另經 Chromium 實測：新增、改名、選擇、刪除、API 設定、Prompt 即時驗證與預覽、共用匯出資源及手機寬度。
+
 

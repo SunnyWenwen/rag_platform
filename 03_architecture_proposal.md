@@ -1,4 +1,4 @@
-# Config-Driven RAG System Factory — Architecture Proposal
+# RAG Builder — Architecture Proposal
 
 > Version 0.2 · 2026-10-14 · Audience: Engineering / Platform / Management
 >
@@ -7,11 +7,20 @@
 
 ## 1. 平台目的與兩種使用情境
 
-平台提供「設定 RAG System → Ingestion → Inference → Evaluation → 調整 Config → 匯出部署」流程，讓不同 Use Case 共用模組化 Engine，減少重複開發 Pipeline。
+RAG Builder 提供「設定 RAG System → Ingestion → Inference → Evaluation → 調整 Config → 匯出部署」流程，讓不同 Use Case 共用模組化 Engine，減少重複開發 Pipeline。
 
-**Dev Platform 提供設定與測試介面；自行部署交付可獨立運作、只透過 API 操作的 RAG Runtime。兩者使用同一套 Engine、模組契約與 Runtime API。**
+本文統一使用以下名詞：
 
-| 面向 | Dev Platform | 自行部署的 RAG Runtime |
+| 名詞 | 定義 |
+|---|---|
+| RAG Builder | 提供設定、測試、評估與匯出功能的開發平台；平台產品的正式名稱 |
+| RAG System | 使用者在 RAG Builder 建立的個別系統，包含 Config 與對應資料／索引 |
+| RAG Runtime | 載入 RAG System 配置、透過 API 操作的執行服務，可獨立部署 |
+| RAG Engine | Runtime 內共用的 Pipeline 執行核心 |
+
+**RAG Builder 提供設定與測試介面；自行部署交付可獨立運作、只透過 API 操作的 RAG Runtime。兩者使用同一套 Engine、模組契約與 Runtime API。**
+
+| 面向 | RAG Builder | 自行部署的 RAG Runtime |
 |---|---|---|
 | 操作入口 | Workspace／Group、System 卡片、Create／Edit、測試 UI；亦可呼叫 API | Runtime API，供應用程式／外部系統呼叫 |
 | 設定 | UI 編輯草稿、檢查相依性、保存 Config Revision | 載入匯出的 Config 與目標環境服務設定 |
@@ -20,7 +29,7 @@
 | Evaluation | 平台上傳 QA Dataset、批次呼叫 Runtime API、保存報告 | 第一版不附 Evaluation UI；可由外部評估工具呼叫 Query API |
 | 外部服務 | DEV test use 或使用者自行提供 | 使用單位申請／提供 URL、Model、DB、認證與 Secret |
 | 交付內容 | 平台管理與測試能力 | Engine Image Reference、Config、Secret References、部署範例及 API 說明 |
-| 執行依賴 | 平台管理 Config、測試資源與執行紀錄 | 啟動及日常操作不依賴 Dev Platform；不打包 Workspace／Builder／平台管理 UI |
+| 執行依賴 | 平台管理 Config、測試資源與執行紀錄 | 啟動及日常操作不依賴 RAG Builder；不打包 Workspace／Create／Edit 等管理 UI |
 
 此處「開發」是使用者在平台設定並驗證自己的 RAG System。部署後仍可經 API 傳入新文件及問題；API only 不代表只能接收 JSON，也不代表 Ingestion 只執行一次。
 
@@ -28,7 +37,7 @@
 
 ## 2. UI 與操作流程
 
-主介面左側切換 Workspace Groups，中間是 RAG System 卡片，右上角提供 **Create RAG System**。Create／Edit 共用設定介面與相依檢查，不另建立多個 Studio 畫面。
+主介面左側切換 Workspace Groups，中間是 RAG System 卡片，右上角提供 **Create RAG System**。Create／Edit 共用設定介面與相依檢查，各操作從同一主介面開啟。
 
 | 操作 | 使用者行為 | 目標行為／目前 Prototype 範圍 |
 |---|---|---|
@@ -87,7 +96,7 @@ Rewrite Prompt 支援 {{query}}；Multi-query 另支援 {{count}}。Generation �
 
 ## 4. 外部服務：測試來源與部署設定
 
-| 依賴 | Dev Platform | 自行部署時必要設定 |
+| 依賴 | RAG Builder | 自行部署時必要設定 |
 |---|---|---|
 | Elasticsearch | DEV test use／自行連線 | URL、認證、Secret Reference、Timeout；索引名稱與 Mapping |
 | LLM | DEV test use／OpenAI-compatible API | Base URL、Model ID／版本、認證、Secret Reference、Timeout |
@@ -106,13 +115,13 @@ Secret 只保留 secret-name/key 等引用，不將真實帳密寫入 Blueprint 
 
 更換 Embedding 模型／版本／維度等 Profile 需重新 Embedding 及建索引；不能只在匯出時改 Model ID。即使沿用同名模型，也需確認 encoding、normalization、維度與版本相容。更換 ES／MongoDB 目標不會搬移測試資料。
 
-若後續 OCR／Parser／LLM Judge 依賴外部服務，也適用同一來源與環境綁定規則；未啟用的功能不要求額外資源。Tokenizer／模型相關檔案亦須在部署環境可取得，不能依賴 Dev Platform 的本機快取。
+若後續 OCR／Parser／LLM Judge 依賴外部服務，也適用同一來源與環境綁定規則；未啟用的功能不要求額外資源。Tokenizer／模型相關檔案亦須在部署環境可取得，不能依賴 RAG Builder 的本機快取。
 
 ## 5. Infra 分工與執行模式
 
-### 5.1 Dev Platform
+### 5.1 RAG Builder
 
-- Control Plane：RAG Studio UI、Platform API／Auth、Config／Run Store、Module Registry、Compatibility Validator、服務設定及 Export。
+- Control Plane：RAG Builder UI、Builder API／Auth、Config／Run Store、Module Registry、Compatibility Validator、服務設定及 Export。
 - Sandbox Data Plane：Runtime API 與共用 Engine，執行 Ingestion／Inference；Evaluation Runner 呼叫相同 Query API，保存測試紀錄及報告。
 - 測試服務：可綁定平台 DEV 資源或使用者提供的服務；以 system_id、config_revision、run_id 隔離配置與資料。
 - 平台操作紀錄、QA Dataset 及產物保存於平台。Config Store／Artifact Store 的具體 DB 或 Object Storage 選型另定，不代表每個部署 Runtime 都需要同一套儲存服務。
@@ -124,7 +133,7 @@ Secret 只保留 secret-name/key 等引用，不將真實帳密寫入 Blueprint 
 - 對外提供 Ingestion、執行狀態、Query 及健康檢查 API；不包含平台管理 UI／Config 編輯 API。
 - 從 ConfigMap／掛載檔案載入已版本化的 Config，從目標環境取得 Secret 與外部服務連線。
 - 使用和 Sandbox 相同版本的 Engine Image 與 Module Registry。相同配置具有相同執行語意，但不同模型服務／資料仍需在目標環境驗證。
-- 日常執行不需連回 Dev Platform 的 Config Store、Controller 或測試服務；Logs／Metrics／Traces 送至部署環境的觀測工具。
+- 日常執行不需連回 RAG Builder 的 Config Store、Controller 或測試服務；Logs／Metrics／Traces 送至部署環境的觀測工具。
 - 文件／records 由 Runtime API 接收。永久保存原始檔與 ParsedDocument 的政策尚待確認，不強制每個 Runtime 都依賴平台 Object Storage。
 
 ### 5.3 搜尋後端與持久化
@@ -139,11 +148,11 @@ Infra 圖的 Local Search 表示 Engine 內的能力，不是另一個必需的�
 
 第一版可用同一個 Runtime API 程序承接非同步 Ingestion。Queue／獨立 Worker、HPA、排程匯入、索引原子切換屬於後續容量需求，不作為 Prototype 的預設部署要求。
 
-## 6. Platform API 與 Runtime API
+## 6. Builder API 與 Runtime API
 
-以下是平台自訂契約提案，Endpoint 與 payload 尚未實作。Platform 路由處理 System 管理；Runtime 路由處理資料與問題。Dev UI 經 Platform Auth／路由綁定正確 System／Revision，再呼叫相同 Runtime Handler，不另寫一套 UI 專用 Pipeline。
+以下是平台自訂契約提案，Endpoint 與 payload 尚未實作。Builder API 路由處理 System 管理；Runtime 路由處理資料與問題。RAG Builder UI 經 Platform Auth／路由綁定正確 System／Revision，再呼叫相同 Runtime Handler，不另寫一套 UI 專用 Pipeline。
 
-### 6.1 Platform API（Control Plane）
+### 6.1 Builder API（Control Plane）
 
 | Method | Path | 用途 |
 |---|---|---|
@@ -204,11 +213,11 @@ Runtime API 的呼叫認證由部署環境提供 API Key／Token 或企業 Gatew
 
 操作順序為建立草稿、驗證、Ingestion、問答與評估；效果不符時 Edit Config，再依變更範圍重測。目標 Engine 需管理 Config Revision 與索引就緒狀態，Prototype 目前用狀態旗標模擬，未實作雙版本索引切換。
 
-部署後的 Config 更新由更換配置與重新啟動／部署完成，不要求部署一套 Builder。是否需要線上熱更新、長任務不中斷及新舊版本切換，屬於後續運維設計。
+部署後的 Config 更新由更換配置與重新啟動／部署完成，無須部署 RAG Builder 的設定介面。是否需要線上熱更新、長任務不中斷及新舊版本切換，屬於後續運維設計。
 
 ## 8. 匯出與交付
 
-匯出交付的是 RAG Runtime，不是整個 Dev Platform。目標 Bundle 包含：
+匯出交付的是 RAG Runtime，不是整個 RAG Builder。目標 Bundle 包含：
 
 - 相同 Engine Image 的版本／Digest、Module Version 與 Config Revision／Hash。
 - Pipeline Config、使用中的 LLM 清單與目標環境連線覆寫。
@@ -242,10 +251,11 @@ QA Dataset 最少包含 question、expected_answer；計算 Retrieval 指標需 
 | 共用核心 | 固定 Pipeline、資料／Config Schema、Adapter、Validator | 相同 Config 可由 Engine 執行，錯誤可定位模組 |
 | 平台實接 | 現有單介面、DEV 資源、Runtime API、Ingestion／Inference | UI 與 API 跑相同流程；依賴卡控與重建規則正確 |
 | 測試迭代 | QA Dataset、Evaluation、模組執行紀錄 | 結果可追溯至配置／資料／模型版本 |
-| 獨立交付 | 環境覆寫、Runtime Image、API 說明及部署範例 | 目標環境不依賴 Dev Platform，API 匯入後可問答 |
+| 獨立交付 | 環境覆寫、Runtime Image、API 說明及部署範例 | 目標環境不依賴 RAG Builder，API 匯入後可問答 |
 
 已確認兩個搜尋後端為 ES／Local Search，不再沿用初版「只選一個 Backend」或 OpenSearch 的預設範圍。無額外要求的功能先不加入 Prototype。
 
 仍需確認：首批 Parser／OCR 格式與實作、Local Search 的具體 BM25／斷詞及容量、缺欄位與文件更新政策、原始資料保留方式、Runtime API 認證方案、部署資源申請流程，以及 Evaluation Gate 是否強制。
 
 資料契約 v0.5 與本提案描述目標行為；UI 已實作的部分及限制以 README／Prototype 為準。API 契約、平台／部署環境分工及 Export Bundle 新內容尚待實接，不能將本文件視為已完成的後端功能。
+

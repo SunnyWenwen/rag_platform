@@ -1,4 +1,4 @@
-# RAG Platform — 模組目的、方法與 I/O Contract
+# RAG Builder — 模組目的、方法與 I/O Contract
 
 > **後續設計更新**：請先閱讀 [資料契約與索引設計討論結論（v0.5）](05_data_contracts_search_design.md)。其中 ParsedDocument 五個頂層 key、Chunk 六個頂層 key（含 vectors）、多欄位設定、搜尋後端，以及第 13–14 節的共用 LLM、Query Prompt、模組驗證標籤、Token Chunking、DEV／自訂服務、多 Query、Rerank API 與 Generation 模板設計取代本文相關舊提案；本文保留其餘模組契約與歷史設計，並非已遷移完成的實作規格。
 
@@ -13,7 +13,7 @@
 - Evaluation：獨立批次流程，可執行 Retrieval-only 或完整 RAG。
 - 全文 BM25 模式可略過 Embedding；None 類模組採明確的 pass-through，不能讓 I/O 結構任意改變。
 - 每個模組分開設定 **Method（方法）／Implementation（實作或 Provider）／Parameters（參數）**。例如 Hybrid 是方法，Elasticsearch 是後端，Top-K 是參數。
-- Platform Contract 為穩定邊界；Adapter 負責轉換 LangChain Runnable、Document 或自訂 Function／Class。不能把框架內部物件直接當作對外持久化格式。
+- Module Contract 為穩定邊界；Adapter 負責轉換 LangChain Runnable、Document 或自訂 Function／Class。不能把框架內部物件直接當作對外持久化格式。
 - Config、業務輸入與執行 Context 分離；Python Class／Type Hint 不會自動提供完整 Runtime Validation。
 - 下文的「MVP」是建議範圍；後續方法是候選，尚未承諾全部開發。
 
@@ -364,14 +364,14 @@ supports: {async: true, batch: true, streaming: false}
 - 任意使用者程式不得直接在共用 API Process 中 exec；隔離執行與受控資料／Secret 存取屬正式實作前置條件。
 - Config 固定 Plugin Version；新增程式與依賴時建置版本化 Runtime Image。部署 YAML 鎖定 Image Digest，不能只匯出 Class 名稱而漏掉實作。
 
-### 8.3 Framework／Platform 分工
+### 8.3 Framework／RAG Builder 分工
 
 | 層 | 建議責任 |
 |---|---|
 | LangChain | 可重用模型、Retriever、Loader Adapter，以及線性 Runnable 組合 |
 | LangGraph | 有必要時處理分支、狀態與 checkpoint；不要求每個模組獨立建 Graph |
 | Pydantic | Config／Input／Output 的顯式 Runtime Validation |
-| 自建 Platform Engine | Registry、Compiler、Compatibility、Job Lifecycle、Execution Policy、版本及隔離 |
+| RAG Builder／RAG Engine | Registry、Compiler、Compatibility、Job Lifecycle、Execution Policy、版本及隔離 |
 | Observability | Langfuse＋OpenTelemetry 為候選方向，尚未定案；先定義一致 trace_id/module_id/run_id |
 
 Queue、重試、DLQ、冪等 Indexing 與恢復語意不能只靠框架名稱保證。MVP 先固定流程；使用者 UI 維持 Group／RAG System 卡片與操作彈窗，不把這些後端機制全部暴露成頁面。
@@ -404,3 +404,4 @@ Evaluation 提供標註 ID 的 Recall@K／MRR、Judge 型 Answer Correctness／F
 - Qdrant Hybrid Queries：https://qdrant.tech/documentation/search/hybrid-queries/
 
 這些資料作方法與整合參考；本文的 Object、ModuleResult、Registry 與 API 字段均為平台自己的提案。
+

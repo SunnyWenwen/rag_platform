@@ -7,10 +7,10 @@ flowchart TB
 
   USER["使用者"] --> UI
 
-  subgraph DEV["Dev Platform｜設定與測試"]
+  subgraph DEV["RAG Builder｜設定與測試"]
     direction TB
     subgraph CP["Control Plane"]
-      UI["RAG Studio UI"] --> PAPI["Platform API / Auth"]
+      UI["RAG Builder UI"] --> PAPI["Builder API / Auth"]
       PAPI --> CONF["Config / Validator / 服務"]
       CONF --> META[("Config / Run Store")]
       CONF --> EXPORT["Export｜補齊部署連線"]
@@ -71,3 +71,4 @@ flowchart TB
   style DRES fill:#f6f3ff,stroke:#b1a3ca
   style PROD fill:#f5fcf8,stroke:#90b7a3
   style PRES fill:#f6f3ff,stroke:#b1a3ca
+
