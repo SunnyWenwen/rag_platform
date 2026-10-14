@@ -1,9 +1,9 @@
 # RAG Builder — Architecture Proposal
 
-> Version 0.7 · 2026-10-14 · Audience: Engineering / Platform / Management
+> Version 0.8 · 2026-10-14 · Audience: Engineering / Platform / Management
 >
-> 本版整合已確認的 UI、模組、資料契約與兩種使用情境。文件描述目標架構；目前 UI Prototype v0.7 只在瀏覽器內模擬，尚未實作 RAG Engine、Runtime API、模型／DB 連線或部署服務。
-> 最新模組細節見 [資料契約與索引設計 v0.7](docs/05_data_contracts_search_design.md)；Infra 圖見 [Mermaid](diagrams/02_infra_architecture.mmd)／[PNG](diagrams/02_infra_architecture.png)。
+> 本版整合已確認的 UI、模組、資料契約與兩種使用情境。文件描述目標架構；目前 UI Prototype v0.8 只在瀏覽器內模擬，尚未實作 RAG Engine、Runtime API、模型／DB 連線或部署服務。
+> 最新模組細節見 [資料契約與索引設計 v0.8](docs/05_data_contracts_search_design.md)；Infra 圖見 [Mermaid](diagrams/02_infra_architecture.mmd)／[PNG](diagrams/02_infra_architecture.png)。
 
 ## 1. 平台目的與兩種使用情境
 
@@ -68,14 +68,14 @@ AI 設定助手採「需求／小型樣本 → 建議差異 → 驗證 → 使�
 | Ingestion | Embedding | DEV test use／Embedding API | fields → vectors mappings；模型、維度、Tokenizer、輸入上限、Batch Size |
 | Ingestion | Indexing | Elasticsearch／Local Search（FAISS＋BM25） | fields／vectors 的索引用途與保存欄位、可過濾欄位；ES 連線；Local Memory／MongoDB |
 | Inference | Query Transformation | None／Rewrite／Multi-query | llm_ref、可編輯 Prompt、產生 Query 數量、是否另搜尋原始問題 |
-| Inference | Retrieval | 選擇已索引的全文／向量欄位 | 後端由 Indexing 繼承；每路及最終 Top-K；預設 filters；多路用 RRF，依 chunk_id 合併 |
+| Inference | Retrieval | 選擇已索引的全文／向量欄位 | 後端由 Indexing 繼承；每路及最終 Top-K；預設 filters；多路可選 Sum Score／RRF，依 chunk_id 合併 |
 | Inference | Rerank | None／DEV test use／Rerank API | 所選內容欄位、Top-N、API Contract；Top-N 不超過 Retrieval Top-K |
 | Inference | Generation | 共用 LLM 清單中的 DEV／OpenAI-compatible API | llm_ref、逐筆 Chunk 模板、回答 Prompt、Temperature、Token Budget |
 | 平台測試 | Evaluation | QA Dataset 批次評估 | 指標、Ground Truth、Config／Dataset／Index 版本；不預設加入部署後 Runtime |
 
 Header-aware 需要 Parser 提供可靠標題結構。純全文搜尋可略過 Embedding；Tokenizer 仍需可取得。Retrieval 不另選 Implementation，僅顯示由選取欄位推導的搜尋模式。
 
-Multi-query 的 count 不含原始問題。每個 Query × 搜尋欄位各自取候選，再由 Retrieval 融合；Rerank／Generation 使用原始問題。融合不依賴 Rerank。
+Multi-query 的 count 不含原始問題。每個 Query × 搜尋欄位各自取候選，再由 Retrieval 融合；Rerank／Generation 使用原始問題。融合不依賴 Rerank。第一版採單一融合選項作用於所有 Query × 欄位路徑，不額外拆成兩層設定。Sum Score 使用全文／向量權重加總原始相關性分數，不自動正規化；RRF 使用名次與平滑常數。策略與權重更動只影響 Inference；實際後端需把向量距離轉成越大越相關的分數，並驗證候選截斷與各路 Top-K 語意。
 
 ### 3.2 資料與執行邊界
 
@@ -315,7 +315,8 @@ QA Dataset 最少包含 question、expected_answer；計算 Retrieval 指標需 
 
 仍需確認：首批 Parser／OCR 格式與實作、Local Search 的具體 BM25／斷詞及容量、缺欄位與文件更新政策、原始資料保留方式、Runtime API 認證方案、部署資源申請流程，以及 Evaluation Gate 是否強制。
 
-資料契約 v0.7 與本提案描述目標行為；UI 已實作的部分及限制以 README／Prototype 為準。API 契約、平台／部署環境分工及 Export Bundle 新內容尚待實接，不能將本文件視為已完成的後端功能。
+資料契約 v0.8 與本提案描述目標行為；UI 已實作的部分及限制以 README／Prototype 為準。API 契約、平台／部署環境分工及 Export Bundle 新內容尚待實接，不能將本文件視為已完成的後端功能。
+
 
 
 

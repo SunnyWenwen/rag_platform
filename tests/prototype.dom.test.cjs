@@ -32,6 +32,8 @@ assert.equal(errors.length,0,errors.map(String).join('\n'));console.log('PASS re
 
 
 
+run("$('operationDialog').close();openCreate();selectMod('retrieval')");assert(!d.querySelector('[data-path="retrieval.fusion"]').disabled);assert(d.querySelector('[data-path="retrieval.score_weights.fulltext"]'));field('retrieval.score_weights.vector','0.25');field('retrieval.score_weights.fulltext','0');field('retrieval.score_weights.vector','0');assert(d.querySelector('#createButton').disabled);field('retrieval.score_weights.vector','0.25');assert(!d.querySelector('#createButton').disabled);field('retrieval.fusion','RRF');assert(d.querySelector('[data-path="retrieval.rrf_k"]'));assert(!d.querySelector('[data-path="retrieval.score_weights.vector"]'));field('retrieval.rrf_k','0');assert(d.querySelector('#createButton').disabled);field('retrieval.fusion','Sum Score');assert(!d.querySelector('#createButton').disabled);assert.equal(run('config.retrieval.score_weights.vector'),0.25);run("$('createDialog').close()");
+
 async function schemaFlows(){
 run("$('operationDialog').close();openCreate()");assert.equal(run('selected'),'schema');assert.equal(d.querySelectorAll('[data-path$=".name"]').length,1);assert(!d.querySelector('#createButton').disabled);
 click('button[onclick="addSchema(\'metadata\')"]');field('document_schema.metadata.0.name','department');field('document_schema.metadata.0.required',true);d.querySelector('[data-path="document_schema.metadata.0.required"]').checked=true;d.querySelector('[data-path="document_schema.metadata.0.required"]').dispatchEvent(new w.Event('change',{bubbles:true}));assert(run('config.document_schema.metadata[0].required'));
@@ -44,3 +46,4 @@ const docs=run('active.docs');Object.defineProperty(d.querySelector('#documents'
 assert.equal(errors.length,0,errors.map(String).join('\n'));console.log('PASS Document Schema DOM flows: config-first and CSV-first, required metadata mapping, preview, save/reingest, AI confirmation, invalid JSON gate.');
 }
 schemaFlows().then(()=>dom.window.close()).catch(e=>{console.error(e);dom.window.close();process.exitCode=1;});
+

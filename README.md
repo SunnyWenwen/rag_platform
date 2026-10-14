@@ -10,18 +10,18 @@ Config-driven RAG System 建立與測試平台。
 
 ## 設計文件
 
-- [資料契約與索引設計討論結論（v0.7）](docs/05_data_contracts_search_design.md)：最新 ParsedDocument／Chunk、欄位映射、Embedding、ES／Local Search、MongoDB 持久化、Hybrid 與 UI 卡控；區分已確認方向與待定建議。
+- [資料契約與索引設計討論結論（v0.8）](docs/05_data_contracts_search_design.md)：最新 ParsedDocument／Chunk、欄位映射、Embedding、ES／Local Search、MongoDB 持久化、Hybrid 與 UI 卡控；區分已確認方向與待定建議。
 
-- [模組目的、方法與 I/O Contract（v0.2 草案；資料契約見 v0.7）](docs/04_module_methods_io_contracts.md)：十個模組的輸入輸出、共用資料結構、相依卡控、自訂 Python 與 LangChain／LangGraph 分工；區分 MVP 與後續候選方法。
+- [模組目的、方法與 I/O Contract（v0.2 草案；資料契約見 v0.8）](docs/04_module_methods_io_contracts.md)：十個模組的輸入輸出、共用資料結構、相依卡控、自訂 Python 與 LangChain／LangGraph 分工；區分 MVP 與後續候選方法。
 
 - [UI Prototype](01_ui_prototype.html)：下載後以瀏覽器開啟，操作與指標均為模擬。
-- [Architecture Proposal v0.7](03_architecture_proposal.md)：RAG Builder／獨立 Runtime 分工、共用 Engine／API、外部服務環境設定、模組契約與 MVP 規劃。
+- [Architecture Proposal v0.8](03_architecture_proposal.md)：RAG Builder／獨立 Runtime 分工、共用 Engine／API、外部服務環境設定、模組契約與 MVP 規劃。
 - [L1 使用流程圖](diagrams/01_user_system_l1.png) · [Mermaid 原始檔](diagrams/01_user_system_l1.mmd)
 - [Infra 架構圖](diagrams/02_infra_architecture.png) · [Mermaid 原始檔](diagrams/02_infra_architecture.mmd)
 
 架構提案與 Infra 圖已整合 2026-10-14 的最新討論：RAG Builder Control Plane 明確分為 Frontend／Backend，接入 tSSO；DEV RAG Runtime 負責測試執行。Backend 的建立／設定連線指向整個 DEV RAG Runtime，由 Runtime 依 Config 組裝 Pipeline 執行實例，並匯出 FTEST／ENT YAML（文件形狀節點），使用單位自行於 K8s 進行 CD 部署；Secret Vault、部署依賴與觀測工具位於獨立 Runtime 框外。UI 可匯出示意 YAML，不代表可直接部署；Engine、Runtime API 及完整部署 Bundle 尚未實作。
 
-## UI Prototype v0.7（2026-10-14）
+## UI Prototype v0.8（2026-10-14）
 
 - Create／Edit 最前段增加 Document Schema；預設只提供必填 fields.text。可新增 fields／metadata，設定 string／number／boolean／array、必填、JSON 預設值及 input／parser 來源；未宣告欄位預設拒絕。
 - Ingest 本版先支援 ≤1 MB CSV／JSON。CSV 每列是一筆文件，映射目標包含 document_id／source_revision／fields.*／metadata.*；預覽 API payload 與 ParsedDocument，型別／必填／重複 ID 錯誤會阻止模擬匯入。成功後保存 CSV 映射；JSON 直接使用標準 records 契約。
@@ -34,7 +34,7 @@ Config-driven RAG System 建立與測試平台。
 - Index collection 自動由 Workspace＋名稱＋System ID 產生，改名不影響既有實體名稱。
 - LLM 服務設定集中管理此 RAG System 的服務清單；Query Transformation／Generation 以 llm_ref 下拉引用，部署時相同服務只需填一次。
 - Query Transformation 支援 None／Rewrite／Multi-query；Rewrite／Multi-query 各自可編輯 Prompt，提供 query／count 變數驗證與預覽；原始問題可加入搜尋。
-- Retrieval 移除 Implementation，依選取的全文／向量欄位推導模式；多 Query 或多欄位使用 RRF。
+- Retrieval 移除 Implementation，依選取的全文／向量欄位推導模式；多 Query 或多欄位可選 Sum Score／RRF，預設 Sum Score。Sum Score 可設定全文／向量權重；RRF 設定平滑常數。切換時保留草稿參數，驗證與匯出只使用有效選項；修改只影響 Inference。
 - Rerank 提供 None／DEV／Rerank API、內容欄位與可查看的固定 Request／Response 範例。
 - Generation 從共用 LLM 清單選擇服務，提供兩層模板、插入變數、完整 Prompt 預覽，以及「模板說明與範例／套用範例」。
 - Ingestion API records 使用 document_id／source_revision／fields／metadata，並預覽 Parsing 後的 ParsedDocument；fields／metadata 已使用 Schema 的目標名稱，Parsing 不再重複映射；結構資訊由 Parser 產生。
@@ -60,7 +60,7 @@ Config-driven RAG System 建立與測試平台。
 
 ## 驗證
 
-執行 `node tests/prototype.test.cjs`，使用無依賴 VM／DOM stub 檢查 52 項設定與狀態規則（包含 3 項非同步樣本讀取）。另以 jsdom 驗證實際表單事件、條件欄位、建立／編輯、AI 套用、Prompt、匯出及 API 說明。已通過 Chromium 互動檢查及 1440px／390px 桌面與手機版面檢查；無頁面 JavaScript 錯誤。檢查涵蓋 Create、API／DB 條件欄位、Prompt 範例、AI 套用、Ingestion、Edit 影響與 Export gate。
+執行 `node tests/prototype.test.cjs`，使用無依賴 VM／DOM stub 檢查 56 項設定與狀態規則（包含 3 項非同步樣本讀取）。另以 jsdom 驗證實際表單事件、條件欄位、建立／編輯、AI 套用、Prompt、匯出及 API 說明。已通過 Chromium 互動檢查及 1440px／390px 桌面與手機版面檢查；無頁面 JavaScript 錯誤。檢查涵蓋 Create、API／DB 條件欄位、Prompt 範例、AI 套用、Ingestion、Edit 影響與 Export gate。
 
 
 共用 LLM／Prompt 另經 Chromium 實測：新增、改名、選擇、刪除、API 設定、Prompt 即時驗證與預覽、共用匯出資源及手機寬度。
@@ -79,3 +79,6 @@ Filter／fields 另經 Chromium 驗證：完整欄位路徑、eq／in 值輸入�
 
 Document Schema／CSV 流程另經 jsdom 與 Chromium 驗證：兩種起始情境、metadata 必填與映射、保存映射、API／ParsedDocument 預覽、無效 JSON 卡控、Schema 編輯影響／取消，以及 1440px／390px 版面。CSV 讀取、映射、Schema 檢查在瀏覽器執行；LLM、OCR、Embedding、搜尋及 Runtime API 仍是模擬，未送出 HTTP。自動 ID 只在本次上傳內固定，更新既有文件需映射穩定 ID；source_revision 自動值目前僅為示意。
 
+
+
+融合方式另經 jsdom／Chromium 驗證選單切換、參數卡控與保留、儲存／Edit、Inference-only 影響、選定策略匯出及桌面／手機版面；本版仍未實作真實分數計算或搜尋。

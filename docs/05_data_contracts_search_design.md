@@ -1,6 +1,6 @@
 # RAG Builder — 資料契約與索引設計討論結論
 
-> 2026-10-14 · 設計草案 v0.7
+> 2026-10-14 · 設計草案 v0.8
 >
 > 整理本輪 Import／Parsing／Chunking／Embedding／Indexing／Retrieval 討論。這是設計規格；UI Prototype 已加入互動示意，Engine／API／DB 尚未實作。
 > 本文取代《04_module_methods_io_contracts.md》v0.2 中關於 ParsedDocument、Chunk、獨立 VectorSet、多欄位與搜尋後端的舊提案；其他模組的執行、錯誤與評估契約仍沿用原文件。
@@ -15,7 +15,7 @@
 | 搜尋後端 | 已確認 ES／Local Search（FAISS＋BM25）；後端待實作驗證 |
 | 持久化 | Local Search 支援 Memory／MongoDB 的設計方向；MongoDB 不執行該模式的向量搜尋 |
 | 使用介面 | 後端共用設定流程，能力差異以顯示但停用及原因說明處理 |
-| Hybrid | 第一版使用 RRF；正規化後加權分數融合為後續選項 |
+| Hybrid | 第一版可選 Sum Score／RRF，預設 Sum Score；自動正規化另行規劃 |
 | 第一版切分 | 一個主要切分欄位＋多個複製欄位；Recursive／Header-aware，使用 Token 計量 |
 | 多模態 | 第一版建議文字 RAG；OCR 首批格式及實作待定，視覺描述／圖片 Embedding 暫列後續 |
 | 摘要 | 先使用輸入已有摘要；自動摘要 Enrichment 為後續能力 |
@@ -241,7 +241,7 @@ Hybrid 可採：
 - RRF：sum(1 / (k + rank))；未出現在某一路候選則該路貢獻為 0。k 是平滑常數，不是 Top-K。可擴充權重。
 - 加權分數融合：sum(weight × normalized_score)。需先統一方向與尺度；BM25、cosine 與距離不可直接假設可比較。
 
-第一版使用 RRF，逐路 Top-K 與融合後候選 Top-K 分開定義。ES 需配置查詢及融合；不是建好索引就自動 Hybrid。Local Search 由平台負責 BM25、FAISS 結果融合。
+第一版可選 Sum Score／RRF，逐路 Top-K 與融合後候選 Top-K 分開定義。ES 需配置查詢及融合；不是建好索引就自動 Hybrid。Local Search 由平台負責 BM25、FAISS 結果融合。
 
 | 操作 | 識別依據 | 責任 |
 |---|---|---|
@@ -345,7 +345,7 @@ Query Transformation 提供 None／Rewrite／Multi-query。Rewrite 產生一個�
 
 各 Query × 各搜尋欄位建立搜尋路徑，各路取候選後，在 Retrieval 以 chunk_id 融合成一份清單，再進入 Rerank。Rerank 關閉也不影響融合。
 
-Retrieval 不再選 Implementation 或 Dense／BM25／Hybrid。直接選已建立索引的全文／向量欄位，平台顯示推導模式；後端從 Indexing 繼承。設定每路候選 Top-K、最終候選 Top-K；多路時提供 RRF 與平滑常數。多個向量欄位或多 Query 同樣需要融合，不以 Hybrid 作唯一啟用條件。
+Retrieval 不再選 Implementation 或 Dense／BM25／Hybrid。直接選已建立索引的全文／向量欄位，平台顯示推導模式；後端從 Indexing 繼承。設定每路候選 Top-K、最終候選 Top-K；多路時提供 Sum Score（全文／向量權重）或 RRF（平滑常數）。多個向量欄位或多 Query 同樣需要融合，不以 Hybrid 作唯一啟用條件。
 
 ### 13.5 Rerank 平台契約
 
@@ -534,3 +534,18 @@ Create／Edit 的第一區為 Document Schema，與 Pipeline 模組分開。固�
 CSV 上傳介面提供 column → document_id／source_revision／fields.*／metadata.*。每 row 對應一筆 JSON；允許相同 column 填入多個目標，未映射 columns 不送出。必填且無預設值的 input 欄位必須映射；number 解析有限數值、boolean 只接受 true／false、array 解析 JSON 陣列。重複 ID、CSV 欄數錯誤、失效映射及型別錯誤會阻止模擬匯入，預覽 API payload 與 ParsedDocument 各前 3 筆。成功後保存映射至 System，映射設定改變時更新 Config Revision；JSON 測試直接接收 {"records": [...]}，不再映射。
 
 CSV／JSON 本版限制 ≤1 MB，在瀏覽器本機讀取與驗證。沒有 HTTP／LLM／OCR／模型／DB 操作；結構化資料的 Parser 輸出只做格式整理示意，不能替代真實 Pipeline。自動 ID 在單次上傳內固定，跨批更新需映射穩定 ID；自動 source_revision 目前為示意值，正式版本／更新政策仍待 Engine 實作。PDF／PPTX／Excel 的上傳測試不列入本版實作。
+
+
+
+## 17. 2026-10-14 已確認：可選融合方式（v0.8）
+
+Retrieval 的多 Query／多欄位融合由使用者選擇，取代早期固定 RRF 的設計。單一路徑直接保留原排序；多路依 chunk_id 合併後，再取最終 Top-K 並送入 Rerank。
+
+| 選項 | 設定與目標語意 |
+|---|---|
+| Sum Score（預設） | sum(weight × relevance_score)；全文與向量權重預設各 1，同類型欄位與各 Query 共用權重，未命中該路為 0；不自動正規化 |
+| RRF | sum(1 / (k + rank))；各路名次從 1 起，平滑常數預設 60，本版要求正整數；不直接使用原始分數 |
+
+第一版維持一個融合選項，作用於所有 Query × 欄位的候選清單，不另外引入同 Query／跨 Query 兩層選單。Sum Score 的使用中權重需為有限且非負數，至少一個大於 0；僅搜尋全文或向量時，只使用對應權重。切換策略保留草稿參數，但驗證、變更影響與匯出只使用選定策略的有效參數。修改方式／有效參數只影響 Inference，不需重新 Ingestion。
+
+此處 Sum Score 是原始相關性分數加權加總，與 §9 的「正規化後加權融合」不同。BM25 與向量分數尺度可能不同；Local Search Adapter 需將距離轉為越大越相關的分數。Elasticsearch query＋knn 的分數加總與明確 RRF 配置也需由 Adapter 配合目標版本實作。Prototype 只實作設定、卡控、儲存與匯出，不執行真實融合計算。
