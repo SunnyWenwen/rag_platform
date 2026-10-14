@@ -1,4 +1,4 @@
-flowchart TB
+flowchart LR
     subgraph BUILDER["RAG Builder 測試"]
         direction LR
         B["1. Build（設定 Config）"] --> I["2. Ingestion"]
@@ -12,6 +12,9 @@ flowchart TB
 
     D["6. Deploy YAML in FTEST/ENT"]
     X -->|使用匯出的 YAML| D
+
+    K["RAG System in k8s"]
+    D -. 部署 .-> K
 
     S["RAG System"]
     R["評估報告"]
@@ -29,7 +32,7 @@ flowchart TB
     classDef user fill:#e9f2ff,stroke:#6086c8,color:#143054
     classDef system fill:#ecf8f2,stroke:#599d85,color:#153f32
     class B,I,Q,E,X,C user
-    class S,R,Y system
+    class S,R,Y,K system
 
 
     classDef deploy fill:#fff5e5,stroke:#cf9b4a,color:#624516
