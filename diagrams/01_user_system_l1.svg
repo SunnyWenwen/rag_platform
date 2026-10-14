@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="2360" height="930" viewBox="0 0 2360 930" role="img" aria-labelledby="title desc">
   <title id="title">RAG Builder 測試與部署流程</title>
-  <desc id="desc">步驟 1 至 5 與修改 Config 位於 RAG Builder測試框內；步驟 6 在框外右側，部署虛線往下連到 RAG System in k8s。實線表示操作順序，虛線表示操作與物件的關係。</desc>
+  <desc id="desc">步驟 1 至 5 與修改 Config 位於 RAG Builder測試框內；步驟 6 在框外右側，部署虛線往下連到 RAG System in k8s。YAML 設定檔以虛線接入部署連線，共同指向 RAG System in k8s。實線表示操作順序，虛線表示操作與物件的關係。</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 Z" fill="#66788b"/></marker>
   </defs>
@@ -37,6 +37,9 @@
   <path id="edge-C-S" data-source="C" data-target="S" data-label="更新設定" class="edge relation" d="M1260,142 L2300,142 L2300,820 L490,820 L490,730"/>
   <path id="edge-E-R" data-source="E" data-target="R" data-label="產出" class="edge relation" d="M1090,430 L1090,650"/>
   <path id="edge-X-Y" data-source="X" data-target="Y" data-label="產出" class="edge relation" d="M1580,430 L1580,650"/>
+  <!-- Y → K joins D → K; the downward segment and arrowhead are shared. -->
+  <path id="edge-Y-K" data-source="Y" data-target="K" data-label="" data-joins="edge-D-K" class="edge relation" style="marker-end:none" d="M1700,690 L1820,690 L1820,575 L2060,575"/>
+  <circle cx="2060" cy="575" r="3" fill="#66788b"/>
   <g id="B" class="node step" data-label="1. Build（設定 Config）">
     <rect x="60" y="345" width="240" height="85" rx="10"/>
     <text x="180.0" y="373.5" font-size="23">1. Build</text>
