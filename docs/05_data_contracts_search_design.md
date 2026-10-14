@@ -1,6 +1,6 @@
 # RAG Builder — 資料契約與索引設計討論結論
 
-> 2026-10-14 · 設計草案 v0.5
+> 2026-10-14 · 設計草案 v0.6
 >
 > 整理本輪 Import／Parsing／Chunking／Embedding／Indexing／Retrieval 討論。這是設計規格；UI Prototype 已加入互動示意，Engine／API／DB 尚未實作。
 > 本文取代《04_module_methods_io_contracts.md》v0.2 中關於 ParsedDocument、Chunk、獨立 VectorSet、多欄位與搜尋後端的舊提案；其他模組的執行、錯誤與評估契約仍沿用原文件。
@@ -481,3 +481,34 @@ UI 提供變數插入與替換後的預覽。空 Prompt、未知變數及缺少�
 
 相依錯誤以需要修正的模組為主：例如 Indexing 移除向量後，Retrieval 的失效選擇標註 [Retrieval]。共用 LLM 設定不完整時，同時提示共用服務及受影響模組。
 
+
+
+## 15. 2026-10-14 已確認：API fields 與過濾條件
+
+### 15.1 API 輸入與 ParsedDocument
+
+JSON Ingestion 為 records 陣列，每筆使用 document_id、source_revision、fields、metadata。內容容器統一叫 fields，不另使用 data；fields 的來源欄位仍經 Parsing 映射，例如 fields.body → ParsedDocument.fields.text。欄位映射不代表可跳過 Parsing 的格式與 Schema 驗證。
+
+- document_id：JSON records 必填，穩定識別 System 內的文件；同 ID 更新／重送的政策需在 Engine 實作時明確定義。
+- source_revision：來源內容版本，可提供，省略時由後端生成；與 Config Revision 不同。
+- fields：內容來源欄位，依此 System 的 Parsing 映射。
+- metadata：宣告的自訂資訊可傳入；來源追蹤、系統／租戶、ACL 與位置資訊由後端管理，不允許覆寫。
+- structure：Parser 的輸出，API 不必先產生；ParsedDocument 保持五個固定 key，Chunk 保持六個固定 key。
+
+Prototype 的 API 說明同時展示輸入與 Parsing 後範例。AI 設定助手可讀 records[].fields 或單筆 fields envelope，亦保留 CSV／既有平面樣本輸入。檔案 metadata manifest、ID 派生與更新一致性仍待實作。
+
+### 15.2 Indexing／Retrieval／Inference Filter
+
+| 設定位置 | 用途 | 例子 |
+|---|---|---|
+| Indexing.filters | 宣告可做精確過濾的欄位 | metadata.department、fields.title、document_id |
+| Retrieval.filters | System 預設條件，全部 AND | {field: metadata.department, operator: eq, value: manufacturing} |
+| Query API filters／Inference 視窗 | 單次查詢附加條件，與預設／ACL 全部 AND | {field: fields.title, operator: in, value: [保養規範, 維修規範]} |
+
+Indexing 只選已保存的 fields、已繼承的 metadata，以及固定 ID／版本；使用完整路徑，不混用 fields.department 與 metadata.department。過濾能力與全文／向量索引不同：精確字串比對不斷詞。第一版 eq 為非空字串，in 為非空且唯一的字串陣列；型別、空值、未知 operator 與未啟用欄位需驗證。空清單表示不加業務條件，後端權限仍需強制套用。
+
+所有搜尋路徑在 Top-K 取候選前套用限制；Local Search 的 Adapter 必須實作符合契約的候選集合過濾，不能把 post-filter 當作等價能力。未支援時拒絕配置。Prototype 不執行真正搜尋／過濾。
+
+Indexing Filter 欄位變更需要重新 Ingestion；Retrieval 條件變更只影響 Inference，需重測。上游移除欄位後保留失效條件，標記 [Retrieval] 並阻止儲存；查詢 JSON 錯誤會阻止本次執行，不退回無條件搜尋。
+
+數值／日期範圍、OR 群組及其他 operators 為後續能力，不納入本次 Prototype。

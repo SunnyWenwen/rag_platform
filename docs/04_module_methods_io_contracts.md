@@ -1,6 +1,6 @@
 # RAG Builder — 模組目的、方法與 I/O Contract
 
-> **後續設計更新**：請先閱讀 [資料契約與索引設計討論結論（v0.5）](05_data_contracts_search_design.md)。其中 ParsedDocument 五個頂層 key、Chunk 六個頂層 key（含 vectors）、多欄位設定、搜尋後端，以及第 13–14 節的共用 LLM、Query Prompt、模組驗證標籤、Token Chunking、DEV／自訂服務、多 Query、Rerank API 與 Generation 模板設計取代本文相關舊提案；本文保留其餘模組契約與歷史設計，並非已遷移完成的實作規格。
+> **後續設計更新**：請先閱讀 [資料契約與索引設計討論結論（v0.6）](05_data_contracts_search_design.md)。其中 ParsedDocument 五個頂層 key、Chunk 六個頂層 key（含 vectors）、多欄位設定、搜尋後端，以及第 13–15 節的API fields、過濾條件、共用 LLM、Query Prompt、模組驗證標籤、Token Chunking、DEV／自訂服務、多 Query、Rerank API 與 Generation 模板設計取代本文相關舊提案；本文保留其餘模組契約與歷史設計，並非已遷移完成的實作規格。
 
 > Version 0.2 · 2026-10-13 · Discussion Draft
 >
@@ -404,4 +404,5 @@ Evaluation 提供標註 ID 的 Recall@K／MRR、Judge 型 Answer Correctness／F
 - Qdrant Hybrid Queries：https://qdrant.tech/documentation/search/hybrid-queries/
 
 這些資料作方法與整合參考；本文的 Object、ModuleResult、Registry 與 API 字段均為平台自己的提案。
+
 

@@ -1,9 +1,9 @@
 # RAG Builder — Architecture Proposal
 
-> Version 0.2 · 2026-10-14 · Audience: Engineering / Platform / Management
+> Version 0.3 · 2026-10-14 · Audience: Engineering / Platform / Management
 >
-> 本版整合已確認的 UI、模組、資料契約與兩種使用情境。文件描述目標架構；目前 UI Prototype v0.5 只在瀏覽器內模擬，尚未實作 RAG Engine、Runtime API、模型／DB 連線或部署服務。
-> 最新模組細節見 [資料契約與索引設計 v0.5](docs/05_data_contracts_search_design.md)；Infra 圖見 [Mermaid](diagrams/02_infra_architecture.mmd)／[PNG](diagrams/02_infra_architecture.png)。
+> 本版整合已確認的 UI、模組、資料契約與兩種使用情境。文件描述目標架構；目前 UI Prototype v0.6 只在瀏覽器內模擬，尚未實作 RAG Engine、Runtime API、模型／DB 連線或部署服務。
+> 最新模組細節見 [資料契約與索引設計 v0.6](docs/05_data_contracts_search_design.md)；Infra 圖見 [Mermaid](diagrams/02_infra_architecture.mmd)／[PNG](diagrams/02_infra_architecture.png)。
 
 ## 1. 平台目的與兩種使用情境
 
@@ -62,9 +62,9 @@ AI 設定助手採「需求／小型樣本 → 建議差異 → 驗證 → 使�
 | Ingestion | Parsing | 依資料型態路由至 Parser／欄位映射；OCR 實作待定 | 輸出 Schema、來源欄位 → fields；不同格式可併行，同格式選方法 |
 | Ingestion | Chunking | Recursive／Header-aware | 主要切分欄位、複製欄位、metadata；Size／Overlap 使用 Tokens；Tokenizer、分隔符、標題層級 |
 | Ingestion | Embedding | DEV test use／Embedding API | fields → vectors mappings；模型、維度、Tokenizer、輸入上限、Batch Size |
-| Ingestion | Indexing | Elasticsearch／Local Search（FAISS＋BM25） | fields／vectors 的索引用途與保存欄位；ES 連線；Local Memory／MongoDB |
+| Ingestion | Indexing | Elasticsearch／Local Search（FAISS＋BM25） | fields／vectors 的索引用途與保存欄位、可過濾欄位；ES 連線；Local Memory／MongoDB |
 | Inference | Query Transformation | None／Rewrite／Multi-query | llm_ref、可編輯 Prompt、產生 Query 數量、是否另搜尋原始問題 |
-| Inference | Retrieval | 選擇已索引的全文／向量欄位 | 後端由 Indexing 繼承；每路及最終 Top-K；多路用 RRF，依 chunk_id 合併 |
+| Inference | Retrieval | 選擇已索引的全文／向量欄位 | 後端由 Indexing 繼承；每路及最終 Top-K；預設 filters；多路用 RRF，依 chunk_id 合併 |
 | Inference | Rerank | None／DEV test use／Rerank API | 所選內容欄位、Top-N、API Contract；Top-N 不超過 Retrieval Top-K |
 | Inference | Generation | 共用 LLM 清單中的 DEV／OpenAI-compatible API | llm_ref、逐筆 Chunk 模板、回答 Prompt、Temperature、Token Budget |
 | 平台測試 | Evaluation | QA Dataset 批次評估 | 指標、Ground Truth、Config／Dataset／Index 版本；不預設加入部署後 Runtime |
@@ -181,7 +181,22 @@ JSON 與檔案入口都經 Import → Parsing → 相同 Pipeline；上傳檔案
 
 UI 說明列出 Base URL、認證、JSON／multipart、cURL 與回應範例。RAG Builder 使用平台提供且已綁定 System 的 Sandbox Base URL；自行部署使用自己的 Runtime Base URL。獨立 Runtime 的請求不另帶 System ID。Bearer Token 僅為認證範例，實際方案依部署 Gateway 決定，與外部模型／DB Secret 分開。
 
-Ingestion 的 records 是尚未經 Parsing 的來源資料，JSON 欄位依此 System 的 Parsing 來源映射設定。檔案改用 multipart 的 files 欄位，可重複多次；交由 HTTP Client 產生 boundary。202 Accepted 只表示已接收，回傳 run_id、status=queued、config_revision；完成前透過 GET /v1/ingestions/{run_id} 查詢。
+Ingestion 的 records 每筆包含 document_id、source_revision、fields、metadata。內容容器統一叫 fields；來源欄位依 Parsing 映射，例如 records[].fields.body → ParsedDocument.fields.text。document_id 為 System 內穩定 ID，JSON records 必填；source_revision 為內容版本，可省略並由後端產生，生成與更新政策待 Engine 實作確認。metadata 只接受 Schema 宣告的自訂資訊；來源追蹤、系統及權限保留資訊由後端補入，不能由請求覆寫。structure 由 Parsing 產生，輸出 ParsedDocument 保持五個固定 key。檔案改用 multipart 的 files 欄位，可重複多次；交由 HTTP Client 產生 boundary。202 Accepted 只表示已接收，回傳 run_id、status=queued、config_revision；完成前透過 GET /v1/ingestions/{run_id} 查詢。
+
+JSON Ingestion 請求範例（與目前 Parsing 的 body／summary／title 來源映射一致）：
+
+```json
+{
+  "records": [{
+    "document_id": "doc-example-1",
+    "source_revision": "v1",
+    "fields": {"body": "設備每月需要保養。", "summary": "每月保養。", "title": "保養規範"},
+    "metadata": {"department": "manufacturing"}
+  }]
+}
+```
+
+API 不要求呼叫者產生 structure 或 vectors；ParsedDocument／Chunk 的識別與允許的 metadata 由 Pipeline 繼續傳遞。檔案上傳的身分與 metadata manifest 契約仍待實作；檔案解析成多份文件時，各自派生穩定 ID。
 
 完成狀態的 200 範例：
 
@@ -201,7 +216,7 @@ processed_records／total_records 以解析出的邏輯資料筆數計，不是 
 問答範例：
 
 ```json
-{"query": "設備多久需要保養？"}
+{"query": "設備多久需要保養？", "filters": [{"field": "metadata.department", "operator": "eq", "value": "manufacturing"}]}
 ```
 
 ```json
@@ -222,6 +237,16 @@ HTTP 狀態提案：400 為請求格式錯誤，401／403 為認證／權限不�
 Ingestion 需定義批次部分失敗、重送與文件更新語意；document_id／source_revision 規則沿用資料契約。第一版 Memory 模式的資料與執行狀態在程序重啟後可能遺失；跨重啟的任務恢復及持久化 Job Store 不視為已具備。
 
 Runtime API 的呼叫認證由部署環境提供 API Key／Token 或企業 Gateway，與呼叫模型／DB 的 Secret 分開。Streaming、對話歷史與 Query override 保留為後續需求，第一版不預設加入。
+
+### 6.3 過濾能力、預設條件與查詢條件
+
+Indexing 的 filters 宣告可過濾欄位，不設定固定詞值。完整路徑使用 document_id／source_revision、fields.title 或 metadata.department 等，以避免同名欄位混淆；只可選已保存內容／已繼承 metadata。第一版只支援精確字串，不對過濾詞做全文斷詞；ES Adapter 建立適當 keyword Mapping，Local Search 由 Adapter 支援合法候選集合過濾。
+
+Retrieval.filters 是條件陣列，每筆為 {field, operator, value}：eq 的 value 為非空字串；in 為非空且不重複的字串陣列。多筆全部 AND；in 的清單內任一符合即可。Query API 可省略 filters 或帶 []，表示不加本次條件；附加條件與 Retrieval 預設條件及後端 ACL 全部 AND，不覆蓋預設與權限限制。
+
+各 Query／全文／向量路徑需在取候選 Top-K 前套用相同限制；不能只在全域 Top-K 後丟棄不符結果。Adapter 若未支援則拒絕相關配置，不能默默忽略。Prototype 只檢查／展示條件，不執行真實搜尋或權限判定。
+
+新增／更換 Indexing 的可過濾欄位需重新 Ingestion；只改 Retrieval 詞值不需重新 Ingestion，需重測。失效欄位、未知 operator、值型別錯誤、空值或無效 JSON 會標註 [Retrieval]，阻止儲存／執行。數值、日期、範圍、OR 群組暫不加入 Prototype。
 
 ## 7. Config 修改與測試生命週期
 
@@ -278,6 +303,7 @@ QA Dataset 最少包含 question、expected_answer；計算 Retrieval 指標需 
 
 仍需確認：首批 Parser／OCR 格式與實作、Local Search 的具體 BM25／斷詞及容量、缺欄位與文件更新政策、原始資料保留方式、Runtime API 認證方案、部署資源申請流程，以及 Evaluation Gate 是否強制。
 
-資料契約 v0.5 與本提案描述目標行為；UI 已實作的部分及限制以 README／Prototype 為準。API 契約、平台／部署環境分工及 Export Bundle 新內容尚待實接，不能將本文件視為已完成的後端功能。
+資料契約 v0.6 與本提案描述目標行為；UI 已實作的部分及限制以 README／Prototype 為準。API 契約、平台／部署環境分工及 Export Bundle 新內容尚待實接，不能將本文件視為已完成的後端功能。
+
 
 
