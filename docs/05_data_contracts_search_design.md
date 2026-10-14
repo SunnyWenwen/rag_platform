@@ -1,6 +1,6 @@
 # RAG Builder — 資料契約與索引設計討論結論
 
-> 2026-10-14 · 設計草案 v0.6
+> 2026-10-14 · 設計草案 v0.7
 >
 > 整理本輪 Import／Parsing／Chunking／Embedding／Indexing／Retrieval 討論。這是設計規格；UI Prototype 已加入互動示意，Engine／API／DB 尚未實作。
 > 本文取代《04_module_methods_io_contracts.md》v0.2 中關於 ParsedDocument、Chunk、獨立 VectorSet、多欄位與搜尋後端的舊提案；其他模組的執行、錯誤與評估契約仍沿用原文件。
@@ -10,7 +10,7 @@
 | 項目 | 結論／狀態 |
 |---|---|
 | 統一資料物件 | ParsedDocument 五個頂層 key；Chunk 六個頂層 key，新增 vectors |
-| 模組分工 | Parsing 擷取及映射；Chunking 切分及繼承；Embedding 產生向量；Indexing 儲存及建索引 |
+| 模組分工 | Import／上傳介面映射結構化欄位；Parsing 擷取及驗證；Chunking 切分及繼承；Embedding 產生向量；Indexing 儲存及建索引 |
 | 多欄位 | 可分別選擇 Embedding、Indexing、Retrieval、Rerank、Generation 使用的欄位 |
 | 搜尋後端 | 已確認 ES／Local Search（FAISS＋BM25）；後端待實作驗證 |
 | 持久化 | Local Search 支援 Memory／MongoDB 的設計方向；MongoDB 不執行該模式的向量搜尋 |
@@ -26,7 +26,7 @@
 | 模組 | 目的 | 主要輸入 | 主要輸出 | 不屬於本模組的責任 |
 |---|---|---|---|---|
 | Import | 接收資料、驗證與保存原始輸入及來源資訊 | 檔案上傳／API 請求 | SourceAsset 清單 | OCR、內容解析、Embedding |
-| Parsing | 依格式擷取內容、欄位映射與結構資訊 | SourceAsset 清單 | ParsedDocument 清單 | 自動產生搜尋向量 |
+| Parsing | 依格式擷取內容、驗證 Schema 與結構資訊 | SourceAsset 清單 | ParsedDocument 清單 | 自動產生搜尋向量 |
 | Chunking | 切分主要內容，複製指定內容與 metadata，產生位置 | ParsedDocument 清單 | Chunk 清單，vectors={} | 預設回查父文件、自動產生摘要 |
 | Embedding | 讀取指定 fields，將向量寫入 vectors | Chunk 清單 | 帶 vectors 的 Chunk 清單 | 建立搜尋索引 |
 | Indexing | 儲存 Chunk，依欄位用途建索引 | 帶向量或純文字的 Chunk 清單 | IndexBinding、寫入及可搜尋狀態 | 重新執行內容 Embedding |
@@ -36,7 +36,7 @@
 
 Indexing 與 Inference 以持久化或記憶體中的索引銜接，不是同一次串行函式呼叫。Config、RunContext、Embedding Profile 與 IndexBinding 是控制資訊，平台另外提供；不需塞進每個 Chunk。
 
-Import 預設可同時提供上傳與 API 入口，不要求使用者二選一。外部呼叫 Ingestion API 與平台主動拉取外部 API 是不同能力。CSV／Excel 通常以「每列」成為一份邏輯文件，欄位轉成 JSON 欄位；不是每一個 column 都是一份文件。檔案解析與列到文件的映射規則由 Parsing 負責。
+Import 預設可同時提供上傳與 API 入口，不要求使用者二選一。外部呼叫 Ingestion API 與平台主動拉取外部 API 是不同能力。CSV／Excel 通常以「每列」成為一份邏輯文件，欄位轉成 JSON 欄位；不是每一個 column 都是一份文件。Builder 的 CSV 上傳將每列映射成標準 records；內容解析與完整 ParsedDocument 驗證由 Parsing 負責。直接上傳 Excel 的解析留待 Parser 實作。
 
 ## 3. ParsedDocument：五個固定頂層 key
 
@@ -112,7 +112,7 @@ Import 可先給來源資產 ID。若一個 Excel／JSON 批次解析成多份�
 
 Chunk 應自帶 Rerank／Generation 需要的內容，不強制回查 ParsedDocument。ParsedDocument 可選擇保存，供除錯與重新切分；Parent–Child Retrieval 不列入此基本流程。
 
-fields／metadata 可擴充，但每個 RAG System 要宣告 Content Schema，包含欄位名稱、型別、是否必填及缺值政策。權限、來源、系統識別及 locations 等保留欄位由平台管理，不允許使用者覆寫。舊版頂層 access_policy_ref、parser_version、chunking_signature 等資訊應移入明確宣告的 metadata 保留區或平台執行紀錄。
+fields／metadata 可擴充，但每個 RAG System 要宣告 Document Schema，包含欄位名稱、型別、是否必填及缺值政策。權限、來源、系統識別及 locations 等保留欄位由平台管理，不允許使用者覆寫。舊版頂層 access_policy_ref、parser_version、chunking_signature 等資訊應移入明確宣告的 metadata 保留區或平台執行紀錄。
 
 搜尋分數、rank、matched query 與 rerank score 屬 SearchHit／Trace，不是 Chunk 內容。後續檢索回傳可將 vectors 設為 {}，避免將大向量傳入 Rerank／Generation；持久化副本仍保留完整向量。
 
@@ -128,8 +128,9 @@ fields／metadata 可擴充，但每個 RAG System 要宣告 Content Schema，�
 | 掃描 PDF／圖片 | OCR | 文字＋可用的位置資訊 |
 | PPTX | 文字、投影片頁次、區塊擷取 | fields＋structure |
 | TXT／Markdown | 文字與可用章節結構 | fields＋structure |
-| CSV／Excel | 列到文件、column 到欄位映射 | 一份或多份 ParsedDocument |
-| API JSON | 驗證與欄位映射 | ParsedDocument 清單 |
+| Builder CSV | 上傳介面先完成每列 JSON 與 column 映射；Parsing 驗證 | ParsedDocument 清單 |
+| Excel 原始檔 | 列到文件及內容擷取（實作待定） | 一份或多份 ParsedDocument |
+| API JSON | 驗證已符合 Schema 名稱的欄位，不重複映射 | ParsedDocument 清單 |
 
 統一結構不代表所有來源都有頁碼或章節。未啟用 OCR 的掃描文件，不應以空文字成功進入索引。
 
@@ -256,7 +257,7 @@ Local Search 的 filter 必須有明確語意。尤其系統隔離及 ACL 不能
 
 | 上游條件 | 下游行為 |
 |---|---|
-| Parsing 輸出 Schema | Chunking 可選欄位及方法據此產生 |
+| System Document Schema | Chunking 可選欄位及方法據此產生 |
 | Chunking 輸出 fields | Embedding 僅選有效且型別相容欄位 |
 | Embedding mappings | Indexing 僅選已宣告 vectors；維度唯讀繼承 |
 | Indexing 欄位／能力 | Retrieval 僅選已建立的搜尋路徑 |
@@ -408,7 +409,7 @@ Prototype 使用明示的本機規則模擬，並非 LLM：可讀 ≤1 MB JSON�
 
 | 變更 | 行為 |
 |---|---|
-| Parsing／Chunking／Embedding／Indexing 的有效配置 | 標記需重新 Ingestion，完成前阻止新版 Inference／Evaluation |
+| Document Schema／Import／Parsing／Chunking／Embedding／Indexing 的有效配置 | 標記需重新 Ingestion，完成前阻止新版 Inference／Evaluation |
 | Query Transformation／Retrieval／Rerank／Generation | 不需重新 Ingestion，清除舊示意回答／評估結果並建議重測 |
 | 顯示名稱 | 更新名稱，collection 保持不變 |
 | 未啟用的服務草稿欄位 | 不納入有效配置比較，不因而標記重建 |
@@ -487,11 +488,11 @@ UI 提供變數插入與替換後的預覽。空 Prompt、未知變數及缺少�
 
 ### 15.1 API 輸入與 ParsedDocument
 
-JSON Ingestion 為 records 陣列，每筆使用 document_id、source_revision、fields、metadata。內容容器統一叫 fields，不另使用 data；fields 的來源欄位仍經 Parsing 映射，例如 fields.body → ParsedDocument.fields.text。欄位映射不代表可跳過 Parsing 的格式與 Schema 驗證。
+JSON Ingestion 為 records 陣列，每筆使用 document_id、source_revision、fields、metadata。內容容器統一叫 fields，不另使用 data；fields／metadata 使用 Document Schema 的目標名稱。CSV column 在上傳介面映射，例如 content → fields.text；Parsing 不再重複映射，仍須驗證完整 ParsedDocument。
 
 - document_id：JSON records 必填，穩定識別 System 內的文件；同 ID 更新／重送的政策需在 Engine 實作時明確定義。
 - source_revision：來源內容版本，可提供，省略時由後端生成；與 Config Revision 不同。
-- fields：內容來源欄位，依此 System 的 Parsing 映射。
+- fields：依此 System 的 Document Schema 宣告內容欄位、型別、必填與預設值。
 - metadata：宣告的自訂資訊可傳入；來源追蹤、系統／租戶、ACL 與位置資訊由後端管理，不允許覆寫。
 - structure：Parser 的輸出，API 不必先產生；ParsedDocument 保持五個固定 key，Chunk 保持六個固定 key。
 
@@ -512,3 +513,24 @@ Indexing 只選已保存的 fields、已繼承的 metadata，以及固定 ID／�
 Indexing Filter 欄位變更需要重新 Ingestion；Retrieval 條件變更只影響 Inference，需重測。上游移除欄位後保留失效條件，標記 [Retrieval] 並阻止儲存；查詢 JSON 錯誤會阻止本次執行，不退回無條件搜尋。
 
 數值／日期範圍、OR 群組及其他 operators 為後續能力，不納入本次 Prototype。
+
+
+
+## 16. 2026-10-14 已確認：Document Schema 與 CSV 測試（v0.7）
+
+Create／Edit 的第一區為 Document Schema，與 Pipeline 模組分開。固定外層為 document_id／source_revision／fields／metadata／structure；使用者只定義 fields／metadata 的內部欄位。Prototype 預設 fields.text 為必填 string，其他欄位按需求新增。
+
+| 設定 | Prototype 行為 |
+|---|---|
+| 名稱／型別 | 每個容器內名稱唯一；string／number／boolean／array；拒絕平台保留名稱 |
+| 必填／預設值 | 缺值可使用符合型別的 JSON 預設值；必填文字不可空白；主要切分欄位須設為必填 |
+| 來源 | input 由輸入提供；parser 由 Parser 產生；前者於接收時檢查，完整輸出再檢查全部必填欄位 |
+| 未宣告欄位 | 預設 reject；allow 時可保留，後續模組選項仍只來自宣告欄位 |
+| 模組相依 | 文字用途只選 string；精確 Filter 第一版也只選字串欄位；變更保留失效引用並標註問題 |
+| 修改／匯出 | Schema 變更標記需重新 Ingestion；部署 Blueprint 包含 document_schema |
+
+兩種入口：先設定 Schema／Config 再上傳 CSV，或先上傳 CSV 樣本給 AI 設定助手（規則模擬），確認 Schema／映射／Pipeline 差異後建立 System。助手只依示例欄名提出建議；無法辨識時請手動設定，不自動執行 Ingestion。
+
+CSV 上傳介面提供 column → document_id／source_revision／fields.*／metadata.*。每 row 對應一筆 JSON；允許相同 column 填入多個目標，未映射 columns 不送出。必填且無預設值的 input 欄位必須映射；number 解析有限數值、boolean 只接受 true／false、array 解析 JSON 陣列。重複 ID、CSV 欄數錯誤、失效映射及型別錯誤會阻止模擬匯入，預覽 API payload 與 ParsedDocument 各前 3 筆。成功後保存映射至 System，映射設定改變時更新 Config Revision；JSON 測試直接接收 {"records": [...]}，不再映射。
+
+CSV／JSON 本版限制 ≤1 MB，在瀏覽器本機讀取與驗證。沒有 HTTP／LLM／OCR／模型／DB 操作；結構化資料的 Parser 輸出只做格式整理示意，不能替代真實 Pipeline。自動 ID 在單次上傳內固定，跨批更新需映射穩定 ID；自動 source_revision 目前為示意值，正式版本／更新政策仍待 Engine 實作。PDF／PPTX／Excel 的上傳測試不列入本版實作。

@@ -1,9 +1,9 @@
 # RAG Builder — Architecture Proposal
 
-> Version 0.6 · 2026-10-14 · Audience: Engineering / Platform / Management
+> Version 0.7 · 2026-10-14 · Audience: Engineering / Platform / Management
 >
-> 本版整合已確認的 UI、模組、資料契約與兩種使用情境。文件描述目標架構；目前 UI Prototype v0.6 只在瀏覽器內模擬，尚未實作 RAG Engine、Runtime API、模型／DB 連線或部署服務。
-> 最新模組細節見 [資料契約與索引設計 v0.6](docs/05_data_contracts_search_design.md)；Infra 圖見 [Mermaid](diagrams/02_infra_architecture.mmd)／[PNG](diagrams/02_infra_architecture.png)。
+> 本版整合已確認的 UI、模組、資料契約與兩種使用情境。文件描述目標架構；目前 UI Prototype v0.7 只在瀏覽器內模擬，尚未實作 RAG Engine、Runtime API、模型／DB 連線或部署服務。
+> 最新模組細節見 [資料契約與索引設計 v0.7](docs/05_data_contracts_search_design.md)；Infra 圖見 [Mermaid](diagrams/02_infra_architecture.mmd)／[PNG](diagrams/02_infra_architecture.png)。
 
 ## 1. 平台目的與兩種使用情境
 
@@ -42,11 +42,15 @@ RAG Builder 提供「設定 RAG System → Ingestion → Inference → Evaluatio
 | 操作 | 使用者行為 | 目標行為／目前 Prototype 範圍 |
 |---|---|---|
 | Create RAG System | 設定 Ingestion／Inference 模組及欄位 | 驗證 Config；Prototype 建立獨立設定物件 |
-| Ingest | 上傳檔案或查看 API 範例 | 目標為非同步匯入；Prototype 只模擬完成，不讀取文件內容 |
+| Ingest | 上傳檔案或查看 API 範例 | 目標為非同步匯入；Prototype 讀取 CSV／JSON、映射及檢查；Pipeline 執行仍為模擬 |
 | Inference | 輸入問題 | 目標回傳答案與引用；Prototype 為示意回答 |
 | Evaluation | 提供 QA Dataset | 目標執行評估；Prototype 為固定示意指標 |
 | Edit Config | 修改既有 System 設定 | 顯示變更模組／影響；取消不影響現有 Config |
 | Export | 補齊自行部署的服務連線 | Prototype 匯出示意 YAML，不含可執行 Engine |
+
+Create／Edit 的第一個設定區為 Document Schema，獨立於 Pipeline 模組。外層 key 固定，fields／metadata 宣告名稱、型別、必填、預設值及 input／parser 來源。Import 先檢查輸入提供的欄位，Parsing 後檢查完整文件；Chunking／Embedding 的文字選項只來自 string 欄位。Schema 更動需重新 Ingestion，匯出 Config 也包含相同契約。
+
+起始使用情境可為「先設定 Config，再上傳 CSV」或「先有 CSV，由 AI 設定助手建議 Schema／映射／Pipeline」。CSV 每列轉成一筆 records，映射包含固定 ID／版本及 fields／metadata；JSON API 直接傳目標格式。Prototype 目前在瀏覽器完成 ≤1 MB CSV／JSON 的映射、預覽與檢查，執行 Pipeline 仍為模擬；PDF／PPTX 等上傳測試留待對應 Parser 實作。
 
 LLM 服務清單在同一個 RAG System 的 Create／Edit 中集中管理。Query Transformation 與 Generation 以 llm_ref 下拉引用，可共用或選不同服務；Embedding／Rerank 因 API 契約不同，保留各自設定。
 
@@ -59,7 +63,7 @@ AI 設定助手採「需求／小型樣本 → 建議差異 → 驗證 → 使�
 | Pipeline | 模組 | 第一版方法／入口 | 主要設定與卡控 |
 |---|---|---|---|
 | Ingestion | Import | 檔案／JSON records，可同時支援 | 接收、驗證及保留來源；內容解析屬於 Parsing |
-| Ingestion | Parsing | 依資料型態路由至 Parser／欄位映射；OCR 實作待定 | 輸出 Schema、來源欄位 → fields；不同格式可併行，同格式選方法 |
+| Ingestion | Parsing | 依資料型態路由至 Parser；OCR 實作待定 | 依 Document Schema 產出並驗證完整 ParsedDocument；結構化 JSON 不重複映射 |
 | Ingestion | Chunking | Recursive／Header-aware | 主要切分欄位、複製欄位、metadata；Size／Overlap 使用 Tokens；Tokenizer、分隔符、標題層級 |
 | Ingestion | Embedding | DEV test use／Embedding API | fields → vectors mappings；模型、維度、Tokenizer、輸入上限、Batch Size |
 | Ingestion | Indexing | Elasticsearch／Local Search（FAISS＋BM25） | fields／vectors 的索引用途與保存欄位、可過濾欄位；ES 連線；Local Memory／MongoDB |
@@ -187,16 +191,16 @@ JSON 與檔案入口都經 Import → Parsing → 相同 Pipeline；上傳檔案
 
 UI 說明列出 Base URL、認證、JSON／multipart、cURL 與回應範例。RAG Builder 使用平台提供且已綁定 System 的 DEV RAG Runtime Base URL；自行部署使用自己的 Runtime Base URL。獨立 Runtime 的請求不另帶 System ID。Bearer Token 僅為認證範例，實際方案依部署 Gateway 決定，與外部模型／DB Secret 分開。
 
-Ingestion 的 records 每筆包含 document_id、source_revision、fields、metadata。內容容器統一叫 fields；來源欄位依 Parsing 映射，例如 records[].fields.body → ParsedDocument.fields.text。document_id 為 System 內穩定 ID，JSON records 必填；source_revision 為內容版本，可省略並由後端產生，生成與更新政策待 Engine 實作確認。metadata 只接受 Schema 宣告的自訂資訊；來源追蹤、系統及權限保留資訊由後端補入，不能由請求覆寫。structure 由 Parsing 產生，輸出 ParsedDocument 保持五個固定 key。檔案改用 multipart 的 files 欄位，可重複多次；交由 HTTP Client 產生 boundary。202 Accepted 只表示已接收，回傳 run_id、status=queued、config_revision；完成前透過 GET /v1/ingestions/{run_id} 查詢。
+Ingestion 的 records 每筆包含 document_id、source_revision、fields、metadata。內容容器統一叫 fields；fields／metadata 直接使用 Document Schema 的目標名稱與型別。CSV column 在 Builder 上傳介面映射，例如 content → records[].fields.text，Parsing 不重複映射。document_id 為 System 內穩定 ID，JSON records 必填；source_revision 為內容版本，可省略並由後端產生，生成與更新政策待 Engine 實作確認。metadata 只接受 Schema 宣告的自訂資訊；來源追蹤、系統及權限保留資訊由後端補入，不能由請求覆寫。structure 由 Parsing 產生，輸出 ParsedDocument 保持五個固定 key。檔案改用 multipart 的 files 欄位，可重複多次；交由 HTTP Client 產生 boundary。202 Accepted 只表示已接收，回傳 run_id、status=queued、config_revision；完成前透過 GET /v1/ingestions/{run_id} 查詢。
 
-JSON Ingestion 請求範例（與目前 Parsing 的 body／summary／title 來源映射一致）：
+JSON Ingestion 請求範例（Schema 已宣告 text／summary／title 與 department）：
 
 ```json
 {
   "records": [{
     "document_id": "doc-example-1",
     "source_revision": "v1",
-    "fields": {"body": "設備每月需要保養。", "summary": "每月保養。", "title": "保養規範"},
+    "fields": {"text": "設備每月需要保養。", "summary": "每月保養。", "title": "保養規範"},
     "metadata": {"department": "manufacturing"}
   }]
 }
@@ -258,7 +262,7 @@ Retrieval.filters 是條件陣列，每筆為 {field, operator, value}：eq 的 
 
 | 變更 | 行為 |
 |---|---|
-| Parsing／Chunking／Embedding／Indexing 有效配置或資料目標 | 標記需重新 Ingestion；完成前不使用新版索引回答 |
+| Document Schema／Import／Parsing／Chunking／Embedding／Indexing 有效配置或資料目標 | 標記需重新 Ingestion；完成前不使用新版索引回答 |
 | Query Transformation／Retrieval／Rerank／Generation／被引用的 LLM | 不需重新 Ingestion；清除舊示意結果並重新測試／評估 |
 | System 顯示名稱 | 不改實體 collection；名稱由建立時的 Workspace＋System 名稱＋穩定 ID 產生 |
 | 未啟用服務／未引用 LLM 的草稿設定 | 不影響有效 Pipeline，不因而要求重建 |
@@ -311,7 +315,8 @@ QA Dataset 最少包含 question、expected_answer；計算 Retrieval 指標需 
 
 仍需確認：首批 Parser／OCR 格式與實作、Local Search 的具體 BM25／斷詞及容量、缺欄位與文件更新政策、原始資料保留方式、Runtime API 認證方案、部署資源申請流程，以及 Evaluation Gate 是否強制。
 
-資料契約 v0.6 與本提案描述目標行為；UI 已實作的部分及限制以 README／Prototype 為準。API 契約、平台／部署環境分工及 Export Bundle 新內容尚待實接，不能將本文件視為已完成的後端功能。
+資料契約 v0.7 與本提案描述目標行為；UI 已實作的部分及限制以 README／Prototype 為準。API 契約、平台／部署環境分工及 Export Bundle 新內容尚待實接，不能將本文件視為已完成的後端功能。
+
 
 
 
