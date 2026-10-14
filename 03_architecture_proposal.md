@@ -1,6 +1,6 @@
 # RAG Builder — Architecture Proposal
 
-> Version 0.3 · 2026-10-14 · Audience: Engineering / Platform / Management
+> Version 0.4 · 2026-10-14 · Audience: Engineering / Platform / Management
 >
 > 本版整合已確認的 UI、模組、資料契約與兩種使用情境。文件描述目標架構；目前 UI Prototype v0.6 只在瀏覽器內模擬，尚未實作 RAG Engine、Runtime API、模型／DB 連線或部署服務。
 > 最新模組細節見 [資料契約與索引設計 v0.6](docs/05_data_contracts_search_design.md)；Infra 圖見 [Mermaid](diagrams/02_infra_architecture.mmd)／[PNG](diagrams/02_infra_architecture.png)。
@@ -111,7 +111,7 @@ Pipeline 方法、欄位、Prompt 與 Profile 是可版本化的邏輯設定；�
 
 Embedding 使用第一版選定的 OpenAI-compatible /embeddings，LLM 使用 /chat/completions；Rerank 使用平台約定的 /rerank request／response。URL 相同不代表 API 格式或模型能力相容；其他格式需 Adapter。
 
-Secret 只保留 secret-name/key 等引用，不將真實帳密寫入 Blueprint 或匯出檔；部署環境自行建立並掛載 Secret。Prototype 目前只驗證格式，真正連線、模型／維度及權限檢查屬於 Engine 實作。
+Secret 只保留引用，不將真實帳密寫入 Blueprint 或匯出檔；部署環境從 Secret Vault 解析／注入，或透過既有機制產生 K8s Secret 再掛載。Vault 的產品與整合方式尚待確定；Prototype 目前仍示意 secret-name/key 掛載方式。Prototype 目前只驗證格式，真正連線、模型／維度及權限檢查屬於 Engine 實作。
 
 更換 Embedding 模型／版本／維度等 Profile 需重新 Embedding 及建索引；不能只在匯出時改 Model ID。即使沿用同名模型，也需確認 encoding、normalization、維度與版本相容。更換 ES／MongoDB 目標不會搬移測試資料。
 
@@ -121,19 +121,21 @@ Secret 只保留 secret-name/key 等引用，不將真實帳密寫入 Blueprint 
 
 ### 5.1 RAG Builder
 
-- Control Plane：RAG Builder UI、Builder API／Auth、Config／Run Store、Module Registry、Compatibility Validator、服務設定及 Export。
-- Sandbox Data Plane：Runtime API 與共用 Engine，執行 Ingestion／Inference；Evaluation Runner 呼叫相同 Query API，保存測試紀錄及報告。
+- RAG Builder Control Plane：RAG Builder UI（Frontend）、RAG Builder Backend，以及 Config／Run Store。Backend 包含 API／Auth、Config 管理、Module Registry、Validator、外部服務設定及 Export；這些是同一後端的職責，不要求各自部署獨立服務。
+- DEV RAG Runtime：Runtime API 與共用 Engine，執行 Ingestion／Inference；Evaluation Runner 呼叫相同 Query API，保存測試紀錄及報告。觀測工具及測試依賴在 Runtime 邊界外。
 - 測試服務：可綁定平台 DEV 資源或使用者提供的服務；以 system_id、config_revision、run_id 隔離配置與資料。
 - 平台操作紀錄、QA Dataset 及產物保存於平台。Config Store／Artifact Store 的具體 DB 或 Object Storage 選型另定，不代表每個部署 Runtime 都需要同一套儲存服務。
 
-共享 Sandbox 是建議的 MVP 資源策略，Dedicated Sandbox 保留為後續隔離需求；兩者不改變 Runtime API 或 Pipeline 語意。
+共享 DEV RAG Runtime 是建議的 MVP 資源策略；依 System 獨立執行的隔離模式保留為後續需求，兩者不改變 Runtime API 或 Pipeline 語意。
+
+使用者透過 tSSO 登入 RAG Builder UI（Frontend），Backend 驗證登入身分並檢查操作權限。Infra 圖的 tSSO 線表示登入／認證關係，不表示每個業務 API 請求都必須由 tSSO 轉送；具體整合方式依企業既有機制決定。
 
 ### 5.2 自行部署
 
 - 對外提供 Ingestion、執行狀態、Query 及健康檢查 API；不包含平台管理 UI／Config 編輯 API。
-- 從 ConfigMap／掛載檔案載入已版本化的 Config，從目標環境取得 Secret 與外部服務連線。
-- 使用和 Sandbox 相同版本的 Engine Image 與 Module Registry。相同配置具有相同執行語意，但不同模型服務／資料仍需在目標環境驗證。
-- 日常執行不需連回 RAG Builder 的 Config Store、Controller 或測試服務；Logs／Metrics／Traces 送至部署環境的觀測工具。
+- Config 與 Engine Image 引用由 FTEST／ENT YAML 中的 Deployment／ConfigMap 等配置提供。Secret Vault 是 Runtime 框外的機密來源，以目標環境的解析／注入機制提供所需 Secret；不把 Config 本身當作 Vault 中的機密。
+- 使用和 DEV RAG Runtime 相同版本的 Engine Image 與 Module Registry。相同配置具有相同執行語意，但不同模型服務／資料仍需在目標環境驗證。
+- 自行部署的 Runtime 框只包含 Runtime API 與 Engine；ES／MongoDB／模型 API、Secret Vault 及 Logs／Metrics／Traces 都在框外，由使用單位提供或整合。日常執行不需連回 RAG Builder 的 Config Store、Controller 或測試服務。
 - 文件／records 由 Runtime API 接收。永久保存原始檔與 ParsedDocument 的政策尚待確認，不強制每個 Runtime 都依賴平台 Object Storage。
 
 ### 5.3 搜尋後端與持久化
@@ -148,11 +150,11 @@ Infra 圖的 Local Search 表示 Engine 內的能力，不是另一個必需的�
 
 第一版可用同一個 Runtime API 程序承接非同步 Ingestion。Queue／獨立 Worker、HPA、排程匯入、索引原子切換屬於後續容量需求，不作為 Prototype 的預設部署要求。
 
-## 6. Builder API 與 Runtime API
+## 6. RAG Builder Backend API 與 Runtime API
 
-以下是平台自訂契約提案，Endpoint 與 payload 尚未實作。Builder API 路由處理 System 管理；Runtime 路由處理資料與問題。RAG Builder UI 經 Platform Auth／路由綁定正確 System／Revision，再呼叫相同 Runtime Handler，不另寫一套 UI 專用 Pipeline。
+以下是平台自訂契約提案，Endpoint 與 payload 尚未實作。RAG Builder Backend 的 API 處理 System 管理；Runtime 路由處理資料與問題。RAG Builder UI 經 Backend Auth／路由綁定正確 System／Revision，再呼叫相同 Runtime Handler，不另寫一套 UI 專用 Pipeline。
 
-### 6.1 Builder API（Control Plane）
+### 6.1 RAG Builder Backend API（Control Plane）
 
 | Method | Path | 用途 |
 |---|---|---|
@@ -167,7 +169,7 @@ Workspace／Group、Dataset 等管理 API 可在實作時補齊，不打包進�
 
 ### 6.2 Runtime API（兩種情境共用）
 
-獨立 Runtime 以載入的 Config 固定綁定一個 System／Revision；共享 Sandbox 由平台可信路由選擇綁定，不直接相信客戶端任意指定的 Tenant／Revision。
+獨立 Runtime 以載入的 Config 固定綁定一個 System／Revision；共享 DEV RAG Runtime 由平台可信路由選擇綁定，不直接相信客戶端任意指定的 Tenant／Revision。
 
 | Method | Path | 輸入／輸出 |
 |---|---|---|
@@ -179,7 +181,7 @@ Workspace／Group、Dataset 等管理 API 可在實作時補齊，不打包進�
 
 JSON 與檔案入口都經 Import → Parsing → 相同 Pipeline；上傳檔案不是在瀏覽器完成正式 Parsing。健康檢查與索引可查詢狀態分開：Runtime 可先接收 Ingestion，Query 在索引未就緒或重建中回傳明確狀態，不回傳示意答案。
 
-UI 說明列出 Base URL、認證、JSON／multipart、cURL 與回應範例。RAG Builder 使用平台提供且已綁定 System 的 Sandbox Base URL；自行部署使用自己的 Runtime Base URL。獨立 Runtime 的請求不另帶 System ID。Bearer Token 僅為認證範例，實際方案依部署 Gateway 決定，與外部模型／DB Secret 分開。
+UI 說明列出 Base URL、認證、JSON／multipart、cURL 與回應範例。RAG Builder 使用平台提供且已綁定 System 的 DEV RAG Runtime Base URL；自行部署使用自己的 Runtime Base URL。獨立 Runtime 的請求不另帶 System ID。Bearer Token 僅為認證範例，實際方案依部署 Gateway 決定，與外部模型／DB Secret 分開。
 
 Ingestion 的 records 每筆包含 document_id、source_revision、fields、metadata。內容容器統一叫 fields；來源欄位依 Parsing 映射，例如 records[].fields.body → ParsedDocument.fields.text。document_id 為 System 內穩定 ID，JSON records 必填；source_revision 為內容版本，可省略並由後端產生，生成與更新政策待 Engine 實作確認。metadata 只接受 Schema 宣告的自訂資訊；來源追蹤、系統及權限保留資訊由後端補入，不能由請求覆寫。structure 由 Parsing 產生，輸出 ParsedDocument 保持五個固定 key。檔案改用 multipart 的 files 欄位，可重複多次；交由 HTTP Client 產生 boundary。202 Accepted 只表示已接收，回傳 run_id、status=queued、config_revision；完成前透過 GET /v1/ingestions/{run_id} 查詢。
 
@@ -263,7 +265,7 @@ Retrieval.filters 是條件陣列，每筆為 {field, operator, value}：eq 的 
 
 ## 8. 匯出與交付
 
-匯出交付的是 RAG Runtime，不是整個 RAG Builder。目標 Bundle 包含：
+匯出交付的是 RAG Runtime，不是整個 RAG Builder。Infra 圖以 Backend 到檔案的「Export｜補齊設定」連線表示匯出功能，合併在 Backend 中，不另設 Export 服務框。交付檔案標示為 **FTEST/ENT yaml files**，由使用單位在目標 K8s 使用 YAML 進行 CD 部署。YAML 與配套說明包含：
 
 - 相同 Engine Image 的版本／Digest、Module Version 與 Config Revision／Hash。
 - Pipeline Config、使用中的 LLM 清單與目標環境連線覆寫。
@@ -280,7 +282,9 @@ Retrieval.filters 是條件陣列，每筆為 {field, operator, value}：eq 的 
 
 目前 Prototype 的 configured_unverified 就是第二種格式檢查結果，不代表已部署成功。YAML 使用示例 Image；尚未包含可執行 Engine、API 說明 Bundle、真正健康檢查或啟動驗證，後續實作需補齊。
 
-使用單位可先依部署範例自行部署，後續整合企業 CI／GitOps。獨立 Runtime 不依賴平台 Controller 持續調度；正式交付流程、核准及自動部署工具仍待確認。
+使用單位自行於 K8s 使用 FTEST／ENT YAML 進行 CD 部署，配置載入及啟動流程由部署工具完成。獨立 Runtime 不依賴平台 Controller 持續調度；具體 CD 工具與核准流程依使用單位現有機制整合。
+
+目前 Prototype 仍只下載單份示意 YAML，尚未依 FTEST／ENT 產生環境檔案，也未實作 tSSO、Secret Vault 或 CD；Infra 圖描述目標分工。
 
 ## 9. Evaluation 與 Observability
 
@@ -304,6 +308,7 @@ QA Dataset 最少包含 question、expected_answer；計算 Retrieval 指標需 
 仍需確認：首批 Parser／OCR 格式與實作、Local Search 的具體 BM25／斷詞及容量、缺欄位與文件更新政策、原始資料保留方式、Runtime API 認證方案、部署資源申請流程，以及 Evaluation Gate 是否強制。
 
 資料契約 v0.6 與本提案描述目標行為；UI 已實作的部分及限制以 README／Prototype 為準。API 契約、平台／部署環境分工及 Export Bundle 新內容尚待實接，不能將本文件視為已完成的後端功能。
+
 
 
 

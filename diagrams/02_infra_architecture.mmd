@@ -1,31 +1,32 @@
 flowchart TB
-  %% 2026-10-14: target architecture; runtime, APIs and deployment are not implemented yet.
-  %% Both environments use the same versioned Engine and Runtime API contract.
-  %% Local Search runs ingestion and inference in one process; Memory needs re-ingestion after restart.
-  %% Optional MongoDB persists Chunks/vectors for rebuilding FAISS and BM25, not for searching.
-  %% FAISS/BM25/Memory live inside the Engine; external DB nodes are conditional, not required by Memory.
+  %% Target architecture; tSSO, Runtime, Secret Vault and CD integration are not implemented in the Prototype.
+  %% tSSO edges show the login/authentication relationship, not a proxy for every business request.
+  %% Frontend and Backend form the RAG Builder Control Plane; Config/Validator/service settings/Export are Backend functions.
+  %% Both Runtime environments use the same versioned Engine and API contract.
+  %% Local Search lives inside the Engine; optional MongoDB persists Chunks/vectors, not the search operation.
+  %% The independent Runtime boundary contains only Runtime API and Engine; dependencies, Vault and observability are external.
 
-  USER["使用者"] --> UI
+  USER["使用者"] -->|登入| SSO["tSSO 認證"]
+  SSO -->|登入成功| UI
 
   subgraph DEV["RAG Builder｜設定與測試"]
     direction TB
-    subgraph CP["Control Plane"]
-      UI["RAG Builder UI"] --> PAPI["Builder API / Auth"]
-      PAPI --> CONF["Config / Validator / 服務"]
-      CONF --> META[("Config / Run Store")]
-      CONF --> EXPORT["Export｜補齊部署連線"]
+    subgraph CP["RAG Builder Control Plane"]
+      UI["RAG Builder UI (Frontend)"] --> BACKEND["RAG Builder Backend"]
+      BACKEND --> META[("Config / Run Store")]
     end
 
-    PAPI -->|"上傳／問答"| DAPI
-    PAPI --> EVAL["Evaluation Runner"]
+    BACKEND -->|"上傳／問答"| DAPI
+    BACKEND --> EVAL["Evaluation Runner"]
     EVAL -->|"批次問答"| DAPI
     EVAL --> META
 
-    subgraph SANDBOX["Sandbox｜Data Plane"]
+    subgraph SANDBOX["DEV RAG Runtime"]
       DAPI["Runtime API｜Ingest / Query / Status"] --> DENGINE["同一 RAG Engine｜含 Local Search"]
-      CONF -.->|"載入 Config"| DENGINE
-      DENGINE --> DOBS["Logs / Metrics / Traces"]
+      BACKEND -.->|"載入 Config"| DENGINE
     end
+
+    DENGINE --> DOBS["Logs / Metrics / Traces"]
 
     subgraph DRES["測試依賴｜DEV test use 或自行提供"]
       DSEARCH[("ES / MongoDB（依後端）")]
@@ -35,40 +36,41 @@ flowchart TB
     DENGINE --> DMODEL
   end
 
-  EXPORT --> BUNDLE["Runtime Config / Image Ref / API 說明"]
-  BUNDLE --> DEPLOY["使用單位部署｜手動或 CI/GitOps"]
+  BACKEND -.->|驗證登入| SSO
+  BACKEND -->|"Export｜補齊設定"| FILES["FTEST/ENT yaml files"]
+  FILES --> DEPLOY["使用單位部署｜自行於 K8s 使用 YAML 進行 CD 部署"]
 
   APP["應用程式／外部系統"] --> RAPI
+  DEPLOY -->|"YAML 配置／啟動 Runtime"| PENGINE
 
   subgraph PROD["自行部署｜獨立 RAG Runtime（API only）"]
     direction TB
     RAPI["Runtime API｜Ingest / Query / Status"] --> PENGINE["同一 RAG Engine｜含 Local Search"]
-    PCONF["Config / Secret 引用"] -.-> PENGINE
-    PENGINE --> POBS["Logs / Metrics / Traces"]
-
-    subgraph PRES["部署依賴｜使用單位自行申請或提供"]
-      PSEARCH[("ES / MongoDB（依後端）")]
-      PMODEL["LLM / Embedding / Rerank API"]
-    end
-    PENGINE -->|"依後端選用"| PSEARCH
-    PENGINE --> PMODEL
   end
 
-  DEPLOY --> PCONF
-  DEPLOY -->|"啟動 Runtime"| PENGINE
+  VAULT[("Secret Vault")] -.->|"取得／注入 Secrets"| PENGINE
+  PENGINE --> POBS["Logs / Metrics / Traces"]
+
+  subgraph PRES["部署依賴｜使用單位自行申請或提供"]
+    PSEARCH[("ES / MongoDB（依後端）")]
+    PMODEL["LLM / Embedding / Rerank API"]
+  end
+  PENGINE -->|"依後端選用"| PSEARCH
+  PENGINE --> PMODEL
 
   classDef control fill:#e8f0ff,stroke:#5881c8,color:#163459
   classDef runtime fill:#ecf8f1,stroke:#58a389,color:#174633
   classDef resource fill:#f5f4ff,stroke:#8c83c6,color:#372f6b
   classDef delivery fill:#fff5e5,stroke:#cf9b4a,color:#624516
-  class UI,PAPI,CONF,META,EXPORT control
+  class UI,BACKEND,META control
   class DAPI,DENGINE,EVAL,RAPI,PENGINE runtime
-  class DSEARCH,DMODEL,PSEARCH,PMODEL,DOBS,POBS resource
-  class BUNDLE,DEPLOY,PCONF delivery
+  class SSO,VAULT,DSEARCH,DMODEL,PSEARCH,PMODEL,DOBS,POBS resource
+  class FILES,DEPLOY delivery
   style DEV fill:#f7faff,stroke:#9aafc9
   style CP fill:#eef4fb,stroke:#9aafc9
   style SANDBOX fill:#f1faf5,stroke:#90b7a3
   style DRES fill:#f6f3ff,stroke:#b1a3ca
   style PROD fill:#f5fcf8,stroke:#90b7a3
   style PRES fill:#f6f3ff,stroke:#b1a3ca
+
 
