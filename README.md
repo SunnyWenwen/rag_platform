@@ -8,9 +8,9 @@ Config-driven RAG System Factory 設計討論專案。
 
 ## 設計文件
 
-- [資料契約與索引設計討論結論（v0.4）](docs/05_data_contracts_search_design.md)：最新 ParsedDocument／Chunk、欄位映射、Embedding、ES／Local Search、MongoDB 持久化、Hybrid 與 UI 卡控；區分已確認方向與待定建議。
+- [資料契約與索引設計討論結論（v0.5）](docs/05_data_contracts_search_design.md)：最新 ParsedDocument／Chunk、欄位映射、Embedding、ES／Local Search、MongoDB 持久化、Hybrid 與 UI 卡控；區分已確認方向與待定建議。
 
-- [模組目的、方法與 I/O Contract（v0.2 草案；資料契約見 v0.4）](docs/04_module_methods_io_contracts.md)：十個模組的輸入輸出、共用資料結構、相依卡控、自訂 Python 與 LangChain／LangGraph 分工；區分 MVP 與後續候選方法。
+- [模組目的、方法與 I/O Contract（v0.2 草案；資料契約見 v0.5）](docs/04_module_methods_io_contracts.md)：十個模組的輸入輸出、共用資料結構、相依卡控、自訂 Python 與 LangChain／LangGraph 分工；區分 MVP 與後續候選方法。
 
 - [UI Prototype](01_ui_prototype.html)：下載後以瀏覽器開啟，操作與指標均為模擬。
 - [Architecture Proposal](03_architecture_proposal.md)：模組介面、Config、API、生命週期與 MVP 規劃。
@@ -19,18 +19,20 @@ Config-driven RAG System Factory 設計討論專案。
 
 架構提案與圖保留初版設計；UI 已依下述流程簡化。提案提及的 deployment_example/ 獨立範例檔尚未納入；UI 可匯出示意 YAML，不代表可直接部署。
 
-## UI Prototype v0.4（2026-10-14）
+## UI Prototype v0.5（2026-10-14）
 
 - 保留 Workspace Groups／System 卡片；新增 Edit Config，沿用 Create 介面及獨立草稿。
 - Chunking 只留 Recursive／Header-aware，Size／Overlap 使用 Tokens，支援 Tokenizer、分隔符及標題層級設定。
 - Embedding 僅 DEV test use／Embedding API；依服務來源展開 URL、認證引用、模型、維度與 Tokenizer 等設定。
 - ES 提供 DEV／自行連線；Local Search 只有選 MongoDB 時顯示 DB 設定。
 - Index collection 自動由 Workspace＋名稱＋System ID 產生，改名不影響既有實體名稱。
-- Query Transformation 支援 None／Rewrite／Multi-query，原始問題可加入搜尋；多路結果在 Retrieval 融合。
+- LLM 服務設定集中管理此 RAG System 的服務清單；Query Transformation／Generation 以 llm_ref 下拉引用，部署時相同服務只需填一次。
+- Query Transformation 支援 None／Rewrite／Multi-query；Rewrite／Multi-query 各自可編輯 Prompt，提供 query／count 變數驗證與預覽；原始問題可加入搜尋。
 - Retrieval 移除 Implementation，依選取的全文／向量欄位推導模式；多 Query 或多欄位使用 RRF。
 - Rerank 提供 None／DEV／Rerank API、內容欄位與可查看的固定 Request／Response 範例。
-- Generation 提供 DEV／OpenAI-compatible API、兩層模板、插入變數、完整 Prompt 預覽，以及「模板說明與範例／套用範例」。
+- Generation 從共用 LLM 清單選擇服務，提供兩層模板、插入變數、完整 Prompt 預覽，以及「模板說明與範例／套用範例」。
 - AI 設定助手明示為規則模擬：可讀小型 JSON／CSV／TXT／MD 樣本，先呈現設定差異再套用；不呼叫 AI、不自動 Ingestion。
+- 檢查訊息統一標示 [模組名稱]；刪除正在使用的 LLM 會保留失效引用並阻止儲存。
 - 編輯 Ingestion 配置後標記需重新匯入；僅 Inference 變更不用重建，但清除舊示意評估。
 - 匯出先檢查 DEV 資源，分為待設定草稿及已填妥設定；不匯出真實憑證，Local Search 固定單副本。
 
@@ -47,4 +49,7 @@ Config-driven RAG System Factory 設計討論專案。
 
 ## 驗證
 
-執行 `node tests/prototype.test.cjs`，使用無依賴 VM／DOM stub 檢查 29 項設定與狀態規則。另以 jsdom 驗證實際表單事件、條件欄位、建立／編輯、AI 套用、Prompt 與匯出行為。已通過 Chromium 互動檢查及 1440px／390px 桌面與手機版面檢查；無頁面 JavaScript 錯誤。檢查涵蓋 Create、API／DB 條件欄位、Prompt 範例、AI 套用、Ingestion、Edit 影響與 Export gate。
+執行 `node tests/prototype.test.cjs`，使用無依賴 VM／DOM stub 檢查 34 項設定與狀態規則。另以 jsdom 驗證實際表單事件、條件欄位、建立／編輯、AI 套用、Prompt 與匯出行為。已通過 Chromium 互動檢查及 1440px／390px 桌面與手機版面檢查；無頁面 JavaScript 錯誤。檢查涵蓋 Create、API／DB 條件欄位、Prompt 範例、AI 套用、Ingestion、Edit 影響與 Export gate。
+
+
+共用 LLM／Prompt 另經 Chromium 實測：新增、改名、選擇、刪除、API 設定、Prompt 即時驗證與預覽、共用匯出資源及手機寬度。
