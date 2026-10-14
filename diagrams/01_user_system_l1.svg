@@ -33,7 +33,9 @@
   <path id="edge-B-S" data-source="B" data-target="S" data-label="建立" class="edge relation" d="M180,430 L180,650"/>
   <path id="edge-I-S" data-source="I" data-target="S" data-label="建立 Chunks / Indexes" class="edge relation" d="M480,430 L480,650"/>
   <path id="edge-Q-S" data-source="Q" data-target="S" data-label="查詢" class="edge relation" d="M780,430 L780,650"/>
-  <path id="edge-E-S" data-source="E" data-target="S" data-label="評估" class="edge relation" d="M1010,430 L860,650"/>
+  <!-- E → S branches from the shared vertical segment of E → R. -->
+  <path id="edge-E-S" data-source="E" data-target="S" data-label="評估" data-branches-from="edge-E-R" class="edge relation" d="M1090,540 L860,540 L860,650"/>
+  <circle cx="1090" cy="540" r="3" fill="#66788b"/>
   <path id="edge-C-S" data-source="C" data-target="S" data-label="更新設定" class="edge relation" d="M1260,142 L2300,142 L2300,820 L490,820 L490,730"/>
   <path id="edge-E-R" data-source="E" data-target="R" data-label="產出" class="edge relation" d="M1090,430 L1090,650"/>
   <path id="edge-X-Y" data-source="X" data-target="Y" data-label="產出" class="edge relation" d="M1580,430 L1580,650"/>
