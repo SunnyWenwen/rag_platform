@@ -163,7 +163,7 @@ Infra 圖的 Local Search 表示 Engine 內的能力，不是另一個必需的�
 | GET | /api/evaluation-runs/{run_id} | 評估狀態與報告 |
 | POST | /api/rag-systems/{id}/exports | 套用部署覆寫、檢查依賴並產生匯出檔 |
 
-Workspace／Group、Dataset 等管理 API 可在實作時補齊，不打包進獨立 Runtime。Prototype 的 /rag-systems/{id}/ingest 是舊示意路由；UI 實接時需對齊以下 Runtime 契約。
+Workspace／Group、Dataset 等管理 API 可在實作時補齊，不打包進獨立 Runtime。Prototype 的 Ingestion／Inference 操作視窗已提供「查看 API 端點」，對齊以下 Runtime 契約；尚未實作實際端點。
 
 ### 6.2 Runtime API（兩種情境共用）
 
@@ -178,6 +178,25 @@ Workspace／Group、Dataset 等管理 API 可在實作時補齊，不打包進�
 | GET | /health/ready | Config／必要資源初始化狀態 |
 
 JSON 與檔案入口都經 Import → Parsing → 相同 Pipeline；上傳檔案不是在瀏覽器完成正式 Parsing。健康檢查與索引可查詢狀態分開：Runtime 可先接收 Ingestion，Query 在索引未就緒或重建中回傳明確狀態，不回傳示意答案。
+
+UI 說明列出 Base URL、認證、JSON／multipart、cURL 與回應範例。RAG Builder 使用平台提供且已綁定 System 的 Sandbox Base URL；自行部署使用自己的 Runtime Base URL。獨立 Runtime 的請求不另帶 System ID。Bearer Token 僅為認證範例，實際方案依部署 Gateway 決定，與外部模型／DB Secret 分開。
+
+Ingestion 的 records 是尚未經 Parsing 的來源資料，JSON 欄位依此 System 的 Parsing 來源映射設定。檔案改用 multipart 的 files 欄位，可重複多次；交由 HTTP Client 產生 boundary。202 Accepted 只表示已接收，回傳 run_id、status=queued、config_revision；完成前透過 GET /v1/ingestions/{run_id} 查詢。
+
+完成狀態的 200 範例：
+
+```json
+{
+  "run_id": "ing-example-1",
+  "status": "completed",
+  "config_revision": 3,
+  "processed_records": 1,
+  "total_records": 1,
+  "errors": []
+}
+```
+
+processed_records／total_records 以解析出的邏輯資料筆數計，不是 Chunk 數；只有完成且目前配置的索引就緒才能問答。API 說明可在未 Ingestion 時查看，不觸發匯入或問答。
 
 問答範例：
 
@@ -197,6 +216,8 @@ JSON 與檔案入口都經 Import → Parsing → 相同 Pipeline；上傳檔案
 ```
 
 錯誤統一包含 request_id、code、module、message；例如 module=Embedding、code=SERVICE_TIMEOUT。UI 可顯示為 `[Embedding] ...`，不以例外堆疊取代可理解訊息，也不回傳憑證。
+
+HTTP 狀態提案：400 為請求格式錯誤，401／403 為認證／權限不足，404 為匯入 run_id 不存在，409／INDEX_NOT_READY 為問答索引尚未就緒或需重建，503 為必要外部服務不可用。Prototype 僅呈現這些範例，不會送出 HTTP 請求。
 
 Ingestion 需定義批次部分失敗、重送與文件更新語意；document_id／source_revision 規則沿用資料契約。第一版 Memory 模式的資料與執行狀態在程序重啟後可能遺失；跨重啟的任務恢復及持久化 Job Store 不視為已具備。
 
@@ -258,4 +279,5 @@ QA Dataset 最少包含 question、expected_answer；計算 Retrieval 指標需 
 仍需確認：首批 Parser／OCR 格式與實作、Local Search 的具體 BM25／斷詞及容量、缺欄位與文件更新政策、原始資料保留方式、Runtime API 認證方案、部署資源申請流程，以及 Evaluation Gate 是否強制。
 
 資料契約 v0.5 與本提案描述目標行為；UI 已實作的部分及限制以 README／Prototype 為準。API 契約、平台／部署環境分工及 Export Bundle 新內容尚待實接，不能將本文件視為已完成的後端功能。
+
 

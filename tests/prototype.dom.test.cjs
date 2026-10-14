@@ -14,4 +14,14 @@ run('openEdit(systems.at(-1).id)');run("selectMod('chunking')");field('chunking.
 run('openCreate();toggleHelper()');d.querySelector('#helperRequest').value='改用 Local Search';click('#helperPanel button');assert(!d.querySelector('#applySuggestion').disabled);click('#applySuggestion');assert.equal(run('config.indexing.backend'),'Local Search');
 run('exportSystem(systems[0].id)');assert(d.querySelector('#exportReady').disabled);for(const el of d.querySelectorAll('[data-export$=".url"]')){el.value='https://test.example/v1';el.dispatchEvent(new w.Event('input',{bubbles:true}));}assert(!d.querySelector('#exportReady').disabled);
 run('openCreate()');click('button[onclick="selectMod(\'llms\')"]');field('llms.0.name','Shared model');field('llms.0.mode','OpenAI-compatible API');field('llms.0.url','https://shared.example/v1');run("selectMod('transform')");field('transform.method','Rewrite');assert(d.querySelector('[data-path="transform.llm_ref"]').textContent.includes('Shared model'));field('transform.rewrite_prompt','{{query}} 改寫');assert(!d.querySelector('#createButton').disabled);run('deleteLLM(0)');assert(d.querySelector('#createButton').disabled);assert(d.querySelector('#validation').textContent.includes('[Generation]'));assert(d.querySelector('#validation').textContent.includes('[Query Transformation]'));
-assert.equal(errors.length,0,errors.map(String).join('\n'));console.log('PASS real jsdom event flows: chunking, API auth, conditional DB, retrieval, prompt help/validation, create/edit, AI apply, DEV export.');dom.window.close();
+run("$('createDialog').close();$('exportDialog').close();openOperation(systems.at(-1).id,'ingest')");
+const beforeDocs=run('active.docs');
+click('[data-api-help="ingest"]');assert(d.querySelector('#helpDialog').open);assert(d.querySelector('#helpTitle').textContent.includes('Ingestion'));
+let apiText=d.querySelector('#helpBody').textContent;for(const text of ['/v1/ingestions','202 Accepted','multipart/form-data','processed_records'])assert(apiText.includes(text),text);assert.equal(run('active.docs'),beforeDocs);
+click('#helpDialog .close');assert(!d.querySelector('#helpDialog').open);assert(d.querySelector('#operationDialog').open);
+run("$('operationDialog').close();openOperation(systems.at(-1).id,'inference')");assert(d.querySelector('button[onclick="runInference()"]').disabled);
+click('[data-api-help="inference"]');assert(d.querySelector('#helpDialog').open);apiText=d.querySelector('#helpBody').textContent;for(const text of ['/v1/queries','citations','request_id','INDEX_NOT_READY'])assert(apiText.includes(text),text);
+click('#helpDialog .close');run("$('operationDialog').close();openOperation(systems.at(-1).id,'ingest')");click('button[onclick="ingestDemoRecords()"]');assert(run('active.docs')>beforeDocs);assert(!run('active.needsIngest'));
+
+assert.equal(errors.length,0,errors.map(String).join('\n'));console.log('PASS real jsdom event flows: chunking, API auth, conditional DB, retrieval, prompt help/validation, create/edit, AI apply, DEV export, Ingestion/Inference API help.');dom.window.close();
+

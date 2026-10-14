@@ -33,6 +33,7 @@ Config-driven RAG System 建立與測試平台。
 - Retrieval 移除 Implementation，依選取的全文／向量欄位推導模式；多 Query 或多欄位使用 RRF。
 - Rerank 提供 None／DEV／Rerank API、內容欄位與可查看的固定 Request／Response 範例。
 - Generation 從共用 LLM 清單選擇服務，提供兩層模板、插入變數、完整 Prompt 預覽，以及「模板說明與範例／套用範例」。
+- Ingestion／Inference 提供「查看 API 端點」：Base URL／認證、JSON／multipart 請求、cURL、回應及錯誤範例；Ingestion 另有 run_id 進度查詢。JSON 欄位依 System 的 Parsing 映射產生，端點目前仍是契約提案。
 - AI 設定助手明示為規則模擬：可讀小型 JSON／CSV／TXT／MD 樣本，先呈現設定差異再套用；不呼叫 AI、不自動 Ingestion。
 - 檢查訊息統一標示 [模組名稱]；刪除正在使用的 LLM 會保留失效引用並阻止儲存。
 - 編輯 Ingestion 配置後標記需重新匯入；僅 Inference 變更不用重建，但清除舊示意評估。
@@ -48,12 +49,16 @@ Config-driven RAG System 建立與測試平台。
 4. AI 設定助手：輸入「改用 Local Search」，查看差異後套用；樣本可用 JSON `[{"content":"原文","abstract":"摘要","title":"標題"}]`。
 5. 建立 → Ingest 模擬 → Edit Config：改 Chunk Size 後會要求重匯；改 Generation Temperature 則不需重匯。
 6. Export YAML：DEV 設定可下載草稿；補齊自己的服務 URL 後可匯出格式已填妥的示意設定。
+7. System 卡片 → Ingest／Inference → 查看 API 端點：查看 Runtime API、請求與回應；尚未完成 Ingestion 也能查看 Inference 說明。
 
 ## 驗證
 
-執行 `node tests/prototype.test.cjs`，使用無依賴 VM／DOM stub 檢查 34 項設定與狀態規則。另以 jsdom 驗證實際表單事件、條件欄位、建立／編輯、AI 套用、Prompt 與匯出行為。已通過 Chromium 互動檢查及 1440px／390px 桌面與手機版面檢查；無頁面 JavaScript 錯誤。檢查涵蓋 Create、API／DB 條件欄位、Prompt 範例、AI 套用、Ingestion、Edit 影響與 Export gate。
+執行 `node tests/prototype.test.cjs`，使用無依賴 VM／DOM stub 檢查 36 項設定與狀態規則。另以 jsdom 驗證實際表單事件、條件欄位、建立／編輯、AI 套用、Prompt、匯出及 API 說明。已通過 Chromium 互動檢查及 1440px／390px 桌面與手機版面檢查；無頁面 JavaScript 錯誤。檢查涵蓋 Create、API／DB 條件欄位、Prompt 範例、AI 套用、Ingestion、Edit 影響與 Export gate。
 
 
 共用 LLM／Prompt 另經 Chromium 實測：新增、改名、選擇、刪除、API 設定、Prompt 即時驗證與預覽、共用匯出資源及手機寬度。
+
+API 說明另經 Chromium 實測：兩個操作視窗的開啟／返回、尚未 Ingestion 時查看 Inference 說明、JSON／cURL 範例與手機寬度；沒有送出 HTTP 請求。
+
 
 
