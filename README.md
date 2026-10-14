@@ -27,6 +27,7 @@ Config-driven RAG System 建立與測試平台。
 - Ingest 本版先支援 ≤1 MB CSV／JSON。CSV 每列是一筆文件，映射目標包含 document_id／source_revision／fields.*／metadata.*；預覽 API payload 與 ParsedDocument，型別／必填／重複 ID 錯誤會阻止模擬匯入。成功後保存 CSV 映射；JSON 直接使用標準 records 契約。
 - 提供「先設定 Config」與「從 CSV 開始 · AI 設定助手」兩種入口；確認助手的 Schema、映射與 Pipeline 草稿後，CSV 可帶到 Ingest 再執行。
 - 保留 Workspace Groups／System 卡片；新增 Edit Config，沿用 Create 介面及獨立草稿。
+- Parsing 預設只顯示結構化 JSON；PDF／PPTX／圖片／TXT／Markdown 路由、標題結構與相關說明收在預設關閉的「進階選項」，展開後才顯示。
 - Chunking 只留 Recursive／Header-aware，Size／Overlap 使用 Tokens，支援 Tokenizer、分隔符及標題層級設定。
 - Embedding 僅 DEV test use／Embedding API；依服務來源展開 URL、認證引用、模型、維度與 Tokenizer 等設定。
 - ES 提供 DEV／自行連線；Local Search 只有選 MongoDB 時顯示 DB 設定。
@@ -77,3 +78,4 @@ Filter／fields 另經 Chromium 驗證：完整欄位路徑、eq／in 值輸入�
 
 
 Document Schema／CSV 流程另經 jsdom 與 Chromium 驗證：兩種起始情境、metadata 必填與映射、保存映射、API／ParsedDocument 預覽、無效 JSON 卡控、Schema 編輯影響／取消，以及 1440px／390px 版面。CSV 讀取、映射、Schema 檢查在瀏覽器執行；LLM、OCR、Embedding、搜尋及 Runtime API 仍是模擬，未送出 HTTP。自動 ID 只在本次上傳內固定，更新既有文件需映射穩定 ID；source_revision 自動值目前僅為示意。
+
