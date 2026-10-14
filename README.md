@@ -16,10 +16,10 @@ Config-driven RAG System 建立與測試平台。
 
 - [UI Prototype](01_ui_prototype.html)：下載後以瀏覽器開啟，操作與指標均為模擬。
 - [Architecture Proposal v0.8](03_architecture_proposal.md)：RAG Builder／獨立 Runtime 分工、共用 Engine／API、外部服務環境設定、模組契約與 MVP 規劃。
-- [L1 使用流程圖](diagrams/01_user_system_l1.png) · [Mermaid 原始檔](diagrams/01_user_system_l1.mmd)
+- [L1 使用流程圖](diagrams/01_user_system_l1.png) · [Mermaid 關係定義](diagrams/01_user_system_l1.mmd) · [固定版面 SVG](diagrams/01_user_system_l1.svg)
 - [Infra 架構圖](diagrams/02_infra_architecture.png) · [Mermaid 原始檔](diagrams/02_infra_architecture.mmd)
 
-L1 流程的步驟 1～5 與「修改 Config」位於「RAG Builder 測試」框內；步驟 6「Deploy YAML in FTEST/ENT」位於框外，由使用單位使用匯出的 YAML 部署，並以虛線連至「RAG System in k8s」；流程維持由左到右排列。
+L1 流程的步驟 1～5 在同一水平列，由左到右排列，並與上方的「修改 Config」一起放在「RAG Builder測試」框內；步驟 6「Deploy YAML in FTEST/ENT」在框外右側，使用匯出的 YAML 部署，並以垂直虛線連至正下方的「RAG System in k8s」。RAG System、評估報告與 YAML 設定檔保留在各操作的下方。PNG 由同名 SVG 的固定版面產生；Mermaid 維護相同的節點與連線關係，自動排版不作為 PNG 版面。
 
 架構提案與 Infra 圖已整合 2026-10-14 的最新討論：RAG Builder Control Plane 明確分為 Frontend／Backend，接入 tSSO；DEV RAG Runtime 負責測試執行。Backend 的建立／設定連線指向整個 DEV RAG Runtime，由 Runtime 依 Config 組裝 Pipeline 執行實例，並匯出 FTEST／ENT YAML（文件形狀節點），使用單位自行於 K8s 進行 CD 部署；Secret Vault、部署依賴與觀測工具位於獨立 Runtime 框外。UI 可匯出示意 YAML，不代表可直接部署；Engine、Runtime API 及完整部署 Bundle 尚未實作。
 
