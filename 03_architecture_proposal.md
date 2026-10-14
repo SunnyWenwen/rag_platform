@@ -1,6 +1,6 @@
 # RAG Builder — Architecture Proposal
 
-> Version 0.4 · 2026-10-14 · Audience: Engineering / Platform / Management
+> Version 0.5 · 2026-10-14 · Audience: Engineering / Platform / Management
 >
 > 本版整合已確認的 UI、模組、資料契約與兩種使用情境。文件描述目標架構；目前 UI Prototype v0.6 只在瀏覽器內模擬，尚未實作 RAG Engine、Runtime API、模型／DB 連線或部署服務。
 > 最新模組細節見 [資料契約與索引設計 v0.6](docs/05_data_contracts_search_design.md)；Infra 圖見 [Mermaid](diagrams/02_infra_architecture.mmd)／[PNG](diagrams/02_infra_architecture.png)。
@@ -121,14 +121,18 @@ Secret 只保留引用，不將真實帳密寫入 Blueprint 或匯出檔；部�
 
 ### 5.1 RAG Builder
 
-- RAG Builder Control Plane：RAG Builder UI（Frontend）、RAG Builder Backend，以及 Config／Run Store。Backend 包含 API／Auth、Config 管理、Module Registry、Validator、外部服務設定及 Export；這些是同一後端的職責，不要求各自部署獨立服務。
-- DEV RAG Runtime：Runtime API 與共用 Engine，執行 Ingestion／Inference；Evaluation Runner 呼叫相同 Query API，保存測試紀錄及報告。觀測工具及測試依賴在 Runtime 邊界外。
+- RAG Builder Control Plane：RAG Builder UI（Frontend）、RAG Builder Backend，以及 Config Store。Backend 包含 API／Auth、Config 管理、Module Registry、Validator、外部服務設定及 Export；這些是同一後端的職責，不要求各自部署獨立服務。
+- DEV RAG Runtime：Runtime API 與共用 Engine，執行 Ingestion／Inference；Evaluation Runner 呼叫相同 Query API。本版 Infra 圖先只畫評估呼叫，不連到 Config Store；執行紀錄及報告的儲存關係暫不展開。觀測工具及測試依賴在 Runtime 邊界外。
 - 測試服務：可綁定平台 DEV 資源或使用者提供的服務；以 system_id、config_revision、run_id 隔離配置與資料。
 - 平台操作紀錄、QA Dataset 及產物保存於平台。Config Store／Artifact Store 的具體 DB 或 Object Storage 選型另定，不代表每個部署 Runtime 都需要同一套儲存服務。
 
 共享 DEV RAG Runtime 是建議的 MVP 資源策略；依 System 獨立執行的隔離模式保留為後續需求，兩者不改變 Runtime API 或 Pipeline 語意。
 
-使用者透過 tSSO 登入 RAG Builder UI（Frontend），Backend 驗證登入身分並檢查操作權限。Infra 圖的 tSSO 線表示登入／認證關係，不表示每個業務 API 請求都必須由 tSSO 轉送；具體整合方式依企業既有機制決定。
+Backend 保存並驗證 Config 後，負責發起建立／設定 System-scoped 的 Engine／Pipeline 執行實例；實際由 DEV RAG Runtime 依 Config 選取模組、綁定服務並組裝 Pipeline。圖上的「建立／設定 Engine」表示管理動作，可經 Runtime 的內部管理介面完成；上傳／問答仍走 Runtime API。共享模式可重用已啟動的 Runtime 服務，不代表每建一個 System 都部署新 Pod。兩種環境使用同一套版本化 Engine 程式，Config 決定各 System 的執行配置。
+
+舊圖的 Run Store 指單次 Ingestion／Inference／Evaluation 的執行紀錄，例如 run_id、狀態、時間與錯誤。這一版儲存節點改為 Config Store，先只表達 System／Config 管理；執行紀錄與評估報告的保存位置不在此圖展開。
+
+使用者透過 tSSO 登入 RAG Builder UI（Frontend）。本版 Infra 圖簡化為登入入口，不畫 Backend 回連 tSSO 的驗證線；登入／權限的實作細節另依企業既有機制整合。
 
 ### 5.2 自行部署
 
@@ -265,7 +269,7 @@ Retrieval.filters 是條件陣列，每筆為 {field, operator, value}：eq 的 
 
 ## 8. 匯出與交付
 
-匯出交付的是 RAG Runtime，不是整個 RAG Builder。Infra 圖以 Backend 到檔案的「Export｜補齊設定」連線表示匯出功能，合併在 Backend 中，不另設 Export 服務框。交付檔案標示為 **FTEST/ENT yaml files**，由使用單位在目標 K8s 使用 YAML 進行 CD 部署。YAML 與配套說明包含：
+匯出交付的是 RAG Runtime，不是整個 RAG Builder。Infra 圖以 Backend 到檔案的「Export｜補齊設定」連線表示匯出功能，合併在 Backend 中，不另設 Export 服務框。交付檔案使用文件形狀節點，標示為 **FTEST/ENT yaml files**，由使用單位在目標 K8s 使用 YAML 進行 CD 部署。YAML 與配套說明包含：
 
 - 相同 Engine Image 的版本／Digest、Module Version 與 Config Revision／Hash。
 - Pipeline Config、使用中的 LLM 清單與目標環境連線覆寫。
@@ -308,6 +312,7 @@ QA Dataset 最少包含 question、expected_answer；計算 Retrieval 指標需 
 仍需確認：首批 Parser／OCR 格式與實作、Local Search 的具體 BM25／斷詞及容量、缺欄位與文件更新政策、原始資料保留方式、Runtime API 認證方案、部署資源申請流程，以及 Evaluation Gate 是否強制。
 
 資料契約 v0.6 與本提案描述目標行為；UI 已實作的部分及限制以 README／Prototype 為準。API 契約、平台／部署環境分工及 Export Bundle 新內容尚待實接，不能將本文件視為已完成的後端功能。
+
 
 
 

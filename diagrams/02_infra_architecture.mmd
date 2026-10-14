@@ -2,6 +2,8 @@ flowchart TB
   %% Target architecture; tSSO, Runtime, Secret Vault and CD integration are not implemented in the Prototype.
   %% tSSO edges show the login/authentication relationship, not a proxy for every business request.
   %% Frontend and Backend form the RAG Builder Control Plane; Config/Validator/service settings/Export are Backend functions.
+  %% Backend initiates System-scoped execution-instance setup; the DEV Runtime composes the Pipeline from Config.
+  %% Config Store is shown here; execution-record persistence and authentication details are omitted.
   %% Both Runtime environments use the same versioned Engine and API contract.
   %% Local Search lives inside the Engine; optional MongoDB persists Chunks/vectors, not the search operation.
   %% The independent Runtime boundary contains only Runtime API and Engine; dependencies, Vault and observability are external.
@@ -13,17 +15,16 @@ flowchart TB
     direction TB
     subgraph CP["RAG Builder Control Plane"]
       UI["RAG Builder UI (Frontend)"] --> BACKEND["RAG Builder Backend"]
-      BACKEND --> META[("Config / Run Store")]
+      BACKEND --> META[("Config Store")]
     end
 
     BACKEND -->|"上傳／問答"| DAPI
     BACKEND --> EVAL["Evaluation Runner"]
     EVAL -->|"批次問答"| DAPI
-    EVAL --> META
 
     subgraph SANDBOX["DEV RAG Runtime"]
-      DAPI["Runtime API｜Ingest / Query / Status"] --> DENGINE["同一 RAG Engine｜含 Local Search"]
-      BACKEND -.->|"載入 Config"| DENGINE
+      DAPI["Runtime API｜Ingest / Query / Status"] --> DENGINE["RAG Engine｜含 Local Search"]
+      BACKEND -.->|"建立／設定 Engine"| DENGINE
     end
 
     DENGINE --> DOBS["Logs / Metrics / Traces"]
@@ -36,8 +37,7 @@ flowchart TB
     DENGINE --> DMODEL
   end
 
-  BACKEND -.->|驗證登入| SSO
-  BACKEND -->|"Export｜補齊設定"| FILES["FTEST/ENT yaml files"]
+  BACKEND -->|"Export｜補齊設定"| FILES@{ shape: doc, label: "FTEST/ENT yaml files" }
   FILES --> DEPLOY["使用單位部署｜自行於 K8s 使用 YAML 進行 CD 部署"]
 
   APP["應用程式／外部系統"] --> RAPI
@@ -45,7 +45,7 @@ flowchart TB
 
   subgraph PROD["自行部署｜獨立 RAG Runtime（API only）"]
     direction TB
-    RAPI["Runtime API｜Ingest / Query / Status"] --> PENGINE["同一 RAG Engine｜含 Local Search"]
+    RAPI["Runtime API｜Ingest / Query / Status"] --> PENGINE["RAG Engine｜含 Local Search"]
   end
 
   VAULT[("Secret Vault")] -.->|"取得／注入 Secrets"| PENGINE
@@ -72,5 +72,6 @@ flowchart TB
   style DRES fill:#f6f3ff,stroke:#b1a3ca
   style PROD fill:#f5fcf8,stroke:#90b7a3
   style PRES fill:#f6f3ff,stroke:#b1a3ca
+
 
 
