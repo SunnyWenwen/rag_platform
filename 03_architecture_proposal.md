@@ -1,6 +1,6 @@
 # RAG Builder — Architecture Proposal
 
-> Version 0.5 · 2026-10-14 · Audience: Engineering / Platform / Management
+> Version 0.6 · 2026-10-14 · Audience: Engineering / Platform / Management
 >
 > 本版整合已確認的 UI、模組、資料契約與兩種使用情境。文件描述目標架構；目前 UI Prototype v0.6 只在瀏覽器內模擬，尚未實作 RAG Engine、Runtime API、模型／DB 連線或部署服務。
 > 最新模組細節見 [資料契約與索引設計 v0.6](docs/05_data_contracts_search_design.md)；Infra 圖見 [Mermaid](diagrams/02_infra_architecture.mmd)／[PNG](diagrams/02_infra_architecture.png)。
@@ -128,7 +128,7 @@ Secret 只保留引用，不將真實帳密寫入 Blueprint 或匯出檔；部�
 
 共享 DEV RAG Runtime 是建議的 MVP 資源策略；依 System 獨立執行的隔離模式保留為後續需求，兩者不改變 Runtime API 或 Pipeline 語意。
 
-Backend 保存並驗證 Config 後，負責發起建立／設定 System-scoped 的 Engine／Pipeline 執行實例；實際由 DEV RAG Runtime 依 Config 選取模組、綁定服務並組裝 Pipeline。圖上的「建立／設定 Engine」表示管理動作，可經 Runtime 的內部管理介面完成；上傳／問答仍走 Runtime API。共享模式可重用已啟動的 Runtime 服務，不代表每建一個 System 都部署新 Pod。兩種環境使用同一套版本化 Engine 程式，Config 決定各 System 的執行配置。
+Backend 保存並驗證 Config 後，負責發起建立／設定 System-scoped 的 Engine／Pipeline 執行實例；實際由 DEV RAG Runtime 依 Config 選取模組、綁定服務並組裝 Pipeline。圖上的「建立／設定 Engine」連到整個 DEV RAG Runtime 邊界，表示 Backend 對 Runtime 發起管理動作，由 Runtime 在內部建立／設定 Engine，可經其內部管理介面完成；上傳／問答仍走 Runtime API。共享模式可重用已啟動的 Runtime 服務，不代表每建一個 System 都部署新 Pod。兩種環境使用同一套版本化 Engine 程式，Config 決定各 System 的執行配置。
 
 舊圖的 Run Store 指單次 Ingestion／Inference／Evaluation 的執行紀錄，例如 run_id、狀態、時間與錯誤。這一版儲存節點改為 Config Store，先只表達 System／Config 管理；執行紀錄與評估報告的保存位置不在此圖展開。
 
@@ -150,7 +150,7 @@ Backend 保存並驗證 Config 後，負責發起建立／設定 System-scoped �
 | Local Search／Memory | Engine 內 FAISS＋BM25 | Chunk／vectors 只在記憶體；程序結束後需重新 Ingestion | 每個 System 的 Ingestion／Inference 共用同一程序；單副本 |
 | Local Search／MongoDB | Engine 內 FAISS＋BM25 | MongoDB 保存 Chunk／vectors；重啟時重建搜尋結構 | 同樣先採單副本；MongoDB 不自動同步不同 Pod 的 FAISS |
 
-Infra 圖的 Local Search 表示 Engine 內的能力，不是另一個必需的資料庫服務。不能在 Memory 模式中讓 Ingestion Job 執行完即退出，並假設另一個 Inference Pod 能讀取其記憶體索引。
+Local Search 是 Engine 內的能力，不是另一個必需的資料庫服務；Infra 圖統一以「RAG Engine」標示執行核心，不在節點名稱列出搜尋後端。不能在 Memory 模式中讓 Ingestion Job 執行完即退出，並假設另一個 Inference Pod 能讀取其記憶體索引。
 
 第一版可用同一個 Runtime API 程序承接非同步 Ingestion。Queue／獨立 Worker、HPA、排程匯入、索引原子切換屬於後續容量需求，不作為 Prototype 的預設部署要求。
 
@@ -312,6 +312,7 @@ QA Dataset 最少包含 question、expected_answer；計算 Retrieval 指標需 
 仍需確認：首批 Parser／OCR 格式與實作、Local Search 的具體 BM25／斷詞及容量、缺欄位與文件更新政策、原始資料保留方式、Runtime API 認證方案、部署資源申請流程，以及 Evaluation Gate 是否強制。
 
 資料契約 v0.6 與本提案描述目標行為；UI 已實作的部分及限制以 README／Prototype 為準。API 契約、平台／部署環境分工及 Export Bundle 新內容尚待實接，不能將本文件視為已完成的後端功能。
+
 
 
 

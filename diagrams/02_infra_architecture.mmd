@@ -23,9 +23,10 @@ flowchart TB
     EVAL -->|"批次問答"| DAPI
 
     subgraph SANDBOX["DEV RAG Runtime"]
-      DAPI["Runtime API｜Ingest / Query / Status"] --> DENGINE["RAG Engine｜含 Local Search"]
-      BACKEND -.->|"建立／設定 Engine"| DENGINE
+      DAPI["Runtime API｜Ingest / Query / Status"] --> DENGINE["RAG Engine"]
     end
+
+    BACKEND -.->|"建立／設定 Engine"| SANDBOX
 
     DENGINE --> DOBS["Logs / Metrics / Traces"]
 
@@ -45,7 +46,7 @@ flowchart TB
 
   subgraph PROD["自行部署｜獨立 RAG Runtime（API only）"]
     direction TB
-    RAPI["Runtime API｜Ingest / Query / Status"] --> PENGINE["RAG Engine｜含 Local Search"]
+    RAPI["Runtime API｜Ingest / Query / Status"] --> PENGINE["RAG Engine"]
   end
 
   VAULT[("Secret Vault")] -.->|"取得／注入 Secrets"| PENGINE
@@ -72,6 +73,7 @@ flowchart TB
   style DRES fill:#f6f3ff,stroke:#b1a3ca
   style PROD fill:#f5fcf8,stroke:#90b7a3
   style PRES fill:#f6f3ff,stroke:#b1a3ca
+
 
 
 
