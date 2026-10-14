@@ -19,6 +19,8 @@ Config-driven RAG System 建立與測試平台。
 - [L1 使用流程圖](diagrams/01_user_system_l1.png) · [Mermaid 原始檔](diagrams/01_user_system_l1.mmd)
 - [Infra 架構圖](diagrams/02_infra_architecture.png) · [Mermaid 原始檔](diagrams/02_infra_architecture.mmd)
 
+L1 流程的步驟 1～5 與「修改 Config」位於「RAG Builder 測試」框內；步驟 6「Deploy YAML in FTEST/ENT」位於框外，由使用單位使用匯出的 YAML 部署。
+
 架構提案與 Infra 圖已整合 2026-10-14 的最新討論：RAG Builder Control Plane 明確分為 Frontend／Backend，接入 tSSO；DEV RAG Runtime 負責測試執行。Backend 的建立／設定連線指向整個 DEV RAG Runtime，由 Runtime 依 Config 組裝 Pipeline 執行實例，並匯出 FTEST／ENT YAML（文件形狀節點），使用單位自行於 K8s 進行 CD 部署；Secret Vault、部署依賴與觀測工具位於獨立 Runtime 框外。UI 可匯出示意 YAML，不代表可直接部署；Engine、Runtime API 及完整部署 Bundle 尚未實作。
 
 ## UI Prototype v0.8（2026-10-14）
@@ -82,3 +84,4 @@ Document Schema／CSV 流程另經 jsdom 與 Chromium 驗證：兩種起始情�
 
 
 融合方式另經 jsdom／Chromium 驗證選單切換、參數卡控與保留、儲存／Edit、Inference-only 影響、選定策略匯出及桌面／手機版面；本版仍未實作真實分數計算或搜尋。
+

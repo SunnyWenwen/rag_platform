@@ -1,5 +1,5 @@
 flowchart TB
-    subgraph User["User"]
+    subgraph BUILDER["RAG Builder 測試"]
         direction LR
         B["1. Build（設定 Config）"] --> I["2. Ingestion"]
         I --> Q["3. Inference"]
@@ -9,6 +9,9 @@ flowchart TB
         C -->|如果有調整ingestion的設定, 需重新Ingestion| I
         C -->|只調整inference設定, 不需重新ingestion| Q
     end
+
+    D["6. Deploy YAML in FTEST/ENT"]
+    X -->|使用匯出的 YAML| D
 
     S["RAG System"]
     R["評估報告"]
@@ -27,3 +30,8 @@ flowchart TB
     classDef system fill:#ecf8f2,stroke:#599d85,color:#153f32
     class B,I,Q,E,X,C user
     class S,R,Y system
+
+
+    classDef deploy fill:#fff5e5,stroke:#cf9b4a,color:#624516
+    class D deploy
+    style BUILDER fill:#f7faff,stroke:#9aafc9
