@@ -1,6 +1,6 @@
 # RAG Platform — 資料契約與索引設計討論結論
 
-> 2026-10-14 · 設計草案 v0.4
+> 2026-10-14 · 設計草案 v0.5
 >
 > 整理本輪 Import／Parsing／Chunking／Embedding／Indexing／Retrieval 討論。這是設計規格；UI Prototype 已加入互動示意，Engine／API／DB 尚未實作。
 > 本文取代《04_module_methods_io_contracts.md》v0.2 中關於 ParsedDocument、Chunk、獨立 VectorSet、多欄位與搜尋後端的舊提案；其他模組的執行、錯誤與評估契約仍沿用原文件。
@@ -320,9 +320,10 @@ Custom Python 保持固定 I/O、Config Schema 與語意驗證。優先開放 Ch
 | Indexing = ES | DEV test use／Elasticsearch | URL、認證、Secret 引用、Timeout |
 | Local Search = Memory | 不需要 DB | 程序重啟需重新 Ingestion |
 | Local Search = MongoDB | DEV test use／MongoDB | 不含帳密的 URI、Database、Secret 引用、Timeout |
-| Query Rewrite／Multi-query | DEV test use／OpenAI-compatible API | Base URL、Model ID、認證、Secret 引用、Timeout |
+| LLM 共用服務設定 | DEV test use／OpenAI-compatible API | 服務名稱、Base URL、Model ID、認證、Secret 引用、Timeout |
+| Query Rewrite／Multi-query | 下拉選擇共用 LLM | 各方法的 Prompt、Query 數及原始問題選項 |
 | Rerank | None／DEV test use／Rerank API | Base URL、Model ID、認證、Secret 引用、Timeout |
-| Generation | DEV test use／OpenAI-compatible API | Base URL、Model ID、認證、Secret 引用、Timeout、生成參數 |
+| Generation | 下拉選擇共用 LLM | 兩層模板與生成參數；連線設定由共用 LLM 繼承 |
 
 DEV 使用平台預先設定的資源，UI 顯示模型資訊而不暴露憑證。Prototype 不提供真實 DEV 服務：模型名稱及 Tokenizer 是示例；Check Settings 僅驗證格式，不會測試連線。正式 Engine 再實作實際測試 API／模型維度與連線的能力。
 
@@ -421,3 +422,61 @@ Export 對使用中的外部依賴逐項檢查。可下載含 DEV 標記的「�
 部署覆寫不改平台內測試配置。若改 Embedding Model，先回 Edit Config 調整完整 Profile 並重新 Ingestion。即使模型名稱相同，實際服務仍需驗證模型版本、維度與 Tokenizer。匯出不包含 Chunk／向量資料，切換到自己的 ES／MongoDB 需準備資料或重新 Ingestion。
 
 YAML 仍使用示例 Engine Image；Local Search 固定單一副本，Ingestion／Inference 共用程序。Secret 以引用／Volume 掛載呈現，Runtime 解析是待實作契約。未部署、不建立真實 DB、不送出任何模型 API 呼叫。
+
+
+
+## 14. 2026-10-14：共用 LLM 清單與模組化檢查訊息（v0.5）
+
+### 14.1 LLM 服務設定集中管理
+
+Create／Edit Config 工具列新增「LLM 服務設定」。目前作用域是每個 RAG System 的配置清單；不是跨 Workspace 自動共享的全域服務目錄。
+
+- 每筆服務有穩定 id、可修改的顯示名稱、DEV test use／OpenAI-compatible API，以及自己的 URL、Model ID、認證引用、Timeout。
+- Query Transformation 與 Generation 透過 llm_ref 引用，可使用同一個 LLM，也可各自選不同的 LLM。
+- 模組內不重複出現 URL、認證與 Model ID；只有下拉選單和「管理 LLM」入口。
+- Embedding 與 Rerank 的任務與 API 契約不同，維持各自連線設定。
+- 服務名稱需非空且唯一。刪除使用中的服務不自動替換，保留失效引用並阻止儲存，提示受影響模組重新選擇。
+- 修改被引用的連線／模型設定會影響對應 Inference 模組，不需重新 Ingestion；修改未使用服務不觸發重建。
+- 有效配置與部署匯出只包含使用中的 LLM。同一個服務由兩個模組使用時，部署資源表只顯示一次；llm_ref 仍指向同一穩定 ID。
+
+配置概念：
+
+```json
+{
+  "llms": [
+    {"id": "llm-default", "name": "Default LLM", "mode": "DEV test use", "model": "demo-chat"}
+  ],
+  "transform": {"method": "Rewrite", "llm_ref": "llm-default"},
+  "generation": {"llm_ref": "llm-default"}
+}
+```
+
+上例僅展示引用關係，省略 Prompt 與其他必填模組參數；不是可直接執行的完整 Config。
+
+### 14.2 Query Transformation 自訂 Prompt
+
+Rewrite／Multi-query 分別保留自己的 Prompt 草稿，切換方法不覆蓋。None 停用模型與 Prompt，不納入有效執行配置。
+
+| 方法 | 支援的變數 | 必填變數 | 輸出約定 |
+|---|---|---|---|
+| Rewrite | query | query | 一個非空改寫問題 |
+| Multi-query | query、count | query、count | count 個衍生問題，第一版以每行一個文字問題示意 |
+
+UI 提供變數插入與替換後的預覽。空 Prompt、未知變數及缺少必要變數會阻止儲存。只執行單次變數替換，不執行程式碼。
+
+原始問題永遠保留；是否額外加入搜尋由 include_original 決定，不交給 Prompt 判斷。Runtime 仍需驗證輸出問題非空、數量合法，處理模型未遵守格式的情況；prototype 不呼叫 LLM。
+
+### 14.3 檢查訊息標註模組
+
+下方 Validator、AI 設定建議中的驗證結果與匯出檢查使用方括號前綴，例如：
+
+```text
+[Chunking] Overlap 必須小於 Chunk Size。
+[Query Transformation] Prompt 需包含 {{query}}。
+[Retrieval] 向量欄位：summary_vector 不在上游，請修正。
+[Rerank] Top-N 必須介於 1 與 Retrieval Top-K。
+[Generation] LLM 選擇已失效，請重新選擇。
+[LLM Settings / Default LLM] 請填入有效服務 URL。
+```
+
+相依錯誤以需要修正的模組為主：例如 Indexing 移除向量後，Retrieval 的失效選擇標註 [Retrieval]。共用 LLM 設定不完整時，同時提示共用服務及受影響模組。
