@@ -1,53 +1,73 @@
 flowchart TB
-  U[User Browser] --> UI[RAG Studio UI]
-  subgraph CP[Control Plane｜Platform Namespace]
-    UI --> API[API Gateway / Auth / RBAC]
-    API --> CONF[Blueprint & Config API]
-    API --> REG[Module Registry / Compatibility]
-    API --> RC[Runtime Controller]
-    API --> REL[Release / Helm Bundle Exporter]
+  %% 2026-10-14: target architecture; runtime, APIs and deployment are not implemented yet.
+  %% Both environments use the same versioned Engine and Runtime API contract.
+  %% Local Search runs ingestion and inference in one process; Memory needs re-ingestion after restart.
+  %% Optional MongoDB persists Chunks/vectors for rebuilding FAISS and BM25, not for searching.
+  %% FAISS/BM25/Memory live inside the Engine; external DB nodes are conditional, not required by Memory.
+
+  USER["使用者"] --> UI
+
+  subgraph DEV["Dev Platform｜設定與測試"]
+    direction TB
+    subgraph CP["Control Plane"]
+      UI["RAG Studio UI"] --> PAPI["Platform API / Auth"]
+      PAPI --> CONF["Config / Validator / 服務"]
+      CONF --> META[("Config / Run Store")]
+      CONF --> EXPORT["Export｜補齊部署連線"]
+    end
+
+    PAPI -->|"上傳／問答"| DAPI
+    PAPI --> EVAL["Evaluation Runner"]
+    EVAL -->|"批次問答"| DAPI
+    EVAL --> META
+
+    subgraph SANDBOX["Sandbox｜Data Plane"]
+      DAPI["Runtime API｜Ingest / Query / Status"] --> DENGINE["同一 RAG Engine｜含 Local Search"]
+      CONF -.->|"載入 Config"| DENGINE
+      DENGINE --> DOBS["Logs / Metrics / Traces"]
+    end
+
+    subgraph DRES["測試依賴｜DEV test use 或自行提供"]
+      DSEARCH[("ES / MongoDB（依後端）")]
+      DMODEL["LLM / Embedding / Rerank API"]
+    end
+    DENGINE -->|"依後端選用"| DSEARCH
+    DENGINE --> DMODEL
   end
-  CONF --> META[(PostgreSQL: Config / Runs / Releases)]
-  CONF --> OBJ[(Object Storage: Docs / Datasets / Artifacts)]
-  RC --> SANDBOX
-  subgraph SANDBOX[Sandbox｜Development / Testing Namespace]
-    direction LR
-    ING[Ingestion Job / Worker]
-    INF[Inference API Deployment]
-    EVAL[Evaluation Job]
+
+  EXPORT --> BUNDLE["Runtime Config / Image Ref / API 說明"]
+  BUNDLE --> DEPLOY["使用單位部署｜手動或 CI/GitOps"]
+
+  APP["應用程式／外部系統"] --> RAPI
+
+  subgraph PROD["自行部署｜獨立 RAG Runtime（API only）"]
+    direction TB
+    RAPI["Runtime API｜Ingest / Query / Status"] --> PENGINE["同一 RAG Engine｜含 Local Search"]
+    PCONF["Config / Secret 引用"] -.-> PENGINE
+    PENGINE --> POBS["Logs / Metrics / Traces"]
+
+    subgraph PRES["部署依賴｜使用單位自行申請或提供"]
+      PSEARCH[("ES / MongoDB（依後端）")]
+      PMODEL["LLM / Embedding / Rerank API"]
+    end
+    PENGINE -->|"依後端選用"| PSEARCH
+    PENGINE --> PMODEL
   end
-  ING --> OBJ
-  ING --> SEARCH[(Vector / Search Index)]
-  INF --> SEARCH
-  INF --> LLM[Model Gateway / Embedding / LLM]
-  EVAL --> INF
-  EVAL --> OBJ
-  ING --> LLM
-  ING --> OBS[Tracing / Metrics / Logs]
-  INF --> OBS
-  EVAL --> OBS
-  REL --> GIT[Git Repository / Artifact Registry]
-  GIT --> CD[CI / GitOps Argo CD]
-  CD --> PROD
-  subgraph PROD[Production K8s Namespace / Cluster]
-    direction LR
-    PAPI[Inference API Deployment + Service / HPA]
-    PJOB[Scheduled Ingestion Job / Worker]
-  end
-  PAPI --> SEARCH
-  PJOB --> SEARCH
-  PAPI --> LLM
-  PJOB --> OBJ
-  subgraph SHARED[Shared Enterprise Infrastructure]
-    META
-    OBJ
-    SEARCH
-    LLM
-    OBS
-  end
+
+  DEPLOY --> PCONF
+  DEPLOY -->|"啟動 Runtime"| PENGINE
+
   classDef control fill:#e8f0ff,stroke:#5881c8,color:#163459
   classDef runtime fill:#ecf8f1,stroke:#58a389,color:#174633
-  classDef shared fill:#f5f4ff,stroke:#8c83c6,color:#372f6b
-  class UI,API,CONF,REG,RC,REL control
-  class ING,INF,EVAL,PAPI,PJOB runtime
-  class META,OBJ,SEARCH,LLM,OBS shared
+  classDef resource fill:#f5f4ff,stroke:#8c83c6,color:#372f6b
+  classDef delivery fill:#fff5e5,stroke:#cf9b4a,color:#624516
+  class UI,PAPI,CONF,META,EXPORT control
+  class DAPI,DENGINE,EVAL,RAPI,PENGINE runtime
+  class DSEARCH,DMODEL,PSEARCH,PMODEL,DOBS,POBS resource
+  class BUNDLE,DEPLOY,PCONF delivery
+  style DEV fill:#f7faff,stroke:#9aafc9
+  style CP fill:#eef4fb,stroke:#9aafc9
+  style SANDBOX fill:#f1faf5,stroke:#90b7a3
+  style DRES fill:#f6f3ff,stroke:#b1a3ca
+  style PROD fill:#f5fcf8,stroke:#90b7a3
+  style PRES fill:#f6f3ff,stroke:#b1a3ca

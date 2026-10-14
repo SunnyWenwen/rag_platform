@@ -13,11 +13,11 @@ Config-driven RAG System Factory 設計討論專案。
 - [模組目的、方法與 I/O Contract（v0.2 草案；資料契約見 v0.5）](docs/04_module_methods_io_contracts.md)：十個模組的輸入輸出、共用資料結構、相依卡控、自訂 Python 與 LangChain／LangGraph 分工；區分 MVP 與後續候選方法。
 
 - [UI Prototype](01_ui_prototype.html)：下載後以瀏覽器開啟，操作與指標均為模擬。
-- [Architecture Proposal](03_architecture_proposal.md)：模組介面、Config、API、生命週期與 MVP 規劃。
+- [Architecture Proposal v0.2](03_architecture_proposal.md)：Dev Platform／獨立 Runtime 分工、共用 Engine／API、外部服務環境設定、模組契約與 MVP 規劃。
 - [L1 使用流程圖](diagrams/01_user_system_l1.png) · [Mermaid 原始檔](diagrams/01_user_system_l1.mmd)
 - [Infra 架構圖](diagrams/02_infra_architecture.png) · [Mermaid 原始檔](diagrams/02_infra_architecture.mmd)
 
-架構提案與圖保留初版設計；UI 已依下述流程簡化。提案提及的 deployment_example/ 獨立範例檔尚未納入；UI 可匯出示意 YAML，不代表可直接部署。
+架構提案與 Infra 圖已整合 2026-10-14 的最新討論：平台提供設定與測試介面，自行部署交付 API-only Runtime，並補齊使用單位的外部服務連線。UI 可匯出示意 YAML，不代表可直接部署；Engine、Runtime API 及完整部署 Bundle 尚未實作。
 
 ## UI Prototype v0.5（2026-10-14）
 
@@ -53,3 +53,4 @@ Config-driven RAG System Factory 設計討論專案。
 
 
 共用 LLM／Prompt 另經 Chromium 實測：新增、改名、選擇、刪除、API 設定、Prompt 即時驗證與預覽、共用匯出資源及手機寬度。
+
