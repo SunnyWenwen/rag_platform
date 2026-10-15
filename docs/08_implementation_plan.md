@@ -1,6 +1,6 @@
 # RAG Builder — 開發計畫、驗收與決策追蹤
 
-> 文件集 v0.12 · 2026-10-15 · 開發規格草案
+> 文件集 v0.13 · 2026-10-15 · 開發規格草案
 >
 > 目的：讓 coding agent 依同一套規格分階段開發，並持續記錄尚不清楚的問題。本文是決策／待決狀態的權威位置；它不把技術建議自動轉成使用者已核可決策。
 
@@ -17,6 +17,8 @@
 03～07 的 Q-ID 連回本文件。每份文件保留自身待討論清單，完整選項／決策只維護一次。沒有核可的問題不能靠空白 TODO 或聊天記憶隱藏。
 
 本輪基準為 `cf4dfdc0e29acc91a2fe63b1993f867c8facaf6d`。新架構／介面提案與該版本 Prototype 的差異，要以 migration 明確處理。03～08 是開發規格草案；原型測試通過不代表 Engine／API 已完成。v0.11 已追加名詞決策；v0.12 將正式定義集中到 03 §3。v0.9 的初始基準仍保留以追蹤來源。
+
+v0.13 從 `e52c4d74a469522155d814f0ff51fddf8946f957` 核對交接文件、本串可見決策、已提交原型與圖面；補齊傳遞／互動規則並記錄仍需討論的邊界，見 §12。
 
 ## 2. 文件責任與建議閱讀順序
 
@@ -145,7 +147,7 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 <a id="q-002"></a>
 ### Q-002 共用 Schema、Config、SDK 與版本凍結
 
-- 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile 及原型短名稱／匯出標籤 migration。
+- 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile、Local Search 持久化選擇的 Config／部署歸屬，以及原型短名稱／匯出標籤 migration。
 - 建議：先核定最小完整 Config＋單一公開 Engine interface；Pydantic 匯出 JSON Schema，UI 使用相同來源。用完整欄位路徑；未知別名拒絕。
 - 替代：直接沿用 Prototype 全部短名稱；需補齊其缺少型別與執行語意。
 - 負責角色：Engine＋Backend＋Frontend；阻擋 M0 契約凍結。
@@ -155,7 +157,8 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 ### Q-003 模型服務與 Adapter 契約
 
 - 不清楚：首組模型、Profile／版本辨識、Tokenizer 取得、Chat 角色／輸出格式、多 Query 解析、Rerank 服務限制。
-- 建議：先落實已選的 embeddings／Chat Completions／平台 rerank 格式，各有 Fake 與真實契約測試；不同格式顯式 Adapter。
+- 既有方向：Embedding API、System 共用 LLM 的 OpenAI-compatible API、平台約定 Rerank API；原型格式基線為 embeddings／Chat Completions／04 的 rerank。原型基線不等於所有 Provider 相容性都已核定。
+- 建議：先選一組可實測的 Adapter／服務及 Profile，各有 Fake 與真實契約測試；不同格式顯式 Adapter。
 - 替代：第一期支援多 Provider 格式，增加測試矩陣。
 - 負責角色：Engine＋模型服務提供方；阻擋 M1 真實服務。
 - 決策：未定；更新 04／05／07。
@@ -317,7 +320,7 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 <a id="q-021"></a>
 ### Q-021 Export、FTEST／ENT 與 Secret Vault
 
-- 已確認：同版邏輯 Config 不隨環境改變，環境連線／Secret／資源為部署設定。不清楚的是 Image／Bundle 包裝、Vault／注入、Secret 型別、K8s 資源／Ingress／Probe 及 CD 流程。
+- 已確認：同版邏輯 Config 不隨環境改變，環境連線／Secret／資源為部署設定。不清楚的是 Image／Bundle 包裝、Vault／注入、Secret 型別、K8s 資源／Ingress／Probe 及 CD 流程；另需與 Q-002 核定 Local Memory→MongoDB 能否只換部署設定而沿用同版 Config。
 - 建議：版本鎖定 Runtime Image＋有效 Config＋環境覆寫；Local 單副本；明示未帶資料且無 Builder 依賴。
 - 替代：使用單位既有 Helm／GitOps 形式；仍需相同可驗證交付內容。
 - 負責角色：平台／DevOps＋Backend；阻擋 M6 正式部署交付。
@@ -408,7 +411,7 @@ Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract�
 
 初版交付（v0.9）：重整 03～05、新增 06～08、更新 README，登錄 27 項未決問題。歷史核對版（v0.10）補正需求／基線／建議的界線，見 §10；名詞釐清版（v0.11）統一 Config／部署設定、Workspace → System 及版本概念；名詞集中版（v0.12）整理 03 §3 並補齊其他文件引用，見 §11。Q-ID 維持 27 項，不以重新編號掩蓋修正。仍只交付文件，不宣稱 Engine、API 或合併時點 UI 已實作。
 
-2026-10-15 依使用者要求新增 [開發文件交接](documentation_handoff.md)，整理跨對話接續所需的目標、分工、重要決策、待決事項、歷史核對限制及 GitHub 入口；沿用 v0.12 規格語意，未增加產品技術決策。
+2026-10-15 曾新增跨對話交接摘要；使用者已回到本串接續規劃。v0.13 讀取後將必要資訊併入既有主責文件及 §12，依指示刪除臨時 handoff；原交接內容保留於上述核對起點的 Git 歷史。
 
 ## 10. 2026-10-15 歷史對話與決策核對
 
@@ -522,3 +525,41 @@ Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract�
 - 未決 Schema、生命週期、權限及索引版本政策沿用原 Q-ID，不因整理名詞而視為已定案；不新增技術選型。
 
 v0.11／v0.12 均只修改規格與 README；未修改 HTML Prototype／API／Engine。舊原型 Groups／RAGBlueprint 仍需在正式實作時依新名詞遷移，不能把新文件當成程式已更新。
+
+## 12. 2026-10-15 回到原規劃對話的整合核對（v0.13）
+
+### 12.1 來源與保留原則
+
+- 起點為 `e52c4d74a469522155d814f0ff51fddf8946f957` 的 03～08／README／「畫userflow」交接摘要；逐項比對原 RAG Builder 規劃對話可見的模組、UI、資料契約、服務及圖面要求。
+- 另核對到 10/15 10:06 的使用者確認：同一 System 的 Config 相同、部署設定可不同；Workspace → System；Blueprint 並非使用者指定。沿用 D-29～D-32，不回到早期額外 Group 的命名。
+- 這次亦核對原型 Blob `0cc835ef686136b920d46714d604d797462f250f`：目前為 v0.8，仍只有單層融合、舊 Groups／RAGBlueprint 名稱。正式規格與原型的遷移範圍繼續分開記錄。
+- 本次未取得其他對話逐字全文；以前的證據限制仍見 §10.1。持久化歸屬沒有找到使用者明確定案，保持 OPEN。
+- 後續在本串繼續規劃；正式名詞、規則與決策分別由 03、04～07、本文維護，不再需要臨時 handoff。
+
+### 12.2 直接補正的小幅差異
+
+| 項目 | 補正 | 主責位置 |
+|---|---|---|
+| Inference I/O 接線 | Retrieval、Rerank 的 I／O 明列原始問題；None 也持續傳遞；include_original 只控制搜尋清單 | 04 §3.1 |
+| Parser 多路 | 同一 System 可同時啟用不同格式路由，同格式選有效策略；CSV／records 不重複映射 | 04 §4.2 |
+| UI 入口與編輯 | 明列單一主畫面、左側 Workspace、中央卡片、右上 Create RAG System；Edit 重用表單 | 06 §1 |
+| 服務來源選項 | 恢復 Embedding／ES／Local MongoDB／共用 LLM／Rerank 的明確 DEV 與自行提供選項 | 06 §3.2.1 |
+| 相依卡控 | 補具體上游→下游案例，停用原因、失效引用保留及定位方式 | 06 §3.3 |
+| API 與 Schema | Ingestion 範例註明先宣告的 Schema；引用範例帶來源版本及位置，Revision 與 05 使用同一示意值 | 07 §5.3／5.6 |
+| 基線與目標分開 | 原型 Provider 格式標為基線；Retrieval 提前 Top-K 與 Rerank 全域上限只適用既有單層路徑，多階段依 Q-014 驗證 | 04 §4.4／5.2／5.4、05 §6.4、Q-003 |
+
+ParsedDocument 五個 key、Chunk 六個 key、fields→vectors、多欄位用途、Local Search 的搜尋／持久化分工、CSV 兩種入口、LLM／Prompt、Filter、獨立 API Runtime、YAML 交付與已確認圖面要求均保留。這次只修改文件，未修改 Prototype 或圖面、未實作 Engine／API。
+
+### 12.3 需要使用者討論的實作邊界
+
+| 問題 | 可選方向及影響 | 追蹤／狀態 |
+|---|---|---|
+| Local Memory／MongoDB 的歸屬 | 若屬部署設定，DEV Memory 與 FTEST／ENT MongoDB 可使用同一邏輯 Config，仍需分開驗證資料／恢復；若屬邏輯 Config，切換需新 Revision 並定義影響。原 05 的單一歸屬敘述已改回待決，範例的 indexing.persistence 只是候選 | Q-002／Q-021；OPEN |
+| Fusion 路徑 | 既有原型把所有 Query×欄位在 Rerank 前做一次 Sum Score／RRF；目標另有同 Query／跨 Query、Rerank 前／後的配置需求。需選首批有限計畫與預設，才能凍結候選形狀及各階段 K／N | Q-014；需求已確認、具體計畫 OPEN |
+| Config 變更後的資料可見性 | 簡化為重建完成前阻擋 Query，或維持舊 Config＋舊 Index 服務直到切換；兩者影響版本、任務、UI 與資料保存。來源文件版本／索引版本的概念已區分，快照、歷史回復與零停機仍需明確核可 | Q-010／Q-015；OPEN |
+
+以上為優先影響契約及端對端行為的項目；不因本次核對而選定方案，也不要求先解完所有 27 項問題才能開發。每次確認後同步主責規格、範例及相應 Q-ID。
+
+### 12.4 本輪文件驗證
+
+03～08 與 README 共 7 份文件：108 個相對連結、69 個錨點、12 段 JSON、3 段 YAML 及 1 段 Python 範例語法檢查通過；維持 27 個 Q-ID、32 個 D-ID 及 40 項既有要求對照。檢查 handoff 已移除且無失效引用、YAML 範例解析語意不變、既有 Mermaid 未變動。Python 只檢查語法，不執行尚未存在的 Engine。Prototype／Runtime／模型／DB／K8s 本輪沒有新增功能驗收。

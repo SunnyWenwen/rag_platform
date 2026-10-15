@@ -1,6 +1,6 @@
 # RAG Builder — 使用流程與 UI 開發規格
 
-> 文件集 v0.12 · 2026-10-15 · 開發規格草案
+> 文件集 v0.13 · 2026-10-15 · 開發規格草案
 >
 > 本文定義 UI 目標互動。現有 HTML Prototype 的搜尋、模型、評估及 API 為模擬。Parsing 的預設收合、LLM／Prompt／範例按鈕等已確認要求如下；其他基本／進階分組、正式框架、範本與試跑優先級仍待決。
 
@@ -11,6 +11,8 @@
 - 畫面名詞與元件關係以 [03 §3](../03_architecture_proposal.md#terminology) 為準；UI 標籤與說明不得另定同名概念。
 - 資料／Config 以 [05](05_data_contracts_search_design.md) 為準；模組能力由 [04](04_module_methods_io_contracts.md) 提供；API 見 [07](07_backend_runtime_integration.md)。
 - 正式階層為 Workspace → System；側欄選 Workspace，主區顯示 System 卡片與操作視窗，不另建 Group。原型的 Groups 標籤／內部變數屬舊命名，正式化時遷移，不新增通用 DAG 編輯器。
+- 保留單一主畫面：左側切換 Workspace，中間以圖示／卡片呈現已建 System，卡片提供 Ingest／Inference／Evaluation／Edit Config／Export 入口。
+- 右上角放顯眼的「Create RAG System」。開啟設定介面時沿用此名稱；Edit Config 重用同一份表單與模組設定元件，載入所選 System 的獨立草稿。
 - UI 設定 Config，Engine 組裝實例；前端不直接存取 Secret 或自行執行正式 Pipeline。
 
 ## 2. 畫面與操作地圖
@@ -66,6 +68,18 @@ Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保�
 
 必填但缺失的設定不能因進階區收合而無法發現；錯誤摘要可直接展開並定位。改動過的進階設定收起後，建議顯示已修改項數／簡短摘要。範圍、預設值及「每次記住展開」政策見 Q-025。
 
+### 3.2.1 服務來源選項（保留已確認範圍）
+
+| 設定位置 | 來源／選項 | 條件設定 |
+|---|---|---|
+| Embedding | DEV test use／Embedding API | 自行提供時設定 API URL、Model、認證引用及必要模型資訊；不另增加使用者管理本地模型的選項 |
+| Indexing／Elasticsearch | DEV test use／使用者提供 Elasticsearch | 後者才要求 ES URL／認證等連線設定 |
+| Indexing／Local Search | Memory／MongoDB | 選 MongoDB 才展開 DEV test use／使用者提供 MongoDB；Memory 不要求 DB。持久化選擇的 Config／部署歸屬見 Q-002／Q-021 |
+| 共用 LLM 服務 | DEV test use／OpenAI-compatible API | 自行提供時設定 Base URL、Model、認證引用；Query Transformation／Generation 以下拉 llm_ref 引用，不各填一份連線 |
+| Rerank | None／DEV test use／Rerank API | 啟用時設定內容欄位與 Top-N；自行提供時另填 API URL、Model、認證引用 |
+
+DEV test use 使用平台測試資源；匯出部署時需填入使用單位的綁定。Embedding／LLM 的現有原型格式分別為 OpenAI-compatible embeddings／Chat Completions，Rerank 為 04 的平台契約；首組真實服務的相容範圍仍由 Q-003 核定。
+
 ### 3.3 條件欄位與相依驗證
 
 - 外部服務選自行提供才要求必要 URL／Model／Secret reference；DEV 不曝光平台憑證。
@@ -77,6 +91,17 @@ Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保�
 - 前端 Validator 提供即時回饋，Backend／Engine 仍重新驗證。Schema 及規則來源需共用或由後端產生，避免手寫三份不同規則。
 
 錯誤顯示 `[模組] 原因`；進一步可提供欄位位置、修正方式與是否需重新 Ingestion。UI 不要求使用者理解內部 Python 類別或堆疊。
+
+相依卡控需能直接說明上游原因，保留必要顯示：
+
+| 上游條件 | 下游呈現與驗證 |
+|---|---|
+| Indexing 選 ES／Local Search | Retrieval 顯示繼承的後端資訊，不增加 Implementation 選單 |
+| 欄位未建立全文／向量索引 | 對應搜尋選項顯示且停用，說明需先在 Indexing 建立能力；既有選擇失效則保留錯誤並阻止保存 |
+| Embedding 移除某個 output_name | Indexing／Retrieval 的向量引用標為失效，不默默改為其他向量或欄位 |
+| Header-aware 所需標題能力未開啟 | 顯示相依原因，提供定位 Parsing 進階設定的方式；無法滿足時阻止保存 |
+
+卡控只處理設定相依；不代替實際後端能力、Profile 或連線驗證。規則由 04／05 共用來源推導。
 
 ## 4. 從 CSV 開始
 

@@ -1,6 +1,6 @@
 # RAG Engine — 組裝、執行與模組開發規格
 
-> 文件集 v0.12 · 2026-10-15 · 開發規格草案
+> 文件集 v0.13 · 2026-10-15 · 開發規格草案
 >
 > 本文涵蓋可獨立執行的 Engine 與各模組；正式名詞定義見 [03 §3](../03_architecture_proposal.md#terminology)，共用資料／Config 結構見 05。既有產品語意為已確認方向，新增 SDK、Registry 形狀、執行政策為建議，須經對應 Q-ID 核定。本次未新增 Engine 程式。
 
@@ -83,12 +83,14 @@ supports: {async: true, batch: true, streaming: false}
 | Embedding | Chunk 清單 | 相同成功 Chunk＋vectors | Profile、逐項錯誤；不回獨立 VectorSet |
 | Indexing | 帶向量或純文字的 Chunk 清單 | IndexBinding、逐項結果、可搜尋狀態 | 授權目標／刪除事件；提交政策待決 |
 | Query Transformation | 原始問題 | 原始問題＋SearchQuery 清單 | llm_ref、Prompt |
-| Retrieval | SearchQuery 清單、IndexBinding、filters | 基線為原始問題＋SearchHit 清單；可配置 Fusion Plan 需保留逐路候選，形狀待 Q-002／Q-014 | Query Encoding、可信授權範圍、query／route identity |
-| Rerank | 原始問題、SearchHit 清單 | 重排後 SearchHit 清單、applied | 模型服務與內容欄位 |
+| Retrieval | 原始問題、SearchQuery 清單、IndexBinding、filters | 基線為原始問題＋SearchHit 清單；可配置 Fusion Plan 需保留逐路候選，形狀待 Q-002／Q-014 | Query Encoding、可信授權範圍、query／route identity |
+| Rerank | 原始問題、SearchHit 清單 | 原始問題＋重排後 SearchHit 清單、applied | 模型服務與內容欄位 |
 | Generation | 原始問題、SearchHit 清單 | QueryResult | 共用 LLM、Context Budget |
 | Evaluation | Dataset、Target | 逐題結果與指標摘要 | 版本綁定、Judge；工作儲存由 07 提供 |
 
 原始問題不被 Rewrite 覆蓋。新版不預設公開對話歷史；歷史若啟用需另訂契約，不因舊草案有 history 欄位就宣告已支援。
+
+原始問題是 Inference 的持續傳遞資料：Query Transformation → Retrieval／Fusion → Rerank（含 None）→ Generation 都必須保留，不能只在第一步或 HTTP 層暫存後丟失。`include_original` 只控制是否把原始問題加入搜尋 Query 清單，不影響 Rerank／Generation 仍取得原始問題。逐 Query 的 Rerank 若改用衍生 Query，需依 Q-014 的計畫顯式定義。
 
 ### 3.2 錯誤、重試與觀測
 
@@ -136,6 +138,8 @@ Timeout、重試預算、取消、partial 與 fallback 尚待 Q-009／Q-017／Q-
 4. 多文件來源派生穩定 ID，保留資產關聯；驗證完整 Schema。
 5. 沒有結構時 structure={}，不能捏造 headings 或頁碼。
 
+不同格式的 Parser routes 可在同一 System 同時啟用，依每筆來源格式分派；同一格式選一個有效策略，例如 PDF 使用原生擷取或核定的 OCR／fallback 策略。實際平行度受資源與執行政策控制，不要求使用者把不同格式拆成不同 System。
+
 **例外**：掃描文件未啟用 OCR 回 `OCR_REQUIRED` 或等價領域錯誤；零文字不能當作可檢索成功。損壞／加密檔案、讀取順序、空白頁及表格策略見 Q-005。
 
 **驗收**：直接文字與掃描檔可辨別；Unicode offset／頁碼可對回內容；一檔多文件不共用同一 ID；未支援格式有明確錯誤。
@@ -169,7 +173,7 @@ Timeout、重試預算、取消、partial 與 fallback 尚待 Q-009／Q-017／Q-
 
 1. 解析 Profile／服務／Tokenizer，依 document encoding 建立每筆輸入。
 2. 對實際來源內容檢查 Token 極限，含前綴及特殊 Token；不能只驗 Chunk Size。
-3. 按 Batch Size 呼叫第一版選定的 OpenAI-compatible embeddings Adapter。
+3. 按 Batch Size 呼叫 Embedding Adapter；現有 Prototype 的格式基線為 OpenAI-compatible embeddings。正式首組服務、相容範圍及模型契約仍待 Q-003，不把原型格式當作所有 Embedding API 的通用標準。
 4. 驗證回應 index 對應、數量、維度與有限值；不能因回傳順序錯誤把向量寫給其他 Chunk。
 5. normalization 與 metric 依 Profile 執行；記錄模型／版本／Provider request ID。
 6. 寫回原 Chunk.vectors；保留 fields／metadata。純全文 Pipeline 不初始化此服務。
@@ -226,9 +230,9 @@ FAISS 的維度／metric 不足以證明向量空間相容。cosine／inner prod
 2. 將預設 filters、本次 filters、可信 ACL 以 AND 合併，驗證欄位／operator／值。
 3. 建立每個 Query × 全文／向量欄位的路徑；向量路徑依其 Profile 使用 query encoding。
 4. 每路在合法候選範圍內取 per_route_k，保留 rank、原始分數、方向與命中 Query。
-5. 轉換距離為越大越相關的 relevance；依 chunk_id 對齊融合。
-6. 排序後取最終 top_k，再批次取回完整內容並保留排序。
-7. vectors 可省為 {}，Rerank／Generation 無須知道 MongoDB 或 FAISS。
+5. 轉換距離為越大越相關的 relevance；保留 query／route identity，依核定計畫及 chunk_id 對齊融合。
+6. 在計畫指定的最終合併點後才取最終 top_k；既有單層基線在 Rerank 前完成。若計畫在逐 Query Rerank 後才跨 Query 融合，不能提前攤平或套用全域截斷；各階段 K／N 由 Q-014 定義。
+7. 在 Rerank／Generation 使用候選前批次取回所需 fields／metadata，保留各路排序與身分；vectors 可省為 {}，下游無須知道 MongoDB 或 FAISS。
 
 **需求與基線要分開**：使用者在 2026-10-14 明確追問「在哪一步合併」，因此目標必須能表達融合策略及合併時點。既有 Prototype 為所有 Query × 欄位單層融合、Rerank 前執行；不能把此實作限制寫成最終產品定案。單一路是否略過融合仍需依有效計畫判斷。
 
@@ -267,7 +271,7 @@ Engine 必須在計畫需要時保留 query_id／route_id、各路候選／分�
 
 ### 5.4 Generation
 
-**方法**：由 llm_ref 取共用 LLM；第一版選定 Chat Completions Adapter。Context Assembly 在本模組內，不增加 UI 模組。
+**方法**：由 llm_ref 取共用 LLM，沿用已確認的 DEV test use／OpenAI-compatible API 服務方向；現有 Prototype 以 Chat Completions 為格式基線，正式首組服務相容範圍見 Q-003。Context Assembly 在本模組內，不增加 UI 模組。
 
 **處理**：
 

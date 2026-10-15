@@ -1,6 +1,6 @@
 # RAG Builder — Backend、Runtime API 與整體串接規格
 
-> 文件集 v0.12 · 2026-10-15 · 開發規格草案
+> 文件集 v0.13 · 2026-10-15 · 開發規格草案
 >
 > 本文包裝 04 的 Engine，負責管理、HTTP、任務、持久化與交付。Endpoint 大方向沿用既有提案；精確 Envelope、認證、狀態與儲存細節為建議，依 Q-ID 核定後實作。
 
@@ -109,6 +109,8 @@ System 列表／讀取、Workspace／Dataset CRUD、AI suggestion／連線檢查
 
 ### 5.3 JSON Ingestion
 
+以下例子使用 05 §7 的 Document Schema，已宣告 `fields.text`／`fields.title` 與 `metadata.department`。呼叫者使用各 System 自己的 Schema；範例中的欄位不代表所有 System 都預設接受。輸入 Record 的四個 key 與 Parsing 後固定五個 key 的 ParsedDocument 分開，`structure` 由 Parser 產生。
+
 ```json
 {
   "records": [{
@@ -123,10 +125,12 @@ System 列表／讀取、Workspace／Dataset CRUD、AI suggestion／連線檢查
 Record 格式見 05；input 欄位已是 Schema 目標名，不傳 structure／vectors。請求與回應的大小／數量上限、冪等鍵見 Q-008／Q-019。
 
 ```json
-{"run_id":"ing-001","status":"queued","config_revision":3}
+{"run_id":"ing-001","status":"queued","config_revision":"C1-example"}
 ```
 
 以上 202 只表示接受；回應前須先完成授權、請求形狀與必要的同步預檢。正式預檢深度、排隊可用性、拒絕後是否留 run 記錄見 Q-017／Q-019。
+
+本文件的 `C1-example` 與 05 部署設定範例使用相同示意 Revision；正式 ID 型別與格式仍待 Q-002／Q-015，不由示例值凍結。
 
 ### 5.4 檔案 Ingestion
 
@@ -140,7 +144,7 @@ Content-Type 為 multipart/form-data，files 可重複多次，由 HTTP Client �
 
 ```json
 {
-  "run_id":"ing-001","status":"completed","config_revision":3,
+  "run_id":"ing-001","status":"completed","config_revision":"C1-example",
   "processed_records":1,"total_records":1,
   "searchable":true,"errors":[]
 }
@@ -156,9 +160,9 @@ processed_records／total_records 指解析後的邏輯文件數，不是 Chunk 
 
 ```json
 {
-  "request_id":"req-001","config_revision":3,
+  "request_id":"req-001","config_revision":"C1-example",
   "answer":"依保養規範，每月清潔散熱孔。[1]",
-  "citations":[{"citation_id":"1","document_id":"manual-001","chunk_id":"chunk-example"}]
+  "citations":[{"citation_id":"1","document_id":"manual-001","chunk_id":"chunk-example","source_revision":"v1","locations":[]}]
 }
 ```
 

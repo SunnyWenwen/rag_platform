@@ -1,6 +1,6 @@
 # RAG Builder — 共用資料模型與 Config 規格
 
-> 文件集 v0.12 · 2026-10-15 · 開發規格草案
+> 文件集 v0.13 · 2026-10-15 · 開發規格草案
 >
 > 本文是資料形狀及設定規則的權威位置。已確認的語意保留；新增的程式型別、完整 Config 拼字與預設值為建議草案，待 Q-002 核定後才凍結。YAML 範例用於討論與驗收設計，目前沒有 Engine 可直接執行。
 
@@ -208,7 +208,7 @@ failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項�
 | Parsing | 格式路由、結構化 records 驗證 | routes |
 | Chunking | Recursive／Header-aware；Token 計量 | method、split_field、copy_fields、metadata_fields、size、overlap、tokenizer、separators、keep_separator、header_levels |
 | Embedding | fields → 命名 vectors | profile、mappings（source_field、output_name） |
-| Indexing | 儲存、全文、向量、過濾分開 | backend、stored_fields、fulltext_fields、vector_fields、filter_fields、persistence、metric；collection 在部署 Binding |
+| Indexing | 儲存、全文、向量、過濾分開 | backend、stored_fields、fulltext_fields、vector_fields、filter_fields、metric；persistence 的 Config／部署歸屬待 Q-002／Q-021，collection 在部署 Binding |
 | Query Transformation | None／Rewrite／Multi-query | method、llm_ref、prompt、count、include_original |
 | Retrieval／Fusion Plan | 選已索引欄位、推導模式；可配置策略及合併時點 | fulltext_fields、vector_fields、per_route_k、top_k、filters、fusion；stages／scope／placement 具體 Schema 待 Q-014 |
 | Rerank | None／DEV／Rerank API | method、service、content_fields、top_n |
@@ -227,7 +227,7 @@ failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項�
 | Fusion | 多 Query／多欄位需有明確計畫；基線為單層 Rerank 前，目標支援時點選擇；只使用已選策略有效參數 |
 | Sum Score | 現有單層基線的預設；全文／向量權重預設各 1，有限非負，使用中至少一個大於 0；不自動正規化 |
 | RRF | rank 從 1；k 預設 60 且為正整數；k 與 Top-K 不同 |
-| Rerank | None 不執行且不使用 top_n；啟用時 0 < top_n ≤ Retrieval top_k |
+| Rerank | None 不執行且不使用 top_n；既有單層基線為 0 < top_n ≤ Retrieval top_k；逐 Query／多階段計畫的候選數與 K／N 關係待 Q-014，不沿用單一全域上限取代計畫驗證 |
 | Templates | 只允許宣告變數；單次替換；未知／必要變數缺少阻止保存 |
 | LLM | 引用有效；刪除使用中的服務不得默默換另一個 |
 
@@ -413,7 +413,9 @@ runtime:
 
 以上模型維度、Token 上限、Timeout、版本與名稱均為示例；部署 URL 用不可運作的 .invalid，Secret 只有引用。Engine 讀邏輯 Config，服務／Store resolver 依部署設定綁定。max_attempts=1 表示本例不自動重試，不宣稱重試政策已定案。
 
-ES／Local／持久化模式的選擇屬於邏輯 Config；各環境的 ES 連線／Secret／集合、MongoDB URI／DB／Collection 屬部署設定。模式變更需新 Config／重建；單改部署連線也不代表資料已搬移。正式配置分支、DEV service_ref 與 Manifest 由 Q-002／Q-012／Q-021 核定。
+ES／Local Search 是不同搜尋後端的邏輯選擇；各環境的 ES 連線／Secret／集合、MongoDB URI／DB／Collection 屬部署設定。Local Search 的 Memory／MongoDB 持久化選擇歸邏輯 Config 或部署設定，尚未取得明確決策，需 Q-002／Q-021 核定。上述 `indexing.persistence` 暫沿用 Prototype 形狀，只是 Config Schema 候選；不能據此認定切換必然產生新 Config Revision，也不能直接認定只換部署綁定即可完成。
+
+待討論情境：DEV 用 Local Memory，FTEST／ENT 用 Local Search＋MongoDB，方法、模型與資料契約相同時，是否沿用同一 Config Revision？兩種歸屬都需驗證資料／Profile 相容性、初始化與恢復；改連線不代表資料已搬移。正式配置分支、DEV service_ref 與 Manifest 由 Q-002／Q-012／Q-021 一起核定。
 
 ## 8. Config 變更影響矩陣
 

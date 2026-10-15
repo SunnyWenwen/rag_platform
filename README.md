@@ -8,11 +8,13 @@ Config-driven RAG System 建立與測試平台。
 
 **名詞定義**：以 [03 §3「名詞定義與元件責任」](03_architecture_proposal.md#terminology) 為唯一依據，包含 Builder／Engine／Runtime／System、Workspace、Module／Method／Pipeline、Config／部署設定及版本概念。
 
-**跨對話接續**：先讀 [開發文件交接](docs/documentation_handoff.md)，掌握整理目標、文件分工、重要決策、待決事項、歷史核對範圍及接續方式。
+**接續規劃**：先讀 [03 名詞與架構](03_architecture_proposal.md#terminology) 及 [08 開發計畫與決策](docs/08_implementation_plan.md)。原 RAG Builder 規劃對話與「畫userflow」的整合核對、直接修正及需討論的邊界集中於 08 §12；臨時交接摘要已依指示讀取後移除。
 
-## 開發規格文件集 v0.12（2026-10-15）
+## 開發規格文件集 v0.13（2026-10-15）
 
 本輪已把 03～08 整理為 coding agent 可分階段使用的開發規格草案。**已確認方向、既有基線、建議與待決事項分開記錄**；具體公共介面與部分行為仍需決策，不表示後端已實作。v0.10 比對可取得的歷史片段；v0.11 統一 Engine／Runtime／System、Config／部署設定及 Workspace → System，移除正式 Blueprint／Group 概念；v0.12 將正式名詞集中到 03，其他規格引用並補充各自的實作細節。
+
+v0.13 跨對話比對：補齊 I/O 原始問題傳遞、Parser 多路、服務選項、相依卡控與 UI 入口；保留「畫userflow」最新名詞決策。Local Memory／MongoDB 的 Config／部署歸屬、Fusion 計畫及重建期間查詢政策保留待討論，見 08 §12。Prototype 及圖面未改。
 
 | 文件 | 定位 |
 |---|---|
