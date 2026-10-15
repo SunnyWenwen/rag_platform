@@ -49,7 +49,7 @@ Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保�
 - Generation 有「模板說明與範例」及「套用範例」入口，展示兩筆 Chunk→逐筆模板→Context→完整回答 Prompt。
 - Rerank 可查看固定平台 Request／Response 範例及 index／score 對應說明；不宣稱是所有模型的統一標準。
 - collection 由 Workspace＋System 名稱／穩定 ID 自動帶入且唯讀；改顯示名稱不換既有實體。
-- Retrieval 不另選 Implementation；由使用者選全文／向量欄位推導模式。融合除演算法外，還需可設定合併時點；正式時點選項與兩層 UI 待 Q-014。
+- Retrieval 不另選 Implementation；由使用者選全文／向量欄位推導模式。原型 v0.9 已提供同 Query／跨 Query 兩層合併及各自的 Retrieval 後／Reranker 後時點；正式 Config 與 Engine 執行細節仍由 Q-014 追蹤。
 
 下表其餘分組仍為建議，待 Q-025；其中 Parsing 與上述已確認方向不可退回待定。
 
@@ -62,8 +62,8 @@ Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保�
 | Embedding | 來源欄位、輸出向量、模型 | 維度／Encoding／Normalization、Batch、輸入限制 |
 | Indexing | 後端、保存／全文／向量欄位、過濾能力 | 後端特有參數、進階 Mapping（支援後才顯示） |
 | Query Transformation | None／Rewrite／Multi-query、LLM | Prompt、count、include_original |
-| Retrieval／Fusion Plan | 搜尋欄位、Top-K、推導模式 | 每路 K、演算法、同／跨 Query 範圍及合併時點、預設 filters；細節 Q-014 |
-| Rerank | 既有表單為 None／服務、內容欄位、Top-N；三類操作的整合提案見 §3.4 | Timeout／服務輸入限制 |
+| Retrieval／Fusion Plan | 搜尋欄位、每 Query／每路 Top K、有效流程摘要、預設 filters | 同／跨 Query 合併、時點、演算法、去重及兩處合併後 Top N；見 §3.4 |
+| Rerank | None／服務、單一評分內容欄位、評分後 Top N（預設 3）、實際提問來源 | 逐 Query 問題選擇、附加內容欄位、Timeout／服務輸入限制 |
 | Generation | LLM、回答要求 | 兩層模板、變數、Temperature、Budget |
 
 必填但缺失的設定不能因進階區收合而無法發現；錯誤摘要可直接展開並定位。改動過的進階設定收起後，建議顯示已修改項數／簡短摘要。範圍、預設值及「每次記住展開」政策見 Q-025。
@@ -105,11 +105,15 @@ DEV test use 使用平台測試資源；匯出部署時需填入使用單位的�
 
 ### 3.4 Inference 結果處理的整合提案
 
-三種操作「去重＆合併／取 Top N／新模型算分」與共同排序規則已確認，見 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft)。15:53 的最新 UI 待辦以 [10_ui_adjustment_backlog.md](10_ui_adjustment_backlog.md) 為準：保留單一 Create／Edit，基本／進階共用設定；預設在 Retrieval 後完成適用合併，同 Query 多路／跨 Query 合併預設勾選，Top N 附在四個固定動作位置，不新增獨立 Top N 卡片。使用者要求先記錄、稍後併批修改，原型尚未調整。
+三種操作「去重＆合併／取 Top N／新模型算分」與共同排序規則已確認，見 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft)。15:53 的清單經使用者 18:55 要求開始實作，原型 v0.9 已完成 [10_ui_adjustment_backlog.md](10_ui_adjustment_backlog.md) 所列 UI：保留單一 Create／Edit，基本／進階共用設定；進階預設收合，兩種合併預設勾選且在 Retrieval 後，Top N 附在四個動作位置，不新增獨立 Top N 卡片。
 
 基本表單讓使用者選可讀的上游步驟、每個 Query 內／跨 Query 範圍、方法及參數；runtime IDs 與 operation／source 由執行時產生。排序及 rank 更新固定執行，不提供排序開關；score_kind／score_order 由方法決定。ES 內部 Hybrid 已回傳一份清單時，預覽不得假裝仍有獨立全文／向量排名。
 
-早期方案與案例保留於 [09 UI 整合提案](09_inference_contract_ui_plan.md)，本輪最新控制項、預設與卡控以 10 為準。精確 Config、舊版遷移、模型覆蓋率及 Adapter 能力仍由 Q-002／Q-003／Q-014／Q-025 核定，不以待辦文件宣稱已實作。
+早期方案與案例保留於 [09 UI 整合提案](09_inference_contract_ui_plan.md)，最新控制項、預設與卡控以 10 為準。v0.9 只推導清單身分、數量上限與有效設定，不實際計算搜尋／模型分數。正式 Config、遷移、模型覆蓋率及 Adapter 能力仍由 Q-002／Q-003／Q-014／Q-025 核定。
+
+同 Query 合併以 Query 身分分組，跨 Query 合併以相同搜尋路徑群組分組，兩層可各自移到 Reranker 後。ES 預設內部融合時，不再套同 Query 的跨路融合。跨 Query 已合併時，Reranker 有效提問固定原始問題，但保留各自 Query 選擇的草稿。Rerank=None 不會取消後置處理。
+
+文件模式先完成 chunk_id 融合，再於選定時點按 document_id 選最高分代表 Chunk，最後 Top N；文件去重不得早於最後一次跨清單合併。原型尚不提供 Generation 多份清單的消費策略，因此最終不為單一 ResultSet 時阻止保存，並定位合併設定，不隱含串接清單。
 
 ## 4. 從 CSV 開始
 

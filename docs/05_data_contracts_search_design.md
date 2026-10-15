@@ -335,13 +335,13 @@ failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項�
 | Indexing | 儲存、全文、向量、過濾分開；持久化模式跨環境固定 | backend、stored_fields、fulltext_fields、vector_fields、filter_fields、persistence、metric；persistence 屬邏輯 Config，collection 在部署 Binding |
 | Query Transformation | None／Rewrite／Multi-query | method、llm_ref、prompt、count、include_original |
 | Retrieval／Fusion Plan | 選已索引欄位、推導模式；可配置策略及合併時點 | fulltext_fields、vector_fields、per_route_k、top_k、filters、fusion；stages／scope／placement 具體 Schema 待 Q-014 |
-| Rerank | 新模型算分的方法；既有服務為 None／DEV／Rerank API | method、service、content_fields；原型 top_n 的遷移見 09 |
-| ResultSet 後處理 | 去重＆合併／取 Top N／新模型算分；共同排序 | 操作順序、來源引用、分組、方法與參數的精確 Config Schema 仍待 Q-002／Q-014；UI 意圖見 09 |
+| Rerank | 新模型算分的方法；服務為 None／DEV／Rerank API | method、service、content_fields；UI 將 top_n 作評分後收尾參數，見 10 |
+| ResultSet 後處理 | 去重＆合併／取 Top N／新模型算分；共同排序 | 分組、方法與參數的正式 Config Schema 仍待 Q-002／Q-014；最新 UI 原型配置見 10 |
 | Generation | 兩層模板、共用 LLM | llm_ref、chunk_template、prompt、temperature、max_output_tokens、context_budget |
 
 正式枚舉建議用 snake_case，UI 可顯示自然語言。Prototype 的 chunking.split、embedding.mappings[].source、indexing.filters、transform 等短名稱不自動視為正式 Schema；需明確 migration。統一使用完整路徑 fields.text／vectors.text_vector／metadata.department。上述拼字及預設值需 Q-002 核定，禁止同時接受未宣告別名而掩蓋錯誤。
 
-ResultSet 是一次執行的資料；處理計畫是可保存的邏輯 Config，不能把 runtime result_set_id 寫死在 Config。原本 retrieval.fusion／rerank.top_n 等短配置及 §7 的既有單層 YAML 不代表已完成新計畫；遷移意圖及 UI 提案見 [09](09_inference_contract_ui_plan.md)。
+ResultSet 是一次執行的資料；處理計畫是可保存的邏輯 Config，不能把 runtime result_set_id 寫死在 Config。§7 保留既有單層 YAML 草案；v0.9 的 UI 配置 `retrieval.processing` 是另一個明確標記的展示草案，不表示正式 Engine Schema 已凍結。最新對照、有效配置與未完成邊界見 [10 §6](10_ui_adjustment_backlog.md#6-v09-實作細節展示預設與限制)；[09](09_inference_contract_ui_plan.md) 僅保留早期 UI 提案。
 
 ### 6.4 參數與相依規則
 
@@ -351,10 +351,10 @@ ResultSet 是一次執行的資料；處理計畫是可保存的邏輯 Config，
 | Embedding mappings | 來源為有效文字欄位；output_name 唯一；有限值、維度與 Profile 相容 |
 | Indexing | 搜尋欄位與上游一致；必要識別／來源／ACL 強制保留；下游使用欄位已保存 |
 | Retrieval | 至少一路；每路及最終 K 為正整數；僅選已建立索引；Query Profile 由向量欄位繼承 |
-| Fusion | 多 Query／多欄位需有明確計畫；基線為單層 Rerank 前，目標支援時點選擇；只使用已選策略有效參數 |
+| Fusion | 多 Query／多路需有明確計畫；UI 已支援同／跨 Query 各自選 Retrieval 後／Reranker 後，預設兩者勾選且在 Retrieval 後；只使用已選策略有效參數 |
 | Sum Score | 現有單層基線的預設；全文／向量權重預設各 1，有限非負，使用中至少一個大於 0；不自動正規化 |
 | RRF | rank 從 1；k 預設 60 且為正整數；k 與 Top-K 不同 |
-| Rerank | None 不執行且不使用 top_n；既有單層基線為 0 < top_n ≤ Retrieval top_k；逐 Query／多階段計畫的候選數與 K／N 關係待 Q-014，不沿用單一全域上限取代計畫驗證 |
+| Rerank | None 不評分且不使用其 top_n，但保留必要後置合併；啟用時 top_n 為正整數、不強制 ≤ Retrieval K。四處輸出上限各自作用於對應動作；實際不足取可用數量，合併後數量可能增大 |
 | Templates | 只允許宣告變數；單次替換；未知／必要變數缺少阻止保存 |
 | LLM | 引用有效；刪除使用中的服務不得默默換另一個 |
 

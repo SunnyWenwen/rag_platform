@@ -29,7 +29,7 @@ v0.15 曾加入 QueryContext／ResultSet／ResultItem 的具體草案。v0.16 �
 | [07 Backend、Runtime API 與整合](docs/07_backend_runtime_integration.md) | API、System／Revision、任務、持久化、Runtime 與 Export |
 | [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M6、驗收材料、27 項待決問題及 40 項對話要求對照 |
 | [09 Inference Contract 與 UI 整合提案](docs/09_inference_contract_ui_plan.md) | 三種操作／共同排序的討論記錄、順序式 UI 設定、案例與待確認選項 |
-| [10 UI 待調整清單](docs/10_ui_adjustment_backlog.md) | 15:53 最新確認的基本／進階設定、合併預設、四處 Top N、Reranker 欄位與卡控；先記錄，待後續併批實作 |
+| [10 UI 調整清單與完成狀態](docs/10_ui_adjustment_backlog.md) | 已落實至 Prototype v0.9：基本／進階設定、兩層合併、四處 Top N、Reranker 欄位與卡控；§6 說明展示預設、驗證及未實作的 Runtime 邊界 |
 
 建議先讀 03／08，再依任務讀 05／04／07／06。03 統一名詞與邊界，05 定義資料／版本規則，08 記錄決策與待決狀態。Engine 核心不依賴 Builder UI、HTTP 或 Builder DB；07 將其包裝為可管理服務。每份規格末尾列出相關 Q-ID，完整候選／決策／階段阻擋統一放在 08。
 
@@ -45,7 +45,9 @@ L1 流程的步驟 1～5 在同一水平列，由左到右排列，並與上方�
 
 架構提案與 Infra 圖已整合 2026-10-14 的最新討論：RAG Builder Control Plane 明確分為 Frontend／Backend，接入 tSSO；DEV RAG Runtime 負責測試執行。Backend 的建立／設定連線指向整個 DEV RAG Runtime，由 Runtime 依 Config 組裝 Pipeline 執行實例，並匯出 FTEST／ENT YAML（文件形狀節點），使用單位自行於 K8s 進行 CD 部署；Secret Vault、部署依賴與觀測工具位於獨立 Runtime 框外。UI 可匯出示意 YAML，不代表可直接部署；Engine、Runtime API 及完整部署 Bundle 尚未實作。
 
-## UI Prototype v0.8（2026-10-14）
+## UI Prototype v0.9（2026-10-15）
+
+本次依已確認需求調整既有介面；進階結果處理預設收合，不新增主頁或 DAG 畫布。**新增示範入口**：Create／Edit 頂部「套用設定示範」可選「多 Query · ES Hybrid」「多路 · 評分後合併」「文件去重」，直接觀察卡控與有效流程摘要。
 
 - Create／Edit 最前段增加 Document Schema；預設只提供必填 fields.text。可新增 fields／metadata，設定 string／number／boolean／array、必填、JSON 預設值及 input／parser 來源；未宣告欄位預設拒絕。
 - Ingest 本版先支援 ≤1 MB CSV／JSON。CSV 每列是一筆文件，映射目標包含 document_id／source_revision／fields.*／metadata.*；預覽 API payload 與 ParsedDocument，型別／必填／重複 ID 錯誤會阻止模擬匯入。成功後保存 CSV 映射；JSON 直接使用標準 records 契約。
@@ -58,14 +60,17 @@ L1 流程的步驟 1～5 在同一水平列，由左到右排列，並與上方�
 - Index collection 自動由 Workspace＋名稱＋System ID 產生，改名不影響既有實體名稱。
 - LLM 服務設定集中管理此 RAG System 的服務清單；Query Transformation／Generation 以 llm_ref 下拉引用，部署時相同服務只需填一次。
 - Query Transformation 支援 None／Rewrite／Multi-query；Rewrite／Multi-query 各自可編輯 Prompt，提供 query／count 變數驗證與預覽；原始問題可加入搜尋。
-- Retrieval 移除 Implementation，依選取的全文／向量欄位推導模式；多 Query 或多欄位可選 Sum Score／RRF，預設 Sum Score。Sum Score 可設定全文／向量權重；RRF 設定平滑常數。切換時保留草稿參數，驗證與匯出只使用有效選項；修改只影響 Inference。
-- Rerank 提供 None／DEV／Rerank API、內容欄位與可查看的固定 Request／Response 範例。
+- Retrieval 依 Indexing 與所選欄位推導後端／模式。進階結果處理的同 Query 多路／跨 Query 合併預設勾選，時機各自可在 Retrieval 後或 Reranker 後；ES 已內部融合、單 Query／單一路徑時停用不適用選項並保留草稿。
+- ES 內部 Hybrid 保留 Sum Score（預設）／RRF，與平台跨清單合併分開。平台合併提供 RRF（原型預設）／Sum Score，後者可設來源權重、Min–max 轉換或明確確認原始分數可比；真實後端版本／授權與模型能力尚未驗證。
+- 固定四處輸出上限：搜尋 Top K、Retrieval 後合併 Top N、Reranker 後 Top N、Reranker 後合併 Top N。依動作啟用／停用，不強制遞減。摘要顯示 Query／路徑／ResultSet 數與候選上限，不冒充實際命中量。
+- 去重單位只有 chunk_id／document_id。文件模式另選去重時機，先完成同一時點的 Chunk 融合，再選每份文件最高分的代表 Chunk，最後 Top N。單清單仍可文件去重；若後面仍有合併，需把文件去重後移。
+- Rerank 提供 None／DEV／Rerank API。基本區預選一個合法 fields.* 內容欄位，評分後 Top N 預設 3；提問來源獨立顯示，跨 Query 已合併時有效值固定原始問題。逐 Query 提問與額外內容欄位置於進階區，API 說明明列完整候選評分要求。
 - Generation 從共用 LLM 清單選擇服務，提供兩層模板、插入變數、完整 Prompt 預覽，以及「模板說明與範例／套用範例」。
 - Ingestion API records 使用 document_id／source_revision／fields／metadata，並預覽 Parsing 後的 ParsedDocument；fields／metadata 已使用 Schema 的目標名稱，Parsing 不再重複映射；結構資訊由 Parser 產生。
 - Indexing 選可過濾的完整欄位路徑；Retrieval 設定 eq／in 的預設詞值，Inference 可輸入本次 filters，全部以 AND 組合。上游欄位失效會阻止儲存；新增過濾索引需 Ingestion，改詞值只需重測。
 - Ingestion／Inference 的「查看 API 端點」提供 Base URL、認證、JSON／multipart、cURL、回應及錯誤範例；Ingestion 另有 run_id 進度查詢。端點與搜尋／過濾仍未實作。
 - AI 設定助手明示為規則模擬：可讀小型 JSON／CSV／TXT／MD 樣本（含 records[].fields），先呈現設定差異再套用；不呼叫 AI、不自動 Ingestion。
-- 檢查訊息統一標示 [模組名稱]；刪除正在使用的 LLM 會保留失效引用並阻止儲存。
+- 檢查訊息統一標示 [模組／設定]，可點擊定位並展開進階設定；刪除正在使用的 LLM 或評分欄位會保留失效引用並阻止儲存，不靜默換值。
 - 編輯 Ingestion 配置後標記需重新匯入；僅 Inference 變更不用重建，但清除舊示意評估。
 - 匯出先檢查 DEV 資源，分為待設定草稿及已填妥設定；不匯出真實憑證，Local Search 固定單副本。
 
@@ -81,8 +86,25 @@ L1 流程的步驟 1～5 在同一水平列，由左到右排列，並與上方�
 6. Retrieval → 新增過濾條件：選 metadata.department、eq、manufacturing；再到 Inference 的本次查詢過濾輸入 JSON 條件，與預設條件 AND。
 7. Export YAML：DEV 設定可下載草稿；補齊自己的服務 URL 後可匯出格式已填妥的示意設定。
 8. System 卡片 → Ingest／Inference → 查看 API 端點：查看 Runtime API、請求與回應；尚未完成 Ingestion 也能查看 Inference 說明。
+9. Create → 套用「多 Query · ES Hybrid」→ Retrieval：展開進階，同 Query 合併顯示後端已融合，跨 Query 合併可調整時機。
+10. 套用「多路 · 評分後合併」→ Rerank：多份清單逐 Query 評分後合併；切 None 仍保留後置合併。Generation 顯示最終一份清單及候選上限。
+11. 套用「文件去重」：即使 ES 只輸出單份結果，仍能按 document_id 去重。改 K／N、去重時機或合併方法，查看可定位的驗證訊息。
 
 ## 驗證
+
+v0.9 本次通過：56 項既有規則、23 項新增結果處理規則，以及既有 DOM 事件流程與 13 組新增 DOM 操作。新測試包含四處輸出上限、兩個分組維度、合併時機、None 路徑、文件去重設定、有效／草稿分離、欄位失效、Edit／Cancel、AI 套用、匯出一致性與錯誤定位。
+
+```sh
+node tests/prototype.test.cjs
+node tests/inference-processing.test.cjs
+# 下列兩項需環境可解析 jsdom（本輪使用 26.1.0）：
+node tests/prototype.dom.test.cjs
+node tests/inference-processing.dom.test.cjs
+```
+
+本次沒有可用的受支援瀏覽器檢查流程，因此只完成 VM／jsdom 驗證，**未重跑 v0.9 的視覺版面、手機尺寸或真實瀏覽器互動**。沒有連線模型、DB 或 Runtime。以下 Chromium 記錄僅為舊版歷史，不代表本次新增畫面已完成瀏覽器 QA。
+
+### v0.8 及更早的歷史驗證
 
 執行 `node tests/prototype.test.cjs`，使用無依賴 VM／DOM stub 檢查 56 項設定與狀態規則（包含 3 項非同步樣本讀取）。另以 jsdom 驗證實際表單事件、條件欄位、建立／編輯、AI 套用、Prompt、匯出及 API 說明。已通過 Chromium 互動檢查及 1440px／390px 桌面與手機版面檢查；無頁面 JavaScript 錯誤。檢查涵蓋 Create、API／DB 條件欄位、Prompt 範例、AI 套用、Ingestion、Edit 影響與 Export gate。
 

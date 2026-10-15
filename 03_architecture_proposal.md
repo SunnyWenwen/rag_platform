@@ -161,7 +161,7 @@ Config 與部署設定的欄位、有效設定規則及範例見 [05 §6～8](do
 | Inference | Query Transformation → Retrieval → 依配置組合去重合併／取 Top N／模型算分 → Generation；每次輸出共同排序，現有 Prototype 仍為融合在 Rerank 前的舊基線 |
 | Evaluation | Dataset → 呼叫相同檢索／Inference 入口 → 指標 → 報告 |
 
-全文模式可略過 Embedding；None 模組明確 pass-through。Ingestion 與 Inference 透過 IndexBinding 銜接，不是同一次串行呼叫。使用者已要求可設定融合策略及合併時點；現有 Prototype 的單層、Rerank 前融合是實作基線，不是限制最終產品。具體路徑、兩層融合及預設計畫由 Q-014 核定，見 04／05。2026-10-15 補充的三類結果操作與共同排序已記錄於 04／05；[09](docs/09_inference_contract_ui_plan.md) 的 UI 位置及步驟設定仍為待討論提案。
+全文模式可略過 Embedding；None 模組明確 pass-through。Ingestion 與 Inference 透過 IndexBinding 銜接，不是同一次串行呼叫。使用者已要求可設定融合策略及合併時點；v0.8 原型的單層、Rerank 前融合只是歷史基線。v0.9 已依 [10](docs/10_ui_adjustment_backlog.md) 實作兩層合併的 UI 設定、時點連動與四處 Top N 預覽；Engine 尚未實作，正式 Config 與 Adapter 細節仍由 Q-014 核定。三類結果操作與共同排序見 04／05；[09](docs/09_inference_contract_ui_plan.md) 保留早期提案，最新 UI 以 10 為準。
 
 | 搜尋模式 | 搜尋與資料 | 執行限制 |
 |---|---|---|

@@ -234,9 +234,9 @@ FAISS 的維度／metric 不足以證明向量空間相容。cosine／inner prod
 6. 在計畫指定的最終合併點後才取最終 top_k；既有單層基線在 Rerank 前完成。若計畫在逐 Query Rerank 後才跨 Query 融合，不能提前攤平或套用全域截斷；各階段 K／N 由 Q-014 定義。
 7. 在 Rerank／Generation 使用候選前批次取回所需 fields／metadata，保留各路排序與身分；vectors 可省為 {}，下游無須知道 MongoDB 或 FAISS。
 
-**需求與基線要分開**：使用者在 2026-10-14 明確追問「在哪一步合併」，因此目標必須能表達融合策略及合併時點。既有 Prototype 為所有 Query × 欄位單層融合、Rerank 前執行；不能把此實作限制寫成最終產品定案。單一路是否略過融合仍需依有效計畫判斷。
+**需求與基線要分開**：使用者在 2026-10-14 明確追問「在哪一步合併」，因此必須能表達融合策略及合併時點。v0.8 Prototype 的所有 Query × 欄位單層融合、Rerank 前執行只是歷史基線。v0.9 已提供 [10](10_ui_adjustment_backlog.md) 的兩層時點 UI 與有效計畫推導；未實作真正的搜尋／融合。單一路是否略過融合仍依有效計畫判斷，文件分組不以清單數量為必要條件。
 
-需在 Q-014 核定的計畫涵蓋範圍：同一 Query 內多欄位融合、跨 Query 融合、Rerank 前或後執行。先逐 Query Score Sum、再跨 Query RRF 是已討論情境；助理提出的具體 stage 枚舉、Global Fusion 與預設兩層計畫尚未取得使用者定案。
+已確認的 UI 範圍：同一 Query 多路合併、跨 Query 合併，各自可在 Retrieval 後或 Reranker 後執行；兩者新建預設勾選且在 Retrieval 後。先逐 Query Sum Score、再跨 Query RRF 是可表達情境。具體 stage 枚舉、分數方法、正式配置 Schema 與 Adapter 支援仍由 Q-014 核定，原型展示初值不等同新增產品決策。
 
 Engine 必須在計畫需要時保留 query_id／route_id、各路候選／分數／rank，不能先攤平成唯一 SearchHit 清單而丟失後續跨 Query 融合所需資訊。規格核定前可交付現有單層基線，但不得宣稱合併時點選擇已完成。
 
@@ -285,7 +285,7 @@ ResultSet 是資料；下一步由邏輯 Config 的核定計畫驅動。operatio
 
 **驗收**：不生成新 chunk_id；重新 rank；保留原 Retrieval Trace。串接 Timeout／錯誤時不假裝 Rerank=None。
 
-**與最新結果操作的對齊**：Rerank 是「新模型算分」的一種方法；模型輸出經共用排序及 rank 更新。目標設定把使用者的結果保留數交給獨立 Top N 操作，原型 Rerank.Top-N 為既有基線。既有 API 的 top_n 與完整評分覆蓋率需由 Adapter 明確對應，不能默默依服務預設值少回候選；遷移提案見 [09 §3.5](09_inference_contract_ui_plan.md)。
+**與最新結果操作的對齊**：Rerank 是「新模型算分」的一種方法；模型輸出經共用排序、Top N 及 rank 更新。Top N 保留為可獨立描述的操作能力，但最新 UI 不要求獨立卡片，而是動作的收尾參數；v0.9 的 Reranker 輸出 Top N 預設 3，見 [10](10_ui_adjustment_backlog.md)。原型 API 說明要求 top_n 等於輸入 documents 數、回應完整評分，再由平台依 UI 上限截斷；正式 Adapter 的完整覆蓋驗證與服務上限仍待 Q-003／Q-014，不能默默依服務預設值少回候選。
 
 **待決**：Q-003、Q-014、Q-017、Q-023；內容欄位分隔、輸入極限、全候選評分與服務回傳缺項政策需核定。
 

@@ -615,3 +615,14 @@ ParsedDocument 五個 key、Chunk 六個 key、fields→vectors、多欄位用�
 最新 UI 方向與完整待辦集中於 [10_ui_adjustment_backlog.md](10_ui_adjustment_backlog.md)：基本／進階共用設定、Retrieval 後預設合併、同 Query 多路／跨 Query 預設勾選、四處動作後 Top N，以及預選 fields.* 的 Reranker 評分內容。明確區分 Chunk 內容欄位與 Query 問題來源，取代 09 早期以獨立 Top N／任意順序卡片為主的呈現方案。
 
 使用者明確要求先不改 UI，晚點與其他需求併批修改；本輪只增加清單與導引，不修改 Prototype、Schema、Python 範例或 Engine。Q-002／Q-003／Q-014／Q-025 仍保留尚未核定的 Config／Adapter／遷移細節，不將尚未執行的驗收待辦勾選為完成。
+
+## 17. 2026-10-15 18:55 要求實作結果處理 UI（Prototype v0.9）
+
+- 依使用者「幫我按照需求調整 UI」開始實作 [10](10_ui_adjustment_backlog.md)，不再停留於待辦。保留現有單檔、單一 Create／Edit 及模型／資料庫模擬界線。
+- 同 Query 多路／跨 Query 合併預設勾選，各自選 Retrieval 後或 Reranker 後；ES 內部 Hybrid 與平台結果合併分開；同一套有效計畫推導服務於摘要、驗證、Edit 影響及 Export。
+- 四處 Top K／N 各自驗證，不強制遞減；Reranker 預選一個合法 fields.* 文字欄位、Top 3，提問來源另列。關閉模型不跳過必要的後置合併。
+- 文件去重可用於單份清單；最終去重應在最後一次合併後。原型 Generation 仍限單一 ResultSet，不隱含拼接多份清單。
+- Config 拼字 `retrieval.processing`／`ui-0.9-draft` 是原型表單草案，不等於正式公共介面。新增的 RRF 預設、轉換規則與其他上限初值為展示值，見 10 §6；不新增 D-ID、不關閉 Q-002／Q-003／Q-014／Q-025。
+- 驗證：56 項既有 VM 規則、23 項新增結果處理規則（含兩種後端×四種時點組合），以及既有 jsdom 流程與 13 組新增 DOM 操作通過；沒有頁面腳本錯誤。沒有執行真實 ES／模型／Runtime，也未重跑瀏覽器視覺／手機版面檢查。
+
+Inference Schema／五份 JSON／Python 範例、圖面及其他服務實作均未變更；UI 測試不表示 Engine 已實作融合、分數轉換或引用鏈。

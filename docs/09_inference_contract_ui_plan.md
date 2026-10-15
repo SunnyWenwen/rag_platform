@@ -4,7 +4,7 @@
 >
 > 記錄本串 14:10～14:31（Asia/Taipei）的討論。三種操作及共同排序為已確認方向；本文的版面、控制項、Config 拼字、預設與第一版範圍均為提案。現有 Prototype／Engine 未因此實作。
 
-> **UI 後續更新（15:53）**：最新已確認、待批次實作的 UI 清單見 [10_ui_adjustment_backlog.md](10_ui_adjustment_backlog.md)。§3～6 的獨立 Top N／任意順序卡片是早期提案；最新方向為動作附帶四處 Top N、基本／進階設定及 Retrieval 後預設合併，不據舊提案直接開發。§2 的 Contract 記錄仍保留。
+> **UI 後續更新**：15:53 記錄的 [10_ui_adjustment_backlog.md](10_ui_adjustment_backlog.md)，已依 18:55 的使用者要求落實至 Prototype v0.9，驗收與限制見該文件 §6。§3～6 的獨立 Top N／任意順序卡片是早期提案；實作方向為動作附帶四處 Top N、基本／進階設定及 Retrieval 後預設合併，不據舊提案直接開發。§2 的 Contract 記錄仍保留，Engine 尚未實作。
 
 ## 1. 文件定位與確認狀態
 
