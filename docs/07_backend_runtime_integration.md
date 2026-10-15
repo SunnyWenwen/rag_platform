@@ -1,6 +1,6 @@
 # RAG Builder — Backend、Runtime API 與整體串接規格
 
-> 文件集 v0.13 · 2026-10-15 · 開發規格草案
+> 文件集 v0.14 · 2026-10-15 · 開發規格草案
 >
 > 本文包裝 04 的 Engine，負責管理、HTTP、任務、持久化與交付。Endpoint 大方向沿用既有提案；精確 Envelope、認證、狀態與儲存細節為建議，依 Q-ID 核定後實作。
 
@@ -233,6 +233,8 @@ AI 助手 Backend 取得需求、明確允許的樣本及草稿版本，呼叫�
 - 若有評估報告，清楚綁定測試環境／資料版本，不能宣稱目標環境已驗證。
 
 不含真實 Secret、原始文件、Chunk／vectors、Builder DB 或外部模型／搜尋服務。目標環境需有相容資料或執行 Ingestion；部署後仍可持續 API 匯入。
+
+Local Search 的持久化模式沿用同版 Config：DEV 為 Memory，FTEST／ENT 也為 Memory；Export 只補齊該模式所需部署綁定，不將 Memory 切成 MongoDB。MongoDB 模式可填不同環境的 URI／Secret／DB／Collection，實際資料不隨匯出搬移。
 
 ### 9.2 驗證與部署
 

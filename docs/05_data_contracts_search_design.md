@@ -1,6 +1,6 @@
 # RAG Builder — 共用資料模型與 Config 規格
 
-> 文件集 v0.13 · 2026-10-15 · 開發規格草案
+> 文件集 v0.14 · 2026-10-15 · 開發規格草案
 >
 > 本文是資料形狀及設定規則的權威位置。已確認的語意保留；新增的程式型別、完整 Config 拼字與預設值為建議草案，待 Q-002 核定後才凍結。YAML 範例用於討論與驗收設計，目前沒有 Engine 可直接執行。
 
@@ -162,6 +162,88 @@ Profile 是 Query／Document 配對契約；不能只比較維度或模型顯示
 
 rank 從 1 起；score 是相關性分數，不是機率。搜尋融合用 chunk_id 去重，文件分組用 document_id，兩者不同。Rerank score 不覆寫而遺失原 Retrieval score。
 
+<a id="inference-state-draft"></a>
+
+### 4.6 Inference 傳遞狀態與多路評分（討論草案）
+
+2026-10-15 使用者要求先釐清 Inference 的物件／分數紀錄，再討論融合處理；融合可配置在合法步驟之後。以下是**提出討論的形狀，尚未核定**；欄位拼字、選填與 SDK 由 Q-002／Q-014 凍結。§4.5 的扁平 SearchHit 是既有單層基線，不能承擔所有逐路／逐階段語意。
+
+**建議將 Chunk 內容與每次檢索／排序的分數分開。**同一 Chunk 可被多個 Query、多個 Index／欄位搜尋路徑命中，之後又取得 Fusion／Rerank 分數。Chunk 仍維持六個 key；可在同一 InferenceState 中共用內容，以多份 RankedList 表達各路及各階段結果。
+
+| InferenceState 欄位 | 建議責任 |
+|---|---|
+| original_query | 原始 query_id／文字；Rewrite 不覆寫 |
+| search_queries | 本次實際送搜尋的 Query 清單，含 query_id／文字；由 include_original 控制是否納入原始問題 |
+| chunks | chunk_id → 既有 Chunk；內容共用一份，不把分數塞入 fields／metadata |
+| rankings | 多份具名 RankedList，包含原始檢索、Fusion、Rerank 結果 |
+| active_ranking_ids | 下一步使用哪些排序清單；既有分數仍可追蹤，不靠覆寫單一 current_score 表達 |
+
+Run／System／授權及 Deadline 仍由 RunContext 提供，與業務狀態分開。此為 Engine 內部傳遞草案，沒有要求 HTTP Query 回傳全部狀態；診斷曝光及保存另由 Q-016／Q-019 決定。
+
+| RankedList 欄位 | 建議責任 |
+|---|---|
+| ranking_id | 本次結果的唯一識別，供下游與來源關聯 |
+| stage | retrieval／fusion／rerank 等產生結果的階段；具體枚舉待決 |
+| search_query_ids | 此結果涵蓋哪些搜尋 Query；跨 Query 融合可有多筆 |
+| route_id、index_ref、field_path | Retrieval 的路徑／邏輯索引綁定／欄位；Fusion 等衍生結果可由輸入關係追溯，不偽造單一 Index |
+| input_ranking_ids | 本次處理使用哪些先前結果；原始 Retrieval 為空清單 |
+| operation | 實際 method／parameters／model_ref 等操作資訊；用來追溯 Fusion 權重、RRF 常數或 Rerank 模型，精確結構待決 |
+| score_kind、score_order | 分數語意與高低方向，例如 BM25、cosine、RRF、reranker score；不是機率或全域可比分數 |
+| items | 有序的 chunk_id／score／rank；rank 以該份清單為範圍，從 1 起 |
+| scoring_query_id（若適用） | Rerank 實際使用的問題，引用 original_query 或 search_queries；與結果涵蓋的搜尋 Query 區分 |
+
+示例只有一個 Chunk，呈現它在三條原始路徑各有一筆分數；實際可有更多候選：
+
+```json
+{
+  "original_query": {"query_id": "q0", "text": "設備多久需要清潔？"},
+  "search_queries": [
+    {"query_id": "q1", "text": "設備保養規範"},
+    {"query_id": "q2", "text": "設備清潔週期"}
+  ],
+  "chunks": {
+    "c1": {
+      "chunk_id": "c1", "document_id": "manual-001", "source_revision": "v1",
+      "fields": {"text": "設備每月需清潔散熱孔。"}, "vectors": {}, "metadata": {}
+    }
+  },
+  "rankings": [
+    {
+      "ranking_id": "r1", "stage": "retrieval", "search_query_ids": ["q1"],
+      "route_id": "text-bm25", "index_ref": "primary", "field_path": "fields.text",
+      "input_ranking_ids": [], "score_kind": "bm25", "score_order": "higher_is_better",
+      "items": [{"chunk_id": "c1", "score": 12.3, "rank": 1}]
+    },
+    {
+      "ranking_id": "r2", "stage": "retrieval", "search_query_ids": ["q1"],
+      "route_id": "text-dense", "index_ref": "primary", "field_path": "vectors.text_vector",
+      "input_ranking_ids": [], "score_kind": "cosine_similarity", "score_order": "higher_is_better",
+      "items": [{"chunk_id": "c1", "score": 0.84, "rank": 1}]
+    },
+    {
+      "ranking_id": "r3", "stage": "retrieval", "search_query_ids": ["q2"],
+      "route_id": "text-bm25", "index_ref": "primary", "field_path": "fields.text",
+      "input_ranking_ids": [], "score_kind": "bm25", "score_order": "higher_is_better",
+      "items": [{"chunk_id": "c1", "score": 9.7, "rank": 1}]
+    }
+  ],
+  "active_ranking_ids": ["r1", "r2", "r3"]
+}
+```
+
+範例 index_ref／route_id／欄位名稱為示意；能力由授權 IndexBinding／Config 提供，不允許請求藉此跨 System 搜尋。Query 向量依 Profile 產生，完整向量不必傳到 Rerank／Generation。這些 Inference 分數不新增至持久化 Chunk。
+
+待討論的處理規則：
+
+- Retrieval 建立每個 Query×搜尋路徑的清單；以 chunk_id 共用內容，不先把分數加總成唯一值。
+- Fusion 選定輸入清單並建立新 RankedList，記錄方法／參數與 input_ranking_ids；原始分數不刪除。
+- Rerank 同樣建立新清單及分數，記錄模型與實際評分問題；None 原樣傳遞，不偽造分數。
+- 每份清單內的 rank 獨立；同 Chunk 出現在不同清單是合法的。Top-K／Top-N 截斷及保留政策需依階段配置，不能因內容共用就視為已做分數融合。
+- 原始距離／分數需保留來源與方向；若轉成 relevance 或正規化，須記錄原值及轉換方法。不同 score_kind 的可比性、Sum Score 權重與轉換由 Q-011／Q-014 核定。
+- Generation 需明確知道採用哪份排序／如何組 Context；多份 active 清單如何收斂、可插入融合的合法位置及預設仍待討論。
+
+先確認這些資料責任，再核定實際 Score／RankedList 型別、融合步驟、分組與 API 診斷形狀；不由本草案選定預設融合方案。
+
 ## 5. 共用執行與錯誤物件
 
 下列延續舊 04 的設計方向，正式欄位必填與狀態仍由 Q-002／Q-017 核定：
@@ -208,7 +290,7 @@ failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項�
 | Parsing | 格式路由、結構化 records 驗證 | routes |
 | Chunking | Recursive／Header-aware；Token 計量 | method、split_field、copy_fields、metadata_fields、size、overlap、tokenizer、separators、keep_separator、header_levels |
 | Embedding | fields → 命名 vectors | profile、mappings（source_field、output_name） |
-| Indexing | 儲存、全文、向量、過濾分開 | backend、stored_fields、fulltext_fields、vector_fields、filter_fields、metric；persistence 的 Config／部署歸屬待 Q-002／Q-021，collection 在部署 Binding |
+| Indexing | 儲存、全文、向量、過濾分開；持久化模式跨環境固定 | backend、stored_fields、fulltext_fields、vector_fields、filter_fields、persistence、metric；persistence 屬邏輯 Config，collection 在部署 Binding |
 | Query Transformation | None／Rewrite／Multi-query | method、llm_ref、prompt、count、include_original |
 | Retrieval／Fusion Plan | 選已索引欄位、推導模式；可配置策略及合併時點 | fulltext_fields、vector_fields、per_route_k、top_k、filters、fusion；stages／scope／placement 具體 Schema 待 Q-014 |
 | Rerank | None／DEV／Rerank API | method、service、content_fields、top_n |
@@ -413,9 +495,9 @@ runtime:
 
 以上模型維度、Token 上限、Timeout、版本與名稱均為示例；部署 URL 用不可運作的 .invalid，Secret 只有引用。Engine 讀邏輯 Config，服務／Store resolver 依部署設定綁定。max_attempts=1 表示本例不自動重試，不宣稱重試政策已定案。
 
-ES／Local Search 是不同搜尋後端的邏輯選擇；各環境的 ES 連線／Secret／集合、MongoDB URI／DB／Collection 屬部署設定。Local Search 的 Memory／MongoDB 持久化選擇歸邏輯 Config 或部署設定，尚未取得明確決策，需 Q-002／Q-021 核定。上述 `indexing.persistence` 暫沿用 Prototype 形狀，只是 Config Schema 候選；不能據此認定切換必然產生新 Config Revision，也不能直接認定只換部署綁定即可完成。
+ES／Local Search 及 Local Search 的 Memory／MongoDB 持久化模式屬邏輯 Config。使用者於 2026-10-15 確認：DEV 用 Memory，FTEST／ENT 也用 Memory；不能以部署覆寫將同版 Config 的 Memory 改成 MongoDB。若要改模式，應修改 Config 並依資料準備／相容性政策處理；是否能重用既有 Chunk／vectors，而不重跑 Parsing／Embedding，仍由 Q-012／Q-015 核定。
 
-待討論情境：DEV 用 Local Memory，FTEST／ENT 用 Local Search＋MongoDB，方法、模型與資料契約相同時，是否沿用同一 Config Revision？兩種歸屬都需驗證資料／Profile 相容性、初始化與恢復；改連線不代表資料已搬移。正式配置分支、DEV service_ref 與 Manifest 由 Q-002／Q-012／Q-021 一起核定。
+各環境的 ES 連線／Secret／集合、MongoDB URI／DB／Collection 屬部署設定。改連線不代表資料已搬移；Memory 模式不要求 DB，各環境仍需準備自己的資料。上述 `indexing.persistence` 的欄位拼字與完整分支仍為 Q-002 Schema 草案，模式跨環境保持一致的語意已確認。DEV service_ref 與 Manifest 見 Q-012／Q-021。
 
 ## 8. Config 變更影響矩陣
 
@@ -433,6 +515,23 @@ ES／Local Search 是不同搜尋後端的邏輯選擇；各環境的 ES 連線�
 「舊評估失效」是不能代表新版，不等於刪除歷史報告。Prototype 清除示意值的行為不應直接變成正式歷史資料刪除政策。
 
 CSV 映射保存、Revision 計算、canonical JSON／Hash、部署綁定是否可重用資料版本需 Q-015 核定。邏輯 Config Hash 不混入部署 URL／認證／資料目標；部署綁定另記版本／識別以追蹤實際環境。不得記真實 Secret；有語意順序的陣列不可任意排序。
+
+### 8.1 「重新 Ingestion／索引重建」的範圍
+
+重建需說明受影響資料與需要重做的步驟，不一律代表清空整個資料庫。先前 Q-010／Q-015 的討論主要指有效 Ingestion 設定改變後，既有資料需要重新處理時的查詢可見性；以下區分不同情境：
+
+| 情境 | 受影響範圍／需要的處理 |
+|---|---|
+| 新增來源文件 | 處理新增文件及其 Chunk／索引；不因新增就預設整批重建 |
+| 更新單份文件內容 | 更新該文件產生的 Chunk／vectors／索引；舊片段替換與提交政策仍待 Q-008／Q-009 |
+| 修改共用 Chunk Size／切分規則 | 重新處理採用該規則的既有文件，可能涵蓋此 System 全部文件；後續 Embedding／索引隨新的 Chunk 更新 |
+| 更換 Embedding 語意 Profile | 針對受影響內容重算向量並建立相容的向量索引；是否可重用 Chunk 等中間產物待 Q-015 |
+| 改 Indexing 欄位／Mapping | 重建或補建受影響索引能力；實際步驟由 ES／Local Adapter 及相容政策決定 |
+| 只改 Query Transformation／Retrieval／Rerank／Generation | 不重做 Ingestion；重新測試／評估 |
+| Local Memory 程序重啟 | 記憶體 Chunk／vectors／搜尋結構已遺失，需重新 Ingestion 才可 Query |
+| Local MongoDB 程序重啟 | 以已保存 Chunk／vectors 恢復 FAISS／BM25／Chunk Store；相容時不需重新 Parsing／Embedding，屬索引恢復 |
+
+是否阻擋 Query、允許舊版本持續服務，以及新增／單文件更新／整批重建是否採不同策略，仍待 Q-008～Q-010／Q-015；本節只是範圍釐清，不把所有情境定為相同鎖定或發布流程。
 
 ## 9. 待討論與決策
 

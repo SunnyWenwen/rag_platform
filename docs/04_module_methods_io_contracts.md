@@ -1,6 +1,6 @@
 # RAG Engine — 組裝、執行與模組開發規格
 
-> 文件集 v0.13 · 2026-10-15 · 開發規格草案
+> 文件集 v0.14 · 2026-10-15 · 開發規格草案
 >
 > 本文涵蓋可獨立執行的 Engine 與各模組；正式名詞定義見 [03 §3](../03_architecture_proposal.md#terminology)，共用資料／Config 結構見 05。既有產品語意為已確認方向，新增 SDK、Registry 形狀、執行政策為建議，須經對應 Q-ID 核定。本次未新增 Engine 程式。
 
@@ -239,6 +239,8 @@ FAISS 的維度／metric 不足以證明向量空間相容。cosine／inner prod
 需在 Q-014 核定的計畫涵蓋範圍：同一 Query 內多欄位融合、跨 Query 融合、Rerank 前或後執行。先逐 Query Score Sum、再跨 Query RRF 是已討論情境；助理提出的具體 stage 枚舉、Global Fusion 與預設兩層計畫尚未取得使用者定案。
 
 Engine 必須在計畫需要時保留 query_id／route_id、各路候選／分數／rank，不能先攤平成唯一 SearchHit 清單而丟失後續跨 Query 融合所需資訊。規格核定前可交付現有單層基線，但不得宣稱合併時點選擇已完成。
+
+2026-10-15 使用者進一步確認可自行決定在哪個合法步驟後融合，並要求先討論 Inference 的資料／評分紀錄。以 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft) 的 InferenceState／RankedList 草案作為下一輪討論起點；具體型別未定案，不把說明用 Plan A／B 寫成唯一可用的固定流程。
 
 - Sum Score（現有單層基線預設）：`sum(weight × relevance_score)`；未命中該路為 0；同類型欄位及各 Query 共用全文／向量權重；不自動正規化。
 - RRF：`sum(1 / (k + rank))`；各路 rank 從 1；預設 k=60。

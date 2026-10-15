@@ -1,6 +1,6 @@
 # RAG Builder — 開發計畫、驗收與決策追蹤
 
-> 文件集 v0.13 · 2026-10-15 · 開發規格草案
+> 文件集 v0.14 · 2026-10-15 · 開發規格草案
 >
 > 目的：讓 coding agent 依同一套規格分階段開發，並持續記錄尚不清楚的問題。本文是決策／待決狀態的權威位置；它不把技術建議自動轉成使用者已核可決策。
 
@@ -61,7 +61,7 @@ v0.13 從 `e52c4d74a469522155d814f0ff51fddf8946f957` 核對交接文件、本串
 | D-20 | Evaluation 重用相同查詢／檢索，版本與缺標註需可追蹤；首批指標與 Gate 待定 | 舊 04／03／既有基線 | 04／07 |
 | D-21 | collection 由 Workspace＋System 名稱自動產生，不要求手填；穩定 ID 防重，改名不換實體 | 2026-10-14 09:31（台北）使用者要求／已確認 | 05／06／07 |
 | D-22 | Parsing 只顯示結構化 JSON；其他格式及所有相關設定預設收合 | 2026-10-14 17:09 使用者要求／已確認 | 06 |
-| D-23 | 目標需可配置融合策略與「在哪一步合併」；具體 stages／兩層／預設計畫尚待 Q-014 | 2026-10-14 17:41～17:42 使用者追問／需求已確認 | 03／04／05／06／07 |
+| D-23 | 使用者可配置融合策略及在哪個合法處理步驟後合併；先釐清 Inference 傳遞物件／多路分數，再核定具體 stages／兩層／預設 | 2026-10-14 要求及 2026-10-15 11:03 釐清／需求已確認，細節 Q-014 | 03／04／05／06／07 |
 | D-24 | 共用 LLM、可編輯 Query Prompt、Generation 模板範例／套用按鈕與 Rerank 格式說明 | 2026-10-14 10:44～11:00 對話／已確認方向 | 04／05／06 |
 | D-25 | L1／Infra 的框、標籤、方向、圖示及省略線依使用者既有修改保留 | 2026-10-14～15 對話與基準圖／已確認 | 03 §4／既有圖面 |
 | D-26 | Ingest／Inference 的 API 端點說明隨時可看，包含未 Ingestion 狀態 | 2026-10-14 13:11 使用者要求／已確認 | 06／07 |
@@ -71,6 +71,7 @@ v0.13 從 `e52c4d74a469522155d814f0ff51fddf8946f957` 核對交接文件、本串
 | D-30 | 同一 System 同版 Config 在不同環境保持相同；部署設定可不同 | 2026-10-15 10:06 使用者確認／已確認 | 03／05／07／Q-015／Q-021 |
 | D-31 | 正式階層為 Workspace → System，無額外 Group 層 | 2026-10-15 10:06 使用者確認／已確認 | 03／05／06／07 |
 | D-32 | 名詞定義集中在 03 §3，05 保留資料／版本規則，08 保留決策紀錄；其他規格引用 03 | 2026-10-15 10:22～10:24 建議後由使用者確認撰寫／已確認 | 03 §3、04～08／README |
+| D-33 | Memory／MongoDB 模式隨 Config 跨環境固定；DEV 用 Memory，FTEST／ENT 也用 Memory，不能只以部署覆寫切換 | 2026-10-15 11:03 使用者確認／已確認 | 03／05／06／07 |
 
 「既有基線」不代表已涵蓋後續需求。D-23 的合併時點配置是使用者已提出的目標，不能以 D-11 的 Prototype 限制否決；Q-014 負責核定實際支援路徑及契約，不再討論是否記錄這項需求。助理建議的預設兩層計畫及 stage 命名則仍未定案。
 
@@ -147,7 +148,7 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 <a id="q-002"></a>
 ### Q-002 共用 Schema、Config、SDK 與版本凍結
 
-- 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile、Local Search 持久化選擇的 Config／部署歸屬，以及原型短名稱／匯出標籤 migration。
+- 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System；Local Search 持久化模式隨 Config 跨環境固定（D-33）。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile、InferenceState／RankedList 草案，以及原型短名稱／匯出標籤 migration。
 - 建議：先核定最小完整 Config＋單一公開 Engine interface；Pydantic 匯出 JSON Schema，UI 使用相同來源。用完整欄位路徑；未知別名拒絕。
 - 替代：直接沿用 Prototype 全部短名稱；需補齊其缺少型別與執行語意。
 - 負責角色：Engine＋Backend＋Frontend；阻擋 M0 契約凍結。
@@ -256,9 +257,10 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 <a id="q-014"></a>
 ### Q-014 融合計畫、合併時點與分組細節
 
-- 已有需求：使用者要求可配置融合策略及「在哪一步合併」，並提出逐 Query Score Sum→跨 Query RRF 情境；D-23 已記錄，不能只當可做可不做的助理建議。
+- 已有需求：使用者要求可配置融合策略及「在哪一步合併」，並提出逐 Query Score Sum→跨 Query RRF 情境；D-23 已記錄，不能只當可做可不做的助理建議。2026-10-15 再次明確可自行決定融合位置，且應先釐清 Inference 物件如何記錄多 Query／多 Index／多階段分數。
 - 不清楚：正式支援哪些前／後 Rerank 路徑、單層／兩層、scope／stage Schema、預設計畫、每階段 K／N、Rerank Query、同分／重複候選、分組與分數語意。
-- 候選：受控 Plan A（同 Query 融合→跨 Query 融合→Rerank）、Plan B（同 Query 融合→逐 Query Rerank→跨 Query 融合）、舊單層基線。這些具體組合與 `fusion.stages[]` 都需核定；不自動選助理推薦當預設。
+- 情境例：同 Query 融合→跨 Query 融合→Rerank、同 Query 融合→逐 Query Rerank→跨 Query 融合、舊單層基線。Config 需能選擇合法融合位置，不能只接受固定 Plan A／B；具體步驟配置及 `fusion.stages[]` 仍待核定，不自動選助理推薦當預設。
+- 本輪草案：05 §4.6 以共用 Chunk 內容及多份 RankedList，保留 route／query／分數／rank／階段輸入關係。先討論這些資料責任，再核定型別及各步驟處理；此結構尚未取得使用者定案。
 - 建議：先定可驗證的有限計畫及共同 route 型別，保留 query／route identity；Rerank=None 及非法組合須顯式驗證。文件分組另定，不與 chunk_id 去重混同。
 - 負責角色：產品＋Engine＋Frontend；阻擋目標時點配置的契約／驗收，可先維持舊基線做迭代但不宣稱需求完成。
 - 決策：配置能力的需求已確認；具體計畫／預設／Schema 未定。同步更新 03～07 與範例。
@@ -320,7 +322,7 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 <a id="q-021"></a>
 ### Q-021 Export、FTEST／ENT 與 Secret Vault
 
-- 已確認：同版邏輯 Config 不隨環境改變，環境連線／Secret／資源為部署設定。不清楚的是 Image／Bundle 包裝、Vault／注入、Secret 型別、K8s 資源／Ingress／Probe 及 CD 流程；另需與 Q-002 核定 Local Memory→MongoDB 能否只換部署設定而沿用同版 Config。
+- 已確認：同版邏輯 Config 不隨環境改變，環境連線／Secret／資源為部署設定；Memory／MongoDB 模式也跨環境保持一致（D-33），不能只換部署設定切換。不清楚的是 Image／Bundle 包裝、Vault／注入、Secret 型別、K8s 資源／Ingress／Probe 及 CD 流程。
 - 建議：版本鎖定 Runtime Image＋有效 Config＋環境覆寫；Local 單副本；明示未帶資料且無 Builder 依賴。
 - 替代：使用單位既有 Helm／GitOps 形式；仍需相同可驗證交付內容。
 - 負責角色：平台／DevOps＋Backend；阻擋 M6 正式部署交付。
@@ -533,7 +535,7 @@ v0.11／v0.12 均只修改規格與 README；未修改 HTML Prototype／API／En
 - 起點為 `e52c4d74a469522155d814f0ff51fddf8946f957` 的 03～08／README／「畫userflow」交接摘要；逐項比對原 RAG Builder 規劃對話可見的模組、UI、資料契約、服務及圖面要求。
 - 另核對到 10/15 10:06 的使用者確認：同一 System 的 Config 相同、部署設定可不同；Workspace → System；Blueprint 並非使用者指定。沿用 D-29～D-32，不回到早期額外 Group 的命名。
 - 這次亦核對原型 Blob `0cc835ef686136b920d46714d604d797462f250f`：目前為 v0.8，仍只有單層融合、舊 Groups／RAGBlueprint 名稱。正式規格與原型的遷移範圍繼續分開記錄。
-- 本次未取得其他對話逐字全文；以前的證據限制仍見 §10.1。持久化歸屬沒有找到使用者明確定案，保持 OPEN。
+- 本次未取得其他對話逐字全文；以前的證據限制仍見 §10.1。v0.13 核對時持久化歸屬為 OPEN；後續 v0.14 已由使用者確認，見 D-33／§13。
 - 後續在本串繼續規劃；正式名詞、規則與決策分別由 03、04～07、本文維護，不再需要臨時 handoff。
 
 ### 12.2 直接補正的小幅差異
@@ -554,8 +556,8 @@ ParsedDocument 五個 key、Chunk 六個 key、fields→vectors、多欄位用�
 
 | 問題 | 可選方向及影響 | 追蹤／狀態 |
 |---|---|---|
-| Local Memory／MongoDB 的歸屬 | 若屬部署設定，DEV Memory 與 FTEST／ENT MongoDB 可使用同一邏輯 Config，仍需分開驗證資料／恢復；若屬邏輯 Config，切換需新 Revision 並定義影響。原 05 的單一歸屬敘述已改回待決，範例的 indexing.persistence 只是候選 | Q-002／Q-021；OPEN |
-| Fusion 路徑 | 既有原型把所有 Query×欄位在 Rerank 前做一次 Sum Score／RRF；目標另有同 Query／跨 Query、Rerank 前／後的配置需求。需選首批有限計畫與預設，才能凍結候選形狀及各階段 K／N | Q-014；需求已確認、具體計畫 OPEN |
+| Local Memory／MongoDB 的歸屬 | v0.13 曾列兩種歸屬；v0.14 使用者確認模式隨 Config 跨環境固定，DEV Memory 則 FTEST／ENT 也為 Memory。已同步主責規格，具體欄位與模式變更的資料重用仍另決 | 此子題已決，見 D-33；Q-002／Q-021 其餘細節仍 OPEN |
+| Fusion 路徑 | 既有原型把所有 Query×欄位在 Rerank 前做一次 Sum Score／RRF；目標另有同 Query／跨 Query、Rerank 前／後的配置需求。v0.14 進一步釐清先討論候選／分數 Contract，再定可配置的合法融合點及各階段 K／N，見 §13 | Q-014；需求已確認、資料草案／具體配置 OPEN |
 | Config 變更後的資料可見性 | 簡化為重建完成前阻擋 Query，或維持舊 Config＋舊 Index 服務直到切換；兩者影響版本、任務、UI 與資料保存。來源文件版本／索引版本的概念已區分，快照、歷史回復與零停機仍需明確核可 | Q-010／Q-015；OPEN |
 
 以上為優先影響契約及端對端行為的項目；不因本次核對而選定方案，也不要求先解完所有 27 項問題才能開發。每次確認後同步主責規格、範例及相應 Q-ID。
@@ -563,3 +565,23 @@ ParsedDocument 五個 key、Chunk 六個 key、fields→vectors、多欄位用�
 ### 12.4 本輪文件驗證
 
 03～08 與 README 共 7 份文件：108 個相對連結、69 個錨點、12 段 JSON、3 段 YAML 及 1 段 Python 範例語法檢查通過；維持 27 個 Q-ID、32 個 D-ID 及 40 項既有要求對照。檢查 handoff 已移除且無失效引用、YAML 範例解析語意不變、既有 Mermaid 未變動。Python 只檢查語法，不執行尚未存在的 Engine。Prototype／Runtime／模型／DB／K8s 本輪沒有新增功能驗收。
+
+## 13. 2026-10-15 11:03 持久化確認與 Inference 資料討論（v0.14）
+
+### 13.1 已確認與尚待討論的界線
+
+- **已確認 D-33**：DEV 用 Memory，FTEST／ENT 也用 Memory。持久化模式屬邏輯 Config，不能由 Export 的環境覆寫任意切換；連線／Secret 等部署綁定仍分環境提供。只關閉此子題，不因此關閉 Q-002／Q-021 的所有細節。
+- **已確認 D-23 的配置方向**：使用者自行選擇在哪個合法步驟後融合。先定義 Inference 如何傳遞候選與記錄分數，才能討論後續處理；不得以固定 Plan A／B 限制位置選擇。
+- **資料草案待確認**：提出 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft) 的 InferenceState／RankedList：共用 Chunk 內容、多份 Query×路徑及各階段排序、分數來源／方向／rank、輸入結果關聯及下一步選用清單。這些具體欄位與格式是助理草案，尚非已核定 Contract。
+- **重建範圍釐清**：新增／單文件更新、因切分／Embedding 等配置改變而重處理既有資料、Memory 重啟後重匯，以及 MongoDB 恢復索引分開。先前 Query 可見性問題主要針對既有資料重建；各情境的發布／鎖定政策仍待 Q-008～Q-010／Q-015。
+
+### 13.2 下一步討論順序
+
+1. 確認 Chunk 內容、評分記錄與排序清單的責任／必填欄位，不先凍結程式命名。
+2. 確認逐 Query／跨 Query／Rerank 的清單輸入與輸出，及 Fusion 的可配置位置。
+3. 再定各階段 Top-K／Top-N、分數轉換／權重、丟棄候選與記錄保留方式。
+4. 另釐清新增／更新／整批重建期間的 Query 可見性；資料型別討論不代替發布政策。
+
+本輪只更新文件與新增討論草案，不宣稱 Prototype 已有多階段融合或 Engine 已實作這些型別。
+
+文件驗證：7 份文件的 111 個相對連結、72 個錨點、13 段 JSON、3 段 YAML 與 1 段 Python 範例語法通過；InferenceState 示例的 Chunk 六個 key、清單引用與 rank／score 可檢查。D-ID 增至 33，Q-ID 維持 27；YAML 解析語意與圖面未變。這些檢查不代表草案已經型別凍結或可執行。

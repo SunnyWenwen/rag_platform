@@ -1,6 +1,6 @@
 # RAG Builder — 系統概覽與架構
 
-> 文件集 v0.13 · 2026-10-15 · 開發規格草案
+> 文件集 v0.14 · 2026-10-15 · 開發規格草案
 >
 > 本輪重整 03～08 的責任，保留既有已確認方向。本文負責產品與架構總覽，具體規格及未決問題見專題文件與 08。文件更新不表示 Engine、Runtime API 或部署服務已實作。
 
@@ -171,7 +171,7 @@ Config 與部署設定的欄位、有效設定規則及範例見 [05 §6～8](do
 
 MongoDB 在此不執行向量檢索。每個向量欄位的 FAISS index 由 Adapter 管理。多程序不自動共享記憶體；MongoDB 也不自動同步 Pod 的索引。演算法及恢復流程見 04／07。
 
-Local Search 的 Memory／MongoDB 選擇應歸邏輯 Config 或部署設定，仍待 Q-002／Q-021 核定；目前範例沿用原型形狀，不作為跨環境切換政策。需明確決定 DEV 使用 Memory、FTEST／ENT 使用 MongoDB 時，能否沿用同一 Config Revision，見 05 §7／08 §12。
+Local Search 的 Memory／MongoDB 持久化模式隨邏輯 Config 固定：DEV 用 Memory，FTEST／ENT 也用 Memory；同一 Config Revision 不藉部署設定切換模式。MongoDB 模式的連線／Secret／DB／Collection 可依環境提供。使用者已於 2026-10-15 確認此方向，見 08 D-33；具體 Schema／恢復政策仍由 Q-002／Q-012 核定。
 
 ## 6. 設定、服務與交付原則
 
