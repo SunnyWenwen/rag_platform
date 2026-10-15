@@ -1,6 +1,6 @@
 # RAG Builder — 開發計畫、驗收與決策追蹤
 
-> 文件集 v0.11 · 2026-10-15 · 開發規格草案
+> 文件集 v0.12 · 2026-10-15 · 開發規格草案
 >
 > 目的：讓 coding agent 依同一套規格分階段開發，並持續記錄尚不清楚的問題。本文是決策／待決狀態的權威位置；它不把技術建議自動轉成使用者已核可決策。
 
@@ -16,22 +16,22 @@
 
 03～07 的 Q-ID 連回本文件。每份文件保留自身待討論清單，完整選項／決策只維護一次。沒有核可的問題不能靠空白 TODO 或聊天記憶隱藏。
 
-本輪基準為 `cf4dfdc0e29acc91a2fe63b1993f867c8facaf6d`。新架構／介面提案與該版本 Prototype 的差異，要以 migration 明確處理。03～08 是開發規格草案；原型測試通過不代表 Engine／API 已完成。v0.11 已追加本輪名詞決策，v0.9 的初始基準仍保留以追蹤來源。
+本輪基準為 `cf4dfdc0e29acc91a2fe63b1993f867c8facaf6d`。新架構／介面提案與該版本 Prototype 的差異，要以 migration 明確處理。03～08 是開發規格草案；原型測試通過不代表 Engine／API 已完成。v0.11 已追加名詞決策；v0.12 將正式定義集中到 03 §3。v0.9 的初始基準仍保留以追蹤來源。
 
 ## 2. 文件責任與建議閱讀順序
 
-先讀 [03](../03_architecture_proposal.md) 了解邊界，再讀本計畫；實作依序讀 [05 契約](05_data_contracts_search_design.md)、[04 Engine](04_module_methods_io_contracts.md)、[07 整合](07_backend_runtime_integration.md)、[06 UI](06_ui_development_spec.md)。
+先讀 [03](../03_architecture_proposal.md)，以 [§3 名詞定義](../03_architecture_proposal.md#terminology) 統一概念與責任邊界，再讀本計畫；實作依序讀 [05 契約](05_data_contracts_search_design.md)、[04 Engine](04_module_methods_io_contracts.md)、[07 整合](07_backend_runtime_integration.md)、[06 UI](06_ui_development_spec.md)。
 
 | 權威範圍 | 文件 |
 |---|---|
-| 產品／架構與非目標 | 03 |
+| 正式名詞定義、產品／架構與非目標 | 03 |
 | 獨立 Engine、模組組裝／演算法／語意驗證 | 04 |
 | 共用資料、Config 及欄位型別 | 05 |
 | 互動與基本／進階呈現 | 06 |
 | HTTP、平台儲存、工作與部署整合 | 07 |
 | 決策狀態、階段、驗收／阻擋 | 08 |
 
-同一型別／規則不在多份文件各寫一套。程式 Schema 與文件同步；不能只更新 UI、測試或其中一份規格。
+同一型別／規則不在多份文件各寫一套。03 定義名詞，05 規範對應的資料結構／版本規則，本文保存決策來源及狀態；決策摘要不取代 03 的現行定義。程式 Schema 與文件同步；不能只更新 UI、測試或其中一份規格。
 
 ## 3. 已確認方向與保留基線
 
@@ -68,6 +68,7 @@
 | D-29 | 正式 Config 指模組 Method／參數與邏輯；Blueprint 是助理引入的名稱，移出正式領域模型 | 2026-10-15 10:06 使用者釐清／已確認 | 03／05／06／07 |
 | D-30 | 同一 System 同版 Config 在不同環境保持相同；部署設定可不同 | 2026-10-15 10:06 使用者確認／已確認 | 03／05／07／Q-015／Q-021 |
 | D-31 | 正式階層為 Workspace → System，無額外 Group 層 | 2026-10-15 10:06 使用者確認／已確認 | 03／05／06／07 |
+| D-32 | 名詞定義集中在 03 §3，05 保留資料／版本規則，08 保留決策紀錄；其他規格引用 03 | 2026-10-15 10:22～10:24 建議後由使用者確認撰寫／已確認 | 03 §3、04～08／README |
 
 「既有基線」不代表已涵蓋後續需求。D-23 的合併時點配置是使用者已提出的目標，不能以 D-11 的 Prototype 限制否決；Q-014 負責核定實際支援路徑及契約，不再討論是否記錄這項需求。助理建議的預設兩層計畫及 stage 命名則仍未定案。
 
@@ -405,7 +406,7 @@ Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract�
 
 ## 9. 本輪交付與尚未完成
 
-初版交付（v0.9）：重整 03～05、新增 06～08、更新 README，登錄 27 項未決問題。歷史核對版（v0.10）補正需求／基線／建議的界線，見 §10；名詞釐清版（v0.11）統一 Config／部署設定、Workspace → System 及版本概念，見 §11。Q-ID 維持 27 項，不以重新編號掩蓋修正。仍只交付文件，不宣稱 Engine、API 或合併時點 UI 已實作。
+初版交付（v0.9）：重整 03～05、新增 06～08、更新 README，登錄 27 項未決問題。歷史核對版（v0.10）補正需求／基線／建議的界線，見 §10；名詞釐清版（v0.11）統一 Config／部署設定、Workspace → System 及版本概念；名詞集中版（v0.12）整理 03 §3 並補齊其他文件引用，見 §11。Q-ID 維持 27 項，不以重新編號掩蓋修正。仍只交付文件，不宣稱 Engine、API 或合併時點 UI 已實作。
 
 ## 10. 2026-10-15 歷史對話與決策核對
 
@@ -436,6 +437,7 @@ Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract�
 | H-10 | 10/14～15 L1 圖修正、基準 SVG／Mermaid | 左到右、1～5 框內、6 框外、實體名稱與虛線 |
 | H-11 | 10/15 本對話的核心定位、03～08 分工、coding agent 目標 | 新手／進階、04＋05 獨立 Engine、逐項待決與驗收 |
 | H-12 | 10/15 09:57～10:06 名詞釐清 | Engine／Runtime／System、Config、移除 Blueprint、Workspace → System、跨環境部署與版本問題 |
+| H-13 | 10/15 10:22～10:24 名詞文件定位與撰寫確認 | 正式名詞集中在 03，05 保留資料／版本細則，08 記錄決策與待決事項 |
 
 只有問題或助理回答的主題，不直接視為使用者核定了所有底層選項。例：曾討論 class 不代表 Runtime Validation 自動成立；曾提出 Rerank 後融合不代表具體 Plan／預設已確認。
 
@@ -482,6 +484,7 @@ Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract�
 | A-37 | 同一 System 同版 Config 相同，部署設定不同 | H-12／U | 05 §6～7、07 儲存／Export；分開範例與環境綁定 |
 | A-38 | Workspace → System | H-12／U | 03／05／06／07；移除額外 Group 層 |
 | A-39 | 文件內容版本與索引資料版本的差別 | H-12 問題＋B | 05 §2.1；加入例子，具體版本生成／發布仍待 Q-007／Q-015 |
+| A-40 | 名詞定義集中在 03，其他規格分工引用 | H-13／U | 03 §3、04～08／README；新增固定錨點，區分定義、契約與決策紀錄 |
 
 ### 10.4 修正與仍待決的界線
 
@@ -491,18 +494,29 @@ Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract�
 
 ### 10.5 本輪檢查證據
 
-驗證對話→要求→文件的 39 項對照（v0.10 原為 34 項，v0.11 增加名詞釐清）、跨文件連結／Q-ID、JSON／YAML 範例語法、資料頂層 key、未修改 Prototype／圖面，以及遠端版本後再提交。這些是文件一致性驗證，不取代日後 Schema／Engine／Runtime 的功能測試。
+對照表累計 40 項（v0.10 原為 34 項，v0.11 增加名詞釐清，v0.12 增加名詞文件定位）。文件更新時檢查跨文件連結／錨點、Q-ID、JSON／YAML 範例語法、資料頂層 key、未修改 Prototype／圖面，以及遠端版本後再提交。這些是文件一致性驗證，不取代日後 Schema／Engine／Runtime 的功能測試。
 
-## 11. 2026-10-15 10:06 名詞決策補充
+## 11. 名詞相關決策紀錄
 
-| 主題 | 已確認內容 | 仍待決細節 |
-|---|---|---|
-| Config | 各 Module 的 Method／參數及 Pipeline 的邏輯設定；含 Schema、欄位、Prompt、模型語意與穩定服務引用 | 正式 Schema 拼字、CLI 載入與檔案包裝 Q-002 |
-| Blueprint | 由助理先前引入，使用者未指定；移出正式領域模型，統一用 Config／部署設定 | 舊 Prototype 匯出標籤及檔名 migration Q-002 |
-| System 跨環境 | 同一 System 的同版邏輯 Config 一致，DEV／FTEST／ENT 部署綁定可不同 | deployment_id／綁定版本／資料目標識別 Q-015／Q-021 |
-| 管理階層 | Workspace → System；不設額外 Group | 權限矩陣／CRUD API Q-006／Q-019 |
-| Engine／Runtime／System | Engine 組裝執行模組，Runtime 加 API，Config 實例化為具體 System；SDK 也可建立 | 資源生命週期／多實例策略 Q-017／Q-020 |
+正式名詞定義以 [03 §3](../03_architecture_proposal.md#terminology) 為準；本節保留討論結果、來源與待決邊界，供追蹤變更。
 
-使用者對 source_revision／index_generation 的提問，已在 05 §2.1 加概念與例子；這不是核可了快照儲存、生成 ID 或發布原子性。文件版本、Config Revision、文件內容版本、索引資料版本及部署綁定仍須各自追蹤，未決政策保留原 Q-ID。
+### 11.1 2026-10-15 10:06 名詞釐清
 
-本輪只修改規格與 README；未修改 HTML Prototype／API／Engine。舊原型 Groups／RAGBlueprint 仍需在正式實作時依新名詞遷移，不能把新文件當成程式已更新。
+| 主題 | 決策調整 | 現行定義 | 仍待決細節 |
+|---|---|---|---|
+| Config | 將邏輯處理設定與環境部署設定分開 | [03 §3.3](../03_architecture_proposal.md#config-terms) | 正式 Schema 拼字、CLI 載入與檔案包裝 Q-002 |
+| Blueprint | 確認為助理引入的名稱，移出正式領域模型 | [03 §3.3](../03_architecture_proposal.md#config-terms) | 舊 Prototype 匯出標籤及檔名 migration Q-002 |
+| System 跨環境 | 同版邏輯 Config 一致，環境差異收在部署綁定 | [03 §3.3](../03_architecture_proposal.md#config-terms) | deployment_id／綁定版本／資料目標識別 Q-015／Q-021 |
+| 管理階層 | 採用 Workspace → System，不設額外 Group | [03 §3.1](../03_architecture_proposal.md#system-terms) | 權限矩陣／CRUD API Q-006／Q-019 |
+| Engine／Runtime／System | 區分核心框架、API 服務及具體應用，保留直接 SDK 入口 | [03 §3.1](../03_architecture_proposal.md#system-terms) | 資源生命週期／多實例策略 Q-017／Q-020 |
+
+使用者對 source_revision／index_generation 的提問，已在 05 §2.1 加變更例子，概念定義集中到 [03 §3.4](../03_architecture_proposal.md#version-terms)；這不是核可了快照儲存、生成 ID 或發布原子性。未決政策保留原 Q-ID。
+
+### 11.2 2026-10-15 10:24 名詞文件定位
+
+- 使用者確認將名詞併入 03，不另開名詞文件；現有 §3 擴充為「名詞定義與元件責任」。
+- 03 統一定義系統組成、模組／流程、Config／部署設定及版本概念；04～07 以連結引用，05 保留欄位、規則與範例，08 保留決策及待決狀態。
+- 此分工讓 coding agent 先取得一致語意，再按任務讀取詳細規格；後續改名詞須同步權威定義及受影響文件。
+- 未決 Schema、生命週期、權限及索引版本政策沿用原 Q-ID，不因整理名詞而視為已定案；不新增技術選型。
+
+v0.11／v0.12 均只修改規格與 README；未修改 HTML Prototype／API／Engine。舊原型 Groups／RAGBlueprint 仍需在正式實作時依新名詞遷移，不能把新文件當成程式已更新。

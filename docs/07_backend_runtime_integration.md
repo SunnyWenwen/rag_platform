@@ -1,10 +1,12 @@
 # RAG Builder — Backend、Runtime API 與整體串接規格
 
-> 文件集 v0.11 · 2026-10-15 · 開發規格草案
+> 文件集 v0.12 · 2026-10-15 · 開發規格草案
 >
 > 本文包裝 04 的 Engine，負責管理、HTTP、任務、持久化與交付。Endpoint 大方向沿用既有提案；精確 Envelope、認證、狀態與儲存細節為建議，依 Q-ID 核定後實作。
 
 ## 1. 責任邊界
+
+Engine／Runtime／System、Config／部署設定及版本概念以 [03 §3](../03_architecture_proposal.md#terminology) 為準；本文描述對應的服務、API 與生命週期，不另創領域定義。
 
 | 層 | 責任 |
 |---|---|

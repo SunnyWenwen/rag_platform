@@ -1,6 +1,6 @@
 # RAG Builder — 系統概覽與架構
 
-> 文件集 v0.11 · 2026-10-15 · 開發規格草案
+> 文件集 v0.12 · 2026-10-15 · 開發規格草案
 >
 > 本輪重整 03～08 的責任，保留既有已確認方向。本文負責產品與架構總覽，具體規格及未決問題見專題文件與 08。文件更新不表示 Engine、Runtime API 或部署服務已實作。
 
@@ -8,7 +8,7 @@
 
 | 文件 | 權威範圍 | 主要讀者 |
 |---|---|---|
-| 03 本文 | 產品目標、使用情境、架構邊界、功能範圍 | 所有開發者 |
+| 03 本文 | 正式名詞定義、產品目標、使用情境、架構邊界、功能範圍 | 所有開發者 |
 | [04 Engine 與模組](docs/04_module_methods_io_contracts.md) | Engine 載入、組裝、執行及各模組行為 | Engine／Adapter 開發 |
 | [05 資料與 Config](docs/05_data_contracts_search_design.md) | 共用資料結構、設定形狀、欄位及版本規則 | 前後端、Engine |
 | [06 UI](docs/06_ui_development_spec.md) | 畫面、互動、漸進式設定、CSV 與 AI 助手 | 前端／產品 |
@@ -39,23 +39,79 @@
 
 起始範本、小量試跑、自動診斷及自訂程式上傳的優先級尚未全部定案，見 [Q-022](docs/08_implementation_plan.md#q-022)、[Q-025](docs/08_implementation_plan.md#q-025)。本段不直接擴大第一期範圍。
 
-## 3. 元件責任
+<a id="terminology"></a>
+
+## 3. 名詞定義與元件責任
+
+**本章是 03～08 共用名詞定義的唯一依據。**04～07 引用本章，分別補充模組行為、資料／Config 結構、UI 及後端串接；08 記錄決策來源、狀態與待決事項。名詞或邊界變動時，先更新本章，再同步受影響的規格；不能在各文件另定同名概念。
+
+以下整理已確認方向及既有基線，不因此核定尚未決定的公共型別、欄位拼字、權限或部署政策。
+
+<a id="system-terms"></a>
+
+### 3.1 系統組成與管理階層
 
 | 名詞 | 定義 |
 |---|---|
-| RAG Builder | 提供 Workspace、設定、測試、評估與匯出的平台 |
-| RAG System | 套用特定 Config、綁定服務與資料／索引所建立的具體 RAG 應用；具穩定邏輯識別，可處於未啟動／執行／停止狀態 |
+| RAG Builder | 建立與管理 RAG System 的平台，提供 Workspace、設定 UI、測試、評估及匯出能力 |
+| Workspace | Builder 中組織與管理 System 的容器；正式管理階層為 Workspace → System，不增加 Group 層 |
 | RAG Engine | 可依 Config 選擇、串接與執行模組的核心框架，可獨立於 Builder／HTTP 使用 |
-| RAG Runtime | 為 Engine 加上 Ingest／Query／Status／Health API 的執行服務；載入設定後提供 System 的 API，可獨立部署 |
+| RAG Runtime | 為 Engine 加上 Ingest／Query／Status／Health API 的執行服務；載入設定後提供 System 的 API，可與 Builder 分開部署 |
+| RAG System | 套用特定 Config、綁定服務與資料／索引所建立的具體 RAG 應用；具穩定邏輯識別，可處於未啟動／執行／停止狀態，直接使用 Engine 也可建立 |
 | Evaluation Runner | 批次執行 Dataset 與收集指標；重用 04 的評估邏輯，由 07 管理任務與儲存 |
 
+Engine 是可重用的處理框架，Runtime 是提供 API 的服務載體，System 是使用者建立的具體應用。System 的邏輯識別不等同於 Pod、程序或 API 端點；一個 Runtime 如何管理多個 System／執行實例，仍由 [Q-017](docs/08_implementation_plan.md#q-017)、[Q-020](docs/08_implementation_plan.md#q-020) 核定。
+
+<a id="pipeline-terms"></a>
+
+### 3.2 模組與處理流程
+
+| 名詞 | 定義 |
+|---|---|
+| Module（模組） | Pipeline 中具有特定職責與約定 Input／Output 的處理單位，例如 Parsing、Chunking、Retrieval、Generation |
+| Method（方法） | Module 內可選擇的處理方式，例如 Chunking 的 Recursive／Header-aware；Method 的參數由 Config 指定 |
+| Pipeline（處理流程） | Module 及其執行規則組成的流程；本產品採固定骨架，依 Config 選擇 Method、參數及核定的組合策略 |
+| Ingestion | 將輸入資料經 Import、Parsing、Chunking、Embedding、Indexing 處理，準備可供查詢的資料／索引 |
+| Inference | 接收問題，執行 Query Transformation、Retrieval、依配置進行 Fusion／Rerank，最後由 Generation 產生回答 |
+
+Module／Method 是職責與選擇層次，不以 Python Class 或 Function 的實作形式區分；實作及 I/O Contract 見 [04](docs/04_module_methods_io_contracts.md)。Ingestion 與 Inference 透過資料／索引綁定銜接，不要求每次提問都重新 Ingestion。純全文模式略過 Embedding、None 的 pass-through，以及 Fusion 的合併時點等執行規則見 §5／04；本節不增加通用 DAG 編輯器。
+
+<a id="config-terms"></a>
+
+### 3.3 Config 與部署設定
+
+| 名詞 | 定義 |
+|---|---|
+| Config | System 的邏輯處理設定，包含 Module 的 Method／參數，以及 Pipeline、Document Schema、欄位、Prompt、模型語意 Profile 與邏輯服務引用 |
+| 部署設定（Deployment Settings） | 特定環境的執行與連線綁定，包含服務 URL、認證／Secret 引用、DB／實體索引目標及 Runtime／K8s 資源 |
+| UI Draft（UI 草稿） | 編輯過程中的設定狀態，可保存尚未啟用的方法／欄位；不表示所有內容都參與執行 |
+| Effective Config（有效 Config） | 從草稿或輸入設定中，取出實際使用的方法、參數及引用後形成的有效邏輯設定；手動、AI 與手寫設定使用相同驗證規則 |
+
+同一 System、同一 Config Revision 在 DEV／FTEST／ENT 沿用相同邏輯 Config，各環境可使用不同部署設定。例如只換服務 URL 或 Secret 引用屬部署綁定；改 Chunk Size、Generation Prompt 或模型語意 Profile 屬 Config 變更，不能以環境覆寫掩蓋。System 日後編輯會產生新 Revision，不要求它永遠只有一版 Config。
+
+Config 與部署設定的欄位、有效設定規則及範例見 [05 §6～8](docs/05_data_contracts_search_design.md#config-spec)。正式 Schema、檔案包裝與版本綁定仍由 Q-002／Q-015／Q-021 核定；本章的名詞定義不凍結程式型別名稱。
+
+先前助理引入的 **Blueprint 不作正式領域物件**，統一使用 Config／部署設定。Prototype 舊有 RAGBlueprint、blueprint.json、Groups 等標籤／變數的遷移見 05／06；舊程式名稱不另創正式概念。
+
+<a id="version-terms"></a>
+
+### 3.4 版本概念
+
+| 名詞 | 代表什麼 |
+|---|---|
+| 開發文件版本 | 本 repository 規格內容的修訂，例如文件集 v0.12；不代表 Config 或程式版本，也不代表功能已完成 |
+| Config Revision（config_revision） | 同一 System 的邏輯設定版本；改方法、參數、Prompt 等可形成新版本 |
+| 文件內容版本（source_revision） | 每份匯入 RAG 的來源文件之內容版本；不同文件各自追蹤 |
+| 索引資料版本（index_generation） | 某次可追蹤的索引資料狀態／發布批次，對應納入的文件版本及處理／建索引結果；可涵蓋多份文件 |
+| 契約版本（contract_version） | 資料／Config 結構契約的格式版本；目前欄位與遷移規則屬建議，仍待 Q-002 核定 |
+
+本節的「文件內容版本」指**匯入 RAG 的來源資料**，與 03～08 Markdown 規格的文件版本不同。改來源內容可在相同 Config 下形成新索引資料；來源不變而改切分／Embedding 也可能需要重建。只改 Inference Prompt 則可沿用相容的索引資料。
+
+各版本不是一對一。相同 Config 的不同環境也可使用不同資料／索引。具體欄位、變更範例及索引相容規則見 [05 §2](docs/05_data_contracts_search_design.md#identity-versions)／§8；版本 ID 生成、快照保存及發布原子性仍由 Q-007／Q-010／Q-015 核定。
+
+### 3.5 元件關係與實作責任
+
 **04＋05 應足以讓開發者手寫 Config 直接執行 Engine，建立 RAG System；不要求 API 才能成立。**06 產生設定，07 保存設定並管理 Runtime 請求。UI 產生 Config，由同一套 Engine 建立對應 Pipeline 實例。
-
-正式資訊階層已確認為 **Workspace → System**，不再加入 Group。Config 指 Module 的 Method、參數及 Pipeline／Schema／服務邏輯引用等處理設定；部署設定另描述環境的服務 URL、認證／Secret 引用、DB／索引目標、K8s 資源等。
-
-同一 System 的同一 Config Revision 在 DEV／FTEST／ENT 沿用相同邏輯 Config，各環境可用不同部署設定；不能為每個環境另改處理方法／模型 Profile 卻仍聲稱相同 Config。System 日後編輯產生新 Revision，並不要求它永遠只有一版 Config。具體部署識別與 DB 欄位仍見 Q-015／Q-021。
-
-正式名詞只使用 Config 與部署設定；先前助理引入的 Blueprint 不作新的領域物件。Prototype 舊匯出標籤的遷移見 05／06。
 
 | 元件 | 責任 | 邊界 |
 |---|---|---|

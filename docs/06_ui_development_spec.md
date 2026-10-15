@@ -1,6 +1,6 @@
 # RAG Builder — 使用流程與 UI 開發規格
 
-> 文件集 v0.11 · 2026-10-15 · 開發規格草案
+> 文件集 v0.12 · 2026-10-15 · 開發規格草案
 >
 > 本文定義 UI 目標互動。現有 HTML Prototype 的搜尋、模型、評估及 API 為模擬。Parsing 的預設收合、LLM／Prompt／範例按鈕等已確認要求如下；其他基本／進階分組、正式框架、範本與試跑優先級仍待決。
 
@@ -8,6 +8,7 @@
 
 - 新手透過預設、CSV 與 AI 助手快速開始；熟悉 RAG 者可展開完整設定。
 - 同一份 Config 可由手動或 AI 修改，不建立兩套不相容模式。
+- 畫面名詞與元件關係以 [03 §3](../03_architecture_proposal.md#terminology) 為準；UI 標籤與說明不得另定同名概念。
 - 資料／Config 以 [05](05_data_contracts_search_design.md) 為準；模組能力由 [04](04_module_methods_io_contracts.md) 提供；API 見 [07](07_backend_runtime_integration.md)。
 - 正式階層為 Workspace → System；側欄選 Workspace，主區顯示 System 卡片與操作視窗，不另建 Group。原型的 Groups 標籤／內部變數屬舊命名，正式化時遷移，不新增通用 DAG 編輯器。
 - UI 設定 Config，Engine 組裝實例；前端不直接存取 Secret 或自行執行正式 Pipeline。

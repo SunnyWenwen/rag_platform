@@ -1,17 +1,22 @@
 # RAG Builder — 共用資料模型與 Config 規格
 
-> 文件集 v0.11 · 2026-10-15 · 開發規格草案
+> 文件集 v0.12 · 2026-10-15 · 開發規格草案
 >
 > 本文是資料形狀及設定規則的權威位置。已確認的語意保留；新增的程式型別、完整 Config 拼字與預設值為建議草案，待 Q-002 核定後才凍結。YAML 範例用於討論與驗收設計，目前沒有 Engine 可直接執行。
 
 ## 1. 範圍與讀法
 
+- 名詞意義與元件關係以 [03 §3](../03_architecture_proposal.md#terminology) 為準；本文負責資料結構、欄位、版本規則及範例，不另定同名概念。
 - 模組如何執行見 [04](04_module_methods_io_contracts.md)，UI 見 [06](06_ui_development_spec.md)，HTTP 包裝／儲存見 [07](07_backend_runtime_integration.md)。
 - 本文統一 ParsedDocument、Chunk、SearchHit、Config 及 ModuleResult，避免各模組重複定義。
 - 物件形狀、Contract 版本與細節待 [Q-002](08_implementation_plan.md#q-002) 核定；已確認的五／六個頂層 key 不因此退回舊版。
 - `?` 表示可省略，不自動表示可為 null；`JSON` 必須可序列化，數值不可為 NaN／Infinity。正式 required／nullable／additionalProperties 須由 Schema 定義。
 
+<a id="identity-versions"></a>
+
 ## 2. 識別、版本與作用域
+
+版本概念的正式定義見 [03 §3.4](../03_architecture_proposal.md#version-terms)。下表是對應的欄位用途與未決實作政策；其中 source_revision 指匯入 RAG 的來源文件內容，不是本 repository 的 Markdown 規格版本。
 
 | 欄位／概念 | 語意 | 狀態 |
 |---|---|---|
@@ -26,11 +31,9 @@
 
 CSV 每列是邏輯文件。跨批更新需映射穩定鍵；Prototype 的批次自動 ID 不能宣稱可跨次穩定。檔案拆為多份文件時保留來源資產關聯，不能讓所有列沿用同一 document_id。
 
-### 2.1 三種版本的差別
+### 2.1 版本變更範例與規則
 
-- source_revision 是**每份文件的內容版本**：A 手冊從 v1 改成 v2；其他文件可仍是自己的 v1。
-- config_revision 是 **System 的邏輯設定版本**：例如改 Chunk Size、Embedding Profile 或 Generation Prompt。
-- index_generation 是**某次可追蹤的索引資料狀態／發布批次**：包含哪些文件版本、如何處理及建索引；通常涵蓋多份文件。
+以下用同一 System 的兩份來源文件 A／B，示範 03 定義的三種業務版本如何分別變動：
 
 | 成功完成的變更 | 文件 A／B | Config Revision | 索引資料版本 |
 |---|---|---|---|
@@ -175,15 +178,17 @@ failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項�
 
 未知 Token Usage 為 null／省略，不填 0。Secret 與敏感原文不進錯誤／追蹤。使用者無權設定可信租戶／ACL Context。
 
+<a id="config-spec"></a>
+
 ## 6. Config 結構與有效設定
 
-### 6.1 Config 與部署設定（名詞已確認）
+### 6.1 Config 與部署設定的契約邊界
 
-Config 包含各 Module 的 Method、參數、欄位／Prompt、模型語意 Profile，以及 Pipeline／Schema／邏輯服務引用；部署設定提供 DEV／FTEST／ENT 的實際服務 URL、認證／Secret、DB／索引目標與 Runtime／K8s 資源。Config 不是服務端點清單。
+名詞定義及跨環境原則見 [03 §3.3](../03_architecture_proposal.md#config-terms)。正式 Schema 需將邏輯設定與環境部署綁定拆開：前者保存方法、參數、Schema／欄位／Prompt、模型語意及邏輯引用，後者解析服務端點、Secret 引用、DB／實體索引與資源設定。
 
 同一 System、同一 Config Revision 的邏輯設定跨環境一致。若要改處理方法、模型／維度／Encoding 等語意，需建立新 Config Revision 並依影響重建，不用環境覆寫掩蓋邏輯差異。不同環境仍需檢查實際模型 Profile 相容性。
 
-原型曾把服務 URL／Secret 與 Pipeline 放在同一物件，正式 Schema 需拆開。具體型別與檔案包裝 Q-002 未凍結，但分離方向已確認。Blueprint 是先前助理引入的名稱，正式契約不設此領域物件。
+原型曾把服務 URL／Secret 引用與 Pipeline 放在同一物件，需明確 migration。具體型別與檔案包裝 Q-002 未凍結，但分離方向已確認。依 03 的正式用語，正式契約不新增 Blueprint 領域物件；舊匯出型別／檔名的遷移見 06。
 
 ### 6.2 草稿、有效 Config 與部署綁定
 
