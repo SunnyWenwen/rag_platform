@@ -72,9 +72,9 @@
     <text x="2060.0" y="373.5" font-size="23">6. Deploy YAML</text>
     <text x="2060.0" y="403.5" font-size="21">in FTEST/ENT</text>
   </g>
-  <g id="S" class="node object" data-label="RAG System">
+  <g id="S" class="node object" data-label="RAG System for RAG Builder 測試">
     <rect x="80" y="650" width="820" height="80" rx="10"/>
-    <text x="490.0" y="690.0" font-size="28">RAG System</text>
+    <text x="490.0" y="690.0" font-size="28">RAG System for RAG Builder 測試</text>
   </g>
   <g id="R" class="node object" data-label="評估報告">
     <rect x="980" y="650" width="220" height="80" rx="10"/>
