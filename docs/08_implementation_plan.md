@@ -1,6 +1,6 @@
 # RAG Builder — 開發計畫、驗收與決策追蹤
 
-> 文件集 v0.10 · 2026-10-15 · 開發規格草案
+> 文件集 v0.11 · 2026-10-15 · 開發規格草案
 >
 > 目的：讓 coding agent 依同一套規格分階段開發，並持續記錄尚不清楚的問題。本文是決策／待決狀態的權威位置；它不把技術建議自動轉成使用者已核可決策。
 
@@ -16,7 +16,7 @@
 
 03～07 的 Q-ID 連回本文件。每份文件保留自身待討論清單，完整選項／決策只維護一次。沒有核可的問題不能靠空白 TODO 或聊天記憶隱藏。
 
-本輪基準為 `cf4dfdc0e29acc91a2fe63b1993f867c8facaf6d`。新架構／介面提案與該版本 Prototype 的差異，要以 migration 明確處理。03～08 是開發規格草案；原型測試通過不代表 Engine／API 已完成。
+本輪基準為 `cf4dfdc0e29acc91a2fe63b1993f867c8facaf6d`。新架構／介面提案與該版本 Prototype 的差異，要以 migration 明確處理。03～08 是開發規格草案；原型測試通過不代表 Engine／API 已完成。v0.11 已追加本輪名詞決策，v0.9 的初始基準仍保留以追蹤來源。
 
 ## 2. 文件責任與建議閱讀順序
 
@@ -64,6 +64,10 @@
 | D-25 | L1／Infra 的框、標籤、方向、圖示及省略線依使用者既有修改保留 | 2026-10-14～15 對話與基準圖／已確認 | 03 §4／既有圖面 |
 | D-26 | Ingest／Inference 的 API 端點說明隨時可看，包含未 Ingestion 狀態 | 2026-10-14 13:11 使用者要求／已確認 | 06／07 |
 | D-27 | 以部門 LangChain／LangGraph 生態為技術背景；Haystack 未被使用者選定 | 2026-10-12 15:58 對話核對／已確認偏好 | 03／04／Q-001 |
+| D-28 | Engine 是模組組裝／執行核心，Runtime 加 API，System 是套用 Config 的具體應用；可直接 SDK 建立 | 2026-10-15 名詞對齊／已確認方向 | 03 §3、04、07 |
+| D-29 | 正式 Config 指模組 Method／參數與邏輯；Blueprint 是助理引入的名稱，移出正式領域模型 | 2026-10-15 10:06 使用者釐清／已確認 | 03／05／06／07 |
+| D-30 | 同一 System 同版 Config 在不同環境保持相同；部署設定可不同 | 2026-10-15 10:06 使用者確認／已確認 | 03／05／07／Q-015／Q-021 |
+| D-31 | 正式階層為 Workspace → System，無額外 Group 層 | 2026-10-15 10:06 使用者確認／已確認 | 03／05／06／07 |
 
 「既有基線」不代表已涵蓋後續需求。D-23 的合併時點配置是使用者已提出的目標，不能以 D-11 的 Prototype 限制否決；Q-014 負責核定實際支援路徑及契約，不再討論是否記錄這項需求。助理建議的預設兩層計畫及 stage 命名則仍未定案。
 
@@ -140,7 +144,7 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 <a id="q-002"></a>
 ### Q-002 共用 Schema、Config、SDK 與版本凍結
 
-- 不清楚：05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK 名稱、多 Profile、舊 Prototype migration。
+- 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile 及原型短名稱／匯出標籤 migration。
 - 建議：先核定最小完整 Config＋單一公開 Engine interface；Pydantic 匯出 JSON Schema，UI 使用相同來源。用完整欄位路徑；未知別名拒絕。
 - 替代：直接沿用 Prototype 全部短名稱；需補齊其缺少型別與執行語意。
 - 負責角色：Engine＋Backend＋Frontend；阻擋 M0 契約凍結。
@@ -176,7 +180,7 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 <a id="q-006"></a>
 ### Q-006 metadata 保留區、租戶與授權
 
-- 不清楚：保留欄位名稱、ACL 來源、System／Group 權限、tSSO／Gateway 驗證、獨立 Runtime 認證。
+- 不清楚：保留欄位名稱、ACL 來源、System／Workspace 權限、tSSO／Gateway 驗證、獨立 Runtime 認證。
 - 建議：可信 Context 注入租戶與 ACL，保留 metadata 顯式命名且不可覆寫；初期最小權限模型先核定。
 - 替代：只先驗單 System 的封閉環境；不得宣稱多租戶安全已完成。
 - 負責角色：平台／身分團隊＋Backend＋Engine；阻擋 M1 保留欄位及 M3／M4 多使用者服務。
@@ -258,7 +262,7 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 <a id="q-015"></a>
 ### Q-015 Revision、有效 Config Hash 與 Index 版本
 
-- 不清楚：保存／生效時點、草稿衝突、canonical Hash、CSV mapping 的配置歸屬、部署覆寫與資料版本相容。
+- 已確認：同一 System 的同版邏輯 Config 跨環境相同，部署設定分開；文件 source_revision 與 index_generation 概念分開。不清楚的是保存／生效時點、Hash、草稿衝突、CSV mapping 歸屬、環境部署識別／資料版本及快照切換。
 - 建議：分開保存版本與執行綁定；Hash 只納有效配置並保留有語意順序，使用樂觀版本檢查。
 - 替代：單一 active revision，改配置後阻擋到準備完成；仍須避免 lost update。
 - 負責角色：Engine＋Backend＋Frontend；阻擋 M0 Hash 凍結及 M4 版本操作。
@@ -312,7 +316,7 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 <a id="q-021"></a>
 ### Q-021 Export、FTEST／ENT 與 Secret Vault
 
-- 不清楚：Image／Bundle 形狀、環境差異、Vault 產品／注入、Secret 引用、K8s 資源／Ingress／Probe、CD 流程。
+- 已確認：同版邏輯 Config 不隨環境改變，環境連線／Secret／資源為部署設定。不清楚的是 Image／Bundle 包裝、Vault／注入、Secret 型別、K8s 資源／Ingress／Probe 及 CD 流程。
 - 建議：版本鎖定 Runtime Image＋有效 Config＋環境覆寫；Local 單副本；明示未帶資料且無 Builder 依賴。
 - 替代：使用單位既有 Helm／GitOps 形式；仍需相同可驗證交付內容。
 - 負責角色：平台／DevOps＋Backend；阻擋 M6 正式部署交付。
@@ -401,7 +405,7 @@ Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract�
 
 ## 9. 本輪交付與尚未完成
 
-初版交付（v0.9）：重整 03～05、新增 06～08、更新 README，登錄 27 項未決問題。歷史核對版（v0.10）補正需求／基線／建議的界線與漏失細節，見 §10；Q-ID 維持 27 項，不以重新編號掩蓋修正。仍只交付文件，不宣稱 Engine、API 或合併時點 UI 已實作。
+初版交付（v0.9）：重整 03～05、新增 06～08、更新 README，登錄 27 項未決問題。歷史核對版（v0.10）補正需求／基線／建議的界線，見 §10；名詞釐清版（v0.11）統一 Config／部署設定、Workspace → System 及版本概念，見 §11。Q-ID 維持 27 項，不以重新編號掩蓋修正。仍只交付文件，不宣稱 Engine、API 或合併時點 UI 已實作。
 
 ## 10. 2026-10-15 歷史對話與決策核對
 
@@ -431,6 +435,7 @@ Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract�
 | H-09 | 10/14 17:17 策略選擇；17:41～17:42 融合位置追問 | 「在哪一步合併」是目標要求；助理候選 Plan／預設未定 |
 | H-10 | 10/14～15 L1 圖修正、基準 SVG／Mermaid | 左到右、1～5 框內、6 框外、實體名稱與虛線 |
 | H-11 | 10/15 本對話的核心定位、03～08 分工、coding agent 目標 | 新手／進階、04＋05 獨立 Engine、逐項待決與驗收 |
+| H-12 | 10/15 09:57～10:06 名詞釐清 | Engine／Runtime／System、Config、移除 Blueprint、Workspace → System、跨環境部署與版本問題 |
 
 只有問題或助理回答的主題，不直接視為使用者核定了所有底層選項。例：曾討論 class 不代表 Runtime Validation 自動成立；曾提出 Rerank 後融合不代表具體 Plan／預設已確認。
 
@@ -461,8 +466,8 @@ Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract�
 | A-21 | Generation 兩層模板、說明／範例／套用按鈕 | H-03／H-04／U+B | 04 §5.4、06 §3.2；補回被概述掉的按鈕要求 |
 | A-22 | Rerank 平台格式與可查看 Request／Response | H-04／B | 04 §5.3、06 §3.2；補強 UI 展示及候選 index 說明 |
 | A-23 | DEV／自行提供；依模式才展開服務連線 | H-03／U | 03 §6、06 §3.3、07 Export；已覆蓋 |
-| A-24 | collection 自動命名且穩定，不要求手填 | H-03／U+B | 05 §2.1、06 §3.2、07 §4；補回公式方向與唯讀要求 |
-| A-25 | Indexing 選 Filter 欄位，Retrieval／Query 設詞值 | H-05／U | 05 §6.4、07 Query；已覆蓋 eq／in、AND 與 ACL |
+| A-24 | collection 自動命名且穩定，不要求手填 | H-03／U+B | 05 §2.2、06 §3.2、07 §4；補回公式方向與唯讀要求 |
+| A-25 | Indexing 選 Filter 欄位，Retrieval／Query 設詞值 | H-05／U | 05 §6.5、07 Query；已覆蓋 eq／in、AND 與 ACL |
 | A-26 | 未 Ingestion 也可看 Ingest／Inference API 說明 | H-05／U | 06 §6、07 §5；補齊 Base URL／認證／cURL／輪詢內容 |
 | A-27 | Edit Ingestion 需重匯，只改 Inference 重測 | H-11／B | 05 §8、06 §7、07 §4；已覆蓋，版本發布細節待定 |
 | A-28 | 新手／進階、AI 助手、從 CSV 開始、進階收合 | H-11／U | 03 §2、06 §3～4；已覆蓋 |
@@ -472,6 +477,11 @@ Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract�
 | A-32 | Infra 前後端、Runtime 邊界、圖示、外部依賴與省略線 | H-06／U+B | 03 §4、07 §1／9／10；補回圖面省略不等於刪除功能的區別 |
 | A-33 | 04＋05 可獨立跑 Engine，07 才串 Builder／API | H-11／U | 03 §3、04 §1～2、07 §1；已覆蓋 |
 | A-34 | 03～08 各有未決清單，供 coding agent 分階段開發 | H-11／U | 每份結尾＋08 §4／6；已覆蓋，本次補對話證據與反向追蹤 |
+| A-35 | Engine／Runtime／System 的核心責任區分 | H-12／U | 03 §3、04 入口、07 邊界；已統一 |
+| A-36 | Config 是模組／邏輯設定，Blueprint 非使用者術語 | H-12／U | 03、05 §6、06 Export；正式名詞移除，原型遷移另記 |
+| A-37 | 同一 System 同版 Config 相同，部署設定不同 | H-12／U | 05 §6～7、07 儲存／Export；分開範例與環境綁定 |
+| A-38 | Workspace → System | H-12／U | 03／05／06／07；移除額外 Group 層 |
+| A-39 | 文件內容版本與索引資料版本的差別 | H-12 問題＋B | 05 §2.1；加入例子，具體版本生成／發布仍待 Q-007／Q-015 |
 
 ### 10.4 修正與仍待決的界線
 
@@ -481,4 +491,18 @@ Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract�
 
 ### 10.5 本輪檢查證據
 
-驗證對話→要求→文件的 34 項對照、跨文件連結／Q-ID、JSON／YAML 範例語法、資料頂層 key、未修改 Prototype／圖面，以及遠端版本後再提交。這些是文件一致性驗證，不取代日後 Schema／Engine／Runtime 的功能測試。
+驗證對話→要求→文件的 39 項對照（v0.10 原為 34 項，v0.11 增加名詞釐清）、跨文件連結／Q-ID、JSON／YAML 範例語法、資料頂層 key、未修改 Prototype／圖面，以及遠端版本後再提交。這些是文件一致性驗證，不取代日後 Schema／Engine／Runtime 的功能測試。
+
+## 11. 2026-10-15 10:06 名詞決策補充
+
+| 主題 | 已確認內容 | 仍待決細節 |
+|---|---|---|
+| Config | 各 Module 的 Method／參數及 Pipeline 的邏輯設定；含 Schema、欄位、Prompt、模型語意與穩定服務引用 | 正式 Schema 拼字、CLI 載入與檔案包裝 Q-002 |
+| Blueprint | 由助理先前引入，使用者未指定；移出正式領域模型，統一用 Config／部署設定 | 舊 Prototype 匯出標籤及檔名 migration Q-002 |
+| System 跨環境 | 同一 System 的同版邏輯 Config 一致，DEV／FTEST／ENT 部署綁定可不同 | deployment_id／綁定版本／資料目標識別 Q-015／Q-021 |
+| 管理階層 | Workspace → System；不設額外 Group | 權限矩陣／CRUD API Q-006／Q-019 |
+| Engine／Runtime／System | Engine 組裝執行模組，Runtime 加 API，Config 實例化為具體 System；SDK 也可建立 | 資源生命週期／多實例策略 Q-017／Q-020 |
+
+使用者對 source_revision／index_generation 的提問，已在 05 §2.1 加概念與例子；這不是核可了快照儲存、生成 ID 或發布原子性。文件版本、Config Revision、文件內容版本、索引資料版本及部署綁定仍須各自追蹤，未決政策保留原 Q-ID。
+
+本輪只修改規格與 README；未修改 HTML Prototype／API／Engine。舊原型 Groups／RAGBlueprint 仍需在正式實作時依新名詞遷移，不能把新文件當成程式已更新。

@@ -1,6 +1,6 @@
 # RAG Builder — Backend、Runtime API 與整體串接規格
 
-> 文件集 v0.10 · 2026-10-15 · 開發規格草案
+> 文件集 v0.11 · 2026-10-15 · 開發規格草案
 >
 > 本文包裝 04 的 Engine，負責管理、HTTP、任務、持久化與交付。Endpoint 大方向沿用既有提案；精確 Envelope、認證、狀態與儲存細節為建議，依 Q-ID 核定後實作。
 
@@ -9,7 +9,7 @@
 | 層 | 責任 |
 |---|---|
 | [04 Engine](04_module_methods_io_contracts.md) | Config 驗證／編譯、模組初始化、Pipeline 組裝、Ingest／Query 執行及領域錯誤 |
-| Builder Backend | System／Revision／Group、授權、服務目錄、Dataset、AI 助手、Evaluation Job、Export |
+| Builder Backend | System／Revision／Workspace、授權、服務目錄、Dataset、AI 助手、Evaluation Job、Export |
 | Runtime API | 將 HTTP 請求轉成 05 型別，呼叫相同 Engine 與核定 Fusion Plan，包裝 Job／Query／Health |
 | Runtime 內部管理 | 可信地綁定 System／Revision、建立或更新 Engine 實例；不開放任意外部使用者換租戶 |
 
@@ -38,16 +38,17 @@ examples/                # 完整 Config／資料／呼叫範例
 
 | 資料 | 保存語意 |
 |---|---|
-| Workspace／Group | 使用者可見範圍與系統組織；權限規則 Q-006 |
+| Workspace | 使用者可見範圍與系統組織；權限規則 Q-006 |
 | RAGSystem | 穩定 system_id、顯示名稱、collection、管理狀態 |
-| ConfigRevision | 有效 Config、草稿關聯、版本／Hash、建立時間與作者 |
+| ConfigRevision | 同一 System 的邏輯 Config、草稿關聯、版本／Hash、時間與作者；不因環境 URL 不同另改邏輯版本 |
+| 部署紀錄（建議形狀） | 對應同一 system_id／config_revision，另記環境、連線／Secret 引用、資料目標及 Runtime 資源；欄位與部署 ID 待 Q-015／Q-021 |
 | IndexBinding | System／Config 對應的索引資料版本、Profile、searchable 狀態 |
 | ServiceReference | DEV 或使用者服務設定與 Secret 引用；System 的 llms 有明確作用域 |
 | IngestionRun／EvaluationRun | 綁定 Config／資料版本、狀態、數量、錯誤、Trace、時間 |
 | Dataset／EvaluationReport | 版本化 Dataset、逐題結果、指標、Judge／Rubric、Target |
 | ExportArtifact | Config／Image／環境覆寫、驗證狀態、產出版本 |
 
-Config Store 與 Artifact／Run Store 不等於 Local Search 的選配 MongoDB；使用者選 Memory 仍可能在 Builder 保存平台管理資料。獨立 Runtime 不強制連回這些平台儲存。
+正式管理階層只有 Workspace → System；同一 System 在 DEV／FTEST／ENT 沿用相同邏輯 Config Revision，部署綁定分環境保存。部署識別／儲存形狀待定，不額外建 Group 或 Blueprint。Config Store 與 Artifact／Run Store 不等於搜尋選配 MongoDB；Memory 模式仍可能保存平台管理資料；獨立 Runtime 不強制連回平台儲存。
 
 原始檔、ParsedDocument、Prompt／Context Trace、Job 跨重啟、報告保留期限與刪除規則見 Q-016。歷史報告不因新 Config 失效就自動刪除。
 
@@ -55,7 +56,7 @@ Config Store 與 Artifact／Run Store 不等於 Local Search 的選配 MongoDB�
 
 ### 4.1 建立與啟動（建議流程）
 
-1. Backend 驗證身分與 Group 權限，建立 system_id，依 05 的既定自動命名方向建立穩定 collection；不要求 UI 使用者手填。
+1. Backend 驗證身分與 Workspace 權限，建立 system_id，依 05 的既定自動命名方向建立穩定 collection；不要求 UI 使用者手填。
 2. 收到 Draft，經 05 編譯／Validator，顯示錯誤與變更影響。
 3. 保存 Config Revision；以可信管理呼叫要求 Runtime 綁定配置。
 4. Runtime 呼叫 04 Engine 初始化；服務解析、Profile 與資料就緒分開回報。
@@ -83,14 +84,14 @@ Backend 儲存前以有效設定比較，依 05 判定影響；UI 與 AI 都不�
 
 | Method | Path | 責任 |
 |---|---|---|
-| POST | /api/rag-systems | 在授權 Group 建立 System |
+| POST | /api/rag-systems | 在授權 Workspace 建立 System |
 | POST | /api/rag-systems/{id}/config:validate | Schema／相依驗證，回傳模組及欄位錯誤 |
 | POST | /api/rag-systems/{id}/revisions | 保存配置與變更影響；需處理版本衝突 |
 | POST | /api/rag-systems/{id}/evaluation-runs | 選 Dataset／Target 啟動評估 |
 | GET | /api/evaluation-runs/{run_id} | 狀態與報告引用 |
 | POST | /api/rag-systems/{id}/exports | 套用目標環境覆寫並產生 Bundle |
 
-System 列表／讀取、Group／Dataset CRUD、AI suggestion／連線檢查、DEV Runtime Binding 的完整路徑尚未定義；由 Q-019 在 M3／M4 前補齊。不以表中六條當作完整 Backend API。
+System 列表／讀取、Workspace／Dataset CRUD、AI suggestion／連線檢查、DEV Runtime Binding 的完整路徑尚未定義；由 Q-019 在 M3／M4 前補齊。不以表中六條當作完整 Backend API。
 
 ### 5.2 Runtime API
 
@@ -220,7 +221,7 @@ AI 助手 Backend 取得需求、明確允許的樣本及草稿版本，呼叫�
 交付 RAG Runtime，不打包整個 Builder。目標 Bundle 包含：
 
 - Runtime Image 版本／Digest、Module 版本、Config Revision／Hash。
-- 有效 Pipeline Config、實際引用服務與環境覆寫。
+- 選定 System／Revision 的相同邏輯 Config，及另存的目標環境部署設定；不能把 URL／Secret 差異當成不同處理邏輯。
 - ConfigMap／Deployment／Service 等 K8s 設定及 Secret references。
 - FTEST／ENT 的環境檔案、啟動與 API 說明、資料準備步驟。
 - 若有評估報告，清楚綁定測試環境／資料版本，不能宣稱目標環境已驗證。
@@ -237,7 +238,7 @@ Secret Vault 位於 Runtime 外，以環境支援的解析／注入方式提供�
 
 ### 9.3 獨立啟動
 
-建議步驟：讀 Config／環境覆寫 → 解析 Secret → 04 驗證／初始化 → 驗證資料／恢復索引 → 啟動 HTTP。Live／Ready 與 IndexReady 分開；無資料可以接受 Ingestion，Query 回不就緒。部署後 Config 更新可先經重新部署，熱更新／零停機另案。
+建議步驟：讀選定 Config Revision＋該環境部署設定 → 解析服務／資料綁定與 Secret → 04 驗證／初始化建立 System 執行實例 → 驗證資料／恢復索引 → 啟動 HTTP。Live／Ready 與 IndexReady 分開；無資料可以接受 Ingestion，Query 回不就緒。部署後 Config 更新可先經重新部署，熱更新／零停機另案。
 
 ## 10. Observability、認證與權限
 

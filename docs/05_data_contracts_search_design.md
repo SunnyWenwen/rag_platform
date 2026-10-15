@@ -1,6 +1,6 @@
 # RAG Builder — 共用資料模型與 Config 規格
 
-> 文件集 v0.10 · 2026-10-15 · 開發規格草案
+> 文件集 v0.11 · 2026-10-15 · 開發規格草案
 >
 > 本文是資料形狀及設定規則的權威位置。已確認的語意保留；新增的程式型別、完整 Config 拼字與預設值為建議草案，待 Q-002 核定後才凍結。YAML 範例用於討論與驗收設計，目前沒有 Engine 可直接執行。
 
@@ -15,7 +15,7 @@
 
 | 欄位／概念 | 語意 | 狀態 |
 |---|---|---|
-| system_id | 同一 RAG System 的穩定識別；租戶隔離仍由可信 Context 決定 | 已確認語意；格式待決 |
+| workspace_id／system_id | Workspace → System；System 的邏輯識別跨環境不因部署設定不同而另改 Config，授權由可信 Context 決定 | 階層／邏輯方向已確認；格式與部署識別待決 |
 | document_id | 同一 System 中邏輯文件的穩定識別，不能用 Chunk ID 取代 | 已確認；產生演算法 Q-007 |
 | source_revision | 文件內容版本，與 Config Revision 不同 | 已確認；省略時的生成／比較 Q-007 |
 | chunk_id | 由文件、來源版本、切分有效設定與位置／序號產生 | 已確認方向；規範化／Hash Q-007 |
@@ -26,9 +26,26 @@
 
 CSV 每列是邏輯文件。跨批更新需映射穩定鍵；Prototype 的批次自動 ID 不能宣稱可跨次穩定。檔案拆為多份文件時保留來源資產關聯，不能讓所有列沿用同一 document_id。
 
-### 2.1 collection 命名（已確認方向）
+### 2.1 三種版本的差別
 
-Builder 由 Workspace＋RAG System 名稱自動產生邏輯 collection，使用者不用手填。既有實作附穩定 System ID，避免同名及正規化碰撞；建立後改顯示名稱不更換實體名稱。UI 顯示唯讀，ES／Local／MongoDB 實體綁定由 Adapter 管理。正規化演算法、長度與匯入既有集合的權限規則仍屬 Q-007／Q-019，不重開「是否自動命名」的方向。直接 Engine 則使用 Config／可信 Binding 中明確的集合，不依賴 Builder 才可運作。
+- source_revision 是**每份文件的內容版本**：A 手冊從 v1 改成 v2；其他文件可仍是自己的 v1。
+- config_revision 是 **System 的邏輯設定版本**：例如改 Chunk Size、Embedding Profile 或 Generation Prompt。
+- index_generation 是**某次可追蹤的索引資料狀態／發布批次**：包含哪些文件版本、如何處理及建索引；通常涵蓋多份文件。
+
+| 成功完成的變更 | 文件 A／B | Config Revision | 索引資料版本 |
+|---|---|---|---|
+| 初次匯入 | A:v1、B:v1 | C1 | I1 |
+| A 原文修改並成功更新索引 | A:v2、B:v1 | C1 | I2 |
+| 原文不變，改 Chunk Size 並重建 | A:v2、B:v1 | C2 | I3 |
+| 只改 Generation Prompt | A:v2、B:v1 | C3 | 仍可沿用 I3 |
+
+以上 I1～I3 是說明概念的識別，不是已選定快照實作。即使 source_revision 不變，重切／重新 Embedding／索引重建也可能形成新索引資料版本；新文件尚未成功發布時，不能先把現有索引說成已含新版內容。兩者不一對一。
+
+不同環境的資料可不同，故相同 Config 不保證 index_generation／文件集合相同。是否保留實體不可變快照、何時生成 ID 與原子切換仍由 Q-010／Q-015 核定；此處不新增已完成的版本管理承諾。
+
+### 2.2 collection 命名（已確認方向）
+
+Builder 由 Workspace＋RAG System 名稱自動產生邏輯 collection，使用者不用手填。既有實作附穩定 System ID，避免同名及正規化碰撞；建立後改顯示名稱不重命名既有目標。UI 的邏輯名稱唯讀；各環境的 DB／實體索引目標由部署綁定及 Adapter 管理，不因實體目標不同修改處理 Config。正規化演算法、長度與匯入既有集合的權限規則仍屬 Q-007／Q-019，不重開「是否自動命名」的方向。直接 Engine 則使用 Config／可信 Binding 中明確的集合，不依賴 Builder 才可運作。
 
 ## 3. Document Schema
 
@@ -149,7 +166,7 @@ rank 從 1 起；score 是相關性分數，不是機率。搜尋融合用 chunk
 | 物件 | 建議欄位 |
 |---|---|
 | ModuleConfig | module_id、implementation_version、contract_version、method、parameters、服務引用 |
-| RunContext | system_id、config_revision、run_id／request_id、trace_id、deadline、attempt、可信 auth_scope |
+| RunContext | workspace_id、system_id、config_revision、run_id／request_id、trace_id、deadline、attempt、可信 auth_scope；環境／部署綁定另明確記錄 |
 | ModuleResult[T] | status: succeeded／partial／failed，data、errors、warnings、metrics |
 | ModuleError | code、module、message、retryable、item_id?、details? |
 | ExecutionMetrics | duration_ms、input_count、output_count、token_usage?、provider_request_id? |
@@ -160,17 +177,25 @@ failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項�
 
 ## 6. Config 結構與有效設定
 
-### 6.1 草稿、有效 Config 與部署覆寫
+### 6.1 Config 與部署設定（名詞已確認）
+
+Config 包含各 Module 的 Method、參數、欄位／Prompt、模型語意 Profile，以及 Pipeline／Schema／邏輯服務引用；部署設定提供 DEV／FTEST／ENT 的實際服務 URL、認證／Secret、DB／索引目標與 Runtime／K8s 資源。Config 不是服務端點清單。
+
+同一 System、同一 Config Revision 的邏輯設定跨環境一致。若要改處理方法、模型／維度／Encoding 等語意，需建立新 Config Revision 並依影響重建，不用環境覆寫掩蓋邏輯差異。不同環境仍需檢查實際模型 Profile 相容性。
+
+原型曾把服務 URL／Secret 與 Pipeline 放在同一物件，正式 Schema 需拆開。具體型別與檔案包裝 Q-002 未凍結，但分離方向已確認。Blueprint 是先前助理引入的名稱，正式契約不設此領域物件。
+
+### 6.2 草稿、有效 Config 與部署綁定
 
 - UI Draft 保存基本／進階欄位及未啟用方法的草稿；不是所有欄位都參與執行。
 - Effective Config 僅包含使用中的方法、參數、服務及欄位；AI 與手動入口共用編譯／驗證。
-- Deployment Override 只替換目標環境連線／Secret 等允許項，不修改平台測試 Config。
+- 部署設定／環境覆寫只替換允許的連線／Secret／目標／運行資源，不修改 System 的邏輯 Config。
 - 更換 Embedding 語意 Profile 不能當作純環境覆寫，必須重新 Embedding／Indexing。
 - 使用相同服務的兩個模組引用同一 llm_ref；匯出只包含實際引用的服務。
 
-以下根結構為**建議**：contract_version、document_schema、llms、pipelines.ingestion、pipelines.inference、execution。System／Revision／IndexBinding 為管理與執行綁定，Engine 由參數／Context 取得；HTTP／Blueprint 包裝見 07。
+邏輯 Config 根結構仍為**建議**：contract_version、document_schema、llms、pipelines.ingestion、pipelines.inference、execution。llms／Embedding 等只保留模型語意與穩定服務引用；URL／認證／資料目標由部署設定解析。System／Revision／IndexBinding 由 Context／可信綁定提供，HTTP／匯出包裝見 07。
 
-### 6.2 模組設定詞彙
+### 6.3 模組設定詞彙
 
 | 模組 | 已確認語意 | 本版建議 Config 欄位 |
 |---|---|---|
@@ -178,7 +203,7 @@ failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項�
 | Parsing | 格式路由、結構化 records 驗證 | routes |
 | Chunking | Recursive／Header-aware；Token 計量 | method、split_field、copy_fields、metadata_fields、size、overlap、tokenizer、separators、keep_separator、header_levels |
 | Embedding | fields → 命名 vectors | profile、mappings（source_field、output_name） |
-| Indexing | 儲存、全文、向量、過濾分開 | backend、collection、stored_fields、fulltext_fields、vector_fields、filter_fields、persistence、metric |
+| Indexing | 儲存、全文、向量、過濾分開 | backend、stored_fields、fulltext_fields、vector_fields、filter_fields、persistence、metric；collection 在部署 Binding |
 | Query Transformation | None／Rewrite／Multi-query | method、llm_ref、prompt、count、include_original |
 | Retrieval／Fusion Plan | 選已索引欄位、推導模式；可配置策略及合併時點 | fulltext_fields、vector_fields、per_route_k、top_k、filters、fusion；stages／scope／placement 具體 Schema 待 Q-014 |
 | Rerank | None／DEV／Rerank API | method、service、content_fields、top_n |
@@ -186,7 +211,7 @@ failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項�
 
 正式枚舉建議用 snake_case，UI 可顯示自然語言。Prototype 的 chunking.split、embedding.mappings[].source、indexing.filters、transform 等短名稱不自動視為正式 Schema；需明確 migration。統一使用完整路徑 fields.text／vectors.text_vector／metadata.department。上述拼字及預設值需 Q-002 核定，禁止同時接受未宣告別名而掩蓋錯誤。
 
-### 6.3 參數與相依規則
+### 6.4 參數與相依規則
 
 | 條件 | 驗證 |
 |---|---|
@@ -205,7 +230,7 @@ failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項�
 
 **融合配置的目標要求已存在，細節尚待 Q-014**：必須能區分演算法、融合範圍（同 Query／跨 Query）與執行時點（Rerank 前／後）。可選兩層及預設計畫的精確支援範圍、route 型別、Top-K／Top-N 與分數語意需再核定；不能把全部合併為一個 fusion.method 後宣稱符合需求。`fusion.stages[]` 是先前助理提出的 Schema 候選，尚非已定欄位。
 
-### 6.4 過濾條件
+### 6.5 過濾條件
 
 ```json
 [{"field":"metadata.department","operator":"eq","value":"manufacturing"}]
@@ -215,111 +240,183 @@ Indexing 宣告可過濾欄位；Retrieval 保存預設條件；Query API 可加
 
 所有 Query × 欄位路徑須在取 Top-K 前套用相同限制。缺值／null／多值精確語意與 Adapter 可用能力見 Q-013；不支援就拒絕配置。數值／日期／OR 群組列為後續。
 
-## 7. 完整 Config 範例（建議草案）
+## 7. 邏輯 Config 與部署設定範例（建議 Schema）
 
-以下是 **既有單層融合基線的完整 Local Search／Memory 配置草案**，不是完整實現合併時點需求的最終配置。服務 URL 為不可運作的 `.invalid` 網域，Secret 只示意引用；可作 Schema 設計與測試材料，現在沒有 Engine 可執行。Q-002／Q-014 核定後應另提供 Fusion Plan 範例、migration 與 Schema 驗證。
+以下將 **既有單層融合基線的 Local Search／Memory 邏輯 Config** 與**部署設定**拆成兩個 YAML 範例。Config 不含環境 URL／認證或實體集合；部署設定按穩定引用綁定。具體 Schema 仍待 Q-002，融合時點需求待 Q-014；目前沒有 Engine 可執行這些草案。
 
 ```yaml
-contract_version: "0.1-draft"
+contract_version: 0.1-draft
 document_schema:
   fields:
-    - {name: text, type: string, required: true, source: input}
-    - {name: title, type: string, required: false, source: input, default: ""}
+  - name: text
+    type: string
+    required: true
+    source: input
+  - name: title
+    type: string
+    required: false
+    source: input
+    default: ''
   metadata:
-    - {name: department, type: string, required: true, source: input}
+  - name: department
+    type: string
+    required: true
+    source: input
   unknown_fields: reject
 llms:
-  - id: llm-default
-    name: Default LLM
-    service:
-      provider: openai_chat
-      base_url: https://llm.example.invalid/v1
-      model_id: chat-model
-      auth: {type: bearer, secret_ref: llm-token/key}
-      timeout_seconds: 30
+- id: llm-default
+  name: Default LLM
+  provider: openai_chat
+  model_id: chat-model
+  service_ref: llm-default
 pipelines:
   ingestion:
     import:
-      accepted_inputs: [records]
+      accepted_inputs:
+      - records
       csv_mapping:
         id: document_id
         content: fields.text
         title: fields.title
         department: metadata.department
     parsing:
-      routes: {records: structured_records}
+      routes:
+        records: structured_records
     chunking:
       method: recursive
       split_field: fields.text
-      copy_fields: [fields.title]
-      metadata_fields: [metadata.department]
+      copy_fields:
+      - fields.title
+      metadata_fields:
+      - metadata.department
       size: 512
       overlap: 64
-      tokenizer: {id: tokenizer-example, revision: pinned-example}
-      separators: ["\n\n", "\n", "。", " ", ""]
+      tokenizer:
+        id: tokenizer-example
+        revision: pinned-example
+      separators:
+      - '
+
+
+        '
+      - '
+
+        '
+      - 。
+      - ' '
+      - ''
       keep_separator: true
     embedding:
       profile:
         profile_id: embedding-default
         service:
           provider: openai_embeddings
-          base_url: https://embedding.example.invalid/v1
           model_id: embedding-model
-          auth: {type: bearer, secret_ref: embedding-token/key}
-          timeout_seconds: 30
+          service_ref: embedding-default
         model_version: pinned-example
         dimension: 768
         vector_kind: dense
-        document_encoding: {prefix: ""}
-        query_encoding: {prefix: ""}
+        document_encoding:
+          prefix: ''
+        query_encoding:
+          prefix: ''
         normalization: l2
-        tokenizer: {id: tokenizer-example, revision: pinned-example}
+        tokenizer:
+          id: tokenizer-example
+          revision: pinned-example
         max_input_tokens: 8192
       batch_size: 16
       mappings:
-        - {source_field: fields.text, output_name: text_vector}
+      - source_field: fields.text
+        output_name: text_vector
     indexing:
       backend: local_search
-      collection: workspace-manual-system-example
-      persistence: {mode: memory}
+      persistence:
+        mode: memory
       metric: cosine
-      stored_fields: [fields.text, fields.title]
-      fulltext_fields: [fields.text]
-      vector_fields: [vectors.text_vector]
-      filter_fields: [metadata.department]
+      stored_fields:
+      - fields.text
+      - fields.title
+      fulltext_fields:
+      - fields.text
+      vector_fields:
+      - vectors.text_vector
+      filter_fields:
+      - metadata.department
   inference:
-    query_transformation: {method: none}
+    query_transformation:
+      method: none
     retrieval:
-      fulltext_fields: [fields.text]
-      vector_fields: [vectors.text_vector]
+      fulltext_fields:
+      - fields.text
+      vector_fields:
+      - vectors.text_vector
       per_route_k: 10
       top_k: 5
       filters: []
       fusion:
         method: sum_score
-        score_weights: {fulltext: 1, vector: 1}
-    rerank: {method: none}
+        score_weights:
+          fulltext: 1
+          vector: 1
+    rerank:
+      method: none
     generation:
       llm_ref: llm-default
       temperature: 0.2
       max_output_tokens: 1024
       context_budget: 4000
-      chunk_template: "[{{citation_id}}] {{fields.title}}\n{{fields.text}}"
-      prompt: "請根據參考資料回答並標示引用。資料不足時請明確說明。\n參考資料：\n{{context}}\n問題：{{query}}"
+      chunk_template: '[{{citation_id}}] {{fields.title}}
+
+        {{fields.text}}'
+      prompt: '請根據參考資料回答並標示引用。資料不足時請明確說明。
+
+        參考資料：
+
+        {{context}}
+
+        問題：{{query}}'
 execution:
   request_timeout_seconds: 120
   max_attempts: 1
 ```
 
-本例的模型維度、Token 上限、Timeout 與名稱均為示例；不能把示例 Profile 套到任意實際模型。max_attempts=1 表示尚未啟用自動重試，不宣稱重試政策已定案。
+部署設定範例（同一 Config 可用不同環境的這份綁定）：
 
-ES 變體需使用自己的連線／Secret、Mapping 與能力驗證；MongoDB 變體需提供 DB／Collection、Profile Manifest 與重建政策。這些正式配置分支及 DEV service_ref 的 Schema 由 Q-002／Q-012／Q-021 核定，不能僅把 backend 字串換掉就視為完整。
+```yaml
+environment: dev
+config_revision: C1-example
+service_bindings:
+  llm-default:
+    base_url: https://llm.example.invalid/v1
+    auth:
+      type: bearer
+      secret_ref: llm-token/key
+    timeout_seconds: 30
+  embedding-default:
+    base_url: https://embedding.example.invalid/v1
+    auth:
+      type: bearer
+      secret_ref: embedding-token/key
+    timeout_seconds: 30
+index_binding:
+  collection: workspace-manual-system-example
+runtime:
+  replicas: 1
+  api_workers: 1
+```
+
+以上模型維度、Token 上限、Timeout、版本與名稱均為示例；部署 URL 用不可運作的 .invalid，Secret 只有引用。Engine 讀邏輯 Config，服務／Store resolver 依部署設定綁定。max_attempts=1 表示本例不自動重試，不宣稱重試政策已定案。
+
+ES／Local／持久化模式的選擇屬於邏輯 Config；各環境的 ES 連線／Secret／集合、MongoDB URI／DB／Collection 屬部署設定。模式變更需新 Config／重建；單改部署連線也不代表資料已搬移。正式配置分支、DEV service_ref 與 Manifest 由 Q-002／Q-012／Q-021 核定。
 
 ## 8. Config 變更影響矩陣
 
 | 有效變更 | 影響 |
 |---|---|
-| Document Schema、Import／Parsing／Chunking／Embedding／Indexing、資料目標 | 標記需重新 Ingestion；重建流程是否可重用中間產物另決 |
+| Document Schema、Import／Parsing／Chunking／Embedding／Indexing 的邏輯配置 | 新 Config Revision，標記需重新 Ingestion；中間產物重用另決 |
+| 部署設定的 DB／實體索引目標 | Config Revision 不因此改變；更新部署綁定，目標需有相容資料或重新 Ingestion |
+| 同 Profile 的模型服務 URL／Secret | 邏輯 Config 不變；驗證連線與實際模型相容性，不能把不相容模型當成純換 URL |
 | Query Transformation、Retrieval、Rerank、Generation、被引用的 LLM | 不需重建；需重新測試／評估 |
 | Indexing filter_fields | 需重建搜尋能力 |
 | Retrieval filters 詞值、本次 filters | 僅影響查詢 |
@@ -328,7 +425,7 @@ ES 變體需使用自己的連線／Secret、Mapping 與能力驗證；MongoDB �
 
 「舊評估失效」是不能代表新版，不等於刪除歷史報告。Prototype 清除示意值的行為不應直接變成正式歷史資料刪除政策。
 
-CSV 映射保存、Revision 計算、canonical JSON／Hash 演算法、部署覆寫是否重用已驗證資料版本需 Q-015 核定。Hash 不能包含未解析 Secret 或時間戳而失去可重現性；有語意順序的陣列不可任意排序。
+CSV 映射保存、Revision 計算、canonical JSON／Hash、部署綁定是否可重用資料版本需 Q-015 核定。邏輯 Config Hash 不混入部署 URL／認證／資料目標；部署綁定另記版本／識別以追蹤實際環境。不得記真實 Secret；有語意順序的陣列不可任意排序。
 
 ## 9. 待討論與決策
 

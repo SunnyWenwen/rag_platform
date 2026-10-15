@@ -1,6 +1,6 @@
 # RAG Builder — 使用流程與 UI 開發規格
 
-> 文件集 v0.10 · 2026-10-15 · 開發規格草案
+> 文件集 v0.11 · 2026-10-15 · 開發規格草案
 >
 > 本文定義 UI 目標互動。現有 HTML Prototype 的搜尋、模型、評估及 API 為模擬。Parsing 的預設收合、LLM／Prompt／範例按鈕等已確認要求如下；其他基本／進階分組、正式框架、範本與試跑優先級仍待決。
 
@@ -9,15 +9,15 @@
 - 新手透過預設、CSV 與 AI 助手快速開始；熟悉 RAG 者可展開完整設定。
 - 同一份 Config 可由手動或 AI 修改，不建立兩套不相容模式。
 - 資料／Config 以 [05](05_data_contracts_search_design.md) 為準；模組能力由 [04](04_module_methods_io_contracts.md) 提供；API 見 [07](07_backend_runtime_integration.md)。
-- 保留 Workspace／Group、System 卡片及操作視窗的既有方向；不新增通用 DAG 編輯器。
+- 正式階層為 Workspace → System；側欄選 Workspace，主區顯示 System 卡片與操作視窗，不另建 Group。原型的 Groups 標籤／內部變數屬舊命名，正式化時遷移，不新增通用 DAG 編輯器。
 - UI 設定 Config，Engine 組裝實例；前端不直接存取 Secret 或自行執行正式 Pipeline。
 
 ## 2. 畫面與操作地圖
 
 | 畫面／操作 | 使用者工作 | 主要結果 |
 |---|---|---|
-| Workspace／Group 首頁 | 檢視與選擇 System | 名稱、版本、資料／索引狀態與操作入口 |
-| Create／Edit | 設定 Schema、服務與 Pipeline | 經驗證的草稿／儲存 Revision |
+| Workspace 首頁 | 檢視與選擇 System | 名稱、版本、資料／索引狀態與操作入口 |
+| Create／Edit | 設定 Schema、模組 Method／參數、Pipeline 與服務邏輯引用 | 經驗證的 Config 草稿／Revision；環境連線另存部署設定 |
 | 從 CSV 開始 | 樣本、用途、映射與 AI 建議 | 建議草稿；確認後仍由使用者建立／匯入 |
 | Ingest | 上傳、預覽、確認映射、執行 | run_id、進度、結果及可處理錯誤 |
 | Inference | 問題、本次 filters | 回答、引用、可展開診斷 |
@@ -33,7 +33,7 @@
 
 Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保存配置；AI 套用也只修改 Draft，直到 Create／Save 才生效。版本衝突不可悄悄覆蓋他人修改，行為由 Q-015／Q-019 決定。
 
-表單順序：Document Schema → 共用 LLM／外部服務 → Ingestion 模組 → Inference 模組。Document Schema 是系統契約，不是 Pipeline 中新增的一步。服務可由相應模組開啟管理，但引用同一服務資料。
+表單順序：Document Schema → 共用 LLM／外部服務 → Ingestion 模組 → Inference 模組。Document Schema 是系統契約，不是 Pipeline 中新增的一步。服務可由相應模組開啟管理，但引用同一服務資料。UI 可在相同操作流程編輯 DEV 部署綁定，保存時仍分開邏輯 Config 與部署設定，不能因畫面放一起就混為同一 Config Hash。
 
 ### 3.2 已確認互動與基本／進階分組
 
@@ -153,7 +153,8 @@ Comparison、門檻與 Release Gate 為 Q-018；UI 不自行認定所有測試�
 
 | 變更 | 使用者看到的結果 |
 |---|---|
-| Ingestion 配置／Schema／資料目標 | 需要重新 Ingestion；清楚顯示可操作入口 |
+| Ingestion 邏輯配置／Schema | 新 Config Revision，需要重新 Ingestion |
+| 部署資料目標 | 同版 Config，部署綁定改變；需驗證目標資料或 Ingestion |
 | Inference 配置 | 不需重匯；需重新測試／評估 |
 | 顯示名稱／未啟用草稿 | 不更換實體 collection，不誤判需重建 |
 
@@ -161,12 +162,12 @@ Runtime 的新舊 Revision／Index 發布策略見 Q-010／Q-015；UI 不單靠�
 
 ## 8. Export 與部署說明
 
-- 逐項列出使用中的 LLM、Embedding、Rerank、ES／MongoDB；同 llm_ref 不重複填連線。
+- 沿用選定 System 的同版 Config，逐項填入部署環境的 LLM、Embedding、Rerank、ES／MongoDB 綁定；同 llm_ref 不重複填連線。改 URL／Secret 不覆寫邏輯 Config。
 - 使用 DEV 綁定者可下載待設定草稿；必要資訊已填妥者標示「已填妥，尚未驗證」。
 - 只允許合法環境覆寫；更改 Embedding Model 提示返回 Edit Config 並重建。
 - 不含實際 Secret、Chunk／vectors 或測試原文；提醒需在目標環境準備資料／Ingestion。
 - Local Search 單程序／單副本；不可透過 UI 匯出多副本而宣稱可共享索引。
-- FTEST／ENT 檔名、環境值與完整 Bundle 待 Q-021；Prototype 單份示意 YAML 不代表已完成。
+- FTEST／ENT 檔名、環境值與完整 Bundle 待 Q-021；正式文案稱 Config／部署設定。原型舊的 RAGBlueprint／blueprint.json 僅是待遷移標籤，不是另立的產品物件；單份示意 YAML 不代表正式交付完成。
 
 ## 9. 互動品質與驗收
 

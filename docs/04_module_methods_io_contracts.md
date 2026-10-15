@@ -1,6 +1,6 @@
 # RAG Engine — 組裝、執行與模組開發規格
 
-> 文件集 v0.10 · 2026-10-15 · 開發規格草案
+> 文件集 v0.11 · 2026-10-15 · 開發規格草案
 >
 > 本文涵蓋可獨立執行的 Engine 與各模組；共用資料／Config 唯一定義見 05。既有產品語意為已確認方向，新增 SDK、Registry 形狀、執行政策為建議，須經對應 Q-ID 核定。本次未新增 Engine 程式。
 
@@ -39,14 +39,14 @@ finally:
     await engine.aclose()
 ```
 
-服務解析與 Store 使用可替換接口；Memory 模式不要求遠端 DB。start／query 的非同步選擇、生命週期、公開回應型別、Evaluation Target 介面須在實作前核定。直接呼叫不回傳 HTTP code；07 將領域錯誤映射為 HTTP／Job 回應。
+服務解析與 Store 使用可替換接口；Memory 模式不要求遠端 DB。Config 是模組／Pipeline 邏輯，service_resolver／Store／Binding 由部署設定解析；同一 Config 可套用不同環境綁定而保持處理語意一致。start／query 的非同步選擇、生命週期、公開回應型別、Evaluation Target 介面須核定。直接 SDK 可建立 System，不回 HTTP code；07 將領域錯誤映射為 HTTP／Job 回應。
 
 ### 2.2 編譯與初始化流程
 
 1. 讀取 YAML／JSON，驗證 Contract 版本及未知欄位；安全解析，不執行設定內的程式碼。
 2. 將 UI Draft 編譯成 Effective Config，排除未啟用方法／服務草稿。
 3. 根據 Registry 驗證 I/O、方法能力、欄位來源、Profile、模板與可過濾能力。
-4. 解析外部服務引用與 Secret；以受授權的 System／集合建立 Binding。
+4. 依部署設定解析 Config 中的服務邏輯引用與 Secret；以受授權的 Workspace／System／集合建立 Binding，不把環境 URL 或目標集合混成模組邏輯。
 5. 初始化被使用的 Client／Tokenizer／Parser／Index Adapter；不載入未使用服務。
 6. 若有既存資料／Manifest，檢查相容性；MongoDB 模式按相容版本重建 Local Search。
 7. 回報初始化結果及索引就緒狀態；失敗釋放已開啟資源，不留下半個可查詢實例。

@@ -1,6 +1,6 @@
 # RAG Builder — 系統概覽與架構
 
-> 文件集 v0.10 · 2026-10-15 · 開發規格草案
+> 文件集 v0.11 · 2026-10-15 · 開發規格草案
 >
 > 本輪重整 03～08 的責任，保留既有已確認方向。本文負責產品與架構總覽，具體規格及未決問題見專題文件與 08。文件更新不表示 Engine、Runtime API 或部署服務已實作。
 
@@ -43,13 +43,19 @@
 
 | 名詞 | 定義 |
 |---|---|
-| RAG Builder | 提供 Workspace／Group、設定、測試、評估與匯出的平台 |
-| RAG System | 具穩定識別的配置及對應資料／索引，不是另一套生成的程式碼 |
-| RAG Engine | 從 Config 組裝並執行 Pipeline 的 Python 核心，可獨立於 Builder／HTTP 使用 |
-| RAG Runtime | 包裝 Engine 的 Ingest／Query／Status／Health API 服務，可獨立部署 |
+| RAG Builder | 提供 Workspace、設定、測試、評估與匯出的平台 |
+| RAG System | 套用特定 Config、綁定服務與資料／索引所建立的具體 RAG 應用；具穩定邏輯識別，可處於未啟動／執行／停止狀態 |
+| RAG Engine | 可依 Config 選擇、串接與執行模組的核心框架，可獨立於 Builder／HTTP 使用 |
+| RAG Runtime | 為 Engine 加上 Ingest／Query／Status／Health API 的執行服務；載入設定後提供 System 的 API，可獨立部署 |
 | Evaluation Runner | 批次執行 Dataset 與收集指標；重用 04 的評估邏輯，由 07 管理任務與儲存 |
 
-**04＋05 應足以讓開發者手寫 Config 直接執行 Engine。**06 產生設定，07 保存設定及管理 Runtime 請求。UI 產生 Config，由同一套 Engine 建立對應 Pipeline 實例。
+**04＋05 應足以讓開發者手寫 Config 直接執行 Engine，建立 RAG System；不要求 API 才能成立。**06 產生設定，07 保存設定並管理 Runtime 請求。UI 產生 Config，由同一套 Engine 建立對應 Pipeline 實例。
+
+正式資訊階層已確認為 **Workspace → System**，不再加入 Group。Config 指 Module 的 Method、參數及 Pipeline／Schema／服務邏輯引用等處理設定；部署設定另描述環境的服務 URL、認證／Secret 引用、DB／索引目標、K8s 資源等。
+
+同一 System 的同一 Config Revision 在 DEV／FTEST／ENT 沿用相同邏輯 Config，各環境可用不同部署設定；不能為每個環境另改處理方法／模型 Profile 卻仍聲稱相同 Config。System 日後編輯產生新 Revision，並不要求它永遠只有一版 Config。具體部署識別與 DB 欄位仍見 Q-015／Q-021。
+
+正式名詞只使用 Config 與部署設定；先前助理引入的 Blueprint 不作新的領域物件。Prototype 舊匯出標籤的遷移見 05／06。
 
 | 元件 | 責任 | 邊界 |
 |---|---|---|
@@ -111,7 +117,7 @@ MongoDB 在此不執行向量檢索。每個向量欄位的 FAISS index 由 Adap
 
 ## 6. 設定、服務與交付原則
 
-- UI、AI 助手、手寫 YAML 最終使用相同有效 Config；未啟用的草稿不影響執行。
+- UI、AI 助手、手寫 YAML 最終使用相同有效 Config；跨環境相同 Revision 的邏輯設定保持一致，部署綁定另存。未啟用草稿不影響執行。
 - Config Revision、source_revision、Index 資料版本分開管理。
 - Ingestion 有效配置變動標記需重建；Inference 配置變動需重測。精確矩陣見 05。
 - LLM 清單以 System 為作用域；Query Transformation／Generation 以 llm_ref 引用；Embedding／Rerank 保留自己的服務契約。
