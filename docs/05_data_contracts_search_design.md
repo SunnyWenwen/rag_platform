@@ -257,6 +257,8 @@ ResultItem 直接帶 Chunk，符合後續無需回查 ParsedDocument 的方向�
 
 例 02、03 是例 01 的兩個獨立分支。例 02 為候選分數後處理，不能取代 Retrieval 在 Top-K 前執行的業務 Filter／ACL。
 
+Python 版本見 [python_example.py](../examples/inference/python_example.py)：使用標準函式庫 TypedDict 列出同一份物件型別，示範選取 active 結果、從三份清單新增第四份篩選結果，並讀取四份 JSON 展示分數與排序。需 Python 3.10+，在專案根目錄執行 `python examples/inference/python_example.py`。TypedDict 僅提供型別提示，執行期驗證仍依 JSON Schema 與 Engine 語意檢查；Rerank 使用例 03 的示例分數，沒有呼叫真實模型。
+
 例 04 的兩份輸入排名為 q1：c1、c2、c3；q2：c2、c3、c1。用 k=60、`sum(1/(60+rank))` 得：
 
 | 合併後 Chunk | 新 score | 新 rank |
