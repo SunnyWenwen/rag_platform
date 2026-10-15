@@ -1,6 +1,6 @@
 # RAG Builder — 共用資料模型與 Config 規格
 
-> 文件集 v0.15 · 2026-10-15 · 開發規格草案
+> 文件集 v0.16 · 2026-10-15 · 開發規格草案
 >
 > 本文是資料形狀及設定規則的權威位置。已確認的語意保留；新增的程式型別、完整 Config 拼字與預設值為建議草案，待 Q-002 核定後才凍結。YAML 範例用於討論與驗收設計，目前沒有 Engine 可直接執行。
 
@@ -166,7 +166,7 @@ rank 從 1 起；score 是相關性分數，不是機率。搜尋融合用 chunk
 
 ### 4.6 QueryContext／ResultSet／ResultItem：具體 Schema 草案
 
-本節依 2026-10-15 的 Query 物件討論整理，取代先前全域 chunks／rankings 的展示方案。**以下欄位是供審閱的 `inference-0.1-draft`，尚未核定正式 SDK／HTTP Contract。**Q-002／Q-014 仍開放；Schema／例子可檢查，不表示 Engine 已實作。§4.5 的扁平 SearchHit 僅是既有單層基線。
+本節依 2026-10-15 的 Query 物件及 14:10～14:31（Asia/Taipei）ResultSet 討論整理。**三種後處理及共同排序為已確認語意；具體欄位是供審閱的 `inference-0.2-draft`，尚未核定正式 SDK／HTTP Contract。**Q-002／Q-014 仍開放；Schema／例子可檢查，不表示 Engine 已實作。§4.5 的扁平 SearchHit 僅是既有單層基線。
 
 機器可讀定義：[JSON Schema](../schemas/inference_context.schema.json)，使用 Draft 2020-12。根物件 InferenceState 只承接同一次 Inference 的多個 QueryContext 與有效輸出選擇。RunContext 仍負責 System／版本／授權，ModuleResult 負責錯誤／Metrics，不把它們塞入 Chunk。
 
@@ -174,7 +174,7 @@ rank 從 1 起；score 是相關性分數，不是機率。搜尋融合用 chunk
 
 | 欄位 | 型別 | 規則 |
 |---|---|---|
-| contract_version | string | 本草案固定 `inference-0.1-draft`，與邏輯 Config／文件集版本分開 |
+| contract_version | string | 本草案固定 `inference-0.2-draft`，與邏輯 Config／文件集版本分開 |
 | query_contexts | QueryContext[] | 含原始、衍生及合併後 Query；本次示例快照保留來源物件 |
 | active_query_ids | string[] | 下一步要處理哪些 QueryContext；其餘保留作追溯 |
 
@@ -201,21 +201,21 @@ Rewrite 可從一份物件產生多份；各有 query_id，共用 ori_query_id�
 | 欄位 | 型別 | 規則 |
 |---|---|---|
 | result_set_id | string | 本次結果的唯一識別 |
-| stage | string | 本草案列 retrieval／filter／sort／fusion／rerank |
+| stage | string | 本草案列 retrieval／merge／top_n／model_score；精確拼字待核定 |
 | input_result_set_ids | string[] | 本次處理的直接輸入；Retrieval 為 []，後處理至少一份 |
-| source | RetrievalSource 或 null | Retrieval 記 route_id／index_ref／field_path；衍生結果為 null，從輸入追溯 |
-| operation | Operation | 實際方法、參數、模型引用及評分問題 |
-| score_kind | string | 如 bm25／cosine_similarity／rerank_score／rrf；不是機率或全域可比分數 |
-| score_order | string | higher_is_better／lower_is_better；清單按本方向排序 |
+| source | RetrievalSource 或 null | Retrieval 記 route_id／index_ref／field_paths；field_paths 為非空且不重複的完整路徑陣列，可表達 ES Hybrid；衍生結果為 null |
+| operation | Operation | 記錄已執行的方法、參數、模型引用及評分問題；不作為下一步指令 |
+| score_kind | string | 如 bm25／cosine_similarity／weighted_sum／rerank_score／rrf；供分數解讀與策略驗證，不是機率或全域可比分數 |
+| score_order | string | higher_is_better／lower_is_better；共用排序會使用，非單純追溯 |
 | items | ResultItem[] | 有序候選，可為空；各份清單獨立從 rank=1 起算 |
 
-stage 表達結果如何產生，沒有宣告所有方式都已支援，也不因此新增必要的 UI 模組。source 的 index_ref 是可信 IndexBinding 的邏輯引用，不接受請求任意指定外部 Index。可用方法／欄位仍由 Registry、Config 與權限驗證。
+stage 表達結果如何產生；Retrieval 是產生端，其餘對應三類操作。排序為共同處理，不新增 sort 操作或 UI 開關。source 的 index_ref 是可信 IndexBinding 的邏輯引用；source 通常供追溯，按來源加權時也可供 Engine／Adapter 對應策略。可用方法／欄位仍由 Registry、Config 與權限驗證，不因 Schema 枚舉就宣稱 Engine 已支援。
 
 Operation 的四個欄位：
 
 | 欄位 | 型別 | 規則 |
 |---|---|---|
-| method | string | 實際使用的方法，例如 bm25、score_threshold、rerank_api、rrf |
+| method | string | 實際使用的方法，例如 bm25、top_n、rerank_api、rrf、es_hybrid |
 | parameters | object | 本次真正使用的參數；逐 Method 參數 Schema 仍待核定 |
 | model_ref | string 或 null | 模型／Profile 邏輯引用；無模型時為 null，不放 URL／Secret |
 | scoring_query_id | string 或 null | 實際評分所用問題的 ID，可指向原始或衍生 Query；純候選後處理為 null |
@@ -228,10 +228,10 @@ Operation 的四個欄位：
 |---|---|---|
 | chunk | Chunk | 沿用固定六個 key，包含下游需要的 fields／metadata；vectors 可為 {} |
 | score | number | 本次 ResultSet 的分數，必須有限 |
-| rank | integer | 目前清單中的順序，從 1 起；篩選／排序後新清單重新編號，來源排名仍可查 |
+| rank | integer | 每份輸出已排序；rank=1 最好，從 1 連續編號，不為 null；歷史排名從來源查回 |
 | source_refs | SourceRef[] | 原始 Retrieval 為 []；衍生候選列出來源 result_set_id＋chunk_id |
 
-同一 Chunk 在不同 ResultSet 可有不同 score／rank。filter／sort 沿用選定來源分數，Fusion／Rerank 產生新分數，不覆寫原始結果。轉換距離或正規化也應留下原值／轉換關係，具體步驟形狀仍待 Q-011／Q-014。
+同一 Chunk 在不同 ResultSet 可有不同 score／rank。Top N 沿用來源分數；合併依方法計分，模型算分產生新分數。三類操作各自產生新 ResultSet 並共用排序／更新 rank，不覆寫來源。轉換距離或正規化也應留下原值／轉換關係，具體參數仍待 Q-011／Q-014。
 
 chunk、ResultItem、ResultSet、QueryContext 與外框不接受額外欄位；Chunk 的 fields／metadata、vectors 的具名向量，以及 Operation.parameters 保持對應的動態容器。分數不加入 Chunk 的第七個 key。
 
@@ -246,18 +246,19 @@ ResultItem 直接帶 Chunk，符合後續無需回查 ParsedDocument 的方向�
 - None Rerank 原樣傳遞 active 清單，不新增虛構分數。Generation 使用哪份最終結果／如何組 Context 仍需明確配置。
 - JSON Schema 檢查形狀；ID 唯一與引用存在、來源不成環、原始問題不變、同 Chunk 身分一致、rank／score 語意、授權及方法能力仍需 Engine 語意驗證。
 
-#### 4.6.6 四個完整例子
+#### 4.6.6 五個完整例子
 
 | 檔案 | 輸入／輸出重點 |
 |---|---|
 | [01_retrieval.json](../examples/inference/01_retrieval.json) | 一個 q0，全文／向量／標題三路得到 r1／r2／r3；同 Chunk 有多筆 score |
-| [02_filter.json](../examples/inference/02_filter.json) | 從例 01 選 r1 做 score≥10，新增 r4-filter；結果數 3→4，active 只指 r4-filter |
+| [02_top_n.json](../examples/inference/02_top_n.json) | 從例 01 選 r1 取 Top 1，新增 r4-top-n；結果數 3→4，active 只指新結果 |
 | [03_rerank.json](../examples/inference/03_rerank.json) | 另從例 01 的 r1 做 Rerank；原始 c1／c2 排序變成 c2／c1，保留兩次評分 |
 | [04_cross_query_fusion.json](../examples/inference/04_cross_query_fusion.json) | q1／q2 各自搜尋，跨 Query 以 chunk_id 做 RRF，輸出 q-merged／m1；原始清單仍可追溯 |
+| [05_es_hybrid.json](../examples/inference/05_es_hybrid.json) | ES 內部以 0.7×BM25＋0.3×kNN 分數合併，只回傳一份 Hybrid 清單；平台不補造分項 ResultSet |
 
-例 02、03 是例 01 的兩個獨立分支。例 02 為候選分數後處理，不能取代 Retrieval 在 Top-K 前執行的業務 Filter／ACL。
+例 02、03 是例 01 的兩個獨立分支。例 02 已從候選分數 Filter 改為三類操作中的 Top N；業務 Filter／ACL 仍在 Retrieval 的 Top-K 前執行，不因刪除展示中的 filter stage 而消失。
 
-Python 版本見 [python_example.py](../examples/inference/python_example.py)：使用標準函式庫 TypedDict 列出同一份物件型別，示範選取 active 結果、從三份清單新增第四份篩選結果，並讀取四份 JSON 展示分數與排序。需 Python 3.10+，在專案根目錄執行 `python examples/inference/python_example.py`。TypedDict 僅提供型別提示，執行期驗證仍依 JSON Schema 與 Engine 語意檢查；Rerank 使用例 03 的示例分數，沒有呼叫真實模型。
+Python 版本見 [python_example.py](../examples/inference/python_example.py)：使用標準函式庫 TypedDict 列出同一份物件型別，示範選取 active 結果、從三份清單新增第四份 Top N 結果，透過共用 sort_and_rank 保持輸出有序，並讀取五份 JSON 展示分數與排序。需 Python 3.10+，在專案根目錄執行 `python examples/inference/python_example.py`。TypedDict 僅提供型別提示，執行期驗證仍依 JSON Schema 與 Engine 語意檢查；Rerank 使用例 03 的示例分數，沒有呼叫真實模型。
 
 例 04 的兩份輸入排名為 q1：c1、c2、c3；q2：c2、c3、c1。用 k=60、`sum(1/(60+rank))` 得：
 
@@ -268,6 +269,22 @@ Python 版本見 [python_example.py](../examples/inference/python_example.py)：
 | c3 | 0.03200204813108039 | 3 |
 
 原始 q0 沒有搜尋結果，仍在快照中作原始問題引用；最後 active_query_ids 只含 q-merged，該物件的 active_result_set_ids 只含 m1。融合位置與預設方法仍由 Q-014 討論；這是分數可驗算的例子，不是選定所有場景的預設。
+
+#### 4.6.7 三種後處理與共同排序（已確認語意）
+
+| 操作 | 分數／候選行為 | 排序與來源 |
+|---|---|---|
+| 去重＆合併 | 選入一份或多份清單，依 group_by／merge_key 及方法合併；Sum Score／RRF 是策略 | 新結果按 score_order 排序、更新 rank，保留逐項來源 |
+| 取 Top N | 對每份已排序輸入取前 N；分數不變，實際少於 N 時取可用數量 | 截取仍有序、rank 連續；跨多清單的全域 Top N 需先明確合併 |
+| 新模型算分 | 以明確 Query／模型／欄位對候選產生新分數 | 經共用排序／rank 更新後才對外輸出；Top N 是獨立操作 |
+
+共同契約為 items 永遠已排序、rank 為正整數且 1 最好。排序函式是實作共用能力，不是第四類設定；內部暫存不屬於跨步驟輸出的 ResultSet。RRF 使用有效的輸入 rank；同分與模型缺項等細節仍待 Q-011／Q-014／Q-003。邏輯 Config 選擇操作順序及來源，operation 記錄歷史而非驅動下一步。
+
+#### 4.6.8 ES 內部融合與版本調整
+
+ES 內部已 Sum Score 的回傳為一份 Retrieval ResultSet，score_kind 記 weighted_sum，source 記多個 field_paths，operation.parameters 記方法／權重／執行位置。沒有獨立清單時 input_result_set_ids 與 source_refs 為空；後續可逐 Query 再 Rerank 或跨 Query RRF，但無法只由總分還原完整分項清單與排名。例 05 為 mock，5.84／4.47 是假設分項分數的示意計算，沒有連線 ES。
+
+v0.2 草案將單一 field_path 改為 field_paths、stage 改為 retrieval／merge／top_n／model_score，例 02 改為 Top N；具體拼字與遷移仍待 Q-002。rank 保持 integer，前一輪暫提 rank=None 的方案未採用。UI 不直接編輯 runtime ID、score_kind 或 score_order；設定整合與待確認事項見 [09](09_inference_contract_ui_plan.md)。
 
 ## 5. 共用執行與錯誤物件
 
@@ -318,10 +335,13 @@ failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項�
 | Indexing | 儲存、全文、向量、過濾分開；持久化模式跨環境固定 | backend、stored_fields、fulltext_fields、vector_fields、filter_fields、persistence、metric；persistence 屬邏輯 Config，collection 在部署 Binding |
 | Query Transformation | None／Rewrite／Multi-query | method、llm_ref、prompt、count、include_original |
 | Retrieval／Fusion Plan | 選已索引欄位、推導模式；可配置策略及合併時點 | fulltext_fields、vector_fields、per_route_k、top_k、filters、fusion；stages／scope／placement 具體 Schema 待 Q-014 |
-| Rerank | None／DEV／Rerank API | method、service、content_fields、top_n |
+| Rerank | 新模型算分的方法；既有服務為 None／DEV／Rerank API | method、service、content_fields；原型 top_n 的遷移見 09 |
+| ResultSet 後處理 | 去重＆合併／取 Top N／新模型算分；共同排序 | 操作順序、來源引用、分組、方法與參數的精確 Config Schema 仍待 Q-002／Q-014；UI 意圖見 09 |
 | Generation | 兩層模板、共用 LLM | llm_ref、chunk_template、prompt、temperature、max_output_tokens、context_budget |
 
 正式枚舉建議用 snake_case，UI 可顯示自然語言。Prototype 的 chunking.split、embedding.mappings[].source、indexing.filters、transform 等短名稱不自動視為正式 Schema；需明確 migration。統一使用完整路徑 fields.text／vectors.text_vector／metadata.department。上述拼字及預設值需 Q-002 核定，禁止同時接受未宣告別名而掩蓋錯誤。
+
+ResultSet 是一次執行的資料；處理計畫是可保存的邏輯 Config，不能把 runtime result_set_id 寫死在 Config。原本 retrieval.fusion／rerank.top_n 等短配置及 §7 的既有單層 YAML 不代表已完成新計畫；遷移意圖及 UI 提案見 [09](09_inference_contract_ui_plan.md)。
 
 ### 6.4 參數與相依規則
 

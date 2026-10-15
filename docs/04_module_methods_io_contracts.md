@@ -1,6 +1,6 @@
 # RAG Engine — 組裝、執行與模組開發規格
 
-> 文件集 v0.15 · 2026-10-15 · 開發規格草案
+> 文件集 v0.16 · 2026-10-15 · 開發規格草案
 >
 > 本文涵蓋可獨立執行的 Engine 與各模組；正式名詞定義見 [03 §3](../03_architecture_proposal.md#terminology)，共用資料／Config 結構見 05。既有產品語意為已確認方向，新增 SDK、Registry 形狀、執行政策為建議，須經對應 Q-ID 核定。本次未新增 Engine 程式。
 
@@ -229,7 +229,7 @@ FAISS 的維度／metric 不足以證明向量空間相容。cosine／inner prod
 1. 取得對應 Config／Binding，確認 Profile 與資料就緒。
 2. 將預設 filters、本次 filters、可信 ACL 以 AND 合併，驗證欄位／operator／值。
 3. 建立每個 Query × 全文／向量欄位的路徑；向量路徑依其 Profile 使用 query encoding。
-4. 每路在合法候選範圍內取 per_route_k，保留 rank、原始分數、方向與命中 Query。
+4. 每路在合法候選範圍內取 per_route_k，保留實際回傳的 rank、分數、方向與命中 Query。若 Adapter 在 ES 內部完成融合，接收已融合的一份清單並記錄計分設定；不要求憑空還原未回傳的分項清單／排名。
 5. 轉換距離為越大越相關的 relevance；保留 query／route identity，依核定計畫及 chunk_id 對齊融合。
 6. 在計畫指定的最終合併點後才取最終 top_k；既有單層基線在 Rerank 前完成。若計畫在逐 Query Rerank 後才跨 Query 融合，不能提前攤平或套用全域截斷；各階段 K／N 由 Q-014 定義。
 7. 在 Rerank／Generation 使用候選前批次取回所需 fields／metadata，保留各路排序與身分；vectors 可省為 {}，下游無須知道 MongoDB 或 FAISS。
@@ -251,6 +251,22 @@ Engine 必須在計畫需要時保留 query_id／route_id、各路候選／分�
 
 **驗收**：同 Chunk 多路命中按計畫去重；少於 K 或零筆為合法；多路套用相同授權；融合可人工驗算；無效 filter 拒絕而不變無條件搜尋。合併時點核定後，另驗證逐 Query／跨 Query 與 Rerank 次序、各階段截斷及 Trace；不能只有策略下拉選單而沒有實際路徑變化。
 
+<a id="result-processing"></a>
+
+### 5.2.1 ResultSet 後處理與共同排序
+
+2026-10-15 14:24～14:31（Asia/Taipei）確認後處理收斂為三類：
+
+| 操作 | 輸入／行為 | 輸出 |
+|---|---|---|
+| 去重＆合併 | 對選入清單依 group_by 分組、merge_key 對齊，再依方法計分 | 每個處理群組的新清單；Sum Score／RRF 為合併方法，不是額外一類操作 |
+| 取 Top N | 對已排序的每份選入清單保留前 N 筆 | 分數／方向保留，候選不足時回傳可用數量 |
+| 新模型算分 | 依明確 Query、服務與內容欄位評分 | 新分數及來源對應；具體缺項／服務限制仍待 Q-003 |
+
+三者共用排序與 rank 更新，對外 ResultSet 永遠有序，rank 為從 1 起的連續整數；不輸出 rank=None。Top N 的輸入已排序，截取後仍符合此契約。共用排序按 score_order，平手規則仍待 Q-011／Q-014。每次建立新 ResultSet，保留選入來源；歷史結果不自動再參與，None 原樣傳遞 active 結果。
+
+ResultSet 是資料；下一步由邏輯 Config 的核定計畫驅動。operation 記錄已執行的方法而非下一步指令，source 可供來源策略與追溯，score_kind／score_order 提供分數語意。正式 DTO 與範例見 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft)。使用者要求的是可配置合法位置，不只固定 A／B 流程；[09](09_inference_contract_ui_plan.md) 提供尚待討論的順序式 UI 與來源選取方案。
+
 ### 5.3 Rerank
 
 **方法**：None／DEV test use／Rerank API。服務端第一版平台約定：
@@ -265,11 +281,13 @@ Engine 必須在計畫需要時保留 query_id／route_id、各路候選／分�
 
 這是平台契約，不是所有模型服務的通用標準。POST 路徑為選定 Base URL 下的 /rerank；其他格式需 Adapter。
 
-**處理**：按 content_fields 順序把每筆候選組成文字；保持候選 index 對照；驗證 index 唯一且在範圍內、score 有限；映回原 SearchHit。輸出只能是候選子集，不改文件／ACL。None 原樣傳遞且不使用 Top-N；實際候選少於 top_n 時取可用數量；零筆不呼叫服務。
+**處理（既有 API／原型基線，目標遷移見下段）**：按 content_fields 順序把每筆候選組成文字；保持候選 index 對照；驗證 index 唯一且在範圍內、score 有限；映回原 SearchHit。輸出只能是候選子集，不改文件／ACL。None 原樣傳遞且不使用 Top-N；實際候選少於 top_n 時取可用數量；零筆不呼叫服務。
 
 **驗收**：不生成新 chunk_id；重新 rank；保留原 Retrieval Trace。串接 Timeout／錯誤時不假裝 Rerank=None。
 
-**待決**：Q-003、Q-017、Q-023；內容欄位分隔、輸入極限與服務回傳缺項政策需核定。
+**與最新結果操作的對齊**：Rerank 是「新模型算分」的一種方法；模型輸出經共用排序及 rank 更新。目標設定把使用者的結果保留數交給獨立 Top N 操作，原型 Rerank.Top-N 為既有基線。既有 API 的 top_n 與完整評分覆蓋率需由 Adapter 明確對應，不能默默依服務預設值少回候選；遷移提案見 [09 §3.5](09_inference_contract_ui_plan.md)。
+
+**待決**：Q-003、Q-014、Q-017、Q-023；內容欄位分隔、輸入極限、全候選評分與服務回傳缺項政策需核定。
 
 ### 5.4 Generation
 

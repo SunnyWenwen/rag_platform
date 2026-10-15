@@ -1,6 +1,6 @@
 # RAG Builder — 系統概覽與架構
 
-> 文件集 v0.15 · 2026-10-15 · 開發規格草案
+> 文件集 v0.16 · 2026-10-15 · 開發規格草案
 >
 > 本輪重整 03～08 的責任，保留既有已確認方向。本文負責產品與架構總覽，具體規格及未決問題見專題文件與 08。文件更新不表示 Engine、Runtime API 或部署服務已實作。
 
@@ -158,10 +158,10 @@ Config 與部署設定的欄位、有效設定規則及範例見 [05 §6～8](do
 | 流程 | 執行順序 |
 |---|---|
 | Ingestion | Import → Parsing → Chunking → Embedding → Indexing |
-| Inference | Query Transformation → Retrieval → 按核定 Fusion Plan 組合融合／Rerank → Generation；現有 Prototype 基線為融合在前 |
+| Inference | Query Transformation → Retrieval → 依配置組合去重合併／取 Top N／模型算分 → Generation；每次輸出共同排序，現有 Prototype 仍為融合在 Rerank 前的舊基線 |
 | Evaluation | Dataset → 呼叫相同檢索／Inference 入口 → 指標 → 報告 |
 
-全文模式可略過 Embedding；None 模組明確 pass-through。Ingestion 與 Inference 透過 IndexBinding 銜接，不是同一次串行呼叫。使用者已要求可設定融合策略及合併時點；現有 Prototype 的單層、Rerank 前融合是實作基線，不是限制最終產品。具體路徑、兩層融合及預設計畫由 Q-014 核定，見 04／05。
+全文模式可略過 Embedding；None 模組明確 pass-through。Ingestion 與 Inference 透過 IndexBinding 銜接，不是同一次串行呼叫。使用者已要求可設定融合策略及合併時點；現有 Prototype 的單層、Rerank 前融合是實作基線，不是限制最終產品。具體路徑、兩層融合及預設計畫由 Q-014 核定，見 04／05。2026-10-15 補充的三類結果操作與共同排序已記錄於 04／05；[09](docs/09_inference_contract_ui_plan.md) 的 UI 位置及步驟設定仍為待討論提案。
 
 | 搜尋模式 | 搜尋與資料 | 執行限制 |
 |---|---|---|

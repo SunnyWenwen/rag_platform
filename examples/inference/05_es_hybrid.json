@@ -1,0 +1,87 @@
+{
+  "contract_version": "inference-0.2-draft",
+  "query_contexts": [
+    {
+      "query_id": "q0",
+      "query": "設備多久需要清潔？",
+      "ori_query_id": "q0",
+      "ori_query": "設備多久需要清潔？",
+      "source_query_ids": [],
+      "result_sets": [
+        {
+          "result_set_id": "r-es-hybrid",
+          "stage": "retrieval",
+          "input_result_set_ids": [],
+          "source": {
+            "route_id": "es-hybrid",
+            "index_ref": "primary",
+            "field_paths": [
+              "fields.text",
+              "vectors.text_vector"
+            ]
+          },
+          "operation": {
+            "method": "es_hybrid",
+            "parameters": {
+              "fusion_method": "sum_score",
+              "fusion_execution": "backend",
+              "normalization": "none",
+              "weights": {
+                "fields.text": 0.7,
+                "vectors.text_vector": 0.3
+              }
+            },
+            "model_ref": "embedding-default",
+            "scoring_query_id": "q0"
+          },
+          "score_kind": "weighted_sum",
+          "score_order": "higher_is_better",
+          "items": [
+            {
+              "chunk": {
+                "chunk_id": "c1",
+                "document_id": "manual-001",
+                "source_revision": "v1",
+                "fields": {
+                  "text": "設備每月需清潔散熱孔。",
+                  "title": "每月保養"
+                },
+                "vectors": {},
+                "metadata": {
+                  "department": "manufacturing"
+                }
+              },
+              "score": 5.84,
+              "rank": 1,
+              "source_refs": []
+            },
+            {
+              "chunk": {
+                "chunk_id": "c2",
+                "document_id": "manual-002",
+                "source_revision": "v1",
+                "fields": {
+                  "text": "每週清潔濾網並記錄保養結果。",
+                  "title": "每週保養"
+                },
+                "vectors": {},
+                "metadata": {
+                  "department": "manufacturing"
+                }
+              },
+              "score": 4.47,
+              "rank": 2,
+              "source_refs": []
+            }
+          ]
+        }
+      ],
+      "active_result_set_ids": [
+        "r-es-hybrid"
+      ]
+    }
+  ],
+  "active_query_ids": [
+    "q0"
+  ]
+}

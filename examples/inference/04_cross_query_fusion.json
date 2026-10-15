@@ -1,5 +1,5 @@
 {
-  "contract_version": "inference-0.1-draft",
+  "contract_version": "inference-0.2-draft",
   "query_contexts": [
     {
       "query_id": "q0",
@@ -26,7 +26,9 @@
           "source": {
             "route_id": "text-bm25",
             "index_ref": "primary",
-            "field_path": "fields.text"
+            "field_paths": [
+              "fields.text"
+            ]
           },
           "operation": {
             "method": "bm25",
@@ -114,7 +116,9 @@
           "source": {
             "route_id": "text-dense",
             "index_ref": "primary",
-            "field_path": "vectors.text_vector"
+            "field_paths": [
+              "vectors.text_vector"
+            ]
           },
           "operation": {
             "method": "cosine_similarity",
@@ -198,7 +202,7 @@
       "result_sets": [
         {
           "result_set_id": "m1",
-          "stage": "fusion",
+          "stage": "merge",
           "input_result_set_ids": [
             "q1-r1",
             "q2-r1"

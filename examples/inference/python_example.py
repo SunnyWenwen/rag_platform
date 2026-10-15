@@ -28,7 +28,7 @@ class SourceRef(TypedDict):
 class RetrievalSource(TypedDict):
     route_id: str
     index_ref: str
-    field_path: str
+    field_paths: list[str]
 
 
 class Operation(TypedDict):
@@ -47,7 +47,7 @@ class ResultItem(TypedDict):
 
 class ResultSet(TypedDict):
     result_set_id: str
-    stage: Literal["retrieval", "filter", "sort", "fusion", "rerank"]
+    stage: Literal["retrieval", "merge", "top_n", "model_score"]
     input_result_set_ids: list[str]
     source: RetrievalSource | None
     operation: Operation
@@ -67,7 +67,7 @@ class QueryContext(TypedDict):
 
 
 class InferenceState(TypedDict):
-    contract_version: Literal["inference-0.1-draft"]
+    contract_version: Literal["inference-0.2-draft"]
     query_contexts: list[QueryContext]
     active_query_ids: list[str]
 
@@ -89,21 +89,30 @@ def active_results(state: InferenceState) -> list[ResultSet]:
     return selected
 
 
-def filter_example() -> InferenceState:
-    """從三路 Retrieval 的 r1 篩選，保留原結果並新增第四份清單。"""
+def sort_and_rank(result: ResultSet) -> ResultSet:
+    """對新結果排序；複製資料，保留來源結果不變。"""
+    output = deepcopy(result)
+    descending = output["score_order"] == "higher_is_better"
+    output["items"].sort(key=lambda item: item["score"], reverse=descending)
+    for rank, item in enumerate(output["items"], start=1):
+        item["rank"] = rank
+    return output
+
+
+def top_n_example() -> InferenceState:
+    """從已排序的 r1 取 Top 1，保留三份來源並新增第四份結果。"""
     state = deepcopy(load_example("01_retrieval.json"))
     query = state["query_contexts"][0]
     source = next(r for r in query["result_sets"] if r["result_set_id"] == "r1")
-    kept = [item for item in source["items"] if item["score"] >= 10]
-
+    n = 1
     result: ResultSet = {
-        "result_set_id": "r4-filter",
-        "stage": "filter",
+        "result_set_id": "r4-top-n",
+        "stage": "top_n",
         "input_result_set_ids": ["r1"],
         "source": None,
         "operation": {
-            "method": "score_threshold",
-            "parameters": {"min_score": 10},
+            "method": "top_n",
+            "parameters": {"n": n},
             "model_ref": None,
             "scoring_query_id": None,
         },
@@ -118,11 +127,11 @@ def filter_example() -> InferenceState:
                     {"result_set_id": "r1", "chunk_id": item["chunk"]["chunk_id"]}
                 ],
             }
-            for rank, item in enumerate(kept, start=1)
+            for rank, item in enumerate(source["items"][:n], start=1)
         ],
     }
-    query["result_sets"].append(result)
-    query["active_result_set_ids"] = ["r4-filter"]
+    query["result_sets"].append(sort_and_rank(result))
+    query["active_result_set_ids"] = ["r4-top-n"]
     return state
 
 
@@ -139,11 +148,11 @@ def main() -> None:
     print("例一：三路 Retrieval；每組 tuple 為 (chunk_id, score, rank)")
     print_results(load_example("01_retrieval.json"))
 
-    print("\n例二：篩選後共四份結果，下游只使用 r4-filter")
-    filtered = filter_example()
-    assert filtered == load_example("02_filter.json")
-    print("result_sets 數量：", len(filtered["query_contexts"][0]["result_sets"]))
-    print_results(filtered)
+    print("\n例二：取 Top 1 後共四份結果，下游只使用 r4-top-n")
+    selected = top_n_example()
+    assert selected == load_example("02_top_n.json")
+    print("result_sets 數量：", len(selected["query_contexts"][0]["result_sets"]))
+    print_results(selected)
 
     print("\n例三：Rerank 的示例分數；原始 r1 仍保留")
     print_results(load_example("03_rerank.json"))
@@ -152,6 +161,9 @@ def main() -> None:
     merged = load_example("04_cross_query_fusion.json")
     print("active_query_ids：", merged["active_query_ids"])
     print_results(merged)
+
+    print("\n例五：ES 內部 Sum Score，只回傳一份 Hybrid ResultSet")
+    print_results(load_example("05_es_hybrid.json"))
 
 
 if __name__ == "__main__":

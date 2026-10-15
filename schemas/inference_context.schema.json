@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://rag-builder.example.invalid/schemas/inference-state-0.1-draft.schema.json",
+  "$id": "https://rag-builder.example.invalid/schemas/inference-state-0.2-draft.schema.json",
   "title": "InferenceState / QueryContext proposal",
-  "description": "待確認草案。表示單次 Inference 的 Query 與結果快照；不表示 Engine／HTTP API 已實作。",
+  "description": "三種結果操作與共同排序規則依討論記錄；精確欄位及 UI Config 仍為待確認草案，非已實作 Engine／HTTP API。",
   "type": "object",
   "properties": {
     "contract_version": {
-      "const": "inference-0.1-draft"
+      "const": "inference-0.2-draft"
     },
     "query_contexts": {
       "type": "array",
@@ -104,15 +104,20 @@
           "type": "string",
           "minLength": 1
         },
-        "field_path": {
-          "type": "string",
-          "minLength": 1
+        "field_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
         }
       },
       "required": [
         "route_id",
         "index_ref",
-        "field_path"
+        "field_paths"
       ],
       "additionalProperties": false
     },
@@ -189,10 +194,9 @@
         "stage": {
           "enum": [
             "retrieval",
-            "filter",
-            "sort",
-            "fusion",
-            "rerank"
+            "merge",
+            "top_n",
+            "model_score"
           ]
         },
         "input_result_set_ids": {

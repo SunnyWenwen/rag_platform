@@ -1,5 +1,5 @@
 {
-  "contract_version": "inference-0.1-draft",
+  "contract_version": "inference-0.2-draft",
   "query_contexts": [
     {
       "query_id": "q0",
@@ -15,7 +15,9 @@
           "source": {
             "route_id": "text-bm25",
             "index_ref": "primary",
-            "field_path": "fields.text"
+            "field_paths": [
+              "fields.text"
+            ]
           },
           "operation": {
             "method": "bm25",
@@ -71,7 +73,9 @@
           "source": {
             "route_id": "text-dense",
             "index_ref": "primary",
-            "field_path": "vectors.text_vector"
+            "field_paths": [
+              "vectors.text_vector"
+            ]
           },
           "operation": {
             "method": "cosine_similarity",
@@ -127,7 +131,9 @@
           "source": {
             "route_id": "title-bm25",
             "index_ref": "primary",
-            "field_path": "fields.title"
+            "field_paths": [
+              "fields.title"
+            ]
           },
           "operation": {
             "method": "bm25",
@@ -177,16 +183,16 @@
           ]
         },
         {
-          "result_set_id": "r4-filter",
-          "stage": "filter",
+          "result_set_id": "r4-top-n",
+          "stage": "top_n",
           "input_result_set_ids": [
             "r1"
           ],
           "source": null,
           "operation": {
-            "method": "score_threshold",
+            "method": "top_n",
             "parameters": {
-              "min_score": 10
+              "n": 1
             },
             "model_ref": null,
             "scoring_query_id": null
@@ -221,7 +227,7 @@
         }
       ],
       "active_result_set_ids": [
-        "r4-filter"
+        "r4-top-n"
       ]
     }
   ],

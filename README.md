@@ -10,7 +10,7 @@ Config-driven RAG System 建立與測試平台。
 
 **接續規劃**：先讀 [03 名詞與架構](03_architecture_proposal.md#terminology) 及 [08 開發計畫與決策](docs/08_implementation_plan.md)。原 RAG Builder 規劃對話與「畫userflow」的整合核對、直接修正及需討論的邊界集中於 08 §12；臨時交接摘要已依指示讀取後移除。
 
-## 開發規格文件集 v0.15（2026-10-15）
+## 開發規格文件集 v0.16（2026-10-15）
 
 本輪已把 03～08 整理為 coding agent 可分階段使用的開發規格草案。**已確認方向、既有基線、建議與待決事項分開記錄**；具體公共介面與部分行為仍需決策，不表示後端已實作。v0.10 比對可取得的歷史片段；v0.11 統一 Engine／Runtime／System、Config／部署設定及 Workspace → System，移除正式 Blueprint／Group 概念；v0.12 將正式名詞集中到 03，其他規格引用並補充各自的實作細節。
 
@@ -18,7 +18,7 @@ v0.13 跨對話比對：補齊 I/O 原始問題傳遞、Parser 多路、服務�
 
 v0.14 已確認持久化模式跨環境固定：DEV Memory 則 FTEST／ENT 也用 Memory。Fusion 的位置由 Config 選擇；先討論 [Inference 傳遞物件／多路分數草案](docs/05_data_contracts_search_design.md#inference-state-draft)，再核定處理規則。05 §8.1 區分新增、文件更新、配置重建與重啟恢復；發布／查詢政策仍待討論，最新狀態見 08 §13。
 
-v0.15 將 Inference 草案具體化為 QueryContext／ResultSet／ResultItem，附 [JSON Schema](schemas/inference_context.schema.json) 及 05 §4.6.6 的四份完整例子。可驗證資料形狀及例子，不代表 Engine 已實作或欄位已核定。
+v0.15 曾加入 QueryContext／ResultSet／ResultItem 的具體草案。v0.16 記錄三種 ResultSet 操作與共同排序規則，並同步 [JSON Schema](schemas/inference_context.schema.json)、五份 JSON／[Python 範例](examples/inference/python_example.py)。Contract 形狀為 `inference-0.2-draft`，尚未凍結；[09 UI 整合提案](docs/09_inference_contract_ui_plan.md) 提供順序卡片、ES 輸出粒度、卡控與討論案例，沒有修改 Prototype／Engine。
 
 | 文件 | 定位 |
 |---|---|
@@ -28,6 +28,7 @@ v0.15 將 Inference 草案具體化為 QueryContext／ResultSet／ResultItem，�
 | [06 使用流程與 UI 開發規格](docs/06_ui_development_spec.md) | 基本／進階、CSV、AI 助手、預覽、Edit 與測試操作 |
 | [07 Backend、Runtime API 與整合](docs/07_backend_runtime_integration.md) | API、System／Revision、任務、持久化、Runtime 與 Export |
 | [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M6、驗收材料、27 項待決問題及 40 項對話要求對照 |
+| [09 Inference Contract 與 UI 整合提案](docs/09_inference_contract_ui_plan.md) | 三種操作／共同排序的討論記錄、順序式 UI 設定、案例與待確認選項 |
 
 建議先讀 03／08，再依任務讀 05／04／07／06。03 統一名詞與邊界，05 定義資料／版本規則，08 記錄決策與待決狀態。Engine 核心不依賴 Builder UI、HTTP 或 Builder DB；07 將其包裝為可管理服務。每份規格末尾列出相關 Q-ID，完整候選／決策／階段阻擋統一放在 08。
 

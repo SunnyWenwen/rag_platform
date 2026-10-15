@@ -1,6 +1,6 @@
 # RAG Builder — 使用流程與 UI 開發規格
 
-> 文件集 v0.15 · 2026-10-15 · 開發規格草案
+> 文件集 v0.16 · 2026-10-15 · 開發規格草案
 >
 > 本文定義 UI 目標互動。現有 HTML Prototype 的搜尋、模型、評估及 API 為模擬。Parsing 的預設收合、LLM／Prompt／範例按鈕等已確認要求如下；其他基本／進階分組、正式框架、範本與試跑優先級仍待決。
 
@@ -63,7 +63,7 @@ Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保�
 | Indexing | 後端、保存／全文／向量欄位、過濾能力 | 後端特有參數、進階 Mapping（支援後才顯示） |
 | Query Transformation | None／Rewrite／Multi-query、LLM | Prompt、count、include_original |
 | Retrieval／Fusion Plan | 搜尋欄位、Top-K、推導模式 | 每路 K、演算法、同／跨 Query 範圍及合併時點、預設 filters；細節 Q-014 |
-| Rerank | None／服務、內容欄位、Top-N | Timeout／服務輸入限制 |
+| Rerank | 既有表單為 None／服務、內容欄位、Top-N；三類操作的整合提案見 §3.4 | Timeout／服務輸入限制 |
 | Generation | LLM、回答要求 | 兩層模板、變數、Temperature、Budget |
 
 必填但缺失的設定不能因進階區收合而無法發現；錯誤摘要可直接展開並定位。改動過的進階設定收起後，建議顯示已修改項數／簡短摘要。範圍、預設值及「每次記住展開」政策見 Q-025。
@@ -102,6 +102,14 @@ DEV test use 使用平台測試資源；匯出部署時需填入使用單位的�
 | Header-aware 所需標題能力未開啟 | 顯示相依原因，提供定位 Parsing 進階設定的方式；無法滿足時阻止保存 |
 
 卡控只處理設定相依；不代替實際後端能力、Profile 或連線驗證。規則由 04／05 共用來源推導。
+
+### 3.4 Inference 結果處理的整合提案
+
+三種操作「去重＆合併／取 Top N／新模型算分」與共同排序規則已確認，見 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft)。建議保留既有單一 Create／Edit，在 Retrieval 與 Generation 之間增加可調整順序的結果處理卡片，重用 Rerank 欄位；不要另外維持一份 Rerank 有效設定。這是 UI 草案，不代表原型已移動或順序已核定。
+
+基本表單讓使用者選可讀的上游步驟、每個 Query 內／跨 Query 範圍、方法及參數；runtime IDs 與 operation／source 由執行時產生。排序及 rank 更新固定執行，不提供排序開關；score_kind／score_order 由方法決定。ES 內部 Hybrid 已回傳一份清單時，預覽不得假裝仍有獨立全文／向量排名。
+
+完整控制項、ES 輸出粒度、Top N 與模型評分解耦、卡控、三個案例及需討論的選項集中在 [09 UI 整合提案](09_inference_contract_ui_plan.md)。Q-014／Q-025 在核定後才落到 Prototype；模型服務覆蓋率及真實 Adapter 能力仍由 Q-003 驗證。
 
 ## 4. 從 CSV 開始
 
