@@ -1,551 +1,342 @@
-# RAG Builder — 資料契約與索引設計討論結論
+# RAG Builder — 共用資料模型與 Config 規格
 
-> 2026-10-14 · 設計草案 v0.8
+> 文件集 v0.9 · 2026-10-15 · 開發規格草案
 >
-> 整理本輪 Import／Parsing／Chunking／Embedding／Indexing／Retrieval 討論。這是設計規格；UI Prototype 已加入互動示意，Engine／API／DB 尚未實作。
-> 本文取代《04_module_methods_io_contracts.md》v0.2 中關於 ParsedDocument、Chunk、獨立 VectorSet、多欄位與搜尋後端的舊提案；其他模組的執行、錯誤與評估契約仍沿用原文件。
+> 本文是資料形狀及設定規則的權威位置。已確認的語意保留；新增的程式型別、完整 Config 拼字與預設值為建議草案，待 Q-002 核定後才凍結。YAML 範例用於討論與驗收設計，目前沒有 Engine 可直接執行。
 
-## 1. 決策狀態
+## 1. 範圍與讀法
 
-| 項目 | 結論／狀態 |
+- 模組如何執行見 [04](04_module_methods_io_contracts.md)，UI 見 [06](06_ui_development_spec.md)，HTTP 包裝／儲存見 [07](07_backend_runtime_integration.md)。
+- 本文統一 ParsedDocument、Chunk、SearchHit、Config 及 ModuleResult，避免各模組重複定義。
+- 物件形狀、Contract 版本與細節待 [Q-002](08_implementation_plan.md#q-002) 核定；已確認的五／六個頂層 key 不因此退回舊版。
+- `?` 表示可省略，不自動表示可為 null；`JSON` 必須可序列化，數值不可為 NaN／Infinity。正式 required／nullable／additionalProperties 須由 Schema 定義。
+
+## 2. 識別、版本與作用域
+
+| 欄位／概念 | 語意 | 狀態 |
+|---|---|---|
+| system_id | 同一 RAG System 的穩定識別；租戶隔離仍由可信 Context 決定 | 已確認語意；格式待決 |
+| document_id | 同一 System 中邏輯文件的穩定識別，不能用 Chunk ID 取代 | 已確認；產生演算法 Q-007 |
+| source_revision | 文件內容版本，與 Config Revision 不同 | 已確認；省略時的生成／比較 Q-007 |
+| chunk_id | 由文件、來源版本、切分有效設定與位置／序號產生 | 已確認方向；規範化／Hash Q-007 |
+| config_revision | 平台保存的設定版本 | 已確認；草稿／生效語意 Q-015 |
+| index_generation | 可追蹤的索引資料版本，不能把可變 alias 當 immutable snapshot | 已確認方向；切換 Q-010／Q-015 |
+| contract_version | 資料／Config 契約版本 | 建議；遷移 Q-002 |
+| run_id／request_id／trace_id | 批次工作、單次請求及追蹤識別 | 已確認方向；線上包裝 Q-019 |
+
+CSV 每列是邏輯文件。跨批更新需映射穩定鍵；Prototype 的批次自動 ID 不能宣稱可跨次穩定。檔案拆為多份文件時保留來源資產關聯，不能讓所有列沿用同一 document_id。
+
+## 3. Document Schema
+
+固定外層不可自訂。每個 System 宣告 fields／metadata 的內部欄位：
+
+| 屬性 | 規則 |
 |---|---|
-| 統一資料物件 | ParsedDocument 五個頂層 key；Chunk 六個頂層 key，新增 vectors |
-| 模組分工 | Import／上傳介面映射結構化欄位；Parsing 擷取及驗證；Chunking 切分及繼承；Embedding 產生向量；Indexing 儲存及建索引 |
-| 多欄位 | 可分別選擇 Embedding、Indexing、Retrieval、Rerank、Generation 使用的欄位 |
-| 搜尋後端 | 已確認 ES／Local Search（FAISS＋BM25）；後端待實作驗證 |
-| 持久化 | Local Search 支援 Memory／MongoDB 的設計方向；MongoDB 不執行該模式的向量搜尋 |
-| 使用介面 | 後端共用設定流程，能力差異以顯示但停用及原因說明處理 |
-| Hybrid | 第一版可選 Sum Score／RRF，預設 Sum Score；自動正規化另行規劃 |
-| 第一版切分 | 一個主要切分欄位＋多個複製欄位；Recursive／Header-aware，使用 Token 計量 |
-| 多模態 | 第一版建議文字 RAG；OCR 首批格式及實作待定，視覺描述／圖片 Embedding 暫列後續 |
-| 摘要 | 先使用輸入已有摘要；自動摘要 Enrichment 為後續能力 |
-| 客製化 | 優先考慮 Chunking、Query Transformation、Rerank、Evaluation；不代表已實作 |
+| name | 容器內非空、唯一；不可占用平台保留欄位 |
+| type | 現有方向為 string／number／boolean／array；array 元素型別及巢狀物件 Q-002 |
+| required | Input 欄位在接收時檢查；Parser 來源在 Parsing 完成後檢查 |
+| source | input／parser；不能要求呼叫者偽造 Parser 產生的結構 |
+| default | 必須符合型別；缺值、null、空字串的區別需核定 |
+| unknown_fields | Prototype 預設 reject；allow 可保留，後續選單仍只取已宣告欄位 |
 
-## 2. 模組責任與資料流
+預設只有必填 string 的 fields.text。主要切分欄位必填且為 string；Embedding／全文／Prompt 的文字用途只選型別相容欄位。第一版精確 Filter 只支援字串。Schema 名稱修改保留失效引用並阻止保存，不自動轉移到同名欄位。
 
-| 模組 | 目的 | 主要輸入 | 主要輸出 | 不屬於本模組的責任 |
-|---|---|---|---|---|
-| Import | 接收資料、驗證與保存原始輸入及來源資訊 | 檔案上傳／API 請求 | SourceAsset 清單 | OCR、內容解析、Embedding |
-| Parsing | 依格式擷取內容、驗證 Schema 與結構資訊 | SourceAsset 清單 | ParsedDocument 清單 | 自動產生搜尋向量 |
-| Chunking | 切分主要內容，複製指定內容與 metadata，產生位置 | ParsedDocument 清單 | Chunk 清單，vectors={} | 預設回查父文件、自動產生摘要 |
-| Embedding | 讀取指定 fields，將向量寫入 vectors | Chunk 清單 | 帶 vectors 的 Chunk 清單 | 建立搜尋索引 |
-| Indexing | 儲存 Chunk，依欄位用途建索引 | 帶向量或純文字的 Chunk 清單 | IndexBinding、寫入及可搜尋狀態 | 重新執行內容 Embedding |
-| Retrieval | 查詢已建立索引，融合候選並取回完整 Chunk | Query、IndexBinding、filter | SearchHit 清單 |
-| Rerank | 依問題與選定內容欄位重排 | SearchHit 清單 | 重排後的 SearchHit 清單 |
-| Generation | 依指定內容欄位組 Context 並回答 | 問題、歷史、SearchHit 清單 | 回答、引用、使用量與追蹤資訊 |
+**待決**：default 與 required 的順序、null／空白政策、缺少選填 Embedding 欄位如何處理、array 元素、保留名稱及 Schema migration，見 Q-002／Q-006。正式後端不得直接沿用 Prototype 的寬鬆 JavaScript 行為。
 
-Indexing 與 Inference 以持久化或記憶體中的索引銜接，不是同一次串行函式呼叫。Config、RunContext、Embedding Profile 與 IndexBinding 是控制資訊，平台另外提供；不需塞進每個 Chunk。
+## 4. 共用業務資料
 
-Import 預設可同時提供上傳與 API 入口，不要求使用者二選一。外部呼叫 Ingestion API 與平台主動拉取外部 API 是不同能力。CSV／Excel 通常以「每列」成為一份邏輯文件，欄位轉成 JSON 欄位；不是每一個 column 都是一份文件。Builder 的 CSV 上傳將每列映射成標準 records；內容解析與完整 ParsedDocument 驗證由 Parsing 負責。直接上傳 Excel 的解析留待 Parser 實作。
+### 4.1 輸入 records 與 SourceAsset
 
-## 3. ParsedDocument：五個固定頂層 key
+JSON Ingestion 的每筆 Record 形狀已確認：
+
+```json
+{
+  "document_id": "manual-001",
+  "source_revision": "v1",
+  "fields": {"text": "設備每月需清潔散熱孔。", "title": "保養規範"},
+  "metadata": {"department": "manufacturing"}
+}
+```
+
+JSON records 的 document_id 必填；source_revision 可由輸入提供，省略時的後端生成政策待定。metadata 可省略為空，實際允許欄位依 Schema。structure／vectors 由後續模組產生，不由 Record 提供。
+
+SourceAsset 是 Import → Parsing 的內部物件，**建議**包含 asset_id、kind（file／records）、media_type、content_ref 或 record payload、source identity、已驗證 metadata。ArtifactRef 建議包含 uri、media_type、checksum、size_bytes；URI 由 Runtime 授權解析，不接受任意檔案路徑／內網 URL。
+
+檔案 manifest、實際位元組／引用的傳遞策略與資產保存見 Q-005／Q-007／Q-016；不能因使用 ArtifactRef 就強制獨立 Runtime 依賴 Builder Object Storage。
+
+### 4.2 ParsedDocument：五個固定頂層 key
 
 | Key | 型別 | 語意 |
 |---|---|---|
-| document_id | string | 同一邏輯文件的穩定識別 |
+| document_id | string | 邏輯文件 ID |
 | source_revision | string | 來源內容版本 |
-| fields | object | 原文、標題、摘要等後續模組需要的內容 |
-| metadata | object | 來源、分類、權限及處理資訊 |
-| structure | object | 依 fields 欄位對應的區塊、頁碼、段落位置；可為 {} |
-
-範例（位置範圍與文字長度一致）：
+| fields | object | 原文、標題、已有摘要等內容 |
+| metadata | object | 來源、分類與平台保留資訊 |
+| structure | object | 依 fields 欄位對應的區塊／頁碼／標題；可為 {} |
 
 ```json
 {
   "document_id": "doc-001",
   "source_revision": "v1",
-  "fields": {
-    "text": "第一段。第二段。",
-    "summary": "文件摘要",
-    "title": "設備維修手冊"
-  },
-  "metadata": {
-    "source_uri": "manual.pdf",
-    "department": "manufacturing"
-  },
-  "structure": {
-    "text": {
-      "blocks": [
-        {"block_id": "b1", "kind": "text", "start": 0, "end": 4, "page_number": 1},
-        {"block_id": "b2", "kind": "text", "start": 4, "end": 8, "page_number": 2}
-      ]
-    }
-  }
+  "fields": {"text": "第一段。第二段。", "title": "維修手冊"},
+  "metadata": {"department": "manufacturing"},
+  "structure": {"text": {"blocks": [
+    {"block_id": "b1", "kind": "text", "start": 0, "end": 4, "page_number": 1},
+    {"block_id": "b2", "kind": "text", "start": 4, "end": 8, "page_number": 2}
+  ]}}
 }
 ```
 
-位置規約：start／end 為對應 fields 欄位完整字串的 Unicode code point offset，0-based、半開區間；page_number 從 1 起。此規約取代舊版 block 內 offset 的提案。標題結構、表格等可擴充 structure，但需有型別定義。
+start／end 為對應 fields 完整字串的 Unicode code point offset，0-based 半開區間；頁碼從 1 起。不能混用 block-local offset、UTF-8 bytes 或 JavaScript UTF-16 index。標題／表格 block 的完整 Schema 由 Q-005 核定。
 
-Import 可先給來源資產 ID。若一個 Excel／JSON 批次解析成多份文件，Parsing 應根據穩定列主鍵等規則派生不同 document_id，保留來源資產關聯；不能讓所有列沿用同一文件 ID。沒有穩定列鍵時，需明確定義更新與重新匯入規則。
+### 4.3 Chunk：六個固定頂層 key
 
-## 4. Chunk：六個固定頂層 key
-
-| Key | 來源／責任 |
+| Key | 責任 |
 |---|---|
-| chunk_id | Chunking 依文件、版本、切分設定與位置確定性產生 |
-| document_id | 繼承 ParsedDocument |
-| source_revision | 繼承 ParsedDocument |
-| fields | 切分後的內容＋設定要複製的內容 |
-| vectors | Chunking 初始化為 {}；Embedding 寫入具名稱的向量 |
-| metadata | 繼承指定資訊＋衍生的片段位置與處理資訊 |
+| chunk_id | Chunking 產生 |
+| document_id、source_revision | 繼承文件 |
+| fields | 主要欄位的切分片段＋指定複製欄位 |
+| vectors | Chunking 為 {}；Embedding 寫入命名向量 |
+| metadata | 必要保留資訊、指定 metadata、片段位置 |
 
 ```json
 {
   "chunk_id": "doc-001:v1:c1",
   "document_id": "doc-001",
   "source_revision": "v1",
-  "fields": {
-    "text": "第一段。",
-    "summary": "文件摘要",
-    "title": "設備維修手冊"
-  },
-  "vectors": {},
-  "metadata": {
-    "source_uri": "manual.pdf",
-    "department": "manufacturing",
-    "locations": [
-      {"field": "text", "start": 0, "end": 4, "page_number": 1, "block_id": "b1"}
-    ]
-  }
+  "fields": {"text": "第一段。", "title": "維修手冊"},
+  "vectors": {"text_vector": [0.12, 0.34, 0.56]},
+  "metadata": {"department": "manufacturing", "locations": [
+    {"field": "text", "start": 0, "end": 4, "page_number": 1, "block_id": "b1"}
+  ]}
 }
 ```
 
-Chunk 應自帶 Rerank／Generation 需要的內容，不強制回查 ParsedDocument。ParsedDocument 可選擇保存，供除錯與重新切分；Parent–Child Retrieval 不列入此基本流程。
+chunk_id 與三維向量僅示例。位置指原 ParsedDocument 欄位，不是 Chunk 內的重新起算位置。跨頁可有多個 locations。權限、來源、locations、切分及 Parser 版本應有平台保留區或 Run 記錄，精確命名 Q-006；不額外增加 Chunk 頂層 key。
 
-fields／metadata 可擴充，但每個 RAG System 要宣告 Document Schema，包含欄位名稱、型別、是否必填及缺值政策。權限、來源、系統識別及 locations 等保留欄位由平台管理，不允許使用者覆寫。舊版頂層 access_policy_ref、parser_version、chunking_signature 等資訊應移入明確宣告的 metadata 保留區或平台執行紀錄。
+Chunk 須自帶 Rerank／Generation 需要的內容，不強制回查 ParsedDocument。完整向量保存在索引／Chunk Store；檢索傳遞可令 vectors={}。欄位保存投影仍須保證所有下游內容可取得。
 
-搜尋分數、rank、matched query 與 rerank score 屬 SearchHit／Trace，不是 Chunk 內容。後續檢索回傳可將 vectors 設為 {}，避免將大向量傳入 Rerank／Generation；持久化副本仍保留完整向量。
+### 4.4 Embedding Profile 與 IndexBinding
 
-## 5. Parsing 與 Chunking 設定
+| 物件 | 必要語意 |
+|---|---|
+| EmbeddingProfile | 模型／版本、維度、document/query encoding、normalization、Tokenizer／revision、向量種類；向量邏輯名稱對應來源欄位及 Profile |
+| IndexBinding | System 範圍、後端／集合、資料版本、Mapping／Schema 版本、capabilities、每個向量的 Profile 綁定及可搜尋狀態 |
 
-### 5.1 多個 Parser 共存
+Profile 是 Query／Document 配對契約；不能只比較維度或模型顯示名稱。Profile／Binding 不在每筆 Chunk 重複。第一版多個命名 Dense 向量已確認；不同 Profile／模型同時配置的優先級見 Q-002／Q-003。
 
-不同格式透過 routing 選用不同 Parser；同一格式可選一種解析策略。格式路由與執行時平行處理是不同設定，不應混為同一概念。
+### 4.5 SearchQuery、SearchHit 與 Citation
 
-| 輸入 | Parsing 處理 | 統一輸出 |
+以下欄位名為**建議草案**，需 Q-002 凍結：
+
+| 物件 | 形狀 |
+|---|---|
+| SearchQuery | query_id、text、kind（original／rewrite／expanded）；非空文字 |
+| SearchHit | chunk: Chunk、rank、score、score_kind、matched_query_ids；逐路分數與 rerank_score 存 Trace |
+| Citation | citation_id、chunk_id、document_id、source_revision、locations |
+| QueryResult | original_question、answer、citations、used_chunk_ids、finish_reason、usage、abstained |
+
+rank 從 1 起；score 是相關性分數，不是機率。搜尋融合用 chunk_id 去重，文件分組用 document_id，兩者不同。Rerank score 不覆寫而遺失原 Retrieval score。
+
+## 5. 共用執行與錯誤物件
+
+下列延續舊 04 的設計方向，正式欄位必填與狀態仍由 Q-002／Q-017 核定：
+
+| 物件 | 建議欄位 |
+|---|---|
+| ModuleConfig | module_id、implementation_version、contract_version、method、parameters、服務引用 |
+| RunContext | system_id、config_revision、run_id／request_id、trace_id、deadline、attempt、可信 auth_scope |
+| ModuleResult[T] | status: succeeded／partial／failed，data、errors、warnings、metrics |
+| ModuleError | code、module、message、retryable、item_id?、details? |
+| ExecutionMetrics | duration_ms、input_count、output_count、token_usage?、provider_request_id? |
+
+failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項目，不能默默少資料。哪些模組允許 partial 及如何提交資料仍受 Q-009 限制。HTTP 任務狀態不是 ModuleResult.status，見 07。
+
+未知 Token Usage 為 null／省略，不填 0。Secret 與敏感原文不進錯誤／追蹤。使用者無權設定可信租戶／ACL Context。
+
+## 6. Config 結構與有效設定
+
+### 6.1 草稿、有效 Config 與部署覆寫
+
+- UI Draft 保存基本／進階欄位及未啟用方法的草稿；不是所有欄位都參與執行。
+- Effective Config 僅包含使用中的方法、參數、服務及欄位；AI 與手動入口共用編譯／驗證。
+- Deployment Override 只替換目標環境連線／Secret 等允許項，不修改平台測試 Config。
+- 更換 Embedding 語意 Profile 不能當作純環境覆寫，必須重新 Embedding／Indexing。
+- 使用相同服務的兩個模組引用同一 llm_ref；匯出只包含實際引用的服務。
+
+以下根結構為**建議**：contract_version、document_schema、llms、pipelines.ingestion、pipelines.inference、execution。System／Revision／IndexBinding 為管理與執行綁定，Engine 由參數／Context 取得；HTTP／Blueprint 包裝見 07。
+
+### 6.2 模組設定詞彙
+
+| 模組 | 已確認語意 | 本版建議 Config 欄位 |
 |---|---|---|
-| PDF 文字層 | 文字、頁碼、區塊擷取 | fields＋structure |
-| 掃描 PDF／圖片 | OCR | 文字＋可用的位置資訊 |
-| PPTX | 文字、投影片頁次、區塊擷取 | fields＋structure |
-| TXT／Markdown | 文字與可用章節結構 | fields＋structure |
-| Builder CSV | 上傳介面先完成每列 JSON 與 column 映射；Parsing 驗證 | ParsedDocument 清單 |
-| Excel 原始檔 | 列到文件及內容擷取（實作待定） | 一份或多份 ParsedDocument |
-| API JSON | 驗證已符合 Schema 名稱的欄位，不重複映射 | ParsedDocument 清單 |
+| Import | files／records；CSV 先映射到 records | accepted_inputs、csv_mapping |
+| Parsing | 格式路由、結構化 records 驗證 | routes |
+| Chunking | Recursive／Header-aware；Token 計量 | method、split_field、copy_fields、metadata_fields、size、overlap、tokenizer、separators、keep_separator、header_levels |
+| Embedding | fields → 命名 vectors | profile、mappings（source_field、output_name） |
+| Indexing | 儲存、全文、向量、過濾分開 | backend、collection、stored_fields、fulltext_fields、vector_fields、filter_fields、persistence、metric |
+| Query Transformation | None／Rewrite／Multi-query | method、llm_ref、prompt、count、include_original |
+| Retrieval | 選已索引欄位；推導模式 | fulltext_fields、vector_fields、per_route_k、top_k、filters、fusion |
+| Rerank | None／DEV／Rerank API | method、service、content_fields、top_n |
+| Generation | 兩層模板、共用 LLM | llm_ref、chunk_template、prompt、temperature、max_output_tokens、context_budget |
 
-統一結構不代表所有來源都有頁碼或章節。未啟用 OCR 的掃描文件，不應以空文字成功進入索引。
+正式枚舉建議用 snake_case，UI 可顯示自然語言。Prototype 的 chunking.split、embedding.mappings[].source、indexing.filters、transform 等短名稱不自動視為正式 Schema；需明確 migration。統一使用完整路徑 fields.text／vectors.text_vector／metadata.department。上述拼字及預設值需 Q-002 核定，禁止同時接受未宣告別名而掩蓋錯誤。
 
-Parsing 不產生向量。OCR 讀取文字，不保證理解流程箭頭、圖表或照片；視覺模型產生描述及多模態 Embedding 為後續功能。未來圖片以資產引用進入 fields，Embedding 讀取實際圖片內容，不能把 URI 字串當作圖片 embedding。
+### 6.3 參數與相依規則
 
-### 5.2 Chunking 欄位策略
+| 條件 | 驗證 |
+|---|---|
+| Token Chunking | size 為正整數；0 ≤ overlap < size；Tokenizer 可取得；Header-aware 需 headings 能力 |
+| Embedding mappings | 來源為有效文字欄位；output_name 唯一；有限值、維度與 Profile 相容 |
+| Indexing | 搜尋欄位與上游一致；必要識別／來源／ACL 強制保留；下游使用欄位已保存 |
+| Retrieval | 至少一路；每路及最終 K 為正整數；僅選已建立索引；Query Profile 由向量欄位繼承 |
+| Fusion | 多 Query 或多欄位時適用；單一路保留原排序；更換策略只使用該策略有效參數 |
+| Sum Score | 預設策略；全文／向量權重預設各 1，有限非負，使用中至少一個大於 0；不自動正規化 |
+| RRF | rank 從 1；k 預設 60 且為正整數；k 與 Top-K 不同 |
+| Rerank | None 不執行且不使用 top_n；啟用時 0 < top_n ≤ Retrieval top_k |
+| Templates | 只允許宣告變數；單次替換；未知／必要變數缺少阻止保存 |
+| LLM | 引用有效；刪除使用中的服務不得默默換另一個 |
 
-第一版建議：
-- split_field：一個主要文字欄位，例如 fields.text。
-- copy_fields：例如 fields.title、fields.summary，複製到每個 Chunk。
-- metadata_fields：選擇繼承的來源／分類資訊；必要權限強制保留。
-- locations：根據切分範圍與 structure 計算，可能跨多頁或多區塊。
-- size／overlap：統一以 Token 計量；Tokenizer 預設沿用 Embedding，也可自行指定。Recursive／Header-aware 的邊界設定見第 13 節。
+純 BM25 可跳過 Embedding，但 Chunking 仍需 Tokenizer。複製欄位長度可能大於 Chunk Size，Embedding 必須逐項檢查實際輸入。Tokenizer、模型極限及溢位政策見 Q-004。
 
-複製的文件摘要仍是文件層級摘要，不會自動變成 Chunk 摘要。若摘要重複出現在同文件的所有 Chunk，摘要向量搜尋可能回傳多個同文件片段；後續需依需求進行文件分組或片段 Rerank。
+### 6.4 過濾條件
 
-## 6. Embedding：fields → vectors
+```json
+[{"field":"metadata.department","operator":"eq","value":"manufacturing"}]
+```
+
+Indexing 宣告可過濾欄位；Retrieval 保存預設條件；Query API 可加本次條件。全部與後端強制授權 AND；in 清單內為任一值符合。第一版 eq 為非空字串，in 為非空、不重複字串清單。空條件清單不增加業務限制，不能取消 ACL。
+
+所有 Query × 欄位路徑須在取 Top-K 前套用相同限制。缺值／null／多值精確語意與 Adapter 可用能力見 Q-013；不支援就拒絕配置。數值／日期／OR 群組列為後續。
+
+## 7. 完整 Config 範例（建議草案）
+
+以下是完整的 **Local Search／Memory、文字＋向量、外部模型服務**範例。服務 URL 使用不可運作的 `.invalid` 網域，Secret 只示意引用；它可用於 Schema 設計與測試材料，不代表現在已能執行。正式預設／拼字核定後應抽出 examples/configs 並以 Schema 驗證。
 
 ```yaml
-embedding:
-  mappings:
-    - source_field: fields.text
-      output_name: text_vector
-      profile_ref: embedding-a
-    - source_field: fields.summary
-      output_name: summary_vector
-      profile_ref: embedding-a
+contract_version: "0.1-draft"
+document_schema:
+  fields:
+    - {name: text, type: string, required: true, source: input}
+    - {name: title, type: string, required: false, source: input, default: ""}
+  metadata:
+    - {name: department, type: string, required: true, source: input}
+  unknown_fields: reject
+llms:
+  - id: llm-default
+    name: Default LLM
+    service:
+      provider: openai_chat
+      base_url: https://llm.example.invalid/v1
+      model_id: chat-model
+      auth: {type: bearer, secret_ref: llm-token/key}
+      timeout_seconds: 30
+pipelines:
+  ingestion:
+    import:
+      accepted_inputs: [records]
+      csv_mapping:
+        id: document_id
+        content: fields.text
+        title: fields.title
+        department: metadata.department
+    parsing:
+      routes: {records: structured_records}
+    chunking:
+      method: recursive
+      split_field: fields.text
+      copy_fields: [fields.title]
+      metadata_fields: [metadata.department]
+      size: 512
+      overlap: 64
+      tokenizer: {id: tokenizer-example, revision: pinned-example}
+      separators: ["\n\n", "\n", "。", " ", ""]
+      keep_separator: true
+    embedding:
+      profile:
+        profile_id: embedding-default
+        service:
+          provider: openai_embeddings
+          base_url: https://embedding.example.invalid/v1
+          model_id: embedding-model
+          auth: {type: bearer, secret_ref: embedding-token/key}
+          timeout_seconds: 30
+        model_version: pinned-example
+        dimension: 768
+        vector_kind: dense
+        document_encoding: {prefix: ""}
+        query_encoding: {prefix: ""}
+        normalization: l2
+        tokenizer: {id: tokenizer-example, revision: pinned-example}
+        max_input_tokens: 8192
+      batch_size: 16
+      mappings:
+        - {source_field: fields.text, output_name: text_vector}
+    indexing:
+      backend: local_search
+      collection: workspace-manual-system-example
+      persistence: {mode: memory}
+      metric: cosine
+      stored_fields: [fields.text, fields.title]
+      fulltext_fields: [fields.text]
+      vector_fields: [vectors.text_vector]
+      filter_fields: [metadata.department]
+  inference:
+    query_transformation: {method: none}
+    retrieval:
+      fulltext_fields: [fields.text]
+      vector_fields: [vectors.text_vector]
+      per_route_k: 10
+      top_k: 5
+      filters: []
+      fusion:
+        method: sum_score
+        score_weights: {fulltext: 1, vector: 1}
+    rerank: {method: none}
+    generation:
+      llm_ref: llm-default
+      temperature: 0.2
+      max_output_tokens: 1024
+      context_budget: 4000
+      chunk_template: "[{{citation_id}}] {{fields.title}}\n{{fields.text}}"
+      prompt: "請根據參考資料回答並標示引用。資料不足時請明確說明。\n參考資料：\n{{context}}\n問題：{{query}}"
+execution:
+  request_timeout_seconds: 120
+  max_attempts: 1
 ```
 
-Embedding 後，Chunk 的 vectors 例如：
+本例的模型維度、Token 上限、Timeout 與名稱均為示例；不能把示例 Profile 套到任意實際模型。max_attempts=1 表示尚未啟用自動重試，不宣稱重試政策已定案。
 
-```json
-{
-  "text_vector": [0.12, 0.34, 0.56],
-  "summary_vector": [0.23, 0.45, 0.67]
-}
-```
+ES 變體需使用自己的連線／Secret、Mapping 與能力驗證；MongoDB 變體需提供 DB／Collection、Profile Manifest 與重建政策。這些正式配置分支及 DEV service_ref 的 Schema 由 Q-002／Q-012／Q-021 核定，不能僅把 backend 字串換掉就視為完整。
 
-三維數值僅為示例。每個 output_name 綁定 Profile：來源欄位、模型／版本、維度、document/query encoding、normalization。設定由平台保存，不在每筆 Chunk 重複。向量名稱為邏輯名稱，後端實體欄位由 Adapter 映射。
+## 8. Config 變更影響矩陣
 
-驗證：來源欄位型別與缺值政策、輸出名稱唯一、向量值有限、維度與 Profile 相容。第一版優先 Dense；Sparse 的值型別需另定，不能把 Dense 陣列與 Sparse 權重混用。多個具名稱向量不等於 late-interaction 的每欄位多向量模型。
-
-本版 Embedding 業務 I/O 為 chunks → chunks（填入 vectors）；不再以獨立 vector_sets 作為主要傳遞方式。純 BM25 可略過 Embedding。
-
-## 7. Indexing：儲存與索引分開設定
-
-| 設定用途 | 來源 | ES 對應示例 |
-|---|---|---|
-| 全文搜尋 | fields 的文字欄位 | text |
-| 向量搜尋 | vectors 的命名向量 | dense_vector；Sparse 為後續 |
-| 精確過濾／分組 | fields、metadata 或固定 ID | keyword |
-| 數值／日期範圍 | fields／metadata 的型別欄位 | integer、float、date 等 |
-| 僅保存內容 | 後續 Rerank／Generation 所需欄位 | 保存內容而不提供對應搜尋能力 |
-
-儲存欄位不等於建立搜尋索引。平台的「保存」也不等同 ES 的 store:true 設定；實體 Mapping 由 Adapter 負責。完整文件 ID、版本、權限等必要資訊固定保留。
-
-ES 一個邏輯 index 可容納多種欄位 Mapping；其底層仍有不同欄位的搜尋結構。Hybrid 是 Retrieval 的查詢與融合策略，不是第三種欄位型別。
-
-```yaml
-indexing:
-  backend: local_search
-  persistence: memory
-  stored_fields: [fields.text, fields.summary, fields.title]
-  vector_fields: [vectors.text_vector, vectors.summary_vector]
-  fulltext_fields: [fields.text]
-  filter_fields: [metadata.department]
-  group_fields: [document_id]
-```
-
-以上為平台設定示例，不是任何資料庫的原生 API。
-
-## 8. 後端選型與持久化
-
-### 8.1 角色區分
-
-- Elasticsearch：整合文件儲存、全文與向量搜尋；本輪已選為其中一個後端。
-- FAISS：向量索引與搜尋函式庫，不提供完整文件資料庫或原生 BM25。
-- Local Search：平台組裝的 FAISS＋BM25＋候選融合＋Chunk Store；不是 FAISS 產品自帶功能。
-- MongoDB：Local Search 模式的選配長期儲存，保存 Chunk（含 vectors）及相關設定，不執行該模式的向量搜尋。
-- LanceDB、Qdrant、MongoDB Search／Vector Search 曾作為替代方案討論，未列入本版兩個後端的實作範圍。
-
-### 8.2 建議運作模式
-
-| 項目 | ES | Local Search／Memory | Local Search／MongoDB |
-|---|---|---|---|
-| 完整 Chunk | ES | 記憶體 | MongoDB，可載入記憶體快取 |
-| 向量搜尋 | ES | FAISS | FAISS |
-| 全文搜尋 | ES | 平台 BM25 實作 | 平台 BM25 實作 |
-| 程序重啟 | 使用既有索引 | 資料遺失，重新 Ingestion | 讀取 Chunk／vectors 重建 FAISS 與 BM25 |
-| 重新 Embedding | 依內容／設定變更需要 | 重新 Ingestion 時需要 | 模型設定未變且向量完整時不需要 |
-| 定位 | 完整搜尋服務 | 小型試用／Prototype | 需要保存資料的小型服務 |
-
-網路暫時斷線不等於記憶體消失；程序結束／Pod 被替換才會遺失。FAISS 可存檔；Memory 模式不保存是第一版選擇，並非工具限制。
-
-第一版 Local Search 建議單一服務程序承接 Ingestion／Inference。多 worker／多 Pod 不會自動共享記憶體索引；MongoDB 持久化也不會自動同步各 Pod 的 FAISS，後續需額外的版本通知與索引載入設計。沒有 MongoDB 時，不應將 Ingestion 獨立成執行完即退出且不交付索引的 Job。
-
-### 8.3 多欄位的內部實作
-
-每個命名向量欄位建議各自一個 FAISS index，兩者的向量 ID 都映射至 chunk_id；完整 Chunk 只保存一份。BM25 使用另外的文字索引。原文與摘要即使維度相同，也不預設混在同一索引。
-
-以上屬後端細節。UI 一律選後端、來源欄位與用途，不要求使用者管理 FAISS index 數量。
-
-## 9. Retrieval、融合與文件分組
-
-Retrieval 只能選擇已建索引的欄位。向量查詢的模型、維度、encoding 由對應 Profile 繼承，不讓使用者任意選另一模型。Rerank／Generation 則選可取得的內容欄位，不必要求該欄位本身可搜尋。
-
-Hybrid 可採：
-- RRF：sum(1 / (k + rank))；未出現在某一路候選則該路貢獻為 0。k 是平滑常數，不是 Top-K。可擴充權重。
-- 加權分數融合：sum(weight × normalized_score)。需先統一方向與尺度；BM25、cosine 與距離不可直接假設可比較。
-
-第一版可選 Sum Score／RRF，逐路 Top-K 與融合後候選 Top-K 分開定義。ES 需配置查詢及融合；不是建好索引就自動 Hybrid。Local Search 由平台負責 BM25、FAISS 結果融合。
-
-| 操作 | 識別依據 | 責任 |
-|---|---|---|
-| 多路命中合併 | 相同 chunk_id | Retrieval 融合階段，不依賴 Rerank |
-| 同文件片段限制 | 相同 document_id、不同 chunk_id | 文件分組／max_chunks_per_document 策略 |
-| 語意重排 | 問題＋指定內容欄位 | Rerank |
-
-文件分組不是刪除重複 chunk_id。可在 Retrieval 限制文件占比，或 Rerank 後選每文件最佳片段；先做可能失去有用片段，因此不預設每文件只能一個 Chunk。ES 可用 document_id collapse／inner_hits 達成部分需求，但與特定向量、RRF 查詢的組合須依目標版本驗證，不能宣告所有組合可用。
-
-Local Search 的 filter 必須有明確語意。尤其系統隔離及 ACL 不能只靠全域 Top-K 後刪除不合法結果；實作需採隔離索引、授權候選集合搜尋等可靠方式，未支援時應停用相關配置。
-
-## 10. UI 相依卡控
-
-| 上游條件 | 下游行為 |
+| 有效變更 | 影響 |
 |---|---|
-| System Document Schema | Chunking 可選欄位及方法據此產生 |
-| Chunking 輸出 fields | Embedding 僅選有效且型別相容欄位 |
-| Embedding mappings | Indexing 僅選已宣告 vectors；維度唯讀繼承 |
-| Indexing 欄位／能力 | Retrieval 僅選已建立的搜尋路徑 |
-| 只有向量或只有全文 | Hybrid 顯示但停用 |
-| 未提供可用全文 Adapter | BM25／Hybrid 顯示但停用，即使 UI 後端叫 Local Search |
-| Rerank／Generation 選用欄位 | 必須保證已儲存並可取得 |
-| Rerank=None | Top-N 保留顯示但停用，不進有效 Config |
-| Top-N 大於候選 Top-K | 阻止儲存有效設定並顯示原因 |
+| Document Schema、Import／Parsing／Chunking／Embedding／Indexing、資料目標 | 標記需重新 Ingestion；重建流程是否可重用中間產物另決 |
+| Query Transformation、Retrieval、Rerank、Generation、被引用的 LLM | 不需重建；需重新測試／評估 |
+| Indexing filter_fields | 需重建搜尋能力 |
+| Retrieval filters 詞值、本次 filters | 僅影響查詢 |
+| 顯示名稱 | 不更換穩定 collection |
+| 未啟用／未引用服務的草稿 | 不改有效 Pipeline 或重建判定 |
 
-上游修改使既有選項失效時，保留選擇並標記，不默默替換。前端卡控與後端 Validator 共用能力宣告。不同後端共用操作方式，但不能假裝能力完全一致。
+「舊評估失效」是不能代表新版，不等於刪除歷史報告。Prototype 清除示意值的行為不應直接變成正式歷史資料刪除政策。
 
-## 11. 客製化與後續待確認
+CSV 映射保存、Revision 計算、canonical JSON／Hash 演算法、部署覆寫是否重用已驗證資料版本需 Q-015 核定。Hash 不能包含未解析 Secret 或時間戳而失去可重現性；有語意順序的陣列不可任意排序。
 
-Custom Python 保持固定 I/O、Config Schema 與語意驗證。優先開放 Chunking、Query Transformation、Rerank、Evaluation；Import／Parsing／Embedding／Indexing／Retrieval 優先以註冊 Adapter 擴充。Generation 先提供 Prompt、內容欄位與輸出格式設定。
+## 9. 待討論與決策
 
-尚待確認：
-1. 首批 Parser、OCR 與格式範圍。
-2. FAISS＋BM25 的具體套件、中文斷詞與索引規格。
-3. Local Search 的 Hybrid／過濾效能與可支援資料量實測。
-4. metadata 的保留欄位、ACL 與 filter 實作。
-5. 缺欄位處理、文件／Chunk ID 規則與來源更新策略。
-6. 文件分組的預設位置、每文件片段數與評估方式。
-7. MongoDB 的索引版本、恢復流程及更新／刪除一致性。
-8. 是否保留原始檔及 ParsedDocument，供重新 Ingestion 使用。
-
-本次同步修改 UI Prototype，尚未實作 Engine。實作時須同步更新舊 Contract 與 Registry，避免仍使用 Chunk.text、獨立 VectorSet 或單一向量 Profile 假設。
-
-## 12. 官方參考
-
-以下供實作驗證能力使用；本文的資料物件與配置是平台自訂設計。
-
-- Elasticsearch 欄位型別：https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/field-data-types
-- Elasticsearch Dense vector：https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/dense-vector
-- Elasticsearch RRF Retriever：https://www.elastic.co/docs/reference/elasticsearch/rest-apis/retrievers/rrf-retriever
-- Elasticsearch Collapse：https://www.elastic.co/docs/reference/elasticsearch/rest-apis/collapse-search-results
-- FAISS 索引讀寫：https://github.com/facebookresearch/faiss/wiki/Index-IO%2C-cloning-and-hyper-parameter-tuning
-- LangChain FAISS 整合：https://github.com/langchain-ai/langchain-community/blob/main/libs/community/langchain_community/vectorstores/faiss.py
-
-
-## 13. 2026-10-14 已確認：設定介面與服務來源
-
-本節整合本輪決策；UI Prototype 已提供互動示意，Engine／API／資料庫尚未實作。先前 v0.3 的候選設計若有衝突，以本節及更新後的決策表為準。
-
-### 13.1 Chunking：兩種方法，統一 Token 計量
-
-- Recursive：依分隔符優先順序切分過長內容。
-- Header-aware：先依標題層級切分，超長章節再使用 Recursive。
-- Sentence-aware 暫不納入；切分方法下方不再提供字元長度模式。
-- 參數：Chunk Size、Overlap（皆為 Tokens）、Tokenizer ID／revision、分隔符清單及順序、keep_separator。Header-aware 另有標題層級。
-- 預設沿用 Embedding 對應 Tokenizer，也允許自行指定；純 BM25 不需要 Embedding 呼叫，但切分仍需要 Tokenizer。
-- Size 是上限，不是每塊必須等長；保留自然邊界時，Overlap 是目標值。
-- 更換 Tokenizer 或切分參數需要重新切分。只有 Embedding 模型改變而 Tokenizer 相同時，理論上可重用 Chunk，但仍需重新 Embedding；prototype 統一標示需重新 Ingestion。
-- 輸入上限還要包含特殊 Token、前綴及組合內容。複製到 Chunk 的文件摘要未經主要欄位切分，Embedding 執行時要逐筆檢查，不能只檢查 Chunk Size。
-- Parser 未提供可靠標題結構，Header-aware 不能執行。Prototype 的「保留標題結構」是能力配置示意，並未驗證真實文件。
-
-### 13.2 共通服務來源：DEV test use／自行提供
-
-| 模組／條件 | 選項 | 自行提供時的設定 |
-|---|---|---|
-| Embedding | DEV test use／Embedding API | Base URL、Model ID、認證、Secret 引用、Timeout、維度、Tokenizer／revision、Token 上限、Batch Size |
-| Indexing = ES | DEV test use／Elasticsearch | URL、認證、Secret 引用、Timeout |
-| Local Search = Memory | 不需要 DB | 程序重啟需重新 Ingestion |
-| Local Search = MongoDB | DEV test use／MongoDB | 不含帳密的 URI、Database、Secret 引用、Timeout |
-| LLM 共用服務設定 | DEV test use／OpenAI-compatible API | 服務名稱、Base URL、Model ID、認證、Secret 引用、Timeout |
-| Query Rewrite／Multi-query | 下拉選擇共用 LLM | 各方法的 Prompt、Query 數及原始問題選項 |
-| Rerank | None／DEV test use／Rerank API | Base URL、Model ID、認證、Secret 引用、Timeout |
-| Generation | 下拉選擇共用 LLM | 兩層模板與生成參數；連線設定由共用 LLM 繼承 |
-
-DEV 使用平台預先設定的資源，UI 顯示模型資訊而不暴露憑證。Prototype 不提供真實 DEV 服務：模型名稱及 Tokenizer 是示例；Check Settings 僅驗證格式，不會測試連線。正式 Engine 再實作實際測試 API／模型維度與連線的能力。
-
-Embedding API 第一版約定 OpenAI-compatible embeddings 介面（Base URL 下的 /embeddings），Generation／Query Transformation 約定 Chat Completions（/chat/completions）。API URL 不能取代 Request／Response 契約；其他格式需 Adapter。Authentication 與必要參數由具體 Adapter 實作。
-
-Prototype 僅填寫 secret-name/key 引用，不輸入或匯出真實憑證。DEV 下停用的 URL／認證草稿不進有效配置。部署環境需自行建立相關 Secret。
-
-### 13.3 Index collection 自動產生
-
-- 由 Workspace＋RAG System 顯示名稱正規化，再附穩定 System ID，以免同名或中文名稱正規化後碰撞。
-- 例如 customer-support-product-faq-a1b2c3。
-- UI 顯示唯讀名稱；ES index／Local Search 邏輯集合及 MongoDB Collection 由 Adapter 綁定。
-- 修改系統顯示名稱不改既有實體 collection；建立後保留穩定名稱。
-
-### 13.4 多 Query 與 Retrieval
-
-Query Transformation 提供 None／Rewrite／Multi-query。Rewrite 產生一個衍生問題，Multi-query 產生多個表述，另有「將原始問題也加入搜尋」選項。count 表示產生的 Query 數量，不含原始問題。原始問題永遠保留給 Rerank／Generation。
-
-各 Query × 各搜尋欄位建立搜尋路徑，各路取候選後，在 Retrieval 以 chunk_id 融合成一份清單，再進入 Rerank。Rerank 關閉也不影響融合。
-
-Retrieval 不再選 Implementation 或 Dense／BM25／Hybrid。直接選已建立索引的全文／向量欄位，平台顯示推導模式；後端從 Indexing 繼承。設定每路候選 Top-K、最終候選 Top-K；多路時提供 Sum Score（全文／向量權重）或 RRF（平滑常數）。多個向量欄位或多 Query 同樣需要融合，不以 Hybrid 作唯一啟用條件。
-
-### 13.5 Rerank 平台契約
-
-以下是平台選定的第一版格式，不宣稱是所有模型服務的共通標準。POST {Base URL}/rerank：
-
-```json
-{
-  "model": "reranker-a",
-  "query": "原始問題",
-  "documents": ["候選內容 A", "候選內容 B"],
-  "top_n": 2
-}
-```
-
-```json
-{
-  "results": [
-    {"index": 1, "score": 0.92},
-    {"index": 0, "score": 0.61}
-  ]
-}
-```
-
-documents 每個字串由一筆 Chunk 的選取欄位依序組合。index 是輸入候選的 0-based 序號；score 越大越相關。Adapter 驗證序號唯一、範圍合法及分數有限，對回 chunk_id。Rerank 輸出不能新增候選，Top-N 不超過 Retrieval Top-K；None 時不匯出 Top-N／模型連線設定。
-
-### 13.6 Generation：兩層模板
-
-「參考資料格式」逐筆套用：
-
-```text
-[{{citation_id}}] {{fields.title}}
-{{fields.text}}
-```
-
-多筆套用後組合為 context；回答 Prompt 使用：
-
-```text
-請根據以下參考資料回答問題，並標示來源編號。
-若資料不足，請明確說明。
-
-參考資料：
-{{context}}
-
-問題：{{query}}
-```
-
-- citation_id 由平台產生並對應 chunk_id；query 是原始問題。
-- 參考資料格式只可引用已儲存 fields；回答 Prompt 支援 context／query，聊天歷史另由 messages 傳入。
-- 可插入變數、檢查未知變數與空模板，並預覽替換後的示例。
-- 替換一次，不遞迴解析文件文字內的 {{...}}；不執行程式或任意模板邏輯。
-- Generation 的「模板說明與範例」按鈕展示兩筆 Chunk → 逐筆模板 → context → 完整 Prompt，並提供套用範例。
-- 具備 Temperature、輸出 Token 上限與 Context Budget。Runtime 需以生成模型的 Tokenizer 計算整體預算；prototype 預覽不執行 Tokenizer 或截斷。
-
-### 13.7 AI 設定助手與 Edit Config
-
-AI 設定助手：描述需求／提供樣本 → 產生建議 → 顯示差異 → Validator → 使用者套用到草稿 → Create／Save 才生效。助手只能使用平台支援的欄位與方法，不能猜測憑證或自動啟動 Ingestion。
-
-Prototype 使用明示的本機規則模擬，並非 LLM：可讀 ≤1 MB JSON／CSV／TXT／MD 的樣本欄位，支援 content／abstract／title 等映射；可示範改用 Local Search／MongoDB／Memory、原文切分且摘要複製、只搜尋原文及 Multi-query。未知需求會說明未支援；不假裝解析 PDF／PPTX／Excel。手動改動草稿後，舊建議不能覆蓋，需重新產生。
-
-已建立的系統提供 Edit Config，重用 Create 介面。編輯使用獨立草稿，取消不影響現有配置。儲存前列出變更模組及影響：
-
-| 變更 | 行為 |
+| ID | 本文件尚缺的決定 |
 |---|---|
-| Document Schema／Import／Parsing／Chunking／Embedding／Indexing 的有效配置 | 標記需重新 Ingestion，完成前阻止新版 Inference／Evaluation |
-| Query Transformation／Retrieval／Rerank／Generation | 不需重新 Ingestion，清除舊示意回答／評估結果並建議重測 |
-| 顯示名稱 | 更新名稱，collection 保持不變 |
-| 未啟用的服務草稿欄位 | 不納入有效配置比較，不因而標記重建 |
+| [Q-002](08_implementation_plan.md#q-002) | 完整 Schema、Config 分支、型別／預設值／nullable、版本與 Prototype migration |
+| [Q-003](08_implementation_plan.md#q-003) | 模型服務／Profile 的正式契約與多 Profile 範圍 |
+| [Q-004](08_implementation_plan.md#q-004) | Tokenizer、溢位、長複製欄位 |
+| [Q-006](08_implementation_plan.md#q-006) | 保留 metadata／ACL 名稱與可信來源 |
+| [Q-007](08_implementation_plan.md#q-007) | ID／source_revision 演算法與檔案派生 |
+| [Q-008](08_implementation_plan.md#q-008) | 同 ID／版本重送、更新及刪除 |
+| [Q-013](08_implementation_plan.md#q-013) | 缺值、多值與 pre-filter 精確語意 |
+| [Q-015](08_implementation_plan.md#q-015) | Revision、Hash、Index 版本及映射變更 |
 
-ES／DB 連線更換也歸為需重新 Ingestion；不能假設目標環境已有相同資料。Prototype 不實作新舊索引雙版本切換；正式 Runtime 需定義其一致性策略。
+## 10. 交付與驗收要求
 
-### 13.8 匯出與實作界線
-
-Export 對使用中的外部依賴逐項檢查。可下載含 DEV 標記的「待設定草稿」，或填寫自己的 URL／認證引用後下載「已填妥設定」；後者只是格式驗證通過，不代表服務可連線或可直接部署。
-
-部署覆寫不改平台內測試配置。若改 Embedding Model，先回 Edit Config 調整完整 Profile 並重新 Ingestion。即使模型名稱相同，實際服務仍需驗證模型版本、維度與 Tokenizer。匯出不包含 Chunk／向量資料，切換到自己的 ES／MongoDB 需準備資料或重新 Ingestion。
-
-YAML 仍使用示例 Engine Image；Local Search 固定單一副本，Ingestion／Inference 共用程序。Secret 以引用／Volume 掛載呈現，Runtime 解析是待實作契約。未部署、不建立真實 DB、不送出任何模型 API 呼叫。
-
-
-
-## 14. 2026-10-14：共用 LLM 清單與模組化檢查訊息（v0.5）
-
-### 14.1 LLM 服務設定集中管理
-
-Create／Edit Config 工具列新增「LLM 服務設定」。目前作用域是每個 RAG System 的配置清單；不是跨 Workspace 自動共享的全域服務目錄。
-
-- 每筆服務有穩定 id、可修改的顯示名稱、DEV test use／OpenAI-compatible API，以及自己的 URL、Model ID、認證引用、Timeout。
-- Query Transformation 與 Generation 透過 llm_ref 引用，可使用同一個 LLM，也可各自選不同的 LLM。
-- 模組內不重複出現 URL、認證與 Model ID；只有下拉選單和「管理 LLM」入口。
-- Embedding 與 Rerank 的任務與 API 契約不同，維持各自連線設定。
-- 服務名稱需非空且唯一。刪除使用中的服務不自動替換，保留失效引用並阻止儲存，提示受影響模組重新選擇。
-- 修改被引用的連線／模型設定會影響對應 Inference 模組，不需重新 Ingestion；修改未使用服務不觸發重建。
-- 有效配置與部署匯出只包含使用中的 LLM。同一個服務由兩個模組使用時，部署資源表只顯示一次；llm_ref 仍指向同一穩定 ID。
-
-配置概念：
-
-```json
-{
-  "llms": [
-    {"id": "llm-default", "name": "Default LLM", "mode": "DEV test use", "model": "demo-chat"}
-  ],
-  "transform": {"method": "Rewrite", "llm_ref": "llm-default"},
-  "generation": {"llm_ref": "llm-default"}
-}
-```
-
-上例僅展示引用關係，省略 Prompt 與其他必填模組參數；不是可直接執行的完整 Config。
-
-### 14.2 Query Transformation 自訂 Prompt
-
-Rewrite／Multi-query 分別保留自己的 Prompt 草稿，切換方法不覆蓋。None 停用模型與 Prompt，不納入有效執行配置。
-
-| 方法 | 支援的變數 | 必填變數 | 輸出約定 |
-|---|---|---|---|
-| Rewrite | query | query | 一個非空改寫問題 |
-| Multi-query | query、count | query、count | count 個衍生問題，第一版以每行一個文字問題示意 |
-
-UI 提供變數插入與替換後的預覽。空 Prompt、未知變數及缺少必要變數會阻止儲存。只執行單次變數替換，不執行程式碼。
-
-原始問題永遠保留；是否額外加入搜尋由 include_original 決定，不交給 Prompt 判斷。Runtime 仍需驗證輸出問題非空、數量合法，處理模型未遵守格式的情況；prototype 不呼叫 LLM。
-
-### 14.3 檢查訊息標註模組
-
-下方 Validator、AI 設定建議中的驗證結果與匯出檢查使用方括號前綴，例如：
-
-```text
-[Chunking] Overlap 必須小於 Chunk Size。
-[Query Transformation] Prompt 需包含 {{query}}。
-[Retrieval] 向量欄位：summary_vector 不在上游，請修正。
-[Rerank] Top-N 必須介於 1 與 Retrieval Top-K。
-[Generation] LLM 選擇已失效，請重新選擇。
-[LLM Settings / Default LLM] 請填入有效服務 URL。
-```
-
-相依錯誤以需要修正的模組為主：例如 Indexing 移除向量後，Retrieval 的失效選擇標註 [Retrieval]。共用 LLM 設定不完整時，同時提示共用服務及受影響模組。
-
-
-
-## 15. 2026-10-14 已確認：API fields 與過濾條件
-
-### 15.1 API 輸入與 ParsedDocument
-
-JSON Ingestion 為 records 陣列，每筆使用 document_id、source_revision、fields、metadata。內容容器統一叫 fields，不另使用 data；fields／metadata 使用 Document Schema 的目標名稱。CSV column 在上傳介面映射，例如 content → fields.text；Parsing 不再重複映射，仍須驗證完整 ParsedDocument。
-
-- document_id：JSON records 必填，穩定識別 System 內的文件；同 ID 更新／重送的政策需在 Engine 實作時明確定義。
-- source_revision：來源內容版本，可提供，省略時由後端生成；與 Config Revision 不同。
-- fields：依此 System 的 Document Schema 宣告內容欄位、型別、必填與預設值。
-- metadata：宣告的自訂資訊可傳入；來源追蹤、系統／租戶、ACL 與位置資訊由後端管理，不允許覆寫。
-- structure：Parser 的輸出，API 不必先產生；ParsedDocument 保持五個固定 key，Chunk 保持六個固定 key。
-
-Prototype 的 API 說明同時展示輸入與 Parsing 後範例。AI 設定助手可讀 records[].fields 或單筆 fields envelope，亦保留 CSV／既有平面樣本輸入。檔案 metadata manifest、ID 派生與更新一致性仍待實作。
-
-### 15.2 Indexing／Retrieval／Inference Filter
-
-| 設定位置 | 用途 | 例子 |
-|---|---|---|
-| Indexing.filters | 宣告可做精確過濾的欄位 | metadata.department、fields.title、document_id |
-| Retrieval.filters | System 預設條件，全部 AND | {field: metadata.department, operator: eq, value: manufacturing} |
-| Query API filters／Inference 視窗 | 單次查詢附加條件，與預設／ACL 全部 AND | {field: fields.title, operator: in, value: [保養規範, 維修規範]} |
-
-Indexing 只選已保存的 fields、已繼承的 metadata，以及固定 ID／版本；使用完整路徑，不混用 fields.department 與 metadata.department。過濾能力與全文／向量索引不同：精確字串比對不斷詞。第一版 eq 為非空字串，in 為非空且唯一的字串陣列；型別、空值、未知 operator 與未啟用欄位需驗證。空清單表示不加業務條件，後端權限仍需強制套用。
-
-所有搜尋路徑在 Top-K 取候選前套用限制；Local Search 的 Adapter 必須實作符合契約的候選集合過濾，不能把 post-filter 當作等價能力。未支援時拒絕配置。Prototype 不執行真正搜尋／過濾。
-
-Indexing Filter 欄位變更需要重新 Ingestion；Retrieval 條件變更只影響 Inference，需重測。上游移除欄位後保留失效條件，標記 [Retrieval] 並阻止儲存；查詢 JSON 錯誤會阻止本次執行，不退回無條件搜尋。
-
-數值／日期範圍、OR 群組及其他 operators 為後續能力，不納入本次 Prototype。
-
-
-
-## 16. 2026-10-14 已確認：Document Schema 與 CSV 測試（v0.7）
-
-Create／Edit 的第一區為 Document Schema，與 Pipeline 模組分開。固定外層為 document_id／source_revision／fields／metadata／structure；使用者只定義 fields／metadata 的內部欄位。Prototype 預設 fields.text 為必填 string，其他欄位按需求新增。
-
-| 設定 | Prototype 行為 |
-|---|---|
-| 名稱／型別 | 每個容器內名稱唯一；string／number／boolean／array；拒絕平台保留名稱 |
-| 必填／預設值 | 缺值可使用符合型別的 JSON 預設值；必填文字不可空白；主要切分欄位須設為必填 |
-| 來源 | input 由輸入提供；parser 由 Parser 產生；前者於接收時檢查，完整輸出再檢查全部必填欄位 |
-| 未宣告欄位 | 預設 reject；allow 時可保留，後續模組選項仍只來自宣告欄位 |
-| 模組相依 | 文字用途只選 string；精確 Filter 第一版也只選字串欄位；變更保留失效引用並標註問題 |
-| 修改／匯出 | Schema 變更標記需重新 Ingestion；部署 Blueprint 包含 document_schema |
-
-兩種入口：先設定 Schema／Config 再上傳 CSV，或先上傳 CSV 樣本給 AI 設定助手（規則模擬），確認 Schema／映射／Pipeline 差異後建立 System。助手只依示例欄名提出建議；無法辨識時請手動設定，不自動執行 Ingestion。
-
-CSV 上傳介面提供 column → document_id／source_revision／fields.*／metadata.*。每 row 對應一筆 JSON；允許相同 column 填入多個目標，未映射 columns 不送出。必填且無預設值的 input 欄位必須映射；number 解析有限數值、boolean 只接受 true／false、array 解析 JSON 陣列。重複 ID、CSV 欄數錯誤、失效映射及型別錯誤會阻止模擬匯入，預覽 API payload 與 ParsedDocument 各前 3 筆。成功後保存映射至 System，映射設定改變時更新 Config Revision；JSON 測試直接接收 {"records": [...]}，不再映射。
-
-CSV／JSON 本版限制 ≤1 MB，在瀏覽器本機讀取與驗證。沒有 HTTP／LLM／OCR／模型／DB 操作；結構化資料的 Parser 輸出只做格式整理示意，不能替代真實 Pipeline。自動 ID 在單次上傳內固定，跨批更新需映射穩定 ID；自動 source_revision 目前為示意值，正式版本／更新政策仍待 Engine 實作。PDF／PPTX／Excel 的上傳測試不列入本版實作。
-
-
-
-## 17. 2026-10-14 已確認：可選融合方式（v0.8）
-
-Retrieval 的多 Query／多欄位融合由使用者選擇，取代早期固定 RRF 的設計。單一路徑直接保留原排序；多路依 chunk_id 合併後，再取最終 Top-K 並送入 Rerank。
-
-| 選項 | 設定與目標語意 |
-|---|---|
-| Sum Score（預設） | sum(weight × relevance_score)；全文與向量權重預設各 1，同類型欄位與各 Query 共用權重，未命中該路為 0；不自動正規化 |
-| RRF | sum(1 / (k + rank))；各路名次從 1 起，平滑常數預設 60，本版要求正整數；不直接使用原始分數 |
-
-第一版維持一個融合選項，作用於所有 Query × 欄位的候選清單，不另外引入同 Query／跨 Query 兩層選單。Sum Score 的使用中權重需為有限且非負數，至少一個大於 0；僅搜尋全文或向量時，只使用對應權重。切換策略保留草稿參數，但驗證、變更影響與匯出只使用選定策略的有效參數。修改方式／有效參數只影響 Inference，不需重新 Ingestion。
-
-此處 Sum Score 是原始相關性分數加權加總，與 §9 的「正規化後加權融合」不同。BM25 與向量分數尺度可能不同；Local Search Adapter 需將距離轉為越大越相關的分數。Elasticsearch query＋knn 的分數加總與明確 RRF 配置也需由 Adapter 配合目標版本實作。Prototype 只實作設定、卡控、儲存與匯出，不執行真實融合計算。
+Q-002 核定後，開發階段需提供 Pydantic Models、可匯出的 JSON Schema、完整 Local／ES／MongoDB 範例與無效範例。相同資料在 UI／HTTP／直接 Engine 呼叫得到相容驗證結果；Unicode offset、向量維度及欄位路徑有獨立驗收資料。實作 Schema 是程式可驗證的產物，變更時同步更新本文與範例，不允許各層另創契約。

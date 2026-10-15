@@ -1,408 +1,323 @@
-# RAG Builder — 模組目的、方法與 I/O Contract
+# RAG Engine — 組裝、執行與模組開發規格
 
-> **後續設計更新**：請先閱讀 [資料契約與索引設計討論結論（v0.6）](05_data_contracts_search_design.md)。其中 ParsedDocument 五個頂層 key、Chunk 六個頂層 key（含 vectors）、多欄位設定、搜尋後端，以及第 13–15 節的API fields、過濾條件、共用 LLM、Query Prompt、模組驗證標籤、Token Chunking、DEV／自訂服務、多 Query、Rerank API 與 Generation 模板設計取代本文相關舊提案；本文保留其餘模組契約與歷史設計，並非已遷移完成的實作規格。
-
-> Version 0.2 · 2026-10-13 · Discussion Draft
+> 文件集 v0.9 · 2026-10-15 · 開發規格草案
 >
-> 本文件為平台自訂規格草案，不是 LangChain 的原生 API，也不代表功能已實作。技術方向以部門既有 LangChain／LangGraph 生態系為基礎，搭配 Pydantic 明確驗證資料邊界。MVP 使用固定流程，暫不提供任意 DAG 編輯。
+> 本文涵蓋可獨立執行的 Engine 與各模組；共用資料／Config 唯一定義見 05。既有產品語意為已確認方向，新增 SDK、Registry 形狀、執行政策為建議，須經對應 Q-ID 核定。本次未新增 Engine 程式。
 
-## 1. 範圍與設計原則
+## 1. 目標與依賴邊界
 
-- Ingestion：Data Import → Parsing → Chunking → Embedding → Indexing。
-- Inference：Query Transformation → Retrieval → Rerank → Generation。
-- Evaluation：獨立批次流程，可執行 Retrieval-only 或完整 RAG。
-- 全文 BM25 模式可略過 Embedding；None 類模組採明確的 pass-through，不能讓 I/O 結構任意改變。
-- 每個模組分開設定 **Method（方法）／Implementation（實作或 Provider）／Parameters（參數）**。例如 Hybrid 是方法，Elasticsearch 是後端，Top-K 是參數。
-- Module Contract 為穩定邊界；Adapter 負責轉換 LangChain Runnable、Document 或自訂 Function／Class。不能把框架內部物件直接當作對外持久化格式。
-- Config、業務輸入與執行 Context 分離；Python Class／Type Hint 不會自動提供完整 Runtime Validation。
-- 下文的「MVP」是建議範圍；後續方法是候選，尚未承諾全部開發。
+**開發者提供 Config 及必要服務，即可直接執行 Ingestion／Inference；不需要 Builder UI、Builder DB 或 HTTP。**Engine 負責模組組裝，07 只呼叫此能力並包裝 API／工作狀態。
 
-### 1.1 十個模組目的、方法與 I/O 對照大表
+Ingestion：Import → Parsing → Chunking → Embedding → Indexing。
+Inference：Query Transformation → Retrieval → Rerank → Generation。
+Evaluation：重用相同檢索／問答入口的評估邏輯，任務排程與報告儲存由 07 負責。
 
-**讀法：相鄰模組的主要業務資料應接得起來；上一個模組的整個 Output，不一定等於下一個模組的整個 Input。** 下表保留 v0.1 欄位命名，明確列出直接傳遞、欄位映射及平台補入資料；本次不變更既有 Contract。
+- 固定 Pipeline，不要求使用者建 DAG。
+- Config、業務 Payload、可信 RunContext 分開；資料結構見 [05](05_data_contracts_search_design.md)。
+- LangChain 物件只在 Adapter 內轉換，不作持久化／跨模組 Contract。
+- 不同框架／自訂 Function 或 Class 透過相同 Contract 包裝。
+- 純全文可跳過 Embedding；None 模組回傳相同語意的 pass-through 結果。
 
-- I/O 欄只列業務 Payload。所有 Output 外層仍包在 `ModuleResult[T]`；接線取用 `result.data`，不是將 status/errors/metrics 塞給下一個模組。
-- 每一步的 `ModuleConfig`、`RunContext` 由平台分別提供，不由上一個模組產生。
-- `[]` 表示清單；`?` 表示選填。方法中的「後續」不代表目前已支援。
-- I1–I5 是 Ingestion；Q1–Q4 是獨立的 Inference 請求；E1 是 Evaluation Job，並非十步連續執行。
+## 2. Engine 入口與初始化（建議，Q-002／Q-017）
 
-| 階段／模組 | 目的 | 方法：MVP；後續 | Input Contract（業務 Payload） | Output Contract（業務 Payload） | 前一步 O → 本步 I | 平台／其他來源補入與去向 |
-|---|---|---|---|---|---|---|
-| **I1 Data Import** | 取得原始檔及來源資訊 | MVP：File Upload；後續：Object Storage、HTTP/Website、Database Query | `ImportInput {source_spec: SourceSpec, cursor?: str, limit: int}` | `ImportOutput {assets: SourceAsset[], deletions: [{document_id,source_revision?}], next_cursor?: str, has_more: bool}` | 流程起點；沒有前一步 O | source_spec 來自匯入請求；cursor/limit 由 Job 管理。assets → I2；deletions 由平台保留並直接送 I5；cursor/has_more 留給分頁與 checkpoint 管理 |
-| **I2 Parsing** | 將檔案轉為文字／標題／表格區塊 | MVP：Native Text Extraction；後續：OCR、Layout-aware | `ParsingInput {assets: SourceAsset[]}` | `ParsingOutput {documents: ParsedDocument[]}` | `I1.assets → I2.assets`，同型別、同欄位名 | 以 ArtifactRef 取得檔案；Document ID、版本、Metadata、ACL 必須傳承至輸出 |
-| **I3 Chunking** | 切成適合檢索的 Chunks | MVP：Recursive、Header-aware；後續：Fixed-size、Sentence-based、Semantic、Parent–Child | `ChunkingInput {documents: ParsedDocument[]}` | `ChunkingOutput {chunks: Chunk[], parents?: Chunk[]}` | `I2.documents → I3.documents`，同型別、同欄位名 | parents 為後續能力；目前 I4/I5 契約未接收 parents，不能宣告 Parent–Child 已串接完成；啟用前須補父文件儲存接口 |
-| **I4 Embedding** | 將 Chunks 轉為向量，保留原文及編碼設定 | MVP：Dense；後續：Sparse、Dense＋Sparse | `EmbeddingInput {chunks: Chunk[]}` | `EmbeddingOutput {chunks: Chunk[], profiles: EmbeddingProfile[], vector_sets: VectorSet[]}` | `I3.chunks → I4.chunks`，同型別、同欄位名 | profiles 由所選模型／設定解析；成功 chunks 原文繼續帶往 I5，不能只回傳向量。BM25 路線略過 I4 |
-| **I5 Indexing** | 寫入索引並回報可搜尋狀態 | MVP：Dense、Full-text、Hybrid（先 Elasticsearch）；後續：其他 Backend／父文件儲存 | `IndexingInput {target: IndexBinding, chunks: Chunk[], profiles: EmbeddingProfile[], vector_sets: VectorSet[], deletions: [{document_id,source_revision?}]}` | `IndexingOutput {binding: IndexBinding, results: [{item_id,status}], write_acknowledged: bool, searchable: bool}` | `I4.chunks/profiles/vector_sets → I5.同名欄位`；BM25：`I3.chunks → I5.chunks`，profiles/vector_sets 為空 | target 由 Runtime Controller 提供；deletions 來自 I1、無刪除則 []。binding 與狀態由平台保存，供之後 Q2 使用；不是直接送 Q1 |
-| **Q1 Query Transformation** | 保留原始問題，產出檢索用 Query | MVP：None、Rewrite；後續：History-aware、Multi-query、HyDE、Decomposition | `QueryTransformInput {question: str, history: ChatMessage[]}` | `QueryTransformOutput {original_question: str, queries: SearchQuery[]}` | 新查詢起點；不是接在 I5 後的同一資料流 | question/history 來自使用者請求；平台保留 history，稍後補給 Q4。None 仍輸出同結構、單一原始 Query |
-| **Q2 Retrieval** | 搜尋並產生去重的候選內容 | MVP：Dense、BM25、Hybrid/RRF；後續：MMR、多 Query、Parent–Child、加權融合 | `RetrievalInput {query: QueryTransformOutput, index: IndexBinding, filter?: MetadataFilter}` | `RetrievalOutput {original_question: str, hits: SearchHit[], index: IndexBinding}` | `Q1.完整業務 Output → Q2.query`，以 query 欄位包裝 | index 來自平台保存／解析的 I5.binding；filter 來自請求，再與授權條件合併；Query Embedding 依 index Profile 執行。index 留在 Trace／版本綁定，不必傳入 Q3 |
-| **Q3 Rerank** | 重排並縮小候選內容 | MVP：None、Cross-Encoder；後續：LLM Rerank、自訂排序 | `RerankInput {original_question: str, hits: SearchHit[]}` | `RerankOutput {original_question: str, hits: SearchHit[], applied: bool}` | `Q2.original_question/hits → Q3.同名欄位`，選取子集 | 不需要額外業務輸入；None 時保留原 hits 且 applied=false。applied 留在 Trace，不是 Q4 的輸入 |
-| **Q4 Generation** | 組裝 Context，生成回答與引用 | MVP：Context-grounded；後續：Structured Output、多階段生成 | `GenerationInput {question: str, history: ChatMessage[], contexts: SearchHit[]}` | `GenerationOutput {answer: str, citations: Citation[], used_chunk_ids: str[], finish_reason: str, usage: TokenUsage, abstained: bool, structured_output?: JSON}` | `Q3.original_question → Q4.question`；`Q3.hits → Q4.contexts`，同型別但需欄位映射 | history 由平台從原始請求補入，無歷史為 []；回答交 UI/API。Evaluation 可收集回答、實際使用的 Context 與執行紀錄 |
-| **E1 Evaluation** | 批次評估檢索、答案與運行指標 | MVP：Deterministic Metrics、LLM Judge、Operational Metrics；後續：Custom Evaluator、Baseline Comparison | `EvaluationInput {dataset: DatasetRef, target: EvaluationTarget}` | `EvaluationOutput {evaluation_run_id, binding: EvaluationTarget, results_ref: ArtifactRef, summary: MetricSummary[], total, succeeded, failed, skipped}` | **獨立 Job，不是直接以 Q4 Output 作全部 Input** | dataset/target 由平台提供；Runner 逐題呼叫 Q1–Q2 或 Q1–Q4，收集檢索結果、實際 Context、答案與 Trace；Ground Truth 來自 Dataset |
+### 2.1 Python 介面草案
 
-### 1.2 前一個 O 與下一個 I，哪些完全對得上？
-
-- **同欄位直接接**：assets、documents、chunks，以及 Retrieval → Rerank 的 original_question/hits。
-- **保留原資料並擴充**：Embedding 回傳 chunks＋profiles＋vector_sets，讓 Indexing 同時取得原文與向量。
-- **需要包裝／映射**：Query Transformation Output 放進 Retrieval.query；Rerank.original_question/hits 映射到 Generation.question/contexts。
-- **平台額外帶入**：IndexBinding、history、filter、deletions，以及各模組 Config／RunContext。
-- **跨執行批次的銜接**：Ingestion 將內容寫入索引，Inference 日後讀取該索引；兩條流程不直接串成同一次 function chain。
-- **MVP 尚未打通的延伸**：parents 的持久化／取回尚需額外接口；Multi-query 也需 Retrieval 明確支援。不能只看型別可容納便宣稱方法已支援。
-
-因此，設計原則是 **上游輸出必須足以提供下游所需的主資料，額外資料則有明確來源**。現階段透過 Compiler 的顯式欄位映射串接，保留窄而明確的模組接口；不為了表面上 O=I，強迫每個模組攜帶整份全域狀態。
-
-
-## 2. 共用契約
-
-### 2.1 呼叫與回應
-
-```text
-Module(config).run(input, context) -> ModuleResult[output]
+```python
+# 目標用法示意；目前尚未存在這些類別，命名待 Q-002 核定。
+config = load_config("rag.yaml")
+engine = RAGEngine.from_config(
+    config,
+    service_resolver=services,
+    state_store=stores,
+    registry=registry,
+)
+await engine.start()
+try:
+    result = await engine.ingest(ingestion_input, context=trusted_context)
+    answer = await engine.query(query_input, context=trusted_context)
+finally:
+    await engine.aclose()
 ```
 
-此形式表示邏輯契約；可實作為 async method，或以 Adapter 包裝同步 function。每個模組宣告支援的 sync／async／batch／streaming 能力，不預設全部支援。
+服務解析與 Store 使用可替換接口；Memory 模式不要求遠端 DB。start／query 的非同步選擇、生命週期、公開回應型別、Evaluation Target 介面須在實作前核定。直接呼叫不回傳 HTTP code；07 將領域錯誤映射為 HTTP／Job 回應。
 
-| 結構 | 必填欄位 | 選填欄位／規則 |
-|---|---|---|
-| ModuleConfig | contract_version、module_id、implementation_version、method、parameters | provider_ref、secret_refs；只保存憑證引用 |
-| RunContext | run_id、trace_id、workspace_id、group_id、rag_system_id、config_revision、deadline_at | attempt、idempotency_key；由平台注入可信 auth_scope，不接受使用者自行聲明 ACL |
-| ModuleResult[T] | status、data、errors、warnings、metrics | status = succeeded / partial / failed；failed 時 data=null |
-| ModuleError | code、message、retryable | item_id、details；不能含 Secret 或完整敏感內容 |
-| ExecutionMetrics | duration_ms、input_count、output_count | token_usage、provider_request_id；不適用欄位可省略 |
+### 2.2 編譯與初始化流程
 
-**部分失敗**：Ingestion 批次允許 partial；成功項目可進入下一步，失敗項目必須有 item_id。所有輸入須可對應到成功、失敗或明確 skipped 結果，不可默默丟棄。Inference 的 optional fallback 需寫入 warnings，不能把 provider error 假裝成「沒有搜尋結果」。
+1. 讀取 YAML／JSON，驗證 Contract 版本及未知欄位；安全解析，不執行設定內的程式碼。
+2. 將 UI Draft 編譯成 Effective Config，排除未啟用方法／服務草稿。
+3. 根據 Registry 驗證 I/O、方法能力、欄位來源、Profile、模板與可過濾能力。
+4. 解析外部服務引用與 Secret；以受授權的 System／集合建立 Binding。
+5. 初始化被使用的 Client／Tokenizer／Parser／Index Adapter；不載入未使用服務。
+6. 若有既存資料／Manifest，檢查相容性；MongoDB 模式按相容版本重建 Local Search。
+7. 回報初始化結果及索引就緒狀態；失敗釋放已開啟資源，不留下半個可查詢實例。
 
-**重試**：由 Execution Policy 統一管理。只有暫時性錯誤與可安全重試的操作才重試；Indexing、Import checkpoint 等具副作用步驟須使用冪等策略。
+Schema 格式檢查、真實連線檢查、Profile 相容檢查、索引可查詢是不同狀態。Runtime 可啟動且接受 Ingestion，不代表 Query 已可用。
 
-### 2.2 共用資料物件
+### 2.3 Registry／Factory
 
-以下使用結構化記法；`?` 表示選填，`[]` 表示清單，`JSON` 表示可 JSON 序列化資料。正式實作應轉成具版本的 Pydantic Models／JSON Schema。
-
-| 物件 | 欄位與語意 |
-|---|---|
-| ArtifactRef | `uri: str, media_type: str, checksum: str, size_bytes: int`；由平台解析的物件儲存引用，不在跨程序 payload 傳遞巨型 bytes |
-| SourceAsset | `document_id: str, source_revision: str, source_uri: str, content: ArtifactRef, metadata: JSON, access_policy_ref: str` |
-| Location | `page_number?: int, section_path?: str[], block_id?: str, char_start?: int, char_end?: int`；頁碼從 1 起；字元 offset 為指定 block 內 Unicode code point、0-based 半開區間 |
-| DocumentBlock | `block_id: str, kind: text/table/heading, text: str, location: Location`；表格先標準化成可讀文字，保留 kind |
-| ParsedDocument | `document_id, source_revision, blocks: DocumentBlock[], metadata, access_policy_ref, parser_version` |
-| Chunk | `chunk_id, document_id, source_revision, text, locations: Location[], metadata, access_policy_ref, chunking_signature, parent_id?: str` |
-| EmbeddingProfile | `profile_id, provider_ref, model_id, model_version, vector_kind, dimension?, document_encoding, query_encoding, normalization`；encoding 包含各自的 prefix/task 設定 |
-| Vector | Dense：`values: float[]`；Sparse：`indices: int[], values: float[]`；以 kind 區分，不混用 |
-| VectorSet | `profile_id, items: [{chunk_id, vector: Vector}]`；可有多組 Profile，MVP 僅一組 Dense |
-| IndexBinding | `backend_ref, index_id, generation_id, schema_version, capabilities: str[], embedding_profiles: EmbeddingProfile[]` |
-| SearchQuery | `query_id, text, kind: original/rewrite/expanded/hypothetical, weight?: float` |
-| SearchHit | `chunk: Chunk, rank: int, score?: float, score_kind: str, matched_query_ids: str[]` |
-| ChatMessage | `role: user/assistant, content: str`；MVP 歷史不接受使用者注入 system role |
-| Citation | `citation_id, chunk_id, document_id, source_revision, locations: Location[]` |
-
-補充約束：
-
-1. `document_id` 在同一 System 的同一邏輯來源上穩定；內容版本另以 `source_revision` 區分。來源重命名如何辨識同一文件，由 Connector 規則決定。
-2. `chunk_id` 依來源版本、Chunking Signature 與位置／序號確定性產生；換 Chunking 後不能沿用舊 Chunk 的標註 ID。
-3. `metadata` 只放 JSON 值；平台保留身份、來源與權限欄位，自訂程式不能覆寫以提升存取權限。
-4. `generation_id` 指平台管理的索引資料版本；建立後是否不可變由後端與平台實作保證，不能把可變 alias 稱為 Snapshot。沒有穩定資料版本時，Evaluation 必須標記不可完全重現。
-5. Search score 不是機率。BM25、cosine、RRF、Rerank score 不可假設能直接比較；rank 從 1 起。
-6. 契約版本以 major/minor 管理；MVP 可採未知欄位拒絕、明確 migration，避免悄悄吞掉拼錯欄位。
-
-## 3. Ingestion 模組
-
-### 3.1 Data Import
-
-**目的**：取得原始資料及來源資訊，產出可供 Parsing 讀取的 SourceAsset。此層不負責 PDF/OCR 解析。
-
-| 項目 | 規格 |
-|---|---|
-| MVP 方法 | File Upload |
-| 後續方法 | Object Storage、HTTP/Website、Database Query |
-| Config | connector、allowed_formats、max_file_bytes；Connector 可另有 source_path、query、secret_ref、incremental_mode |
-| Input | `ImportInput {source_spec: SourceSpec, cursor?: str, limit: int}` |
-| Output | `ImportOutput {assets: SourceAsset[], deletions: [{document_id, source_revision?}], next_cursor?: str, has_more: bool}` |
-| SourceSpec | tagged union：`upload {artifact_refs[]}`／`object_storage {location_ref,prefix}`／`http {url}`／`database {connection_ref,query_ref}`；MVP 只接受 upload |
-| 驗證 | 來源授權、格式與大小；資源 URI 必須經平台授權解析；空批次可成功，但要明確 has_more |
-
-Cursor 為 opaque token。資料「已讀取」不等於「已索引」，可恢復的 committed checkpoint 必須等下游成功再推進。刪除事件由 orchestrator 直接送 Indexing，不送 Parsing／Chunking／Embedding。MVP 不提供完整來源同步刪除；後續 Connector 必須能區分刪除與暫時讀不到。
-
-### 3.2 Parsing
-
-**目的**：將檔案轉成標準 DocumentBlock，保留可追溯的頁碼、段落與表格來源。
-
-| 項目 | 規格 |
-|---|---|
-| MVP 方法 | Native Text Extraction：PDF 文字層、TXT、Markdown；具體格式依已註冊 Parser 能力 |
-| 後續方法 | OCR、Layout-aware Parsing；DOCX 等格式以新增 Adapter 支援 |
-| Config | parser_id、format_policy、ocr_mode、language、preserve_tables、preserve_headings |
-| Input | `ParsingInput {assets: SourceAsset[]}` |
-| Output | `ParsingOutput {documents: ParsedDocument[]}` |
-| 驗證 | Parser 接受的 MIME type；Document ID／source_revision／ACL 必須保留 |
-
-掃描 PDF 在未開啟 OCR 時應回傳 `OCR_REQUIRED` 或可辨識的 empty-text 錯誤，不可將「解析成功但沒有文字」當作可檢索文件。Parser 不提供標題結構時，不能宣告適用 Header-aware Chunking。
-
-### 3.3 Chunking
-
-**目的**：將 ParsedDocument 轉成檢索單位，保留來源位置與 Metadata。
-
-| 項目 | 規格 |
-|---|---|
-| MVP 方法 | Recursive、Header-aware（需 Parser 輸出標題結構） |
-| 後續方法 | Fixed-size、Sentence-based、Semantic、Parent–Child |
-| Config | size、overlap、length_unit: characters/tokens、tokenizer_ref（tokens 時必要）、separators、header_levels |
-| Input | `ChunkingInput {documents: ParsedDocument[]}` |
-| Output | `ChunkingOutput {chunks: Chunk[], parents?: Chunk[]}` |
-| 驗證 | size > 0；0 ≤ overlap < size；輸出非空文字；來源與權限不可丟失 |
-
-`size` 的單位必須明示；不同 tokenizer 的 Token 數不保證一致。Parent–Child 為後續能力：children 的 parent_id 須指向 parents；父文件需另外保存供 Retrieval 使用，MVP 不使用此欄位。Semantic Chunking 若呼叫模型也須宣告依賴與成本。
-
-### 3.4 Embedding
-
-**目的**：將 Chunk 編碼成 VectorSet，並綁定可重現的 EmbeddingProfile。
-
-| 項目 | 規格 |
-|---|---|
-| MVP 方法 | Dense Embedding |
-| 後續方法 | Sparse Embedding、Dense＋Sparse；Multi-vector 暫不納入 v0.1 Vector 契約 |
-| Config | provider_ref、model_id/version、dimension、encoding、normalization、batch_size、input_overflow_policy |
-| Input | `EmbeddingInput {chunks: Chunk[]}` |
-| Output | `EmbeddingOutput {chunks: Chunk[], profiles: EmbeddingProfile[], vector_sets: VectorSet[]}` |
-| 驗證 | Vector 與 chunk_id 一一對應；Dense 維度一致且值有限；Sparse indices 非負、不重複且與 values 等長；模型輸入長度符合限制 |
-
-超長輸入預設回報錯誤，不能默默截斷；若允許 truncate，須在 Config 明示並記 warning。Output 僅含成功編碼的 chunks，失敗以 ModuleError.item_id 記錄。
-
-純 BM25 流程由 orchestrator 略過此模組，直接傳遞 chunks，Indexing 的 profiles／vector_sets 為空。Hybrid 的全文側若由 Elasticsearch BM25 提供，不需另跑 Sparse Embedding。
-
-### 3.5 Indexing
-
-**目的**：以固定 Schema 寫入 Chunk、Vector 與 Metadata，回報寫入與可搜尋狀態。
-
-| 項目 | 規格 |
-|---|---|
-| MVP 方法 | Dense、Full-text、Hybrid；先整合 Elasticsearch 一個 Backend |
-| 後續方法 | 新增 Backend；父子文件儲存；Multi-vector 需新契約 |
-| Config | backend_ref、index_schema、similarity、write_mode: upsert/replace_document、refresh_policy |
-| Input | `IndexingInput {target: IndexBinding, chunks: Chunk[], profiles: EmbeddingProfile[], vector_sets: VectorSet[], deletions: [{document_id,source_revision?}]}` |
-| Output | `IndexingOutput {binding: IndexBinding, results: [{item_id,status: upserted/deleted/skipped/failed}], write_acknowledged: bool, searchable: bool}` |
-| 驗證 | 欄位 Mapping、向量維度與 Profile 相容；完整保留來源與 ACL；寫入不跨 System |
-
-- Index 建立／Schema provisioning 屬於 Runtime Controller；本模組取得已準備好的 target，不能以任意使用者字串建立未授權索引。
-- `write_acknowledged` 不等於 `searchable`；依 refresh 狀態回報，平台不可過早顯示可查詢。
-- `replace_document` 需清除舊 revision 的殘留 Chunks；應以完整文件成功寫入為條件切換可見版本，不能遇到半批失敗就刪掉舊資料。
-- Upsert ID 與 idempotency_key 支援安全重試；同一 document 的 upsert/delete 衝突與事件順序須由版本檢查處理。
-
-## 4. Inference 模組
-
-### 4.1 Query Transformation
-
-**目的**：將使用者問題轉成適合檢索的 Query，同時保留原始問題供回答。
-
-| 項目 | 規格 |
-|---|---|
-| MVP 方法 | None、Query Rewrite |
-| 後續方法 | History-aware Rewrite、Multi-query、HyDE、Query Decomposition |
-| Config | method、model_ref、prompt_version、max_queries、use_history |
-| Input | `QueryTransformInput {question: str, history: ChatMessage[]}` |
-| Output | `QueryTransformOutput {original_question: str, queries: SearchQuery[]}` |
-| 驗證 | question 非空；至少一個有效 Query；數量不超過 max_queries；original_question 不可被改寫 |
-
-None 必須回傳一個原始 Query。HyDE 的 hypothetical text 僅作為檢索輸入，不是來源證據，不能直接當成 Generation 的 retrieved context。分解問題若需要逐步求解或工具調用，屬於後續編排設計，不由此契約承諾。
-
-### 4.2 Retrieval
-
-**目的**：依 Query 搜尋 Index，回傳去重且帶來源的候選 Chunks。
-
-| 項目 | 規格 |
-|---|---|
-| MVP 方法 | Dense、BM25、Hybrid（先提供 RRF 融合） |
-| 後續方法 | MMR、多 Query 合併、Parent–Child Retrieval、加權融合 |
-| Config | candidate_top_k、per_query_top_k、fusion、search_parameters；Query Embedding 由 IndexBinding Profile 繼承 |
-| Input | `RetrievalInput {query: QueryTransformOutput, index: IndexBinding, filter?: MetadataFilter}` |
-| Output | `RetrievalOutput {original_question: str, hits: SearchHit[], index: IndexBinding}` |
-| 驗證 | Retrieval 能力與 Index 相容；Filter 欄位與運算子經 Schema 驗證；Query Embedding Profile 必須匹配 |
-
-`MetadataFilter` 為 allowlist AST：`condition {field,op,value}`，或 `and/or {children[]}`；MVP 可先只支援 eq/in/range，不接受任意後端 query DSL。
-
-- 平台將使用者 filter 與 RunContext 的強制授權條件以 AND 合併。系統隔離、ACL 不由自訂 Query 或 Plugin 決定；回傳前再次確認輸出授權。
-- Dense Query 編碼是本模組內的步驟，重用 EmbeddingProfile；Query／Document 的 prefix/task 可以不同，但必須是該 Profile 定義的配對。
-- Hybrid 的兩路候選先融合，再截取 candidate_top_k；其範圍是最終候選上限，不是兩路數量相加。
-- 多 Query 需保留 matched_query_ids、去重並統一排序；v0.1 MVP 可只接受單 Query，超過時回報不支援，不能忽略其他 Query。
-- `hits=[]` 是合法的成功結果；Index／Provider 故障則是 failed，兩者不同。
-- Backend 原始分數可留在追蹤資訊；SearchHit.score_kind 明確標示最終排序分數的種類。
-
-### 4.3 Rerank
-
-**目的**：按原始問題重排 Retrieval 候選，挑出要交給 Generation 的內容。
-
-| 項目 | 規格 |
-|---|---|
-| MVP 方法 | None、Cross-Encoder |
-| 後續方法 | LLM Rerank、自訂排序 |
-| Config | model_ref、top_n、batch_size、pair_token_limit |
-| Input | `RerankInput {original_question: str, hits: SearchHit[]}` |
-| Output | `RerankOutput {original_question: str, hits: SearchHit[], applied: bool}` |
-| 驗證 | 不可發明新的 chunk_id 或修改文件內容／ACL；輸出為候選子集；rank 重新編號 |
-
-None 時 applied=false、原樣傳遞全部 hits，top_n 停用且不參與執行。啟用時要求 top_n ≤ candidate_top_k；實際只取 min(top_n, hits 數量)，零筆候選直接成功回傳空清單。不要因搜尋結果少於配置上限而判定錯誤。Rerank score 與原 Retrieval score 分開保存於 Trace，不覆蓋後失去可追溯性。
-
-### 4.4 Generation
-
-**目的**：組裝有限的來源 Context，產生回答與引用。
-
-| 項目 | 規格 |
-|---|---|
-| MVP 方法 | Context-grounded Generation |
-| 後續方法 | Structured Output；多階段摘要／生成另行設計 |
-| Config | model_ref、prompt_version、temperature、max_output_tokens、context_budget、stream、no_context_policy |
-| Input | `GenerationInput {question: str, history: ChatMessage[], contexts: SearchHit[]}` |
-| Output | `GenerationOutput {answer: str, citations: Citation[], used_chunk_ids: str[], finish_reason: str, usage: TokenUsage, abstained: bool, structured_output?: JSON}` |
-| 驗證 | Context＋History＋Prompt＋Question＋輸出預留符合模型預算；引用 ID 必須出現在實際供模型使用的 Context |
-
-Context Assembly 先放在 Generation 內：來源標記、去重、依排名截取與預算控制；不增加一個 UI 模組。`used_chunk_ids` 表示實際送入 Prompt 的內容，不代表模型必然使用或支持每個主張。Citation ID 有效不等於語意正確，引用品質需另行評估。
-
-MVP `no_context_policy=abstain`：無 Context 時回傳清楚的無足夠資料訊息、citations=[]、abstained=true；不是系統錯誤。使用者問題仍採原始 question，而非 Rewrite 後的查詢。
-
-Streaming 是獨立事件契約：
-
-```text
-GenerationEvent = {run_id, seq, type: delta/completed/failed, payload}
-```
-
-delta 只含文字增量；completed 含完整 ModuleResult[GenerationOutput]；failed 含標準錯誤。每次串流只有一個 terminal event，completed 不能在 failed 後再出現。增量中的引用屬 provisional，以最終完成結果為準。MVP 可先只做非 Streaming，不宣告未支援能力。
-
-`TokenUsage {input_tokens?: int, output_tokens?: int, total_tokens?: int}`：Provider 不提供時為 null，不能填 0 假裝沒有用量。
-
-## 5. Evaluation 模組
-
-**目的**：在可追溯的 Config 與 Index 版本上跑 QA Dataset，評估 Retrieval、回答與操作指標。
-
-| 項目 | 規格 |
-|---|---|
-| MVP 方法 | Deterministic Retrieval Metrics、LLM-as-a-Judge、Operational Metrics |
-| 後續方法 | Custom Evaluator、Baseline Comparison；進階自動 Gate 不是目前必要 UI |
-| Config | mode: retrieval_only/end_to_end、metrics、judge_model_ref/version、rubric_version、concurrency |
-| Input | `EvaluationInput {dataset: DatasetRef, target: EvaluationTarget}` |
-| Output | `EvaluationOutput {evaluation_run_id, binding: EvaluationTarget, results_ref: ArtifactRef, summary: MetricSummary[], total, succeeded, failed, skipped}` |
-| DatasetRef | `dataset_id, version, artifact: ArtifactRef` |
-| EvaluationTarget | `rag_system_id, config_revision, index: IndexBinding, engine_image_digest, plugin_versions, judge_model_version?` |
-| QARecord | `case_id, question, expected_answer?, relevant_document_ids?: str[], relevant_chunk_ids?: str[], reference_index_generation?: str, history?: ChatMessage[], metadata_filter?: MetadataFilter` |
-
-逐題結果記錄：`case_id, status, generated_answer?, retrieved_ids, context_chunk_ids, scores[], errors[], trace_id`。
-
-`MetricResult {metric_id, value: float|null, status: scored/skipped/failed, reason?, unit}`；`MetricSummary {metric_id, aggregate?, aggregation, evaluated_count, skipped_count, failed_count, unit}`。缺少必要標註時預設 preflight 拒絕該指標；若使用者明確允許跳過，須標示 skipped 與原因，不得把缺資料當 0 分。
-
-| 指標 | 所需輸入 | 語意 |
-|---|---|---|
-| Recall@K | relevant IDs＋前 K 個去重 retrieved IDs | 找回多少相關項目；先固定 document 或 chunk 評估層級 |
-| MRR | relevant IDs＋完整候選排序（或明示 MRR@K） | 第一個相關結果的 reciprocal rank；無命中為 0 |
-| Answer Correctness | question＋expected_answer＋answer＋評分規則 | 通常由 Judge 評分，需記錄模型與 rubric |
-| Faithfulness | answer＋實際供 Generation 使用的 contexts | 回答是否受所提供內容支持，不等同真實世界正確性 |
-| Latency／Token Usage／Error Rate | 每題執行記錄 | 不可把失敗請求排除後仍聲稱是全量成功率 |
-
-- 先固定 Retrieval 評估點為 Rerank 前；若測 Rerank 後，另用不同 metric_id，不能混在同一結果。
-- Document-level 評估先將多個 Chunks 聚合成唯一 document_id，再套用 K，並明示此定義。
-- relevant IDs 為空與缺失不同；無答案題的 Retrieval Recall 預設不適用，另評估 abstention，不能除以零。
-- Config、Index、Dataset／Judge 版本都需綁定；修改 Chunking 後須重建 Chunk 級標註或明確 migration。
-- Evaluation Runner 是後端 Job；提供 Job ID／狀態輪詢屬平台 Job API，不是每個模組都實作一個 Queue。
-
-## 6. 各模組 I/O 接線摘要
-
-| 來源 | 目的 | 連接方式 |
-|---|---|---|
-| Import.assets | Parsing.assets | 原樣傳遞 SourceAsset |
-| Parsing.documents | Chunking.documents | 保留結構、版本與來源 |
-| Chunking.chunks | Embedding.chunks | BM25 模式可繞過 |
-| Embedding.chunks/profiles/vector_sets | Indexing 對應欄位 | target 由 Controller 注入；deletions 由 Import 旁路傳入 |
-| Query Transformation.output | Retrieval.query | index 由 Runtime 注入；filter 經平台授權合併 |
-| Retrieval.original_question/hits | Rerank 對應欄位 | index binding 留在 Run Trace |
-| Rerank.original_question/hits | Generation.question/contexts | history 由原始請求保留並注入 |
-| Dataset＋EvaluationTarget | Evaluation | Runner 呼叫上述 Inference 契約並收集 Trace |
-
-平台 Compiler 必須負責欄位映射及旁路資訊傳遞；不是單純把上一個模組的完整 JSON 塞到下一個模組。
-
-## 7. 相依規則與 UI 卡控
-
-| 規則 | UI | 後端 |
-|---|---|---|
-| Dense-only Index → Retrieval | BM25／Hybrid 顯示但停用，附原因 | capabilities 驗證；不是按資料庫品牌一刀切 |
-| Query Embedding → Index Profile | Model／Dimension 唯讀繼承 | 驗證完整 Profile，包括 encoding／normalization |
-| BM25 → Dense Embedding | 顯示「不使用」，停用相關設定 | 跳過向量步驟，不載入不必要模型 |
-| Rerank=None → Top-N | 保留但停用 | 從有效執行 Config 排除 |
-| Top-N > candidate_top_k | 顯示上限與錯誤、阻止建立 | 拒絕非法 Config；不限制實際候選必須滿 K |
-| 非 Hybrid → Fusion／Dense Weight | 顯示但停用 | 不傳無效參數給 Backend |
-| Header-aware → Parser headings | 缺能力則停用或標示不相容 | 檢查 requires/provides，執行時驗證結構 |
-| Embedding dim → Index dim | Index 繼承或提示重建 | 不允許混入不相容向量 |
-| Retrieval Metric → Dataset | 顯示缺少標註 | preflight 拒絕或明確 skipped |
-
-上游改動造成既有選項失效：保留原選擇、標示原因、停用 Create，直到使用者修正。不能悄悄切換方法。方法未啟用的參數可保留在 UI 草稿，但不得影響有效 Config 的驗證、Hash 或執行。
-
-變更 Parsing／Chunking／Embedding／Index Schema 通常需重新 Ingestion；只改 Top-K、Rerank、Prompt 通常不用重建 Index，但仍需重新評估。重建成本由 Dependency Validator 回報，不只靠 UI 提醒。
-
-## 8. Custom Python 與技術分工
-
-### 8.1 Module Registry
-
-每個已註冊模組需提供：
+建議每個註冊方法提供 module_type、module_id、implementation_version、input_schema、output_schema、config_schema、requires、provides、supports 及 factory。由 Engine 編譯器串接，不由 Builder 寫另一套組裝流程。
 
 ```yaml
 module_id: company.chunking.recursive
-implementation_version: 1.0.0
-contract_version: 1.0
 module_type: chunking
-entry_point: company_rag.chunking:RecursiveChunker
-input_schema: ChunkingInput@1
-output_schema: ChunkingOutput@1
-config_schema: RecursiveChunkingConfig@1
-requires: [document.text]
-provides: [chunk.text, chunk.provenance]
+implementation_version: 1.0.0
+contract_version: 0.1-draft
+requires: [document.string_field, tokenizer]
+provides: [chunk.fields, chunk.locations]
 supports: {async: true, batch: true, streaming: false}
 ```
 
-上述是自訂 manifest 示例；能力宣告須配合 Contract Test 驗證。平台註冊資料另保存 artifact digest、dependency lock、runtime compatibility 與外部服務需求。
+宣告能力須有契約測試。套件／版本、entry point 解析與依賴鎖定見 Q-001／Q-022；不直接 import 任意使用者輸入的 Python 路徑。
 
-### 8.2 客製化邊界
+## 3. 共用執行政策
 
-- 先開放 Chunking、Query Transformation、Rerank、Evaluation；其他模組優先經平台註冊 Plugin。
-- 使用者可提供 Function 或 Class，不要求與 LangChain 類別繼承綁死。
-- Adapter 的順序為：Config 驗證 → Input Runtime Validation → 執行政策 → 自訂邏輯 → Output Runtime Validation → provenance／ACL／跨欄位檢查。
-- Pydantic 結構驗證之外，還需檢查「Chunk 是否保留來源」、「Rerank 是否只回傳候選子集」等語意規則。
-- 任意使用者程式不得直接在共用 API Process 中 exec；隔離執行與受控資料／Secret 存取屬正式實作前置條件。
-- Config 固定 Plugin Version；新增程式與依賴時建置版本化 Runtime Image。部署 YAML 鎖定 Image Digest，不能只匯出 Class 名稱而漏掉實作。
+### 3.1 I/O 接線
 
-### 8.3 Framework／RAG Builder 分工
+每步邏輯形式為 `Module.run(input, context) -> ModuleResult[T]`。實作前確認 async／batch 能力；取 result.data 作下游 Payload，不把 metrics/errors 當業務資料。
 
-| 層 | 建議責任 |
+| 模組 | 業務 Input | 業務 Output | 另行注入／保留 |
+|---|---|---|---|
+| Import | files／標準 records | SourceAsset 清單 | 來源授權、資產保存 |
+| Parsing | SourceAsset 清單 | ParsedDocument 清單 | Schema、Parser routes |
+| Chunking | ParsedDocument 清單 | Chunk 清單，vectors={} | Tokenizer、必須繼承資訊 |
+| Embedding | Chunk 清單 | 相同成功 Chunk＋vectors | Profile、逐項錯誤；不回獨立 VectorSet |
+| Indexing | 帶向量或純文字的 Chunk 清單 | IndexBinding、逐項結果、可搜尋狀態 | 授權目標／刪除事件；提交政策待決 |
+| Query Transformation | 原始問題 | 原始問題＋SearchQuery 清單 | llm_ref、Prompt |
+| Retrieval | SearchQuery 清單、IndexBinding、filters | 原始問題＋SearchHit 清單 | Query Encoding、可信授權範圍 |
+| Rerank | 原始問題、SearchHit 清單 | 重排後 SearchHit 清單、applied | 模型服務與內容欄位 |
+| Generation | 原始問題、SearchHit 清單 | QueryResult | 共用 LLM、Context Budget |
+| Evaluation | Dataset、Target | 逐題結果與指標摘要 | 版本綁定、Judge；工作儲存由 07 提供 |
+
+原始問題不被 Rewrite 覆蓋。新版不預設公開對話歷史；歷史若啟用需另訂契約，不因舊草案有 history 欄位就宣告已支援。
+
+### 3.2 錯誤、重試與觀測
+
+- 結果必須能對應輸入的成功／失敗／skipped 項目。空檢索為成功，索引或 Provider 故障為失敗。
+- `partial` 的提交方式未定前，不能自行接受半文件索引並刪舊文件。
+- 重試由共用政策管理；HTTP 重送與內部重試不能形成無界倍增。僅在可安全重試且暫時性錯誤時啟用。
+- Indexing／資產提交具副作用，需冪等與版本檢查。讀取 checkpoint 不等於提交 checkpoint。
+- 每個模組記錄 System／Config／Run／Trace、耗時、數量及標準錯誤；不記錄真實 Secret。未知用量不填 0。
+- Provider failure 不偽裝成沒有相關資料；fallback 需明示 warnings 及實際方法。
+
+Timeout、重試預算、取消、partial 與 fallback 尚待 Q-009／Q-017／Q-023 定案；開發可先以明確錯誤與不自動重試完成骨架。
+
+## 4. Ingestion 模組
+
+### 4.1 Import
+
+**目的與邊界**：接收、驗證、建立來源資產；不做 PDF／OCR 或 Embedding。files 與 records 是同一流程的不同入口，不要求 System 二選一。
+
+**Config／I/O**：依 05 的 accepted_inputs、CSV mapping 與 SourceAsset 草案；HTTP 大小限制由 07 執行，直接 SDK 也需同等限制。
+
+**處理**：
+
+1. 驗證來源可讀取、格式／大小與可信身分；檔案 MIME／內容偵測策略待定。
+2. JSON records 依 input 來源欄位檢查；Builder CSV 已映射為相同格式，不在 Parsing 重映射。
+3. 產生資產關聯；保持明確文件 ID／來源版本；檔案派生多文件由 Parser 合作處理。
+4. 提交可供下游讀取的資料；原始檔保留與暫存刪除需 Q-016。
+
+**例外**：空批、同批重複 ID、來源不存在、型別不符、超限、無權讀取。空批允許 no-op 或拒絕、資料重送見 Q-008，不用 Prototype 行為代替正式決策。
+
+**驗收**：CSV 轉標準 records 與直接 records 得到相同 ParsedDocument；來源／ID／保留資訊不遺失；未授權 URI 被拒絕。
+
+**待決**：Q-005、Q-007、Q-008、Q-016、Q-019。
+
+### 4.2 Parsing
+
+**目的與邊界**：依格式擷取內容，輸出五個 key 的 ParsedDocument。Parsing 不生成向量、不自動摘要。
+
+**方法**：Structured records、Native text、PDF／PPTX 擷取及 OCR 路由。首批實際支援格式／套件未定，不能因 UI 顯示選項就宣告支援。
+
+**處理**：
+
+1. 以格式路由至已註冊 Parser；同格式策略明確選定。
+2. 擷取文字／表格／章節，按 Schema 寫入 fields，位置寫 structure。
+3. 結構化 records 已使用目標欄位，僅整理及驗證；不做第二次 column mapping。
+4. 多文件來源派生穩定 ID，保留資產關聯；驗證完整 Schema。
+5. 沒有結構時 structure={}，不能捏造 headings 或頁碼。
+
+**例外**：掃描文件未啟用 OCR 回 `OCR_REQUIRED` 或等價領域錯誤；零文字不能當作可檢索成功。損壞／加密檔案、讀取順序、空白頁及表格策略見 Q-005。
+
+**驗收**：直接文字與掃描檔可辨別；Unicode offset／頁碼可對回內容；一檔多文件不共用同一 ID；未支援格式有明確錯誤。
+
+**待決**：Q-005、Q-006、Q-007；新格式能力需同步 Registry／UI。
+
+### 4.3 Chunking
+
+**目的與方法**：Recursive／Header-aware；一個主要 split_field＋多個 copy_fields／metadata_fields。以 Token 計量，不新增字元模式。
+
+**處理**：
+
+1. 檢查主要欄位為非空必填 string、copy 欄位可取得。
+2. Recursive 依 separators 優先序切分，必要時處理過長片段；size 是上限、overlap 是目標值。
+3. Header-aware 先依可靠標題層級切分，再對超長章節 Recursive；缺 headings 不能假裝成功。
+4. 計算原 fields 字串範圍及跨 block／page locations，不從帶 overlap 的文字猜測位置。
+5. 複製指定欄位；文件摘要保持文件摘要；必需來源／ACL 不可取消。
+6. 依有效切分設定及位置產生 chunk_id，初始化 vectors={}。
+
+**驗證／例外**：size／overlap、Tokenizer、重複文字與非 BMP 字元、空段、極長無分隔文字。複製欄位未被主要內容切分，不保證其長度小於 size。
+
+**驗收**：單塊不超過約定 Token 上限；offset 可精確還原主要文字；相同輸入與切分設定得到相同 ID；標題能力不足會拒絕。
+
+**待決**：Q-004、Q-005、Q-007；Token 精確計數、切分 fallback 與 overlap 邊界需測試材料。
+
+### 4.4 Embedding
+
+**目的**：選 fields 內容，依 mappings 將 Dense 向量寫入 vectors。多個 output_name 與來源明確對應；與 Indexing 分離。
+
+**處理**：
+
+1. 解析 Profile／服務／Tokenizer，依 document encoding 建立每筆輸入。
+2. 對實際來源內容檢查 Token 極限，含前綴及特殊 Token；不能只驗 Chunk Size。
+3. 按 Batch Size 呼叫第一版選定的 OpenAI-compatible embeddings Adapter。
+4. 驗證回應 index 對應、數量、維度與有限值；不能因回傳順序錯誤把向量寫給其他 Chunk。
+5. normalization 與 metric 依 Profile 執行；記錄模型／版本／Provider request ID。
+6. 寫回原 Chunk.vectors；保留 fields／metadata。純全文 Pipeline 不初始化此服務。
+
+**例外**：缺欄位、超長、429／Timeout、批次缺項、維度錯誤與非法數值。截斷或 partial 需明確政策，不能默默處理。
+
+**驗收**：一筆 Chunk 可有兩個具名向量；後續仍取得原文；Query Encoding 依相同 Profile 配對；換模型／維度被判需重建。
+
+**待決**：Q-003、Q-004、Q-009、Q-017。Sparse、多模態及 late interaction 為後續。
+
+### 4.5 Indexing 與搜尋 Adapter
+
+**目的**：保存 Chunk，依欄位用途建索引，回報寫入與可搜尋狀態。Engine 在初始化時透過 Adapter 準備授權範圍內的目標；不依賴 Builder 才能 provision。
+
+**處理**：
+
+1. 檢查 stored／fulltext／vector／filter 欄位與 Profile；ID／版本／來源／ACL 固定保留。
+2. 比較目標 Schema／Profile，拒絕不相容寫入，避免不同模型混在同一向量欄位。
+3. 依版本／冪等策略寫入 Chunk，維護 chunk_id 對照及 Binding。
+4. 按後端 refresh／發布規則回報 searchable；write_acknowledged 不等於 searchable。
+5. 更新／刪除與舊版本清除依 Q-008／Q-009；尚未核定不能自行宣告文件原子替換。
+
+| Adapter | 內部責任 |
 |---|---|
-| LangChain | 可重用模型、Retriever、Loader Adapter，以及線性 Runnable 組合 |
-| LangGraph | 有必要時處理分支、狀態與 checkpoint；不要求每個模組獨立建 Graph |
-| Pydantic | Config／Input／Output 的顯式 Runtime Validation |
-| RAG Builder／RAG Engine | Registry、Compiler、Compatibility、Job Lifecycle、Execution Policy、版本及隔離 |
-| Observability | Langfuse＋OpenTelemetry 為候選方向，尚未定案；先定義一致 trace_id/module_id/run_id |
+| ES | 組合 Mapping；全文 text、精確 keyword、Dense vector；保存投影；相容查詢及 refresh |
+| Local Search | 每個具名向量管理 FAISS index；每個全文欄位管理 BM25；向量 ID → chunk_id；完整 Chunk 共用一份 |
+| Local／MongoDB | 保存 Chunk／vectors／Profile Manifest；重啟按相容版本重建搜尋結構，不重新 Parsing／Embedding |
 
-Queue、重試、DLQ、冪等 Indexing 與恢復語意不能只靠框架名稱保證。MVP 先固定流程；使用者 UI 維持 Group／RAG System 卡片與操作彈窗，不把這些後端機制全部暴露成頁面。
+FAISS 的維度／metric 不足以證明向量空間相容。cosine／inner product／L2 的 normalization 與對外 relevance 轉換必須定義；中文 BM25 需斷詞方案。不能把 post-filter 與 Top-K 前授權過濾視為等價。
 
-## 9. 第一版建議組合與待決事項
+**驗收**：ES 與 Local 共用契約測試；完整內容可取回；不出現跨 System Chunk；寫入失敗／不就緒不回可查詢；Memory 重啟清空、MongoDB 可驗證恢復。
 
-### MVP 建議
+**待決**：Q-008～Q-013、Q-015；ES 版本／授權 Q-001。
 
-File Upload → Native Text Parsing → Recursive／Header-aware → Dense Embedding（BM25 可略過）→ Elasticsearch Dense／Full-text／Hybrid → None／Query Rewrite → Dense／BM25／Hybrid RRF → None／Cross-Encoder → Context-grounded Generation。
+## 5. Inference 模組
 
-Evaluation 提供標註 ID 的 Recall@K／MRR、Judge 型 Answer Correctness／Faithfulness 與基本執行指標。實際可啟用指標由 Dataset／Trace 輸入決定。
+### 5.1 Query Transformation
 
-### 待決事項
+**方法**：None／Rewrite／Multi-query；原始問題永遠保留。count 指衍生 Query 數，不含選配原始問題。
 
-1. 首批檔案格式與 Parser；是否第一期就納入 OCR。
-2. 第一組 Embedding／Rerank／Generation 模型及服務接口。
-3. Chunk 長度單位、Tokenizer，以及 Metadata／ACL 欄位清單。
-4. Index version／generation 的儲存與切換方式，來源更新是否採完整文件替換。
-5. 自訂程式是只接受核可套件，還是提供 UI 上傳與隔離試跑。
-6. Streaming、增量同步與 Baseline Comparison 的優先序。
+**處理**：None 回一筆原始 Query；Rewrite 使用 {{query}} 產生一筆；Multi-query 使用 {{query}}／{{count}} 產生多筆。include_original 由程式處理，不交由 Prompt 決定。引用 System 共用 llm_ref。
 
-## 10. 參考與文件關係
+**驗證**：非空問題、合法模板、LLM 引用、衍生結果數量／文字合法。去除相同問題、模型輸出格式不符及降級政策由 Q-003／Q-023 核定；不自動忽略壞結果。
 
-本文件補充最新模組設計；既有 03_architecture_proposal.md 為較早的整體提案，UI／框架方向有差異時以本文件和已更新的 UI 說明為討論基準。這不表示所有候選方法已通過選型或已實作。
+**驗收**：Rewrite 不覆蓋 original_question；Multi-query count 與原始問題選項獨立；None 不呼叫 LLM；Rerank／Generation 始終取得原始問題。
 
-- LangChain component architecture：https://docs.langchain.com/oss/python/langchain/component-architecture
-- LangChain Embedding integrations：https://docs.langchain.com/oss/python/integrations/embeddings
-- LangChain ParentDocumentRetriever：https://reference.langchain.com/python/langchain-classic/retrievers/parent_document_retriever/ParentDocumentRetriever
-- Ragas Metrics：https://docs.ragas.io/en/latest/concepts/metrics/available_metrics/
-- Qdrant Hybrid Queries：https://qdrant.tech/documentation/search/hybrid-queries/
+### 5.2 Retrieval
 
-這些資料作方法與整合參考；本文的 Object、ModuleResult、Registry 與 API 字段均為平台自己的提案。
+**目的**：選已索引的全文／向量欄位，自動推導 Dense／全文／Hybrid；後端由 Binding 繼承。
 
+**處理**：
 
+1. 取得對應 Config／Binding，確認 Profile 與資料就緒。
+2. 將預設 filters、本次 filters、可信 ACL 以 AND 合併，驗證欄位／operator／值。
+3. 建立每個 Query × 全文／向量欄位的路徑；向量路徑依其 Profile 使用 query encoding。
+4. 每路在合法候選範圍內取 per_route_k，保留 rank、原始分數、方向與命中 Query。
+5. 轉換距離為越大越相關的 relevance；依 chunk_id 對齊融合。
+6. 排序後取最終 top_k，再批次取回完整內容並保留排序。
+7. vectors 可省為 {}，Rerank／Generation 無須知道 MongoDB 或 FAISS。
+
+**已確認融合方向**：第一版用一個融合選項作用於所有 Query × 欄位路徑，融合在 Rerank 前。單一路不額外融合。
+
+- Sum Score（預設）：`sum(weight × relevance_score)`；未命中該路為 0；同類型欄位及各 Query 共用全文／向量權重；不自動正規化。
+- RRF：`sum(1 / (k + rank))`；各路 rank 從 1；預設 k=60。
+
+原始 BM25／向量分數尺度可能不同，預設 Sum Score 是已選定語意，不等於等權就有相同實際影響。距離轉換、同分順序、各路候選截斷的評估仍需 Q-011／Q-014。
+
+同文件片段分組不是 chunk_id 去重。max_chunks_per_document、先同 Query 融合再跨 Query 融合、Rerank 後融合曾被提出，但尚未採為本版規格，追蹤 Q-014。
+
+**驗收**：同 Chunk 多路命中只回一次；少於 K 或零筆為合法；多路套用同一授權限制；融合可用小型人工排名驗算；無效 filter 拒絕而不改為無條件查詢。
+
+### 5.3 Rerank
+
+**方法**：None／DEV test use／Rerank API。服務端第一版平台約定：
+
+```json
+{"model":"reranker-a","query":"原始問題","documents":["候選 A","候選 B"],"top_n":2}
+```
+
+```json
+{"results":[{"index":1,"score":0.92},{"index":0,"score":0.61}]}
+```
+
+這是平台契約，不是所有模型服務的通用標準。POST 路徑為選定 Base URL 下的 /rerank；其他格式需 Adapter。
+
+**處理**：按 content_fields 順序把每筆候選組成文字；保持候選 index 對照；驗證 index 唯一且在範圍內、score 有限；映回原 SearchHit。輸出只能是候選子集，不改文件／ACL。None 原樣傳遞且不使用 Top-N；實際候選少於 top_n 時取可用數量；零筆不呼叫服務。
+
+**驗收**：不生成新 chunk_id；重新 rank；保留原 Retrieval Trace。串接 Timeout／錯誤時不假裝 Rerank=None。
+
+**待決**：Q-003、Q-017、Q-023；內容欄位分隔、輸入極限與服務回傳缺項政策需核定。
+
+### 5.4 Generation
+
+**方法**：由 llm_ref 取共用 LLM；第一版選定 Chat Completions Adapter。Context Assembly 在本模組內，不增加 UI 模組。
+
+**處理**：
+
+1. 依候選排序、內容欄位及 Token Budget 決定實際送出的 Chunk。
+2. 逐筆套用 chunk_template，例如 `[{{citation_id}}] {{fields.title}}\n{{fields.text}}`。
+3. 合併成 {{context}}，再代入回答 Prompt 的 {{query}}／{{context}}；query 是原始問題。
+4. 只做一次變數替換，不執行程式或遞迴解讀文件內的 {{...}}。
+5. 計算整體輸入與輸出預留，呼叫 LLM，驗證引用對應並產出 QueryResult。
+
+Budget 必須計入 Prompt、問題、模板、Context、特殊 Token 與輸出預留。Context Budget 不是模型總長度。used_chunk_ids 表示實際送入內容，不保證模型每項主張都獲支持。
+
+**例外／待決**：空 Context 的建議行為為 abstain；Context 截斷、過大單塊、未知引用、模型拒答／Timeout、Prompt 角色、Temperature 限制與 Citation 擷取見 Q-003／Q-023。不能把建議 abstain 當成已核可的所有場景政策。
+
+**驗收**：引用只指向實際 Context；超限不默默丟資料；正確處理缺 title 等選填欄位；原文中的模板符號不再執行；不以固定答案通過整合驗收。
+
+## 6. Evaluation 邏輯
+
+獨立 Engine 測試可直接對本機 Engine Target 執行；Builder Runner 也可透過 Runtime Client Target 呼叫相同功能。**評分邏輯在本層，工作排程、狀態與報告保存由 07 管理**。檢索專用 Target 是否提供公開 API 由 Q-018／Q-019 核定，不能重寫一套不一致的 Retrieval。
+
+建議 QARecord：case_id、question、expected_answer?、relevant_document_ids?、relevant_chunk_ids?、metadata_filter?。DatasetRef／Target 綁定 System、Config、資料版本、Engine／模型／Judge Profile。
+
+| 指標 | 必要輸入 | 要定義的語意 |
+|---|---|---|
+| Recall@K／MRR | relevant IDs、實際候選與排序 | Chunk／Document 層級、Rerank 前或後、K |
+| Answer Correctness | 問題、答案、參考答案及 Rubric | Judge／Rubric 版本 |
+| Faithfulness | 答案、實際 Generation Context | 是否受資料支持，不等於世界真實性 |
+| Latency／Usage／Error Rate | 各題 Trace／結果 | 失敗題不能任意排除 |
+
+缺 Ground Truth 的指標應拒絕或明示 skipped，不能填 0 假裝已評分。relevant IDs 缺失與空清單不同；Chunking 改變後舊 chunk-level 標註不可直接沿用。詳細首批指標、Dataset Schema、Gate、Target API 與 Judge 見 Q-018。
+
+## 7. 客製化與擴充
+
+優先考慮 Chunking、Query Transformation、Rerank、Evaluation 的自訂邏輯。Import／Parsing／Embedding／Indexing／Retrieval 以註冊 Adapter 擴充；Generation 先以 Prompt／內容設定處理。
+
+共用邊界：Config 驗證 → Input Validation → 執行政策 → 自訂邏輯 → Output Validation → 來源／ACL／語意檢查。Pydantic 不取代「Rerank 只能選候選子集」等語意驗證。
+
+安全執行、套件 allowlist、Image 建置與版本鎖定未定前，不允許在共享 Runtime 對任意使用者程式 exec。是否第一期僅支援開發者註冊、是否有 UI 上傳與隔離試跑見 Q-022。
+
+## 8. 待討論與決策
+
+| 範圍 | 問題 |
+|---|---|
+| Engine SDK／Config／版本 | [Q-001](08_implementation_plan.md#q-001)、[Q-002](08_implementation_plan.md#q-002) |
+| 模型、Token、Parser | [Q-003](08_implementation_plan.md#q-003)、[Q-004](08_implementation_plan.md#q-004)、[Q-005](08_implementation_plan.md#q-005) |
+| ID、更新、提交與查詢一致性 | [Q-007](08_implementation_plan.md#q-007)～Q-010 |
+| BM25／FAISS、MongoDB、filter、fusion | [Q-011](08_implementation_plan.md#q-011)～Q-014 |
+| 重試、評估、客製化、Fallback | [Q-017](08_implementation_plan.md#q-017)、[Q-018](08_implementation_plan.md#q-018)、[Q-022](08_implementation_plan.md#q-022)、[Q-023](08_implementation_plan.md#q-023) |
+
+## 9. Engine 完成條件
+
+- 不啟動 Builder／HTTP，就能用完整 Config 跑真實 ingest／query。
+- Config、Registry 與下游欄位相依可驗證；缺服務／能力得到可定位錯誤。
+- Local Memory／MongoDB／ES 的差異被 Adapter 封裝；同一對外 Contract 不依賴框架內部物件。
+- 固定測試可驗算 Chunk／offset／fusion／Filter／Citation；真實模型／搜尋另有 integration 證據。
+- 尚未核定能力回報不支援，不以 Mock 或靜默 fallback 代表完成。
+
+開發階段與驗收資料見 [08](08_implementation_plan.md)。

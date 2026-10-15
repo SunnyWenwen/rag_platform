@@ -8,14 +8,26 @@ Config-driven RAG System 建立與測試平台。
 
 **名詞**：RAG Builder 是開發平台；RAG System 是使用者建立的個別系統；RAG Runtime 是可獨立部署的 API 執行服務；RAG Engine 是其 Pipeline 核心。
 
-## 設計文件
+## 開發規格文件集 v0.9（2026-10-15）
 
-- [資料契約與索引設計討論結論（v0.8）](docs/05_data_contracts_search_design.md)：最新 ParsedDocument／Chunk、欄位映射、Embedding、ES／Local Search、MongoDB 持久化、Hybrid 與 UI 卡控；區分已確認方向與待定建議。
+本輪已把 03～08 整理為 coding agent 可分階段使用的開發規格草案。**已確認方向、既有基線、建議與待決事項分開記錄**；具體公共介面與部分行為仍需決策，不表示後端已實作。
 
-- [模組目的、方法與 I/O Contract（v0.2 草案；資料契約見 v0.8）](docs/04_module_methods_io_contracts.md)：十個模組的輸入輸出、共用資料結構、相依卡控、自訂 Python 與 LangChain／LangGraph 分工；區分 MVP 與後續候選方法。
+| 文件 | 定位 |
+|---|---|
+| [03 系統概覽與架構](03_architecture_proposal.md) | 產品目的、新手／進階情境、元件分工、部署邊界與範圍 |
+| [04 Engine 組裝、執行與模組規格](docs/04_module_methods_io_contracts.md) | 手寫 Config 可獨立使用的 Engine、Pipeline、各模組與 Adapter |
+| [05 共用資料模型與 Config](docs/05_data_contracts_search_design.md) | ParsedDocument／Chunk／SearchHit、Schema、Config 草案與變更影響 |
+| [06 使用流程與 UI 開發規格](docs/06_ui_development_spec.md) | 基本／進階、CSV、AI 助手、預覽、Edit 與測試操作 |
+| [07 Backend、Runtime API 與整合](docs/07_backend_runtime_integration.md) | API、System／Revision、任務、持久化、Runtime 與 Export |
+| [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M6、驗收材料、確認方向及 27 項待決問題 |
 
-- [UI Prototype](01_ui_prototype.html)：下載後以瀏覽器開啟，操作與指標均為模擬。
-- [Architecture Proposal v0.8](03_architecture_proposal.md)：RAG Builder／獨立 Runtime 分工、共用 Engine／API、外部服務環境設定、模組契約與 MVP 規劃。
+建議先讀 03／08，再依任務讀 05／04／07／06。Engine 核心不依賴 Builder UI、HTTP 或 Builder DB；07 將其包裝為可管理服務。每份規格末尾列出相關 Q-ID，完整候選／決策／階段阻擋統一放在 08。
+
+舊 04／05 的重複及覆蓋式章節已重整，歷史可由 Git commit `cf4dfdc0e29acc91a2fe63b1993f867c8facaf6d` 查閱。完整 Config 的拼字、型別及預設值仍屬 Q-002 草案；本輪沒有新增 Engine、API 或正式部署功能。
+
+## 原型與圖面
+
+- [UI Prototype](01_ui_prototype.html)：下載後以瀏覽器開啟，模型／搜尋／評估與 API 為模擬。
 - [L1 使用流程圖](diagrams/01_user_system_l1.png) · [Mermaid 關係定義](diagrams/01_user_system_l1.mmd) · [固定版面 SVG](diagrams/01_user_system_l1.svg)
 - [Infra 架構圖](diagrams/02_infra_architecture.png) · [Mermaid 原始檔](diagrams/02_infra_architecture.mmd)
 
