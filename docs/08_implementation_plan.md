@@ -1,6 +1,6 @@
 # RAG Builder — 開發計畫、驗收與決策追蹤
 
-> 文件集 v0.14 · 2026-10-15 · 開發規格草案
+> 文件集 v0.15 · 2026-10-15 · 開發規格草案
 >
 > 目的：讓 coding agent 依同一套規格分階段開發，並持續記錄尚不清楚的問題。本文是決策／待決狀態的權威位置；它不把技術建議自動轉成使用者已核可決策。
 
@@ -148,7 +148,7 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 <a id="q-002"></a>
 ### Q-002 共用 Schema、Config、SDK 與版本凍結
 
-- 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System；Local Search 持久化模式隨 Config 跨環境固定（D-33）。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile、InferenceState／RankedList 草案，以及原型短名稱／匯出標籤 migration。
+- 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System；Local Search 持久化模式隨 Config 跨環境固定（D-33）。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile、InferenceState／QueryContext／ResultSet 草案，以及原型短名稱／匯出標籤 migration。
 - 建議：先核定最小完整 Config＋單一公開 Engine interface；Pydantic 匯出 JSON Schema，UI 使用相同來源。用完整欄位路徑；未知別名拒絕。
 - 替代：直接沿用 Prototype 全部短名稱；需補齊其缺少型別與執行語意。
 - 負責角色：Engine＋Backend＋Frontend；阻擋 M0 契約凍結。
@@ -260,7 +260,7 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 - 已有需求：使用者要求可配置融合策略及「在哪一步合併」，並提出逐 Query Score Sum→跨 Query RRF 情境；D-23 已記錄，不能只當可做可不做的助理建議。2026-10-15 再次明確可自行決定融合位置，且應先釐清 Inference 物件如何記錄多 Query／多 Index／多階段分數。
 - 不清楚：正式支援哪些前／後 Rerank 路徑、單層／兩層、scope／stage Schema、預設計畫、每階段 K／N、Rerank Query、同分／重複候選、分組與分數語意。
 - 情境例：同 Query 融合→跨 Query 融合→Rerank、同 Query 融合→逐 Query Rerank→跨 Query 融合、舊單層基線。Config 需能選擇合法融合位置，不能只接受固定 Plan A／B；具體步驟配置及 `fusion.stages[]` 仍待核定，不自動選助理推薦當預設。
-- 本輪草案：05 §4.6 以共用 Chunk 內容及多份 RankedList，保留 route／query／分數／rank／階段輸入關係。先討論這些資料責任，再核定型別及各步驟處理；此結構尚未取得使用者定案。
+- 最新草案：05 §4.6 以 QueryContext 擁有多份 ResultSet、每份含 ResultItem，保留 route／query／分數／rank／階段輸入關係；v0.15 附具體 JSON Schema 與四份例子。先討論這些資料責任，再核定型別及各步驟處理；此結構尚未取得使用者定案。
 - 建議：先定可驗證的有限計畫及共同 route 型別，保留 query／route identity；Rerank=None 及非法組合須顯式驗證。文件分組另定，不與 chunk_id 去重混同。
 - 負責角色：產品＋Engine＋Frontend；阻擋目標時點配置的契約／驗收，可先維持舊基線做迭代但不宣稱需求完成。
 - 決策：配置能力的需求已確認；具體計畫／預設／Schema 未定。同步更新 03～07 與範例。
@@ -572,7 +572,7 @@ ParsedDocument 五個 key、Chunk 六個 key、fields→vectors、多欄位用�
 
 - **已確認 D-33**：DEV 用 Memory，FTEST／ENT 也用 Memory。持久化模式屬邏輯 Config，不能由 Export 的環境覆寫任意切換；連線／Secret 等部署綁定仍分環境提供。只關閉此子題，不因此關閉 Q-002／Q-021 的所有細節。
 - **已確認 D-23 的配置方向**：使用者自行選擇在哪個合法步驟後融合。先定義 Inference 如何傳遞候選與記錄分數，才能討論後續處理；不得以固定 Plan A／B 限制位置選擇。
-- **資料草案待確認**：提出 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft) 的 InferenceState／RankedList：共用 Chunk 內容、多份 Query×路徑及各階段排序、分數來源／方向／rank、輸入結果關聯及下一步選用清單。這些具體欄位與格式是助理草案，尚非已核定 Contract。
+- **v0.14 歷史資料草案**：當時提出 InferenceState／RankedList：共用 Chunk 內容、多份 Query×路徑及各階段排序、分數來源／方向／rank、輸入結果關聯及下一步選用清單。v0.15 已依後續討論改為 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft) 的 QueryContext／ResultSet／ResultItem，見 §14；具體欄位仍為待確認草案。
 - **重建範圍釐清**：新增／單文件更新、因切分／Embedding 等配置改變而重處理既有資料、Memory 重啟後重匯，以及 MongoDB 恢復索引分開。先前 Query 可見性問題主要針對既有資料重建；各情境的發布／鎖定政策仍待 Q-008～Q-010／Q-015。
 
 ### 13.2 下一步討論順序
@@ -585,3 +585,13 @@ ParsedDocument 五個 key、Chunk 六個 key、fields→vectors、多欄位用�
 本輪只更新文件與新增討論草案，不宣稱 Prototype 已有多階段融合或 Engine 已實作這些型別。
 
 文件驗證：7 份文件的 111 個相對連結、72 個錨點、13 段 JSON、3 段 YAML 與 1 段 Python 範例語法通過；InferenceState 示例的 Chunk 六個 key、清單引用與 rank／score 可檢查。D-ID 增至 33，Q-ID 維持 27；YAML 解析語意與圖面未變。這些檢查不代表草案已經型別凍結或可執行。
+
+## 14. 2026-10-15 具體 Inference Schema 與例子（v0.15）
+
+- 使用者要求列出實際 Schema 與例子，據此把 05 §4.6 更新為 QueryContext → ResultSet → ResultItem；保留 InferenceState 作多 Query 外框，取代舊全域 rankings 展示形狀。此為審閱草案，不代表使用者已確認所有欄位。
+- 新增 [JSON Schema](../schemas/inference_context.schema.json) 及 05 §4.6.6 所列四份自包含快照：三路 Retrieval、3→4 候選篩選、Rerank 新分數／排序、跨 Query RRF 合併。
+- 明列 active_query_ids／active_result_set_ids、直接輸入清單、逐項 source_refs，以及評分問題／模型／參數；Chunk 仍為六個 key，來源可暫存在同次執行，沒有新增永久 Trace Store 的承諾。
+- 資料驗證與執行能力分開：Schema 檢查形狀；引用／rank／分數／融合語意與方法能力仍由 Engine 驗證。Filter 範例是候選後處理，不取代 Top-K 前授權限制。
+- Q-002／Q-014 維持 OPEN；本輪僅具體化討論資料與例子，未凍結方法、融合位置／預設、Top-K／Top-N 或 Trace 保留政策，也未修改 Prototype／Engine。
+
+本輪驗證：Draft 2020-12 Schema 本身與四份完整例子通過；另檢查 Query／ResultSet／Chunk 引用、來源無環、原始問題、rank／score、篩選保分及 RRF 重算，六份刻意破壞的資料皆被拒絕。文件檢查涵蓋 7 份文件、118 個相對連結、72 個錨點及 12 段 JSON／3 段 YAML／1 段 Python 範例。上述為草案資料與文件檢查，沒有測試真實模型、搜尋服務或 Runtime。

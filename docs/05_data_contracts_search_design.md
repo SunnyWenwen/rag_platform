@@ -1,6 +1,6 @@
 # RAG Builder — 共用資料模型與 Config 規格
 
-> 文件集 v0.14 · 2026-10-15 · 開發規格草案
+> 文件集 v0.15 · 2026-10-15 · 開發規格草案
 >
 > 本文是資料形狀及設定規則的權威位置。已確認的語意保留；新增的程式型別、完整 Config 拼字與預設值為建議草案，待 Q-002 核定後才凍結。YAML 範例用於討論與驗收設計，目前沒有 Engine 可直接執行。
 
@@ -164,85 +164,108 @@ rank 從 1 起；score 是相關性分數，不是機率。搜尋融合用 chunk
 
 <a id="inference-state-draft"></a>
 
-### 4.6 Inference 傳遞狀態與多路評分（討論草案）
+### 4.6 QueryContext／ResultSet／ResultItem：具體 Schema 草案
 
-2026-10-15 使用者要求先釐清 Inference 的物件／分數紀錄，再討論融合處理；融合可配置在合法步驟之後。以下是**提出討論的形狀，尚未核定**；欄位拼字、選填與 SDK 由 Q-002／Q-014 凍結。§4.5 的扁平 SearchHit 是既有單層基線，不能承擔所有逐路／逐階段語意。
+本節依 2026-10-15 的 Query 物件討論整理，取代先前全域 chunks／rankings 的展示方案。**以下欄位是供審閱的 `inference-0.1-draft`，尚未核定正式 SDK／HTTP Contract。**Q-002／Q-014 仍開放；Schema／例子可檢查，不表示 Engine 已實作。§4.5 的扁平 SearchHit 僅是既有單層基線。
 
-**建議將 Chunk 內容與每次檢索／排序的分數分開。**同一 Chunk 可被多個 Query、多個 Index／欄位搜尋路徑命中，之後又取得 Fusion／Rerank 分數。Chunk 仍維持六個 key；可在同一 InferenceState 中共用內容，以多份 RankedList 表達各路及各階段結果。
+機器可讀定義：[JSON Schema](../schemas/inference_context.schema.json)，使用 Draft 2020-12。根物件 InferenceState 只承接同一次 Inference 的多個 QueryContext 與有效輸出選擇。RunContext 仍負責 System／版本／授權，ModuleResult 負責錯誤／Metrics，不把它們塞入 Chunk。
 
-| InferenceState 欄位 | 建議責任 |
+#### 4.6.1 InferenceState
+
+| 欄位 | 型別 | 規則 |
+|---|---|---|
+| contract_version | string | 本草案固定 `inference-0.1-draft`，與邏輯 Config／文件集版本分開 |
+| query_contexts | QueryContext[] | 含原始、衍生及合併後 Query；本次示例快照保留來源物件 |
+| active_query_ids | string[] | 下一步要處理哪些 QueryContext；其餘保留作追溯 |
+
+單 Query 也使用相同外框；多 Query 不需要改傳遞型別。這是 Engine 內部快照，不要求 Query API 對使用者回傳整包。
+
+#### 4.6.2 QueryContext
+
+| 欄位 | 型別 | 規則 |
+|---|---|---|
+| query_id | string | 此 Query 物件的唯一 ID；同文字也不靠文字判定身分 |
+| query | string | 當前搜尋／處理的問題 |
+| ori_query_id | string | 原始 QueryContext 的 ID；原始物件也保留在本次快照 |
+| ori_query | string | 原始問題，流程中不可改寫；原始物件的 query 與它相同 |
+| source_query_ids | string[] | 產生此物件的來源 Query；原始為 []，Rewrite／合併列來源 ID |
+| result_sets | ResultSet[] | 此物件歷次檢索／處理的結果，跨全部 Query 的 result_set_id 唯一 |
+| active_result_set_ids | string[] | 下游使用此 Query 的哪些結果；ID 須屬於此物件 |
+
+Rewrite 可從一份物件產生多份；各有 query_id，共用 ori_query_id／ori_query。保留原始 Query 供追溯不代表它也參與搜尋，仍由 include_original 決定有效搜尋清單。
+
+本版跨 Query 合併例子建立新的 `q-merged`，其 query 回到 ori_query，source_query_ids 保留參與者；原始／衍生物件仍可追溯。它代表合併後處理群組，不宣稱又產生了一個新的搜尋問題。
+
+#### 4.6.3 ResultSet
+
+| 欄位 | 型別 | 規則 |
+|---|---|---|
+| result_set_id | string | 本次結果的唯一識別 |
+| stage | string | 本草案列 retrieval／filter／sort／fusion／rerank |
+| input_result_set_ids | string[] | 本次處理的直接輸入；Retrieval 為 []，後處理至少一份 |
+| source | RetrievalSource 或 null | Retrieval 記 route_id／index_ref／field_path；衍生結果為 null，從輸入追溯 |
+| operation | Operation | 實際方法、參數、模型引用及評分問題 |
+| score_kind | string | 如 bm25／cosine_similarity／rerank_score／rrf；不是機率或全域可比分數 |
+| score_order | string | higher_is_better／lower_is_better；清單按本方向排序 |
+| items | ResultItem[] | 有序候選，可為空；各份清單獨立從 rank=1 起算 |
+
+stage 表達結果如何產生，沒有宣告所有方式都已支援，也不因此新增必要的 UI 模組。source 的 index_ref 是可信 IndexBinding 的邏輯引用，不接受請求任意指定外部 Index。可用方法／欄位仍由 Registry、Config 與權限驗證。
+
+Operation 的四個欄位：
+
+| 欄位 | 型別 | 規則 |
+|---|---|---|
+| method | string | 實際使用的方法，例如 bm25、score_threshold、rerank_api、rrf |
+| parameters | object | 本次真正使用的參數；逐 Method 參數 Schema 仍待核定 |
+| model_ref | string 或 null | 模型／Profile 邏輯引用；無模型時為 null，不放 URL／Secret |
+| scoring_query_id | string 或 null | 實際評分所用問題的 ID，可指向原始或衍生 Query；純候選後處理為 null |
+
+範例 Rerank 明確使用 q0；之後要用當前 query 或 ori_query，由核定配置決定。Fusion 不偽造單一搜尋來源或評分問題。
+
+#### 4.6.4 ResultItem 與分數追溯
+
+| 欄位 | 型別 | 規則 |
+|---|---|---|
+| chunk | Chunk | 沿用固定六個 key，包含下游需要的 fields／metadata；vectors 可為 {} |
+| score | number | 本次 ResultSet 的分數，必須有限 |
+| rank | integer | 目前清單中的順序，從 1 起；篩選／排序後新清單重新編號，來源排名仍可查 |
+| source_refs | SourceRef[] | 原始 Retrieval 為 []；衍生候選列出來源 result_set_id＋chunk_id |
+
+同一 Chunk 在不同 ResultSet 可有不同 score／rank。filter／sort 沿用選定來源分數，Fusion／Rerank 產生新分數，不覆寫原始結果。轉換距離或正規化也應留下原值／轉換關係，具體步驟形狀仍待 Q-011／Q-014。
+
+chunk、ResultItem、ResultSet、QueryContext 與外框不接受額外欄位；Chunk 的 fields／metadata、vectors 的具名向量，以及 Operation.parameters 保持對應的動態容器。分數不加入 Chunk 的第七個 key。
+
+ResultItem 直接帶 Chunk，符合後續無需回查 ParsedDocument 的方向；同一程序內可共用內容物件。範例 JSON 為自包含快照，重複帶內容方便審閱，不要求實作複製多份內容或永久保存全部 Trace。外置 Trace／保留期限仍見 Q-016。
+
+#### 4.6.5 排序、融合與引用規則
+
+- `active_query_ids` 先選 Query，再使用其 `active_result_set_ids`。歷史清單不自動重新參與處理；操作記錄 input_result_set_ids，來源 items 用 source_refs 精確追溯。
+- group_by 對**選入的結果**分組：query_id 表示逐 Query；ori_query_id 表示同原始問題跨 Query。merge_key 決定候選身分，例子使用 chunk_id；如何計分由 method 決定。
+- 不同 score_kind 的 Sum Score 權重／轉換需要另外核定；RRF 依輸入清單各自的 rank 計算。不能直接取不同分數尺度的最大值代表融合。
+- document_id 是文件分組；代表 Chunk／每篇保留 N 個的策略另訂，保留原 chunk_id／引用，不把多個片段偽造成同一 Chunk。
+- None Rerank 原樣傳遞 active 清單，不新增虛構分數。Generation 使用哪份最終結果／如何組 Context 仍需明確配置。
+- JSON Schema 檢查形狀；ID 唯一與引用存在、來源不成環、原始問題不變、同 Chunk 身分一致、rank／score 語意、授權及方法能力仍需 Engine 語意驗證。
+
+#### 4.6.6 四個完整例子
+
+| 檔案 | 輸入／輸出重點 |
 |---|---|
-| original_query | 原始 query_id／文字；Rewrite 不覆寫 |
-| search_queries | 本次實際送搜尋的 Query 清單，含 query_id／文字；由 include_original 控制是否納入原始問題 |
-| chunks | chunk_id → 既有 Chunk；內容共用一份，不把分數塞入 fields／metadata |
-| rankings | 多份具名 RankedList，包含原始檢索、Fusion、Rerank 結果 |
-| active_ranking_ids | 下一步使用哪些排序清單；既有分數仍可追蹤，不靠覆寫單一 current_score 表達 |
+| [01_retrieval.json](../examples/inference/01_retrieval.json) | 一個 q0，全文／向量／標題三路得到 r1／r2／r3；同 Chunk 有多筆 score |
+| [02_filter.json](../examples/inference/02_filter.json) | 從例 01 選 r1 做 score≥10，新增 r4-filter；結果數 3→4，active 只指 r4-filter |
+| [03_rerank.json](../examples/inference/03_rerank.json) | 另從例 01 的 r1 做 Rerank；原始 c1／c2 排序變成 c2／c1，保留兩次評分 |
+| [04_cross_query_fusion.json](../examples/inference/04_cross_query_fusion.json) | q1／q2 各自搜尋，跨 Query 以 chunk_id 做 RRF，輸出 q-merged／m1；原始清單仍可追溯 |
 
-Run／System／授權及 Deadline 仍由 RunContext 提供，與業務狀態分開。此為 Engine 內部傳遞草案，沒有要求 HTTP Query 回傳全部狀態；診斷曝光及保存另由 Q-016／Q-019 決定。
+例 02、03 是例 01 的兩個獨立分支。例 02 為候選分數後處理，不能取代 Retrieval 在 Top-K 前執行的業務 Filter／ACL。
 
-| RankedList 欄位 | 建議責任 |
-|---|---|
-| ranking_id | 本次結果的唯一識別，供下游與來源關聯 |
-| stage | retrieval／fusion／rerank 等產生結果的階段；具體枚舉待決 |
-| search_query_ids | 此結果涵蓋哪些搜尋 Query；跨 Query 融合可有多筆 |
-| route_id、index_ref、field_path | Retrieval 的路徑／邏輯索引綁定／欄位；Fusion 等衍生結果可由輸入關係追溯，不偽造單一 Index |
-| input_ranking_ids | 本次處理使用哪些先前結果；原始 Retrieval 為空清單 |
-| operation | 實際 method／parameters／model_ref 等操作資訊；用來追溯 Fusion 權重、RRF 常數或 Rerank 模型，精確結構待決 |
-| score_kind、score_order | 分數語意與高低方向，例如 BM25、cosine、RRF、reranker score；不是機率或全域可比分數 |
-| items | 有序的 chunk_id／score／rank；rank 以該份清單為範圍，從 1 起 |
-| scoring_query_id（若適用） | Rerank 實際使用的問題，引用 original_query 或 search_queries；與結果涵蓋的搜尋 Query 區分 |
+例 04 的兩份輸入排名為 q1：c1、c2、c3；q2：c2、c3、c1。用 k=60、`sum(1/(60+rank))` 得：
 
-示例只有一個 Chunk，呈現它在三條原始路徑各有一筆分數；實際可有更多候選：
+| 合併後 Chunk | 新 score | 新 rank |
+|---|---|---|
+| c2 | 0.03252247488101534 | 1 |
+| c1 | 0.032266458495966696 | 2 |
+| c3 | 0.03200204813108039 | 3 |
 
-```json
-{
-  "original_query": {"query_id": "q0", "text": "設備多久需要清潔？"},
-  "search_queries": [
-    {"query_id": "q1", "text": "設備保養規範"},
-    {"query_id": "q2", "text": "設備清潔週期"}
-  ],
-  "chunks": {
-    "c1": {
-      "chunk_id": "c1", "document_id": "manual-001", "source_revision": "v1",
-      "fields": {"text": "設備每月需清潔散熱孔。"}, "vectors": {}, "metadata": {}
-    }
-  },
-  "rankings": [
-    {
-      "ranking_id": "r1", "stage": "retrieval", "search_query_ids": ["q1"],
-      "route_id": "text-bm25", "index_ref": "primary", "field_path": "fields.text",
-      "input_ranking_ids": [], "score_kind": "bm25", "score_order": "higher_is_better",
-      "items": [{"chunk_id": "c1", "score": 12.3, "rank": 1}]
-    },
-    {
-      "ranking_id": "r2", "stage": "retrieval", "search_query_ids": ["q1"],
-      "route_id": "text-dense", "index_ref": "primary", "field_path": "vectors.text_vector",
-      "input_ranking_ids": [], "score_kind": "cosine_similarity", "score_order": "higher_is_better",
-      "items": [{"chunk_id": "c1", "score": 0.84, "rank": 1}]
-    },
-    {
-      "ranking_id": "r3", "stage": "retrieval", "search_query_ids": ["q2"],
-      "route_id": "text-bm25", "index_ref": "primary", "field_path": "fields.text",
-      "input_ranking_ids": [], "score_kind": "bm25", "score_order": "higher_is_better",
-      "items": [{"chunk_id": "c1", "score": 9.7, "rank": 1}]
-    }
-  ],
-  "active_ranking_ids": ["r1", "r2", "r3"]
-}
-```
-
-範例 index_ref／route_id／欄位名稱為示意；能力由授權 IndexBinding／Config 提供，不允許請求藉此跨 System 搜尋。Query 向量依 Profile 產生，完整向量不必傳到 Rerank／Generation。這些 Inference 分數不新增至持久化 Chunk。
-
-待討論的處理規則：
-
-- Retrieval 建立每個 Query×搜尋路徑的清單；以 chunk_id 共用內容，不先把分數加總成唯一值。
-- Fusion 選定輸入清單並建立新 RankedList，記錄方法／參數與 input_ranking_ids；原始分數不刪除。
-- Rerank 同樣建立新清單及分數，記錄模型與實際評分問題；None 原樣傳遞，不偽造分數。
-- 每份清單內的 rank 獨立；同 Chunk 出現在不同清單是合法的。Top-K／Top-N 截斷及保留政策需依階段配置，不能因內容共用就視為已做分數融合。
-- 原始距離／分數需保留來源與方向；若轉成 relevance 或正規化，須記錄原值及轉換方法。不同 score_kind 的可比性、Sum Score 權重與轉換由 Q-011／Q-014 核定。
-- Generation 需明確知道採用哪份排序／如何組 Context；多份 active 清單如何收斂、可插入融合的合法位置及預設仍待討論。
-
-先確認這些資料責任，再核定實際 Score／RankedList 型別、融合步驟、分組與 API 診斷形狀；不由本草案選定預設融合方案。
+原始 q0 沒有搜尋結果，仍在快照中作原始問題引用；最後 active_query_ids 只含 q-merged，該物件的 active_result_set_ids 只含 m1。融合位置與預設方法仍由 Q-014 討論；這是分數可驗算的例子，不是選定所有場景的預設。
 
 ## 5. 共用執行與錯誤物件
 
