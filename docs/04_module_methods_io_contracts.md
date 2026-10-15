@@ -1,6 +1,6 @@
 # RAG Engine — 組裝、執行與模組開發規格
 
-> 文件集 v0.9 · 2026-10-15 · 開發規格草案
+> 文件集 v0.10 · 2026-10-15 · 開發規格草案
 >
 > 本文涵蓋可獨立執行的 Engine 與各模組；共用資料／Config 唯一定義見 05。既有產品語意為已確認方向，新增 SDK、Registry 形狀、執行政策為建議，須經對應 Q-ID 核定。本次未新增 Engine 程式。
 
@@ -9,7 +9,7 @@
 **開發者提供 Config 及必要服務，即可直接執行 Ingestion／Inference；不需要 Builder UI、Builder DB 或 HTTP。**Engine 負責模組組裝，07 只呼叫此能力並包裝 API／工作狀態。
 
 Ingestion：Import → Parsing → Chunking → Embedding → Indexing。
-Inference：Query Transformation → Retrieval → Rerank → Generation。
+Inference 基線：Query Transformation → Retrieval／Fusion → Rerank → Generation。目標需可設定融合策略與合併時點；Engine 依核定 Fusion Plan 保留逐路結果與組合 Fusion／Rerank，見 §5.2。
 Evaluation：重用相同檢索／問答入口的評估邏輯，任務排程與報告儲存由 07 負責。
 
 - 固定 Pipeline，不要求使用者建 DAG。
@@ -83,7 +83,7 @@ supports: {async: true, batch: true, streaming: false}
 | Embedding | Chunk 清單 | 相同成功 Chunk＋vectors | Profile、逐項錯誤；不回獨立 VectorSet |
 | Indexing | 帶向量或純文字的 Chunk 清單 | IndexBinding、逐項結果、可搜尋狀態 | 授權目標／刪除事件；提交政策待決 |
 | Query Transformation | 原始問題 | 原始問題＋SearchQuery 清單 | llm_ref、Prompt |
-| Retrieval | SearchQuery 清單、IndexBinding、filters | 原始問題＋SearchHit 清單 | Query Encoding、可信授權範圍 |
+| Retrieval | SearchQuery 清單、IndexBinding、filters | 基線為原始問題＋SearchHit 清單；可配置 Fusion Plan 需保留逐路候選，形狀待 Q-002／Q-014 | Query Encoding、可信授權範圍、query／route identity |
 | Rerank | 原始問題、SearchHit 清單 | 重排後 SearchHit 清單、applied | 模型服務與內容欄位 |
 | Generation | 原始問題、SearchHit 清單 | QueryResult | 共用 LLM、Context Budget |
 | Evaluation | Dataset、Target | 逐題結果與指標摘要 | 版本綁定、Judge；工作儲存由 07 提供 |
@@ -230,16 +230,20 @@ FAISS 的維度／metric 不足以證明向量空間相容。cosine／inner prod
 6. 排序後取最終 top_k，再批次取回完整內容並保留排序。
 7. vectors 可省為 {}，Rerank／Generation 無須知道 MongoDB 或 FAISS。
 
-**已確認融合方向**：第一版用一個融合選項作用於所有 Query × 欄位路徑，融合在 Rerank 前。單一路不額外融合。
+**需求與基線要分開**：使用者在 2026-10-14 明確追問「在哪一步合併」，因此目標必須能表達融合策略及合併時點。既有 Prototype 為所有 Query × 欄位單層融合、Rerank 前執行；不能把此實作限制寫成最終產品定案。單一路是否略過融合仍需依有效計畫判斷。
 
-- Sum Score（預設）：`sum(weight × relevance_score)`；未命中該路為 0；同類型欄位及各 Query 共用全文／向量權重；不自動正規化。
+需在 Q-014 核定的計畫涵蓋範圍：同一 Query 內多欄位融合、跨 Query 融合、Rerank 前或後執行。先逐 Query Score Sum、再跨 Query RRF 是已討論情境；助理提出的具體 stage 枚舉、Global Fusion 與預設兩層計畫尚未取得使用者定案。
+
+Engine 必須在計畫需要時保留 query_id／route_id、各路候選／分數／rank，不能先攤平成唯一 SearchHit 清單而丟失後續跨 Query 融合所需資訊。規格核定前可交付現有單層基線，但不得宣稱合併時點選擇已完成。
+
+- Sum Score（現有單層基線預設）：`sum(weight × relevance_score)`；未命中該路為 0；同類型欄位及各 Query 共用全文／向量權重；不自動正規化。
 - RRF：`sum(1 / (k + rank))`；各路 rank 從 1；預設 k=60。
 
-原始 BM25／向量分數尺度可能不同，預設 Sum Score 是已選定語意，不等於等權就有相同實際影響。距離轉換、同分順序、各路候選截斷的評估仍需 Q-011／Q-014。
+原始 BM25／向量分數尺度可能不同；現有單層基線採 Sum Score，不等於等權就有相同實際影響，也不預先決定新 Fusion Plan 的預設。距離轉換、同分順序、各路候選截斷的評估仍需 Q-011／Q-014。
 
-同文件片段分組不是 chunk_id 去重。max_chunks_per_document、先同 Query 融合再跨 Query 融合、Rerank 後融合曾被提出，但尚未採為本版規格，追蹤 Q-014。
+同文件片段分組不是 chunk_id 去重。max_chunks_per_document 仍待定。融合計畫的具體規格追蹤 Q-014：若先逐 Query Rerank 再跨 Query 融合，需定義 Rerank 的問題、每路 Top-N、跨路相同 Chunk 與分數比較，不能只搬動一條流程箭頭；Rerank=None 時也不能無聲丟掉必要融合。
 
-**驗收**：同 Chunk 多路命中只回一次；少於 K 或零筆為合法；多路套用同一授權限制；融合可用小型人工排名驗算；無效 filter 拒絕而不改為無條件查詢。
+**驗收**：同 Chunk 多路命中按計畫去重；少於 K 或零筆為合法；多路套用相同授權；融合可人工驗算；無效 filter 拒絕而不變無條件搜尋。合併時點核定後，另驗證逐 Query／跨 Query 與 Rerank 次序、各階段截斷及 Trace；不能只有策略下拉選單而沒有實際路徑變化。
 
 ### 5.3 Rerank
 

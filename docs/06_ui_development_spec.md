@@ -1,8 +1,8 @@
 # RAG Builder — 使用流程與 UI 開發規格
 
-> 文件集 v0.9 · 2026-10-15 · 開發規格草案
+> 文件集 v0.10 · 2026-10-15 · 開發規格草案
 >
-> 本文定義 UI 目標互動。現有 HTML Prototype 的操作可作參考；其中搜尋、模型、評估及 API 為模擬。基本／進階的精確分組、正式前端框架、範本及試跑優先級仍待決。
+> 本文定義 UI 目標互動。現有 HTML Prototype 的搜尋、模型、評估及 API 為模擬。Parsing 的預設收合、LLM／Prompt／範例按鈕等已確認要求如下；其他基本／進階分組、正式框架、範本與試跑優先級仍待決。
 
 ## 1. 目標、相依與範圍
 
@@ -35,18 +35,31 @@ Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保�
 
 表單順序：Document Schema → 共用 LLM／外部服務 → Ingestion 模組 → Inference 模組。Document Schema 是系統契約，不是 Pipeline 中新增的一步。服務可由相應模組開啟管理，但引用同一服務資料。
 
-### 3.2 基本／進階（以下分組是建議，Q-025）
+### 3.2 已確認互動與基本／進階分組
+
+以下涵蓋已確認的使用者要求及既有 Prototype 行為（U／B 來源見 08 §10）；不將明確要求重新列為是否需要的待決項目：
+
+- Parsing 初始只顯示「結構化 JSON」；其他格式及所有相關設定集中在預設關閉的「進階選項」，展開才出現。正式 Parser 能力另依 Q-005，顯示選項不等於可執行。
+- Create／Edit 前段有 Document Schema；先宣告 fields／metadata，再產生下游欄位選項。
+- LLM 服務集中管理；Rewrite／Multi-query／Generation 在需要時以下拉引用，同一服務不重填連線。
+- Rewrite／Multi-query 的 Prompt 可編輯，分別保留草稿；提供變數插入、驗證與預覽。
+- Generation 有「模板說明與範例」及「套用範例」入口，展示兩筆 Chunk→逐筆模板→Context→完整回答 Prompt。
+- Rerank 可查看固定平台 Request／Response 範例及 index／score 對應說明；不宣稱是所有模型的統一標準。
+- collection 由 Workspace＋System 名稱／穩定 ID 自動帶入且唯讀；改顯示名稱不換既有實體。
+- Retrieval 不另選 Implementation；由使用者選全文／向量欄位推導模式。融合除演算法外，還需可設定合併時點；正式時點選項與兩層 UI 待 Q-014。
+
+下表其餘分組仍為建議，待 Q-025；其中 Parsing 與上述已確認方向不可退回待定。
 
 | 區塊 | 基本預設呈現 | 展開進階呈現 |
 |---|---|---|
 | Document Schema | 主要 text、需要的內容欄位、metadata | 型別、required／default／source、unknown_fields |
 | 服務 | DEV／自行提供、必要 URL／模型／認證引用 | Timeout、精確 Profile／Tokenizer 等 |
-| Parsing | 結構化 records；支援格式摘要 | Parser routes、OCR／標題／表格能力 |
+| Parsing（已確認） | 只顯示結構化 JSON | 其他格式及相關設定全部收在預設關閉進階區 |
 | Chunking | 方法、主要切分欄位、複製欄位 | Size／Overlap、Tokenizer、分隔符、標題層級 |
 | Embedding | 來源欄位、輸出向量、模型 | 維度／Encoding／Normalization、Batch、輸入限制 |
 | Indexing | 後端、保存／全文／向量欄位、過濾能力 | 後端特有參數、進階 Mapping（支援後才顯示） |
 | Query Transformation | None／Rewrite／Multi-query、LLM | Prompt、count、include_original |
-| Retrieval | 搜尋欄位、Top-K、推導模式 | 每路 K、融合與參數、預設 filters |
+| Retrieval／Fusion Plan | 搜尋欄位、Top-K、推導模式 | 每路 K、演算法、同／跨 Query 範圍及合併時點、預設 filters；細節 Q-014 |
 | Rerank | None／服務、內容欄位、Top-N | Timeout／服務輸入限制 |
 | Generation | LLM、回答要求 | 兩層模板、變數、Temperature、Budget |
 
@@ -124,7 +137,7 @@ Prototype 限制 ≤1 MB 且在瀏覽器讀取，不等於正式產品限制。�
 | 進階 | 原始與衍生 Query、各路候選、融合結果、Rerank 前後、實際 Context、耗時／用量 |
 | 版本 | config_revision、index_generation、request_id；不可顯示為另一版的結果 |
 
-Trace 保存與敏感內容政策見 Q-016；診斷顯示範圍 Q-025。Filter 預設條件與本次附加條件要區分，空清單不能取消後端 ACL。API 說明隨時可查看，不需先 Ingestion。
+Trace 保存與敏感內容政策見 Q-016；診斷顯示範圍 Q-025。Filter 預設條件與本次附加條件要區分，空清單不能取消後端 ACL。API 說明隨時可查看，不需先 Ingestion。Ingest／Inference 皆有「查看 API 端點」入口，內容包含當前 Base URL、認證示意、JSON／multipart、cURL、回應與錯誤；Ingest 另示範 run_id 輪詢。查看說明不執行工作或模型／DB 測試。
 
 ## 7. Evaluation 與 Edit Config
 
@@ -171,7 +184,8 @@ UI Mock、Schema 驗證、HTTP integration、實際端對端驗收分開記錄�
 | [Q-015](08_implementation_plan.md#q-015) | 保存／版本衝突、CSV 映射與 Revision |
 | [Q-019](08_implementation_plan.md#q-019) | API 認證、檔案大小、工作查詢及錯誤 Envelope |
 | [Q-024](08_implementation_plan.md#q-024) | 真實 AI 模型、樣本範圍、結構化輸出、合併與撤銷 |
-| [Q-025](08_implementation_plan.md#q-025) | 基本／進階的最終分組、預設、試跑／範本／診斷範圍 |
+| [Q-025](08_implementation_plan.md#q-025) | 除已確認 Parsing 等要求外，其餘分組、試跑／範本／診斷範圍 |
+| [Q-014](08_implementation_plan.md#q-014) | 融合範圍與合併時點的正式選單、相依卡控及預設 |
 | [Q-018](08_implementation_plan.md#q-018) | Evaluation 介面指標、比較與 Gate |
 
 決策狀態與實作階段見 [08](08_implementation_plan.md)。

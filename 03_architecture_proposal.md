@@ -1,6 +1,6 @@
 # RAG Builder — 系統概覽與架構
 
-> 文件集 v0.9 · 2026-10-15 · 開發規格草案
+> 文件集 v0.10 · 2026-10-15 · 開發規格草案
 >
 > 本輪重整 03～08 的責任，保留既有已確認方向。本文負責產品與架構總覽，具體規格及未決問題見專題文件與 08。文件更新不表示 Engine、Runtime API 或部署服務已實作。
 
@@ -59,7 +59,7 @@
 | Runtime API | HTTP 對應、任務包裝、Engine 生命週期、健康檢查 | 獨立部署後不依賴 Builder |
 | 外部依賴 | LLM、Embedding、Rerank、ES、選配 MongoDB、Secret 與觀測服務 | 不隨 YAML 自動建立 |
 
-技術方向為 Python、Pydantic 與部門既有 LangChain／LangGraph 生態。固定 Pipeline 可直接組裝；LangGraph 有實際狀態／分支需求時再引入。套件版本及前後端框架見 [Q-001](docs/08_implementation_plan.md#q-001)。
+技術方向以 Python、Pydantic 與部門既有 LangChain／LangGraph 生態為基礎；使用者已說明部門技術棧，Haystack 是早期比較候選，不是本專案已選框架。固定模組骨架可直接組裝，受控融合路徑不等於通用 DAG 編輯器。套件版本及前後端框架仍見 [Q-001](docs/08_implementation_plan.md#q-001)。
 
 ## 4. 使用流程與執行入口
 
@@ -72,7 +72,16 @@
 
 1～5 與 Edit Config 屬 Builder 測試範圍，6 在其外。這是引導順序；Build 後可匯出草稿，Ingestion／Inference 可重複，Evaluation 不要求先手動問答。是否強制 Evaluation Release Gate 另決。
 
-流程圖：[L1 PNG](diagrams/01_user_system_l1.png)、[Mermaid](diagrams/01_user_system_l1.mmd)、[固定版面 SVG](diagrams/01_user_system_l1.svg)。架構圖：[PNG](diagrams/02_infra_architecture.png)、[Mermaid](diagrams/02_infra_architecture.mmd)。本輪重整文字規格，不修改既有圖面。
+流程圖：[L1 PNG](diagrams/01_user_system_l1.png)、[Mermaid](diagrams/01_user_system_l1.mmd)、[固定版面 SVG](diagrams/01_user_system_l1.svg)。架構圖：[PNG](diagrams/02_infra_architecture.png)、[Mermaid](diagrams/02_infra_architecture.mmd)。本輪核對文字與既有圖面，不修改已確認版面。
+
+圖面的既有使用者要求也屬規格，後續更新須保持：
+
+- L1 的 1～5 左到右同一水平列，與「修改 Config」位於「RAG Builder測試」框內；6「Deploy YAML in FTEST/ENT」在框外右側。
+- 下方測試實體名稱為「RAG System for RAG Builder 測試」；6 以虛線連其下方「RAG System in k8s」，YAML 設定檔另有虛線連到該實體。
+- Evaluation→Export 標示「準備部署到 k8s」；Evaluation→修改 Config 標示「驗證不達標，需調整」。修改後依 Ingestion／Inference 變更返回相應步驟，並以虛線更新測試實體。
+- Infra 使用「RAG Builder Control Plane」，明列 Frontend／Backend；Config／Validator／服務設定及 Export 合併為 Backend 職責，不因圖面重畫拆成必要微服務。
+- tSSO 作登入入口；Backend 的「建立／設定 Engine」連到整個 DEV RAG Runtime 邊界，由 Runtime 內部組裝。Engine 標籤不加「含 Local Search」。
+- FTEST/ENT YAML 使用文件形狀；Secret Vault、部署依賴、觀測工具在獨立 Runtime 外。Config Store 保持簡化；本版圖不畫 Evaluation→Store、Backend→tSSO 線，這是圖面省略，不代表取消評估保存或後端授權驗證。
 
 | 面向 | Builder 測試 | 獨立 Runtime |
 |---|---|---|
@@ -87,10 +96,10 @@
 | 流程 | 執行順序 |
 |---|---|
 | Ingestion | Import → Parsing → Chunking → Embedding → Indexing |
-| Inference | Query Transformation → Retrieval（Query Embedding／融合）→ Rerank → Generation |
+| Inference | Query Transformation → Retrieval → 按核定 Fusion Plan 組合融合／Rerank → Generation；現有 Prototype 基線為融合在前 |
 | Evaluation | Dataset → 呼叫相同檢索／Inference 入口 → 指標 → 報告 |
 
-全文模式可略過 Embedding；None 模組明確 pass-through。Ingestion 與 Inference 透過 IndexBinding 銜接，不是同一次串行呼叫。資料形狀見 05。
+全文模式可略過 Embedding；None 模組明確 pass-through。Ingestion 與 Inference 透過 IndexBinding 銜接，不是同一次串行呼叫。使用者已要求可設定融合策略及合併時點；現有 Prototype 的單層、Rerank 前融合是實作基線，不是限制最終產品。具體路徑、兩層融合及預設計畫由 Q-014 核定，見 04／05。
 
 | 搜尋模式 | 搜尋與資料 | 執行限制 |
 |---|---|---|

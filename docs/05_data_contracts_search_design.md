@@ -1,6 +1,6 @@
 # RAG Builder — 共用資料模型與 Config 規格
 
-> 文件集 v0.9 · 2026-10-15 · 開發規格草案
+> 文件集 v0.10 · 2026-10-15 · 開發規格草案
 >
 > 本文是資料形狀及設定規則的權威位置。已確認的語意保留；新增的程式型別、完整 Config 拼字與預設值為建議草案，待 Q-002 核定後才凍結。YAML 範例用於討論與驗收設計，目前沒有 Engine 可直接執行。
 
@@ -25,6 +25,10 @@
 | run_id／request_id／trace_id | 批次工作、單次請求及追蹤識別 | 已確認方向；線上包裝 Q-019 |
 
 CSV 每列是邏輯文件。跨批更新需映射穩定鍵；Prototype 的批次自動 ID 不能宣稱可跨次穩定。檔案拆為多份文件時保留來源資產關聯，不能讓所有列沿用同一 document_id。
+
+### 2.1 collection 命名（已確認方向）
+
+Builder 由 Workspace＋RAG System 名稱自動產生邏輯 collection，使用者不用手填。既有實作附穩定 System ID，避免同名及正規化碰撞；建立後改顯示名稱不更換實體名稱。UI 顯示唯讀，ES／Local／MongoDB 實體綁定由 Adapter 管理。正規化演算法、長度與匯入既有集合的權限規則仍屬 Q-007／Q-019，不重開「是否自動命名」的方向。直接 Engine 則使用 Config／可信 Binding 中明確的集合，不依賴 Builder 才可運作。
 
 ## 3. Document Schema
 
@@ -176,7 +180,7 @@ failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項�
 | Embedding | fields → 命名 vectors | profile、mappings（source_field、output_name） |
 | Indexing | 儲存、全文、向量、過濾分開 | backend、collection、stored_fields、fulltext_fields、vector_fields、filter_fields、persistence、metric |
 | Query Transformation | None／Rewrite／Multi-query | method、llm_ref、prompt、count、include_original |
-| Retrieval | 選已索引欄位；推導模式 | fulltext_fields、vector_fields、per_route_k、top_k、filters、fusion |
+| Retrieval／Fusion Plan | 選已索引欄位、推導模式；可配置策略及合併時點 | fulltext_fields、vector_fields、per_route_k、top_k、filters、fusion；stages／scope／placement 具體 Schema 待 Q-014 |
 | Rerank | None／DEV／Rerank API | method、service、content_fields、top_n |
 | Generation | 兩層模板、共用 LLM | llm_ref、chunk_template、prompt、temperature、max_output_tokens、context_budget |
 
@@ -190,14 +194,16 @@ failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項�
 | Embedding mappings | 來源為有效文字欄位；output_name 唯一；有限值、維度與 Profile 相容 |
 | Indexing | 搜尋欄位與上游一致；必要識別／來源／ACL 強制保留；下游使用欄位已保存 |
 | Retrieval | 至少一路；每路及最終 K 為正整數；僅選已建立索引；Query Profile 由向量欄位繼承 |
-| Fusion | 多 Query 或多欄位時適用；單一路保留原排序；更換策略只使用該策略有效參數 |
-| Sum Score | 預設策略；全文／向量權重預設各 1，有限非負，使用中至少一個大於 0；不自動正規化 |
+| Fusion | 多 Query／多欄位需有明確計畫；基線為單層 Rerank 前，目標支援時點選擇；只使用已選策略有效參數 |
+| Sum Score | 現有單層基線的預設；全文／向量權重預設各 1，有限非負，使用中至少一個大於 0；不自動正規化 |
 | RRF | rank 從 1；k 預設 60 且為正整數；k 與 Top-K 不同 |
 | Rerank | None 不執行且不使用 top_n；啟用時 0 < top_n ≤ Retrieval top_k |
 | Templates | 只允許宣告變數；單次替換；未知／必要變數缺少阻止保存 |
 | LLM | 引用有效；刪除使用中的服務不得默默換另一個 |
 
 純 BM25 可跳過 Embedding，但 Chunking 仍需 Tokenizer。複製欄位長度可能大於 Chunk Size，Embedding 必須逐項檢查實際輸入。Tokenizer、模型極限及溢位政策見 Q-004。
+
+**融合配置的目標要求已存在，細節尚待 Q-014**：必須能區分演算法、融合範圍（同 Query／跨 Query）與執行時點（Rerank 前／後）。可選兩層及預設計畫的精確支援範圍、route 型別、Top-K／Top-N 與分數語意需再核定；不能把全部合併為一個 fusion.method 後宣稱符合需求。`fusion.stages[]` 是先前助理提出的 Schema 候選，尚非已定欄位。
 
 ### 6.4 過濾條件
 
@@ -211,7 +217,7 @@ Indexing 宣告可過濾欄位；Retrieval 保存預設條件；Query API 可加
 
 ## 7. 完整 Config 範例（建議草案）
 
-以下是完整的 **Local Search／Memory、文字＋向量、外部模型服務**範例。服務 URL 使用不可運作的 `.invalid` 網域，Secret 只示意引用；它可用於 Schema 設計與測試材料，不代表現在已能執行。正式預設／拼字核定後應抽出 examples/configs 並以 Schema 驗證。
+以下是 **既有單層融合基線的完整 Local Search／Memory 配置草案**，不是完整實現合併時點需求的最終配置。服務 URL 為不可運作的 `.invalid` 網域，Secret 只示意引用；可作 Schema 設計與測試材料，現在沒有 Engine 可執行。Q-002／Q-014 核定後應另提供 Fusion Plan 範例、migration 與 Schema 驗證。
 
 ```yaml
 contract_version: "0.1-draft"
@@ -335,6 +341,7 @@ CSV 映射保存、Revision 計算、canonical JSON／Hash 演算法、部署覆
 | [Q-007](08_implementation_plan.md#q-007) | ID／source_revision 演算法與檔案派生 |
 | [Q-008](08_implementation_plan.md#q-008) | 同 ID／版本重送、更新及刪除 |
 | [Q-013](08_implementation_plan.md#q-013) | 缺值、多值與 pre-filter 精確語意 |
+| [Q-014](08_implementation_plan.md#q-014) | 已要求的融合策略／範圍／時點如何配置、路徑與預設 |
 | [Q-015](08_implementation_plan.md#q-015) | Revision、Hash、Index 版本及映射變更 |
 
 ## 10. 交付與驗收要求

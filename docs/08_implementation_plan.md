@@ -1,6 +1,6 @@
 # RAG Builder — 開發計畫、驗收與決策追蹤
 
-> 文件集 v0.9 · 2026-10-15 · 開發規格草案
+> 文件集 v0.10 · 2026-10-15 · 開發規格草案
 >
 > 目的：讓 coding agent 依同一套規格分階段開發，並持續記錄尚不清楚的問題。本文是決策／待決狀態的權威位置；它不把技術建議自動轉成使用者已核可決策。
 
@@ -8,7 +8,7 @@
 
 | 狀態 | 意義 | Agent 行為 |
 |---|---|---|
-| 已確認 | 本輪對話明確採用的方向 | 按規格實作；變更需提出理由與影響 |
+| 已確認 | 目前或先前使用者對話明確採用／要求的方向 | 按規格實作；細節未決不重開需求本身 |
 | 既有基線 | 本輪整理前 repository 最新文件已記錄的有效設計 | 保留，不回到舊版；遇衝突回報 |
 | 建議／待決 | 有候選方案，尚未定案 | 可寫介面／測試替身，不宣稱正式行為已核可 |
 | 後續 | 不在目前承諾範圍 | 未被任務指定時不自行開發 |
@@ -47,7 +47,7 @@
 | D-08 | Embedding fields→vectors；摘要先由輸入提供；文字 Dense 優先 | 舊 05 §6／既有基線 | 04／05 |
 | D-09 | ES／Local Search（FAISS＋BM25）；Local Memory／MongoDB | 舊 05 §8／既有基線 | 03／04 |
 | D-10 | Local Search 同程序／單副本；MongoDB 只持久化並支援重建 | 舊 03 §5.3／既有基線 | 04／07 |
-| D-11 | 多 Query×欄位在 Retrieval 依 chunk_id 融合，進 Rerank 前完成；預設 Sum Score，可選 RRF | 舊 05 §13.4／§17／既有基線 | 04／05 |
+| D-11 | 現有 Prototype 為單層、Rerank 前、Sum Score／RRF；這是既有實作基線，不限制可配置合併時點的目標 | 舊 05 §17＋2026-10-15 歷史核對 | 04／05 |
 | D-12 | Sum Score 不自動正規化；RRF 預設 k=60；兩種策略有效參數分開 | 舊 05 §17／既有基線 | 04／05 |
 | D-13 | System 共用 LLM 清單；Rewrite／Generation 以 llm_ref 引用 | 舊 05 §14／既有基線 | 05／06 |
 | D-14 | 原始問題保留；Rerank 使用平台約定 API；Generation 兩層單次模板替換 | 舊 05 §13～14／既有基線 | 04／05 |
@@ -57,8 +57,15 @@
 | D-18 | DEV 服務只供測試；部署覆寫不改測試 Config；只輸出 Secret 引用，不搬資料 | 舊 03 §4／§8／既有基線 | 03／07 |
 | D-19 | FTEST／ENT 由使用單位自行 K8s 部署，Runtime 不依賴 Builder 管理 UI | 舊 03 與最新圖／既有基線 | 03／07 |
 | D-20 | Evaluation 重用相同查詢／檢索，版本與缺標註需可追蹤；首批指標與 Gate 待定 | 舊 04／03／既有基線 | 04／07 |
+| D-21 | collection 由 Workspace＋System 名稱自動產生，不要求手填；穩定 ID 防重，改名不換實體 | 2026-10-14 09:31（台北）使用者要求／已確認 | 05／06／07 |
+| D-22 | Parsing 只顯示結構化 JSON；其他格式及所有相關設定預設收合 | 2026-10-14 17:09 使用者要求／已確認 | 06 |
+| D-23 | 目標需可配置融合策略與「在哪一步合併」；具體 stages／兩層／預設計畫尚待 Q-014 | 2026-10-14 17:41～17:42 使用者追問／需求已確認 | 03／04／05／06／07 |
+| D-24 | 共用 LLM、可編輯 Query Prompt、Generation 模板範例／套用按鈕與 Rerank 格式說明 | 2026-10-14 10:44～11:00 對話／已確認方向 | 04／05／06 |
+| D-25 | L1／Infra 的框、標籤、方向、圖示及省略線依使用者既有修改保留 | 2026-10-14～15 對話與基準圖／已確認 | 03 §4／既有圖面 |
+| D-26 | Ingest／Inference 的 API 端點說明隨時可看，包含未 Ingestion 狀態 | 2026-10-14 13:11 使用者要求／已確認 | 06／07 |
+| D-27 | 以部門 LangChain／LangGraph 生態為技術背景；Haystack 未被使用者選定 | 2026-10-12 15:58 對話核對／已確認偏好 | 03／04／Q-001 |
 
-「既有基線」不代表每個低層細節已完整。若需更換單層融合、加入多層融合／Rerank 後合併，必須先更新 Q-014 與相應文件，不能用其他對話中的提問直接取代 D-11。
+「既有基線」不代表已涵蓋後續需求。D-23 的合併時點配置是使用者已提出的目標，不能以 D-11 的 Prototype 限制否決；Q-014 負責核定實際支援路徑及契約，不再討論是否記錄這項需求。助理建議的預設兩層計畫及 stage 命名則仍未定案。
 
 ## 4. 開發階段與驗收
 
@@ -68,7 +75,7 @@
 |---|---|---|---|
 | M0 契約與專案基礎 | 先定 Q-001／Q-002；未決問題可獨立起草 | 版本鎖、程式結構、Pydantic／JSON Schema、完整範例及錯誤例 | 從乾淨環境可安裝；範例通過 Schema，錯誤可定位；無需 Builder |
 | M1 最小獨立 Engine | Structured records／Recursive／Dense／Local Memory／Query；依賴模型、Token、索引與失敗政策 | 可直接 Python／CLI 操作的 Engine；真實 Adapter＋隔離測試替身 | 手寫 Config ingest→query；檢索真的使用資料；引用可對回；程序重啟後正確不就緒 |
-| M2 能力與後端 | 多欄位、BM25／融合、Rewrite／Multi-query、Rerank、ES／MongoDB；Parser 依 Q-005 分批 | Adapter／Registry、Manifest、各模式範例與契約測試 | ES 與 Local 對外契約一致；MongoDB 恢復不重跑 Embedding；Filter／多路融合可驗算 |
+| M2 能力與後端 | 多欄位、BM25／融合、Rewrite／Multi-query、Rerank、ES／MongoDB；Parser 依 Q-005，Fusion Plan 依 Q-014 分批 | Adapter／Registry、Manifest、合併時點與策略配置、各模式範例與契約測試 | ES／Local 契約一致；MongoDB 恢復不重跑 Embedding；Filter／多路融合可驗算；核定時點改變真實路徑 |
 | M3 Runtime API | 包裝已可用 Engine；定 API／工作／認證／併發 | OpenAPI、Runtime 服務、Job Store 政策、SDK／cURL 範例 | SDK／HTTP 相容；202 可查結果；失敗／重送／重啟行為有證據 |
 | M4 Builder 串接 | 管理儲存、Create／Edit、CSV／Schema、漸進式 UI | Backend、正式 Frontend、System／Revision／Binding | UI 呼叫相同 Runtime；取消不改配置；變更影響正確；可處理版本衝突 |
 | M5 評估與 AI 助手 | Q-018／Q-024；可先用規則或 Fake 驗證流程 | Dataset／Runner、報告、真實助手及結構化建議／Diff | 無標註不造分；報告綁版本；助手不直接改 active Config，不執行 Ingestion |
@@ -119,12 +126,12 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 
 ## 6. 待討論與決策登錄
 
-以下均為 **OPEN／待決**。負責角色是建議協作對象，不指定尚未確認的人名。每項都保留「決策：未定」；確認後填日期、依據及受影響文件，完成實作驗收後才標記關閉。
+以下 Q-ID 均仍有 **OPEN／待決細節**，不代表各項上位需求未被確認。尤其 Q-014 的時點配置、Q-025 的 Parsing 預設收合已有明確方向，只核定餘下細節。負責角色是建議協作對象；每項保留決策欄，確認後填日期、依據與受影響文件，實作驗收完成後才關閉。
 
 <a id="q-001"></a>
 ### Q-001 技術棧、版本與相容矩陣
 
-- 不清楚：Python／LangChain／Pydantic 版本、Web／前端框架、ES 目標版本與授權；BM25／Tokenizer 套件。
+- 已有方向：使用部門 LangChain／LangGraph 生態，並以 Python／Typed Contract 進行設計；不重新把 Haystack 當成已選框架。不清楚的是套件版本、Web／前端框架、ES 版本／授權及 BM25／Tokenizer。
 - 建議：沿用 Python／既有生態；選最小必要套件並鎖定。Web Framework／前端沿用部門標準；具體版本要實測再鎖。
 - 替代：以專案獨立技術棧開發，需增加維運／整合評估。
 - 負責角色：技術負責人＋Engine／前後端；阻擋 M0 正式依賴及 M2 ES 選型。
@@ -239,13 +246,14 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 - 決策：未定；更新 04／05／07。
 
 <a id="q-014"></a>
-### Q-014 融合細節、分組與擴充位置
+### Q-014 融合計畫、合併時點與分組細節
 
-- 不清楚：同分順序、每路截斷、Query／欄位權重、文件分組；是否加入同 Query／跨 Query 兩層融合或 Rerank 後合併。
-- 建議：先保留 D-11 單層、Rerank 前融合；同分採可重現次序。其他階段／文件分組另立明確設定與驗收。
-- 替代：兩層融合／Rerank 後合併，需先改 Pipeline 與 Trace／Top-K 定義。
-- 負責角色：產品＋Engine；阻擋新增融合／分組能力，基線演算法仍需核定 tie 與 score。
-- 決策：未定；更新 04／05／06。
+- 已有需求：使用者要求可配置融合策略及「在哪一步合併」，並提出逐 Query Score Sum→跨 Query RRF 情境；D-23 已記錄，不能只當可做可不做的助理建議。
+- 不清楚：正式支援哪些前／後 Rerank 路徑、單層／兩層、scope／stage Schema、預設計畫、每階段 K／N、Rerank Query、同分／重複候選、分組與分數語意。
+- 候選：受控 Plan A（同 Query 融合→跨 Query 融合→Rerank）、Plan B（同 Query 融合→逐 Query Rerank→跨 Query 融合）、舊單層基線。這些具體組合與 `fusion.stages[]` 都需核定；不自動選助理推薦當預設。
+- 建議：先定可驗證的有限計畫及共同 route 型別，保留 query／route identity；Rerank=None 及非法組合須顯式驗證。文件分組另定，不與 chunk_id 去重混同。
+- 負責角色：產品＋Engine＋Frontend；阻擋目標時點配置的契約／驗收，可先維持舊基線做迭代但不宣稱需求完成。
+- 決策：配置能力的需求已確認；具體計畫／預設／Schema 未定。同步更新 03～07 與範例。
 
 <a id="q-015"></a>
 ### Q-015 Revision、有效 Config Hash 與 Index 版本
@@ -340,11 +348,11 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 <a id="q-025"></a>
 ### Q-025 漸進式 UI、範本與小量試跑
 
-- 不清楚：哪些基本欄位、哪些進階、預設／展開記憶、進階改動摘要、範本、真實 Preview／試跑、診斷資訊範圍。
-- 建議：先核定 06 的分組；必填錯誤可定位；保持同一 Config。試跑與範本依任務逐項啟用。
+- 已確認：Parsing 初始只顯示結構化 JSON，其他格式／設定全在預設關閉進階區；LLM／Prompt／範例及 API 說明要求見 06 §3.2。待定的是其餘基本／進階分組、展開記憶、改動摘要、範本、真實試跑與診斷範圍。
+- 建議：保留已確認互動，再核定其餘分組；必填錯誤可定位，保持同一 Config。試跑與範本逐項啟用。
 - 替代：單獨新手／專家入口，但兩者仍需共享 Config／驗證。
 - 負責角色：產品＋Frontend；阻擋 M4 正式 UX 凍結，不卡 Schema／Engine。
-- 決策：未定；更新 03／06。
+- 決策：既有明確互動照定案保留；其餘分組／試跑／範本未定。更新 03／06。
 
 <a id="q-026"></a>
 ### Q-026 測資、環境與測試工具
@@ -393,4 +401,84 @@ Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract�
 
 ## 9. 本輪交付與尚未完成
 
-本輪交付：重整 03～05、新增 06～08、更新 README 導覽；統一資料與 Engine 邊界，保留既有設計並登錄 27 項 OPEN 問題。僅驗證文件連結／一致性與示例語法，不宣稱正式 JSON Schema、Engine、API、Fixture、Deployment 或真實 AI 已完成。
+初版交付（v0.9）：重整 03～05、新增 06～08、更新 README，登錄 27 項未決問題。歷史核對版（v0.10）補正需求／基線／建議的界線與漏失細節，見 §10；Q-ID 維持 27 項，不以重新編號掩蓋修正。仍只交付文件，不宣稱 Engine、API 或合併時點 UI 已實作。
+
+## 10. 2026-10-15 歷史對話與決策核對
+
+### 10.1 範圍與證據分級
+
+本次以 2026-10-12～15 的專案對話、目前對話、核對前遠端 `5c49dde0d30e6eade24de944ee6b3ca5f1cb46e0` 及原型／圖面比對。以下是可取得記錄的涵蓋對照，不宣稱已取得每段歷史逐字全文。
+
+- **U**：找到使用者直接要求或後續確認。
+- **B**：在既有已提交規格／Prototype／圖面中可確認的基線；不單憑助理宣稱升級成 U。
+- **P**：助理提出的技術建議；沒有後續確認則維持待決。
+- **O**：沒有找到足夠證據完成決策；記為 OPEN，不能用建議填成定案。
+
+日期／時間均以 Asia/Taipei 記錄；只列確實可對應的時間，其他以日期／主題表示。repo 內的 Prototype 實作限制與產品需求分開記錄，避免用已實作部分否決後續使用者要求。
+
+### 10.2 主要歷史來源
+
+| 來源 | 記錄 | 核對重點 |
+|---|---|---|
+| H-01 | 10/12 框架／自訂模組；15:58 使用者說部門使用 LangChain／LangGraph | 既有生態偏好；Haystack 是助理早期候選 |
+| H-02 | 10/13 ParsedDocument／Chunk／fields／vectors 討論 | 五／六個 key、Embedding 寫向量、後續沿用 Chunk |
+| H-03 | 10/14 09:09、09:31 設定修正 | DEV／自訂 API、collection 自動帶入、Retrieval 不選 Implementation |
+| H-04 | 10/14 10:44～11:00 LLM／Prompt 討論及 Generation 範例要求 | LLM 集中、Query Prompt、雙層模板及範例說明 |
+| H-05 | 10/14 13:11、13:34 API／Filter 討論 | 可隨時看端點、Indexing 欄位與 Retrieval 詞值、eq／in／AND |
+| H-06 | 10/14 13:59～14:18 Infra 修正與後續圖面 | Control Plane、Frontend／Backend、tSSO、Runtime 邊界、Vault／YAML／Store 線 |
+| H-07 | 10/14 16:14 CSV 入口、16:39 Document Schema | 先 Config／先 CSV、每列映射、型別／必填／預設 |
+| H-08 | 10/14 17:09 Parsing UI 指示 | 只顯示結構化 JSON，其餘設定預設收合 |
+| H-09 | 10/14 17:17 策略選擇；17:41～17:42 融合位置追問 | 「在哪一步合併」是目標要求；助理候選 Plan／預設未定 |
+| H-10 | 10/14～15 L1 圖修正、基準 SVG／Mermaid | 左到右、1～5 框內、6 框外、實體名稱與虛線 |
+| H-11 | 10/15 本對話的核心定位、03～08 分工、coding agent 目標 | 新手／進階、04＋05 獨立 Engine、逐項待決與驗收 |
+
+只有問題或助理回答的主題，不直接視為使用者核定了所有底層選項。例：曾討論 class 不代表 Runtime Validation 自動成立；曾提出 Rerank 後融合不代表具體 Plan／預設已確認。
+
+### 10.3 要求與文件涵蓋矩陣
+
+| 項目 | 對話／決策要求 | 證據 | 文件位置／本輪結果 |
+|---|---|---|---|
+| A-01 | UI Config 建立模組化 RAG、測試與匯出 | H-11／B | 03 §2～6、04／07；已覆蓋 |
+| A-02 | 以部門 LangChain／LangGraph 生態為背景 | H-01／U | 03 §3、08 D-27／Q-001；補強已定方向與待選版本的界線 |
+| A-03 | ParsedDocument 固定五個 key | H-02／U+B | 05 §4.2；已覆蓋 |
+| A-04 | Chunk 固定六個 key，新增 vectors | H-02／U+B | 05 §4.3；已覆蓋 |
+| A-05 | 下游主要傳 Chunk，不強制回查 ParsedDocument | H-02／U+B | 04 I/O、05 §4.3；已覆蓋 |
+| A-06 | Document Schema 宣告型別／必填／預設／來源 | H-07／U | 05 §3、06 §3；已覆蓋；null／migration 仍待 Q-002 |
+| A-07 | CSV／Import 做映射，Parsing 不重映射 JSON | H-02／H-07／U+B | 04 Import／Parsing、05 §4.1、06 §4；已覆蓋 |
+| A-08 | CSV 每列一份文件、兩種起始入口 | H-07／U | 03 §2、06 §4；已覆蓋 |
+| A-09 | Recursive／Header-aware、Token 計量 | H-03／B | 04 §4.3、05 §6；已覆蓋；Tokenizer 演算法待 Q-004 |
+| A-10 | 從 fields 選來源，寫入具名 vectors | H-02／U+B | 04 §4.4、05 §4／§6；已覆蓋 |
+| A-11 | 保存、全文、向量與 Filter 用途分開 | H-02／B | 04 §4.5、05 §6；已覆蓋 |
+| A-12 | ES＋Local Search；Adapter 隱藏 index 數量差異 | H-02／B | 03 §5、04 §4.5；已覆蓋 |
+| A-13 | Local Memory／MongoDB，重啟重匯或重建 | H-03／U+B | 03 §5、07 §7；已覆蓋；多 Pod 不假裝共享 |
+| A-14 | 多欄位可分別選 Embedding／搜尋／Rerank／Generation | H-02／B | 04 各模組、05 §6；已覆蓋 |
+| A-15 | Retrieval 移除 Implementation，按欄位推導模式 | H-03／U | 04 §5.2、06 §3.2；補為明確已確認 UI 要求 |
+| A-16 | 可選 Sum Score／RRF | H-09／U+B | 04 §5.2、05 §6；已覆蓋；原始分數加總為現有基線 |
+| A-17 | 需要能配置「在哪一步合併」 | H-09／U | 03～07、08 D-23／Q-014；修正原版誤列為可選擴充 |
+| A-18 | 同 Query Score Sum→跨 Query RRF、Rerank 前後路徑 | H-09／U+P | 04 §5.2、05 §6、Q-014；保留情境，具體 Plan／預設未定 |
+| A-19 | 共用 LLM 清單、下拉 llm_ref | H-04／U | 05 §6、06 §3.2；已覆蓋 |
+| A-20 | Rewrite／Multi-query Prompt 可編輯、變數與預覽 | H-04／U+B | 04 §5.1、06 §3.2；補齊明確 UI 動作 |
+| A-21 | Generation 兩層模板、說明／範例／套用按鈕 | H-03／H-04／U+B | 04 §5.4、06 §3.2；補回被概述掉的按鈕要求 |
+| A-22 | Rerank 平台格式與可查看 Request／Response | H-04／B | 04 §5.3、06 §3.2；補強 UI 展示及候選 index 說明 |
+| A-23 | DEV／自行提供；依模式才展開服務連線 | H-03／U | 03 §6、06 §3.3、07 Export；已覆蓋 |
+| A-24 | collection 自動命名且穩定，不要求手填 | H-03／U+B | 05 §2.1、06 §3.2、07 §4；補回公式方向與唯讀要求 |
+| A-25 | Indexing 選 Filter 欄位，Retrieval／Query 設詞值 | H-05／U | 05 §6.4、07 Query；已覆蓋 eq／in、AND 與 ACL |
+| A-26 | 未 Ingestion 也可看 Ingest／Inference API 說明 | H-05／U | 06 §6、07 §5；補齊 Base URL／認證／cURL／輪詢內容 |
+| A-27 | Edit Ingestion 需重匯，只改 Inference 重測 | H-11／B | 05 §8、06 §7、07 §4；已覆蓋，版本發布細節待定 |
+| A-28 | 新手／進階、AI 助手、從 CSV 開始、進階收合 | H-11／U | 03 §2、06 §3～4；已覆蓋 |
+| A-29 | Parsing 只顯示 JSON，其餘預設關閉 | H-08／U | 06 §3.2、08 D-22／Q-025；修正原版誤列為建議 |
+| A-30 | Export 給 FTEST／ENT、部署不帶 Builder／資料／Secret | H-06／B | 03 §4～6、07 §9；已覆蓋，Bundle／Vault 細節待決 |
+| A-31 | L1 固定橫向、框、名稱、回圈與部署虛線 | H-10／U+B | 03 §4、既有 SVG／Mermaid；補回文字約束，圖面未改 |
+| A-32 | Infra 前後端、Runtime 邊界、圖示、外部依賴與省略線 | H-06／U+B | 03 §4、07 §1／9／10；補回圖面省略不等於刪除功能的區別 |
+| A-33 | 04＋05 可獨立跑 Engine，07 才串 Builder／API | H-11／U | 03 §3、04 §1～2、07 §1；已覆蓋 |
+| A-34 | 03～08 各有未決清單，供 coding agent 分階段開發 | H-11／U | 每份結尾＋08 §4／6；已覆蓋，本次補對話證據與反向追蹤 |
+
+### 10.4 修正與仍待決的界線
+
+本輪修正：融合時點需求不可被 Prototype 基線降級；Parsing 收合不可重列為建議；補強 collection、範例按鈕／API 說明與圖面約束。這是文件補正，不是 UI／Engine 已新增能力。
+
+下列沒有找到足夠的使用者定案證據，因此維持待決：套件精確版本、正式前端／平台 DB、來源 ID／revision 演算法、更新／刪除原子性、重試／取消／併發／恢復政策、原始檔保留、評估門檻、AI 真實模型／樣本政策、Vault 產品，以及 Fusion Plan 具體 stages／預設。若後續找到較新的明確決策，按 Q-ID 更新，保留決策來源與修正紀錄。
+
+### 10.5 本輪檢查證據
+
+驗證對話→要求→文件的 34 項對照、跨文件連結／Q-ID、JSON／YAML 範例語法、資料頂層 key、未修改 Prototype／圖面，以及遠端版本後再提交。這些是文件一致性驗證，不取代日後 Schema／Engine／Runtime 的功能測試。

@@ -1,6 +1,6 @@
 # RAG Builder — Backend、Runtime API 與整體串接規格
 
-> 文件集 v0.9 · 2026-10-15 · 開發規格草案
+> 文件集 v0.10 · 2026-10-15 · 開發規格草案
 >
 > 本文包裝 04 的 Engine，負責管理、HTTP、任務、持久化與交付。Endpoint 大方向沿用既有提案；精確 Envelope、認證、狀態與儲存細節為建議，依 Q-ID 核定後實作。
 
@@ -10,7 +10,7 @@
 |---|---|
 | [04 Engine](04_module_methods_io_contracts.md) | Config 驗證／編譯、模組初始化、Pipeline 組裝、Ingest／Query 執行及領域錯誤 |
 | Builder Backend | System／Revision／Group、授權、服務目錄、Dataset、AI 助手、Evaluation Job、Export |
-| Runtime API | 將 HTTP 請求轉成 05 型別，呼叫相同 Engine，包裝 Job／Query／Health |
+| Runtime API | 將 HTTP 請求轉成 05 型別，呼叫相同 Engine 與核定 Fusion Plan，包裝 Job／Query／Health |
 | Runtime 內部管理 | 可信地綁定 System／Revision、建立或更新 Engine 實例；不開放任意外部使用者換租戶 |
 
 Engine 可直接由 Python Config 使用，不能反向 import Builder Web App 或存取 Builder DB。UI、Runtime API、外部 Evaluation 使用同一核心流程，不複製一套模擬／真實 Pipeline。
@@ -55,7 +55,7 @@ Config Store 與 Artifact／Run Store 不等於 Local Search 的選配 MongoDB�
 
 ### 4.1 建立與啟動（建議流程）
 
-1. Backend 驗證身分與 Group 權限，建立 system_id／穩定 collection。
+1. Backend 驗證身分與 Group 權限，建立 system_id，依 05 的既定自動命名方向建立穩定 collection；不要求 UI 使用者手填。
 2. 收到 Draft，經 05 編譯／Validator，顯示錯誤與變更影響。
 3. 保存 Config Revision；以可信管理呼叫要求 Runtime 綁定配置。
 4. Runtime 呼叫 04 Engine 初始化；服務解析、Profile 與資料就緒分開回報。
@@ -159,7 +159,7 @@ processed_records／total_records 指解析後的邏輯文件數，不是 Chunk 
 }
 ```
 
-HTTP query 映射成 Engine 的原始問題；filters 與預設／ACL AND。Index 版本、Usage／Trace 回傳層級待 Q-019；引用完整規格見 05。Streaming、History、任意 Config override 不預設納入。
+HTTP query 映射成 Engine 的原始問題；filters 與預設／ACL AND。Index 版本、Usage／Trace 回傳層級待 Q-019；引用完整規格見 05。合併時點是系統 Config／Fusion Plan 的需求，Backend 保存並交由 Engine 執行，不另寫一套融合，也不讓單次請求任意改執行計畫。若核定 Rerank 後融合，Trace 必須保留各階段候選；欄位與回傳細節見 Q-014／Q-019。Streaming、History、任意 Config override 不預設納入。
 
 ### 5.7 標準錯誤
 

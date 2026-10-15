@@ -8,9 +8,9 @@ Config-driven RAG System 建立與測試平台。
 
 **名詞**：RAG Builder 是開發平台；RAG System 是使用者建立的個別系統；RAG Runtime 是可獨立部署的 API 執行服務；RAG Engine 是其 Pipeline 核心。
 
-## 開發規格文件集 v0.9（2026-10-15）
+## 開發規格文件集 v0.10（2026-10-15）
 
-本輪已把 03～08 整理為 coding agent 可分階段使用的開發規格草案。**已確認方向、既有基線、建議與待決事項分開記錄**；具體公共介面與部分行為仍需決策，不表示後端已實作。
+本輪已把 03～08 整理為 coding agent 可分階段使用的開發規格草案。**已確認方向、既有基線、建議與待決事項分開記錄**；具體公共介面與部分行為仍需決策，不表示後端已實作。v0.10 已核對歷史對話，修正融合時點需求／Parsing 收合的狀態，並補回 UI 與圖面細節。
 
 | 文件 | 定位 |
 |---|---|
@@ -19,7 +19,7 @@ Config-driven RAG System 建立與測試平台。
 | [05 共用資料模型與 Config](docs/05_data_contracts_search_design.md) | ParsedDocument／Chunk／SearchHit、Schema、Config 草案與變更影響 |
 | [06 使用流程與 UI 開發規格](docs/06_ui_development_spec.md) | 基本／進階、CSV、AI 助手、預覽、Edit 與測試操作 |
 | [07 Backend、Runtime API 與整合](docs/07_backend_runtime_integration.md) | API、System／Revision、任務、持久化、Runtime 與 Export |
-| [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M6、驗收材料、確認方向及 27 項待決問題 |
+| [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M6、驗收材料、27 項待決問題及 34 項歷史要求對照 |
 
 建議先讀 03／08，再依任務讀 05／04／07／06。Engine 核心不依賴 Builder UI、HTTP 或 Builder DB；07 將其包裝為可管理服務。每份規格末尾列出相關 Q-ID，完整候選／決策／階段阻擋統一放在 08。
 
