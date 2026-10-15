@@ -105,11 +105,11 @@ DEV test use 使用平台測試資源；匯出部署時需填入使用單位的�
 
 ### 3.4 Inference 結果處理的整合提案
 
-三種操作「去重＆合併／取 Top N／新模型算分」與共同排序規則已確認，見 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft)。建議保留既有單一 Create／Edit，在 Retrieval 與 Generation 之間增加可調整順序的結果處理卡片，重用 Rerank 欄位；不要另外維持一份 Rerank 有效設定。這是 UI 草案，不代表原型已移動或順序已核定。
+三種操作「去重＆合併／取 Top N／新模型算分」與共同排序規則已確認，見 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft)。15:53 的最新 UI 待辦以 [10_ui_adjustment_backlog.md](10_ui_adjustment_backlog.md) 為準：保留單一 Create／Edit，基本／進階共用設定；預設在 Retrieval 後完成適用合併，同 Query 多路／跨 Query 合併預設勾選，Top N 附在四個固定動作位置，不新增獨立 Top N 卡片。使用者要求先記錄、稍後併批修改，原型尚未調整。
 
 基本表單讓使用者選可讀的上游步驟、每個 Query 內／跨 Query 範圍、方法及參數；runtime IDs 與 operation／source 由執行時產生。排序及 rank 更新固定執行，不提供排序開關；score_kind／score_order 由方法決定。ES 內部 Hybrid 已回傳一份清單時，預覽不得假裝仍有獨立全文／向量排名。
 
-完整控制項、ES 輸出粒度、Top N 與模型評分解耦、卡控、三個案例及需討論的選項集中在 [09 UI 整合提案](09_inference_contract_ui_plan.md)。Q-014／Q-025 在核定後才落到 Prototype；模型服務覆蓋率及真實 Adapter 能力仍由 Q-003 驗證。
+早期方案與案例保留於 [09 UI 整合提案](09_inference_contract_ui_plan.md)，本輪最新控制項、預設與卡控以 10 為準。精確 Config、舊版遷移、模型覆蓋率及 Adapter 能力仍由 Q-002／Q-003／Q-014／Q-025 核定，不以待辦文件宣稱已實作。
 
 ## 4. 從 CSV 開始
 

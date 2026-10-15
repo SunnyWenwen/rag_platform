@@ -29,6 +29,7 @@ v0.15 曾加入 QueryContext／ResultSet／ResultItem 的具體草案。v0.16 �
 | [07 Backend、Runtime API 與整合](docs/07_backend_runtime_integration.md) | API、System／Revision、任務、持久化、Runtime 與 Export |
 | [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M6、驗收材料、27 項待決問題及 40 項對話要求對照 |
 | [09 Inference Contract 與 UI 整合提案](docs/09_inference_contract_ui_plan.md) | 三種操作／共同排序的討論記錄、順序式 UI 設定、案例與待確認選項 |
+| [10 UI 待調整清單](docs/10_ui_adjustment_backlog.md) | 15:53 最新確認的基本／進階設定、合併預設、四處 Top N、Reranker 欄位與卡控；先記錄，待後續併批實作 |
 
 建議先讀 03／08，再依任務讀 05／04／07／06。03 統一名詞與邊界，05 定義資料／版本規則，08 記錄決策與待決狀態。Engine 核心不依賴 Builder UI、HTTP 或 Builder DB；07 將其包裝為可管理服務。每份規格末尾列出相關 Q-ID，完整候選／決策／階段阻擋統一放在 08。
 

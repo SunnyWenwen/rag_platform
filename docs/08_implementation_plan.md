@@ -609,3 +609,9 @@ ParsedDocument 五個 key、Chunk 六個 key、fields→vectors、多欄位用�
 - Q-002／Q-003／Q-014／Q-025 其餘細節維持 OPEN；未新增通用 DAG、正式 Engine、HTTP 服務或部署行為，未修改 Prototype／圖面。
 
 本輪檢查：Draft 2020-12 Schema 與五份 JSON 通過，12 份刻意破壞的資料被拒絕；Python 型別欄位與 Schema 對齊，正／反向排序、rank、空輸入、來源不被覆寫及 Top N 範例均通過。8 份文件的 139 個相對連結、78 個錨點、12 段 JSON／3 段 YAML／2 段 Python 語法通過；原 YAML 語意未變。這些是文件與示例資料檢查，沒有驗證真實 ES／模型或 Runtime。
+
+## 16. 2026-10-15 15:53 UI 待辦記錄，暫不實作
+
+最新 UI 方向與完整待辦集中於 [10_ui_adjustment_backlog.md](10_ui_adjustment_backlog.md)：基本／進階共用設定、Retrieval 後預設合併、同 Query 多路／跨 Query 預設勾選、四處動作後 Top N，以及預選 fields.* 的 Reranker 評分內容。明確區分 Chunk 內容欄位與 Query 問題來源，取代 09 早期以獨立 Top N／任意順序卡片為主的呈現方案。
+
+使用者明確要求先不改 UI，晚點與其他需求併批修改；本輪只增加清單與導引，不修改 Prototype、Schema、Python 範例或 Engine。Q-002／Q-003／Q-014／Q-025 仍保留尚未核定的 Config／Adapter／遷移細節，不將尚未執行的驗收待辦勾選為完成。

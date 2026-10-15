@@ -4,6 +4,8 @@
 >
 > 記錄本串 14:10～14:31（Asia/Taipei）的討論。三種操作及共同排序為已確認方向；本文的版面、控制項、Config 拼字、預設與第一版範圍均為提案。現有 Prototype／Engine 未因此實作。
 
+> **UI 後續更新（15:53）**：最新已確認、待批次實作的 UI 清單見 [10_ui_adjustment_backlog.md](10_ui_adjustment_backlog.md)。§3～6 的獨立 Top N／任意順序卡片是早期提案；最新方向為動作附帶四處 Top N、基本／進階設定及 Retrieval 後預設合併，不據舊提案直接開發。§2 的 Contract 記錄仍保留。
+
 ## 1. 文件定位與確認狀態
 
 資料欄位以 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft) 為主責；Engine 執行以 [04 §5.2.1](04_module_methods_io_contracts.md#result-processing) 為主責；UI 原則見 [06](06_ui_development_spec.md)。本文集中對話摘要、UI 提案與討論案例，不另創一份不同的 Contract。決策狀態見 [08 D-34／D-35、Q-014](08_implementation_plan.md#q-014)。
