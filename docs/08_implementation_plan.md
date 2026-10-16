@@ -1,6 +1,6 @@
 # RAG Builder — 開發計畫、驗收與決策追蹤
 
-> 文件集 v0.17 · 2026-10-16 · 開發規格草案
+> 文件集 v0.18 · 2026-10-16 · 開發規格草案
 >
 > 目的：讓 coding agent 依同一套規格分階段開發，並持續記錄尚不清楚的問題。本文是決策／待決狀態的權威位置；它不把技術建議自動轉成使用者已核可決策。
 
@@ -80,6 +80,7 @@ v0.13 從 `e52c4d74a469522155d814f0ff51fddf8946f957` 核對交接文件、本串
 | D-36 | Chunking 新增 Fixed-size，沿用 Token 計量；保留 Recursive／Header-aware | 2026-10-16 09:42 使用者要求／方法已確認，精確 Token 邊界 Q-004 | 04／05／06；UI 待辦 10 |
 | D-37 | 階段重排 M0～M7；M4 獨立 AI 設定助手，M5 Builder 前後端與助手 UI 整合，M6 評估，M7 獨立交付 | 2026-10-16 09:31～09:45 討論及使用者修正／已確認方向 | 03／06／07／08 |
 | D-38 | 後續需求先更新文件；Prototype 調整記入 backlog，使用者要求改 UI 時才實作 | 2026-10-16 09:42／09:45 使用者要求／已確認 | README／03／06／08／10 |
+| D-39 | Indexing 保存全部 Chunk.fields／metadata，移除「儲存內容」；只選全文／向量／過濾索引；Chunking 預設繼承全部有效 metadata，排除功能有需求再規劃 | 2026-10-16 10:05 使用者確認前述三點／已確認，UI 尚未改 | 03／04／05／06；UIB-005／006 |
 
 「既有基線」不代表已涵蓋後續需求。D-23 的合併時點配置是使用者已提出的目標，不能以 D-11 的舊 Prototype 限制否決；兩層合併預設勾選並在 Retrieval 後的 UI 已於 2026-10-15 確認／實作，見 10 的歷史完成紀錄。Q-014 仍負責正式支援路徑、stage 命名及執行契約等剩餘細節。
 
@@ -186,7 +187,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 <a id="q-002"></a>
 ### Q-002 共用 Schema、Config、SDK 與版本凍結
 
-- 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System；Local Search 持久化模式隨 Config 跨環境固定（D-33）。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile、InferenceState／QueryContext／ResultSet 草案，以及原型短名稱／匯出標籤 migration。
+- 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System；Local Search 持久化模式隨 Config 跨環境固定（D-33）；全部 Chunk.fields／metadata 保存與合法 metadata 全繼承（D-39）。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile、InferenceState／QueryContext／ResultSet 草案，以及舊保存／繼承投影、原型短名稱／匯出標籤 migration。
 - 建議：先核定最小完整 Config＋單一公開 Engine interface；Pydantic 匯出 JSON Schema，UI 使用相同來源。用完整欄位路徑；未知別名拒絕。
 - 替代：直接沿用 Prototype 全部短名稱；需補齊其缺少型別與執行語意。
 - 負責角色：Engine＋Backend＋Frontend；阻擋 M0 契約凍結。
@@ -196,6 +197,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 ### Q-003 模型服務與 Adapter 契約
 
 - 不清楚：首組模型、Profile／版本辨識、Tokenizer 取得、Chat 角色／輸出格式、多 Query 解析、Rerank 服務限制。
+- 本輪待確認提案：Rewrite／Multi-query 採固定 queries 結構及 1／N 數量、Provider Structured Output／Tool／文字解析能力分級、模組 Schema 與共用 LLM Adapter 分工；格式與語意都由後端重驗。細節見 04 §5.1.1，不因寫入提案就凍結 Provider 或重試／fallback 預設。
 - 既有方向：Embedding API、System 共用 LLM 的 OpenAI-compatible API、平台約定 Rerank API；原型格式基線為 embeddings／Chat Completions／04 的 rerank。原型基線不等於所有 Provider 相容性都已核定。
 - 建議：先選一組可實測的 Adapter／服務及 Profile，各有 Fake 與真實契約測試；不同格式顯式 Adapter。
 - 替代：第一期支援多 Provider 格式，增加測試矩陣。
@@ -397,6 +399,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 ### Q-025 漸進式 UI、範本與小量試跑
 
 - 已確認：Parsing 初始只顯示結構化 JSON，其他格式／設定全在預設關閉進階區；LLM／Prompt／範例及 API 說明要求見 06 §3.2。待定的是其餘基本／進階分組、展開記憶、改動摘要、範本、真實試跑與診斷範圍。
+- 2026-10-16 討論提案：在 Rewrite／Multi-query 旁提供不需 Ingestion 的單模組測試，使用當前草稿與相同 Engine／Adapter，顯示實際 Query 與格式驗證；是否採用及展示細節待確認，UIB-007 保持提案狀態，不擴張成所有模組都要試跑。
 - 建議：保留已確認互動，再核定其餘分組；必填錯誤可定位，保持同一 Config。試跑與範本逐項啟用。
 - 替代：單獨新手／專家入口，但兩者仍需共享 Config／驗證。
 - 負責角色：產品＋Frontend；阻擋 M5 正式 UX 凍結，不卡 Schema／Engine。
@@ -672,3 +675,11 @@ Inference Schema／五份 JSON／Python 範例、圖面及其他服務實作均�
 - D-38 確認文件優先，新增 UI 需求以 [10 §7](10_ui_adjustment_backlog.md#ui-backlog-pending) 為單一 backlog；Fixed-size 表單與助手整合均尚未修改 Prototype。
 - 本輪文件集更新 v0.17；新增三筆決策，Q-ID 維持 27 項、既有 A-ID 40 項來源對照維持。已確認需求不因 Q-ID 的剩餘細節而回退為未提出。
 - 只更新規劃文件；Prototype 仍 v0.9。Engine、Runtime、JSON Schema、五份 Inference JSON／Python 範例、測試程式及圖面維持原版本。文件驗證與 Git blob 比對不表示新方法／助手已開發。
+
+## 19. 2026-10-16 10:05 內容保存確認與 Rewrite 輸出討論
+
+- D-39 確認三點：保存全部 Chunk.fields／metadata，移除 Indexing「儲存內容」；只選全文／向量／Filter 能力；Chunking 預設繼承全部有效 metadata，排除有需求再規劃。完整 metadata 不放寬 Schema／ACL，也不自動對全部欄位建立搜尋能力。
+- 04／05 更新模組、有效設定與驗收，05 的目標 YAML 範例只移除 metadata_fields／stored_fields；不改其他執行參數，原型舊配置仍待正式遷移。
+- 使用者提出 Rewrite 的 UI 試跑及如何固定 Query 數量／LLM 輸出。04 §5.1.1／06 §3.3.1 記錄 Structured Output＋後端驗證＋有限失敗處理與單模組試跑的提案；不是已確認預設，不新增 D-ID 代替使用者決策。Provider／格式／去重／重試／fallback 分別留 Q-003／Q-017／Q-023；接口細節留 Q-019。
+- 10 新增 UIB-005／006 已確認待 UI 實作、UIB-007 提案待確認。沒有新增畫面、呼叫模型或建立測試端點，Prototype 仍 v0.9。
+- 文件集 v0.18，D-ID 共 39、Q-ID 27、既有 A-ID 40。新規則與舊版 UI 完成紀錄分開；JSON Schema、Inference 範例、程式／測試、圖面未變。文件與 Python 示範驗證不能代替真實 Provider／Engine 驗收。

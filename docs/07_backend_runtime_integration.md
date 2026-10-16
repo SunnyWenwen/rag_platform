@@ -1,6 +1,6 @@
 # RAG Builder — Backend、Runtime API 與整體串接規格
 
-> 文件集 v0.17 · 2026-10-16 · 開發規格草案
+> 文件集 v0.18 · 2026-10-16 · 開發規格草案
 >
 > 本文包裝 04 的 Engine，負責管理、HTTP、任務、持久化與交付。Endpoint 大方向沿用既有提案；精確 Envelope、認證、狀態與儲存細節為建議，依 Q-ID 核定後實作。
 
@@ -73,6 +73,8 @@ examples/                # 完整 Config／資料／呼叫範例
 ### 4.2 Config 更新
 
 Backend 儲存前以有效設定比較，依 05 判定影響；UI 與 AI 都不能繞過。Edit 使用獨立草稿，取消不生效。
+
+2026-10-16 的內容保存簡化：Indexing 保存全部 Chunk.fields／metadata，Chunking 預設繼承全部有效業務 metadata；只選全文／向量／Filter 能力。原型的 indexing.stored／chunking.metadata 是待遷移的舊保存／繼承投影，不能直接套用為新規則。Metadata 全繼承仍保留可信 ACL／來源及 Schema 驗證，Memory／MongoDB 的持久化模式不變；保存內容也不等於全部內容回傳給 API，回傳與授權投影另外處理。
 
 **待決的發布模型**：
 
@@ -221,6 +223,8 @@ Q-008～Q-010／Q-017 需決定：
 MongoDB 保存不等於跨 Pod 索引同步。重建失敗、DB 中斷、Profile 不符、損壞資料及大資料量啟動時間見 Q-012／Q-027。原始檔／ParsedDocument 若未保留，不保證可自動重新切分／Embedding。
 
 ## 8. Evaluation 與 AI 助手服務
+
+另有待確認的 Query Rewrite 單模組測試提案，見 06 §3.3.1／10 UIB-007：若採用，Backend 以請求草稿呼叫相同 Engine 模組／LLM Adapter，測試不依賴已保存 System 或索引。認證、服務引用與逾時規則仍需核定；接口精確路徑／Envelope 留 Q-019，不新增已凍結的公開 Runtime API。M2 可先由 SDK 驗證模組，Builder 入口屬 M5；Mock 與真實呼叫分開驗收。
 
 Evaluation Runner 於 M6 交付完整驗收，綁定 Dataset／Config／Index／Engine／Judge 版本，逐題呼叫同一 Target，收集實際候選／Context／答案／錯誤後交 04 評分。可重用 Query Client，但 Retrieval-only 入口是否公開需核定。併發、快取、重試、成本與 Gate 見 Q-018／Q-027。
 

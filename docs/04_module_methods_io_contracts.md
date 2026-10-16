@@ -1,6 +1,6 @@
 # RAG Engine — 組裝、執行與模組開發規格
 
-> 文件集 v0.17 · 2026-10-16 · 開發規格草案
+> 文件集 v0.18 · 2026-10-16 · 開發規格草案
 >
 > 本文涵蓋可獨立執行的 Engine 與各模組；正式名詞定義見 [03 §3](../03_architecture_proposal.md#terminology)，共用資料／Config 結構見 05。既有產品語意為已確認方向，新增 SDK、Registry 形狀、執行政策為建議，須經對應 Q-ID 核定。本次未新增 Engine 程式。
 
@@ -148,11 +148,11 @@ Timeout、重試預算、取消、partial 與 fallback 尚待 Q-009／Q-017／Q-
 
 ### 4.3 Chunking
 
-**目的與方法**：Fixed-size／Recursive／Header-aware；一個主要 split_field＋多個 copy_fields／metadata_fields。三種方法均以 Token 計量，沿用指定 Tokenizer／revision。2026-10-16 新增的「fix chunk」統一稱 **Fixed-size Chunking（固定 Token 視窗）**；方法已列入需求，Engine 與 Prototype 尚未因此實作。
+**目的與方法**：Fixed-size／Recursive／Header-aware；一個主要 split_field＋多個 copy_fields，metadata 預設全部繼承，不再逐欄勾選。三種方法均以 Token 計量，沿用指定 Tokenizer／revision。2026-10-16 新增的「fix chunk」統一稱 **Fixed-size Chunking（固定 Token 視窗）**；方法已列入需求，Engine 與 Prototype 尚未因此實作。
 
 | 方法 | 切分依據 | 有效設定 |
 |---|---|---|
-| Fixed-size | 按固定 Token 視窗前進，不依句子、分隔符或標題找邊界 | size、overlap、tokenizer；共用 split／copy／metadata 欄位設定 |
+| Fixed-size | 按固定 Token 視窗前進，不依句子、分隔符或標題找邊界 | size、overlap、tokenizer；共用 split／copy，metadata 預設全部繼承 |
 | Recursive | 依分隔符優先序找邊界，過長片段繼續細切 | 共用設定＋separators、keep_separator |
 | Header-aware | 先依標題層級切分，超長章節再用 Recursive | 共用設定＋header_levels、標題能力及 Recursive 備援參數 |
 
@@ -164,7 +164,7 @@ Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一�
 2. 依所選方法切分：Fixed-size 使用上述固定視窗；Recursive 依 separators 優先序切分，必要時處理過長片段，size 是上限、overlap 是目標值。
 3. Header-aware 先依可靠標題層級切分，再對超長章節 Recursive；缺 headings 不能假裝成功。
 4. 計算原 fields 字串範圍及跨 block／page locations，不從帶 overlap 的文字猜測位置。
-5. 複製指定欄位；文件摘要保持文件摘要；必需來源／ACL 不可取消。
+5. 複製指定 fields；文件摘要保持文件摘要。繼承 ParsedDocument 中經 Schema 驗證的全部業務 metadata，並保留／加入可信來源、ACL、片段 locations；輸入不能覆蓋平台保留資訊，精確命名見 Q-006。第一版不新增 metadata 排除表單，有明確需求再規劃。
 6. 依有效切分設定及位置產生 chunk_id，初始化 vectors={}。
 
 **驗證／例外**：size 為正整數、overlap 為整數且 `0 ≤ overlap < size`、Tokenizer 可用；涵蓋重複文字、非 BMP 字元、空段及極長無分隔文字。Fixed-size 不啟用 separators／keep_separator／header_levels，也不要求 Parser headings；未啟用的方法參數可保留草稿，但不驗證或匯出為有效參數。複製欄位未被主要內容切分，不保證其長度小於 size。
@@ -196,9 +196,11 @@ Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一�
 
 **目的**：保存 Chunk，依欄位用途建索引，回報寫入與可搜尋狀態。Engine 在初始化時透過 Adapter 準備授權範圍內的目標；不依賴 Builder 才能 provision。
 
+**2026-10-16 已確認的簡化**：預設保存 Chunk 的全部 fields／metadata，不再要求使用者填 stored_fields 或勾「儲存內容」。保存內容與建立搜尋索引分開：使用者只選全文欄位、向量欄位與可過濾欄位；未選搜尋索引的 title 等欄位仍可供 Rerank／Generation／引用使用。保留 metadata 不代表自動對所有 metadata 建立 Filter／全文索引。向量保存與恢復沿用既有完整 Chunk／vectors 政策，不因拿掉內容選單而刪除 vectors。
+
 **處理**：
 
-1. 檢查 stored／fulltext／vector／filter 欄位與 Profile；ID／版本／來源／ACL 固定保留。
+1. 驗證完整 Chunk 與 fulltext／vector／filter 選擇及 Profile；全部 fields／metadata 保存，ID／版本／來源／ACL 固定保留，不再以使用者的保存投影刪欄位。
 2. 比較目標 Schema／Profile，拒絕不相容寫入，避免不同模型混在同一向量欄位。
 3. 依版本／冪等策略寫入 Chunk，維護 chunk_id 對照及 Binding。
 4. 按後端 refresh／發布規則回報 searchable；write_acknowledged 不等於 searchable。
@@ -206,13 +208,13 @@ Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一�
 
 | Adapter | 內部責任 |
 |---|---|
-| ES | 組合 Mapping；全文 text、精確 keyword、Dense vector；保存投影；相容查詢及 refresh |
+| ES | 組合 Mapping；全文 text、精確 keyword、Dense vector；全部內容可取回但只替選定欄位建立對應搜尋能力；相容查詢及 refresh |
 | Local Search | 每個具名向量管理 FAISS index；每個全文欄位管理 BM25；向量 ID → chunk_id；完整 Chunk 共用一份 |
 | Local／MongoDB | 保存 Chunk／vectors／Profile Manifest；重啟按相容版本重建搜尋結構，不重新 Parsing／Embedding |
 
 FAISS 的維度／metric 不足以證明向量空間相容。cosine／inner product／L2 的 normalization 與對外 relevance 轉換必須定義；中文 BM25 需斷詞方案。不能把 post-filter 與 Top-K 前授權過濾視為等價。
 
-**驗收**：ES 與 Local 共用契約測試；完整內容可取回；不出現跨 System Chunk；寫入失敗／不就緒不回可查詢；Memory 重啟清空、MongoDB 可驗證恢復。
+**驗收**：ES 與 Local 共用契約測試；未建搜尋索引的 fields／metadata 仍完整可取回；metadata 不因未勾可過濾而遺失；只有宣告的欄位可搜尋／過濾；不出現跨 System Chunk；寫入失敗／不就緒不回可查詢；Memory 重啟清空、MongoDB 可驗證恢復。
 
 **待決**：Q-008～Q-013、Q-015；ES 版本／授權 Q-001。
 
@@ -227,6 +229,54 @@ FAISS 的維度／metric 不足以證明向量空間相容。cosine／inner prod
 **驗證**：非空問題、合法模板、LLM 引用、衍生結果數量／文字合法。去除相同問題、模型輸出格式不符及降級政策由 Q-003／Q-023 核定；不自動忽略壞結果。
 
 **驗收**：Rewrite 不覆蓋 original_question；Multi-query count 與原始問題選項獨立；None 不呼叫 LLM；Rerank／Generation 始終取得原始問題。
+
+### 5.1.1 討論提案：Rewrite 的結構化輸出與共用 LLM 邊界
+
+**狀態：2026-10-16 提案，待使用者確認及 Q-003／Q-017／Q-023 核定；不是已實作或已凍結的公共 Contract。** 建議 UI 加單模組試跑，見 06／10；輸出形狀與數量由平台提供，Prompt 主要描述如何改寫，不讓使用者每次重寫機器可讀契約。
+
+建議 Rewrite 與 Multi-query 共用 `{queries: [...]}` 的結果形狀；Rewrite 目標為 1 筆，Multi-query 目標為 Config.count 筆。原始問題及 include_original 由平台處理，與模型要求生成的數量分開。query_id、ori_query、source_query_ids 等執行資料也由 Engine 建立，不要求 LLM 自行填入或維護身分。
+
+以下 Python／Pydantic 例子只示範按 n 產生 Schema 及驗證形狀／型別／數量，不會呼叫 LLM；可將匯出的 JSON Schema 交給支援的 Provider。正式類別名稱與 Adapter 格式仍待決：
+
+```python
+from pydantic import ConfigDict, Field, StrictStr, create_model
+
+def rewrite_result_schema(n: int):
+    if n < 1:
+        raise ValueError("n must be positive")
+    return create_model(
+        f"RewriteResult{n}",
+        __config__=ConfigDict(extra="forbid"),
+        queries=(list[StrictStr], Field(..., min_length=n, max_length=n)),
+    )
+
+Result = rewrite_result_schema(3)
+schema = Result.model_json_schema()  # queries: minItems=3, maxItems=3
+result = Result.model_validate({"queries": [
+    "設備的建議清潔週期為何？",
+    "多久應清潔一次設備？",
+    "設備清潔保養的頻率是什麼？",
+]})
+```
+
+建議的處理責任：
+
+1. **模組定義輸出 Schema**：固定 key、型別與要求筆數；使用者改 Prompt 不改這個契約。
+2. **共用 LLM Adapter 選擇能力**：優先使用 Provider 原生 Structured Output；支援工具呼叫者可用指定的結構化回傳工具；僅有文字／JSON mode 時解析後嚴格驗證，不宣稱同等約束。OpenAI-compatible URL 不代表服務／模型支援相同功能，須實測 Profile／能力；不支援時明確報錯或用已核定策略，不靜默換模式。
+3. **Engine 做語意驗證**：解析、額外 key、實際筆數、去除首尾空白後非空、重複及原始問題政策。上例沒有自動完成非空／重複檢查；正規化後仍須符合目標筆數。是否允許與原始問題相同、等價重複與最終 Query 去重規則仍由 Q-003／Q-023 核定，不用補複製 Query 或任意截掉多餘結果來假裝符合數量。
+4. **失敗政策**：格式錯誤可在核定次數／時間／成本上限內重試或修正；拒答、回應截斷、Timeout 等分開處理。耗盡後回可定位的模組錯誤，或採明確核定的 fallback，不能無限重試或未告知改回原始問題。
+
+這套邊界可共用，但每個用途的輸出 Schema 不同：
+
+| 用途 | 建議模型輸出 | 後端驗證 |
+|---|---|---|
+| Rewrite／Multi-query | queries 的 1／N 筆字串清單 | 數量、非空、重複、原始問題保存 |
+| AI 設定助手 | Config 草稿、建議／Diff、缺項 | Schema、Registry、欄位相依與草稿基準 |
+| Generation | 第一版可保留回答文字；需機器處理欄位時另定結構化結果 | 引用來自真實 Context、回答／API 包裝與 Streaming 契約；不強迫所有回答都產生 JSON |
+
+服務連線與模型引用集中管理，Schema 由每次模組呼叫傳入，不在同一 LLM 服務上固定一種輸出格式。使用 LangChain 時可採其 Model structured-output 介面，不需要為單次 Rewrite 引入完整 Agent。
+
+官方依據（查核 2026-10-16）：[JSON Schema 的陣列長度限制](https://json-schema.org/understanding-json-schema/reference/array#length)；[OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs) 說明 Schema 約束與 JSON mode 的區別、支援子集及拒答／不完整回應；[LangChain Models](https://docs.langchain.com/oss/python/langchain/models)／[Structured output](https://docs.langchain.com/oss/python/langchain/structured-output) 說明 Provider／Tool 策略與驗證。來源提供技術依據，不直接核定本專案的 Provider、類別、重試數或 fallback 預設。
 
 ### 5.2 Retrieval
 

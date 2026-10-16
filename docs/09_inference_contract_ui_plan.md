@@ -1,6 +1,6 @@
 # Inference Contract 討論記錄與 UI 整合提案
 
-> 文件集 v0.17 · 2026-10-16 · Contract 規則記錄／UI 待討論
+> 文件集 v0.18 · 2026-10-16 · Contract 規則記錄／UI 待討論
 >
 > 記錄本串 14:10～14:31（Asia/Taipei）的討論。三種操作及共同排序為已確認方向；本文的版面、控制項、Config 拼字、預設與第一版範圍均為提案。現有 Prototype／Engine 未因此實作。
 

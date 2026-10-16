@@ -1,6 +1,6 @@
 # RAG Builder — 共用資料模型與 Config 規格
 
-> 文件集 v0.17 · 2026-10-16 · 開發規格草案
+> 文件集 v0.18 · 2026-10-16 · 開發規格草案
 >
 > 本文是資料形狀及設定規則的權威位置。已確認的語意保留；新增的程式型別、完整 Config 拼字與預設值為建議草案，待 Q-002 核定後才凍結。YAML 範例用於討論與驗收設計，目前沒有 Engine 可直接執行。
 
@@ -121,7 +121,7 @@ start／end 為對應 fields 完整字串的 Unicode code point offset，0-based
 | document_id、source_revision | 繼承文件 |
 | fields | 主要欄位的切分片段＋指定複製欄位 |
 | vectors | Chunking 為 {}；Embedding 寫入命名向量 |
-| metadata | 必要保留資訊、指定 metadata、片段位置 |
+| metadata | 預設繼承全部經驗證的業務 metadata，加上必要保留資訊與片段位置 |
 
 ```json
 {
@@ -138,7 +138,9 @@ start／end 為對應 fields 完整字串的 Unicode code point offset，0-based
 
 chunk_id 與三維向量僅示例。位置指原 ParsedDocument 欄位，不是 Chunk 內的重新起算位置。跨頁可有多個 locations。權限、來源、locations、切分及 Parser 版本應有平台保留區或 Run 記錄，精確命名 Q-006；不額外增加 Chunk 頂層 key。
 
-Chunk 須自帶 Rerank／Generation 需要的內容，不強制回查 ParsedDocument。完整向量保存在索引／Chunk Store；檢索傳遞可令 vectors={}。欄位保存投影仍須保證所有下游內容可取得。
+Chunk 須自帶 Rerank／Generation 需要的內容，不強制回查 ParsedDocument。Indexing 預設保存其全部 fields／metadata，使用者不再勾選內容保存投影；完整向量保存在索引／Chunk Store，檢索傳遞可令 vectors={}。回傳／傳遞時可依下游需求投影，但不能因此刪除已保存內容。
+
+metadata 的「全部繼承」限於 Document Schema 驗證後的有效欄位及可信平台資訊，不放寬 unknown_fields／保留欄位規則。業務值依原型別複製到 Chunk，片段位置由 Chunking 產生；輸入不能覆蓋 ACL／系統來源。第一版不提供 metadata 排除選單；有明確需求再定受控排除，必要權限／來源不可排除。這不影響 fields 仍由主要切分欄位＋copy_fields 決定。
 
 ### 4.4 Embedding Profile 與 IndexBinding
 
@@ -330,9 +332,9 @@ failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項�
 |---|---|---|
 | Import | files／records；CSV 先映射到 records | accepted_inputs、csv_mapping |
 | Parsing | 格式路由、結構化 records 驗證 | routes |
-| Chunking | Fixed-size／Recursive／Header-aware；Token 計量 | method、split_field、copy_fields、metadata_fields、size、overlap、tokenizer；separators／keep_separator／header_levels 依方法啟用 |
+| Chunking | Fixed-size／Recursive／Header-aware；Token 計量；metadata 預設全部繼承 | method、split_field、copy_fields、size、overlap、tokenizer；separators／keep_separator／header_levels 依方法啟用；不再要求 metadata_fields |
 | Embedding | fields → 命名 vectors | profile、mappings（source_field、output_name） |
-| Indexing | 儲存、全文、向量、過濾分開；持久化模式跨環境固定 | backend、stored_fields、fulltext_fields、vector_fields、filter_fields、persistence、metric；persistence 屬邏輯 Config，collection 在部署 Binding |
+| Indexing | 全部 fields／metadata 保存，搜尋與過濾另外選；持久化模式跨環境固定 | backend、fulltext_fields、vector_fields、filter_fields、persistence、metric；移除使用者 stored_fields，persistence 屬邏輯 Config，collection 在部署 Binding |
 | Query Transformation | None／Rewrite／Multi-query | method、llm_ref、prompt、count、include_original |
 | Retrieval／Fusion Plan | 選已索引欄位、推導模式；可配置策略及合併時點 | fulltext_fields、vector_fields、per_route_k、top_k、filters、fusion；stages／scope／placement 具體 Schema 待 Q-014 |
 | Rerank | 新模型算分的方法；服務為 None／DEV／Rerank API | method、service、content_fields；UI 將 top_n 作評分後收尾參數，見 10 |
@@ -349,7 +351,7 @@ ResultSet 是一次執行的資料；處理計畫是可保存的邏輯 Config，
 |---|---|
 | Token Chunking | size 為正整數；overlap 為整數且 0 ≤ overlap < size；Tokenizer 可取得；Fixed-size 步長為 size−overlap，末塊不補齊；Header-aware 才需 headings 能力 |
 | Embedding mappings | 來源為有效文字欄位；output_name 唯一；有限值、維度與 Profile 相容 |
-| Indexing | 搜尋欄位與上游一致；必要識別／來源／ACL 強制保留；下游使用欄位已保存 |
+| Indexing | 全部 Chunk.fields／metadata 保存；搜尋欄位與上游一致；必要識別／來源／ACL 強制保留；下游只需確認欄位存在、型別適合及已由 Chunking 保留，不再要求額外勾儲存 |
 | Retrieval | 至少一路；每路及最終 K 為正整數；僅選已建立索引；Query Profile 由向量欄位繼承 |
 | Fusion | 多 Query／多路需有明確計畫；UI 已支援同／跨 Query 各自選 Retrieval 後／Reranker 後，預設兩者勾選且在 Retrieval 後；只使用已選策略有效參數 |
 | Sum Score | 現有單層基線的預設；全文／向量權重預設各 1，有限非負，使用中至少一個大於 0；不自動正規化 |
@@ -361,6 +363,8 @@ ResultSet 是一次執行的資料；處理計畫是可保存的邏輯 Config，
 純 BM25 可跳過 Embedding，但 Chunking 仍需 Tokenizer。複製欄位長度可能大於 Chunk Size，Embedding 必須逐項檢查實際輸入。Tokenizer、模型極限及溢位政策見 Q-004。
 
 Fixed-size 的 separators／keep_separator／header_levels 保留在 UI Draft 時不參與 Effective Config、驗證或變更影響。方法名稱、size／overlap、有效 Tokenizer 及內容欄位屬執行語意；改變後需按 Ingestion 變更處理。視窗與來源位置規則見 [04 §4.3](04_module_methods_io_contracts.md#43-chunking)。正式 method 枚舉拼字仍待 Q-002，`fixed_size` 可作候選，不新增必須支援的別名。ParsedDocument／Chunk 的五／六個外層 key 不變。
+
+「全部保存／繼承」取代舊的使用者 stored_fields／metadata_fields 投影；原型短名稱 indexing.stored／chunking.metadata 仍待正式遷移，不直接作為新的有效配置語意。舊索引未保存或舊 Chunk 未繼承的內容不會憑空補回，必要時須重新 Ingestion／重建，不能只刪 Config 欄位就宣稱資料齊全。精確遷移與 Hash／Revision 細節留 Q-002／Q-015。
 
 **融合配置的目標要求已存在，細節尚待 Q-014**：必須能區分演算法、融合範圍（同 Query／跨 Query）與執行時點（Rerank 前／後）。可選兩層及預設計畫的精確支援範圍、route 型別、Top-K／Top-N 與分數語意需再核定；不能把全部合併為一個 fusion.method 後宣稱符合需求。`fusion.stages[]` 是先前助理提出的 Schema 候選，尚非已定欄位。
 
@@ -375,6 +379,8 @@ Indexing 宣告可過濾欄位；Retrieval 保存預設條件；Query API 可加
 所有 Query × 欄位路徑須在取 Top-K 前套用相同限制。缺值／null／多值精確語意與 Adapter 可用能力見 Q-013；不支援就拒絕配置。數值／日期／OR 群組列為後續。
 
 ## 7. 邏輯 Config 與部署設定範例（建議 Schema）
+
+本版範例依 2026-10-16 確認的預設規則省略 chunking.metadata_fields 與 indexing.stored_fields：全部有效 metadata 自動繼承，全部 Chunk.fields／metadata 自動保存。這是目標 Config 草案更新；現有 Prototype v0.9 與歷史匯出尚未遷移。搜尋／Filter 選擇仍需明確列出。
 
 以下將 **既有單層融合基線的 Local Search／Memory 邏輯 Config** 與**部署設定**拆成兩個 YAML 範例。Config 不含環境 URL／認證或實體集合；部署設定按穩定引用綁定。具體 Schema 仍待 Q-002，融合時點需求待 Q-014；目前沒有 Engine 可執行這些草案。
 
@@ -421,8 +427,6 @@ pipelines:
       split_field: fields.text
       copy_fields:
       - fields.title
-      metadata_fields:
-      - metadata.department
       size: 512
       overlap: 64
       tokenizer:
@@ -468,9 +472,6 @@ pipelines:
       persistence:
         mode: memory
       metric: cosine
-      stored_fields:
-      - fields.text
-      - fields.title
       fulltext_fields:
       - fields.text
       vector_fields:

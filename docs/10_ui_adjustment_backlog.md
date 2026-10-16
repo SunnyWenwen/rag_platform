@@ -1,6 +1,6 @@
 # UI Prototype Backlog 與完成紀錄
 
-> 文件集 v0.17 · 2026-10-16（Asia/Taipei）· §1～6 歷史已完成／§7 新增待辦
+> 文件集 v0.18 · 2026-10-16（Asia/Taipei）· §1～6 歷史已完成／§7 新增待辦
 >
 > 2026-10-15 15:53 先記錄待辦；當日 18:55 使用者要求調整 UI，當時已實作原型設定、連動與卡控。§1～6 的勾選代表該輪 UI／邏輯預覽已完成，不表示真實 Engine、ES／模型或 API 已實作；驗收與限制見 §6。2026-10-16 的新需求只記錄於 §7，未修改 UI。
 
@@ -137,17 +137,22 @@ UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／
 
 來源：09:42 新增 fix chunk、後續先調文件；09:45 要求 UI 調整記入 backlog，M5 必須涵蓋 Builder 中的 AI 設定助手。Prototype 仍 v0.9，尚無 Fixed-size 選項；原型助手仍為規則模擬，沒有接上真實 AI。文件集版本與 Prototype 版本分開。
 
+10:05 追加：使用者已確認全部內容保存／metadata 全繼承的三點簡化，列為 UIB-005／006；Rewrite 試跑與固定輸出問題仍在討論，UIB-007 標為提案待確認。均未修改 Prototype。
+
 | ID | 待調整項目 | 主責規格／階段 | 狀態 |
 |---|---|---|---|
 | UIB-001 | Chunking 增加 Fixed-size 及方法參數卡控 | 04 §4.3、05 §6.4、06 §3；Engine M2／Builder M5 | 待使用者要求改 UI |
 | UIB-002 | Fixed-size 說明、流程摘要與示範／驗收案例 | 04 §4.3、06；Builder M5 | 待使用者要求改 UI |
 | UIB-003 | Builder 呼叫 M4 的同一個 AI 設定助手核心 | 07 §8、08 §4.2；Builder M5 | 待使用者要求改 UI |
 | UIB-004 | 助手建議與 UI 草稿／Diff／套用／取消／過期狀態 | 06 §4.3、08 §4.2；Builder M5 | 待使用者要求改 UI |
+| UIB-005 | Indexing 移除儲存內容選單，預設保存全部 Chunk.fields／metadata | 04 §4.5、05 §6、06 §3；D-39 | 已確認，待要求改 UI |
+| UIB-006 | Chunking metadata 預設全部繼承，移除逐欄繼承選單 | 04 §4.3、05 §4.3、06 §3；D-39 | 已確認，待要求改 UI |
+| UIB-007 | Rewrite／Multi-query 單模組測試與結構化輸出檢視 | 04 §5.1.1、06 §3.3.1；Engine M2／Builder M5 | 提案待確認，尚未實作 |
 
 ### UIB-001：Fixed-size 控制項與設定連動
 
 - [ ] 方法選單加入 Fixed-size，保留 Recursive／Header-aware；不自行改現有預設。顯示名稱統一，正式 Config 枚舉仍依 Q-002。
-- [ ] 三種方法共用 Token Size／Overlap／Tokenizer、主要切分欄位、複製欄位與 metadata 繼承。Size 正整數、Overlap 整數且 0 ≤ overlap < size；模型輸入上限的檢查繼續保留。
+- [ ] 三種方法共用 Token Size／Overlap／Tokenizer、主要切分欄位、複製欄位；metadata 改為預設全部繼承，見 UIB-006。Size 正整數、Overlap 整數且 0 ≤ overlap < size；模型輸入上限的檢查繼續保留。
 - [ ] Fixed-size 不使用分隔符、keep_separator、標題層級，也不要求 Parsing headings。相應控制項不作有效設定；保留其他方法的草稿，切回時恢復，停用參數不驗證／匯出或觸發重建。
 - [ ] 手動選擇、Edit 保存、AI 建議及匯出使用相同 Schema／能力與有效設定。變更方法或有效 size／overlap／Tokenizer 正確提示重新 Ingestion，不靜默換方法。
 
@@ -172,3 +177,22 @@ UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／
 - [ ] 同一意圖以手寫／Python 助手產生及 Builder 套用時，其有效 Config 語意一致；可做固定 fixtures 與真實服務兩層驗收。執行成功與品質評估分開，品質由 M6 驗收。
 
 後續每次變更先填對應條目與主責規格；只有實際修改、驗證後才更新完成狀態及證據。M0～M7 的階段名稱以 08 §4 為準，歷史 §1～6 不用新待辦覆寫。
+
+### UIB-005：Indexing 自動保存全部內容（已確認）
+
+- [ ] 移除「儲存內容」勾選，只顯示全部 Chunk.fields／metadata 自動保存的摘要；使用者繼續選全文／向量／可過濾欄位，不增加第一版保存排除表單。
+- [ ] Rerank／Generation／引用的內容選項依 Chunk 可取得欄位及型別產生，不再綁 indexing.stored。未建立全文索引的 title／summary 仍可用；未存在／未複製進 Chunk 的欄位仍保留失效引用並阻止保存。
+- [ ] 手動、AI、Edit、驗證、預覽及匯出採相同規則；遷移舊 indexing.stored 不宣稱能補回已遺失資料，必要時提示重新 Ingestion。未選搜尋／Filter 的欄位仍保留內容，且不自動取得對應搜尋能力。
+
+### UIB-006：metadata 預設全部繼承（已確認）
+
+- [ ] 移除 Chunking 的逐欄「繼承 metadata」勾選，預設保留 Schema 驗證後的全部業務 metadata，提供唯讀摘要；新增合法 metadata 不需再手動勾選。
+- [ ] 不放寬 Schema／unknown_fields；可信 ACL／來源／locations 依 Engine 規則保留／產生，輸入不能覆蓋。第一版不新增 metadata 排除設定，有明確需求再規劃。
+- [ ] metadata 保存與可過濾宣告分開。Indexing 只讓使用者選支援的 Filter 欄位；未宣告者仍保留內容、不可作 Filter。處理舊 chunking.metadata、AI 建議及範例映射／匯出的遷移，原型若未接 Engine 繼續明示模擬。
+
+### UIB-007：Query Rewrite 單模組測試（提案待確認）
+
+- [ ] 若採用，在 Query Transformation 提供問題輸入及「測試 Rewrite／Multi-query」，使用當前 Prompt／LLM／count 草稿，不先 Ingestion／保存 System，不執行 Retrieval／Rerank／Generation。
+- [ ] 使用正式 Engine 的相同模組／Adapter／驗證；只檢查本模組必要設定。顯示生成 Prompt、要求筆數、解析後 Queries、保留原始問題的效果及格式／數量／非空／重複錯誤；原始回應可收合，Token／耗時僅顯示真實可取得數值。
+- [ ] 平台提供輸出 Schema，使用者主要編輯改寫內容 Prompt。服務能力不支援時明確說明；失敗／修正重試／拒答／截斷依核定政策呈現。None 不呼叫 LLM，Mock 不冒充真實試跑。
+- [ ] 測試輸入或 Prompt／LLM／count／原始問題選擇變更後，舊結果標示過期；舊非同步回應不覆蓋新測試。不自動保存 Config／Ingestion，也不把試跑列為儲存必要 Gate。

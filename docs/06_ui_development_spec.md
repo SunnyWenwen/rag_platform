@@ -1,6 +1,6 @@
 # RAG Builder — 使用流程與 UI 開發規格
 
-> 文件集 v0.17 · 2026-10-16 · 開發規格草案
+> 文件集 v0.18 · 2026-10-16 · 開發規格草案
 >
 > 本文定義 UI 目標互動。現有 HTML Prototype 的搜尋、模型、評估及 API 為模擬。Parsing 的預設收合、LLM／Prompt／範例按鈕等已確認要求如下；其他基本／進階分組、正式框架、範本與試跑優先級仍待決。
 
@@ -46,6 +46,7 @@ Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保�
 
 - Parsing 初始只顯示「結構化 JSON」；其他格式及所有相關設定集中在預設關閉的「進階選項」，展開才出現。正式 Parser 能力另依 Q-005，顯示選項不等於可執行。
 - Create／Edit 前段有 Document Schema；先宣告 fields／metadata，再產生下游欄位選項。
+- 2026-10-16 已確認：Indexing 預設保存全部 Chunk.fields／metadata，移除「儲存內容」選單，只選全文／向量索引與可過濾欄位；Chunking 預設繼承全部合法 metadata，第一版不新增排除表單。對應 UI 尚未修改，見 10 的 UIB-005／006。
 - LLM 服務集中管理；Rewrite／Multi-query／Generation 在需要時以下拉引用，同一服務不重填連線。
 - Rewrite／Multi-query 的 Prompt 可編輯，分別保留草稿；提供變數插入、驗證與預覽。
 - Generation 有「模板說明與範例」及「套用範例」入口，展示兩筆 Chunk→逐筆模板→Context→完整回答 Prompt。
@@ -60,9 +61,9 @@ Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保�
 | Document Schema | 主要 text、需要的內容欄位、metadata | 型別、required／default／source、unknown_fields |
 | 服務 | DEV／自行提供、必要 URL／模型／認證引用 | Timeout、精確 Profile／Tokenizer 等 |
 | Parsing（已確認） | 只顯示結構化 JSON | 其他格式及相關設定全部收在預設關閉進階區 |
-| Chunking | Fixed-size／Recursive／Header-aware、主要切分欄位、複製欄位 | 共用 Token Size／Overlap／Tokenizer；分隔符／標題層級依方法啟用，Fixed-size UI 尚待辦 |
+| Chunking | Fixed-size／Recursive／Header-aware、主要切分欄位、複製欄位；metadata 預設全繼承 | 共用 Token Size／Overlap／Tokenizer；分隔符／標題層級依方法啟用；不提供 metadata 排除表單，UI 尚待辦 |
 | Embedding | 來源欄位、輸出向量、模型 | 維度／Encoding／Normalization、Batch、輸入限制 |
-| Indexing | 後端、保存／全文／向量欄位、過濾能力 | 後端特有參數、進階 Mapping（支援後才顯示） |
+| Indexing | 後端、全文／向量欄位、過濾能力；全部內容自動保存的摘要 | 後端特有參數、進階 Mapping（支援後才顯示）；不要求再勾選保存內容 |
 | Query Transformation | None／Rewrite／Multi-query、LLM | Prompt、count、include_original |
 | Retrieval／Fusion Plan | 搜尋欄位、每 Query／每路 Top K、有效流程摘要、預設 filters | 同／跨 Query 合併、時點、演算法、去重及兩處合併後 Top N；見 §3.4 |
 | Rerank | None／服務、單一評分內容欄位、評分後 Top N（預設 3）、實際提問來源 | 逐 Query 問題選擇、附加內容欄位、Timeout／服務輸入限制 |
@@ -101,10 +102,20 @@ DEV test use 使用平台測試資源；匯出部署時需填入使用單位的�
 | Indexing 選 ES／Local Search | Retrieval 顯示繼承的後端資訊，不增加 Implementation 選單 |
 | 欄位未建立全文／向量索引 | 對應搜尋選項顯示且停用，說明需先在 Indexing 建立能力；既有選擇失效則保留錯誤並阻止保存 |
 | Embedding 移除某個 output_name | Indexing／Retrieval 的向量引用標為失效，不默默改為其他向量或欄位 |
+| 欄位未建立全文／向量索引，但已存在於 Chunk | 仍可用於 Rerank／Generation 等內容消費；只有相對應的搜尋能力不能選，不能以「未勾儲存」拒絕 |
+| metadata 已繼承／保存但未宣告可過濾 | 保留內容，Filter 選單停用該欄位並說明要先在 Indexing 啟用；不自動索引全部 metadata |
 | Chunking 選 Fixed-size（待實作） | Token Size／Overlap／Tokenizer 有效；分隔符／keep_separator／標題層級不生效且保留草稿，不要求 Parsing headings |
 | Header-aware 所需標題能力未開啟 | 顯示相依原因，提供定位 Parsing 進階設定的方式；無法滿足時阻止保存 |
 
 卡控只處理設定相依；不代替實際後端能力、Profile 或連線驗證。規則由 04／05 共用來源推導。
+
+### 3.3.1 討論提案：Query Rewrite 單模組測試
+
+**待使用者確認，尚未改 UI。** 建議在 Query Transformation 放「測試 Rewrite／Multi-query」：輸入一個問題，用當前草稿的 Prompt／LLM／count 執行該模組，不要求先建立／保存 System 或 Ingestion，也不執行 Retrieval／Rerank／Generation。
+
+測試前驗證本模組與引用服務的必要設定，不以其他無關模組未填完阻擋。顯示實際生成的 Prompt、要求筆數、解析後 Query 清單、原始問題是否另外加入及格式／筆數／非空／重複驗證；原始回應可收合，耗時／Token 用量僅顯示實際可取得數據。None 不呼叫 LLM。
+
+測試使用與正式執行相同的 Engine 模組、Adapter、Schema 與驗證；LLM 輸出策略提案見 [04 §5.1.1](04_module_methods_io_contracts.md#511-討論提案rewrite-的結構化輸出與共用-llm-邊界)。未接真實服務則明示模擬。修改 Prompt／LLM／count／保留原始問題或測試輸入後，舊結果標示過期；過期非同步回應不覆蓋新測試。試跑結果不自動套用／保存 Config，也不新增「必須先測試才能儲存」的 Gate。
 
 ### 3.4 Inference 結果處理的整合提案
 

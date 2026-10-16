@@ -12,7 +12,7 @@ Config-driven RAG System 建立與測試平台。
 
 **接續規劃**：先讀 [03 名詞與架構](03_architecture_proposal.md#terminology) 及 [08 開發計畫與決策](docs/08_implementation_plan.md)。原 RAG Builder 規劃對話與「畫userflow」的整合核對、直接修正及需討論的邊界集中於 08 §12；臨時交接摘要已依指示讀取後移除。
 
-## 開發規格文件集 v0.17（2026-10-16）
+## 開發規格文件集 v0.18（2026-10-16）
 
 本輪已把 03～08 整理為 coding agent 可分階段使用的開發規格草案。**已確認方向、既有基線、建議與待決事項分開記錄**；具體公共介面與部分行為仍需決策，不表示後端已實作。v0.10 比對可取得的歷史片段；v0.11 統一 Engine／Runtime／System、Config／部署設定及 Workspace → System，移除正式 Blueprint／Group 概念；v0.12 將正式名詞集中到 03，其他規格引用並補充各自的實作細節。
 
@@ -24,6 +24,8 @@ v0.15 曾加入 QueryContext／ResultSet／ResultItem 的具體草案。v0.16 �
 
 v0.17 新增 Fixed-size（固定 Token 視窗），保留 Recursive／Header-aware；方法規則與驗收見 04。開發階段重排為 **M0 規格 → M1 最小 Engine → M2 方法／能力擴充 → M3 Runtime API → M4 獨立 AI 設定助手 → M5 Builder 前後端與助手整合 → M6 Evaluation → M7 獨立部署交付**。M4 不需 Builder 即可產生 Config；M5 另驗收 UI 草稿／Diff／套用／取消及過期建議，詳見 08 §4.2。
 
+v0.18 確認 Indexing 預設保存全部 Chunk.fields／metadata，拿掉使用者內容保存投影，Chunking 預設繼承全部有效 metadata；只選全文／向量索引與可過濾欄位。目標 Config 範例省略 stored_fields／metadata_fields，UI 尚未改。Rewrite／Multi-query 的單模組測試與 LLM 結構化輸出策略先記為提案，待確認；詳見 04 §5.1.1、06 §3.3.1 及 10 的 UIB-005～007。
+
 | 文件 | 定位 |
 |---|---|
 | [03 系統概覽與架構](03_architecture_proposal.md) | 正式名詞定義、產品目的、新手／進階情境、元件分工、部署邊界與範圍 |
@@ -31,9 +33,9 @@ v0.17 新增 Fixed-size（固定 Token 視窗），保留 Recursive／Header-awa
 | [05 共用資料模型與 Config](docs/05_data_contracts_search_design.md) | ParsedDocument／Chunk／SearchHit、Schema、Config 草案與變更影響 |
 | [06 使用流程與 UI 開發規格](docs/06_ui_development_spec.md) | 基本／進階、CSV、AI 助手、預覽、Edit 與測試操作 |
 | [07 Backend、Runtime API 與整合](docs/07_backend_runtime_integration.md) | API、System／Revision、任務、持久化、Runtime 與 Export |
-| [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M7、助手獨立／UI 兩階段驗收、38 項決策、27 項待決問題及 40 項歷史要求對照 |
+| [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M7、助手獨立／UI 兩階段驗收、39 項決策、27 項待決問題及 40 項歷史要求對照 |
 | [09 Inference Contract 與 UI 整合提案](docs/09_inference_contract_ui_plan.md) | 三種操作／共同排序的討論記錄、順序式 UI 設定、案例與待確認選項 |
-| [10 UI Prototype Backlog 與完成紀錄](docs/10_ui_adjustment_backlog.md) | §1～6 保留 v0.9 歷史完成項目；§7 記錄 Fixed-size／助手整合的新待辦，收到改 UI 指示後才實作 |
+| [10 UI Prototype Backlog 與完成紀錄](docs/10_ui_adjustment_backlog.md) | §1～6 保留 v0.9 歷史完成項目；§7 記錄 Fixed-size／助手整合／內容保存／metadata 待辦與 Rewrite 試跑提案，收到改 UI 指示後才實作 |
 
 建議先讀 03／08，再依任務讀 05／04／07／06。03 統一名詞與邊界，05 定義資料／版本規則，08 記錄決策與待決狀態。Engine 核心不依賴 Builder UI、HTTP 或 Builder DB；07 將其包裝為可管理服務。每份規格末尾列出相關 Q-ID，完整候選／決策／階段阻擋統一放在 08。
 
