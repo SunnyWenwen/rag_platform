@@ -1,0 +1,41 @@
+flowchart LR
+    %% 節點與關係定義；固定水平版面見同名 SVG，PNG 由 SVG 產生。
+    subgraph BUILDER["RAG Builder測試"]
+        direction LR
+        B["1. Build（設定 Config）"] --> I["2. Ingestion"]
+        I --> Q["3. Inference"]
+        Q --> E["4. Evaluation"]
+        E -->|準備部署到 k8s| X["5. Export YAML"]
+        E -->|驗證不達標，需調整| C["修改 Config"]
+        C -->|如果有調整 Ingestion 設定，需重新 Ingestion| I
+        C -->|只調整 Inference 設定，不需重新 Ingestion| Q
+    end
+
+    D["6. Deploy YAML in FTEST/ENT"]
+    X -->|使用匯出的 YAML| D
+
+    K["RAG System in k8s"]
+    D -. 部署 .-> K
+
+    S["RAG System for RAG Builder 測試"]
+    R["評估報告"]
+    Y["YAML 設定檔"]
+
+    B -. 建立 .-> S
+    I -. "建立 Chunks / Indexes" .-> S
+    Q -. 查詢 .-> S
+    E -. 評估 .-> S
+    C -. 更新設定 .-> S
+
+    E -. 產出 .-> R
+    X -. 產出 .-> Y
+    Y -.-> K
+
+    classDef user fill:#e9f2ff,stroke:#6086c8,color:#143054
+    classDef system fill:#ecf8f2,stroke:#599d85,color:#153f32
+    class B,I,Q,E,X,C user
+    class S,R,Y,K system
+
+    classDef deploy fill:#fff5e5,stroke:#cf9b4a,color:#624516
+    class D deploy
+    style BUILDER fill:#f7faff,stroke:#9aafc9

@@ -1,0 +1,355 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rag-builder.example.invalid/schemas/inference-state-0.2-draft.schema.json",
+  "title": "InferenceState / QueryContext proposal",
+  "description": "三種結果操作與共同排序規則依討論記錄；精確欄位及 UI Config 仍為待確認草案，非已實作 Engine／HTTP API。",
+  "type": "object",
+  "properties": {
+    "contract_version": {
+      "const": "inference-0.2-draft"
+    },
+    "query_contexts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/QueryContext"
+      },
+      "minItems": 1
+    },
+    "active_query_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "contract_version",
+    "query_contexts",
+    "active_query_ids"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "Chunk": {
+      "type": "object",
+      "properties": {
+        "chunk_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "document_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "vectors": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 1
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "chunk_id",
+        "document_id",
+        "source_revision",
+        "fields",
+        "vectors",
+        "metadata"
+      ],
+      "additionalProperties": false
+    },
+    "SourceRef": {
+      "type": "object",
+      "properties": {
+        "result_set_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "chunk_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "result_set_id",
+        "chunk_id"
+      ],
+      "additionalProperties": false
+    },
+    "RetrievalSource": {
+      "type": "object",
+      "properties": {
+        "route_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "index_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "field_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "route_id",
+        "index_ref",
+        "field_paths"
+      ],
+      "additionalProperties": false
+    },
+    "Operation": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "model_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "scoring_query_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "required": [
+        "method",
+        "parameters",
+        "model_ref",
+        "scoring_query_id"
+      ],
+      "additionalProperties": false
+    },
+    "ResultItem": {
+      "type": "object",
+      "properties": {
+        "chunk": {
+          "$ref": "#/$defs/Chunk"
+        },
+        "score": {
+          "type": "number"
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "chunk",
+        "score",
+        "rank",
+        "source_refs"
+      ],
+      "additionalProperties": false
+    },
+    "ResultSet": {
+      "type": "object",
+      "properties": {
+        "result_set_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stage": {
+          "enum": [
+            "retrieval",
+            "merge",
+            "top_n",
+            "model_score"
+          ]
+        },
+        "input_result_set_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RetrievalSource"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "operation": {
+          "$ref": "#/$defs/Operation"
+        },
+        "score_kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "score_order": {
+          "enum": [
+            "higher_is_better",
+            "lower_is_better"
+          ]
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResultItem"
+          }
+        }
+      },
+      "required": [
+        "result_set_id",
+        "stage",
+        "input_result_set_ids",
+        "source",
+        "operation",
+        "score_kind",
+        "score_order",
+        "items"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "stage": {
+                "const": "retrieval"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "source": {
+                "$ref": "#/$defs/RetrievalSource"
+              },
+              "input_result_set_ids": {
+                "maxItems": 0
+              },
+              "items": {
+                "items": {
+                  "properties": {
+                    "source_refs": {
+                      "maxItems": 0
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "source": {
+                "type": "null"
+              },
+              "input_result_set_ids": {
+                "minItems": 1
+              },
+              "items": {
+                "items": {
+                  "properties": {
+                    "source_refs": {
+                      "minItems": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "QueryContext": {
+      "type": "object",
+      "properties": {
+        "query_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "query": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ori_query_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ori_query": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_query_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "result_sets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResultSet"
+          }
+        },
+        "active_result_set_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "query_id",
+        "query",
+        "ori_query_id",
+        "ori_query",
+        "source_query_ids",
+        "result_sets",
+        "active_result_set_ids"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2360" height="930" viewBox="0 0 2360 930" role="img" aria-labelledby="title desc">
+  <title id="title">RAG Builder 測試與部署流程</title>
+  <desc id="desc">步驟 1 至 5 與修改 Config 位於 RAG Builder測試框內；步驟 6 在框外右側，部署虛線往下連到 RAG System in k8s。YAML 設定檔以虛線接入部署連線，共同指向 RAG System in k8s。實線表示操作順序，虛線表示操作與物件的關係。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 Z" fill="#66788b"/></marker>
+  </defs>
+  <style>
+    text { font-family: 'Noto Sans CJK TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif; font-weight: 400; text-anchor: middle; dominant-baseline: central; fill: #143054; }
+    .step rect { fill: #e9f2ff; stroke: #6086c8; }
+    .object rect { fill: #ecf8f2; stroke: #599d85; }
+    .object text { fill: #153f32; }
+    .deploy rect { fill: #fff5e5; stroke: #cf9b4a; }
+    .deploy text { fill: #624516; }
+    .node rect { stroke-width: 1.8; }
+    .edge { fill: none; stroke: #60768e; stroke-width: 2; marker-end: url(#arrow); }
+    .relation { stroke: #66788b; stroke-dasharray: 7 7; }
+    .edge-label { fill: #485d71; stroke: white; stroke-width: 12; stroke-linejoin: round; paint-order: stroke fill; }
+  </style>
+  <rect width="2360" height="930" fill="white"/>
+  <g id="BUILDER">
+    <rect x="30" y="35" width="1700" height="435" rx="10" fill="#f7faff" stroke="#b9c9dd" stroke-width="1.8"/>
+    <text x="60" y="67" font-size="25" style="text-anchor:start">RAG Builder測試</text>
+  </g>
+  <path id="edge-B-I" data-source="B" data-target="I" data-label="" class="edge" d="M300,388 L360,388"/>
+  <path id="edge-I-Q" data-source="I" data-target="Q" data-label="" class="edge" d="M600,388 L660,388"/>
+  <path id="edge-Q-E" data-source="Q" data-target="E" data-label="" class="edge" d="M900,388 L960,388"/>
+  <path id="edge-E-X" data-source="E" data-target="X" data-label="準備部署到 k8s" class="edge" d="M1200,388 L1460,388"/>
+  <path id="edge-E-C" data-source="E" data-target="C" data-label="驗證不達標，需調整" class="edge" d="M1080,345 L1080,185"/>
+  <path id="edge-C-I" data-source="C" data-target="I" data-label="如果有調整 Ingestion 設定，需重新 Ingestion" class="edge" d="M1020,120 L480,120 L480,345"/>
+  <path id="edge-C-Q" data-source="C" data-target="Q" data-label="只調整 Inference 設定，不需重新 Ingestion" class="edge" d="M1020,165 L780,165 L780,345"/>
+  <path id="edge-X-D" data-source="X" data-target="D" data-label="使用匯出的 YAML" class="edge" d="M1700,388 L1900,388"/>
+  <path id="edge-D-K" data-source="D" data-target="K" data-label="部署" class="edge relation" d="M2060,430 L2060,650"/>
+  <path id="edge-B-S" data-source="B" data-target="S" data-label="建立" class="edge relation" d="M180,430 L180,650"/>
+  <path id="edge-I-S" data-source="I" data-target="S" data-label="建立 Chunks / Indexes" class="edge relation" d="M480,430 L480,650"/>
+  <path id="edge-Q-S" data-source="Q" data-target="S" data-label="查詢" class="edge relation" d="M780,430 L780,650"/>
+  <!-- E → S branches from the shared vertical segment of E → R. -->
+  <path id="edge-E-S" data-source="E" data-target="S" data-label="評估" data-branches-from="edge-E-R" class="edge relation" d="M1090,540 L860,540 L860,650"/>
+  <circle cx="1090" cy="540" r="3" fill="#66788b"/>
+  <path id="edge-C-S" data-source="C" data-target="S" data-label="更新設定" class="edge relation" d="M1260,142 L2300,142 L2300,820 L490,820 L490,730"/>
+  <path id="edge-E-R" data-source="E" data-target="R" data-label="產出" class="edge relation" d="M1090,430 L1090,650"/>
+  <path id="edge-X-Y" data-source="X" data-target="Y" data-label="產出" class="edge relation" d="M1580,430 L1580,650"/>
+  <!-- Y → K joins D → K; the downward segment and arrowhead are shared. -->
+  <path id="edge-Y-K" data-source="Y" data-target="K" data-label="" data-joins="edge-D-K" class="edge relation" style="marker-end:none" d="M1700,690 L1820,690 L1820,575 L2060,575"/>
+  <circle cx="2060" cy="575" r="3" fill="#66788b"/>
+  <g id="B" class="node step" data-label="1. Build（設定 Config）">
+    <rect x="60" y="345" width="240" height="85" rx="10"/>
+    <text x="180.0" y="373.5" font-size="23">1. Build</text>
+    <text x="180.0" y="403.5" font-size="19">設定 Config</text>
+  </g>
+  <g id="I" class="node step" data-label="2. Ingestion">
+    <rect x="360" y="345" width="240" height="85" rx="10"/>
+    <text x="480.0" y="387.5" font-size="23">2. Ingestion</text>
+  </g>
+  <g id="Q" class="node step" data-label="3. Inference">
+    <rect x="660" y="345" width="240" height="85" rx="10"/>
+    <text x="780.0" y="387.5" font-size="23">3. Inference</text>
+  </g>
+  <g id="E" class="node step" data-label="4. Evaluation">
+    <rect x="960" y="345" width="240" height="85" rx="10"/>
+    <text x="1080.0" y="387.5" font-size="23">4. Evaluation</text>
+  </g>
+  <g id="X" class="node step" data-label="5. Export YAML">
+    <rect x="1460" y="345" width="240" height="85" rx="10"/>
+    <text x="1580.0" y="387.5" font-size="23">5. Export YAML</text>
+  </g>
+  <g id="C" class="node step" data-label="修改 Config">
+    <rect x="1020" y="100" width="240" height="85" rx="10"/>
+    <text x="1140.0" y="142.5" font-size="25">修改 Config</text>
+  </g>
+  <g id="D" class="node deploy" data-label="6. Deploy YAML in FTEST/ENT">
+    <rect x="1900" y="345" width="320" height="85" rx="10"/>
+    <text x="2060.0" y="373.5" font-size="23">6. Deploy YAML</text>
+    <text x="2060.0" y="403.5" font-size="21">in FTEST/ENT</text>
+  </g>
+  <g id="S" class="node object" data-label="RAG System for RAG Builder 測試">
+    <rect x="80" y="650" width="820" height="80" rx="10"/>
+    <text x="490.0" y="690.0" font-size="28">RAG System for RAG Builder 測試</text>
+  </g>
+  <g id="R" class="node object" data-label="評估報告">
+    <rect x="980" y="650" width="220" height="80" rx="10"/>
+    <text x="1090.0" y="690.0" font-size="25">評估報告</text>
+  </g>
+  <g id="Y" class="node object" data-label="YAML 設定檔">
+    <rect x="1460" y="650" width="240" height="80" rx="10"/>
+    <text x="1580.0" y="690.0" font-size="25">YAML 設定檔</text>
+  </g>
+  <g id="K" class="node object" data-label="RAG System in k8s">
+    <rect x="1900" y="650" width="320" height="80" rx="10"/>
+    <text x="2060.0" y="690.0" font-size="25">RAG System in k8s</text>
+  </g>
+  <text class="edge-label" x="1330" y="366" font-size="20">準備部署到 k8s</text>
+  <text class="edge-label" x="1080" y="280" font-size="20">驗證不達標，需調整</text>
+  <text class="edge-label" x="735" y="90" font-size="20">如果有調整 Ingestion 設定，需重新 Ingestion</text>
+  <text class="edge-label" x="740" y="250" font-size="20">只調整 Inference 設定，不需重新 Ingestion</text>
+  <text class="edge-label" x="1800" y="366" font-size="18">使用匯出的 YAML</text>
+  <text class="edge-label" x="2060" y="540" font-size="21">部署</text>
+  <text class="edge-label" x="180" y="540" font-size="21">建立</text>
+  <text class="edge-label" x="480" y="540" font-size="21">建立 Chunks / Indexes</text>
+  <text class="edge-label" x="780" y="540" font-size="21">查詢</text>
+  <text class="edge-label" x="935" y="540" font-size="21">評估</text>
+  <text class="edge-label" x="1395" y="820" font-size="21">更新設定</text>
+  <text class="edge-label" x="1090" y="580" font-size="21">產出</text>
+  <text class="edge-label" x="1580" y="540" font-size="21">產出</text>
+  <text x="1180" y="895" font-size="18" style="fill:#66788b">實線：操作順序　 ·　 虛線：操作與物件的關係</text>
+</svg>

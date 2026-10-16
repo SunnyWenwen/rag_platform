@@ -1,0 +1,318 @@
+{
+  "contract_version": "inference-0.2-draft",
+  "query_contexts": [
+    {
+      "query_id": "q0",
+      "query": "設備多久需要清潔？",
+      "ori_query_id": "q0",
+      "ori_query": "設備多久需要清潔？",
+      "source_query_ids": [],
+      "result_sets": [],
+      "active_result_set_ids": []
+    },
+    {
+      "query_id": "q1",
+      "query": "設備清潔週期",
+      "ori_query_id": "q0",
+      "ori_query": "設備多久需要清潔？",
+      "source_query_ids": [
+        "q0"
+      ],
+      "result_sets": [
+        {
+          "result_set_id": "q1-r1",
+          "stage": "retrieval",
+          "input_result_set_ids": [],
+          "source": {
+            "route_id": "text-bm25",
+            "index_ref": "primary",
+            "field_paths": [
+              "fields.text"
+            ]
+          },
+          "operation": {
+            "method": "bm25",
+            "parameters": {},
+            "model_ref": null,
+            "scoring_query_id": "q1"
+          },
+          "score_kind": "bm25",
+          "score_order": "higher_is_better",
+          "items": [
+            {
+              "chunk": {
+                "chunk_id": "c1",
+                "document_id": "manual-001",
+                "source_revision": "v1",
+                "fields": {
+                  "text": "設備每月需清潔散熱孔。",
+                  "title": "每月保養"
+                },
+                "vectors": {},
+                "metadata": {
+                  "department": "manufacturing"
+                }
+              },
+              "score": 12.3,
+              "rank": 1,
+              "source_refs": []
+            },
+            {
+              "chunk": {
+                "chunk_id": "c2",
+                "document_id": "manual-002",
+                "source_revision": "v1",
+                "fields": {
+                  "text": "每週清潔濾網並記錄保養結果。",
+                  "title": "每週保養"
+                },
+                "vectors": {},
+                "metadata": {
+                  "department": "manufacturing"
+                }
+              },
+              "score": 8.1,
+              "rank": 2,
+              "source_refs": []
+            },
+            {
+              "chunk": {
+                "chunk_id": "c3",
+                "document_id": "manual-003",
+                "source_revision": "v1",
+                "fields": {
+                  "text": "年度檢查需確認設備散熱系統。",
+                  "title": "年度檢查"
+                },
+                "vectors": {},
+                "metadata": {
+                  "department": "manufacturing"
+                }
+              },
+              "score": 5.2,
+              "rank": 3,
+              "source_refs": []
+            }
+          ]
+        }
+      ],
+      "active_result_set_ids": [
+        "q1-r1"
+      ]
+    },
+    {
+      "query_id": "q2",
+      "query": "設備保養規範",
+      "ori_query_id": "q0",
+      "ori_query": "設備多久需要清潔？",
+      "source_query_ids": [
+        "q0"
+      ],
+      "result_sets": [
+        {
+          "result_set_id": "q2-r1",
+          "stage": "retrieval",
+          "input_result_set_ids": [],
+          "source": {
+            "route_id": "text-dense",
+            "index_ref": "primary",
+            "field_paths": [
+              "vectors.text_vector"
+            ]
+          },
+          "operation": {
+            "method": "cosine_similarity",
+            "parameters": {},
+            "model_ref": "embedding-default",
+            "scoring_query_id": "q2"
+          },
+          "score_kind": "cosine_similarity",
+          "score_order": "higher_is_better",
+          "items": [
+            {
+              "chunk": {
+                "chunk_id": "c2",
+                "document_id": "manual-002",
+                "source_revision": "v1",
+                "fields": {
+                  "text": "每週清潔濾網並記錄保養結果。",
+                  "title": "每週保養"
+                },
+                "vectors": {},
+                "metadata": {
+                  "department": "manufacturing"
+                }
+              },
+              "score": 0.95,
+              "rank": 1,
+              "source_refs": []
+            },
+            {
+              "chunk": {
+                "chunk_id": "c3",
+                "document_id": "manual-003",
+                "source_revision": "v1",
+                "fields": {
+                  "text": "年度檢查需確認設備散熱系統。",
+                  "title": "年度檢查"
+                },
+                "vectors": {},
+                "metadata": {
+                  "department": "manufacturing"
+                }
+              },
+              "score": 0.86,
+              "rank": 2,
+              "source_refs": []
+            },
+            {
+              "chunk": {
+                "chunk_id": "c1",
+                "document_id": "manual-001",
+                "source_revision": "v1",
+                "fields": {
+                  "text": "設備每月需清潔散熱孔。",
+                  "title": "每月保養"
+                },
+                "vectors": {},
+                "metadata": {
+                  "department": "manufacturing"
+                }
+              },
+              "score": 0.8,
+              "rank": 3,
+              "source_refs": []
+            }
+          ]
+        }
+      ],
+      "active_result_set_ids": [
+        "q2-r1"
+      ]
+    },
+    {
+      "query_id": "q-merged",
+      "query": "設備多久需要清潔？",
+      "ori_query_id": "q0",
+      "ori_query": "設備多久需要清潔？",
+      "source_query_ids": [
+        "q1",
+        "q2"
+      ],
+      "result_sets": [
+        {
+          "result_set_id": "m1",
+          "stage": "merge",
+          "input_result_set_ids": [
+            "q1-r1",
+            "q2-r1"
+          ],
+          "source": null,
+          "operation": {
+            "method": "rrf",
+            "parameters": {
+              "group_by": [
+                "ori_query_id"
+              ],
+              "merge_key": "chunk_id",
+              "k": 60
+            },
+            "model_ref": null,
+            "scoring_query_id": null
+          },
+          "score_kind": "rrf",
+          "score_order": "higher_is_better",
+          "items": [
+            {
+              "chunk": {
+                "chunk_id": "c2",
+                "document_id": "manual-002",
+                "source_revision": "v1",
+                "fields": {
+                  "text": "每週清潔濾網並記錄保養結果。",
+                  "title": "每週保養"
+                },
+                "vectors": {},
+                "metadata": {
+                  "department": "manufacturing"
+                }
+              },
+              "score": 0.03252247488101534,
+              "rank": 1,
+              "source_refs": [
+                {
+                  "result_set_id": "q1-r1",
+                  "chunk_id": "c2"
+                },
+                {
+                  "result_set_id": "q2-r1",
+                  "chunk_id": "c2"
+                }
+              ]
+            },
+            {
+              "chunk": {
+                "chunk_id": "c1",
+                "document_id": "manual-001",
+                "source_revision": "v1",
+                "fields": {
+                  "text": "設備每月需清潔散熱孔。",
+                  "title": "每月保養"
+                },
+                "vectors": {},
+                "metadata": {
+                  "department": "manufacturing"
+                }
+              },
+              "score": 0.032266458495966696,
+              "rank": 2,
+              "source_refs": [
+                {
+                  "result_set_id": "q1-r1",
+                  "chunk_id": "c1"
+                },
+                {
+                  "result_set_id": "q2-r1",
+                  "chunk_id": "c1"
+                }
+              ]
+            },
+            {
+              "chunk": {
+                "chunk_id": "c3",
+                "document_id": "manual-003",
+                "source_revision": "v1",
+                "fields": {
+                  "text": "年度檢查需確認設備散熱系統。",
+                  "title": "年度檢查"
+                },
+                "vectors": {},
+                "metadata": {
+                  "department": "manufacturing"
+                }
+              },
+              "score": 0.03200204813108039,
+              "rank": 3,
+              "source_refs": [
+                {
+                  "result_set_id": "q1-r1",
+                  "chunk_id": "c3"
+                },
+                {
+                  "result_set_id": "q2-r1",
+                  "chunk_id": "c3"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "active_result_set_ids": [
+        "m1"
+      ]
+    }
+  ],
+  "active_query_ids": [
+    "q-merged"
+  ]
+}
