@@ -1,6 +1,6 @@
 # RAG Builder — 開發計畫、驗收與決策追蹤
 
-> 文件集 v0.18 · 2026-10-16 · 開發規格草案
+> 文件集 v0.19 · 2026-10-16 · 開發規格草案
 >
 > 目的：讓 coding agent 依同一套規格分階段開發，並持續記錄尚不清楚的問題。本文是決策／待決狀態的權威位置；它不把技術建議自動轉成使用者已核可決策。
 
@@ -198,6 +198,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 
 - 不清楚：首組模型、Profile／版本辨識、Tokenizer 取得、Chat 角色／輸出格式、多 Query 解析、Rerank 服務限制。
 - 本輪待確認提案：Rewrite／Multi-query 採固定 queries 結構及 1／N 數量、Provider Structured Output／Tool／文字解析能力分級、模組 Schema 與共用 LLM Adapter 分工；格式與語意都由後端重驗。細節見 04 §5.1.1，不因寫入提案就凍結 Provider 或重試／fallback 預設。
+- 10:22 延續提案：Rewrite／Multi-query 可合併為一種啟用方法，以 count=1／N 區分；count 動態產生 Schema，Prompt 控制內容而不覆寫格式／筆數。Generation 另提預設格式＋收合的自訂 JSON Schema；支援能力、回傳 Schema 子集與拒答／截斷處理仍待核定，見 04 §5.1.2／§5.4.1。
 - 既有方向：Embedding API、System 共用 LLM 的 OpenAI-compatible API、平台約定 Rerank API；原型格式基線為 embeddings／Chat Completions／04 的 rerank。原型基線不等於所有 Provider 相容性都已核定。
 - 建議：先選一組可實測的 Adapter／服務及 Profile，各有 Fake 與真實契約測試；不同格式顯式 Adapter。
 - 替代：第一期支援多 Provider 格式，增加測試矩陣。
@@ -336,6 +337,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 ### Q-018 Evaluation 範圍與 Gate
 
 - 不清楚：首批指標、Dataset／Ground Truth 格式、Judge／Rubric、Chunk／Document 層級、Rerank 前後、公開檢索 Target、Gate 門檻。
+- Generation 自訂 JSON 若採用，還需核定主要回答文字欄位映射、無文字 payload 時哪些指標不適用，以及 UI／Dataset 相容性；不得把未定的整個 JSON 序列化成答案後宣稱完成既有評估。
 - 建議：先有可驗算的 Retrieval 指標與操作指標，再加明示 Judge；缺資料拒絕或 skipped。
 - 替代：先 End-to-end Judge；不得冒充有可靠 Retrieval Ground Truth。
 - 負責角色：產品／資料＋Engine＋Backend；阻擋 M6 正式評估／Gate，不卡 Query 主線。
@@ -345,6 +347,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 ### Q-019 API／HTTP Envelope 與呼叫認證
 
 - 不清楚：完整 CRUD／助手／管理 API、OpenAPI、錯誤碼／狀態、上傳限制、manifest、冪等鍵、DEV 路由、認證及暴露 Trace。
+- 10:22 的 Generation 自訂 JSON 提案只針對業務內容；HTTP envelope 的平台欄位、payload 容器、answer 字串相容性、SDK 型別、錯誤／Streaming 需另核定。當前 07 範例不因提案而變動。
 - 建議：沿用 07 的 Endpoint 草案，先凍結 Ingestion／Status／Query，補齊 Backend API；HTTP 與領域錯誤分層。
 - 替代：沿用既有企業 API 規範並明確映射。
 - 負責角色：Backend＋Runtime＋Frontend／身分團隊；阻擋 M3 Runtime／M4 助手 API／M5 Builder 真實串接。
@@ -400,6 +403,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 
 - 已確認：Parsing 初始只顯示結構化 JSON，其他格式／設定全在預設關閉進階區；LLM／Prompt／範例及 API 說明要求見 06 §3.2。待定的是其餘基本／進階分組、展開記憶、改動摘要、範本、真實試跑與診斷範圍。
 - 2026-10-16 討論提案：在 Rewrite／Multi-query 旁提供不需 Ingestion 的單模組測試，使用當前草稿與相同 Engine／Adapter，顯示實際 Query 與格式驗證；是否採用及展示細節待確認，UIB-007 保持提案狀態，不擴張成所有模組都要試跑。
+- 後續提案 UIB-008／009：Rewrite 兩方法合併為 1／N 同一組設定，Generation 預設格式與預設收合的進階 JSON 輸出設定。均為待確認提案，不能覆蓋原型／既有 Config 或自動勾選為已實作。
 - 建議：保留已確認互動，再核定其餘分組；必填錯誤可定位，保持同一 Config。試跑與範本逐項啟用。
 - 替代：單獨新手／專家入口，但兩者仍需共享 Config／驗證。
 - 負責角色：產品＋Frontend；阻擋 M5 正式 UX 凍結，不卡 Schema／Engine。
@@ -683,3 +687,11 @@ Inference Schema／五份 JSON／Python 範例、圖面及其他服務實作均�
 - 使用者提出 Rewrite 的 UI 試跑及如何固定 Query 數量／LLM 輸出。04 §5.1.1／06 §3.3.1 記錄 Structured Output＋後端驗證＋有限失敗處理與單模組試跑的提案；不是已確認預設，不新增 D-ID 代替使用者決策。Provider／格式／去重／重試／fallback 分別留 Q-003／Q-017／Q-023；接口細節留 Q-019。
 - 10 新增 UIB-005／006 已確認待 UI 實作、UIB-007 提案待確認。沒有新增畫面、呼叫模型或建立測試端點，Prototype 仍 v0.9。
 - 文件集 v0.18，D-ID 共 39、Q-ID 27、既有 A-ID 40。新規則與舊版 UI 完成紀錄分開；JSON Schema、Inference 範例、程式／測試、圖面未變。文件與 Python 示範驗證不能代替真實 Provider／Engine 驗收。
+
+## 20. 2026-10-16 10:22 Rewrite 合併與 Generation 格式提案
+
+- 使用者詢問 Rewrite 是否等於 Multi-query=1、是否合併，以及 count／Schema／自由 Prompt 的分工。核對原型為兩種選項與兩份 Prompt；建議合成一種啟用方法，以 N 控制單／多 Query，保持原始問題及設定遷移，見 04 §5.1.2／06 §3.3.2。
+- count 由平台動態帶入 queries Schema；Prompt 描述改寫語意，不能繞過格式／筆數驗證。格式正確仍不代表語意／多樣性正確。原生限制依服務能力，不支持時走已核定策略／明確錯誤，不能宣稱所有 OpenAI-compatible 服務都相同。
+- 使用者提出 Generation 可自訂 JSON、預設格式與收合進階設定。04 §5.4.1／06 §3.5 整理推薦設計，區分業務內容 Schema、平台回應／可信引用、主要回答文字路徑與完整回傳／Streaming。現有 QueryResult.answer 字串與 HTTP 範例未改；payload 容器／版本相容留 Q-002／Q-019，評估相容留 Q-018。
+- 以上為本輪提問後的討論提案，待使用者確認；不新增 D-ID、不把 Schema／預設值／UI 細節升格為定案。10 UIB-008／009 保持未完成，既有 007 試跑提案也不因此視為已核可。
+- 文件集 v0.19；M0～M7、D-ID 39、Q-ID 27、A-ID 40 維持。只更新九份 Markdown；Prototype v0.9、公開 Schema、Config YAML／HTTP JSON 範例與其他可執行產物未變。

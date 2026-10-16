@@ -12,7 +12,7 @@ Config-driven RAG System 建立與測試平台。
 
 **接續規劃**：先讀 [03 名詞與架構](03_architecture_proposal.md#terminology) 及 [08 開發計畫與決策](docs/08_implementation_plan.md)。原 RAG Builder 規劃對話與「畫userflow」的整合核對、直接修正及需討論的邊界集中於 08 §12；臨時交接摘要已依指示讀取後移除。
 
-## 開發規格文件集 v0.18（2026-10-16）
+## 開發規格文件集 v0.19（2026-10-16）
 
 本輪已把 03～08 整理為 coding agent 可分階段使用的開發規格草案。**已確認方向、既有基線、建議與待決事項分開記錄**；具體公共介面與部分行為仍需決策，不表示後端已實作。v0.10 比對可取得的歷史片段；v0.11 統一 Engine／Runtime／System、Config／部署設定及 Workspace → System，移除正式 Blueprint／Group 概念；v0.12 將正式名詞集中到 03，其他規格引用並補充各自的實作細節。
 
@@ -25,6 +25,8 @@ v0.15 曾加入 QueryContext／ResultSet／ResultItem 的具體草案。v0.16 �
 v0.17 新增 Fixed-size（固定 Token 視窗），保留 Recursive／Header-aware；方法規則與驗收見 04。開發階段重排為 **M0 規格 → M1 最小 Engine → M2 方法／能力擴充 → M3 Runtime API → M4 獨立 AI 設定助手 → M5 Builder 前後端與助手整合 → M6 Evaluation → M7 獨立部署交付**。M4 不需 Builder 即可產生 Config；M5 另驗收 UI 草稿／Diff／套用／取消及過期建議，詳見 08 §4.2。
 
 v0.18 確認 Indexing 預設保存全部 Chunk.fields／metadata，拿掉使用者內容保存投影，Chunking 預設繼承全部有效 metadata；只選全文／向量索引與可過濾欄位。目標 Config 範例省略 stored_fields／metadata_fields，UI 尚未改。Rewrite／Multi-query 的單模組測試與 LLM 結構化輸出策略先記為提案，待確認；詳見 04 §5.1.1、06 §3.3.1 及 10 的 UIB-005～007。
+
+v0.19 討論提案：將 Rewrite／Multi-query 合併為單一 Query Rewrite，以產生數量 1／N 動態建立輸出 Schema；Generation 保留預設格式，在收合進階區明確啟用自訂回答 JSON Schema。自訂內容與平台 API 回應／可信引用分開，主要回答文字路徑與相容政策仍待核定，見 04 §5.1.2／§5.4.1。UIB-008／009 是未完成提案，不表示已確認或改過原型。
 
 | 文件 | 定位 |
 |---|---|

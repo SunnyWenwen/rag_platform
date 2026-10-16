@@ -1,6 +1,6 @@
 # RAG Builder — 共用資料模型與 Config 規格
 
-> 文件集 v0.18 · 2026-10-16 · 開發規格草案
+> 文件集 v0.19 · 2026-10-16 · 開發規格草案
 >
 > 本文是資料形狀及設定規則的權威位置。已確認的語意保留；新增的程式型別、完整 Config 拼字與預設值為建議草案，待 Q-002 核定後才凍結。YAML 範例用於討論與驗收設計，目前沒有 Engine 可直接執行。
 
@@ -161,6 +161,8 @@ Profile 是 Query／Document 配對契約；不能只比較維度或模型顯示
 | SearchHit | chunk: Chunk、rank、score、score_kind、matched_query_ids；逐路分數與 rerank_score 存 Trace |
 | Citation | citation_id、chunk_id、document_id、source_revision、locations |
 | QueryResult | original_question、answer、citations、used_chunk_ids、finish_reason、usage、abstained |
+
+上表 answer 延續字串基線。2026-10-16 的 Generation 自訂 JSON 為待確認提案：回答業務內容可依使用者 Schema 形成物件，但不能覆寫 request／版本／可信引用等平台資訊。自訂 payload 的容器、answer 相容性、主要回答文字路徑與 SDK／HTTP 型別仍由 Q-002／Q-018／Q-019 核定，見 [04 §5.4.1](04_module_methods_io_contracts.md#541-討論提案預設格式與進階自訂-json-輸出)。InferenceState 的既有 Schema 不因此改版。
 
 rank 從 1 起；score 是相關性分數，不是機率。搜尋融合用 chunk_id 去重，文件分組用 document_id，兩者不同。Rerank score 不覆寫而遺失原 Retrieval score。
 
@@ -340,6 +342,8 @@ failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項�
 | Rerank | 新模型算分的方法；服務為 None／DEV／Rerank API | method、service、content_fields；UI 將 top_n 作評分後收尾參數，見 10 |
 | ResultSet 後處理 | 去重＆合併／取 Top N／新模型算分；共同排序 | 分組、方法與參數的正式 Config Schema 仍待 Q-002／Q-014；最新 UI 原型配置見 10 |
 | Generation | 兩層模板、共用 LLM | llm_ref、chunk_template、prompt、temperature、max_output_tokens、context_budget |
+
+待確認的設定簡化／擴充：Query Rewrite 合併為一種啟用方法，N=1／N>1 由 count 表達，且用 count 動態產生 queries 輸出 Schema；Generation 增加預設／自訂 JSON 內容格式、自訂 Schema 與主要回答文字路徑。具體新欄位／枚舉未凍結，見 04 §5.1.2／§5.4.1。服務連線與模型共用，但各模組每次呼叫提供不同 Schema，不能在全域 LLM 設定固定一種輸出。原型舊 method／雙 Prompt 仍待明確遷移。
 
 正式枚舉建議用 snake_case，UI 可顯示自然語言。Prototype 的 chunking.split、embedding.mappings[].source、indexing.filters、transform 等短名稱不自動視為正式 Schema；需明確 migration。統一使用完整路徑 fields.text／vectors.text_vector／metadata.department。上述拼字及預設值需 Q-002 核定，禁止同時接受未宣告別名而掩蓋錯誤。
 

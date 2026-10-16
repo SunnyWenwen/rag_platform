@@ -1,6 +1,6 @@
 # RAG Builder — Backend、Runtime API 與整體串接規格
 
-> 文件集 v0.18 · 2026-10-16 · 開發規格草案
+> 文件集 v0.19 · 2026-10-16 · 開發規格草案
 >
 > 本文包裝 04 的 Engine，負責管理、HTTP、任務、持久化與交付。Endpoint 大方向沿用既有提案；精確 Envelope、認證、狀態與儲存細節為建議，依 Q-ID 核定後實作。
 
@@ -173,6 +173,8 @@ processed_records／total_records 指解析後的邏輯文件數，不是 Chunk 
 ```
 
 HTTP query 映射成 Engine 的原始問題；filters 與預設／ACL AND。Index 版本、Usage／Trace 回傳層級待 Q-019；引用完整規格見 05。合併時點是系統 Config／Fusion Plan 的需求，Backend 保存並交由 Engine 執行，不另寫一套融合，也不讓單次請求任意改執行計畫。若核定 Rerank 後融合，Trace 必須保留各階段候選；欄位與回傳細節見 Q-014／Q-019。Streaming、History、任意 Config override 不預設納入。
+
+2026-10-16 10:22 的 Generation 自訂 JSON 是待確認提案，見 04 §5.4.1／06 §3.5。預設保留上例 answer 字串及平台引用的基線；自訂範圍建議限回答業務內容，不能直接取代 request_id／config_revision／可信 citations 等平台資訊。自訂物件的容器（例如 output 候選）、預設相容、SDK／HTTP 型別、狀態／錯誤及 Streaming 均需 Q-002／Q-019 核定，本輪不修改既有 HTTP 例子或公共 Schema。平台引用由實際 Context 對照，不信任模型自造 document_id／chunk_id／位置。UI／Evaluation 讀取自訂回答的主要文字路徑見 Q-018。
 
 2026-10-15 的結果操作已收斂為去重合併／Top N／模型算分，各輸出共用排序與 rank 更新（05 §4.6）。Backend 保存的是經核定的邏輯處理計畫；步驟引用與本次執行的 ResultSet ID 分開，不能以回傳 operation 指揮下一步，也不能在 API 層多融合一次。ES 內部已融合時只包裝實際取得的 Hybrid 結果。UI 計畫見 [09](09_inference_contract_ui_plan.md)，仍屬待核定設定形狀。
 

@@ -1,6 +1,6 @@
 # RAG Builder — 使用流程與 UI 開發規格
 
-> 文件集 v0.18 · 2026-10-16 · 開發規格草案
+> 文件集 v0.19 · 2026-10-16 · 開發規格草案
 >
 > 本文定義 UI 目標互動。現有 HTML Prototype 的搜尋、模型、評估及 API 為模擬。Parsing 的預設收合、LLM／Prompt／範例按鈕等已確認要求如下；其他基本／進階分組、正式框架、範本與試跑優先級仍待決。
 
@@ -64,10 +64,10 @@ Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保�
 | Chunking | Fixed-size／Recursive／Header-aware、主要切分欄位、複製欄位；metadata 預設全繼承 | 共用 Token Size／Overlap／Tokenizer；分隔符／標題層級依方法啟用；不提供 metadata 排除表單，UI 尚待辦 |
 | Embedding | 來源欄位、輸出向量、模型 | 維度／Encoding／Normalization、Batch、輸入限制 |
 | Indexing | 後端、全文／向量欄位、過濾能力；全部內容自動保存的摘要 | 後端特有參數、進階 Mapping（支援後才顯示）；不要求再勾選保存內容 |
-| Query Transformation | None／Rewrite／Multi-query、LLM | Prompt、count、include_original |
+| Query Transformation | 既有 None／Rewrite／Multi-query、LLM；合併提案見 §3.3.2 | Prompt、count、include_original |
 | Retrieval／Fusion Plan | 搜尋欄位、每 Query／每路 Top K、有效流程摘要、預設 filters | 同／跨 Query 合併、時點、演算法、去重及兩處合併後 Top N；見 §3.4 |
 | Rerank | None／服務、單一評分內容欄位、評分後 Top N（預設 3）、實際提問來源 | 逐 Query 問題選擇、附加內容欄位、Timeout／服務輸入限制 |
-| Generation | LLM、回答要求 | 兩層模板、變數、Temperature、Budget |
+| Generation | LLM、回答要求；預設輸出格式提案見 §3.5 | 兩層模板、變數、Temperature、Budget；自訂 JSON Schema（提案） |
 
 必填但缺失的設定不能因進階區收合而無法發現；錯誤摘要可直接展開並定位。改動過的進階設定收起後，建議顯示已修改項數／簡短摘要。範圍、預設值及「每次記住展開」政策見 Q-025。
 
@@ -117,6 +117,14 @@ DEV test use 使用平台測試資源；匯出部署時需填入使用單位的�
 
 測試使用與正式執行相同的 Engine 模組、Adapter、Schema 與驗證；LLM 輸出策略提案見 [04 §5.1.1](04_module_methods_io_contracts.md#511-討論提案rewrite-的結構化輸出與共用-llm-邊界)。未接真實服務則明示模擬。修改 Prompt／LLM／count／保留原始問題或測試輸入後，舊結果標示過期；過期非同步回應不覆蓋新測試。試跑結果不自動套用／保存 Config，也不新增「必須先測試才能儲存」的 Gate。
 
+### 3.3.2 討論提案：以數量統一 Query Rewrite
+
+**待確認，UIB-008 未實作。** 建議用「啟用 Query Rewrite」＋產生 Query 數量 N，取代兩個分開的方法選項；N=1 單 Query 改寫，N>1 多 Query，停用直接沿用原始問題。保留一份有效 Prompt、共用 LLM 引用與 include_original，後者不計入 N。
+
+數量設定動態產生輸出 Schema；Prompt 可編輯改寫內容與角度，平台補上格式／數量要求。UI 說明「count 決定筆數，Prompt 決定內容」，可看實際格式要求，避免誤以為 Prompt 寫任意筆數就可覆寫設定；非空／重複與語意驗證仍需要。多筆預設 Prompt 應描述多樣性，但使用者改 count 時不自動覆蓋已編輯 Prompt。
+
+UIB-007 試跑如採用，也改用這組相同草稿與 Schema。Edit／AI／匯出及合併計畫預覽需沿用同一有效設定；舊 Rewrite 保留 N=1、舊 Multi-query 保留 N 與原本有效 Prompt，不能遷移時丟失另一份手寫草稿。具體保存政策 Q-002，原型仍維持兩種選項。
+
 ### 3.4 Inference 結果處理的整合提案
 
 三種操作「去重＆合併／取 Top N／新模型算分」與共同排序規則已確認，見 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft)。2026-10-15 15:53 的清單經使用者 18:55 要求開始實作，原型 v0.9 已完成 [10 §1～6](10_ui_adjustment_backlog.md) 的歷史結果處理 UI：保留單一 Create／Edit，基本／進階共用設定；進階預設收合，兩種合併預設勾選且在 Retrieval 後，Top N 附在四個動作位置，不新增獨立 Top N 卡片。10 §7 為後續待辦，不屬於 v0.9 已完成範圍。
@@ -128,6 +136,20 @@ DEV test use 使用平台測試資源；匯出部署時需填入使用單位的�
 同 Query 合併以 Query 身分分組，跨 Query 合併以相同搜尋路徑群組分組，兩層可各自移到 Reranker 後。ES 預設內部融合時，不再套同 Query 的跨路融合。跨 Query 已合併時，Reranker 有效提問固定原始問題，但保留各自 Query 選擇的草稿。Rerank=None 不會取消後置處理。
 
 文件模式先完成 chunk_id 融合，再於選定時點按 document_id 選最高分代表 Chunk，最後 Top N；文件去重不得早於最後一次跨清單合併。原型尚不提供 Generation 多份清單的消費策略，因此最終不為單一 ResultSet 時阻止保存，並定位合併設定，不隱含串接清單。
+
+### 3.5 討論提案：Generation 預設／進階輸出格式
+
+**待確認，UIB-009 未實作。** 基本區沿用預設回答文字與平台引用的格式，提供簡短預覽；「進階輸出設定」預設收合，自訂 JSON 開關預設關閉。只展開說明不改 Config；啟用後才讓自訂 Schema 生效。
+
+| 控制項 | 提案行為 |
+|---|---|
+| 自訂 JSON 輸出 | 使用者有需要才啟用；停用保留自訂草稿，不驗證／匯出其停用參數 |
+| 回答內容 JSON Schema | 定義欄位名、型別、必填、陣列等；有說明／預設 Schema 可參考，不只填一份 JSON 範例就假裝限制型別 |
+| 格式範例與驗證 | 顯示預期業務內容形狀，檢查 Schema 與所選 Provider 支援能力；未接模型的範例明示示意 |
+| 主要回答文字欄位 | 自訂時可選 summary 等文字路徑供 UI／Evaluation 使用；無效／非文字路徑可定位，無適用文字時需明示相容政策 |
+| 平台回應資訊 | request_id／版本／可信 citations 等由平台管理，與可自訂的回答內容分開；不在此編輯整個 Runtime API 回應 |
+
+若採用，保留既有 chunk_template → context → prompt，不增加 Output 模組。預設格式、Schema 子集、主要回答路徑及 API payload 容器／遷移仍需核定，見 [04 §5.4.1](04_module_methods_io_contracts.md#541-討論提案預設格式與進階自訂-json-輸出)／Q-002／Q-003／Q-018／Q-019。自訂格式只影響 Inference，修改後重測而不重建索引；若初版先完整生成後回傳，不宣稱支援自訂 JSON 的逐字 Streaming。
 
 ## 4. 從 CSV 開始
 

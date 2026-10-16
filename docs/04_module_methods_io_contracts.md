@@ -1,6 +1,6 @@
 # RAG Engine — 組裝、執行與模組開發規格
 
-> 文件集 v0.18 · 2026-10-16 · 開發規格草案
+> 文件集 v0.19 · 2026-10-16 · 開發規格草案
 >
 > 本文涵蓋可獨立執行的 Engine 與各模組；正式名詞定義見 [03 §3](../03_architecture_proposal.md#terminology)，共用資料／Config 結構見 05。既有產品語意為已確認方向，新增 SDK、Registry 形狀、執行政策為建議，須經對應 Q-ID 核定。本次未新增 Engine 程式。
 
@@ -272,11 +272,21 @@ result = Result.model_validate({"queries": [
 |---|---|---|
 | Rewrite／Multi-query | queries 的 1／N 筆字串清單 | 數量、非空、重複、原始問題保存 |
 | AI 設定助手 | Config 草稿、建議／Diff、缺項 | Schema、Registry、欄位相依與草稿基準 |
-| Generation | 第一版可保留回答文字；需機器處理欄位時另定結構化結果 | 引用來自真實 Context、回答／API 包裝與 Streaming 契約；不強迫所有回答都產生 JSON |
+| Generation | 預設回答文字由平台包裝；進階自訂 JSON 提案見 §5.4.1 | 引用來自真實 Context；業務內容 Schema、主要回答欄位與 API／Streaming 契約分開 |
 
 服務連線與模型引用集中管理，Schema 由每次模組呼叫傳入，不在同一 LLM 服務上固定一種輸出格式。使用 LangChain 時可採其 Model structured-output 介面，不需要為單次 Rewrite 引入完整 Agent。
 
 官方依據（查核 2026-10-16）：[JSON Schema 的陣列長度限制](https://json-schema.org/understanding-json-schema/reference/array#length)；[OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs) 說明 Schema 約束與 JSON mode 的區別、支援子集及拒答／不完整回應；[LangChain Models](https://docs.langchain.com/oss/python/langchain/models)／[Structured output](https://docs.langchain.com/oss/python/langchain/structured-output) 說明 Provider／Tool 策略與驗證。來源提供技術依據，不直接核定本專案的 Provider、類別、重試數或 fallback 預設。
+
+### 5.1.2 討論提案：合併 Rewrite 與 Multi-query 設定
+
+**2026-10-16 10:22 提問後的建議，待確認。** 現有 Prototype v0.9 有 None／Rewrite／Multi-query；Rewrite 固定一筆，Multi-query 使用 count，且分別保存 rewrite_prompt／multi_prompt。兩者目前不是只有畫面名稱不同，也尚無真實 Engine 生成實作。不要把共用輸出 Schema 提案描述成現有已共用的執行程式。
+
+建議保留同一 Query Transformation 模組，UI 簡稱 Query Rewrite，以啟用／停用、產生 Query 數量 N、include_original、llm_ref 與一份有效 Prompt 控制：N=1 表示單 Query 改寫，N>1 表示多個檢索表述，停用則直接沿用原始問題、不呼叫模型。多筆時 Prompt 建議描述不同表述／搜尋角度，不能只靠改數字就保證多樣性。
+
+數量設定由平台動態帶入 Schema，queries 的 minItems／maxItems 同為 N，並供實際 Provider 支援的結構化生成與後端驗證使用。Prompt 可自由描述改寫內容，格式／型別／筆數則由平台的 I/O 契約管理；可提供 query／count 變數及固定格式要求預覽，但不依靠使用者手寫「輸出幾筆」才建立限制。Prompt 與設定衝突時仍只放行通過 Schema／語意驗證的結果，不能讓 Prompt 覆寫所選 count。語法與筆數合格不代表保留原意或足夠多樣，後者需人工／Evaluation 驗證。
+
+此為單一方法與共用執行邏輯的候選，不新增另一個 Pipeline 模組。舊 Rewrite 映射 N=1，舊 Multi-query 保留原 count；取原先啟用的 Prompt 為新有效 Prompt，另一份舊草稿的保留／可恢復政策需 Q-002 核定，不能靜默刪除。None、include_original、LLM 引用、逐 Query／跨 Query 融合語意維持一致。採用後應同步 SDK、Registry、AI 助手、UI、範例與驗證；本輪只記提案，不更動原型／正式 Config 枚舉。
 
 ### 5.2 Retrieval
 
@@ -364,6 +374,48 @@ Budget 必須計入 Prompt、問題、模板、Context、特殊 Token 與輸出�
 **例外／待決**：空 Context 的建議行為為 abstain；Context 截斷、過大單塊、未知引用、模型拒答／Timeout、Prompt 角色、Temperature 限制與 Citation 擷取見 Q-003／Q-023。不能把建議 abstain 當成已核可的所有場景政策。
 
 **驗收**：引用只指向實際 Context；超限不默默丟資料；正確處理缺 title 等選填欄位；原文中的模板符號不再執行；不以固定答案通過整合驗收。
+
+### 5.4.1 討論提案：預設格式與進階自訂 JSON 輸出
+
+**2026-10-16 10:22 提案，待確認；尚未實作。** 建議保留現有 Generation 模組與基本操作，預設輸出「回答文字＋平台引用」。進階輸出設定預設收合、自訂 JSON 未啟用；展開說明不改 Config。需要機器處理欄位時，使用者明確啟用並編輯回答內容的 JSON Schema，不另加一次 LLM 格式化呼叫或 Output 模組。
+
+以下僅示範 **Generation 的業務內容**，不是整個 HTTP 回應，也不是已凍結的模型／API 格式。預設內容可理解為：
+
+```json
+{"answer": "依規範，建議每月清潔設備。"}
+```
+
+使用者有需要時可定義：
+
+```json
+{"summary": "建議每月清潔設備。", "steps": ["關機並切斷電源", "清除散熱孔灰塵"]}
+```
+
+對應的 Schema 示意如下；第一版支援的型別／巢狀深度／限制需依 Provider 能力與 Q-002／Q-003 核定，不宣稱任意 JSON Schema 均可原生生成：
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "summary": {"type": "string", "description": "根據 context 回答原始問題的摘要"},
+    "steps": {"type": "array", "items": {"type": "string"}, "description": "可執行的處理步驟"}
+  },
+  "required": ["summary", "steps"],
+  "additionalProperties": false
+}
+```
+
+共用 §5.1.1 的 LLM Adapter／格式驗證邊界，每次呼叫提供各自 Schema；Prompt 控制內容，Schema 控制結構。Provider 支援時優先原生約束生成，回應仍由後端驗證，拒答／截斷／格式錯誤依核定政策處理。只改已知欄位名稱／包裝時，平台可確定性序列化，不需要再問一次 LLM；新增 summary／steps 等語意內容則在同一次 Generation 中產生並驗證。
+
+**需要核定的邊界**：
+
+- 使用者自訂的是回答業務內容；request_id、版本、usage／狀態及可信 citations 由平台管理，不讓自訂 Schema 改寫可信執行資訊。模型只能提出受控引用 ID，文件／Chunk／位置由 Engine 驗證與補齊。
+- 既有 QueryResult.answer 與 07 的 HTTP 範例仍是字串基線。自訂物件的容器位置（例如 output 候選）、預設相容與版本遷移留 Q-002／Q-019，本輪不把字串 answer 靜默改成物件或直接替換整個 API 回應。
+- 為接既有 UI／Evaluation，可指定主要回答文字欄位，例如 summary。路徑無效／非文字時須有可定位錯誤；沒有適用文字欄位的結構化結果，相關評估應明示不支援／略過政策，不能默默把整個 JSON 當答案字串。具體要求 Q-018。
+- 第一版可先完整生成並驗證後回傳物件；若另支援 Streaming，部分 JSON／片段事件不視為已驗證最終結果，事件與錯誤契約由 Q-019 核定。
+- 只調輸出 Schema／主要回答欄位屬 Inference Config 變更，需要重新測試／評估，不重建相容索引。停用時保留自訂草稿，不驗證／匯出其無效參數，不靜默丟棄使用者設定。
+
+上述預設、控制項與 Schema 示意均為本次討論建議，UI 待辦見 10 UIB-009；Schema 型別通過不保證回答內容受資料支持。
 
 ## 6. Evaluation 邏輯
 
