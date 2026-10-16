@@ -1,6 +1,6 @@
 # RAG Engine — 組裝、執行與模組開發規格
 
-> 文件集 v0.16 · 2026-10-15 · 開發規格草案
+> 文件集 v0.17 · 2026-10-16 · 開發規格草案
 >
 > 本文涵蓋可獨立執行的 Engine 與各模組；正式名詞定義見 [03 §3](../03_architecture_proposal.md#terminology)，共用資料／Config 結構見 05。既有產品語意為已確認方向，新增 SDK、Registry 形狀、執行政策為建議，須經對應 Q-ID 核定。本次未新增 Engine 程式。
 
@@ -148,20 +148,28 @@ Timeout、重試預算、取消、partial 與 fallback 尚待 Q-009／Q-017／Q-
 
 ### 4.3 Chunking
 
-**目的與方法**：Recursive／Header-aware；一個主要 split_field＋多個 copy_fields／metadata_fields。以 Token 計量，不新增字元模式。
+**目的與方法**：Fixed-size／Recursive／Header-aware；一個主要 split_field＋多個 copy_fields／metadata_fields。三種方法均以 Token 計量，沿用指定 Tokenizer／revision。2026-10-16 新增的「fix chunk」統一稱 **Fixed-size Chunking（固定 Token 視窗）**；方法已列入需求，Engine 與 Prototype 尚未因此實作。
+
+| 方法 | 切分依據 | 有效設定 |
+|---|---|---|
+| Fixed-size | 按固定 Token 視窗前進，不依句子、分隔符或標題找邊界 | size、overlap、tokenizer；共用 split／copy／metadata 欄位設定 |
+| Recursive | 依分隔符優先序找邊界，過長片段繼續細切 | 共用設定＋separators、keep_separator |
+| Header-aware | 先依標題層級切分，超長章節再用 Recursive | 共用設定＋header_levels、標題能力及 Recursive 備援參數 |
+
+Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一塊不足 size 時保留、不補齊。視窗涵蓋文件結尾即停止，不再產生只重複末尾 overlap 的多餘 Chunk。例如 Token 串長 11、size=4、overlap=1，半開區間依序為 `[0:4]`、`[3:7]`、`[6:10]`、`[9:11]`；長度為 10 時則在 `[6:10]` 結束。這是 Token 視窗語意例子；Unicode 完整邊界、offset 映射及實際模型輸入重新計數的精確策略仍由 Q-004 核定，不能靠任意 decode Token 片段破壞原文。
 
 **處理**：
 
 1. 檢查主要欄位為非空必填 string、copy 欄位可取得。
-2. Recursive 依 separators 優先序切分，必要時處理過長片段；size 是上限、overlap 是目標值。
+2. 依所選方法切分：Fixed-size 使用上述固定視窗；Recursive 依 separators 優先序切分，必要時處理過長片段，size 是上限、overlap 是目標值。
 3. Header-aware 先依可靠標題層級切分，再對超長章節 Recursive；缺 headings 不能假裝成功。
 4. 計算原 fields 字串範圍及跨 block／page locations，不從帶 overlap 的文字猜測位置。
 5. 複製指定欄位；文件摘要保持文件摘要；必需來源／ACL 不可取消。
 6. 依有效切分設定及位置產生 chunk_id，初始化 vectors={}。
 
-**驗證／例外**：size／overlap、Tokenizer、重複文字與非 BMP 字元、空段、極長無分隔文字。複製欄位未被主要內容切分，不保證其長度小於 size。
+**驗證／例外**：size 為正整數、overlap 為整數且 `0 ≤ overlap < size`、Tokenizer 可用；涵蓋重複文字、非 BMP 字元、空段及極長無分隔文字。Fixed-size 不啟用 separators／keep_separator／header_levels，也不要求 Parser headings；未啟用的方法參數可保留草稿，但不驗證或匯出為有效參數。複製欄位未被主要內容切分，不保證其長度小於 size。
 
-**驗收**：單塊不超過約定 Token 上限；offset 可精確還原主要文字；相同輸入與切分設定得到相同 ID；標題能力不足會拒絕。
+**驗收**：單塊不超過約定 Token 上限；offset 可精確還原主要文字；相同輸入與切分設定得到相同 ID；Header-aware 標題能力不足會拒絕。Fixed-size 另驗證零 overlap、短文件、恰好整塊、末塊不足、Unicode、切到結尾不再輸出 overlap-only Chunk，且不因變更停用的 separators／標題層級而改變結果。切換方法、size／overlap 或有效 Tokenizer 屬 Ingestion 配置變更，需重新切分及重建受影響索引。
 
 **待決**：Q-004、Q-005、Q-007；Token 精確計數、切分 fallback 與 overlap 邊界需測試材料。
 

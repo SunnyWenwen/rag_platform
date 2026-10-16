@@ -6,11 +6,13 @@ Config-driven RAG System 建立與測試平台。
 
 目前為架構提案與模擬原型，尚未實作可部署的 RAG Engine。
 
+**後續工作方式（2026-10-16）**：需求先更新文件，對應 Prototype 變更統一記入 [10 UI Backlog](docs/10_ui_adjustment_backlog.md#ui-backlog-pending)，待明確要求改 UI 再實作。本次新增 Fixed-size Chunking 與階段重排只更新文件，原型仍 v0.9。
+
 **名詞定義**：以 [03 §3「名詞定義與元件責任」](03_architecture_proposal.md#terminology) 為唯一依據，包含 Builder／Engine／Runtime／System、Workspace、Module／Method／Pipeline、Config／部署設定及版本概念。
 
 **接續規劃**：先讀 [03 名詞與架構](03_architecture_proposal.md#terminology) 及 [08 開發計畫與決策](docs/08_implementation_plan.md)。原 RAG Builder 規劃對話與「畫userflow」的整合核對、直接修正及需討論的邊界集中於 08 §12；臨時交接摘要已依指示讀取後移除。
 
-## 開發規格文件集 v0.16（2026-10-15）
+## 開發規格文件集 v0.17（2026-10-16）
 
 本輪已把 03～08 整理為 coding agent 可分階段使用的開發規格草案。**已確認方向、既有基線、建議與待決事項分開記錄**；具體公共介面與部分行為仍需決策，不表示後端已實作。v0.10 比對可取得的歷史片段；v0.11 統一 Engine／Runtime／System、Config／部署設定及 Workspace → System，移除正式 Blueprint／Group 概念；v0.12 將正式名詞集中到 03，其他規格引用並補充各自的實作細節。
 
@@ -20,6 +22,8 @@ v0.14 已確認持久化模式跨環境固定：DEV Memory 則 FTEST／ENT 也�
 
 v0.15 曾加入 QueryContext／ResultSet／ResultItem 的具體草案。v0.16 記錄三種 ResultSet 操作與共同排序規則，並同步 [JSON Schema](schemas/inference_context.schema.json)、五份 JSON／[Python 範例](examples/inference/python_example.py)。Contract 形狀為 `inference-0.2-draft`，尚未凍結；[09 UI 整合提案](docs/09_inference_contract_ui_plan.md) 提供順序卡片、ES 輸出粒度、卡控與討論案例，沒有修改 Prototype／Engine。
 
+v0.17 新增 Fixed-size（固定 Token 視窗），保留 Recursive／Header-aware；方法規則與驗收見 04。開發階段重排為 **M0 規格 → M1 最小 Engine → M2 方法／能力擴充 → M3 Runtime API → M4 獨立 AI 設定助手 → M5 Builder 前後端與助手整合 → M6 Evaluation → M7 獨立部署交付**。M4 不需 Builder 即可產生 Config；M5 另驗收 UI 草稿／Diff／套用／取消及過期建議，詳見 08 §4.2。
+
 | 文件 | 定位 |
 |---|---|
 | [03 系統概覽與架構](03_architecture_proposal.md) | 正式名詞定義、產品目的、新手／進階情境、元件分工、部署邊界與範圍 |
@@ -27,9 +31,9 @@ v0.15 曾加入 QueryContext／ResultSet／ResultItem 的具體草案。v0.16 �
 | [05 共用資料模型與 Config](docs/05_data_contracts_search_design.md) | ParsedDocument／Chunk／SearchHit、Schema、Config 草案與變更影響 |
 | [06 使用流程與 UI 開發規格](docs/06_ui_development_spec.md) | 基本／進階、CSV、AI 助手、預覽、Edit 與測試操作 |
 | [07 Backend、Runtime API 與整合](docs/07_backend_runtime_integration.md) | API、System／Revision、任務、持久化、Runtime 與 Export |
-| [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M6、驗收材料、27 項待決問題及 40 項對話要求對照 |
+| [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M7、助手獨立／UI 兩階段驗收、38 項決策、27 項待決問題及 40 項歷史要求對照 |
 | [09 Inference Contract 與 UI 整合提案](docs/09_inference_contract_ui_plan.md) | 三種操作／共同排序的討論記錄、順序式 UI 設定、案例與待確認選項 |
-| [10 UI 調整清單與完成狀態](docs/10_ui_adjustment_backlog.md) | 已落實至 Prototype v0.9：基本／進階設定、兩層合併、四處 Top N、Reranker 欄位與卡控；§6 說明展示預設、驗證及未實作的 Runtime 邊界 |
+| [10 UI Prototype Backlog 與完成紀錄](docs/10_ui_adjustment_backlog.md) | §1～6 保留 v0.9 歷史完成項目；§7 記錄 Fixed-size／助手整合的新待辦，收到改 UI 指示後才實作 |
 
 建議先讀 03／08，再依任務讀 05／04／07／06。03 統一名詞與邊界，05 定義資料／版本規則，08 記錄決策與待決狀態。Engine 核心不依賴 Builder UI、HTTP 或 Builder DB；07 將其包裝為可管理服務。每份規格末尾列出相關 Q-ID，完整候選／決策／階段阻擋統一放在 08。
 
@@ -54,7 +58,7 @@ L1 流程的步驟 1～5 在同一水平列，由左到右排列，並與上方�
 - 提供「先設定 Config」與「從 CSV 開始 · AI 設定助手」兩種入口；確認助手的 Schema、映射與 Pipeline 草稿後，CSV 可帶到 Ingest 再執行。
 - 原型舊標籤為 Workspace Groups；正式階層已確認為 Workspace → System。保留卡片與 Edit Config 草稿流程，標籤／內部變數在正式化時遷移。
 - Parsing 預設只顯示結構化 JSON；PDF／PPTX／圖片／TXT／Markdown 路由、標題結構與相關說明收在預設關閉的「進階選項」，展開後才顯示。
-- Chunking 只留 Recursive／Header-aware，Size／Overlap 使用 Tokens，支援 Tokenizer、分隔符及標題層級設定。
+- 目前原型 Chunking 為 Recursive／Header-aware，Size／Overlap 使用 Tokens，支援 Tokenizer、分隔符及標題層級設定。新增 Fixed-size 已寫入目標規格，尚未改 UI，見 10 §7。
 - Embedding 僅 DEV test use／Embedding API；依服務來源展開 URL、認證引用、模型、維度與 Tokenizer 等設定。
 - ES 提供 DEV／自行連線；Local Search 只有選 MongoDB 時顯示 DB 設定。
 - Index collection 自動由 Workspace＋名稱＋System ID 產生，改名不影響既有實體名稱。

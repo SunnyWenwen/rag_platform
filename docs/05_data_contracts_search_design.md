@@ -1,6 +1,6 @@
 # RAG Builder — 共用資料模型與 Config 規格
 
-> 文件集 v0.16 · 2026-10-15 · 開發規格草案
+> 文件集 v0.17 · 2026-10-16 · 開發規格草案
 >
 > 本文是資料形狀及設定規則的權威位置。已確認的語意保留；新增的程式型別、完整 Config 拼字與預設值為建議草案，待 Q-002 核定後才凍結。YAML 範例用於討論與驗收設計，目前沒有 Engine 可直接執行。
 
@@ -330,7 +330,7 @@ failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項�
 |---|---|---|
 | Import | files／records；CSV 先映射到 records | accepted_inputs、csv_mapping |
 | Parsing | 格式路由、結構化 records 驗證 | routes |
-| Chunking | Recursive／Header-aware；Token 計量 | method、split_field、copy_fields、metadata_fields、size、overlap、tokenizer、separators、keep_separator、header_levels |
+| Chunking | Fixed-size／Recursive／Header-aware；Token 計量 | method、split_field、copy_fields、metadata_fields、size、overlap、tokenizer；separators／keep_separator／header_levels 依方法啟用 |
 | Embedding | fields → 命名 vectors | profile、mappings（source_field、output_name） |
 | Indexing | 儲存、全文、向量、過濾分開；持久化模式跨環境固定 | backend、stored_fields、fulltext_fields、vector_fields、filter_fields、persistence、metric；persistence 屬邏輯 Config，collection 在部署 Binding |
 | Query Transformation | None／Rewrite／Multi-query | method、llm_ref、prompt、count、include_original |
@@ -347,7 +347,7 @@ ResultSet 是一次執行的資料；處理計畫是可保存的邏輯 Config，
 
 | 條件 | 驗證 |
 |---|---|
-| Token Chunking | size 為正整數；0 ≤ overlap < size；Tokenizer 可取得；Header-aware 需 headings 能力 |
+| Token Chunking | size 為正整數；overlap 為整數且 0 ≤ overlap < size；Tokenizer 可取得；Fixed-size 步長為 size−overlap，末塊不補齊；Header-aware 才需 headings 能力 |
 | Embedding mappings | 來源為有效文字欄位；output_name 唯一；有限值、維度與 Profile 相容 |
 | Indexing | 搜尋欄位與上游一致；必要識別／來源／ACL 強制保留；下游使用欄位已保存 |
 | Retrieval | 至少一路；每路及最終 K 為正整數；僅選已建立索引；Query Profile 由向量欄位繼承 |
@@ -359,6 +359,8 @@ ResultSet 是一次執行的資料；處理計畫是可保存的邏輯 Config，
 | LLM | 引用有效；刪除使用中的服務不得默默換另一個 |
 
 純 BM25 可跳過 Embedding，但 Chunking 仍需 Tokenizer。複製欄位長度可能大於 Chunk Size，Embedding 必須逐項檢查實際輸入。Tokenizer、模型極限及溢位政策見 Q-004。
+
+Fixed-size 的 separators／keep_separator／header_levels 保留在 UI Draft 時不參與 Effective Config、驗證或變更影響。方法名稱、size／overlap、有效 Tokenizer 及內容欄位屬執行語意；改變後需按 Ingestion 變更處理。視窗與來源位置規則見 [04 §4.3](04_module_methods_io_contracts.md#43-chunking)。正式 method 枚舉拼字仍待 Q-002，`fixed_size` 可作候選，不新增必須支援的別名。ParsedDocument／Chunk 的五／六個外層 key 不變。
 
 **融合配置的目標要求已存在，細節尚待 Q-014**：必須能區分演算法、融合範圍（同 Query／跨 Query）與執行時點（Rerank 前／後）。可選兩層及預設計畫的精確支援範圍、route 型別、Top-K／Top-N 與分數語意需再核定；不能把全部合併為一個 fusion.method 後宣稱符合需求。`fusion.stages[]` 是先前助理提出的 Schema 候選，尚非已定欄位。
 

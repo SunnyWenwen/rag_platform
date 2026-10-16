@@ -1,8 +1,10 @@
-# UI 調整清單與完成狀態：Inference 結果處理
+# UI Prototype Backlog 與完成紀錄
 
-> 文件集 v0.16 · 2026-10-15（Asia/Taipei）· Prototype v0.9 UI 已實作
+> 文件集 v0.17 · 2026-10-16（Asia/Taipei）· §1～6 歷史已完成／§7 新增待辦
 >
-> 15:53 先記錄待辦；18:55 使用者要求依需求調整 UI，本輪已實作原型設定、連動與卡控。以下勾選代表 UI／邏輯預覽已完成，不表示真實 Engine、ES／模型或 API 已實作；驗收與限制見 §6。Schema／Python 範例未改。
+> 2026-10-15 15:53 先記錄待辦；當日 18:55 使用者要求調整 UI，當時已實作原型設定、連動與卡控。§1～6 的勾選代表該輪 UI／邏輯預覽已完成，不表示真實 Engine、ES／模型或 API 已實作；驗收與限制見 §6。2026-10-16 的新需求只記錄於 §7，未修改 UI。
+
+**最新工作方式（2026-10-16）**：後續需求先更新文件，所需 Prototype 調整統一記在本文件。§1～6 保留 2026-10-15 的結果處理完成紀錄；[§7](#ui-backlog-pending) 為本次新增、尚未實作的待辦。使用者明確要求「改 UI」後才開始原型修改，不能因規格更新就自行勾選完成。
 
 ## 1. 範圍與最新依據
 
@@ -128,3 +130,45 @@ UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／
 - [ ] 真實 Adapter 能力探測、ES 版本／授權卡控與 Rerank 全候選回應驗證。
 - [ ] Engine 融合／去重／Top N／score_order／rank 的實際計算、引用鏈及正式 Config 遷移。
 - [ ] 真實瀏覽器桌面／手機版面與端對端服務整合驗證。
+
+<a id="ui-backlog-pending"></a>
+
+## 7. 新增 UI Backlog（2026-10-16，尚未實作）
+
+來源：09:42 新增 fix chunk、後續先調文件；09:45 要求 UI 調整記入 backlog，M5 必須涵蓋 Builder 中的 AI 設定助手。Prototype 仍 v0.9，尚無 Fixed-size 選項；原型助手仍為規則模擬，沒有接上真實 AI。文件集版本與 Prototype 版本分開。
+
+| ID | 待調整項目 | 主責規格／階段 | 狀態 |
+|---|---|---|---|
+| UIB-001 | Chunking 增加 Fixed-size 及方法參數卡控 | 04 §4.3、05 §6.4、06 §3；Engine M2／Builder M5 | 待使用者要求改 UI |
+| UIB-002 | Fixed-size 說明、流程摘要與示範／驗收案例 | 04 §4.3、06；Builder M5 | 待使用者要求改 UI |
+| UIB-003 | Builder 呼叫 M4 的同一個 AI 設定助手核心 | 07 §8、08 §4.2；Builder M5 | 待使用者要求改 UI |
+| UIB-004 | 助手建議與 UI 草稿／Diff／套用／取消／過期狀態 | 06 §4.3、08 §4.2；Builder M5 | 待使用者要求改 UI |
+
+### UIB-001：Fixed-size 控制項與設定連動
+
+- [ ] 方法選單加入 Fixed-size，保留 Recursive／Header-aware；不自行改現有預設。顯示名稱統一，正式 Config 枚舉仍依 Q-002。
+- [ ] 三種方法共用 Token Size／Overlap／Tokenizer、主要切分欄位、複製欄位與 metadata 繼承。Size 正整數、Overlap 整數且 0 ≤ overlap < size；模型輸入上限的檢查繼續保留。
+- [ ] Fixed-size 不使用分隔符、keep_separator、標題層級，也不要求 Parsing headings。相應控制項不作有效設定；保留其他方法的草稿，切回時恢復，停用參數不驗證／匯出或觸發重建。
+- [ ] 手動選擇、Edit 保存、AI 建議及匯出使用相同 Schema／能力與有效設定。變更方法或有效 size／overlap／Tokenizer 正確提示重新 Ingestion，不靜默換方法。
+
+### UIB-002：Fixed-size 說明與操作案例
+
+- [ ] 說明 Fixed-size 是固定 Token 視窗，步長 size−overlap；末塊不足保留、不補齊，不依句子或標題找邊界。來源文字／Unicode 邊界遵循 Engine 的核定規則。
+- [ ] 更新 Chunking 節點摘要、設定說明與 AI 建議可用方法；示範 size=4、overlap=1 的視窗、短文件及恰好整塊，不產生 overlap-only 末塊。
+- [ ] 未接 Engine 的原型預覽明示模擬，不將字元切分冒充實際 Tokenizer；能力未實作時清楚標示，不因選單顯示就宣告可執行。
+
+### UIB-003：Builder 的 AI 助手整合
+
+- [ ] M5 Builder 前後端呼叫 M4 已交付的同一核心／API，不另寫一套產生 Config 的規則。沿用既有助手入口，不另建 RAG 主畫面。
+- [ ] 以當前 Draft、Schema、映射、選用服務、明確允許的樣本與需求產生建議；涵蓋從 CSV 開始、已有 Config 的局部修改及新建。UI 包裝狀態與 Effective Config 分開。
+- [ ] 建議可對回模組與控制項，使用同一 Schema／Registry／Validator；缺連線／服務、未支援方法、失效欄位及需要重新 Ingestion 的影響可定位。M4 的獨立 Config 成功不能代替這項 UI 驗收。
+- [ ] M5 驗收真實助手串接；若只改原型互動，繼續明示模擬，不冒充已完成 M4／M5 真實能力。助手模型／服務契約的具體 UI 依 Q-003／Q-024 核定。
+
+### UIB-004：草稿狀態、Diff 與套用
+
+- [ ] 建議帶草稿基準版本／Hash，顯示 before／after、理由、缺少資訊及驗證結果；不直接改 active Config。
+- [ ] 只有使用者套用才改 Draft，Create／Save 前不修改已存 System。取消建議保留原 Draft；取消 Create／Edit 保留已存配置；不自動 Ingestion。
+- [ ] 等待回應期間人工修改、切換 System／關閉視窗或較新建議先回來時，過期回應不得覆蓋新草稿；提供重新產生或核定的合併流程。選擇性套用／撤銷細節仍依 Q-024。
+- [ ] 同一意圖以手寫／Python 助手產生及 Builder 套用時，其有效 Config 語意一致；可做固定 fixtures 與真實服務兩層驗收。執行成功與品質評估分開，品質由 M6 驗收。
+
+後續每次變更先填對應條目與主責規格；只有實際修改、驗證後才更新完成狀態及證據。M0～M7 的階段名稱以 08 §4 為準，歷史 §1～6 不用新待辦覆寫。

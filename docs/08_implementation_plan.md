@@ -1,6 +1,6 @@
 # RAG Builder — 開發計畫、驗收與決策追蹤
 
-> 文件集 v0.16 · 2026-10-15 · 開發規格草案
+> 文件集 v0.17 · 2026-10-16 · 開發規格草案
 >
 > 目的：讓 coding agent 依同一套規格分階段開發，並持續記錄尚不清楚的問題。本文是決策／待決狀態的權威位置；它不把技術建議自動轉成使用者已核可決策。
 
@@ -19,6 +19,8 @@
 本輪基準為 `cf4dfdc0e29acc91a2fe63b1993f867c8facaf6d`。新架構／介面提案與該版本 Prototype 的差異，要以 migration 明確處理。03～08 是開發規格草案；原型測試通過不代表 Engine／API 已完成。v0.11 已追加名詞決策；v0.12 將正式定義集中到 03 §3。v0.9 的初始基準仍保留以追蹤來源。
 
 v0.13 從 `e52c4d74a469522155d814f0ff51fddf8946f957` 核對交接文件、本串可見決策、已提交原型與圖面；補齊傳遞／互動規則並記錄仍需討論的邊界，見 §12。
+
+**2026-10-16 起的工作方式**：使用者要求後續調整先更新文件；Prototype 所需變更統一記於 [10 UI Backlog](10_ui_adjustment_backlog.md#ui-backlog-pending)，待使用者明確要求修改 UI 再實作。文件提交不代表同步開發原型、Engine 或服務。規劃文件仍依既有要求提交目前分支。
 
 ## 2. 文件責任與建議閱讀順序
 
@@ -46,11 +48,11 @@ v0.13 從 `e52c4d74a469522155d814f0ff51fddf8946f957` 核對交接文件、本串
 | D-04 | 固定 Ingestion／Inference；Builder 與獨立 API Runtime 使用同一 Engine | 舊 03 v0.8／既有基線 | 03／04／07 |
 | D-05 | ParsedDocument 五個、Chunk 六個頂層 key；vectors 位於 Chunk | 舊 05 §3～4／既有基線 | 05 |
 | D-06 | fields／metadata 宣告 Schema；CSV 每列映射一次為標準 records | 舊 05 §15～16／既有基線 | 05／06 |
-| D-07 | Recursive／Header-aware、一個主要切分欄位、Token 計量 | 舊 05 §13.1／既有基線 | 04 |
+| D-07 | 原有 Recursive／Header-aware、一個主要切分欄位、Token 計量；Fixed-size 擴充見 D-36 | 舊 05 §13.1／既有基線，新增方法不取消原方法 | 04 |
 | D-08 | Embedding fields→vectors；摘要先由輸入提供；文字 Dense 優先 | 舊 05 §6／既有基線 | 04／05 |
 | D-09 | ES／Local Search（FAISS＋BM25）；Local Memory／MongoDB | 舊 05 §8／既有基線 | 03／04 |
 | D-10 | Local Search 同程序／單副本；MongoDB 只持久化並支援重建 | 舊 03 §5.3／既有基線 | 04／07 |
-| D-11 | 現有 Prototype 為單層、Rerank 前、Sum Score／RRF；這是既有實作基線，不限制可配置合併時點的目標 | 舊 05 §17＋2026-10-15 歷史核對 | 04／05 |
+| D-11 | v0.8 Prototype 的單層、Rerank 前 Sum Score／RRF 為歷史基線；v0.9 已有兩層時點設定／預覽，Engine 未實作 | 舊 05 §17＋2026-10-15 原型更新，見 §17 | 04／05／10 |
 | D-12 | Sum Score 不自動正規化；RRF 預設 k=60；兩種策略有效參數分開 | 舊 05 §17／既有基線 | 04／05 |
 | D-13 | System 共用 LLM 清單；Rewrite／Generation 以 llm_ref 引用 | 舊 05 §14／既有基線 | 05／06 |
 | D-14 | 原始問題保留；Rerank 使用平台約定 API；Generation 兩層單次模板替換 | 舊 05 §13～14／既有基線 | 04／05 |
@@ -75,24 +77,42 @@ v0.13 從 `e52c4d74a469522155d814f0ff51fddf8946f957` 核對交接文件、本串
 | D-33 | Memory／MongoDB 模式隨 Config 跨環境固定；DEV 用 Memory，FTEST／ENT 也用 Memory，不能只以部署覆寫切換 | 2026-10-15 11:03 使用者確認／已確認 | 03／05／06／07 |
 | D-34 | ResultSet 後處理只有去重＆合併、取 Top N、新模型算分三類；Fusion 為合併策略 | 2026-10-15 14:24 使用者提出、14:28 延續／已確認方向 | 04／05；討論記錄 09 |
 | D-35 | 排序與 rank 更新抽成共同處理，三類操作輸出皆有序；rank=1 最好且連續 | 2026-10-15 14:28 使用者要求、14:31 要求記錄／已確認方向 | 04／05；UI 提案 09 |
+| D-36 | Chunking 新增 Fixed-size，沿用 Token 計量；保留 Recursive／Header-aware | 2026-10-16 09:42 使用者要求／方法已確認，精確 Token 邊界 Q-004 | 04／05／06；UI 待辦 10 |
+| D-37 | 階段重排 M0～M7；M4 獨立 AI 設定助手，M5 Builder 前後端與助手 UI 整合，M6 評估，M7 獨立交付 | 2026-10-16 09:31～09:45 討論及使用者修正／已確認方向 | 03／06／07／08 |
+| D-38 | 後續需求先更新文件；Prototype 調整記入 backlog，使用者要求改 UI 時才實作 | 2026-10-16 09:42／09:45 使用者要求／已確認 | README／03／06／08／10 |
 
-「既有基線」不代表已涵蓋後續需求。D-23 的合併時點配置是使用者已提出的目標，不能以 D-11 的 Prototype 限制否決；Q-014 負責核定實際支援路徑及契約，不再討論是否記錄這項需求。助理建議的預設兩層計畫及 stage 命名則仍未定案。
+「既有基線」不代表已涵蓋後續需求。D-23 的合併時點配置是使用者已提出的目標，不能以 D-11 的舊 Prototype 限制否決；兩層合併預設勾選並在 Retrieval 後的 UI 已於 2026-10-15 確認／實作，見 10 的歷史完成紀錄。Q-014 仍負責正式支援路徑、stage 命名及執行契約等剩餘細節。
 
 ## 4. 開發階段與驗收
 
-下列為**建議執行順序**；能力是同一產品分批交付，不代表把後面的已確認能力刪除。階段完成需留下可實際執行的成果。
+下列為 2026-10-16 確認的 **M0～M7 階段編排**；個別 Schema、版本、方法細節及執行政策仍依 Q-ID 核定。能力是同一產品分批交付，不代表把後面的已確認能力刪除。階段完成需留下可實際執行的成果；本輪只更新規劃，未將任何 Engine／服務階段標示完成。
 
 | 階段 | 範圍／依賴 | 交付 | 驗收 |
 |---|---|---|---|
 | M0 契約與專案基礎 | 先定 Q-001／Q-002；未決問題可獨立起草 | 版本鎖、程式結構、Pydantic／JSON Schema、完整範例及錯誤例 | 從乾淨環境可安裝；範例通過 Schema，錯誤可定位；無需 Builder |
 | M1 最小獨立 Engine | Structured records／Recursive／Dense／Local Memory／Query；依賴模型、Token、索引與失敗政策 | 可直接 Python／CLI 操作的 Engine；真實 Adapter＋隔離測試替身 | 手寫 Config ingest→query；檢索真的使用資料；引用可對回；程序重啟後正確不就緒 |
-| M2 能力與後端 | 多欄位、BM25／融合、Rewrite／Multi-query、Rerank、ES／MongoDB；Parser 依 Q-005，Fusion Plan 依 Q-014 分批 | Adapter／Registry、Manifest、合併時點與策略配置、各模式範例與契約測試 | ES／Local 契約一致；MongoDB 恢復不重跑 Embedding；Filter／多路融合可驗算；核定時點改變真實路徑 |
+| M2 Engine 方法與能力擴充 | Fixed-size／Header-aware、多欄位、BM25／融合、Rewrite／Multi-query、Rerank、ES／MongoDB；Parser 依 Q-005，Fusion Plan 依 Q-014 分批 | Adapter／Registry、Manifest、方法／合併時點配置、各模式範例與契約測試 | Fixed-size 邊界可重現；ES／Local 契約一致；MongoDB 恢復不重跑 Embedding；Filter／融合可驗算；設定改變真實路徑 |
 | M3 Runtime API | 包裝已可用 Engine；定 API／工作／認證／併發 | OpenAPI、Runtime 服務、Job Store 政策、SDK／cURL 範例 | SDK／HTTP 相容；202 可查結果；失敗／重送／重啟行為有證據 |
-| M4 Builder 串接 | 管理儲存、Create／Edit、CSV／Schema、漸進式 UI | Backend、正式 Frontend、System／Revision／Binding | UI 呼叫相同 Runtime；取消不改配置；變更影響正確；可處理版本衝突 |
-| M5 評估與 AI 助手 | Q-018／Q-024；可先用規則或 Fake 驗證流程 | Dataset／Runner、報告、真實助手及結構化建議／Diff | 無標註不造分；報告綁版本；助手不直接改 active Config，不執行 Ingestion |
-| M6 獨立交付 | Q-021／Q-027；核心 Runtime 已真實可用 | Image、FTEST／ENT Bundle、部署／Secret／資料準備說明 | 新環境無 Builder 可啟動；API Ingest→Query；外部依賴故障可定位；不含測試資料與憑證 |
+| M4 獨立 AI 設定助手 | 使用 M0～M2 的 Schema／Registry／Validator，提供不依賴 Builder 的 Python／API 入口；Q-024 | 真實助手核心、需求／樣本輸入、Config 草稿／Diff／缺少設定與可定位驗證結果 | 不開 Builder 可取得支援範圍內的 Config；具備所需設定者由驗收腳本透過 Engine／Runtime 跑通；資訊不足明列缺項，不造方法／憑證或自動 Ingestion |
+| M5 Builder 前後端與 AI 助手整合 | 管理儲存、Create／Edit、CSV／Schema、漸進式 UI，串接同一 Runtime 與 M4 助手 | 正式 Frontend／Backend、System／Revision／Binding、UI 草稿與建議 Diff／套用流程 | UI 可建立／匯入／查詢；助手讀取當前草稿及樣本，建議與控制項正確對應；過期建議不覆蓋人工修改，取消不改 Config，變更影響及版本衝突正確 |
+| M6 Evaluation | Q-018；Dataset／Runner／指標／報告與版本追蹤 | 可由 SDK／API 及 Builder 使用的評估流程、逐題結果與報告 | 固定測資可重現計算依據；缺標註不造分；報告綁 Config／資料／模型版本，可比較配置差異 |
+| M7 獨立部署交付 | Q-021／Q-027；核心 Runtime 已真實可用，完成目標環境交付 | Runtime Image 版本／Digest、FTEST／ENT Bundle、部署／Secret／資料準備與運維說明 | 新環境無 Builder 可用 YAML 啟動；API Ingest→Query；外部依賴故障可定位；不含測試資料與憑證 |
 
-M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成第一條流程同時實作所有 Parser／UI／AI。M2 不預設一次交付全部能力，按核定子任務逐項驗收。M5 的評估純邏輯可在 M1／M2 先做，平台排程不需提前完成。
+M1 先跑標準 records 與既定的 Recursive 最小路徑；Fixed-size 已列入方法需求，於 M2 擴充驗收，不因增加方法而要求 M1 同時完成所有能力。CSV 由映射產生相同輸入。M2 按子任務交付，不必全部方法完成才開始 M3；Runtime 可先包裝已可用 Engine，再逐步增加能力。M4 只能建議當前 Registry 已支援的方法。
+
+Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，不要求每個 RAG System 各建一個 Image。匯出通常引用支援該 Config 的 Runtime Image 版本／Digest，另外交付 Config 與部署設定。M6 的評估純邏輯可在 M1／M2 先做，但不能把早期模組測試當作 M6 整體評估已完成。
+
+### 新舊階段對照
+
+| 舊編號（歷史） | 本版對應 |
+|---|---|
+| M0～M3 | 沿用原編號與核心責任 |
+| 舊 M5 的 AI 助手核心／先前討論的 M3.5 | M4：獨立 AI 設定助手 |
+| 舊 M4 的 Builder ＋舊 M5 的助手畫面 | M5：Builder 前後端與 AI 助手整合 |
+| 舊 M5 的 Evaluation | M6：Evaluation |
+| 舊 M6 的獨立交付 | M7：獨立部署交付 |
+
+§10 以後的歷史記錄保留當時用語；當前開發與 Q-ID 的階段依賴以本節及 §6 為準。
 
 ### 4.1 階段決策 Gate
 
@@ -103,9 +123,23 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 | 對既存文件更新／partial 寫入 | Q-007／Q-008／Q-009／Q-010 | 純新增、不重複 ID 的受限流程及明確拒絕 |
 | MongoDB 恢復 | Q-012／Q-015 | Store 介面與小型 Manifest 草案 |
 | HTTP／工作服務 | Q-017／Q-019／Q-020；資料保存 Q-016 | Engine SDK 及 Client／Repository interface |
-| 正式 UI、AI、評估、交付 | 各自 Q-025／Q-024／Q-018／Q-021 | 獨立 Mock／驗證流程並標記未實接 |
+| M4 獨立助手 | Q-002／Q-003／Q-024；可用 Registry／Validator | 無 Builder 的需求／樣本與結構化建議測試；Mock 明示 |
+| M5 Builder 與助手整合 | Q-015／Q-019／Q-020／Q-025；M4 建議契約 | Draft／Diff／過期建議與控制項對應測試，不宣稱真實助手已串接 |
+| M6 評估／M7 交付 | 各自 Q-018／Q-021，容量及運維 Q-027 | 獨立 Mock／驗證流程並標記未實接 |
 
 只阻擋受影響功能；不要求所有 Q-ID 全部解決才能開發。未核定正式政策時，受限實驗必須明示範圍，不能成為隱藏產品預設。
+
+### 4.2 M4 與 M5 的助手驗收分界
+
+| 驗收情境 | M4：獨立使用 | M5：Builder 使用 |
+|---|---|---|
+| 建立設定 | 需求＋明確允許的 CSV／JSON 樣本＋可用服務資訊，回傳 Config 草稿及缺項 | 帶入當前 Workspace／System 草稿、Schema、映射與服務選擇，呈現建議 |
+| 修改設定 | 已有 Config＋需求，回傳相對該 Config 的結構化 Diff；非 Builder 呼叫不需 Builder DB／System ID | 以 UI 草稿基準比對、只在使用者套用後改草稿；Create／Save 前不改 active Config |
+| 驗證與能力 | 同一 Schema／Registry／Validator；不支援方法明確拒絕，缺連線／服務回可定位問題 | 相同規則顯示到控制項，含收合設定、失效欄位／服務、Fixed-size 相依與重建影響 |
+| 狀態與取消 | 不隱含持有 UI 狀態，不自動執行 Ingestion | 建議產生後人工修改、取消、重新產生、過期回應及版本衝突不覆蓋使用者變更 |
+| 執行與品質 | 使用者／驗收腳本明確提交合法且完整的 Config，透過 Engine／Runtime 執行；Schema 合法不等於品質達標 | AI 套用與手動設定的有效 Config 語意一致，再用現有 Ingest／Inference／Evaluation 操作驗證 |
+
+實際 UI 樣式、選擇性套用／撤銷及服務契約拼字仍依 Q-024／Q-025 核定。M4 與 M5 各自需要真實整合證據；規則助手或 Mock 可驗證互動，不能完成真實 AI 驗收。
 
 ## 5. 驗收材料與完成定義
 
@@ -114,10 +148,11 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 | 材料 | 最小內容 |
 |---|---|
 | examples/configs | 完整 Local Memory、ES、Local MongoDB 配置；必要服務／Secret 設定說明 |
-| fixtures | CSV／records、已知文字與標題、Unicode／長文字、合法／無效欄位、同 ID 更新與 Filter 測資 |
+| fixtures | CSV／records、已知文字與標題、Fixed-size 的零 overlap／短文／整塊／末塊、Unicode／長文字、合法／無效欄位、同 ID 更新與 Filter 測資 |
 | retrieval fixtures | 固定小向量／詞項與人工路徑排名，可計算 Top-K／RRF／Sum Score／去重 |
 | provider fakes | 合法回應、Timeout、429、缺項、錯誤維度、非法 Rerank index、未知引用 |
 | usage examples | 直接 Engine、HTTP、CSV 映射、工作輪詢、部署後首次 Ingestion |
+| assistant cases | M4 無 Builder 的新建／修改 Config、缺服務／未知方法；M5 的同一建議與 UI 控制項對照、Diff／取消／過期草稿案例 |
 | env／commands | 不含 Secret 的環境範例；安裝、測試、啟動與 integration 指令 |
 
 05 有可解析的完整 YAML 草案，但正式 Schema／Engine 尚未實作，不能宣稱它現在已能運行。
@@ -170,7 +205,7 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 <a id="q-004"></a>
 ### Q-004 Token 計量、切分邊界與溢位
 
-- 不清楚：Token 計數版本、prefix／特殊 Token、單塊超長與複製欄位、overlap／fallback、Tokenizer 離線檔案。
+- 已確認：Fixed-size／Recursive／Header-aware 均用 Token 計量；Fixed-size 固定視窗、不依標題／分隔符切分。待定：Token 計數版本、prefix／特殊 Token、Unicode 安全邊界／原文 offsets、重新編碼計數、單塊超長與複製欄位、overlap／fallback、Tokenizer 離線檔案。
 - 建議：固定 Tokenizer／revision，以實際模型輸入檢查；超限回可定位錯誤，截斷需明示。
 - 替代：自動切分／截斷，需定義來源與警告語意。
 - 負責角色：Engine；阻擋 M1 Token／模型上限驗收。
@@ -191,7 +226,7 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 - 不清楚：保留欄位名稱、ACL 來源、System／Workspace 權限、tSSO／Gateway 驗證、獨立 Runtime 認證。
 - 建議：可信 Context 注入租戶與 ACL，保留 metadata 顯式命名且不可覆寫；初期最小權限模型先核定。
 - 替代：只先驗單 System 的封閉環境；不得宣稱多租戶安全已完成。
-- 負責角色：平台／身分團隊＋Backend＋Engine；阻擋 M1 保留欄位及 M3／M4 多使用者服務。
+- 負責角色：平台／身分團隊＋Backend＋Engine；阻擋 M1 保留欄位及 M3／M5 多使用者服務。
 - 決策：未定；更新 03～07。
 
 <a id="q-007"></a>
@@ -274,7 +309,7 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 - 已確認：同一 System 的同版邏輯 Config 跨環境相同，部署設定分開；文件 source_revision 與 index_generation 概念分開。不清楚的是保存／生效時點、Hash、草稿衝突、CSV mapping 歸屬、環境部署識別／資料版本及快照切換。
 - 建議：分開保存版本與執行綁定；Hash 只納有效配置並保留有語意順序，使用樂觀版本檢查。
 - 替代：單一 active revision，改配置後阻擋到準備完成；仍須避免 lost update。
-- 負責角色：Engine＋Backend＋Frontend；阻擋 M0 Hash 凍結及 M4 版本操作。
+- 負責角色：Engine＋Backend＋Frontend；阻擋 M0 Hash 凍結及 M5 版本操作。
 - 決策：未定；更新 05／06／07。
 
 <a id="q-016"></a>
@@ -283,7 +318,7 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 - 不清楚：Config／Run／Dataset／Report DB、原始檔／ParsedDocument 是否保存、Trace 原文、期限／刪除、獨立 Runtime 儲存。
 - 建議：管理資料與搜尋 Chunk Store 分離；可用 Store interface 分環境替換；只保存明確必要資料。
 - 替代：統一平台 DB／Object Store；獨立 Runtime 的外部依賴與成本需交代。
-- 負責角色：Backend＋平台／資料負責人；阻擋 M3／M4 正式持久化與資料政策。
+- 負責角色：Backend＋平台／資料負責人；阻擋 M3／M5 正式持久化與資料政策。
 - 決策：未定；更新 03／05／06／07。
 
 <a id="q-017"></a>
@@ -301,7 +336,7 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 - 不清楚：首批指標、Dataset／Ground Truth 格式、Judge／Rubric、Chunk／Document 層級、Rerank 前後、公開檢索 Target、Gate 門檻。
 - 建議：先有可驗算的 Retrieval 指標與操作指標，再加明示 Judge；缺資料拒絕或 skipped。
 - 替代：先 End-to-end Judge；不得冒充有可靠 Retrieval Ground Truth。
-- 負責角色：產品／資料＋Engine＋Backend；阻擋 M5 正式評估／Gate，不卡 Query 主線。
+- 負責角色：產品／資料＋Engine＋Backend；阻擋 M6 正式評估／Gate，不卡 Query 主線。
 - 決策：未定；更新 03／04／06／07。
 
 <a id="q-019"></a>
@@ -310,7 +345,7 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 - 不清楚：完整 CRUD／助手／管理 API、OpenAPI、錯誤碼／狀態、上傳限制、manifest、冪等鍵、DEV 路由、認證及暴露 Trace。
 - 建議：沿用 07 的 Endpoint 草案，先凍結 Ingestion／Status／Query，補齊 Backend API；HTTP 與領域錯誤分層。
 - 替代：沿用既有企業 API 規範並明確映射。
-- 負責角色：Backend＋Runtime＋Frontend／身分團隊；阻擋 M3／M4 真實串接。
+- 負責角色：Backend＋Runtime＋Frontend／身分團隊；阻擋 M3 Runtime／M4 助手 API／M5 Builder 真實串接。
 - 決策：未定；更新 05／06／07、OpenAPI／cURL 範例。
 
 <a id="q-020"></a>
@@ -319,7 +354,7 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 - 不清楚：每 System 實例快取、Tenant／System 路由、同時工作、記憶體配額、回收、是否獨立程序。
 - 建議：先有受限共享 Runtime 與明確隔離 Binding；Local Search 每 System 的 Ingest／Query 必須同程序。
 - 替代：每 System 獨立 Runtime，增加部署／資源管理成本。
-- 負責角色：平台＋Backend／Runtime；阻擋 M4 多 System 服務。
+- 負責角色：平台＋Backend／Runtime；阻擋 M5 多 System 服務。
 - 決策：未定；更新 03／07。
 
 <a id="q-021"></a>
@@ -328,7 +363,7 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 - 已確認：同版邏輯 Config 不隨環境改變，環境連線／Secret／資源為部署設定；Memory／MongoDB 模式也跨環境保持一致（D-33），不能只換部署設定切換。不清楚的是 Image／Bundle 包裝、Vault／注入、Secret 型別、K8s 資源／Ingress／Probe 及 CD 流程。
 - 建議：版本鎖定 Runtime Image＋有效 Config＋環境覆寫；Local 單副本；明示未帶資料且無 Builder 依賴。
 - 替代：使用單位既有 Helm／GitOps 形式；仍需相同可驗證交付內容。
-- 負責角色：平台／DevOps＋Backend；阻擋 M6 正式部署交付。
+- 負責角色：平台／DevOps＋Backend；阻擋 M7 正式部署交付。
 - 決策：未定；更新 03／05／06／07。
 
 <a id="q-022"></a>
@@ -352,11 +387,11 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 <a id="q-024"></a>
 ### Q-024 真實 AI 設定助手
 
-- 不清楚：模型／Prompt／成本、樣本抽取與保存、結構化輸出、Diff／Patch、過期建議、選擇性套用與撤銷。
+- 已確認：可不開 Builder 由 Python／API 產生或修改 Config，且必須於 Builder 中使用相同助手核心並驗收 UI 草稿操作；正式服務及 Schema 不反向依賴 Builder DB。不清楚：模型／Prompt／成本、樣本抽取與保存、結構化輸出、Diff／Patch、過期建議、選擇性套用與撤銷。
 - 建議：限制 Schema／Registry、只用明確樣本、先顯示差異並驗證；以 Draft 基準防止覆蓋人工改動。
 - 替代：先保留規則助手，清楚標示 Mock；不得聲稱已由 LLM 理解資料。
-- 負責角色：產品＋Frontend＋Backend／AI；阻擋 M5 真實助手，不卡手動配置。
-- 決策：未定；更新 03／06／07。
+- 負責角色：產品＋Engine／Contracts＋Backend／AI；M5 另含 Frontend。阻擋 M4 真實獨立助手及 M5 的助手 UI 整合，不卡手動配置。
+- 決策：M4 獨立核心、M5 Builder 整合與兩階段分開驗收已於 2026-10-16 確認；模型、結構化建議／Diff、過期建議及其餘具體政策仍未定。更新 03／05／06／07／08。
 
 <a id="q-025"></a>
 ### Q-025 漸進式 UI、範本與小量試跑
@@ -364,7 +399,7 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 - 已確認：Parsing 初始只顯示結構化 JSON，其他格式／設定全在預設關閉進階區；LLM／Prompt／範例及 API 說明要求見 06 §3.2。待定的是其餘基本／進階分組、展開記憶、改動摘要、範本、真實試跑與診斷範圍。
 - 建議：保留已確認互動，再核定其餘分組；必填錯誤可定位，保持同一 Config。試跑與範本逐項啟用。
 - 替代：單獨新手／專家入口，但兩者仍需共享 Config／驗證。
-- 負責角色：產品＋Frontend；阻擋 M4 正式 UX 凍結，不卡 Schema／Engine。
+- 負責角色：產品＋Frontend；阻擋 M5 正式 UX 凍結，不卡 Schema／Engine。
 - 決策：既有明確互動照定案保留；其餘分組／試跑／範本未定。更新 03／06。
 
 <a id="q-026"></a>
@@ -382,12 +417,12 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 - 不清楚：資料量、平均長度、並發、回應時間、重建啟動時間、模型成本、Trace 內容與監控工具。
 - 建議：先建立可重現基準再定門檻；保留 request／run／module Trace，避免過早加入 HPA／Queue。
 - 替代：先採既有企業 SLA，需驗證 Local Memory／模型資源是否能滿足。
-- 負責角色：產品＋平台／Engine／QA；阻擋生產容量承諾與 M6 運維驗收。
+- 負責角色：產品＋平台／Engine／QA；阻擋生產容量承諾與 M7 運維驗收。
 - 決策：未定；更新 03／04／07／08。
 
 ## 7. 優先討論順序
 
-第一輪先討論 Q-001／Q-002（技術與契約）、Q-003／Q-004／Q-011（可跑的模型／搜尋基線）、Q-007～Q-010（資料更新及可見性）。第二輪處理 API／儲存／Runtime，再依 UI、AI、評估及交付階段決策。
+第一輪先討論 Q-001／Q-002（技術與契約）、Q-003／Q-004／Q-011（可跑的模型／搜尋基線）、Q-007～Q-010（資料更新及可見性）。第二輪處理 API／儲存／Runtime，再依 M4 獨立 AI 助手、M5 Builder 與助手 UI、M6 評估、M7 交付的順序決策。
 
 不需要一次解完所有問題。每次討論完成，更新相應 Q-ID、權威規格、範例與驗收。暫不做的選項標為後續，不能讓同一問題長期以多種互斥建議存在。
 
@@ -408,13 +443,15 @@ M1 先跑標準 records，CSV 由映射產生相同輸入；不要為了完成�
 完成證據與尚未驗證部分：
 ```
 
+當前使用者要求以文件規劃為主：任務若只是討論／調整規格，先更新主責文件，所有所需 UI 變更登錄 10 的未完成項目；收到明確修改 UI 的指示才開始原型實作。這不阻止已授權的文件驗證、提交及推送。
+
 Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract、資料遺失／安全語意、外部依賴與範圍變動需回報或記成 Q-ID，不能偷偷做成產品決策。遇一項阻擋時先完成可獨立驗收的部分，再提出具體選項。
 
 後續開始程式開發時建議加入根目錄 AGENTS.md，引用本文與 03～07，記錄建置／驗證指令；本輪只交付規格，不新增未經確認的開發自動化規則。
 
 ## 9. 本輪交付與尚未完成
 
-初版交付（v0.9）：重整 03～05、新增 06～08、更新 README，登錄 27 項未決問題。歷史核對版（v0.10）補正需求／基線／建議的界線，見 §10；名詞釐清版（v0.11）統一 Config／部署設定、Workspace → System 及版本概念；名詞集中版（v0.12）整理 03 §3 並補齊其他文件引用，見 §11。Q-ID 維持 27 項，不以重新編號掩蓋修正。仍只交付文件，不宣稱 Engine、API 或合併時點 UI 已實作。
+初版交付（文件集 v0.9）：重整 03～05、新增 06～08、更新 README，登錄 27 項未決問題。歷史核對版（v0.10）補正需求／基線／建議的界線，見 §10；名詞釐清版（v0.11）統一 Config／部署設定、Workspace → System 及版本概念；名詞集中版（v0.12）整理 03 §3 並補齊其他文件引用，見 §11。Q-ID 維持 27 項，不以重新編號掩蓋修正。上述歷史輪次只交付文件；後來的 Prototype v0.9 完成紀錄見 §17／10，最新文件規劃見 §18，Engine／API 仍未實作。
 
 2026-10-15 曾新增跨對話交接摘要；使用者已回到本串接續規劃。v0.13 讀取後將必要資訊併入既有主責文件及 §12，依指示刪除臨時 handoff；原交接內容保留於上述核對起點的 Git 歷史。
 
@@ -626,3 +663,12 @@ ParsedDocument 五個 key、Chunk 六個 key、fields→vectors、多欄位用�
 - 驗證：56 項既有 VM 規則、23 項新增結果處理規則（含兩種後端×四種時點組合），以及既有 jsdom 流程與 13 組新增 DOM 操作通過；沒有頁面腳本錯誤。沒有執行真實 ES／模型／Runtime，也未重跑瀏覽器視覺／手機版面檢查。
 
 Inference Schema／五份 JSON／Python 範例、圖面及其他服務實作均未變更；UI 測試不表示 Engine 已實作融合、分數轉換或引用鏈。
+
+## 18. 2026-10-16 Fixed-size、階段重排與文件優先
+
+- 09:31 討論開發與驗收；09:42 要求新增 fix chunk 且後續先更新文件；09:45 指定 UI 需求記入 backlog、M5 包含 Builder 內 AI 助手操作，階段完整重排為 M0～M7。時間均為 Asia/Taipei。
+- D-36 新增 Fixed-size Token Chunking，不刪 Recursive／Header-aware；方法語意與邊界驗收更新 04，Config／有效參數更新 05。精確 Tokenizer 與 Unicode／offset 策略仍由 Q-004 核定。
+- D-37 將獨立助手排 M4、Builder 前後端與助手互動排 M5、Evaluation 排 M6、獨立部署排 M7；§4／§4.2 與所有當前 Q-ID 階段依賴同步，保留歷史章節原編號並提供對照。
+- D-38 確認文件優先，新增 UI 需求以 [10 §7](10_ui_adjustment_backlog.md#ui-backlog-pending) 為單一 backlog；Fixed-size 表單與助手整合均尚未修改 Prototype。
+- 本輪文件集更新 v0.17；新增三筆決策，Q-ID 維持 27 項、既有 A-ID 40 項來源對照維持。已確認需求不因 Q-ID 的剩餘細節而回退為未提出。
+- 只更新規劃文件；Prototype 仍 v0.9。Engine、Runtime、JSON Schema、五份 Inference JSON／Python 範例、測試程式及圖面維持原版本。文件驗證與 Git blob 比對不表示新方法／助手已開發。

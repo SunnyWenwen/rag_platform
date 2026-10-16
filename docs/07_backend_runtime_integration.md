@@ -1,6 +1,6 @@
 # RAG Builder — Backend、Runtime API 與整體串接規格
 
-> 文件集 v0.16 · 2026-10-15 · 開發規格草案
+> 文件集 v0.17 · 2026-10-16 · 開發規格草案
 >
 > 本文包裝 04 的 Engine，負責管理、HTTP、任務、持久化與交付。Endpoint 大方向沿用既有提案；精確 Envelope、認證、狀態與儲存細節為建議，依 Q-ID 核定後實作。
 
@@ -11,11 +11,14 @@ Engine／Runtime／System、Config／部署設定及版本概念以 [03 §3](../
 | 層 | 責任 |
 |---|---|
 | [04 Engine](04_module_methods_io_contracts.md) | Config 驗證／編譯、模組初始化、Pipeline 組裝、Ingest／Query 執行及領域錯誤 |
-| Builder Backend | System／Revision／Workspace、授權、服務目錄、Dataset、AI 助手、Evaluation Job、Export |
+| AI 設定助手核心（M4） | 不依賴 Builder 的需求／樣本＋Config 建議能力；引用共用 Schema／Registry／Validator，提供 Python／API 入口 |
+| Builder Backend（M5） | System／Revision／Workspace、授權、服務目錄、Dataset、助手呼叫／UI 草稿基準、Evaluation Job、Export |
 | Runtime API | 將 HTTP 請求轉成 05 型別，呼叫相同 Engine 與核定 Fusion Plan，包裝 Job／Query／Health |
 | Runtime 內部管理 | 可信地綁定 System／Revision、建立或更新 Engine 實例；不開放任意外部使用者換租戶 |
 
 Engine 可直接由 Python Config 使用，不能反向 import Builder Web App 或存取 Builder DB。UI、Runtime API、外部 Evaluation 使用同一核心流程，不複製一套模擬／真實 Pipeline。
+
+助手核心也不得反向依賴 Builder UI／DB；獨立呼叫接受需求、明確允許的樣本及可選的既有 Config／基準識別，不以 Builder System ID 為必要條件。Builder Backend 負責把可信 Workspace／System 資訊與 UI Draft 轉成相同助手輸入，再將建議對回草稿。這是邏輯責任拆分，不要求獨立部署成多個微服務。
 
 兩種環境：共享 DEV Runtime 由 Builder 的可信路由選 System；獨立 Runtime 啟動時綁定一個 System／Config。相同 API 語意不代表相同 Base URL、權限或資料。確切多 System 路由／內部管理接口見 Q-019／Q-020。
 
@@ -24,13 +27,14 @@ Engine 可直接由 Python Config 使用，不能反向 import Builder Web App �
 ```text
 packages/contracts/       # 05：Pydantic／JSON Schema
 packages/engine/          # 04：Compiler、Registry、模組、Adapters
+packages/config_assistant/ # M4：獨立助手核心，依賴共用 Contracts／Registry／Validator
 services/runtime_api/     # 本文：HTTP／Job／Engine lifecycle
-services/builder_backend/ # 本文：System、Revision、Dataset、Export、助手
+services/builder_backend/ # M5：System、Revision、Dataset、Export、助手 UI 請求協調
 apps/builder_ui/          # 06：正式 UI
 examples/                # 完整 Config／資料／呼叫範例
 ```
 
-以上為目錄草案，不是現有檔案。依賴允許 UI → Backend／Runtime → Engine → Contracts／Adapters；Engine 不依賴 UI／Backend。可先以同一 repository／同一服務程序開發，不要求每個邏輯元件部署成微服務。
+以上為目錄草案，不是現有檔案。依賴允許 UI → Backend／Runtime → Engine → Contracts／Adapters；助手呼叫端 → 助手核心 → Contracts／Registry／Validator。Engine 與助手核心均不依賴 UI／Builder Backend。M4 可為核心另加 HTTP Adapter，具體宿主與路徑由 Q-001／Q-019 核定；可在同一 repository／同一服務程序開發，不要求新增微服務。
 
 技術版本、FastAPI 等 Web Framework、資料庫及建置方式仍待 Q-001／Q-016；不因示例路徑就強制選定。
 
@@ -93,7 +97,7 @@ Backend 儲存前以有效設定比較，依 05 判定影響；UI 與 AI 都不�
 | GET | /api/evaluation-runs/{run_id} | 狀態與報告引用 |
 | POST | /api/rag-systems/{id}/exports | 套用目標環境覆寫並產生 Bundle |
 
-System 列表／讀取、Workspace／Dataset CRUD、AI suggestion／連線檢查、DEV Runtime Binding 的完整路徑尚未定義；由 Q-019 在 M3／M4 前補齊。不以表中六條當作完整 Backend API。
+System 列表／讀取、Workspace／Dataset CRUD、AI suggestion／連線檢查、DEV Runtime Binding 的完整路徑尚未定義；Q-019 依階段補齊：Runtime API 在 M3 前、獨立助手 API 在 M4 前、Builder 管理與助手 UI API 在 M5 前。不以表中六條當作完整 Backend API。
 
 ### 5.2 Runtime API
 
@@ -218,15 +222,23 @@ MongoDB 保存不等於跨 Pod 索引同步。重建失敗、DB 中斷、Profile
 
 ## 8. Evaluation 與 AI 助手服務
 
-Evaluation Runner 綁定 Dataset／Config／Index／Engine／Judge 版本，逐題呼叫同一 Target，收集實際候選／Context／答案／錯誤後交 04 評分。可重用 Query Client，但 Retrieval-only 入口是否公開需核定。併發、快取、重試、成本與 Gate 見 Q-018／Q-027。
+Evaluation Runner 於 M6 交付完整驗收，綁定 Dataset／Config／Index／Engine／Judge 版本，逐題呼叫同一 Target，收集實際候選／Context／答案／錯誤後交 04 評分。可重用 Query Client，但 Retrieval-only 入口是否公開需核定。併發、快取、重試、成本與 Gate 見 Q-018／Q-027。
 
-AI 助手 Backend 取得需求、明確允許的樣本及草稿版本，呼叫選定模型並產生受 Schema／Registry 限制的結構化建議；Backend 重驗，不直接修改 active Config 或執行 Ingestion。Prototype 規則模擬不能當作正式助手。Prompt、資料保留、最大樣本、輸出／Diff 與舊建議合併見 Q-024。
+AI 助手在 M4 先交付獨立核心與 Python／API 入口：接受需求、明確允許的樣本、可用服務資訊及可選的既有 Config／基準識別，產生受 Schema／Registry 限制的 Config 草稿、理由、Diff、缺少設定與驗證結果。資訊不足可回需補齊的草稿，不宣稱已可執行；不猜服務／憑證，不自動 Ingestion。Config 合法仍需使用者／驗收腳本明確交給 Engine／Runtime 執行，不等同檢索品質已驗收。
+
+M5 的 Builder Backend 串接同一核心，加入 Workspace／System 授權、目前 UI Draft 與基準版本，回傳可對回控制項的建議。使用者套用時先重驗基準及 Config，過期建議不覆蓋人工變更；套用只改草稿，Create／Save 前不改 active Config。前端另驗收樣本／映射、Diff／取消、收合欄位錯誤定位及變更影響。M4 的獨立測試不能取代 M5 的 UI 整合證據。
+
+Prototype 規則模擬不能當作正式助手。Prompt、資料保留、最大樣本、輸出／Diff 與舊建議合併見 Q-024；HTTP 宿主／Envelope／認證見 Q-019。對應 Prototype 需求先記 [10 §7](10_ui_adjustment_backlog.md#ui-backlog-pending)，本輪未修改畫面。
 
 ## 9. Export、獨立部署與 Secret
 
 ### 9.1 Bundle 目標
 
-交付 RAG Runtime，不打包整個 Builder。目標 Bundle 包含：
+交付 RAG Runtime，不打包整個 Builder。
+
+Runtime Image 可自 M3 開始建置；M7 才驗收完整 FTEST／ENT 獨立交付。以同一版本／Digest 的可配置 Runtime 承載相容 System，不要求每份 Config 建一個 Image。獨立 Runtime 讀取已提供的 Config 即可啟動，使用 AI 助手生成 Config 是可選的前置操作，不能變成部署後必須連回 Builder 的依賴。
+
+目標 Bundle 包含：
 
 - Runtime Image 版本／Digest、Module 版本、Config Revision／Hash。
 - 選定 System／Revision 的相同邏輯 Config，及另存的目標環境部署設定；不能把 URL／Secret 差異當成不同處理邏輯。

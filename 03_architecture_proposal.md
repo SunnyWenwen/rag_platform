@@ -1,6 +1,6 @@
 # RAG Builder — 系統概覽與架構
 
-> 文件集 v0.16 · 2026-10-15 · 開發規格草案
+> 文件集 v0.17 · 2026-10-16 · 開發規格草案
 >
 > 本輪重整 03～08 的責任，保留既有已確認方向。本文負責產品與架構總覽，具體規格及未決問題見專題文件與 08。文件更新不表示 Engine、Runtime API 或部署服務已實作。
 
@@ -31,6 +31,10 @@
 
 兩種操作深度使用同一份 Config。AI 建議需經與手動設定相同的 Validator。CSV 能提供資料特徵，不能單獨證明最佳檢索策略；需配合問題範例及 Evaluation。
 
+AI 設定助手分兩階段交付：M4 先完成不依賴 Builder 的核心與 Python／API 入口；M5 再完成 Builder 前後端及助手互動整合。M5 另驗收當前草稿、樣本／欄位映射、Diff、使用者套用、取消與過期建議，不能以 M4 已能輸出 Config 代替 UI 驗收。完整 M0～M7 與驗收見 [08 §4](docs/08_implementation_plan.md#4-開發階段與驗收)。
+
+2026-10-16 起，後續需求先更新規格；需要變更 Prototype 的項目記入 [10 UI Backlog](docs/10_ui_adjustment_backlog.md)，待使用者明確要求修改 UI 才實作。新增 Fixed-size 及本輪助手規劃均屬文件更新，現有原型維持 v0.9。
+
 | 使用者 | 起始需求 | 目標能力 |
 |---|---|---|
 | 剛上手／快速試用 | 少量設定後看到測試結果 | CSV 入口、預設值、AI 設定草稿、資料預覽 |
@@ -58,6 +62,7 @@
 | RAG Engine | 可依 Config 選擇、串接與執行模組的核心框架，可獨立於 Builder／HTTP 使用 |
 | RAG Runtime | 為 Engine 加上 Ingest／Query／Status／Health API 的執行服務；載入設定後提供 System 的 API，可與 Builder 分開部署 |
 | RAG System | 套用特定 Config、綁定服務與資料／索引所建立的具體 RAG 應用；具穩定邏輯識別，可處於未啟動／執行／停止狀態，直接使用 Engine 也可建立 |
+| AI 設定助手 | 依需求、樣本、可用方法及 Config Schema 產生設定草稿的能力；可獨立由 Python／API 使用，Builder 另外提供互動、差異預覽及套用介面，不是 Ingestion／Inference 的必經模組 |
 | Evaluation Runner | 批次執行 Dataset 與收集指標；重用 04 的評估邏輯，由 07 管理任務與儲存 |
 
 Engine 是可重用的處理框架，Runtime 是提供 API 的服務載體，System 是使用者建立的具體應用。System 的邏輯識別不等同於 Pod、程序或 API 端點；一個 Runtime 如何管理多個 System／執行實例，仍由 [Q-017](docs/08_implementation_plan.md#q-017)、[Q-020](docs/08_implementation_plan.md#q-020) 核定。
@@ -69,7 +74,7 @@ Engine 是可重用的處理框架，Runtime 是提供 API 的服務載體，Sys
 | 名詞 | 定義 |
 |---|---|
 | Module（模組） | Pipeline 中具有特定職責與約定 Input／Output 的處理單位，例如 Parsing、Chunking、Retrieval、Generation |
-| Method（方法） | Module 內可選擇的處理方式，例如 Chunking 的 Recursive／Header-aware；Method 的參數由 Config 指定 |
+| Method（方法） | Module 內可選擇的處理方式，例如 Chunking 的 Fixed-size／Recursive／Header-aware；Method 的參數由 Config 指定 |
 | Pipeline（處理流程） | Module 及其執行規則組成的流程；本產品採固定骨架，依 Config 選擇 Method、參數及核定的組合策略 |
 | Ingestion | 將輸入資料經 Import、Parsing、Chunking、Embedding、Indexing 處理，準備可供查詢的資料／索引 |
 | Inference | 接收問題，執行 Query Transformation、Retrieval、依配置進行 Fusion／Rerank，最後由 Generation 產生回答 |

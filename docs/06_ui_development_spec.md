@@ -1,8 +1,10 @@
 # RAG Builder — 使用流程與 UI 開發規格
 
-> 文件集 v0.16 · 2026-10-15 · 開發規格草案
+> 文件集 v0.17 · 2026-10-16 · 開發規格草案
 >
 > 本文定義 UI 目標互動。現有 HTML Prototype 的搜尋、模型、評估及 API 為模擬。Parsing 的預設收合、LLM／Prompt／範例按鈕等已確認要求如下；其他基本／進階分組、正式框架、範本與試跑優先級仍待決。
+
+2026-10-16 起，先更新規格，Prototype 對應調整集中至 [10 §7 UI Backlog](10_ui_adjustment_backlog.md#ui-backlog-pending)，待使用者要求修改 UI 再實作。本文新增的 Fixed-size 與助手整合為目標規格，現有原型仍 v0.9；歷史完成項目與新待辦分開記錄。
 
 ## 1. 目標、相依與範圍
 
@@ -58,7 +60,7 @@ Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保�
 | Document Schema | 主要 text、需要的內容欄位、metadata | 型別、required／default／source、unknown_fields |
 | 服務 | DEV／自行提供、必要 URL／模型／認證引用 | Timeout、精確 Profile／Tokenizer 等 |
 | Parsing（已確認） | 只顯示結構化 JSON | 其他格式及相關設定全部收在預設關閉進階區 |
-| Chunking | 方法、主要切分欄位、複製欄位 | Size／Overlap、Tokenizer、分隔符、標題層級 |
+| Chunking | Fixed-size／Recursive／Header-aware、主要切分欄位、複製欄位 | 共用 Token Size／Overlap／Tokenizer；分隔符／標題層級依方法啟用，Fixed-size UI 尚待辦 |
 | Embedding | 來源欄位、輸出向量、模型 | 維度／Encoding／Normalization、Batch、輸入限制 |
 | Indexing | 後端、保存／全文／向量欄位、過濾能力 | 後端特有參數、進階 Mapping（支援後才顯示） |
 | Query Transformation | None／Rewrite／Multi-query、LLM | Prompt、count、include_original |
@@ -99,13 +101,14 @@ DEV test use 使用平台測試資源；匯出部署時需填入使用單位的�
 | Indexing 選 ES／Local Search | Retrieval 顯示繼承的後端資訊，不增加 Implementation 選單 |
 | 欄位未建立全文／向量索引 | 對應搜尋選項顯示且停用，說明需先在 Indexing 建立能力；既有選擇失效則保留錯誤並阻止保存 |
 | Embedding 移除某個 output_name | Indexing／Retrieval 的向量引用標為失效，不默默改為其他向量或欄位 |
+| Chunking 選 Fixed-size（待實作） | Token Size／Overlap／Tokenizer 有效；分隔符／keep_separator／標題層級不生效且保留草稿，不要求 Parsing headings |
 | Header-aware 所需標題能力未開啟 | 顯示相依原因，提供定位 Parsing 進階設定的方式；無法滿足時阻止保存 |
 
 卡控只處理設定相依；不代替實際後端能力、Profile 或連線驗證。規則由 04／05 共用來源推導。
 
 ### 3.4 Inference 結果處理的整合提案
 
-三種操作「去重＆合併／取 Top N／新模型算分」與共同排序規則已確認，見 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft)。15:53 的清單經使用者 18:55 要求開始實作，原型 v0.9 已完成 [10_ui_adjustment_backlog.md](10_ui_adjustment_backlog.md) 所列 UI：保留單一 Create／Edit，基本／進階共用設定；進階預設收合，兩種合併預設勾選且在 Retrieval 後，Top N 附在四個動作位置，不新增獨立 Top N 卡片。
+三種操作「去重＆合併／取 Top N／新模型算分」與共同排序規則已確認，見 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft)。2026-10-15 15:53 的清單經使用者 18:55 要求開始實作，原型 v0.9 已完成 [10 §1～6](10_ui_adjustment_backlog.md) 的歷史結果處理 UI：保留單一 Create／Edit，基本／進階共用設定；進階預設收合，兩種合併預設勾選且在 Retrieval 後，Top N 附在四個動作位置，不新增獨立 Top N 卡片。10 §7 為後續待辦，不屬於 v0.9 已完成範圍。
 
 基本表單讓使用者選可讀的上游步驟、每個 Query 內／跨 Query 範圍、方法及參數；runtime IDs 與 operation／source 由執行時產生。排序及 rank 更新固定執行，不提供排序開關；score_kind／score_order 由方法決定。ES 內部 Hybrid 已回傳一份清單時，預覽不得假裝仍有獨立全文／向量排名。
 
@@ -142,6 +145,19 @@ Prototype 限制 ≤1 MB 且在瀏覽器讀取，不等於正式產品限制。�
 ### 4.3 AI 配置助手
 
 已確認的互動方向：需求／樣本 → 建議 → 差異 → Validator → 使用者套用草稿 → Create／Save。規則模擬與真實 LLM 服務必須清楚區分。
+
+**M4／M5 的分界已確認**：M4 的助手核心可不開 Builder，透過 Python／API 產生／修改同一種 Config；M5 同時交付 Builder 前後端與真實助手整合，另驗收下列 UI 差異。M4 已能回傳 Config，不能代替 M5 的驗收；完整情境見 [08 §4.2](08_implementation_plan.md#42-m4-與-m5-的助手驗收分界)。
+
+| Builder 情境 | M5 需要處理的差異 |
+|---|---|
+| 從資料樣本開始 | 把已允許的樣本、欄位映射及用途交給助手，建議能對回 Schema／Chunking 等控制項 |
+| 在 Create／Edit 修改既有設定 | 傳當前 UI Draft、選用服務與草稿基準；保留人工已填設定，區分新建建議與局部修改 |
+| 顯示與套用建議 | 對照 before／after、有效參數及重建影響；同一 Validator 通過後，由使用者明確套用至草稿 |
+| 回應期間草稿又被修改 | 比對基準版本／Hash；過期建議不得覆蓋新修改，提示重新產生或核定的合併流程 |
+| 取消與儲存 | 取消建議不改草稿；取消 Create／Edit 不改已存 System；Create／Save 前不改 active Config，不自動 Ingestion |
+| 欄位與方法能力 | AI 建議、手動表單與 Engine 使用同一份 Schema／Registry；未支援方法、失效欄位／服務可定位，不靜默換值 |
+
+助手的結構化輸出與 UI 的暫存／收合等呈現狀態分開；手寫 Config 與 UI Draft 可有不同包裝，但產生的有效 Config 語意需一致。此處不新增原始 Config 編輯器或另一個 RAG 主畫面；Prototype 調整先列 10。
 
 **建議的正式流程，需 Q-024 核定**：
 
