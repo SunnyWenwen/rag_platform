@@ -14,6 +14,8 @@ flowchart TB
   %% Shared/dedicated Runtime allocation and instance multiplicity remain undecided.
   %% Local Search executes in Engine code; optional MongoDB persists Chunks/vectors.
   %% Dependencies, Secret Vault and observability remain outside the independent Runtime.
+  %% The FTEST/ENT environment groups Runtime, Vault, dependencies and observability.
+  %% Platform-to-DEV-Runtime is a direct code-reuse relationship between their boundaries.
   %% Export records the Image reference in YAML; Image-version details are omitted here.
 
   subgraph PLATFORM["RAG Engine Platform｜共用執行框架"]
@@ -54,29 +56,37 @@ flowchart TB
     DSERVICE --> DMODEL
   end
 
-  IMAGE -.->|"使用共用程式／Image"| SANDBOX
+  PLATFORM -.->|"使用共用執行框架"| SANDBOX
   BACKEND -->|"Export｜補齊目標環境設定"| FILES@{ shape: doc, label: "FTEST/ENT yaml files" }
   FILES --> DEPLOY["使用單位部署｜自行於 K8s 使用 YAML 進行 CD 部署"]
 
   APP["應用程式／外部系統"] --> RAPI
   DEPLOY -->|"以 Image＋Config＋部署設定啟動"| PROD
 
-  subgraph PROD["自行部署｜獨立 RAG Runtime（API only）"]
+  subgraph DEPLOYED["自行部署環境｜FTEST / ENT"]
     direction TB
-    RAPI["Runtime API｜Ingest / Query / Status"] --> PSERVICE["RAG Service｜System 執行實例"]
+    VAULT[("Secret Vault")]
+
+    subgraph PROD["獨立 RAG Runtime（API only）"]
+      direction TB
+      RAPI["Runtime API｜Ingest / Query / Status"] --> PSERVICE["RAG Service｜System 執行實例"]
+    end
+
+    POBS["Logs / Metrics / Traces"]
+
+    subgraph PRES["部署依賴｜使用單位自行申請或提供"]
+      PSEARCH[("ES / MongoDB（依後端）")]
+      PMODEL["LLM / Embedding / Rerank API"]
+    end
+
+    VAULT -.->|"取得／注入 Secrets"| PSERVICE
+    PSERVICE --> POBS
+    PSERVICE -->|"依後端選用"| PSEARCH
+    PSERVICE --> PMODEL
   end
 
   IMAGE -.->|"使用相同版本程式／Image"| PROD
   FILES -.->|"載入同版 Config 與 FTEST/ENT 部署綁定"| PSERVICE
-  VAULT[("Secret Vault")] -.->|"取得／注入 Secrets"| PSERVICE
-  PSERVICE --> POBS["Logs / Metrics / Traces"]
-
-  subgraph PRES["部署依賴｜使用單位自行申請或提供"]
-    PSEARCH[("ES / MongoDB（依後端）")]
-    PMODEL["LLM / Embedding / Rerank API"]
-  end
-  PSERVICE -->|"依後端選用"| PSEARCH
-  PSERVICE --> PMODEL
 
   classDef platform fill:#fff5e5,stroke:#cf9b4a,color:#624516
   classDef control fill:#e8f0ff,stroke:#5881c8,color:#163459
@@ -93,6 +103,7 @@ flowchart TB
   style CP fill:#eef4fb,stroke:#9aafc9
   style SANDBOX fill:#f1faf5,stroke:#90b7a3
   style DRES fill:#f6f3ff,stroke:#b1a3ca
+  style DEPLOYED fill:#f7faff,stroke:#9aafc9
   style PROD fill:#f5fcf8,stroke:#90b7a3
   style PRES fill:#f6f3ff,stroke:#b1a3ca
 
