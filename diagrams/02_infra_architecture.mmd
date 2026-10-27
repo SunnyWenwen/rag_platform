@@ -14,7 +14,7 @@ flowchart TB
   %% Shared/dedicated Runtime allocation and instance multiplicity remain undecided.
   %% Local Search executes in Engine code; optional MongoDB persists Chunks/vectors.
   %% Dependencies, Secret Vault and observability remain outside the independent Runtime.
-  %% Review stage: PNG is intentionally unchanged until the Mermaid source is approved.
+  %% Export records the Image reference in YAML; Image-version details are omitted here.
 
   subgraph PLATFORM["RAG Engine Platform｜共用執行框架"]
     direction TB
@@ -55,7 +55,6 @@ flowchart TB
   end
 
   IMAGE -.->|"使用共用程式／Image"| SANDBOX
-  IMAGE -.->|"鎖定 Image 版本／Digest"| FILES
   BACKEND -->|"Export｜補齊目標環境設定"| FILES@{ shape: doc, label: "FTEST/ENT yaml files" }
   FILES --> DEPLOY["使用單位部署｜自行於 K8s 使用 YAML 進行 CD 部署"]
 
@@ -96,3 +95,4 @@ flowchart TB
   style DRES fill:#f6f3ff,stroke:#b1a3ca
   style PROD fill:#f5fcf8,stroke:#90b7a3
   style PRES fill:#f6f3ff,stroke:#b1a3ca
+

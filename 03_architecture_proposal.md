@@ -145,7 +145,7 @@ Config 與部署設定的欄位、有效設定規則及範例見 [05 §6～8](do
 
 1～5 與 Edit Config 屬 Builder 測試範圍，6 在其外。這是引導順序；Build 後可匯出草稿，Ingestion／Inference 可重複，Evaluation 不要求先手動問答。是否強制 Evaluation Release Gate 另決。
 
-流程圖：[L1 PNG](diagrams/01_user_system_l1.png)、[Mermaid](diagrams/01_user_system_l1.mmd)、[固定版面 SVG](diagrams/01_user_system_l1.svg)。架構圖：[PNG](diagrams/02_infra_architecture.png)、[Mermaid](diagrams/02_infra_architecture.mmd)。2026-10-27 依使用者要求先更新架構 Mermaid 與本章對應名詞／圖面規則：抽出共用 RAG Engine Platform，Runtime 內改標 RAG Service。PNG 保留前版，待使用者確認 Mermaid 後再同步；本次不調整 L1。
+流程圖：[L1 PNG](diagrams/01_user_system_l1.png)、[Mermaid](diagrams/01_user_system_l1.mmd)、[固定版面 SVG](diagrams/01_user_system_l1.svg)。架構圖：[PNG](diagrams/02_infra_architecture.png)、[Mermaid](diagrams/02_infra_architecture.mmd)。2026-10-27 依使用者要求抽出共用 RAG Engine Platform，Runtime 內改標 RAG Service，並同步本章名詞／圖面規則。使用者確認後移除 Image→YAML 的「鎖定 Image 版本／Digest」連線並同步更新 PNG；Image 引用仍由 Export 記入 YAML，版本／Digest 規則保留於 07 的部署規格。本次不調整 L1。
 
 圖面的既有使用者要求也屬規格，後續更新須保持：
 
@@ -215,3 +215,4 @@ Local Search 的 Memory／MongoDB 持久化模式隨邏輯 Config 固定：DEV �
 | Evaluation Gate | 匯出與部署流程 | [Q-018](docs/08_implementation_plan.md#q-018) |
 
 所有問題狀態、決策負責人及階段阻擋範圍見 08。
+
