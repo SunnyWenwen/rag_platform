@@ -63,13 +63,15 @@ AI 設定助手分兩階段交付：M4 先完成不依賴 Builder 的核心與 P
 |---|---|
 | RAG Builder | 建立與管理 RAG System 的平台，提供 Workspace、設定 UI、測試、評估及匯出能力 |
 | Workspace | Builder 中組織與管理 System 的容器；正式管理階層為 Workspace → System，不增加 Group 層 |
+| RAG Engine Platform | 架構圖中共用執行技術堆疊的分組，包含 RAG Engine、Runtime API 封裝及其共用 Runtime Image；不是 DEV／獨立 Runtime 執行時必須呼叫的中央服務 |
 | RAG Engine | 可依 Config 選擇、串接與執行模組的核心框架，可獨立於 Builder／HTTP 使用 |
 | RAG Runtime | 為 Engine 加上 Ingest／Query／Status／Health API 的執行服務；載入設定後提供 System 的 API，可與 Builder 分開部署 |
 | RAG System | 套用特定 Config、綁定服務與資料／索引所建立的具體 RAG 應用；具穩定邏輯識別，可處於未啟動／執行／停止狀態，直接使用 Engine 也可建立 |
+| RAG Service（圖面用語） | Runtime 內由 Engine 載入 Config、綁定環境服務與資料後建立的 System 執行實例；不新增管理層級、必要微服務或另一組 API，也不指 Kubernetes Service 物件 |
 | AI 設定助手 | 依需求、樣本、可用方法及 Config Schema 產生設定草稿的能力；可獨立由 Python／API 使用，Builder 另外提供互動、差異預覽及套用介面，不是 Ingestion／Inference 的必經模組 |
 | Evaluation Runner | 批次執行 Dataset 與收集指標；重用 04 的評估邏輯，由 07 管理任務與儲存 |
 
-Engine 是可重用的處理框架，Runtime 是提供 API 的服務載體，System 是使用者建立的具體應用。System 的邏輯識別不等同於 Pod、程序或 API 端點；一個 Runtime 如何管理多個 System／執行實例，仍由 [Q-017](docs/08_implementation_plan.md#q-017)、[Q-020](docs/08_implementation_plan.md#q-020) 核定。
+Engine 是可重用的處理框架，Runtime 是提供 API 的服務載體，System 是使用者建立的具體應用。RAG Engine Platform 將共用實作抽出展示；Runtime 圖內的 RAG Service 表示套用設定後的 System 執行實例。建立／啟動 Runtime 是載入共用程式／Image、Config 與部署設定，不要求每份 Config 重新建 Image。System 的邏輯識別不等同於 Pod、程序或 API 端點；一個 Runtime 如何管理多個 System／執行實例，仍由 [Q-017](docs/08_implementation_plan.md#q-017)、[Q-020](docs/08_implementation_plan.md#q-020) 核定。
 
 <a id="pipeline-terms"></a>
 
@@ -143,7 +145,7 @@ Config 與部署設定的欄位、有效設定規則及範例見 [05 §6～8](do
 
 1～5 與 Edit Config 屬 Builder 測試範圍，6 在其外。這是引導順序；Build 後可匯出草稿，Ingestion／Inference 可重複，Evaluation 不要求先手動問答。是否強制 Evaluation Release Gate 另決。
 
-流程圖：[L1 PNG](diagrams/01_user_system_l1.png)、[Mermaid](diagrams/01_user_system_l1.mmd)、[固定版面 SVG](diagrams/01_user_system_l1.svg)。架構圖：[PNG](diagrams/02_infra_architecture.png)、[Mermaid](diagrams/02_infra_architecture.mmd)。本輪核對文字與既有圖面，不修改已確認版面。
+流程圖：[L1 PNG](diagrams/01_user_system_l1.png)、[Mermaid](diagrams/01_user_system_l1.mmd)、[固定版面 SVG](diagrams/01_user_system_l1.svg)。架構圖：[PNG](diagrams/02_infra_architecture.png)、[Mermaid](diagrams/02_infra_architecture.mmd)。2026-10-27 依使用者要求先更新架構 Mermaid 與本章對應名詞／圖面規則：抽出共用 RAG Engine Platform，Runtime 內改標 RAG Service。PNG 保留前版，待使用者確認 Mermaid 後再同步；本次不調整 L1。
 
 圖面的既有使用者要求也屬規格，後續更新須保持：
 
@@ -151,7 +153,9 @@ Config 與部署設定的欄位、有效設定規則及範例見 [05 §6～8](do
 - 下方測試實體名稱為「RAG System for RAG Builder 測試」；6 以虛線連其下方「RAG System in k8s」，YAML 設定檔另有虛線連到該實體。
 - Evaluation→Export 標示「準備部署到 k8s」；Evaluation→修改 Config 標示「驗證不達標，需調整」。修改後依 Ingestion／Inference 變更返回相應步驟，並以虛線更新測試實體。
 - Infra 使用「RAG Builder Control Plane」，明列 Frontend／Backend；Config／Validator／服務設定及 Export 合併為 Backend 職責，不因圖面重畫拆成必要微服務。
-- tSSO 作登入入口；Backend 的「建立／設定 Engine」連到整個 DEV RAG Runtime 邊界，由 Runtime 內部組裝。Engine 標籤不加「含 Local Search」。
+- tSSO 作登入入口；Backend 的「建立／設定 Runtime」連到整個 DEV RAG Runtime 邊界，由 Runtime 內部依 Config 組裝 System 執行實例。
+- RAG Engine Platform 作為獨立共用實作區塊，展示 RAG Engine 與共用 Runtime Image；DEV／FTEST／ENT 重用相同版本程式／Image，虛線表示程式重用與設定載入，不代表向中央 Platform 發送業務請求。
+- Runtime 內保留 Runtime API，原 RAG Engine 節點改標「RAG Service｜System 執行實例」；Engine 名稱保留於共用框架。Config 與各環境部署綁定分開，同一 System／Revision 沿用相同邏輯 Config。Engine 標籤不加「含 Local Search」。
 - FTEST/ENT YAML 使用文件形狀；Secret Vault、部署依賴、觀測工具在獨立 Runtime 外。Config Store 保持簡化；本版圖不畫 Evaluation→Store、Backend→tSSO 線，這是圖面省略，不代表取消評估保存或後端授權驗證。
 
 | 面向 | Builder 測試 | 獨立 Runtime |

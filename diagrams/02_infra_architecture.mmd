@@ -1,15 +1,30 @@
 flowchart TB
-  %% Target architecture; tSSO, Runtime, Secret Vault and CD integration are not implemented in the Prototype.
-  %% tSSO edges show the login/authentication relationship, not a proxy for every business request.
-  %% Frontend and Backend form the RAG Builder Control Plane; Config/Validator/service settings/Export are Backend functions.
-  %% Backend initiates System-scoped execution-instance setup; the DEV Runtime composes the Pipeline from Config.
-  %% Config Store is shown here; execution-record persistence and authentication details are omitted.
-  %% Both Runtime environments use the same versioned Engine and API contract.
-  %% Local Search lives inside the Engine; optional MongoDB persists Chunks/vectors, not the search operation.
-  %% The independent Runtime boundary contains only Runtime API and Engine; dependencies, Vault and observability are external.
+  %% Target architecture; components and integrations are not implemented in the Prototype.
+  %% Terminology: 03_architecture_proposal.md section 3 is authoritative.
+  %% RAG Engine Platform groups reusable Engine/Runtime code and its versioned Image.
+  %% It is not a central online service required by DEV or independently deployed Runtimes.
+  %% A Runtime loads the shared code/Image plus Config and environment-specific bindings.
+  %% RAG Service labels the System execution instance created by Engine inside a Runtime;
+  %% it is not a new management object, mandatory microservice or Kubernetes Service object.
+  %% Same System/Config Revision keeps the same logical Config across DEV/FTEST/ENT.
+  %% Deployment Settings bind environment URLs, Secrets, data/index targets and resources.
+  %% Code/Image reuse and Config-loading edges are dashed; business requests are solid.
+  %% tSSO edges show login/authentication, not a proxy for every business request.
+  %% Backend starts/configures Runtime; Runtime internally initializes the System instance.
+  %% Shared/dedicated Runtime allocation and instance multiplicity remain undecided.
+  %% Local Search executes in Engine code; optional MongoDB persists Chunks/vectors.
+  %% Dependencies, Secret Vault and observability remain outside the independent Runtime.
+  %% Review stage: PNG is intentionally unchanged until the Mermaid source is approved.
 
-  USER["使用者"] -->|登入| SSO["tSSO 認證"]
-  SSO -->|登入成功| UI
+  subgraph PLATFORM["RAG Engine Platform｜共用執行框架"]
+    direction TB
+    ENGINE["RAG Engine｜Config 驗證／模組組裝與執行"]
+    IMAGE["共用 Runtime Image｜Runtime API + RAG Engine"]
+    ENGINE -->|"封裝"| IMAGE
+  end
+
+  USER["使用者"] -->|"登入"| SSO["tSSO 認證"]
+  SSO -->|"登入成功"| UI
 
   subgraph DEV["RAG Builder｜設定與測試"]
     direction TB
@@ -23,57 +38,61 @@ flowchart TB
     EVAL -->|"批次問答"| DAPI
 
     subgraph SANDBOX["DEV RAG Runtime"]
-      DAPI["Runtime API｜Ingest / Query / Status"] --> DENGINE["RAG Engine"]
+      DAPI["Runtime API｜Ingest / Query / Status"] --> DSERVICE["RAG Service｜System 執行實例"]
     end
 
-    BACKEND -.->|"建立／設定 Engine"| SANDBOX
+    BACKEND -.->|"建立／設定 Runtime"| SANDBOX
+    META -.->|"載入 Config Revision 與 DEV 部署綁定"| DSERVICE
 
-    DENGINE --> DOBS["Logs / Metrics / Traces"]
+    DSERVICE --> DOBS["Logs / Metrics / Traces"]
 
     subgraph DRES["測試依賴｜DEV test use 或自行提供"]
       DSEARCH[("ES / MongoDB（依後端）")]
       DMODEL["LLM / Embedding / Rerank API"]
     end
-    DENGINE -->|"依後端選用"| DSEARCH
-    DENGINE --> DMODEL
+    DSERVICE -->|"依後端選用"| DSEARCH
+    DSERVICE --> DMODEL
   end
 
-  BACKEND -->|"Export｜補齊設定"| FILES@{ shape: doc, label: "FTEST/ENT yaml files" }
+  IMAGE -.->|"使用共用程式／Image"| SANDBOX
+  IMAGE -.->|"鎖定 Image 版本／Digest"| FILES
+  BACKEND -->|"Export｜補齊目標環境設定"| FILES@{ shape: doc, label: "FTEST/ENT yaml files" }
   FILES --> DEPLOY["使用單位部署｜自行於 K8s 使用 YAML 進行 CD 部署"]
 
   APP["應用程式／外部系統"] --> RAPI
-  DEPLOY -->|"YAML 配置／啟動 Runtime"| PENGINE
+  DEPLOY -->|"以 Image＋Config＋部署設定啟動"| PROD
 
   subgraph PROD["自行部署｜獨立 RAG Runtime（API only）"]
     direction TB
-    RAPI["Runtime API｜Ingest / Query / Status"] --> PENGINE["RAG Engine"]
+    RAPI["Runtime API｜Ingest / Query / Status"] --> PSERVICE["RAG Service｜System 執行實例"]
   end
 
-  VAULT[("Secret Vault")] -.->|"取得／注入 Secrets"| PENGINE
-  PENGINE --> POBS["Logs / Metrics / Traces"]
+  IMAGE -.->|"使用相同版本程式／Image"| PROD
+  FILES -.->|"載入同版 Config 與 FTEST/ENT 部署綁定"| PSERVICE
+  VAULT[("Secret Vault")] -.->|"取得／注入 Secrets"| PSERVICE
+  PSERVICE --> POBS["Logs / Metrics / Traces"]
 
   subgraph PRES["部署依賴｜使用單位自行申請或提供"]
     PSEARCH[("ES / MongoDB（依後端）")]
     PMODEL["LLM / Embedding / Rerank API"]
   end
-  PENGINE -->|"依後端選用"| PSEARCH
-  PENGINE --> PMODEL
+  PSERVICE -->|"依後端選用"| PSEARCH
+  PSERVICE --> PMODEL
 
+  classDef platform fill:#fff5e5,stroke:#cf9b4a,color:#624516
   classDef control fill:#e8f0ff,stroke:#5881c8,color:#163459
   classDef runtime fill:#ecf8f1,stroke:#58a389,color:#174633
   classDef resource fill:#f5f4ff,stroke:#8c83c6,color:#372f6b
   classDef delivery fill:#fff5e5,stroke:#cf9b4a,color:#624516
+  class ENGINE,IMAGE platform
   class UI,BACKEND,META control
-  class DAPI,DENGINE,EVAL,RAPI,PENGINE runtime
+  class DAPI,DSERVICE,EVAL,RAPI,PSERVICE runtime
   class SSO,VAULT,DSEARCH,DMODEL,PSEARCH,PMODEL,DOBS,POBS resource
   class FILES,DEPLOY delivery
+  style PLATFORM fill:#fffaf0,stroke:#cf9b4a
   style DEV fill:#f7faff,stroke:#9aafc9
   style CP fill:#eef4fb,stroke:#9aafc9
   style SANDBOX fill:#f1faf5,stroke:#90b7a3
   style DRES fill:#f6f3ff,stroke:#b1a3ca
   style PROD fill:#f5fcf8,stroke:#90b7a3
   style PRES fill:#f6f3ff,stroke:#b1a3ca
-
-
-
-
