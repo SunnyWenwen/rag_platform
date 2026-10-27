@@ -145,7 +145,7 @@ Config 與部署設定的欄位、有效設定規則及範例見 [05 §6～8](do
 
 1～5 與 Edit Config 屬 Builder 測試範圍，6 在其外。這是引導順序；Build 後可匯出草稿，Ingestion／Inference 可重複，Evaluation 不要求先手動問答。是否強制 Evaluation Release Gate 另決。
 
-流程圖：[L1 PNG](diagrams/01_user_system_l1.png)、[Mermaid](diagrams/01_user_system_l1.mmd)、[固定版面 SVG](diagrams/01_user_system_l1.svg)。架構圖：[PNG](diagrams/02_infra_architecture.png)、[Mermaid](diagrams/02_infra_architecture.mmd)。2026-10-27 依使用者要求抽出共用 RAG Engine Platform，Runtime 內改標 RAG Service，並同步本章名詞／圖面規則。使用者確認後移除 Image→YAML 的「鎖定 Image 版本／Digest」連線並同步更新 PNG；Image 引用仍由 Export 記入 YAML，版本／Digest 規則保留於 07 的部署規格。同日後續 Mermaid 調整為 Platform 邊界直接連到 DEV Runtime，並增加自行部署環境外框；此輪只更新 Mermaid 與本章說明，PNG 保留前次同步版。本次不調整 L1。
+流程圖：[L1 PNG](diagrams/01_user_system_l1.png)、[Mermaid](diagrams/01_user_system_l1.mmd)、[固定版面 SVG](diagrams/01_user_system_l1.svg)。架構圖：[PNG](diagrams/02_infra_architecture.png)、[Mermaid](diagrams/02_infra_architecture.mmd)。2026-10-27 依使用者要求抽出共用 RAG Engine Platform，Runtime 內改標 RAG Service，並同步本章名詞／圖面規則。使用者確認後移除 Image→YAML 的「鎖定 Image 版本／Digest」連線並同步更新 PNG；Image 引用仍由 Export 記入 YAML，版本／Digest 規則保留於 07 的部署規格。同日後續 Mermaid 調整為 Platform 邊界直接連到 DEV 與獨立 Runtime，並增加自行部署環境外框；此輪只更新 Mermaid 與本章說明，PNG 保留前次同步版。本次不調整 L1。
 
 圖面的既有使用者要求也屬規格，後續更新須保持：
 
@@ -154,7 +154,7 @@ Config 與部署設定的欄位、有效設定規則及範例見 [05 §6～8](do
 - Evaluation→Export 標示「準備部署到 k8s」；Evaluation→修改 Config 標示「驗證不達標，需調整」。修改後依 Ingestion／Inference 變更返回相應步驟，並以虛線更新測試實體。
 - Infra 使用「RAG Builder Control Plane」，明列 Frontend／Backend；Config／Validator／服務設定及 Export 合併為 Backend 職責，不因圖面重畫拆成必要微服務。
 - tSSO 作登入入口；Backend 的「建立／設定 Runtime」連到整個 DEV RAG Runtime 邊界，由 Runtime 內部依 Config 組裝 System 執行實例。
-- RAG Engine Platform 作為獨立共用實作區塊，展示 RAG Engine 與共用 Runtime Image；Platform 外框直接以虛線連到 DEV RAG Runtime 外框，表達使用共用執行框架。DEV／FTEST／ENT 重用相同版本程式／Image，虛線表示程式重用與設定載入，不代表向中央 Platform 發送業務請求。
+- RAG Engine Platform 作為獨立共用實作區塊，展示 RAG Engine 與共用 Runtime Image；Platform 外框直接以虛線連到 DEV RAG Runtime 與獨立 RAG Runtime 的外框，表達使用共用執行框架。Runtime Image 保留於 Platform 內，不另由 Image 節點連到 Runtime。DEV／FTEST／ENT 重用相同版本程式／Image，虛線表示程式重用與設定載入，不代表向中央 Platform 發送業務請求。
 - Runtime 內保留 Runtime API，原 RAG Engine 節點改標「RAG Service｜System 執行實例」；Engine 名稱保留於共用框架。Config 與各環境部署綁定分開，同一 System／Revision 沿用相同邏輯 Config。Engine 標籤不加「含 Local Search」。
 - FTEST/ENT YAML 使用文件形狀；以「自行部署環境｜FTEST / ENT」外框包住 Secret Vault、獨立 RAG Runtime、部署依賴及 Logs／Metrics／Traces。Runtime 仍保留內層邊界，Vault／依賴／觀測工具位於 Runtime 外、部署環境內；使用者應用程式與部署操作維持在環境外框外。Config Store 保持簡化；本版圖不畫 Evaluation→Store、Backend→tSSO 線，這是圖面省略，不代表取消評估保存或後端授權驗證。
 

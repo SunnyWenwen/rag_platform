@@ -15,7 +15,7 @@ flowchart TB
   %% Local Search executes in Engine code; optional MongoDB persists Chunks/vectors.
   %% Dependencies, Secret Vault and observability remain outside the independent Runtime.
   %% The FTEST/ENT environment groups Runtime, Vault, dependencies and observability.
-  %% Platform-to-DEV-Runtime is a direct code-reuse relationship between their boundaries.
+  %% Platform connects directly to both Runtime boundaries to show code reuse.
   %% Export records the Image reference in YAML; Image-version details are omitted here.
 
   subgraph PLATFORM["RAG Engine Platform｜共用執行框架"]
@@ -85,7 +85,7 @@ flowchart TB
     PSERVICE --> PMODEL
   end
 
-  IMAGE -.->|"使用相同版本程式／Image"| PROD
+  PLATFORM -.->|"使用共用執行框架"| PROD
   FILES -.->|"載入同版 Config 與 FTEST/ENT 部署綁定"| PSERVICE
 
   classDef platform fill:#fff5e5,stroke:#cf9b4a,color:#624516
