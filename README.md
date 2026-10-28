@@ -32,6 +32,8 @@ v0.19 討論提案：將 Rewrite／Multi-query 合併為單一 Query Rewrite，�
 
 同日確認 **兩個 repo 的目標分工（D-41）**：`rag_platform` 放 Builder Frontend／Backend 與管理整合；`rag_engine` 放 SDK、Engine、所有 Methods／Adapters 及 Runtime API。Module Developer 在 rag_engine 的 methods 目錄提交 PR，Engine＋Methods 整合測試後發布完整 Runtime Image；Builder 與 Runtime 在 API／Schema 相容時各自升級。Repo／Image／部署單位的正式邊界見 [03 §3.7](03_architecture_proposal.md#repository-boundaries)，建置與發布見 [07 §2](docs/07_backend_runtime_integration.md#repository-build-boundaries)。本輪更新文件，尚未建立新 repo 或搬移程式。
 
+同日確認 **Schema 驅動的 Method 設定與卡控（D-42）**：新增 [12 Method 設定 Schema、動態表單與相依規則](docs/12_method_schema_ui_contract.md)，規劃共用 Schema 輸出、UI hints、動態選項、Engine 相依驗證與版本／錯誤定位。相依不滿足的選項保留顯示並停用、無關欄位隱藏、進階預設收合、失效選擇保留並報錯；未知必要控制項明示不支援。操作方向已確認，`method-ui-0.1-draft` 格式仍待契約核定；UIB-010 更新待辦，Prototype 未修改。
+
 | 文件 | 定位 |
 |---|---|
 | [03 系統概覽與架構](03_architecture_proposal.md) | 正式名詞定義、產品目的、新手／進階情境、元件分工、部署邊界與範圍 |
@@ -39,14 +41,15 @@ v0.19 討論提案：將 Rewrite／Multi-query 合併為單一 Query Rewrite，�
 | [05 共用資料模型與 Config](docs/05_data_contracts_search_design.md) | ParsedDocument／Chunk／SearchHit、Schema、Config 草案與變更影響 |
 | [06 使用流程與 UI 開發規格](docs/06_ui_development_spec.md) | 基本／進階、CSV、AI 助手、預覽、Edit 與測試操作 |
 | [07 Backend、Runtime API 與整合](docs/07_backend_runtime_integration.md) | API、System／Revision、任務、持久化、Runtime 與 Export |
-| [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M7、兩個 repo 與 Method 開發配套、41 項決策、27 項待決問題及 40 項歷史要求對照 |
+| [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M7、兩個 repo 與 Method 開發配套、42 項決策、27 項待決問題及 40 項歷史要求對照 |
 | [09 Inference Contract 與 UI 整合提案](docs/09_inference_contract_ui_plan.md) | 三種操作／共同排序的討論記錄、順序式 UI 設定、案例與待確認選項 |
 | [10 UI Prototype Backlog 與完成紀錄](docs/10_ui_adjustment_backlog.md) | §1～6 保留 v0.9 歷史完成項目；§7 集中新需求及提案，含 Method 選用／卡控 UIB-010；收到改 UI 指示後才實作 |
 | [11 Method 開發指南](docs/11_method_developer_guide.md) | Module Developer 在 rag_engine 開發 Methods 的 SDK 介面示意、PR、套件測試、註冊與 Runtime 交付流程 |
+| [12 Method Schema、UI hints 與相依規則](docs/12_method_schema_ui_contract.md) | 設定描述格式草案、動態欄位／服務選項、相依狀態、版本／錯誤及 14 個驗收案例 |
 
 建議先讀 03／08，再依任務讀 05／04／07／06。03 統一名詞與邊界，05 定義資料／版本規則，08 記錄決策與待決狀態。Engine 核心不依賴 Builder UI、HTTP 或 Builder DB；07 將其包裝為可管理服務。每份規格末尾列出相關 Q-ID，完整候選／決策／階段阻擋統一放在 08。
 
-Module Developer 可先讀 11 掌握開發流程，再依選定 Module 閱讀 04 與 05；11 的 Python 範例是尚未實作的介面草案，不是現在就能安裝使用的 SDK 教學。
+Module Developer 可先讀 11 掌握開發流程，再依選定 Module 閱讀 04 與 05，設定描述與動態表單配套讀 12；11／12 的 Python 範例是介面草案，不是現在就能安裝使用的 SDK 教學。
 
 舊 04／05 的重複及覆蓋式章節已重整，歷史可由 Git commit `cf4dfdc0e29acc91a2fe63b1993f867c8facaf6d` 查閱。完整 Config 的拼字、型別及預設值仍屬 Q-002 草案；本輪沒有新增 Engine、API 或正式部署功能。
 

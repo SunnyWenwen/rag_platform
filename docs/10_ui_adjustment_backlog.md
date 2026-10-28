@@ -143,6 +143,8 @@ UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／
 
 2026-10-28 追加：UIB-010 記錄 Module Developer 方法在 Builder 的選用、設定與相依驗證；新增角色／擴充需求見 D-40，具體目錄與 UI 呈現為規劃待細化。維持先文件、後 UI，不新增程式上傳／安裝入口。
 
+同日 D-42：使用者確認依建議規劃 Schema 驅動表單及五項操作行為，具體描述草案集中於 [12](12_method_schema_ui_contract.md)。UIB-010 增補實作／驗收項目，尚未要求修改 Prototype；原型版本維持 v0.9。
+
 | ID | 待調整項目 | 主責規格／階段 | 狀態 |
 |---|---|---|---|
 | UIB-001 | Chunking 增加 Fixed-size 及方法參數卡控 | 04 §4.3、05 §6.4、06 §3；Engine M2／Builder M5 | 待使用者要求改 UI |
@@ -154,7 +156,7 @@ UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／
 | UIB-007 | Rewrite／Multi-query 單模組測試與結構化輸出檢視 | 04 §5.1.1、06 §3.3.1；Engine M2／Builder M5 | 提案待確認，尚未實作 |
 | UIB-008 | Rewrite／Multi-query 合併為單一 Query Rewrite，以 1／N 控制 | 04 §5.1.2、06 §3.3.2；Q-002／Q-003 | 提案待確認，尚未實作 |
 | UIB-009 | Generation 預設格式＋收合的進階自訂 JSON Schema | 04 §5.4.1、06 §3.5；Q-002／Q-003／Q-018／Q-019 | 提案待確認，尚未實作 |
-| UIB-010 | 兩個 repo 下使用 Runtime 方法目錄、Method 設定與相依卡控／版本資訊 | 04 §7.5、07 §5.8、11、08 §4.3；D-40／D-41／Q-019／Q-022／Q-025 | 需求方向已確認，互動細節待細化；待要求改 UI |
+| UIB-010 | Runtime 方法目錄、Schema 動態表單、動態候選與相依卡控／版本資訊 | 04 §7.5～7.6、07 §5.8、11／12、08 §4.3；D-40～42／Q-019／Q-022／Q-025 | 方向與五項操作行為已確認；格式為草案，待要求改 UI |
 
 ### UIB-001：Fixed-size 控制項與設定連動
 
@@ -231,4 +233,15 @@ UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／
 - [ ] Edit 保留既有方法／解析版本與草稿；方法撤回／目標 Runtime 不再支援時保留失效引用及原因。更新方法時提示必要的重測／重新 Ingestion 影響，依正式版本策略處理，不因目錄更新而自動升級 System。
 - [ ] AI 助手與手動設定使用相同方法目錄、Schema、相依規則及草稿基準；套用、取消、失效引用與匯出走同一有效 Config。助手不推薦未知／未支援的方法或自行安裝 package。
 - [ ] 匯出檢查目標 Runtime Image 是否包含所需方法／版本；缺失時顯示對應模組與待補條件，與外部 API／DB 連線缺項區分。DEV 與 FTEST／ENT 的方法／邏輯 Config 一致，環境服務綁定分開。
-- [ ] 以新增外部 Chunker、成對 Indexing／Retrieval、不相容 Parser 結構、缺套件／錯版及取消 Edit 作為未來驗收案例；只做 Prototype 示範時明示目錄／執行為模擬。本輪不修改 UI，也不新增 Web IDE／任意程式上傳／套件安裝按鈕。
+- [ ] 以 rag_engine methods 新增 Chunker、成對 Indexing／Retrieval、不相容 Parser 結構、缺套件／錯版及取消 Edit 作為未來驗收案例；只做 Prototype 示範時明示目錄／執行為模擬。本輪不修改 UI，也不新增 Web IDE／任意程式上傳／套件安裝按鈕。
+
+D-42 的具體補充（格式以 [12](12_method_schema_ui_contract.md) 為準）：
+
+- [ ] 固定 Create／Edit 流程內依 Descriptor 產生 Method 參數表單；基本型別使用共用控制項，order／groups／advanced／UI hints 由平台映射，不載入 Method 提供的前端程式。
+- [ ] field_picker／service_picker 使用當前 Engine 解析的候選，涵蓋欄位來源階段、型別、索引能力及可見 LLM／Tokenizer／服務；相關不相容選項保留停用，不洩漏不可見服務。
+- [ ] 區分不適用分支與已選設定不合法：Memory 隱藏 DB 綁定並保留草稿；刪除全文索引後已選的全文 Retrieval 保留報錯，不能直接從有效流程略過。
+- [ ] 進階預設收合；錯誤摘要使用 Module＋node_ref＋field_path 定位具體實例，能展開對應欄位。無效草稿可繼續編輯，正式儲存／建立／套用仍需驗證。
+- [ ] 未知必要 widget／描述版本／required_ui_features 明示不支援，不偷偷改為一般文字框或任意 JSON 編輯；既有合法 Runtime 不因 Builder 不支援就停止服務。
+- [ ] 顯示由 Engine 推導的固定值與原因，例如 Retrieval 後端；顯式衝突要報錯。UI 不自行補出能力、默默修值或執行 set_value 規則。
+- [ ] 驗證結果對回 Runtime／catalog／draft／context 版本；舊回應、目錄錯誤、未知候選保留草稿並標為待驗證，不能以舊成功結果套用新版。
+- [ ] 依 [12 SUI-01～14](12_method_schema_ui_contract.md#acceptance-cases) 建立互動與跨入口一致性驗收。後端／UI 未實作前保持未完成；Prototype 模擬與真實 Runtime 驗收分開。

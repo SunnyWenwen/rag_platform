@@ -515,6 +515,15 @@ DEV 與 FTEST／ENT 維持相同方法選擇／解析版本與邏輯 Config，�
 
 開發者實作步驟、Python 介面示意與交付檢查見 [11](11_method_developer_guide.md)；決策狀態以 [08 Q-022](08_implementation_plan.md#q-022) 為準。
 
+### 7.6 設定描述與動態表單（D-42）
+
+2026-10-28 已確認依 Schema／UI hints／相依規則規劃 Method 設定。具體描述與驗收案例集中於 [12](12_method_schema_ui_contract.md)，不在本文件另建第二套欄位定義；`method-ui-0.1-draft` 尚未凍結為正式 SDK／HTTP 契約。
+
+- Method 宣告 `config_type`，共用父類別提供 Schema 輸出，Registry 強制檢查；不要求每個 Method 重寫產生 Schema 的 abstract method。UI hints 可使用預設值，特殊控制項明確宣告必要功能。
+- Config Schema、動態選項／能力與跨欄位規則共同參與 Engine 驗證，UI／AI／Python／HTTP 不能各自維護不同的有效性規則。Config Schema 與 Module I/O Contract 分開，ParsedDocument 待決狀態不變。
+- 取得方法描述不應初始化模型或外部服務；候選欄位／LLM／索引能力由 Engine 的版本化 Context 解析。目錄可用不代表真實連線／資料就緒已驗證。
+- 區分「不適用所以排除有效值」與「已選設定不合法所以阻擋」；UI 停用／收合不等於 Engine 可以略過必要驗證。相依失效保留原選擇，不自動換 Method 或搜尋路徑。
+
 ## 8. 待討論與決策
 
 | 範圍 | 問題 |

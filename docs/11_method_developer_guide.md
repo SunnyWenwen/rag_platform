@@ -14,6 +14,7 @@
 | ParsedDocument／Chunk、Inference 物件與 Config | [05 共用資料與 Config](05_data_contracts_search_design.md)；Inference Schema／示例由 05 導引 |
 | 交付階段、未決項與驗收 | [08](08_implementation_plan.md#method-development-plan) |
 | Builder 對應互動待辦 | [10 UIB-010](10_ui_adjustment_backlog.md#uib-010-method-catalog) |
+| Config Schema、UI hints、動態選項與相依規則 | [12 設定描述契約草案](12_method_schema_ui_contract.md) |
 | 開發者如何使用以上規格完成一個 Method | 本文件 |
 
 先選一個既有 Module 與具體需求，描述預期輸入／輸出、設定、必要能力及測試案例；可開始起草方法與套件結構。正式公開 SDK、可執行範本及相容測試需等相關契約核定。尤其 ParsedDocument 實際 Schema 已明確延後討論，見 [待決子題](08_implementation_plan.md#parsed-document-schema-pending)；本指南不另定 structure 模型。
@@ -101,6 +102,14 @@ class TeamChunker(ChunkingMethod):
 `ModuleResult` 的邏輯用法沿用 04：業務輸出位於 data，metrics／errors 不混進下游業務物件。Module-specific Input／Output 包裝與實際方法簽名由 Q-002 決定。完整方法宣告另需 Config Schema、相依能力、相容版本與維護資訊，範例 class 不代表宣告已齊全。
 
 Method 不自己重建 Engine 的重試、排程與授權流程。必要 Client／Tokenizer 等經受控資源介面取得，初始化與清理配合 Engine；禁止在輸入文字、Config 或自訂輸出中夾帶可執行指令交給 Engine 動態執行。Schema／RunContext 不等於程序隔離，核可與隔離邊界見 04 §7.4。
+
+### 4.1 讓 Method 可由 Builder 設定
+
+依 D-42 與 [12](12_method_schema_ui_contract.md)，開發者先宣告 `config_type`；共用父類別輸出 Config Schema，Registry 檢查，不必重寫同一份 Schema 產生函式。需要特殊顯示時提供 UI hints；動態欄位／LLM 選單另宣告 option_sources，參數相依另列 rules／capabilities，不能只把限制寫在 UI。
+
+Descriptor 為純 JSON，不能包含前端程式／任意 import 或連線憑證。宣告必要控制項／能力版本，提供合法、失效與分支切換案例；無參數方法也需合法空設定 Schema。取得描述不應先初始化 Method 資源。機器可讀格式目前為 `method-ui-0.1-draft`，完整 SDK／Meta-schema 仍待 M0 核定。
+
+最小驗收材料需包含：Schema／設定型別一致、動態候選與 API 直接傳值都驗證、失效引用不被換掉、不適用參數不進有效配置，以及共用問題格式。具體 SUI-01～14 見 [12 驗收案例](12_method_schema_ui_contract.md#acceptance-cases)。這些補充既有七項交付清單，不代表已完成可執行 Runner。
 
 ## 5. 安裝、import 與 Registry
 

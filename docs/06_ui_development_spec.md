@@ -112,6 +112,10 @@ DEV test use 使用平台測試資源；匯出部署時需填入使用單位的�
 
 卡控只處理設定相依；不代替實際後端能力、Profile 或連線驗證。規則由 04／05 共用來源推導。
 
+2026-10-28 D-42 將動態 Method 表單列為已確認規劃方向，描述／規則草案與案例集中於 [12](12_method_schema_ui_contract.md)。Create／Edit 保持固定介面，Method 參數才依 Schema 產生；無關分支欄位隱藏，進階預設收合，不相容選項顯示且停用。上游變更使已選值失效時保留並標錯，可以繼續編輯，但正式儲存／建立／套用需通過 Engine 驗證；草稿持久化仍依 Q-016／Q-025。
+
+動態候選使用目前有效欄位／服務／索引能力，前端不自行指定可信 Context。多個相同 Module 的錯誤以 node_ref＋欄位路徑定位。未知必要 UI feature 明示不支援且不能套用不完整設定；不自動改為任意 JSON 編輯器。實作與 SUI-01～14 互動驗收記在 10 UIB-010，尚未修改 Prototype。
+
 ### 3.3.1 討論提案：Query Rewrite 單模組測試
 
 **待使用者確認，尚未改 UI。** 建議在 Query Transformation 放「測試 Rewrite／Multi-query」：輸入一個問題，用當前草稿的 Prompt／LLM／count 執行該模組，不要求先建立／保存 System 或 Ingestion，也不執行 Retrieval／Rerank／Generation。

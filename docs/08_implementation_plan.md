@@ -37,6 +37,7 @@ v0.13 從 `e52c4d74a469522155d814f0ff51fddf8946f957` 核對交接文件、本串
 | Inference Contract 討論摘要與 UI 整合提案 | 09；欄位以 05、決策以 08 為準 |
 | Prototype 待辦與歷史完成證據 | 10；使用者要求改 UI 時才實作 |
 | Method 開發、測試及套件交付流程 | 11；Engine 機制以 04、資料契約以 05 為準 |
+| Method 設定描述、UI hints、動態選項與相依規則 | 12；設定介面草案，I/O 仍以 05 為準，互動待辦記於 10 |
 
 同一型別／規則不在多份文件各寫一套。03 定義名詞，05 規範對應的資料結構／版本規則，本文保存決策來源及狀態；決策摘要不取代 03 的現行定義。程式 Schema 與文件同步；不能只更新 UI、測試或其中一份規格。
 
@@ -85,6 +86,7 @@ v0.13 從 `e52c4d74a469522155d814f0ff51fddf8946f957` 核對交接文件、本串
 | D-39 | Indexing 保存全部 Chunk.fields／metadata，移除「儲存內容」；只選全文／向量／過濾索引；Chunking 預設繼承全部有效 metadata，排除功能有需求再規劃 | 2026-10-16 10:05 使用者確認前述三點／已確認，UI 尚未改 | 03／04／05／06；UIB-005／006 |
 | D-40 | 新增 Module Developer，依公開 Module 契約開發 Method，讓 Builder User 選用；04 維護 Engine 擴充規格，11 維護開發指南 | 2026-10-28 使用者提出角色／修改 L1，並要求依前述討論調整文件／需求方向；具體介面、套件與發布政策仍待決 | 03／04／11；Q-001／Q-002／Q-022；UIB-010 |
 | D-41 | 固定兩個 repo：rag_platform 放 Builder 前後端與管理整合；rag_engine 放 SDK、Engine、Methods／Adapters 與 Runtime API。Module Developer 在同 repo 提交 Method，整合測試後交付完整 Runtime Image；接口相容時 Builder／Runtime 可各自升級 | 2026-10-28 使用者確認「Builder 一個 repo、Engine＋Methods 一個 repo」並要求調整文件／已確認；精確套件／接口／CI 細節仍待決 | 03 §3.7／04／07／11；Q-001／Q-019／Q-021／Q-022；UIB-010 |
+| D-42 | 採 Schema 驅動 Method 設定表單：共用 Schema 輸出、UI hints、動態選項與 Engine 相依驗證；不相容選項可見且停用、無關欄位隱藏、進階收合、失效選擇保留報錯、未知必要控制項明示不支援 | 2026-10-28 使用者回覆「好，按照你的建議規劃」／方向與操作行為已確認；method-ui-0.1-draft 的鍵名、Meta-schema、工具與 API 仍待 M0 起分階段核定 | 04 §7.6／06／07 §5.8／11／12；Q-001／Q-002／Q-019／Q-022／Q-025；UIB-010 |
 
 「既有基線」不代表已涵蓋後續需求。D-23 的合併時點配置是使用者已提出的目標，不能以 D-11 的舊 Prototype 限制否決；兩層合併預設勾選並在 Retrieval 後的 UI 已於 2026-10-15 確認／實作，見 10 的歷史完成紀錄。Q-014 仍負責正式支援路徑、stage 命名及執行契約等剩餘細節。
 
@@ -167,6 +169,8 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 
 兩個 repo 的分工已依 D-41 確認；精確內部目錄與建置工具仍可逐步核定。正式動工前的優先順序是：共用契約／最小 SDK（Q-002）→ 同 repo 可安裝範本與載入細節（Q-001／Q-022）→ 進共享 DEV 的發布與信任政策（Q-022）→ 既有 System 升級及交付鎖定（Q-015／Q-021）。不要求所有 Q-ID 一次決完。
 
+D-42 補充：M0 以 [12](12_method_schema_ui_contract.md) 核定 Descriptor／Schema 子集、規則語意及 fixtures；M1 做共用 Schema 輸出／Registry／設定驗證，M2 擴充各方法能力；M3 提供目錄、Context／動態候選與驗證 API，M4 助手重用，M5 完成動態表單與 SUI-01～14 互動驗收。可用方法、有效 Config 與服務／資料就緒分開檢查；不依 Schema 文件存在就宣告 API 或 UI 已完成。
+
 ## 5. 驗收材料與完成定義
 
 ### 5.1 必備材料（在開發階段建立，並非本輪已存在）
@@ -180,6 +184,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 | usage examples | 直接 Engine、HTTP、CSV 映射、工作輪詢、部署後首次 Ingestion |
 | assistant cases | M4 無 Builder 的新建／修改 Config、缺服務／未知方法；M5 的同一建議與 UI 控制項對照、Diff／取消／過期草稿案例 |
 | method package cases | rag_engine methods 的 package 在乾淨環境安裝、單方法／整合測試、衝突／錯版／能力不足案例、完整 Runtime Image 方法清單與 Builder 契約測試；詳見 11 |
+| method schema／UI cases | 12 的 SUI-01～14；Schema／Python 設定一致、動態選項、相依失效與不適用分支、未知必要控制項、多實例定位、版本過期、UI／AI／Python／HTTP 同規則 |
 | env／commands | 不含 Secret 的環境範例；安裝、測試、啟動與 integration 指令 |
 
 05 有可解析的完整 YAML 草案，但正式 Schema／Engine 尚未實作，不能宣稱它現在已能運行。
@@ -389,6 +394,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 
 - 不清楚：完整 CRUD／助手／管理 API、OpenAPI、錯誤碼／狀態、上傳限制、manifest、冪等鍵、DEV 路由、認證及暴露 Trace。
 - D-41 補充：Builder 與 Runtime 透過 API／方法目錄合作；需核定目標 Runtime 版本識別、Config Schema／能力目錄、完整 Config 驗證、快取失效與接口相容政策。能力範圍見 07 §5.8，精確端點與 Envelope 仍 OPEN。
+- D-42 已按建議規劃描述／Context／選項及驗證關聯值，候選格式見 12；精確路徑、認證、版本識別與公開 Meta-schema 仍 OPEN，不影響既有 Ingest／Query 範例。
 - 10:22 的 Generation 自訂 JSON 提案只針對業務內容；HTTP envelope 的平台欄位、payload 容器、answer 字串相容性、SDK 型別、錯誤／Streaming 需另核定。當前 07 範例不因提案而變動。
 - 建議：沿用 07 的 Endpoint 草案，先凍結 Ingestion／Status／Query，補齊 Backend API；HTTP 與領域錯誤分層。
 - 替代：沿用既有企業 API 規範並明確映射。
@@ -420,6 +426,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 
 - 已確認方向：D-40 加入 Module Developer，由公開契約下的 Method 擴充能力供 Builder 使用；不是所有特殊策略都由平台核心開發者實作。2026-10-28 補齊 04 與 11 的規劃，未凍結套件／隔離細節。
 - 已確認開發位置（D-41）：使用本機 IDE／SDK，在 rag_engine methods 目錄開發並提交 PR；與同 repo 的 Engine／Runtime API 整合測試後交付完整 Runtime Image。公開套件／契約邊界保留，以乾淨環境安裝驗證替代「必須另建 Method repo」的驗收要求。
+- D-42 補充：Method 的設定描述與規則是受限 JSON 資料；共用 Schema 輸出與 Registry 驗證，不以瀏覽器腳本或任意 import 擴充 UI。具體能力／控制項名稱登錄、支援子集與契約測試待核定，見 12。
 - 建議起步：受控 Registry、核可 Method packages，先明確註冊再評估 entry points；不先建 Web IDE／任意程式上傳，也不要求以跨 repo Image 相依交付每次方法更新。
 - 尚待決：核可／發布角色與可信程式範圍、依賴建置／選配套件倉庫、Factory／entry point 解析、SDK 相容矩陣、package／Method 版本對照與撤回／升級。跨 System 多版本／依賴衝突、目標 Runtime 方法可用性與索引相容另連動 Q-015／Q-020／Q-021。
 - 若擴大為不受信任開發者或 UI 上傳：需另核定執行隔離、Secret／網路／資源限制與管理權限；Schema／RunContext 不能代替 Sandbox。未完成該方案前保留共享 Runtime 不任意執行使用者 Python 的限制。
@@ -452,6 +459,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 - 2026-10-16 討論提案：在 Rewrite／Multi-query 旁提供不需 Ingestion 的單模組測試，使用當前草稿與相同 Engine／Adapter，顯示實際 Query 與格式驗證；是否採用及展示細節待確認，UIB-007 保持提案狀態，不擴張成所有模組都要試跑。
 - 後續提案 UIB-008／009：Rewrite 兩方法合併為 1／N 同一組設定，Generation 預設格式與預設收合的進階 JSON 輸出設定。均為待確認提案，不能覆蓋原型／既有 Config 或自動勾選為已實作。
 - D-41／UIB-010 補充：方法選單／設定依目標 Runtime 的目錄與 Schema，需定動態表單支援範圍、目錄更新／過期狀態及不相容 UI 提示；相容新增方法不要求每次重建 Builder。特殊控制項仍需前端配合，不承諾任意 Schema 均可自動呈現。
+- D-42 已確認固定 Builder 流程搭配動態 Method 參數表單，以及 12 §1 的五項操作行為；不再把這些方向列為未決。12 提供欄位／服務選擇器、相依狀態與 SUI-01～14 草案；具體控制項樣式、支援版本與其餘範本／試跑範圍仍待核定。
 - 建議：保留已確認互動，再核定其餘分組；必填錯誤可定位，保持同一 Config。試跑與範本逐項啟用。
 - 替代：單獨新手／專家入口，但兩者仍需共享 Config／驗證。
 - 負責角色：產品＋Frontend；阻擋 M5 正式 UX 凍結，不卡 Schema／Engine。
@@ -760,3 +768,11 @@ Inference Schema／五份 JSON／Python 範例、圖面及其他服務實作均�
 - 07 明列目標程式分工、Runtime 方法目錄／Config 驗證能力，以及 Builder、Method、Engine 改動時的建置／部署範圍。新版本發布不自動升級所有 System，API／Schema 相容才可各自升級；不承諾 Method 熱插拔或零停機。
 - 06／10 同步相容方法目錄與表單整合待辦；UIB-010 維持未實作。README／本計畫補 D-41 與 M0～M7 的 repo 分工，Q-001／Q-019／Q-021／Q-022 只將已確認子題落定，其餘細節維持 OPEN。
 - 本輪只更新規劃文件，尚未建立 rag_engine repo、搬移程式、建置 Image 或修改 Prototype／圖面；D-ID 共 41、Q-ID 27、歷史 A-ID 40。M4 獨立助手／M5 Builder 整合的責任與順序保留，助手核心的目錄／Image 配置仍明示為建議。
+
+## 23. 2026-10-28 Method 設定描述與動態 UI 規劃
+
+- D-42 記錄使用者同意依建議規劃 Schema、UI hints 與相依規則；新增 12 作為設定描述的單一草案來源，區分 Module I/O、Method Config 與呈現資訊。
+- 規劃共用父類別從 config_type 產生 Schema；Method 補充動態選項、能力、規則及必要 UI feature。以 Fixed-size 提供 Python／JSON 設定描述範例，定義 Engine 相依驗證與可定位問題，不強迫每個 Method 重寫 Schema 產生方法。
+- 確認相依停用可見、無關欄位隱藏、進階收合、失效引用保留報錯及未知必要控制項不假裝可用。區分 applicability 排除分支與 constraint 阻擋錯誤；UI 收合不能跳過驗證，正式建立／儲存／套用依同一 Engine 規則。
+- 04／06／07／11 增補責任及導引，UIB-010 細化並列入 14 個未執行的開發驗收案例；M0～M7 次序不變。README／本計畫更新 D-ID 為 42，Q-ID 仍 27、歷史 A-ID 仍 40。
+- method-ui-0.1-draft 的精確協定與 SDK／API 仍待核定；本輪只改文件，不修改 Prototype、公開 I/O Schema、既有 Inference／HTTP 範例或圖面。ParsedDocument 實際 Schema 待討論段落及七項 Method 交付要求保留。
