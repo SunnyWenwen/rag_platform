@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="2360" height="1370" viewBox="0 0 2360 1370" role="img" aria-labelledby="title desc">
 <title id="title">RAG Builder 測試、共用 Engine 與 Method 開發</title>
-<desc id="desc">上方為 RAG Builder 測試，Build 產出 Config，Config 與共用 Engine 建立測試 System。框外的 YAML 部署與共用 Engine 建立 k8s System。中間為 RAG Engine，下方開發者開發 Module 的 Method 並發布更新，供 Builder User 選用。實線為操作流程與發布，虛線為設定、產出及共用能力。</desc>
+<desc id="desc">上方為 RAG Builder User 的測試區塊，Build 產出 Config，Config 與共用 Engine 建立測試 System。框外的 YAML 部署與共用 Engine 建立 k8s System。中間為 RAG Engine，提供可選 Module／Method 的連線直接指向 Build。下方為 RAG Engine Developer 的開發區塊，開發 Method 並發布更新；角色名稱標示於區塊標題。實線為操作流程與發布，虛線為設定、產出及共用能力。</desc>
 <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 Z" fill="#66788b"/></marker></defs>
 <style>
 text{font-family:'Noto Sans CJK TC','Noto Sans TC','Microsoft JhengHei',sans-serif;font-weight:400;text-anchor:middle;dominant-baseline:central;fill:#143054}
@@ -10,10 +10,9 @@ text{font-family:'Noto Sans CJK TC','Noto Sans TC','Microsoft JhengHei',sans-ser
 .relation{stroke:#66788b;stroke-dasharray:7 7}.edge-label{fill:#485d71;stroke:white;stroke-width:11;stroke-linejoin:round;paint-order:stroke fill}
 .frame-title{font-size:26;text-anchor:start;font-weight:500}.note{font-size:18;fill:#66788b}
 </style><rect width="2360" height="1370" fill="white"/>
-<g id="BUILDER" class="frame"><rect x="30" y="35" width="1700" height="700" rx="12" fill="#f7faff" stroke="#9aafc9" stroke-width="1.8"/><text class="frame-title" x="55" y="65">RAG Builder測試</text></g>
+<g id="BUILDER" class="frame"><rect x="30" y="35" width="1700" height="700" rx="12" fill="#f7faff" stroke="#9aafc9" stroke-width="1.8"/><text class="frame-title" x="55" y="65">RAG Builder 測試（for RAG Builder User）</text></g>
 <g id="ENGINE" class="frame"><rect x="30" y="830" width="2250" height="180" rx="12" fill="#f7f4fc" stroke="#b5a4d0" stroke-width="1.8"/><text class="frame-title" x="55" y="860">RAG Engine</text></g>
-<g id="DEVELOPMENT" class="frame"><rect x="30" y="1110" width="2250" height="200" rx="12" fill="#faf8fd" stroke="#b5a4d0" stroke-width="1.8"/><text class="frame-title" x="55" y="1140">RAG Engine 開發</text></g>
-<path id="edge-U-B" data-source="U" data-target="B" data-label="" class="edge" d="M180,195 L180,310"/>
+<g id="DEVELOPMENT" class="frame"><rect x="30" y="1110" width="2250" height="200" rx="12" fill="#faf8fd" stroke="#b5a4d0" stroke-width="1.8"/><text class="frame-title" x="55" y="1140">RAG Engine 開發（for RAG Engine Developer）</text></g>
 <path id="edge-B-I" data-source="B" data-target="I" data-label="" class="edge" d="M300,352 L360,352"/>
 <path id="edge-I-Q" data-source="I" data-target="Q" data-label="" class="edge" d="M600,352 L660,352"/>
 <path id="edge-Q-E" data-source="Q" data-target="E" data-label="" class="edge" d="M900,352 L960,352"/>
@@ -22,7 +21,7 @@ text{font-family:'Noto Sans CJK TC','Noto Sans TC','Microsoft JhengHei',sans-ser
 <path id="edge-C-I" data-source="C" data-target="I" data-label="調整 Ingestion 設定，需重新 Ingestion" class="edge" d="M1020,125 L480,125 L480,310"/>
 <path id="edge-C-Q" data-source="C" data-target="Q" data-label="只調整 Inference 設定，不需重新 Ingestion" class="edge" d="M1020,170 L780,170 L780,310"/>
 <path id="edge-B-F" data-source="B" data-target="F" data-label="產出" class="edge relation" d="M180,395 L180,520"/>
-<path id="edge-C-F" data-source="C" data-target="F" data-label="更新設定" class="edge relation" d="M1140,100 L1140,80 L330,80 L330,342 Q346,352 330,362 L330,560 L290,560"/>
+<path id="edge-C-F" data-source="C" data-target="F" data-label="更新設定" class="edge relation" d="M1140,100 L1140,90 L330,90 L330,342 Q346,352 330,362 L330,560 L290,560"/>
 <path id="edge-F-S" data-source="F" data-target="S" data-label="套用 Config" class="edge relation" d="M290,580 L365,580 L365,660 L420,660"/>
 <path id="edge-I-S" data-source="I" data-target="S" data-label="建立 Chunks / Indexes" class="edge relation" d="M480,395 L480,610"/>
 <path id="edge-Q-S" data-source="Q" data-target="S" data-label="查詢" class="edge relation" d="M780,395 L780,610"/>
@@ -34,13 +33,9 @@ text{font-family:'Noto Sans CJK TC','Noto Sans TC','Microsoft JhengHei',sans-ser
 <path id="edge-Y-K" data-source="Y" data-target="K" data-label="套用 YAML" class="edge relation" d="M1700,660 L1900,660"/>
 <path id="edge-GE-S" data-source="GE" data-target="S" data-label="依 Config 建立" class="edge relation" d="M1000,865 L1000,785 L660,785 L660,710"/>
 <path id="edge-GE-K" data-source="GE" data-target="K" data-label="提供執行核心（Runtime Image）" class="edge relation" d="M1360,865 L1360,785 L2080,785 L2080,700"/>
-<path id="edge-GE-U" data-source="GE" data-target="U" data-label="提供可選 Module／Method" class="edge relation" d="M850,920 L42,920 L42,155 L60,155"/>
-<path id="edge-DEV-M" data-source="DEV" data-target="M" data-label="開發／測試" class="edge" d="M700,1212 L1020,1212"/>
+<path id="edge-GE-B" data-source="GE" data-target="B" data-label="提供可選 Module／Method" class="edge relation" d="M850,920 L42,920 L42,352 L60,352"/>
 <path id="edge-M-GE" data-source="M" data-target="GE" data-label="發布／更新 Method" class="edge" d="M1210,1170 L1210,965"/>
 <circle cx="1080" cy="520" r="3" fill="#66788b"/>
-<g id="U" class="node step" data-label="RAG Builder User"><rect x="60" y="115" width="240" height="80" rx="10"/>
-<text x="180.0" y="155.0" font-size="23">RAG Builder User</text>
-</g>
 <g id="B" class="node step" data-label="1. Build（設定 Config）"><rect x="60" y="310" width="240" height="85" rx="10"/>
 <text x="180.0" y="337.0" font-size="23">1. Build</text>
 <text x="180.0" y="368.0" font-size="19">設定 Config</text>
@@ -85,9 +80,6 @@ text{font-family:'Noto Sans CJK TC','Noto Sans TC','Microsoft JhengHei',sans-ser
 <text x="1180.0" y="899.5" font-size="28">共用 RAG Engine</text>
 <text x="1180.0" y="930.5" font-size="22">Module／Method</text>
 </g>
-<g id="DEV" class="node engine" data-label="RAG Engine Developer"><rect x="300" y="1170" width="400" height="85" rx="10"/>
-<text x="500.0" y="1212.5" font-size="27">RAG Engine Developer</text>
-</g>
 <g id="M" class="node engine" data-label="開發 Module 的 Method"><rect x="1020" y="1170" width="380" height="85" rx="10"/>
 <text x="1210.0" y="1197.0" font-size="25">開發 Module 的 Method</text>
 <text x="1210.0" y="1228.0" font-size="18">依模組契約實作</text>
@@ -110,7 +102,6 @@ text{font-family:'Noto Sans CJK TC','Noto Sans TC','Microsoft JhengHei',sans-ser
 <text class="edge-label" x="825" y="785" font-size="22">依 Config 建立</text>
 <text class="edge-label" x="1760" y="785" font-size="22">提供執行核心（Runtime Image）</text>
 <text class="edge-label" x="450" y="920" font-size="23">提供可選 Module／Method</text>
-<text class="edge-label" x="860" y="1190" font-size="22">開發／測試</text>
 <text class="edge-label" x="1350" y="1060" font-size="23">發布／更新 Method</text>
 <text class="note" x="1830" y="1212">新增 Method 發布後，供 Builder User 選用</text>
 <text class="note" x="1180" y="1345">實線：操作流程與發布　 ·　 虛線：設定、產出及共用能力</text>
