@@ -9,6 +9,7 @@
 | 要確認的事情 | 單一主責位置 |
 |---|---|
 | Module／Method、SDK 與角色名稱 | [03 名詞與責任](../03_architecture_proposal.md#developer-terms) |
+| 兩個 repo、Image 與部署邊界 | [03 §3.7](../03_architecture_proposal.md#repository-boundaries)、[07 建置與整合](07_backend_runtime_integration.md#repository-build-boundaries) |
 | Engine 如何載入、執行與驗證 Method | [04 §1.1／§2.3～2.4／§7](04_module_methods_io_contracts.md) |
 | ParsedDocument／Chunk、Inference 物件與 Config | [05 共用資料與 Config](05_data_contracts_search_design.md)；Inference Schema／示例由 05 導引 |
 | 交付階段、未決項與驗收 | [08](08_implementation_plan.md#method-development-plan) |
@@ -19,25 +20,28 @@
 
 ## 2. 開發模式與 repo 分工
 
-建議使用本機 IDE、SDK 與 Method 範本，透過 Git／CI 交付。平台 repo 可同時管理 SDK、Engine 及內建方法；團隊的 Method package 可放獨立 repo。這是可採用的起步方式，實際目錄、套件名稱及發布工具仍待 Q-001／Q-022 核定。
+2026-10-28 已確認兩個 repo：`rag_platform` 管理 Builder 前後端與整合，`rag_engine` 集中 SDK、Engine、Methods／Adapters 與 Runtime API。Module Developer 使用本機 IDE，在 rag_engine 的 methods 目錄依 SDK／範本開發，提交 PR 後由同一 repo 的 CI 測試與交付 Runtime。這取代先前以獨立 Method repo 為預設的建議；精確內部目錄、套件名稱及發布工具仍待 Q-001／Q-022 核定。
 
 | 程式所在位置 | 內容 | 誰維護 |
 |---|---|---|
-| 平台 repo 的 SDK package | I/O 型別、Module 介面、Config／RunContext、契約測試工具 | Platform／Engine Developer |
-| 平台 repo 的 Engine package | Registry、組裝、執行、資源管理及內建方法整合 | Platform／Engine Developer |
-| 團隊獨立 Method repo | 方法實作、第三方依賴、宣告、範例與測試 | Module Developer |
+| rag_platform | Builder Frontend／Backend、管理資料與 Runtime／助手整合 | Platform Developer |
+| rag_engine 的 SDK package | I/O 型別、Module 介面、Config／RunContext、契約測試工具 | Engine Developer |
+| rag_engine 的 Engine／Runtime API | Registry、組裝、執行、資源管理與 API | Engine Developer |
+| rag_engine 的 methods 目錄 | 各 Module 的內建／客製方法、Adapters、第三方依賴、宣告、範例與測試 | Module Developer；共用介面變更由 Engine Developer 審查 |
 
-一個 Method repo 可以提供多個方法，例如特殊 Parser 與配套 Chunker，或一組 Graph Indexing／Retrieval。SDK 是發行套件的依賴，不需將 SDK 原始碼複製到每個 Method repo；完整整合測試另安裝 Engine。新增標準介面下的方法應不需要修改 Engine 核心。
+methods 目錄可依 Parsing、Chunking、Indexing、Retrieval 等 Module 組織，容納各團隊方法及成對 Parser／Chunker、Indexing／Retrieval。SDK、Engine 與 Methods 可在同 repo 保留可分別安裝的 Python package，新增方法仍只依賴 SDK 公開介面，不複製型別或依賴 Engine 私有類別。完整整合測試使用相容 Engine；新增標準介面下的方法應不需要修改核心。
 
-建議範本包含：
+建議範本包含下列路徑（相對於 rag_engine repo；並非已存在的檔案）：
 
 | 相對路徑示意 | 用途 |
 |---|---|
-| `pyproject.toml` | 套件名稱／版本、相依套件與 entry point 宣告 |
-| `src/team_a_rag_methods/chunking.py` | Method 與設定實作 |
-| `tests/` | 契約、語意、例外及 Engine 整合測試 |
-| `examples/` | 小型輸入、預期結果、有效 Config 與服務需求 |
-| `README.md` | 用途、限制、支援版本、執行方式與維護者 |
+| `methods/pyproject.toml` | Method package 的名稱／版本、相依套件與 entry point 宣告 |
+| `methods/src/rag_methods/chunking/team_a_custom.py` | Chunking 分類下的團隊 Method 與設定實作 |
+| `methods/tests/` | 契約、語意、例外及 Engine 整合測試 |
+| `methods/examples/` | 小型輸入、預期結果、有效 Config 與服務需求 |
+| `methods/README.md` | 用途、限制、支援版本、執行方式與維護者 |
+
+在同 repo 透過 PR 審查區分 Method 與 Engine 核心的維護責任，權限與發布核可方式仍由 Q-022 核定。首期可集中建置一個 Method package，後續有必要再於同 repo 拆分套件；repo 數量不隨方法數量增加。
 
 首期不因開放開發而要求另建 Web IDE 或開發者入口網站。發布權限不等於可以讀取所有 Workspace 資料；使用平台測試服務仍依各環境授權。
 
@@ -49,8 +53,8 @@
 | method_id | `team_a.chunking.custom` | Config／Registry 查找方法，不是 Python import path |
 | Python class | `TeamChunker` | 實作符號；不同 package 可有同名 class |
 | implementation_version | `1.0.0` | 該 Method 實作版本 |
-| distribution package | `team-a-rag-methods` | 安裝及發布單位，可以含多個 Method |
-| import package | `team_a_rag_methods` | Python 程式 import 時使用的名稱 |
+| distribution package | `rag-methods`（暫名） | rag_engine 內的方法安裝單位，可含多個 Method；不表示另有 rag_methods repo |
+| import package | `rag_methods`（暫名） | Python 程式 import 時使用的名稱 |
 | Contract／SDK／Engine 相容範圍 | 由已核定版本填入 | 決定型別、接口與執行環境能否配合 |
 
 method_id 的名稱空間由平台管理；同一有效 Registry 不接受相同 method_id＋實作版本的不同實作。調整 max_tokens 等使用參數不需要建立新 method_id；修改實作需可追溯的新發布版本。Package 版本與 Method 版本可以不同，但不能在不更新 package 的情況下替換其發布內容。
@@ -100,17 +104,17 @@ Method 不自己重建 Engine 的重試、排程與授權流程。必要 Client�
 
 ## 5. 安裝、import 與 Registry
 
-獨立 repo 要先成為可安裝的 Python package。以下是未來已有合格範本與 SDK 時的本機開發指令示意：
+同 repo 中的 SDK／Engine／Methods 仍須依套件邊界安裝到使用的 Python 環境。以下是未來已有合格範本／pyproject 與 SDK 時，在 rag_engine 根目錄執行的本機開發指令示意：
 
 ```sh
-python -m pip install -e ../team-a-rag-methods
+python -m pip install -e ./packages/sdk -e ./packages/engine -e ./methods
 ```
 
 安裝與註冊是兩件事。初期可在受控 Engine 啟動程式中明確 import：
 
 ```python
 # 規劃示意：registry.register 的正式簽名尚未核定。
-from team_a_rag_methods.chunking import TeamChunker
+from rag_methods.chunking.team_a_custom import TeamChunker
 
 registry.register(TeamChunker)
 ```
@@ -119,10 +123,12 @@ registry.register(TeamChunker)
 
 ```toml
 [project.entry-points."rag_engine.methods"]
-team_a_custom_chunker = "team_a_rag_methods.chunking:TeamChunker"
+team_a_custom_chunker = "rag_methods.chunking.team_a_custom:TeamChunker"
 ```
 
 這只是 `pyproject.toml` 的一段，不是完整可發布專案。Engine 先核對核可的 distribution／版本，再載入指定 entry point，取得類別與宣告、註冊至 Registry。不能因套件已安裝或符合 group 就全部執行；不讓使用者在 Config 填任意 Python 路徑。
+
+Runtime 建置時安裝 Engine 與 Methods，註冊後依有效 Config 初始化所選方法／外部服務；Builder 透過 Runtime API／方法目錄選用，不直接從另一個 Image import Python 程式，也不需安裝所有 Methods。方法目錄與設定驗證接口見 07 §5.8。
 
 Python Packaging User Guide 說明以套件 metadata／entry points 發現及載入 plugin 的方式：[Creating and discovering plugins](https://packaging.python.org/en/latest/guides/creating-and-discovering-plugins/)（查核 2026-10-28）。這支持候選載入機制，並不替本專案決定核可政策、權限或 group 名稱。
 
@@ -138,10 +144,10 @@ Python Packaging User Guide 說明以套件 metadata／entry points 發現及載
 | 模組語意 | 對應 Module 的來源／ID／分數等限制 | Chunk 可對回文件；Rerank 不捏造候選；向量維度正確 |
 | 方法邏輯 | 固定小型資料與人工可檢查的預期 | Token 邊界、空輸入、Unicode、Filter 與排序 |
 | 資源與失敗 | 依 Engine 政策處理中斷、逾時與釋放 | API 拒絕／Timeout；初始化失敗後不殘留連線 |
-| Engine 整合 | 用公開介面接入相鄰模組並跑通 Config | 外部 Parser→外部 Chunker；成對 Indexing→Retrieval |
+| Engine 整合 | 用公開介面接入相鄰模組並跑通 Config | 自訂 Parser→自訂 Chunker；成對 Indexing→Retrieval |
 | 發布與相容 | 乾淨環境安裝、Registry 衝突、版本與 artifact 檢查 | 缺套件／錯版要失敗，不能改用內建方法蒙混通過 |
 
-固定替身用來驗證邊界與錯誤，真實模型／DB／搜尋另留整合證據；Mock 通過不代表方法品質合格。推薦先用 repo 外的一個 Chunking Method 證明 SDK 邊界，再擴充 Parser 與成對 Indexing／Retrieval。確切工具／CLI 指令需 SDK 實作後補上。
+固定替身用來驗證邊界與錯誤，真實模型／DB／搜尋另留整合證據；Mock 通過不代表方法品質合格。先用 methods 內的一個 Chunking Method 證明 SDK 邊界，再擴充 Parser 與成對 Indexing／Retrieval；將建置好的 package 安裝到乾淨環境測試，確認不依賴原始碼目錄或 Engine 私有匯入即可執行，不要求另建外部 repo。確切工具／CLI 指令需 SDK 實作後補上。
 
 ### 6.1 每個 Method 的七項交付清單（2026-10-28 補齊）
 
@@ -165,14 +171,16 @@ Python Packaging User Guide 說明以套件 metadata／entry points 發現及載
 
 建議交付流程：
 
-1. **開發者準備**：實作與宣告、固定測資、用途／限制、相容矩陣、外部服務需求及變更影響。
-2. **PR／CI 審查**：測試契約、模組語意、依賴與 Engine 整合，確認可發布內容及維護責任。
-3. **發布套件與 Image**：產生可追溯的固定套件，納入支援該組方法的 Runtime Image；私有套件倉庫／CI 產品待選。
-4. **提供目錄資訊**：Builder 與 AI 助手取得目標 Engine／Runtime 支援且核可的 method_id、設定與能力，供使用者選用。
-5. **DEV 驗證**：以該版本建立測試 System，依正常 Ingestion／Inference／Evaluation 流程驗證；新增目錄項目不代表已有執行能力。
+1. **開發者準備**：在 rag_engine 的 methods 目錄加入實作與宣告、固定測資、用途／限制、相容矩陣、外部服務需求及變更影響。
+2. **同 repo PR／CI 審查**：測試契約、模組語意、依賴與 Engine／Runtime API 整合，確認可發布內容及維護責任；共用 Contract 改動須同步檢查受影響方法。
+3. **建置完整 Runtime Image**：由 rag_engine 的同一交付來源建置 SDK／Engine／核可 Method packages，再與 Runtime API 一起納入 Image。CI 可直接使用本次建置套件，不要求先設私有套件倉庫；工具及對外套件發布方式待 Q-001／Q-022 核定。
+4. **更新使用新版的 DEV Runtime**：部署選定 Image，以該版本建立測試 System，依正常 Ingestion／Inference／Evaluation 流程驗證；發布 Image 不等於執行中的 Runtime 已更新。
+5. **提供目錄資訊**：Builder 與 AI 助手取得目標 Runtime 的 method_id、設定與能力；API／Schema／表單支援範圍相容時 Builder 可維持原版。需要新型 UI 或不相容接口時，需協調 rag_platform 更新及整合測試。
 6. **FTEST／ENT 交付**：YAML 引用包含所需方法的 Runtime Image，保持相同邏輯 Config 與方法解析版本，補齊環境服務／Secret。使用單位自行部署。
 
 發布新版不自動升級既有 System。缺少舊版套件／Image 時須明示無法重現，不靜默換最新版。Method 更新是否須重建索引由實際輸入／輸出及 artifact 相容性決定，不能只看版本字串。Rollback 是否可沿用原索引同樣需要相容檢查。
+
+同 repo 讓 Engine 與 Methods 一起驗證／交付，採用新版時仍需更新 Runtime；Builder 的相容改動則可只建置部署 Builder。Runtime 更新重啟造成的 Memory 資料遺失或索引恢復沿用既有政策，完整變更範圍見 [07 §9.4](07_backend_runtime_integration.md#release-deployment-boundaries)。本輪沒有承諾 Method 熱插拔或自動更新所有環境。
 
 不承諾每個 Method 都能自動生成任意複雜 UI：基本欄位可由 Schema 呈現，能力相依、條件卡控與特殊輸入需平台支援。待辦統一記在 10；此流程不新增瀏覽器程式上傳入口，也不把 Runtime 安裝套件變成一般使用者操作。
 
@@ -181,8 +189,8 @@ Python Packaging User Guide 說明以套件 metadata／entry points 發現及載
 | 待決事項 | 何時需定案 | 目前可先做 |
 |---|---|---|
 | 共用 I/O、ParsedDocument 結構、Config／錯誤與 SDK 公開介面 | M0 正式契約凍結前；Q-002，關聯 Q-004／Q-005 | 整理使用案例、方法需求、Schema 候選與測試資料 |
-| Python／SDK／Engine 版本、repo 目錄、entry point／Factory 形式 | M0～M1 建立可安裝範本前；Q-001／Q-002／Q-022 | 起草範本；以顯式註冊驗證最小方案 |
-| 發布審核權限、套件倉庫與可信程式範圍；若開放不受信任程式則需隔離規格 | 外部套件進共享 DEV Runtime 前；Q-022 | 採核可內部套件＋Image 的設計草案，不交付任意程式上傳 |
+| Python／SDK／Engine 版本、repo 內部套件目錄、entry point／Factory 形式 | M0～M1 建立可安裝範本前；Q-001／Q-002／Q-022 | repo 邊界已依 D-41 確認；起草同 repo 範本，以顯式註冊驗證最小方案 |
+| 發布審核權限、套件建置／選配倉庫與可信程式範圍；若開放不受信任程式則需隔離規格 | Method 程式進共享 DEV Runtime 前；Q-022 | 依已確認的 rag_engine 同 repo 審查／Runtime 交付方向細化，不交付任意程式上傳 |
 | 實作／套件版本記錄、既有 System 升級／索引相容與部署鎖定 | 更新既有資料或正式交付前；Q-015／Q-021／Q-022 | 設計相容檢查與失敗案例，不自動升級 |
 
 這些事項不阻擋本輪文件整理；規格定案與工具實作後，再將介面示意換成經測試、可直接執行的開發教學。完整決策狀態只維護於 08，不因本指南提供建議就自動關閉 Q-ID。

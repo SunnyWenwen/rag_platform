@@ -145,16 +145,36 @@ Config 與部署設定的欄位、有效設定規則及範例見 [05 §6～8](do
 |---|---|
 | RAG Builder User | 使用可用方法設定 Config，執行測試／評估並匯出；不需撰寫 Method 程式 |
 | Module Developer | 依公開 Module 契約開發、測試與維護 Method package；發布權限與資料存取另行授權 |
-| Platform／Engine Developer | 維護 SDK、共用契約、Engine 組裝／執行、相容驗證與方法載入政策；平台管理權限可由同人兼任，實際授權另定 |
+| Platform Developer | 維護 rag_platform 的 Builder 前後端與管理整合；可兼任管理者或 Engine Developer，實際授權另定 |
+| Engine Developer | 維護 rag_engine 的 SDK、共用契約、Engine／Runtime API、相容驗證與方法載入政策；審查影響共用介面的變更 |
 | RAG Engine Developer（L1 圖） | 圖面開發角色的概括名稱；其中「開發 Module 的 Method」對應 Module Developer，不表示每次新增方法都要修改 Engine 核心 |
 | RAG Engine SDK（套件暫名 rag-engine-sdk） | 提供 Method 開發所需的公開型別、Module 介面、資源契約及開發工具；套件與精確 API 尚未實作／凍結 |
 | Method package | 可安裝及版本化交付的 Python distribution，依賴 SDK，可以提供一個或多個 Module 的 Method |
 | Registry | Engine 用來查找已註冊方法、設定 Schema、能力、版本與建構入口的目錄；不等同於 Git repo、套件倉庫或套件安裝器 |
 | method_id | 方法的穩定識別；搭配實作版本定位方法發布，與 module_type、Python class 名稱及套件名稱分開 |
 
-本章定義責任分工，不規定 repo 必須拆成幾個，也不凍結 Python 名稱。方法實作版本、套件版本、SDK／Engine 版本與 §3.4 的 Config／Contract／資料版本分開記錄；精確欄位與版本鎖定規則留 Q-002／Q-015／Q-022。
+本章的角色與套件分工配合 §3.7 已確認的兩個 repo 邊界；Python 套件名稱與內部目錄仍為草案。方法實作版本、套件版本、SDK／Engine 版本與 §3.4 的 Config／Contract／資料版本分開記錄；精確欄位與版本鎖定規則留 Q-002／Q-015／Q-022。
 
 本文新增的 SDK 指 Method 開發用套件。既有「透過 SDK／Python 直接使用 Engine」描述的是無 HTTP 的 Engine 公開呼叫能力，不表示它與 Method SDK 必須是同一發行套件，也不等於 Runtime HTTP client。具體邊界見 04 §1.1。
+
+<a id="repository-boundaries"></a>
+
+### 3.7 Repository、建置與部署邊界（2026-10-28 已確認）
+
+採用兩個 repo，以 Builder 與 Runtime 的責任分開管理：
+
+| Repo | 主要內容 | 建置／部署產物 |
+|---|---|---|
+| `rag_platform` | RAG Builder Frontend／Backend、Workspace／System 管理、設定助手整合、Evaluation 任務及 Export | Builder 的 Frontend／Backend Image，依服務邊界建置／部署 |
+| `rag_engine` | SDK／共用 Contract、Engine／Registry、各 Module 的內建與客製 Methods／Adapters、Runtime API | 包含 Engine＋核可 Methods＋Runtime API 的完整 RAG Runtime Image；SDK 可另作 Python package |
+
+Module Developer 在 rag_engine 的 methods 目錄提交 PR；Engine 與 Methods 在同一 repo 進行整合測試與 Runtime 發布。仍保留公開 SDK、可分別安裝的 Python package 及方法級測試，不因同 repo 就允許依賴 Engine 私有實作。目錄配置與獨立助手核心的包裝建議見 [07 §2](docs/07_backend_runtime_integration.md#repository-build-boundaries)。
+
+Builder 透過 Runtime API 與目標 Runtime 的方法目錄／Schema／驗證能力合作。API、Config 契約及 Builder 表單能力相容時，可各自升級；新增 Method 通常只需發布並部署新 Runtime，Builder 取得該 Runtime 的可用目錄。涉及不相容 API／Schema 或新型 UI 控制項時，仍需協調雙方版本。
+
+Repo 是程式維護單位，Image 是交付產物，服務是部署單位；一個 repo 可產出多個 Image／package。Engine 或 Method 變更後，欲採用新版的執行環境仍需重建、測試並部署 Runtime。新版發布不自動升級既有 System，也不要求所有環境同時更新；選定版本的 DEV 測試與 FTEST／ENT 交付維持一致。
+
+本決策取代先前「平台 repo 含 Engine、Method 分散至其他 repo」及「獨立 rag_methods repo 以 Engine 基底組裝 Image」的預設方向。外部 Method repo 可留作未來明確需求的擴充，不是首期必要配套。現在的 rag_platform repository 仍保存規劃文件與 Prototype；本輪僅更新目標架構，尚未建立 rag_engine repository 或搬移程式。
 
 ## 4. 使用流程與執行入口
 

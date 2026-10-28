@@ -22,21 +22,30 @@ Engine 可直接由 Python Config 使用，不能反向 import Builder Web App �
 
 兩種環境：共享 DEV Runtime 由 Builder 的可信路由選 System；獨立 Runtime 啟動時綁定一個 System／Config。相同 API 語意不代表相同 Base URL、權限或資料。確切多 System 路由／內部管理接口見 Q-019／Q-020。
 
-## 2. 建議程式與依賴結構（Q-001）
+<a id="repository-build-boundaries"></a>
 
-```text
-packages/contracts/       # 05：Pydantic／JSON Schema
-packages/engine/          # 04：Compiler、Registry、模組、Adapters
-packages/config_assistant/ # M4：獨立助手核心，依賴共用 Contracts／Registry／Validator
-services/runtime_api/     # 本文：HTTP／Job／Engine lifecycle
-services/builder_backend/ # M5：System、Revision、Dataset、Export、助手 UI 請求協調
-apps/builder_ui/          # 06：正式 UI
-examples/                # 完整 Config／資料／呼叫範例
-```
+## 2. 兩個 repo、程式依賴與建置邊界
 
-以上為目錄草案，不是現有檔案。依賴允許 UI → Backend／Runtime → Engine → Contracts／Adapters；助手呼叫端 → 助手核心 → Contracts／Registry／Validator。Engine 與助手核心均不依賴 UI／Builder Backend。M4 可為核心另加 HTTP Adapter，具體宿主與路徑由 Q-001／Q-019 核定；可在同一 repository／同一服務程序開發，不要求新增微服務。
+2026-10-28 已確認 repo 邊界，正式定義見 [03 §3.7](../03_architecture_proposal.md#repository-boundaries)。以下內部路徑仍是 Q-001 的建議配置，不是已建立的程式或額外 repo：
 
-技術版本、FastAPI 等 Web Framework、資料庫及建置方式仍待 Q-001／Q-016；不因示例路徑就強制選定。
+| Repo | 路徑草案 | 職責 |
+|---|---|---|
+| rag_platform | `apps/builder_ui/` | 06：正式 Builder UI |
+| rag_platform | `services/builder_backend/` | System、Revision、Dataset、Export、Runtime Client 與助手 UI 請求協調 |
+| rag_engine | `packages/sdk/` | 05：公開型別／Contract；04：Module 介面、Config／RunContext 與開發工具 |
+| rag_engine | `packages/engine/` | Compiler、Registry、Pipeline 與執行政策；具體方法實作放 methods |
+| rag_engine | `methods/` | 各 Module 的內建／客製 Method packages、相關 Adapters、能力宣告與測試 |
+| rag_engine | `services/runtime_api/` | HTTP／Job／Engine lifecycle、可信管理與能力目錄接口 |
+| rag_engine | `packages/config_assistant/`（建議） | M4 可獨立使用的助手核心，重用共用 Schema／Registry／Validator；M5 由 Builder 串接 |
+| 各 repo | `tests/`、`examples/`、部署建置檔 | 各自測試與跨 repo 契約整合範例 |
+
+執行時 Builder UI → Builder Backend → Runtime API → Engine → SDK／Methods。Engine 與 Method packages 都依賴 SDK；SDK 不反向依賴 Engine 或 Builder。Builder 可以使用核定版本的共用型別／Client 作本地格式預檢，方法能力與完整 Config 驗證仍以目標 Runtime 的同一 Engine 為準，不安裝全部 Methods 或複製組裝邏輯。
+
+方法開發在 rag_engine 的 methods 目錄提交 PR；同 repo 的 CI 驗證 SDK／Engine／Methods／Runtime API，產出完整 Runtime Image。rag_platform 依 Frontend／Backend 的服務邊界產出 Builder Image。Repo 數量不限制 Image 數量，也不要求每個方法各建一個服務。建置可使用多階段或內部基底，但正式交付不依賴另一個 rag_methods repo 組裝。
+
+M4 助手核心的建議位置在 rag_engine，以便使用相同 Registry／Validator；它仍可透過 Python／API 獨立執行，不需啟動 Builder 或存取 Builder DB。HTTP 宿主、套件可選依賴與 Image 包裝由 Q-001／Q-019／Q-024 核定，不要求 FTEST／ENT Runtime 一定啟用或攜帶助手。M5 保留 UI 草稿、Diff、套用／取消與授權整合的責任，階段順序不變。
+
+技術版本、精確套件名稱／目錄、FastAPI 等 Web Framework、資料庫及建置工具仍待 Q-001／Q-016；已確認的 repo 分工不再列為待選方案。跨 repo 通訊的接口相容、方法目錄及升級規則見 §5.8／§9.4。
 
 ## 3. 平台管理資料與儲存
 
@@ -63,7 +72,7 @@ examples/                # 完整 Config／資料／呼叫範例
 ### 4.1 建立與啟動（建議流程）
 
 1. Backend 驗證身分與 Workspace 權限，建立 system_id，依 05 的既定自動命名方向建立穩定 collection；不要求 UI 使用者手填。
-2. 收到 Draft，經 05 編譯／Validator，顯示錯誤與變更影響。
+2. 收到 Draft，以目標 Runtime 的共用 Config 編譯／Validator 檢查有效設定，回傳錯誤與變更影響；本地格式預檢不取代完整驗證，接口依 §5.8 核定。
 3. 保存 Config Revision；以可信管理呼叫要求 Runtime 綁定配置。
 4. Runtime 呼叫 04 Engine 初始化；服務解析、Profile 與資料就緒分開回報。
 5. UI 可執行 Ingest／Query；沒有索引時 Query 回明確不就緒。
@@ -196,6 +205,19 @@ HTTP query 映射成 Engine 的原始問題；filters 與預設／ACL AND。Inde
 
 這是草案而非完整錯誤碼表；422／413／429／504、錯誤陣列、lost Run 與重試提示見 Q-019。ModuleResult、HTTP error 與非同步 Run errors 各有層次，必須有明確映射；不能把 202 後的執行失敗當作 POST HTTP failure 重送。
 
+<a id="runtime-capability-contract"></a>
+
+### 5.8 Runtime 方法目錄與 Config 驗證邊界
+
+兩個 repo 的服務透過 Runtime API 與方法目錄合作；實際路徑、認證與 Envelope 由 Q-019 核定，以下為需要覆蓋的介面能力，不新增已凍結端點：
+
+- **方法與能力目錄**：提供目標 Runtime 的版本識別、核可 method_id／module_type／實作版本、相容 Contract、Config Schema、requires／provides 與支援的表單顯示資訊。資訊應來自該 Image／Runtime 真正包含的內容，不把 repo 中未交付的方法當成已可用。
+- **完整 Config 驗證**：Builder／助手提交有效設定與目標版本，重用 Engine 的型別、跨模組相依與索引相容檢查；回傳可定位到 `[MODULE NAME]`／欄位的結果。格式有效、可組裝、服務已連通與資料可查詢分開，不把目錄查詢當成真實連線測試。
+- **版本與目錄一致性**：目錄／Schema／驗證結果要能對回同一目標 Runtime 版本；Runtime 更新後，舊快取或過期驗證不得靜默套用。既有 System 保留所選版本，尚未安裝／不相容方法應明示，不自動取最新版。
+- **相容範圍**：既有 API、Config Schema 與 UI 控制項足以支援時，新增 Method 可只發布／部署 Runtime；需要新型表單或破壞性接口時，需更新 Builder 並完成契約相容測試。目錄傳輸格式與欄位演進政策仍待 Q-002／Q-019／Q-025。
+
+直接 Python 使用 Engine／M4 助手時仍可在本機取得同一 Registry／Validator，不因此強制所有呼叫都走 HTTP。平台整合使用公開服務邊界，Runtime 的可信管理與能力接口不等於允許外部一般使用者更改 System 綁定。
+
 ## 6. 非同步工作與一致性
 
 已選 Local Search 第一版同程序／單副本。Runtime 可用同一服務程序接收 Ingestion 並背景執行；不能用執行完就退出的獨立 Job 保存唯一記憶體索引。CPU 工作／執行緒與並發控制需測試，不能 fork 多個 worker 期待共享 Python 記憶體。
@@ -267,6 +289,23 @@ Secret Vault 位於 Runtime 外，以環境支援的解析／注入方式提供�
 ### 9.3 獨立啟動
 
 建議步驟：讀選定 Config Revision＋該環境部署設定 → 解析服務／資料綁定與 Secret → 04 驗證／初始化建立 System 執行實例 → 驗證資料／恢復索引 → 啟動 HTTP。Live／Ready 與 IndexReady 分開；無資料可以接受 Ingestion，Query 回不就緒。部署後 Config 更新可先經重新部署，熱更新／零停機另案。
+
+<a id="release-deployment-boundaries"></a>
+
+### 9.4 建置、發布與部署的變更範圍
+
+發布新版本與讓既有環境採用新版是兩個動作。以下描述採用新版時的交付範圍，實際 CI／CD 工具與核可權限仍依 Q-021／Q-022：
+
+| 變更來源 | 建置／測試與部署範圍 | 跨 repo 配合條件 |
+|---|---|---|
+| 僅 Builder UI／Backend | 建置並部署受影響的 Builder Image，驗證與所支援 Runtime 的契約 | 沿用相容 Runtime；不因 Builder 發版而重建所有 Runtime |
+| 新增／修改 Method | rag_engine 的方法與整合測試後，建置完整 Runtime Image；欲使用新版的環境更新 Runtime | API／Schema／表單相容時 Builder 可維持原版，更新目錄即可；新 UI 能力另配合 |
+| Engine／SDK／Runtime API | 在 rag_engine 驗證受影響 Methods 與 API，再建置並部署 Runtime；SDK 如另發行須保留版本對照 | 破壞性 API／Config／SDK 變更需要使用方適配；不能承諾所有變更都單邊升級 |
+| 文件／未納入產物的測試資料 | 執行相應文件／測試檢查 | 不僅因 repo 有新 commit 就強制重新部署服務 |
+
+每個完整 Runtime Image 應可追溯同一 rag_engine 交付來源、SDK／Engine／Method package 版本與依賴鎖定結果。同 repo 可以讓它們一起驗證，並不抹去各自的契約／實作版本。既有 System 可維持鎖定版本，新版發布不自動觸發所有 DEV／FTEST／ENT 升級；欲交付的選定版本應完成 DEV 驗證，再由使用單位以同一 Runtime Image／邏輯 Config 補齊環境設定進行部署。
+
+Runtime 更新若重啟 Memory 模式，依既有規則需要重新 Ingestion；MongoDB／ES 依索引與版本相容性恢復。重建、快照、切換與回復仍依 Q-008～Q-010／Q-015，不因兩個 repo 分工就新增熱插拔 Method 或零停機升級承諾。
 
 ## 10. Observability、認證與權限
 

@@ -30,6 +30,8 @@ v0.19 討論提案：將 Rewrite／Multi-query 合併為單一 Query Rewrite，�
 
 2026-10-28 補充 **Module Developer**：04 增補 SDK／Engine／Method package 分工、方法註冊／載入及執行契約；新增 [11 Method 開發指南](docs/11_method_developer_guide.md)，說明獨立套件開發、測試、打包與 Builder／部署使用。03 統一角色名詞，08 記錄 D-40、M0～M7 配套及待決項，10 新增 UIB-010。共用資料定義仍以 05 為準；ParsedDocument 實際 Schema、正式 SDK／發布政策尚未凍結，原型與 Engine 程式未修改。
 
+同日確認 **兩個 repo 的目標分工（D-41）**：`rag_platform` 放 Builder Frontend／Backend 與管理整合；`rag_engine` 放 SDK、Engine、所有 Methods／Adapters 及 Runtime API。Module Developer 在 rag_engine 的 methods 目錄提交 PR，Engine＋Methods 整合測試後發布完整 Runtime Image；Builder 與 Runtime 在 API／Schema 相容時各自升級。Repo／Image／部署單位的正式邊界見 [03 §3.7](03_architecture_proposal.md#repository-boundaries)，建置與發布見 [07 §2](docs/07_backend_runtime_integration.md#repository-build-boundaries)。本輪更新文件，尚未建立新 repo 或搬移程式。
+
 | 文件 | 定位 |
 |---|---|
 | [03 系統概覽與架構](03_architecture_proposal.md) | 正式名詞定義、產品目的、新手／進階情境、元件分工、部署邊界與範圍 |
@@ -37,10 +39,10 @@ v0.19 討論提案：將 Rewrite／Multi-query 合併為單一 Query Rewrite，�
 | [05 共用資料模型與 Config](docs/05_data_contracts_search_design.md) | ParsedDocument／Chunk／SearchHit、Schema、Config 草案與變更影響 |
 | [06 使用流程與 UI 開發規格](docs/06_ui_development_spec.md) | 基本／進階、CSV、AI 助手、預覽、Edit 與測試操作 |
 | [07 Backend、Runtime API 與整合](docs/07_backend_runtime_integration.md) | API、System／Revision、任務、持久化、Runtime 與 Export |
-| [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M7、助手與 Method 開發配套、40 項決策、27 項待決問題及 40 項歷史要求對照 |
+| [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M7、兩個 repo 與 Method 開發配套、41 項決策、27 項待決問題及 40 項歷史要求對照 |
 | [09 Inference Contract 與 UI 整合提案](docs/09_inference_contract_ui_plan.md) | 三種操作／共同排序的討論記錄、順序式 UI 設定、案例與待確認選項 |
 | [10 UI Prototype Backlog 與完成紀錄](docs/10_ui_adjustment_backlog.md) | §1～6 保留 v0.9 歷史完成項目；§7 集中新需求及提案，含 Method 選用／卡控 UIB-010；收到改 UI 指示後才實作 |
-| [11 Method 開發指南](docs/11_method_developer_guide.md) | Module Developer 的 SDK 介面示意、repo／套件、測試、註冊與交付流程 |
+| [11 Method 開發指南](docs/11_method_developer_guide.md) | Module Developer 在 rag_engine 開發 Methods 的 SDK 介面示意、PR、套件測試、註冊與 Runtime 交付流程 |
 
 建議先讀 03／08，再依任務讀 05／04／07／06。03 統一名詞與邊界，05 定義資料／版本規則，08 記錄決策與待決狀態。Engine 核心不依賴 Builder UI、HTTP 或 Builder DB；07 將其包裝為可管理服務。每份規格末尾列出相關 Q-ID，完整候選／決策／階段阻擋統一放在 08。
 

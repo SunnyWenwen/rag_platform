@@ -6,6 +6,8 @@
 
 2026-10-16 起，先更新規格，Prototype 對應調整集中至 [10 §7 UI Backlog](10_ui_adjustment_backlog.md#ui-backlog-pending)，待使用者要求修改 UI 再實作。本文新增的 Fixed-size 與助手整合為目標規格，現有原型仍 v0.9；歷史完成項目與新待辦分開記錄。
 
+2026-10-28 D-41 確認：Builder Frontend／Backend 位於 rag_platform，SDK／Engine／Methods／Runtime API 位於 rag_engine。UI 經 Backend 使用目標 Runtime 的方法目錄、Schema 與驗證能力，見 [07 §5.8](07_backend_runtime_integration.md#runtime-capability-contract)；Prototype 對應變更仍記於 UIB-010，未因此實作。
+
 ## 1. 目標、相依與範圍
 
 - 新手透過預設、CSV 與 AI 助手快速開始；熟悉 RAG 者可展開完整設定。
@@ -92,6 +94,7 @@ DEV test use 使用平台測試資源；匯出部署時需填入使用單位的�
 - 上游刪欄位或模型引用失效：保留失效選擇、標示原因、阻止儲存；不自動選另一值。
 - 不支援能力顯示且停用，附可理解原因；不能讓顯示的 Mock 選項假裝正式可用。
 - 前端 Validator 提供即時回饋，Backend／Engine 仍重新驗證。Schema 及規則來源需共用或由後端產生，避免手寫三份不同規則。
+- 方法目錄／Config Schema 與驗證結果綁定目標 Runtime 版本；目錄變動不靜默升級既有 System 或覆寫草稿。API／Schema 與既有控制項相容時，新增 Method 可在 Runtime 更新後供原版 Builder 選用；未知控制項／不相容格式明示需支援，不假裝可完整設定。目錄快取與版本協調見 07，畫面待辦見 10 UIB-010。
 
 錯誤顯示 `[模組] 原因`；進一步可提供欄位位置、修正方式與是否需重新 Ingestion。UI 不要求使用者理解內部 Python 類別或堆疊。
 

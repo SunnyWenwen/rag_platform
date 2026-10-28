@@ -26,11 +26,11 @@ Evaluation：重用相同檢索／問答入口的評估邏輯，任務排程與�
 |---|---|---|
 | `rag-engine-sdk`（暫名） | 共用 I/O 型別、各 Module 的公開介面、Config 驗證與受控 RunContext；另規劃契約測試工具 | 不依賴 Engine 私有實作或 Builder；資料形狀以 05 為準 |
 | `rag-engine`（暫名） | Registry、相容性驗證、Pipeline 組裝、生命週期、執行政策與資源管理 | 使用 SDK 契約，載入已安裝且核可的 Method package |
-| 開發者的 Method package | 實作一個或多個 Module 的 Method，附設定、能力宣告、測試與說明 | 依賴 SDK 公開介面及自身必要套件；不依賴 Builder 或 Engine 私有類別 |
+| rag_engine 內的 Method package | 實作一個或多個 Module 的 Method，附設定、能力宣告、測試與說明 | 依賴 SDK 公開介面及自身必要套件；不依賴 Builder 或 Engine 私有類別 |
 
-內建與開發者提供的 Method 應遵循相同公開契約與語意檢查，不能以內建方法的私有捷徑作為唯一可行用法。SDK／Engine 可先在同一平台 repo 分開套件；團隊 Method 可由獨立 repo 維護，同一 package 可包含成對的 Indexing／Retrieval。這是建議起步方式，不要求三個 repo，也不要求一個 Method 一個 repo；套件名稱與目錄由 Q-001 核定。
+內建與開發者提供的 Method 應遵循相同公開契約與語意檢查，不能以內建方法的私有捷徑作為唯一可行用法。2026-10-28 已確認：SDK、Engine、所有 Methods／Adapters 與 Runtime API 同放 `rag_engine` repo，Builder 前後端放 `rag_platform`，見 [03 §3.7](../03_architecture_proposal.md#repository-boundaries)。Module Developer 在 methods 目錄提交 PR，不要求另建 Method repo；同一 package 可包含成對的 Indexing／Retrieval。套件邊界仍保留，精確名稱／目錄由 Q-001 核定。
 
-SDK 的「獨立」是可安裝、可依賴的公開邊界；不表示 Method 的完整 Engine 整合測試不需要 Engine。單方法測試可用 SDK 測試工具與資源替身，整合測試使用相容的 Engine 版本。
+SDK 的「獨立」是可安裝、可依賴的公開邊界；不表示 Method 的完整 Engine 整合測試不需要 Engine。單方法測試可用 SDK 測試工具與資源替身，整合測試使用同一交付版本中的相容 Engine。Engine 與 Method packages 共同納入完整 Runtime Image；不以拆出另一個 Methods 服務作為首期執行模型。
 
 ## 2. Engine 入口與初始化（建議，Q-002／Q-017）
 
@@ -87,9 +87,10 @@ supports: {async: true, batch: true, streaming: false}
 
 ### 2.4 套件安裝、發現與載入
 
-建議流程：取得受控 Method package → 在開發環境或 Runtime Image 建置時安裝 → 發現與核對核可清單／版本 → 載入並註冊 → 驗證 Config 的方法與相依能力 → 建立實例。**repo 是原始碼來源，安裝 package 才提供 Python import 的程式，Registry 則負責方法查找；三者不可互相取代。**
+建議流程：從 rag_engine 同一交付版本建置 SDK／Engine／核可 Method packages → 在開發環境或 Runtime Image 建置時安裝 → 發現與核對核可清單／版本 → 載入並註冊 → 驗證 Config 的方法與相依能力 → 建立實例。**repo 是原始碼來源，安裝 package 才提供 Python import 的程式，Registry 則負責方法查找；三者不可互相取代。**
 
 - 本機開發可使用 editable install；DEV 與 FTEST／ENT 交付使用可追溯的固定套件與 Image。執行 Ingestion／Query 時不由 Config 任意下載 repo 或安裝套件。
+- 同 repo 的 Methods 仍安裝到 Engine 使用的 Python 環境，透過同一 Registry 註冊；建立目錄不等於初始化所有方法／外部服務，依有效 Config 初始化所選方法。Builder 透過 Runtime API 及方法目錄使用它們，不須在 Builder Image 安裝全部 Method packages。
 - 初期可明確 import／register；後續建議以 Python entry points 發現核可套件，沿用同一 Registry。具體 entry point group、Factory 介面及錯誤格式留 Q-001／Q-002／Q-022。
 - 核對發行套件及載入政策應在 import／entry point load 前進行；import 本身可能執行程式。已安裝、被發現、通過契約與允許執行是不同狀態。
 - Config 用方法識別與有效參數選擇實作，不接受任意 Python import path。完整版本解析結果需保存於可追溯的執行／交付紀錄；放在 Config 或相伴鎖定檔的精確格式留 Q-002／Q-015／Q-021。
@@ -498,13 +499,15 @@ GraphRAG 是擴充需求的例子，不是只註冊一個 Retrieval 就保證支
 
 ### 7.4 開發與發布邊界
 
-建議第一階段採本機 IDE＋SDK／範本 repo，經 PR／CI 審核與契約／整合測試後，將核可套件納入 Runtime Image。平台負責可用方法目錄、測試服務與執行結果，不先建瀏覽器程式編輯器、任意 Python 上傳或 Plugin Marketplace。正式發布權限、套件倉庫及隔離政策仍由 Q-022 核定。
+第一階段依已確認的兩個 repo 分工，使用本機 IDE＋rag_engine 內的 SDK／Method 範本，在 methods 目錄開發並提交 PR；經契約／整合測試與審核後，由同一 repo 的 CI 建置包含 Engine、核可 Methods 與 Runtime API 的完整 Runtime Image。純方法變更不必修改 Engine 核心；共用 I/O／SDK／執行政策變更由 Engine Developer 審查，跨模組影響一起驗證。平台負責可用方法目錄、測試服務與執行結果，不先建瀏覽器程式編輯器、任意 Python 上傳或 Plugin Marketplace。正式發布權限、套件建置工具及隔離政策仍由 Q-022 核定。
 
 Schema 驗證與 RunContext 介面不是程式隔離邊界；同程序 Python package 仍具有程序權限。若後續允許不受信任程式，須另定執行隔離、網路／Secret／資源限制。既有「共享 Runtime 不任意 exec 使用者程式」限制繼續適用。
 
 ### 7.5 Builder、助手與部署一致性
 
 Builder 與 AI 助手使用目標 Engine／Runtime 實際支援且核可的方法目錄、Config Schema 與能力相依；不各自維護另一份方法清單。方法發布不等於所有 Runtime 已安裝，也不自動替換既有 System 的版本。使用者可看到不可用／不相容方法及原因，選擇必須通過相同 Engine Validator。
+
+rag_platform 與 rag_engine 的服務邊界由 Runtime API／方法目錄承接，接口細節見 07。若 API／Config Schema 相容且既有表單可呈現，新 Method 經 Runtime 更新即可提供 Builder 選用；若修改了不相容接口或需要新增 UI 控制項，仍需協調 Builder 更新。套件集中於同 repo 不代表任何 Runtime 改動都免重新部署；採用新版的方法／Engine 必須經相容測試並部署該 Runtime Image。
 
 基本設定可依 Config Schema 產生表單，跨模組連動仍需能力規則與顯示資訊；不能承諾任何自訂 UI 都只靠 JSON Schema 自動產生。實際表單／版本呈現列於 [10 UIB-010](10_ui_adjustment_backlog.md#uib-010-method-catalog)，本輪不修改 Prototype。
 
@@ -528,7 +531,7 @@ DEV 與 FTEST／ENT 維持相同方法選擇／解析版本與邏輯 Config，�
 - Config、Registry 與下游欄位相依可驗證；缺服務／能力得到可定位錯誤。
 - Local Memory／MongoDB／ES 的差異被 Adapter 封裝；同一對外 Contract 不依賴框架內部物件。
 - 固定測試可驗算 Chunk／offset／fusion／Filter／Citation；真實模型／搜尋另有 integration 證據。
-- 以 Engine repo 外的 Method package 驗證安裝、註冊、設定、單方法與完整流程；不能靠修改 Engine 核心或 Builder 原始碼才加入每個普通 Method。
+- 在乾淨環境以 rag_engine 的 Method package 建置產物驗證安裝、註冊、設定、單方法與完整流程，避免靠原始碼路徑或私有匯入才能執行；不要求另建 repo，也不能靠修改 Engine 核心或 Builder 原始碼才加入每個普通 Method。
 - 重複識別、缺失套件、不相容版本／結構／artifact、違反語意的輸出均可定位失敗；Image／方法版本可追溯，升級不默默改變既有 System。
 - 尚未核定能力回報不支援，不以 Mock 或靜默 fallback 代表完成。
 

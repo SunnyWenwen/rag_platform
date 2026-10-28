@@ -154,7 +154,7 @@ UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／
 | UIB-007 | Rewrite／Multi-query 單模組測試與結構化輸出檢視 | 04 §5.1.1、06 §3.3.1；Engine M2／Builder M5 | 提案待確認，尚未實作 |
 | UIB-008 | Rewrite／Multi-query 合併為單一 Query Rewrite，以 1／N 控制 | 04 §5.1.2、06 §3.3.2；Q-002／Q-003 | 提案待確認，尚未實作 |
 | UIB-009 | Generation 預設格式＋收合的進階自訂 JSON Schema | 04 §5.4.1、06 §3.5；Q-002／Q-003／Q-018／Q-019 | 提案待確認，尚未實作 |
-| UIB-010 | 使用 Engine 方法目錄、Method 設定與相依卡控／版本資訊 | 04 §7.5、11、08 §4.3；D-40／Q-022／Q-025 | 需求方向已確認，互動細節待細化；待要求改 UI |
+| UIB-010 | 兩個 repo 下使用 Runtime 方法目錄、Method 設定與相依卡控／版本資訊 | 04 §7.5、07 §5.8、11、08 §4.3；D-40／D-41／Q-019／Q-022／Q-025 | 需求方向已確認，互動細節待細化；待要求改 UI |
 
 ### UIB-001：Fixed-size 控制項與設定連動
 
@@ -223,6 +223,8 @@ UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／
 
 ### UIB-010：Module Developer 方法選用與設定
 
+- [ ] 配合 D-41 的兩個 repo 邊界，rag_platform 的 UI／Backend 經公開 API 取得 rag_engine Runtime 的方法目錄／Schema／驗證結果；Builder 不內嵌全部 Methods。相容的新方法在更新目標 Runtime 後可供既有表單選用，不要求每次都重新部署 Builder。
+- [ ] 目錄／Schema 快取與驗證結果對回目標 Runtime 版本；處理版本切換、過期回應、目錄不可用與未知控制項。保留既有草稿與失效引用，不把「新 Image 已發布」顯示成「目前 Runtime 已更新」，特殊 UI／不相容 API 明示需對應版本。
 - [ ] Create／Edit 沿用既有單一 Builder 介面，方法選項來自目標 Engine／Runtime 核可目錄；依權限顯示方法用途、維護者、實作版本、相容能力與可用狀態。發布套件不代表當前 Runtime 已安裝，不顯示虛假的可執行狀態。
 - [ ] 基本參數依方法 Config Schema／顯示資訊呈現，保留必要與進階層級。method_id 與 Python class／package 名稱分開；通常只需清楚顯示方法名稱，詳細識別與版本可在說明中查看。複雜元件／自訂版面需另定支援範圍，不承諾任意 Schema 自動生成完整 UI。
 - [ ] 依同一 Engine Validator 執行 Parser／Chunker、Indexing／Retrieval、欄位／模型等相依卡控；不相容選項仍可見且不能選，提供原因。缺套件、版本不符及能力不足標示 `[MODULE NAME]` 並定位，不靜默改成其他 Method。
