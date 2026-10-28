@@ -1,41 +1,60 @@
-flowchart LR
-    %% 節點與關係定義；固定水平版面見同名 SVG，PNG 由 SVG 產生。
+flowchart TB
+    %% 節點與關係定義；三層固定版面見同名 SVG，PNG 由 SVG 產生。
+    %% 上：RAG Builder 測試；中：共用 RAG Engine；下：RAG Engine 開發。
+    %% Runtime API／Image 包裝見 02 Infra；本圖以 Engine 與設定建立 System 表達。
     subgraph BUILDER["RAG Builder測試"]
         direction LR
-        B["1. Build（設定 Config）"] --> I["2. Ingestion"]
+        U["RAG Builder User"] --> B["1. Build（設定 Config）"]
+        B --> I["2. Ingestion"]
         I --> Q["3. Inference"]
         Q --> E["4. Evaluation"]
         E -->|準備部署到 k8s| X["5. Export YAML"]
         E -->|驗證不達標，需調整| C["修改 Config"]
-        C -->|如果有調整 Ingestion 設定，需重新 Ingestion| I
+        C -->|調整 Ingestion 設定，需重新 Ingestion| I
         C -->|只調整 Inference 設定，不需重新 Ingestion| Q
+
+        F["Config"]
+        S["RAG System for RAG Builder 測試"]
+        R["評估報告"]
+        Y["YAML 設定檔（Config＋部署設定）"]
+
+        B -. 產出 .-> F
+        C -. 更新設定 .-> F
+        F -. 套用 Config .-> S
+        I -. "建立 Chunks / Indexes" .-> S
+        Q -. 查詢 .-> S
+        E -. 評估 .-> S
+        E -. 產出 .-> R
+        X -. 產出 .-> Y
     end
 
     D["6. Deploy YAML in FTEST/ENT"]
-    X -->|使用匯出的 YAML| D
-
     K["RAG System in k8s"]
+    X -->|使用匯出的 YAML| D
     D -. 部署 .-> K
+    Y -. 套用 YAML .-> K
 
-    S["RAG System for RAG Builder 測試"]
-    R["評估報告"]
-    Y["YAML 設定檔"]
+    subgraph ENGINE["RAG Engine"]
+        GE["共用 RAG Engine（Module／Method）"]
+    end
+    GE -. 依 Config 建立 .-> S
+    GE -. "提供執行核心（Runtime Image）" .-> K
+    GE -. "提供可選 Module／Method" .-> U
 
-    B -. 建立 .-> S
-    I -. "建立 Chunks / Indexes" .-> S
-    Q -. 查詢 .-> S
-    E -. 評估 .-> S
-    C -. 更新設定 .-> S
-
-    E -. 產出 .-> R
-    X -. 產出 .-> Y
-    Y -.-> K
+    subgraph DEVELOPMENT["RAG Engine 開發"]
+        direction LR
+        DEV["RAG Engine Developer"] -->|開發／測試| M["開發 Module 的 Method"]
+    end
+    M -->|發布／更新 Method| GE
 
     classDef user fill:#e9f2ff,stroke:#6086c8,color:#143054
     classDef system fill:#ecf8f2,stroke:#599d85,color:#153f32
-    class B,I,Q,E,X,C user
-    class S,R,Y,K system
-
     classDef deploy fill:#fff5e5,stroke:#cf9b4a,color:#624516
+    classDef engine fill:#eee9fa,stroke:#9380bf,color:#443267
+    class B,I,Q,E,X,C,U user
+    class F,S,R,Y,K system
     class D deploy
+    class GE,DEV,M engine
     style BUILDER fill:#f7faff,stroke:#9aafc9
+    style ENGINE fill:#f7f4fc,stroke:#b5a4d0
+    style DEVELOPMENT fill:#faf8fd,stroke:#b5a4d0

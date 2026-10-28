@@ -49,7 +49,7 @@ v0.19 討論提案：將 Rewrite／Multi-query 合併為單一 Query Rewrite，�
 - [L1 使用流程圖](diagrams/01_user_system_l1.png) · [Mermaid 關係定義](diagrams/01_user_system_l1.mmd) · [固定版面 SVG](diagrams/01_user_system_l1.svg)
 - [Infra 架構圖](diagrams/02_infra_architecture.png) · [Mermaid 原始檔](diagrams/02_infra_architecture.mmd)
 
-L1 流程的步驟 1～5 在同一水平列，由左到右排列，並與上方的「修改 Config」一起放在「RAG Builder測試」框內；步驟 6「Deploy YAML in FTEST/ENT」在框外右側，使用匯出的 YAML 部署，並以垂直虛線連至正下方的「RAG System in k8s」。RAG System、評估報告與 YAML 設定檔保留在各操作的下方。PNG 由同名 SVG 的固定版面產生；Mermaid 維護相同的節點與連線關係，自動排版不作為 PNG 版面。
+L1 圖面於 2026-10-28 調整為三層：上方「RAG Builder測試」、中間「RAG Engine」、下方「RAG Engine 開發」。步驟 1～5 保留由左到右的操作順序；Build 先產出 Config，再與共用 Engine 結合建立測試用 RAG System。Export 產出包含 Config 與部署設定的 YAML，於框外右側的步驟 6 部署，並結合相同 Engine 的 Runtime Image 建立 RAG System in k8s；步驟 6 仍以垂直虛線指向下方的 k8s System。RAG Engine Developer 開發 Module 下的 Method，發布／更新至 Engine 後供 Builder User 選用。圖面表示角色與建立關係；實際 SDK、發布權限、套件版本與隔離配套仍待討論，不表示已實作或自動升級既有 System。PNG 由同名 SVG 的固定版面產生；Mermaid 維護相同的節點與連線關係，自動排版不作為 PNG 版面。
 
 架構提案與 Infra 圖已整合 2026-10-14 的最新討論：RAG Builder Control Plane 明確分為 Frontend／Backend，接入 tSSO；DEV RAG Runtime 負責測試執行。Backend 的建立／設定連線指向整個 DEV RAG Runtime，由 Runtime 依 Config 組裝 Pipeline 執行實例，並匯出 FTEST／ENT YAML（文件形狀節點），使用單位自行於 K8s 進行 CD 部署；Secret Vault、部署依賴與觀測工具位於獨立 Runtime 框外。UI 可匯出示意 YAML，不代表可直接部署；Engine、Runtime API 及完整部署 Bundle 尚未實作。
 
