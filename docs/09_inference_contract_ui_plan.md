@@ -10,7 +10,7 @@
 
 ## 1. 文件定位與確認狀態
 
-資料欄位以 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft) 為主責；Engine 執行以 [04 §5.2.1](04_module_methods_io_contracts.md#result-processing) 為主責；UI 原則見 [06](06_ui_development_spec.md)。本文集中對話摘要、UI 提案與討論案例，不另創一份不同的 Contract。決策狀態見 [08 D-34／D-35、Q-014](08_implementation_plan.md#q-014)。
+資料欄位以 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft) 為主責；Engine 執行以 [04 §5.2.1](04_module_components_io_contracts.md#result-processing) 為主責；UI 原則見 [06](06_ui_development_spec.md)。本文集中對話摘要、UI 提案與討論案例，不另創一份不同的 Contract。決策狀態見 [08 D-34／D-35、Q-014](08_implementation_plan.md#q-014)。
 
 | 狀態 | 本輪結論 |
 |---|---|

@@ -8,7 +8,9 @@ Config-driven RAG System 建立與測試平台。
 
 **後續工作方式（2026-10-16）**：需求先更新文件，對應 Prototype 變更統一記入 [10 UI Backlog](docs/10_ui_adjustment_backlog.md#ui-backlog-pending)，待明確要求改 UI 再實作。本次新增 Fixed-size Chunking 與階段重排只更新文件，原型仍 v0.9。
 
-**名詞定義**：以 [03 §3「名詞定義與元件責任」](03_architecture_proposal.md#terminology) 為唯一依據，包含 Builder／Engine／Runtime／System、Workspace、Module／Method／Pipeline、Config／部署設定及版本概念。
+**名詞定義**：以 [03 §3「名詞定義與元件責任」](03_architecture_proposal.md#terminology) 為唯一依據，包含 Builder／Engine／Runtime／System、Workspace、Module／Component／Pipeline、Config／部署設定及版本概念。
+
+**2026-10-29 命名更新（D-43）**：可註冊的擴充實作統一稱為 **Component（元件）**；Module 表示功能分類與契約，Component Instance 表示配置後的實例。文件、SDK 示意、component_id、components 目錄／套件與 L1 圖已對齊。舊名稱、文件改名及保留的程式術語見 [03 §3.8](03_architecture_proposal.md#component-terminology-migration)；Prototype 欄位遷移仍記入 UIB-010。
 
 **接續規劃**：先讀 [03 名詞與架構](03_architecture_proposal.md#terminology) 及 [08 開發計畫與決策](docs/08_implementation_plan.md)。原 RAG Builder 規劃對話與「畫userflow」的整合核對、直接修正及需討論的邊界集中於 08 §12；臨時交接摘要已依指示讀取後移除。
 
@@ -28,24 +30,24 @@ v0.18 確認 Indexing 預設保存全部 Chunk.fields／metadata，拿掉使用�
 
 v0.19 討論提案：將 Rewrite／Multi-query 合併為單一 Query Rewrite，以產生數量 1／N 動態建立輸出 Schema；Generation 保留預設格式，在收合進階區明確啟用自訂回答 JSON Schema。自訂內容與平台 API 回應／可信引用分開，主要回答文字路徑與相容政策仍待核定，見 04 §5.1.2／§5.4.1。UIB-008／009 是未完成提案，不表示已確認或改過原型。
 
-2026-10-28 補充 **Module Developer**：04 增補 SDK／Engine／Method package 分工、方法註冊／載入及執行契約；新增 [11 Method 開發指南](docs/11_method_developer_guide.md)，說明獨立套件開發、測試、打包與 Builder／部署使用。03 統一角色名詞，08 記錄 D-40、M0～M7 配套及待決項，10 新增 UIB-010。共用資料定義仍以 05 為準；ParsedDocument 實際 Schema、正式 SDK／發布政策尚未凍結，原型與 Engine 程式未修改。
+2026-10-28 補充 **Module Developer**：04 增補 SDK／Engine／Component package 分工、Component 註冊／載入及執行契約；新增 [11 Component 開發指南](docs/11_component_developer_guide.md)，說明獨立套件開發、測試、打包與 Builder／部署使用。03 統一角色名詞，08 記錄 D-40、M0～M7 配套及待決項，10 新增 UIB-010。共用資料定義仍以 05 為準；ParsedDocument 實際 Schema、正式 SDK／發布政策尚未凍結，原型與 Engine 程式未修改。
 
-同日確認 **兩個 repo 的目標分工（D-41）**：`rag_platform` 放 Builder Frontend／Backend 與管理整合；`rag_engine` 放 SDK、Engine、所有 Methods／Adapters 及 Runtime API。Module Developer 在 rag_engine 的 methods 目錄提交 PR，Engine＋Methods 整合測試後發布完整 Runtime Image；Builder 與 Runtime 在 API／Schema 相容時各自升級。Repo／Image／部署單位的正式邊界見 [03 §3.7](03_architecture_proposal.md#repository-boundaries)，建置與發布見 [07 §2](docs/07_backend_runtime_integration.md#repository-build-boundaries)。本輪更新文件，尚未建立新 repo 或搬移程式。
+同日確認 **兩個 repo 的目標分工（D-41）**：`rag_platform` 放 Builder Frontend／Backend 與管理整合；`rag_engine` 放 SDK、Engine、所有 Components／Adapters 及 Runtime API。Module Developer 在 rag_engine 的 components 目錄提交 PR，Engine＋Components 整合測試後發布完整 Runtime Image；Builder 與 Runtime 在 API／Schema 相容時各自升級。Repo／Image／部署單位的正式邊界見 [03 §3.7](03_architecture_proposal.md#repository-boundaries)，建置與發布見 [07 §2](docs/07_backend_runtime_integration.md#repository-build-boundaries)。本輪更新文件，尚未建立新 repo 或搬移程式。
 
-同日確認 **Schema 驅動的 Method 設定與卡控（D-42）**：新增 [12 Method 設定 Schema、動態表單與相依規則](docs/12_method_schema_ui_contract.md)，規劃共用 Schema 輸出、UI hints、動態選項、Engine 相依驗證與版本／錯誤定位。相依不滿足的選項保留顯示並停用、無關欄位隱藏、進階預設收合、失效選擇保留並報錯；未知必要控制項明示不支援。操作方向已確認，`method-ui-0.1-draft` 格式仍待契約核定；UIB-010 更新待辦，Prototype 未修改。
+同日確認 **Schema 驅動的 Component 設定與卡控（D-42）**：新增 [12 Component 設定 Schema、動態表單與相依規則](docs/12_component_schema_ui_contract.md)，規劃共用 Schema 輸出、UI hints、動態選項、Engine 相依驗證與版本／錯誤定位。相依不滿足的選項保留顯示並停用、無關欄位隱藏、進階預設收合、失效選擇保留並報錯；未知必要控制項明示不支援。操作方向已確認，`component-ui-0.1-draft` 格式仍待契約核定；UIB-010 更新待辦，Prototype 未修改。
 
 | 文件 | 定位 |
 |---|---|
 | [03 系統概覽與架構](03_architecture_proposal.md) | 正式名詞定義、產品目的、新手／進階情境、元件分工、部署邊界與範圍 |
-| [04 Engine 組裝、執行與模組規格](docs/04_module_methods_io_contracts.md) | 獨立 Engine、Pipeline、各模組與 Method 擴充／載入／驗證機制 |
+| [04 Engine 組裝、執行與模組規格](docs/04_module_components_io_contracts.md) | 獨立 Engine、Pipeline、各模組與 Component 擴充／載入／驗證機制 |
 | [05 共用資料模型與 Config](docs/05_data_contracts_search_design.md) | ParsedDocument／Chunk／SearchHit、Schema、Config 草案與變更影響 |
 | [06 使用流程與 UI 開發規格](docs/06_ui_development_spec.md) | 基本／進階、CSV、AI 助手、預覽、Edit 與測試操作 |
 | [07 Backend、Runtime API 與整合](docs/07_backend_runtime_integration.md) | API、System／Revision、任務、持久化、Runtime 與 Export |
-| [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M7、兩個 repo 與 Method 開發配套、42 項決策、27 項待決問題及 40 項歷史要求對照 |
+| [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M7、兩個 repo 與 Component 開發配套、43 項決策、27 項待決問題及 40 項歷史要求對照 |
 | [09 Inference Contract 與 UI 整合提案](docs/09_inference_contract_ui_plan.md) | 三種操作／共同排序的討論記錄、順序式 UI 設定、案例與待確認選項 |
-| [10 UI Prototype Backlog 與完成紀錄](docs/10_ui_adjustment_backlog.md) | §1～6 保留 v0.9 歷史完成項目；§7 集中新需求及提案，含 Method 選用／卡控 UIB-010；收到改 UI 指示後才實作 |
-| [11 Method 開發指南](docs/11_method_developer_guide.md) | Module Developer 在 rag_engine 開發 Methods 的 SDK 介面示意、PR、套件測試、註冊與 Runtime 交付流程 |
-| [12 Method Schema、UI hints 與相依規則](docs/12_method_schema_ui_contract.md) | 設定描述格式草案、動態欄位／服務選項、相依狀態、版本／錯誤及 14 個驗收案例 |
+| [10 UI Prototype Backlog 與完成紀錄](docs/10_ui_adjustment_backlog.md) | §1～6 保留 v0.9 歷史完成項目；§7 集中新需求及提案，含 Component 選用／卡控 UIB-010；收到改 UI 指示後才實作 |
+| [11 Component 開發指南](docs/11_component_developer_guide.md) | Module Developer 在 rag_engine 開發 Components 的 SDK 介面示意、PR、套件測試、註冊與 Runtime 交付流程 |
+| [12 Component Schema、UI hints 與相依規則](docs/12_component_schema_ui_contract.md) | 設定描述格式草案、動態欄位／服務選項、相依狀態、版本／錯誤及 14 個驗收案例 |
 
 建議先讀 03／08，再依任務讀 05／04／07／06。03 統一名詞與邊界，05 定義資料／版本規則，08 記錄決策與待決狀態。Engine 核心不依賴 Builder UI、HTTP 或 Builder DB；07 將其包裝為可管理服務。每份規格末尾列出相關 Q-ID，完整候選／決策／階段阻擋統一放在 08。
 
@@ -55,11 +57,13 @@ Module Developer 可先讀 11 掌握開發流程，再依選定 Module 閱讀 04
 
 ## 原型與圖面
 
+2026-10-29 L1 圖的擴充單位標籤已統一為 Component，MMD／SVG／PNG 保留原三層與由左到右的操作版面；本次沒有變更 Prototype 或 Infra 圖。
+
 - [UI Prototype](01_ui_prototype.html)：下載後以瀏覽器開啟，模型／搜尋／評估與 API 為模擬。
 - [L1 使用流程圖](diagrams/01_user_system_l1.png) · [Mermaid 關係定義](diagrams/01_user_system_l1.mmd) · [固定版面 SVG](diagrams/01_user_system_l1.svg)
 - [Infra 架構圖](diagrams/02_infra_architecture.png) · [Mermaid 原始檔](diagrams/02_infra_architecture.mmd)
 
-L1 圖面於 2026-10-28 調整為三層：上方「RAG Builder 測試（for RAG Builder User）」、中間「RAG Engine」、下方「RAG Engine 開發（for RAG Engine Developer）」。角色標示於區塊標題。步驟 1～5 保留由左到右的操作順序；Build 先產出 Config，再與共用 Engine 結合建立測試用 RAG System。Export 產出包含 Config 與部署設定的 YAML，於框外右側的步驟 6 部署，並結合相同 Engine 的 Runtime Image 建立 RAG System in k8s；步驟 6 仍以垂直虛線指向下方的 k8s System。開發區塊中的 Method 發布／更新至 Engine，Engine「提供可選 Module／Method」直接指向步驟 1 Build（設定 Config）。圖面表示角色與建立關係；實際 SDK、發布權限、套件版本與隔離配套仍待討論，不表示已實作或自動升級既有 System。PNG 由同名 SVG 的固定版面產生；Mermaid 維護相同的節點與連線關係，自動排版不作為 PNG 版面。
+L1 圖面於 2026-10-28 調整為三層：上方「RAG Builder 測試（for RAG Builder User）」、中間「RAG Engine」、下方「RAG Engine 開發（for RAG Engine Developer）」。角色標示於區塊標題。步驟 1～5 保留由左到右的操作順序；Build 先產出 Config，再與共用 Engine 結合建立測試用 RAG System。Export 產出包含 Config 與部署設定的 YAML，於框外右側的步驟 6 部署，並結合相同 Engine 的 Runtime Image 建立 RAG System in k8s；步驟 6 仍以垂直虛線指向下方的 k8s System。開發區塊中的 Component 發布／更新至 Engine，Engine「提供可選 Module／Component」直接指向步驟 1 Build（設定 Config）。圖面表示角色與建立關係；實際 SDK、發布權限、套件版本與隔離配套仍待討論，不表示已實作或自動升級既有 System。PNG 由同名 SVG 的固定版面產生；Mermaid 維護相同的節點與連線關係，自動排版不作為 PNG 版面。
 
 架構提案與 Infra 圖已整合 2026-10-14 的最新討論：RAG Builder Control Plane 明確分為 Frontend／Backend，接入 tSSO；DEV RAG Runtime 負責測試執行。Backend 的建立／設定連線指向整個 DEV RAG Runtime，由 Runtime 依 Config 組裝 Pipeline 執行實例，並匯出 FTEST／ENT YAML（文件形狀節點），使用單位自行於 K8s 進行 CD 部署；Secret Vault、部署依賴與觀測工具位於獨立 Runtime 框外。UI 可匯出示意 YAML，不代表可直接部署；Engine、Runtime API 及完整部署 Bundle 尚未實作。
 

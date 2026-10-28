@@ -6,14 +6,14 @@
 
 2026-10-16 起，先更新規格，Prototype 對應調整集中至 [10 §7 UI Backlog](10_ui_adjustment_backlog.md#ui-backlog-pending)，待使用者要求修改 UI 再實作。本文新增的 Fixed-size 與助手整合為目標規格，現有原型仍 v0.9；歷史完成項目與新待辦分開記錄。
 
-2026-10-28 D-41 確認：Builder Frontend／Backend 位於 rag_platform，SDK／Engine／Methods／Runtime API 位於 rag_engine。UI 經 Backend 使用目標 Runtime 的方法目錄、Schema 與驗證能力，見 [07 §5.8](07_backend_runtime_integration.md#runtime-capability-contract)；Prototype 對應變更仍記於 UIB-010，未因此實作。
+2026-10-28 D-41 確認：Builder Frontend／Backend 位於 rag_platform，SDK／Engine／Components／Runtime API 位於 rag_engine。UI 經 Backend 使用目標 Runtime 的 Component 目錄、Schema 與驗證能力，見 [07 §5.8](07_backend_runtime_integration.md#runtime-capability-contract)；Prototype 對應變更仍記於 UIB-010，未因此實作。
 
 ## 1. 目標、相依與範圍
 
 - 新手透過預設、CSV 與 AI 助手快速開始；熟悉 RAG 者可展開完整設定。
 - 同一份 Config 可由手動或 AI 修改，不建立兩套不相容模式。
 - 畫面名詞與元件關係以 [03 §3](../03_architecture_proposal.md#terminology) 為準；UI 標籤與說明不得另定同名概念。
-- 資料／Config 以 [05](05_data_contracts_search_design.md) 為準；模組能力由 [04](04_module_methods_io_contracts.md) 提供；API 見 [07](07_backend_runtime_integration.md)。
+- 資料／Config 以 [05](05_data_contracts_search_design.md) 為準；模組能力由 [04](04_module_components_io_contracts.md) 提供；API 見 [07](07_backend_runtime_integration.md)。
 - 正式階層為 Workspace → System；側欄選 Workspace，主區顯示 System 卡片與操作視窗，不另建 Group。原型的 Groups 標籤／內部變數屬舊命名，正式化時遷移，不新增通用 DAG 編輯器。
 - 保留單一主畫面：左側切換 Workspace，中間以圖示／卡片呈現已建 System，卡片提供 Ingest／Inference／Evaluation／Edit Config／Export 入口。
 - 右上角放顯眼的「Create RAG System」。開啟設定介面時沿用此名稱；Edit Config 重用同一份表單與模組設定元件，載入所選 System 的獨立草稿。
@@ -24,7 +24,7 @@
 | 畫面／操作 | 使用者工作 | 主要結果 |
 |---|---|---|
 | Workspace 首頁 | 檢視與選擇 System | 名稱、版本、資料／索引狀態與操作入口 |
-| Create／Edit | 設定 Schema、模組 Method／參數、Pipeline 與服務邏輯引用 | 經驗證的 Config 草稿／Revision；環境連線另存部署設定 |
+| Create／Edit | 設定 Schema、模組 Component／參數、Pipeline 與服務邏輯引用 | 經驗證的 Config 草稿／Revision；環境連線另存部署設定 |
 | 從 CSV 開始 | 樣本、用途、映射與 AI 建議 | 建議草稿；確認後仍由使用者建立／匯入 |
 | Ingest | 上傳、預覽、確認映射、執行 | run_id、進度、結果及可處理錯誤 |
 | Inference | 問題、本次 filters | 回答、引用、可展開診斷 |
@@ -94,7 +94,7 @@ DEV test use 使用平台測試資源；匯出部署時需填入使用單位的�
 - 上游刪欄位或模型引用失效：保留失效選擇、標示原因、阻止儲存；不自動選另一值。
 - 不支援能力顯示且停用，附可理解原因；不能讓顯示的 Mock 選項假裝正式可用。
 - 前端 Validator 提供即時回饋，Backend／Engine 仍重新驗證。Schema 及規則來源需共用或由後端產生，避免手寫三份不同規則。
-- 方法目錄／Config Schema 與驗證結果綁定目標 Runtime 版本；目錄變動不靜默升級既有 System 或覆寫草稿。API／Schema 與既有控制項相容時，新增 Method 可在 Runtime 更新後供原版 Builder 選用；未知控制項／不相容格式明示需支援，不假裝可完整設定。目錄快取與版本協調見 07，畫面待辦見 10 UIB-010。
+- Component 目錄／Config Schema 與驗證結果綁定目標 Runtime 版本；目錄變動不靜默升級既有 System 或覆寫草稿。API／Schema 與既有控制項相容時，新增 Component 可在 Runtime 更新後供原版 Builder 選用；未知控制項／不相容格式明示需支援，不假裝可完整設定。目錄快取與版本協調見 07，畫面待辦見 10 UIB-010。
 
 錯誤顯示 `[模組] 原因`；進一步可提供欄位位置、修正方式與是否需重新 Ingestion。UI 不要求使用者理解內部 Python 類別或堆疊。
 
@@ -112,7 +112,7 @@ DEV test use 使用平台測試資源；匯出部署時需填入使用單位的�
 
 卡控只處理設定相依；不代替實際後端能力、Profile 或連線驗證。規則由 04／05 共用來源推導。
 
-2026-10-28 D-42 將動態 Method 表單列為已確認規劃方向，描述／規則草案與案例集中於 [12](12_method_schema_ui_contract.md)。Create／Edit 保持固定介面，Method 參數才依 Schema 產生；無關分支欄位隱藏，進階預設收合，不相容選項顯示且停用。上游變更使已選值失效時保留並標錯，可以繼續編輯，但正式儲存／建立／套用需通過 Engine 驗證；草稿持久化仍依 Q-016／Q-025。
+2026-10-28 D-42 將動態 Component 表單列為已確認規劃方向，描述／規則草案與案例集中於 [12](12_component_schema_ui_contract.md)。Create／Edit 保持固定介面，Component 參數才依 Schema 產生；無關分支欄位隱藏，進階預設收合，不相容選項顯示且停用。上游變更使已選值失效時保留並標錯，可以繼續編輯，但正式儲存／建立／套用需通過 Engine 驗證；草稿持久化仍依 Q-016／Q-025。
 
 動態候選使用目前有效欄位／服務／索引能力，前端不自行指定可信 Context。多個相同 Module 的錯誤以 node_ref＋欄位路徑定位。未知必要 UI feature 明示不支援且不能套用不完整設定；不自動改為任意 JSON 編輯器。實作與 SUI-01～14 互動驗收記在 10 UIB-010，尚未修改 Prototype。
 
@@ -122,7 +122,7 @@ DEV test use 使用平台測試資源；匯出部署時需填入使用單位的�
 
 測試前驗證本模組與引用服務的必要設定，不以其他無關模組未填完阻擋。顯示實際生成的 Prompt、要求筆數、解析後 Query 清單、原始問題是否另外加入及格式／筆數／非空／重複驗證；原始回應可收合，耗時／Token 用量僅顯示實際可取得數據。None 不呼叫 LLM。
 
-測試使用與正式執行相同的 Engine 模組、Adapter、Schema 與驗證；LLM 輸出策略提案見 [04 §5.1.1](04_module_methods_io_contracts.md#511-討論提案rewrite-的結構化輸出與共用-llm-邊界)。未接真實服務則明示模擬。修改 Prompt／LLM／count／保留原始問題或測試輸入後，舊結果標示過期；過期非同步回應不覆蓋新測試。試跑結果不自動套用／保存 Config，也不新增「必須先測試才能儲存」的 Gate。
+測試使用與正式執行相同的 Engine 模組、Adapter、Schema 與驗證；LLM 輸出策略提案見 [04 §5.1.1](04_module_components_io_contracts.md#511-討論提案rewrite-的結構化輸出與共用-llm-邊界)。未接真實服務則明示模擬。修改 Prompt／LLM／count／保留原始問題或測試輸入後，舊結果標示過期；過期非同步回應不覆蓋新測試。試跑結果不自動套用／保存 Config，也不新增「必須先測試才能儲存」的 Gate。
 
 ### 3.3.2 討論提案：以數量統一 Query Rewrite
 
@@ -156,7 +156,7 @@ UIB-007 試跑如採用，也改用這組相同草稿與 Schema。Edit／AI／�
 | 主要回答文字欄位 | 自訂時可選 summary 等文字路徑供 UI／Evaluation 使用；無效／非文字路徑可定位，無適用文字時需明示相容政策 |
 | 平台回應資訊 | request_id／版本／可信 citations 等由平台管理，與可自訂的回答內容分開；不在此編輯整個 Runtime API 回應 |
 
-若採用，保留既有 chunk_template → context → prompt，不增加 Output 模組。預設格式、Schema 子集、主要回答路徑及 API payload 容器／遷移仍需核定，見 [04 §5.4.1](04_module_methods_io_contracts.md#541-討論提案預設格式與進階自訂-json-輸出)／Q-002／Q-003／Q-018／Q-019。自訂格式只影響 Inference，修改後重測而不重建索引；若初版先完整生成後回傳，不宣稱支援自訂 JSON 的逐字 Streaming。
+若採用，保留既有 chunk_template → context → prompt，不增加 Output 模組。預設格式、Schema 子集、主要回答路徑及 API payload 容器／遷移仍需核定，見 [04 §5.4.1](04_module_components_io_contracts.md#541-討論提案預設格式與進階自訂-json-輸出)／Q-002／Q-003／Q-018／Q-019。自訂格式只影響 Inference，修改後重測而不重建索引；若初版先完整生成後回傳，不宣稱支援自訂 JSON 的逐字 Streaming。
 
 ## 4. 從 CSV 開始
 

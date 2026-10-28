@@ -4,7 +4,7 @@
 >
 > 本文涵蓋可獨立執行的 Engine 與各模組；正式名詞定義見 [03 §3](../03_architecture_proposal.md#terminology)，共用資料／Config 結構見 05。既有產品語意為已確認方向，新增 SDK、Registry 形狀、執行政策為建議，須經對應 Q-ID 核定。本次未新增 Engine 程式。
 
-> 2026-10-28 補充 Module Developer 擴充規劃：本文負責 Engine 必須提供的機制與限制；[11 Method 開發指南](11_method_developer_guide.md) 負責開發、測試與交付流程。開放 Method 開發是需求方向，以下公開介面、套件結構及載入方式仍為設計草案；本輪不凍結 ParsedDocument 等待決 Schema。
+> 2026-10-28 補充 Module Developer 擴充規劃：本文負責 Engine 必須提供的機制與限制；[11 Component 開發指南](11_component_developer_guide.md) 負責開發、測試與交付流程。開放 Component 開發是需求方向，以下公開介面、套件結構及載入方式仍為設計草案；本輪不凍結 ParsedDocument 等待決 Schema。
 
 ## 1. 目標與依賴邊界
 
@@ -20,17 +20,17 @@ Evaluation：重用相同檢索／問答入口的評估邏輯，任務排程與�
 - 不同框架／自訂 Function 或 Class 透過相同 Contract 包裝。
 - 純全文可跳過 Embedding；None 模組回傳相同語意的 pass-through 結果。
 
-### 1.1 SDK、Engine 與 Method package
+### 1.1 SDK、Engine 與 Component package
 
 | 元件 | 職責 | 依賴邊界 |
 |---|---|---|
 | `rag-engine-sdk`（暫名） | 共用 I/O 型別、各 Module 的公開介面、Config 驗證與受控 RunContext；另規劃契約測試工具 | 不依賴 Engine 私有實作或 Builder；資料形狀以 05 為準 |
-| `rag-engine`（暫名） | Registry、相容性驗證、Pipeline 組裝、生命週期、執行政策與資源管理 | 使用 SDK 契約，載入已安裝且核可的 Method package |
-| rag_engine 內的 Method package | 實作一個或多個 Module 的 Method，附設定、能力宣告、測試與說明 | 依賴 SDK 公開介面及自身必要套件；不依賴 Builder 或 Engine 私有類別 |
+| `rag-engine`（暫名） | Registry、相容性驗證、Pipeline 組裝、生命週期、執行政策與資源管理 | 使用 SDK 契約，載入已安裝且核可的 Component package |
+| rag_engine 內的 Component package | 實作一個或多個 Module 的 Component，附設定、能力宣告、測試與說明 | 依賴 SDK 公開介面及自身必要套件；不依賴 Builder 或 Engine 私有類別 |
 
-內建與開發者提供的 Method 應遵循相同公開契約與語意檢查，不能以內建方法的私有捷徑作為唯一可行用法。2026-10-28 已確認：SDK、Engine、所有 Methods／Adapters 與 Runtime API 同放 `rag_engine` repo，Builder 前後端放 `rag_platform`，見 [03 §3.7](../03_architecture_proposal.md#repository-boundaries)。Module Developer 在 methods 目錄提交 PR，不要求另建 Method repo；同一 package 可包含成對的 Indexing／Retrieval。套件邊界仍保留，精確名稱／目錄由 Q-001 核定。
+內建與開發者提供的 Component 應遵循相同公開契約與語意檢查，不能以內建方法的私有捷徑作為唯一可行用法。2026-10-28 已確認：SDK、Engine、所有 Components／Adapters 與 Runtime API 同放 `rag_engine` repo，Builder 前後端放 `rag_platform`，見 [03 §3.7](../03_architecture_proposal.md#repository-boundaries)。Module Developer 在 components 目錄提交 PR，不要求另建 Component repo；同一 package 可包含成對的 Indexing／Retrieval。套件邊界仍保留，精確名稱／目錄由 Q-001 核定。
 
-SDK 的「獨立」是可安裝、可依賴的公開邊界；不表示 Method 的完整 Engine 整合測試不需要 Engine。單方法測試可用 SDK 測試工具與資源替身，整合測試使用同一交付版本中的相容 Engine。Engine 與 Method packages 共同納入完整 Runtime Image；不以拆出另一個 Methods 服務作為首期執行模型。
+SDK 的「獨立」是可安裝、可依賴的公開邊界；不表示 Component 的完整 Engine 整合測試不需要 Engine。單一 Component 測試可用 SDK 測試工具與資源替身，整合測試使用同一交付版本中的相容 Engine。Engine 與 Component packages 共同納入完整 Runtime Image；不以拆出另一個 Components 服務作為首期執行模型。
 
 ## 2. Engine 入口與初始化（建議，Q-002／Q-017）
 
@@ -69,12 +69,12 @@ Schema 格式檢查、真實連線檢查、Profile 相容檢查、索引可查�
 
 ### 2.3 Registry／Factory
 
-建議每個註冊方法提供 module_type、method_id、implementation_version、input_schema、output_schema、config_schema、requires、provides、supports 及 factory。由 Engine 編譯器串接，不由 Builder 寫另一套組裝流程。
+建議每個註冊 Component 提供 module_type、component_id、implementation_version、input_schema、output_schema、config_schema、requires、provides、supports 及 factory。由 Engine 編譯器串接，不由 Builder 寫另一套組裝流程。
 
-本節將原草案中表示方法的 `module_id` 統一稱為 `method_id`：`module_type` 表示職責，例如 chunking；`method_id` 表示具體方法，例如 team_a.chunking.custom；Python class 名稱只是實作符號。同一方法可以用不同參數建立多個實例，不需要因此新增 method_id。這次只對齊 Registry 設計用語；正式 Config 欄位、舊別名與遷移仍由 Q-002 核定，不改既有 Prototype／公開 Schema。
+依 [D-43 命名對照](../03_architecture_proposal.md#component-terminology-migration)，擴充單位統一使用 Component／component_id。早期 Registry 草案曾以 module_id、後以 method_id 表示具體實作；目前 module_type 表示職責，例如 chunking，component_id 表示具體元件，例如 team_a.chunking.custom，Python class 名稱只是實作符號。同一 Component 可以用不同參數建立多個 Component Instance，不需要因此新增 component_id；node_ref 另辨識配置中的實例。正式 Config 結構、舊別名與遷移仍由 Q-002 核定，本輪沒有修改 Prototype／公開 I/O Schema。
 
 ```yaml
-method_id: company.chunking.recursive
+component_id: company.chunking.recursive
 module_type: chunking
 implementation_version: 1.0.0
 contract_version: 0.1-draft
@@ -83,20 +83,20 @@ provides: [chunk.fields, chunk.locations]
 supports: {async: true, batch: true, streaming: false}
 ```
 
-宣告能力須有契約測試。Registry 須可追溯 distribution package 名稱／版本、Method 實作版本、SDK／Engine 相容範圍與 Contract 版本。`method_id + implementation_version` 在同一有效 Registry 內不能對應兩份不同實作；重複註冊應明確失敗，不能由載入先後決定覆蓋。
+宣告能力須有契約測試。Registry 須可追溯 distribution package 名稱／版本、Component 實作版本、SDK／Engine 相容範圍與 Contract 版本。`component_id + implementation_version` 在同一有效 Registry 內不能對應兩份不同實作；重複註冊應明確失敗，不能由載入先後決定覆蓋。
 
 ### 2.4 套件安裝、發現與載入
 
-建議流程：從 rag_engine 同一交付版本建置 SDK／Engine／核可 Method packages → 在開發環境或 Runtime Image 建置時安裝 → 發現與核對核可清單／版本 → 載入並註冊 → 驗證 Config 的方法與相依能力 → 建立實例。**repo 是原始碼來源，安裝 package 才提供 Python import 的程式，Registry 則負責方法查找；三者不可互相取代。**
+建議流程：從 rag_engine 同一交付版本建置 SDK／Engine／核可 Component packages → 在開發環境或 Runtime Image 建置時安裝 → 發現與核對核可清單／版本 → 載入並註冊 → 驗證 Config 的方法與相依能力 → 建立實例。**repo 是原始碼來源，安裝 package 才提供 Python import 的程式，Registry 則負責方法查找；三者不可互相取代。**
 
 - 本機開發可使用 editable install；DEV 與 FTEST／ENT 交付使用可追溯的固定套件與 Image。執行 Ingestion／Query 時不由 Config 任意下載 repo 或安裝套件。
-- 同 repo 的 Methods 仍安裝到 Engine 使用的 Python 環境，透過同一 Registry 註冊；建立目錄不等於初始化所有方法／外部服務，依有效 Config 初始化所選方法。Builder 透過 Runtime API 及方法目錄使用它們，不須在 Builder Image 安裝全部 Method packages。
+- 同 repo 的 Components 仍安裝到 Engine 使用的 Python 環境，透過同一 Registry 註冊；建立目錄不等於初始化所有方法／外部服務，依有效 Config 初始化所選方法。Builder 透過 Runtime API 及 Component 目錄使用它們，不須在 Builder Image 安裝全部 Component packages。
 - 初期可明確 import／register；後續建議以 Python entry points 發現核可套件，沿用同一 Registry。具體 entry point group、Factory 介面及錯誤格式留 Q-001／Q-002／Q-022。
 - 核對發行套件及載入政策應在 import／entry point load 前進行；import 本身可能執行程式。已安裝、被發現、通過契約與允許執行是不同狀態。
-- Config 用方法識別與有效參數選擇實作，不接受任意 Python import path。完整版本解析結果需保存於可追溯的執行／交付紀錄；放在 Config 或相伴鎖定檔的精確格式留 Q-002／Q-015／Q-021。
+- Config 用 Component 識別與有效參數選擇實作，不接受任意 Python import path。完整版本解析結果需保存於可追溯的執行／交付紀錄；放在 Config 或相伴鎖定檔的精確格式留 Q-002／Q-015／Q-021。
 - 找不到方法、版本不相容、能力不足或索引不相容時，回傳含模組／方法的可定位錯誤；不得自動改用其他方法或最新版本。失敗釋放初始化資源。
 
-Package 版本與 Method 實作版本不一定一對一；一個 package 可交付多個 Method。首版不承諾同一 Python 程序並存同一 package 的多個版本；不相容依賴可先由不同 Runtime Image／環境承載，具體路由與共存政策仍待決。
+Package 版本與 Component 實作版本不一定一對一；一個 package 可交付多個 Component。首版不承諾同一 Python 程序並存同一 package 的多個版本；不相容依賴可先由不同 Runtime Image／環境承載，具體路由與共存政策仍待決。
 
 ## 3. 共用執行政策
 
@@ -465,25 +465,25 @@ Budget 必須計入 Prompt、問題、模板、Context、特殊 Token 與輸出�
 
 ### 7.1 開放範圍與共用契約
 
-Module Developer 可針對各 Module 實作 Method；不再只把 Chunking／Rewrite／Rerank 視為可客製範圍。各 Module 的首批 SDK 介面與方法依 M0～M2／M6 逐步提供，未交付的介面不得宣稱已可擴充。Generation 的一般需求仍可先用 Prompt／內容設定，需替換演算法時走同一公開 Method 邊界。
+Module Developer 可針對各 Module 實作 Component；不再只把 Chunking／Rewrite／Rerank 視為可客製範圍。各 Module 的首批 SDK 介面與方法依 M0～M2／M6 逐步提供，未交付的介面不得宣稱已可擴充。Generation 的一般需求仍可先用 Prompt／內容設定，需替換演算法時走同一公開 Component 邊界。
 
-同一 Module 的公開 I/O 與語意由平台維護，Method 必須相容；Method 自身 Config 可以不同。可使用契約明定的擴充欄位或具名稱／版本的能力宣告，不能自行增改必要頂層 key、把字典任意形狀視為相容，或要求下游默默猜測結構。公開契約可經版本化演進，並非永遠不能改。
+同一 Module 的公開 I/O 與語意由平台維護，Component 必須相容；Component 自身 Config 可以不同。可使用契約明定的擴充欄位或具名稱／版本的能力宣告，不能自行增改必要頂層 key、把字典任意形狀視為相容，或要求下游默默猜測結構。公開契約可經版本化演進，並非永遠不能改。
 
 ParsedDocument 的實際欄位／structure 尚待 [Q-002 子題](08_implementation_plan.md#parsed-document-schema-pending)；本輪沒有定案 blocks／page／Element 模型，也不新增直接匯入 Chunk／vectors 的入口。Inference 物件沿用 05 與 `inference-0.2-draft`，不得在開發指南另立第二套型別。
 
-### 7.2 Method 必須宣告與配合的行為
+### 7.2 Component 必須宣告與配合的行為
 
 | 項目 | 要求／規劃 |
 |---|---|
-| 身分與設定 | method_id、實作版本、模組類型；Config Schema 列明參數型別、預設值、必填／條件必填、限制與說明；與 package／SDK 版本分開追蹤 |
+| 身分與設定 | component_id、實作版本、模組類型；Config Schema 列明參數型別、預設值、必填／條件必填、限制與說明；與 package／SDK 版本分開追蹤 |
 | I/O 與語意 | 宣告相容的 Module Input／Output 型別與 Contract 版本；驗證來源、ID、欄位繼承、分數方向與引用等不變條件，共用契約由平台維護 |
-| 能力相依 | 宣告 requires／provides；包含 Parser 結構、索引能力、Tokenizer、向量維度／模型及配套 Method 相依；例如 Indexing 與 Retrieval 可讀寫的 artifact 版本 |
+| 能力相依 | 宣告 requires／provides；包含 Parser 結構、索引能力、Tokenizer、向量維度／模型及配套 Component 相依；例如 Indexing 與 Retrieval 可讀寫的 artifact 版本 |
 | 執行生命週期 | 宣告 async／batch／streaming 支援；依 Engine 規範初始化、執行、取消與釋放；具體簽名留 Q-002／Q-017 |
 | 資源需求 | 列明外部 API／DB、Secret 邏輯引用、暫存／持久化儲存、CPU／Memory 的最低／建議需求與測量前提，以及 DEV 測試服務需求；透過受控 RunContext／服務解析介面取得資源，不把憑證寫入 Config、輸出或 Trace |
 | 版本與變更影響 | 宣告相容的 SDK／Engine／Contract 版本；逐項說明實作升級或有效參數改變後，是否須重新 Parsing、Chunking、Embedding、重建 Index 或只重測 Inference；由 Engine 依相容政策判定，不只信任作者宣告 |
 | 維護與驗收 | 提供維護者、用途／限制、範例 Config、輸入／預期輸出、固定測資、契約／語意測試、錯誤案例及相容版本測試 |
 
-2026-10-28 配套核對補充：以上資源宣告描述方法需求，實際 API URL／Secret 綁定、儲存與 CPU／Memory 配額放在部署設定，不能混入跨環境共用的邏輯 Config。CPU／Memory 需求應註明資料規模、Batch／併發與測試條件；未量測時明示未知或估計，不能填示例數字冒充已驗證最低需求。首版不承諾自動由單方法需求計算整個 Runtime 的資源配額，彙整與部署驗證細節留 Q-021／Q-027。
+2026-10-28 配套核對補充：以上資源宣告描述方法需求，實際 API URL／Secret 綁定、儲存與 CPU／Memory 配額放在部署設定，不能混入跨環境共用的邏輯 Config。CPU／Memory 需求應註明資料規模、Batch／併發與測試條件；未量測時明示未知或估計，不能填示例數字冒充已驗證最低需求。首版不承諾自動由單一 Component 需求計算整個 Runtime 的資源配額，彙整與部署驗證細節留 Q-021／Q-027。
 
 DEV 服務宣告須區分「所需服務／能力」與「平台當前是否有核可測試服務可綁定」。有平台服務才可使用 DEV test use；沒有時明列需自行提供的設定，不能因宣告就假設平台供應。FTEST／ENT 由使用單位提供對應服務／Secret 綁定。需求內容可先以套件說明與驗收材料交付，機器可讀宣告的欄位／格式留 Q-002／Q-022。
 
@@ -493,36 +493,36 @@ DEV 服務宣告須區分「所需服務／能力」與「平台當前是否有�
 
 ### 7.3 成對擴充與 GraphRAG 邊界
 
-Parser／Chunker 或 Indexing／Retrieval 可以由同一 Method package 成對交付，透過能力與 artifact 版本檢查相容性，不以 repo 名稱判斷。新增方法若仍遵循既有 I/O，就可接回既有 Pipeline。
+Parser／Chunker 或 Indexing／Retrieval 可以由同一 Component package 成對交付，透過能力與 artifact 版本檢查相容性，不以 repo 名稱判斷。新增 Component 若仍遵循既有 I/O，就可接回既有 Pipeline。
 
-GraphRAG 是擴充需求的例子，不是只註冊一個 Retrieval 就保證支援所有策略。若方法內部使用圖資料並回傳符合契約、可追溯的 Chunk 候選，可沿用既有下游；若需要實體／關係／社群摘要等新產物或跨模組新步驟，須先討論契約與流程擴充。不能將無對應來源的摘要偽裝成原始 Chunk。Method 內部可以使用自選框架，但跨模組邊界仍使用平台公開契約。
+GraphRAG 是擴充需求的例子，不是只註冊一個 Retrieval 就保證支援所有策略。若方法內部使用圖資料並回傳符合契約、可追溯的 Chunk 候選，可沿用既有下游；若需要實體／關係／社群摘要等新產物或跨模組新步驟，須先討論契約與流程擴充。不能將無對應來源的摘要偽裝成原始 Chunk。Component 內部可以使用自選框架，但跨模組邊界仍使用平台公開契約。
 
 ### 7.4 開發與發布邊界
 
-第一階段依已確認的兩個 repo 分工，使用本機 IDE＋rag_engine 內的 SDK／Method 範本，在 methods 目錄開發並提交 PR；經契約／整合測試與審核後，由同一 repo 的 CI 建置包含 Engine、核可 Methods 與 Runtime API 的完整 Runtime Image。純方法變更不必修改 Engine 核心；共用 I/O／SDK／執行政策變更由 Engine Developer 審查，跨模組影響一起驗證。平台負責可用方法目錄、測試服務與執行結果，不先建瀏覽器程式編輯器、任意 Python 上傳或 Plugin Marketplace。正式發布權限、套件建置工具及隔離政策仍由 Q-022 核定。
+第一階段依已確認的兩個 repo 分工，使用本機 IDE＋rag_engine 內的 SDK／Component 範本，在 components 目錄開發並提交 PR；經契約／整合測試與審核後，由同一 repo 的 CI 建置包含 Engine、核可 Components 與 Runtime API 的完整 Runtime Image。純方法變更不必修改 Engine 核心；共用 I/O／SDK／執行政策變更由 Engine Developer 審查，跨模組影響一起驗證。平台負責可用 Component 目錄、測試服務與執行結果，不先建瀏覽器程式編輯器、任意 Python 上傳或 Plugin Marketplace。正式發布權限、套件建置工具及隔離政策仍由 Q-022 核定。
 
 Schema 驗證與 RunContext 介面不是程式隔離邊界；同程序 Python package 仍具有程序權限。若後續允許不受信任程式，須另定執行隔離、網路／Secret／資源限制。既有「共享 Runtime 不任意 exec 使用者程式」限制繼續適用。
 
 ### 7.5 Builder、助手與部署一致性
 
-Builder 與 AI 助手使用目標 Engine／Runtime 實際支援且核可的方法目錄、Config Schema 與能力相依；不各自維護另一份方法清單。方法發布不等於所有 Runtime 已安裝，也不自動替換既有 System 的版本。使用者可看到不可用／不相容方法及原因，選擇必須通過相同 Engine Validator。
+Builder 與 AI 助手使用目標 Engine／Runtime 實際支援且核可的 Component 目錄、Config Schema 與能力相依；不各自維護另一份 Component 清單。方法發布不等於所有 Runtime 已安裝，也不自動替換既有 System 的版本。使用者可看到不可用／不相容方法及原因，選擇必須通過相同 Engine Validator。
 
-rag_platform 與 rag_engine 的服務邊界由 Runtime API／方法目錄承接，接口細節見 07。若 API／Config Schema 相容且既有表單可呈現，新 Method 經 Runtime 更新即可提供 Builder 選用；若修改了不相容接口或需要新增 UI 控制項，仍需協調 Builder 更新。套件集中於同 repo 不代表任何 Runtime 改動都免重新部署；採用新版的方法／Engine 必須經相容測試並部署該 Runtime Image。
+rag_platform 與 rag_engine 的服務邊界由 Runtime API／Component 目錄承接，接口細節見 07。若 API／Config Schema 相容且既有表單可呈現，新 Component 經 Runtime 更新即可提供 Builder 選用；若修改了不相容接口或需要新增 UI 控制項，仍需協調 Builder 更新。套件集中於同 repo 不代表任何 Runtime 改動都免重新部署；採用新版的方法／Engine 必須經相容測試並部署該 Runtime Image。
 
-基本設定可依 Config Schema 產生表單，跨模組連動仍需能力規則與顯示資訊；不能承諾任何自訂 UI 都只靠 JSON Schema 自動產生。實際表單／版本呈現列於 [10 UIB-010](10_ui_adjustment_backlog.md#uib-010-method-catalog)，本輪不修改 Prototype。
+基本設定可依 Config Schema 產生表單，跨模組連動仍需能力規則與顯示資訊；不能承諾任何自訂 UI 都只靠 JSON Schema 自動產生。實際表單／版本呈現列於 [10 UIB-010](10_ui_adjustment_backlog.md#uib-010-component-catalog)，本輪不修改 Prototype。
 
-DEV 與 FTEST／ENT 維持相同方法選擇／解析版本與邏輯 Config，環境服務綁定分開；交付需驗證目標 Image 包含所需方法與相依套件。僅匯出 YAML 不會自動交付 Method 程式。更新 Method 後重測／重建的判斷依 Q-015，不以版本號單獨認定索引相容。
+DEV 與 FTEST／ENT 維持相同方法選擇／解析版本與邏輯 Config，環境服務綁定分開；交付需驗證目標 Image 包含所需方法與相依套件。僅匯出 YAML 不會自動交付 Component 程式。更新 Component 後重測／重建的判斷依 Q-015，不以版本號單獨認定索引相容。
 
-開發者實作步驟、Python 介面示意與交付檢查見 [11](11_method_developer_guide.md)；決策狀態以 [08 Q-022](08_implementation_plan.md#q-022) 為準。
+開發者實作步驟、Python 介面示意與交付檢查見 [11](11_component_developer_guide.md)；決策狀態以 [08 Q-022](08_implementation_plan.md#q-022) 為準。
 
 ### 7.6 設定描述與動態表單（D-42）
 
-2026-10-28 已確認依 Schema／UI hints／相依規則規劃 Method 設定。具體描述與驗收案例集中於 [12](12_method_schema_ui_contract.md)，不在本文件另建第二套欄位定義；`method-ui-0.1-draft` 尚未凍結為正式 SDK／HTTP 契約。
+2026-10-28 已確認依 Schema／UI hints／相依規則規劃 Component 設定。具體描述與驗收案例集中於 [12](12_component_schema_ui_contract.md)，不在本文件另建第二套欄位定義；`component-ui-0.1-draft` 尚未凍結為正式 SDK／HTTP 契約。
 
-- Method 宣告 `config_type`，共用父類別提供 Schema 輸出，Registry 強制檢查；不要求每個 Method 重寫產生 Schema 的 abstract method。UI hints 可使用預設值，特殊控制項明確宣告必要功能。
+- Component 宣告 `config_type`，共用父類別提供 Schema 輸出，Registry 強制檢查；不要求每個 Component 重寫產生 Schema 的 abstract method。UI hints 可使用預設值，特殊控制項明確宣告必要功能。
 - Config Schema、動態選項／能力與跨欄位規則共同參與 Engine 驗證，UI／AI／Python／HTTP 不能各自維護不同的有效性規則。Config Schema 與 Module I/O Contract 分開，ParsedDocument 待決狀態不變。
-- 取得方法描述不應初始化模型或外部服務；候選欄位／LLM／索引能力由 Engine 的版本化 Context 解析。目錄可用不代表真實連線／資料就緒已驗證。
-- 區分「不適用所以排除有效值」與「已選設定不合法所以阻擋」；UI 停用／收合不等於 Engine 可以略過必要驗證。相依失效保留原選擇，不自動換 Method 或搜尋路徑。
+- 取得 Component 描述不應初始化模型或外部服務；候選欄位／LLM／索引能力由 Engine 的版本化 Context 解析。目錄可用不代表真實連線／資料就緒已驗證。
+- 區分「不適用所以排除有效值」與「已選設定不合法所以阻擋」；UI 停用／收合不等於 Engine 可以略過必要驗證。相依失效保留原選擇，不自動換 Component 或搜尋路徑。
 
 ## 8. 待討論與決策
 
@@ -540,7 +540,7 @@ DEV 與 FTEST／ENT 維持相同方法選擇／解析版本與邏輯 Config，�
 - Config、Registry 與下游欄位相依可驗證；缺服務／能力得到可定位錯誤。
 - Local Memory／MongoDB／ES 的差異被 Adapter 封裝；同一對外 Contract 不依賴框架內部物件。
 - 固定測試可驗算 Chunk／offset／fusion／Filter／Citation；真實模型／搜尋另有 integration 證據。
-- 在乾淨環境以 rag_engine 的 Method package 建置產物驗證安裝、註冊、設定、單方法與完整流程，避免靠原始碼路徑或私有匯入才能執行；不要求另建 repo，也不能靠修改 Engine 核心或 Builder 原始碼才加入每個普通 Method。
+- 在乾淨環境以 rag_engine 的 Component package 建置產物驗證安裝、註冊、設定、單一 Component 與完整流程，避免靠原始碼路徑或私有匯入才能執行；不要求另建 repo，也不能靠修改 Engine 核心或 Builder 原始碼才加入每個普通 Component。
 - 重複識別、缺失套件、不相容版本／結構／artifact、違反語意的輸出均可定位失敗；Image／方法版本可追溯，升級不默默改變既有 System。
 - 尚未核定能力回報不支援，不以 Mock 或靜默 fallback 代表完成。
 

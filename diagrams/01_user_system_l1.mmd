@@ -34,17 +34,17 @@ flowchart TB
     Y -. 套用 YAML .-> K
 
     subgraph ENGINE["RAG Engine"]
-        GE["共用 RAG Engine（Module／Method）"]
+        GE["共用 RAG Engine（Module／Component）"]
     end
     GE -. 依 Config 建立 .-> S
     GE -. "提供執行核心（Runtime Image）" .-> K
-    GE -. "提供可選 Module／Method" .-> B
+    GE -. "提供可選 Module／Component" .-> B
 
     subgraph DEVELOPMENT["RAG Engine 開發（for RAG Engine Developer）"]
         direction LR
-        M["開發 Module 的 Method"]
+        M["開發 Module 的 Component"]
     end
-    M -->|發布／更新 Method| GE
+    M -->|發布／更新 Component| GE
 
     classDef user fill:#e9f2ff,stroke:#6086c8,color:#143054
     classDef system fill:#ecf8f2,stroke:#599d85,color:#153f32
