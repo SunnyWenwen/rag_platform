@@ -90,6 +90,8 @@ SourceAsset 是 Import → Parsing 的內部物件，**建議**包含 asset_id�
 
 ### 4.2 ParsedDocument：五個固定頂層 key
 
+> **實際 Schema 待討論（2026-10-28）**：使用者要求稍後再決定 ParsedDocument 的實際 Schema，待決清單集中於 [08 Q-002 子項](08_implementation_plan.md#parsed-document-schema-pending)。既有五個頂層 key 方向保留；本節的結構表示與範例維持草案，`structure.<field_name>.blocks` 的確切形狀、共用／自訂結構、page／跨頁表示及 Parser／Chunking 相容規則尚未定案，不因討論示例就凍結或宣稱為通用標準。
+
 | Key | 型別 | 語意 |
 |---|---|---|
 | document_id | string | 邏輯文件 ID |

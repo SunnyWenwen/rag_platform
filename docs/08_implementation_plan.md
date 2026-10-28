@@ -193,6 +193,17 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 - 負責角色：Engine＋Backend＋Frontend；阻擋 M0 契約凍結。
 - 決策：未定；更新 04／05／07、Schema 及完整範例。
 
+<a id="parsed-document-schema-pending"></a>
+#### ParsedDocument 實際 Schema（2026-10-28 加入待討論）
+
+- 狀態：**待討論／延後定案**。使用者要求 ParsedDocument 的實際 Schema 之後再決定；本次只登錄待決事項。既有五個頂層 key 方向保留，不把討論中的細部結構或例子視為已核可的正式契約。
+- 欄位契約：各欄位的精確型別、必填／選填、預設值、空值及未知欄位政策，以及完整 Schema／驗證範例。
+- 結構表示：評估「完整文字＋位置標註」與 Element／樹狀模型等表示方式；`structure.<field_name>.blocks` 是目前草案，不是業界通用格式，也尚未定案。需釐清它與 `fields` 的對應方式，以及標題層級、段落、page／slide／表格等結構的必要範圍。
+- 位置與來源：討論頁面與章節的關係、跨頁區塊／多位置表示、閱讀順序、文字正規化後的位置映射，以及既有 Unicode code point／0-based 半開區間規則如何驗證及由外部 Parser 轉換。保留頁碼不等於已決定新增 Page-aware Chunking。
+- 模組相容：定義 Parser 能產出的共用結構、各 Chunking 方法需要的結構、自訂結構的名稱／版本／Schema，以及 Adapter、相容性驗證與缺少結構時的處理；具體方法與首批 Parser 範圍仍連動 Q-004／Q-005。
+- 輸入邊界：是否及如何接受上游已解析資料（含頁碼／結構），與原始資料由平台解析的輸入契約一起討論。目前 JSON records 不接受 `structure`；新增輸入模式、直接匯入 Chunk／vectors 均未因此核可。
+- 後續：定案後同步 05 ParsedDocument 定義與範例、04 模組契約及 07 Ingestion API；必要 UI 變更依既有工作方式登錄 10 backlog，待明確要求修改 UI 再實作。
+
 <a id="q-003"></a>
 ### Q-003 模型服務與 Adapter 契約
 
@@ -218,6 +229,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 ### Q-005 Parser／OCR 首批格式
 
 - 不清楚：PDF／PPTX／圖片／TXT／MD 哪些第一期支援；套件／外部 OCR、表格／標題 Schema、加密／損壞處理。
+- 關聯待決：ParsedDocument 實際 Schema、共用／自訂結構及 Parser／Chunking 相容契約見 [Q-002 子項](#parsed-document-schema-pending)；本節不自行凍結 `structure` 形狀或新增切分方法。
 - 建議：M1 先 structured records，Native text 及其他格式逐一有測資才開放；OCR 服務另驗證。
 - 替代：第一期納入全部格式，需增加品質／成本驗收。
 - 負責角色：產品＋Engine；阻擋 M2 格式能力，不卡 M1 records。
