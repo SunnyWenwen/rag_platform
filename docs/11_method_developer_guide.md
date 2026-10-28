@@ -143,6 +143,24 @@ Python Packaging User Guide 說明以套件 metadata／entry points 發現及載
 
 固定替身用來驗證邊界與錯誤，真實模型／DB／搜尋另留整合證據；Mock 通過不代表方法品質合格。推薦先用 repo 外的一個 Chunking Method 證明 SDK 邊界，再擴充 Parser 與成對 Indexing／Retrieval。確切工具／CLI 指令需 SDK 實作後補上。
 
+### 6.1 每個 Method 的七項交付清單（2026-10-28 補齊）
+
+以下是開發者的交付檢查表；要求以 04 §7.2 為準，不另定第二套契約。
+
+| 配套 | 開發者應交付的材料 |
+|---|---|
+| I/O Contract | 引用平台 Input／Output 型別與契約版本，列明遵守的語意及相容測試；不自行重新定義相同 Module 的必要外層結構 |
+| Config Schema | 參數型別、預設值、必填／條件必填、限制與說明，以及合法／非法設定範例 |
+| 能力與相依宣告 | 所需結構、索引能力、模型／Tokenizer、配套 Method 與相容版本；說明方法產出的能力及相關驗證 |
+| 執行介面 | 初始化、執行、關閉／取消行為，Batch／Async／Streaming 支援狀態及對應測試；未支援者明示 |
+| 資源需求 | API／DB 與 Secret 邏輯引用、暫存／持久化儲存、CPU／Memory 最低／建議需求及測試條件；DEV 測試服務需求、平台可用性與自行提供服務時的設定說明 |
+| 版本與變更影響 | SDK／Engine／Contract 相容範圍；實作升級與各有效參數變更時，重新 Parsing／Chunking／Embedding／Indexing 或只重測 Inference 的判定條件、連帶影響及驗證案例 |
+| 驗收材料 | 範例 Config、輸入／預期輸出、固定測資、契約／語意／整合測試、錯誤案例、執行方式、限制及維護者 |
+
+交付內容不等於每項都要出現在 Builder 表單。演算法參數由 Config Schema 描述；資源需求另作部署與服務綁定的依據。沒有量測的 CPU／Memory 數值要明示估計或待測，平台沒有提供的 DEV 服務要列為缺項。需要重處理時，交付說明應指出必要來源／中間資料，不能假設所有 System 都保存了它們。
+
+七項內容都需可供審閱；機器可讀的 Method 宣告格式、CLI 與測試 Runner 仍待 SDK 規格核定及實作。這份清單不把當前文件草案標為已通過正式契約驗收。
+
 ## 7. 從開發到 Builder 與部署
 
 建議交付流程：

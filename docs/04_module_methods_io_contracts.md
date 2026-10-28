@@ -474,13 +474,19 @@ ParsedDocument 的實際欄位／structure 尚待 [Q-002 子題](08_implementati
 
 | 項目 | 要求／規劃 |
 |---|---|
-| 身分與設定 | method_id、實作版本、模組類型、Config Schema、預設值／必填與說明；與 package／SDK 版本分開追蹤 |
-| I/O 與語意 | 使用對應 Module 契約；驗證來源、ID、欄位繼承、分數方向與引用等不變條件 |
-| 能力相依 | 宣告 requires／provides；例如 Parser 結構、Tokenizer、向量維度／模型、Indexing 與 Retrieval 可讀寫的 artifact 版本 |
+| 身分與設定 | method_id、實作版本、模組類型；Config Schema 列明參數型別、預設值、必填／條件必填、限制與說明；與 package／SDK 版本分開追蹤 |
+| I/O 與語意 | 宣告相容的 Module Input／Output 型別與 Contract 版本；驗證來源、ID、欄位繼承、分數方向與引用等不變條件，共用契約由平台維護 |
+| 能力相依 | 宣告 requires／provides；包含 Parser 結構、索引能力、Tokenizer、向量維度／模型及配套 Method 相依；例如 Indexing 與 Retrieval 可讀寫的 artifact 版本 |
 | 執行生命週期 | 宣告 async／batch／streaming 支援；依 Engine 規範初始化、執行、取消與釋放；具體簽名留 Q-002／Q-017 |
-| 外部資源 | 透過受控 RunContext／服務解析介面取得必要資源與 Secret 引用；不把憑證寫入 Config、輸出或 Trace |
-| 變更影響 | 說明參數／實作更新是否改變 Chunk、向量、索引或結果；由 Engine 依相容政策判定重測／重建，不只信任作者宣告 |
-| 維護與驗收 | 提供維護者、用途、限制、固定測資、失敗案例及相容版本測試 |
+| 資源需求 | 列明外部 API／DB、Secret 邏輯引用、暫存／持久化儲存、CPU／Memory 的最低／建議需求與測量前提，以及 DEV 測試服務需求；透過受控 RunContext／服務解析介面取得資源，不把憑證寫入 Config、輸出或 Trace |
+| 版本與變更影響 | 宣告相容的 SDK／Engine／Contract 版本；逐項說明實作升級或有效參數改變後，是否須重新 Parsing、Chunking、Embedding、重建 Index 或只重測 Inference；由 Engine 依相容政策判定，不只信任作者宣告 |
+| 維護與驗收 | 提供維護者、用途／限制、範例 Config、輸入／預期輸出、固定測資、契約／語意測試、錯誤案例及相容版本測試 |
+
+2026-10-28 配套核對補充：以上資源宣告描述方法需求，實際 API URL／Secret 綁定、儲存與 CPU／Memory 配額放在部署設定，不能混入跨環境共用的邏輯 Config。CPU／Memory 需求應註明資料規模、Batch／併發與測試條件；未量測時明示未知或估計，不能填示例數字冒充已驗證最低需求。首版不承諾自動由單方法需求計算整個 Runtime 的資源配額，彙整與部署驗證細節留 Q-021／Q-027。
+
+DEV 服務宣告須區分「所需服務／能力」與「平台當前是否有核可測試服務可綁定」。有平台服務才可使用 DEV test use；沒有時明列需自行提供的設定，不能因宣告就假設平台供應。FTEST／ENT 由使用單位提供對應服務／Secret 綁定。需求內容可先以套件說明與驗收材料交付，機器可讀宣告的欄位／格式留 Q-002／Q-022。
+
+變更影響需說明觸發條件與最早受影響階段；例如重新 Parsing 可能連帶重做後續 Chunking／Embedding／Indexing，不能把各階段視為互不相關的勾選。是否能重用中間結果、所需來源是否仍可取得，以及索引切換／回復政策依 Q-008～Q-010／Q-015，不預設平台一定保留所有中間資料。
 
 共用邊界：Config 驗證 → Input Validation → 執行政策 → 自訂邏輯 → Output Validation → 來源／ACL／語意檢查。Pydantic 不取代「Rerank 只能選候選子集」等語意驗證。
 
