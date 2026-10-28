@@ -141,6 +141,8 @@ UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／
 
 10:22 追加：UIB-008 記錄 Rewrite／Multi-query 合併建議、UIB-009 記錄 Generation 預設／進階 JSON 輸出建議；兩項均為討論提案，未新增已確認決策或實作。
 
+2026-10-28 追加：UIB-010 記錄 Module Developer 方法在 Builder 的選用、設定與相依驗證；新增角色／擴充需求見 D-40，具體目錄與 UI 呈現為規劃待細化。維持先文件、後 UI，不新增程式上傳／安裝入口。
+
 | ID | 待調整項目 | 主責規格／階段 | 狀態 |
 |---|---|---|---|
 | UIB-001 | Chunking 增加 Fixed-size 及方法參數卡控 | 04 §4.3、05 §6.4、06 §3；Engine M2／Builder M5 | 待使用者要求改 UI |
@@ -152,6 +154,7 @@ UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／
 | UIB-007 | Rewrite／Multi-query 單模組測試與結構化輸出檢視 | 04 §5.1.1、06 §3.3.1；Engine M2／Builder M5 | 提案待確認，尚未實作 |
 | UIB-008 | Rewrite／Multi-query 合併為單一 Query Rewrite，以 1／N 控制 | 04 §5.1.2、06 §3.3.2；Q-002／Q-003 | 提案待確認，尚未實作 |
 | UIB-009 | Generation 預設格式＋收合的進階自訂 JSON Schema | 04 §5.4.1、06 §3.5；Q-002／Q-003／Q-018／Q-019 | 提案待確認，尚未實作 |
+| UIB-010 | 使用 Engine 方法目錄、Method 設定與相依卡控／版本資訊 | 04 §7.5、11、08 §4.3；D-40／Q-022／Q-025 | 需求方向已確認，互動細節待細化；待要求改 UI |
 
 ### UIB-001：Fixed-size 控制項與設定連動
 
@@ -215,3 +218,15 @@ UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／
 - [ ] 自訂僅控制回答內容，平台 request／版本／可信引用另外管理。顯示 API 受控邊界；payload 容器、answer 型別相容與版本遷移未定前，不直接更改現有 HTTP 回應／SDK。
 - [ ] 若需接 UI 答案顯示／Evaluation，可指定主要回答文字路徑；失效／非文字路徑可定位。不適用的評估明示，不默默把整個 JSON 當文字答案。完整生成／驗證後回傳與 Streaming 的支援範圍明確區分。
 - [ ] 驗證預設／自訂切換保留草稿、停用參數不驗證／匯出、Schema 錯誤／模型不支援／回應不符／引用錯誤及 Edit／AI／部署一致性。只改輸出格式不要求重建索引；不新增 Output 模組或額外格式化 LLM 呼叫。
+
+<a id="uib-010-method-catalog"></a>
+
+### UIB-010：Module Developer 方法選用與設定
+
+- [ ] Create／Edit 沿用既有單一 Builder 介面，方法選項來自目標 Engine／Runtime 核可目錄；依權限顯示方法用途、維護者、實作版本、相容能力與可用狀態。發布套件不代表當前 Runtime 已安裝，不顯示虛假的可執行狀態。
+- [ ] 基本參數依方法 Config Schema／顯示資訊呈現，保留必要與進階層級。method_id 與 Python class／package 名稱分開；通常只需清楚顯示方法名稱，詳細識別與版本可在說明中查看。複雜元件／自訂版面需另定支援範圍，不承諾任意 Schema 自動生成完整 UI。
+- [ ] 依同一 Engine Validator 執行 Parser／Chunker、Indexing／Retrieval、欄位／模型等相依卡控；不相容選項仍可見且不能選，提供原因。缺套件、版本不符及能力不足標示 `[MODULE NAME]` 並定位，不靜默改成其他 Method。
+- [ ] Edit 保留既有方法／解析版本與草稿；方法撤回／目標 Runtime 不再支援時保留失效引用及原因。更新方法時提示必要的重測／重新 Ingestion 影響，依正式版本策略處理，不因目錄更新而自動升級 System。
+- [ ] AI 助手與手動設定使用相同方法目錄、Schema、相依規則及草稿基準；套用、取消、失效引用與匯出走同一有效 Config。助手不推薦未知／未支援的方法或自行安裝 package。
+- [ ] 匯出檢查目標 Runtime Image 是否包含所需方法／版本；缺失時顯示對應模組與待補條件，與外部 API／DB 連線缺項區分。DEV 與 FTEST／ENT 的方法／邏輯 Config 一致，環境服務綁定分開。
+- [ ] 以新增外部 Chunker、成對 Indexing／Retrieval、不相容 Parser 結構、缺套件／錯版及取消 Edit 作為未來驗收案例；只做 Prototype 示範時明示目錄／執行為模擬。本輪不修改 UI，也不新增 Web IDE／任意程式上傳／套件安裝按鈕。

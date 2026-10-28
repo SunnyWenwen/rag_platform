@@ -35,6 +35,8 @@ v0.13 從 `e52c4d74a469522155d814f0ff51fddf8946f957` 核對交接文件、本串
 | HTTP、平台儲存、工作與部署整合 | 07 |
 | 決策狀態、階段、驗收／阻擋 | 08 |
 | Inference Contract 討論摘要與 UI 整合提案 | 09；欄位以 05、決策以 08 為準 |
+| Prototype 待辦與歷史完成證據 | 10；使用者要求改 UI 時才實作 |
+| Method 開發、測試及套件交付流程 | 11；Engine 機制以 04、資料契約以 05 為準 |
 
 同一型別／規則不在多份文件各寫一套。03 定義名詞，05 規範對應的資料結構／版本規則，本文保存決策來源及狀態；決策摘要不取代 03 的現行定義。程式 Schema 與文件同步；不能只更新 UI、測試或其中一份規格。
 
@@ -81,6 +83,7 @@ v0.13 從 `e52c4d74a469522155d814f0ff51fddf8946f957` 核對交接文件、本串
 | D-37 | 階段重排 M0～M7；M4 獨立 AI 設定助手，M5 Builder 前後端與助手 UI 整合，M6 評估，M7 獨立交付 | 2026-10-16 09:31～09:45 討論及使用者修正／已確認方向 | 03／06／07／08 |
 | D-38 | 後續需求先更新文件；Prototype 調整記入 backlog，使用者要求改 UI 時才實作 | 2026-10-16 09:42／09:45 使用者要求／已確認 | README／03／06／08／10 |
 | D-39 | Indexing 保存全部 Chunk.fields／metadata，移除「儲存內容」；只選全文／向量／過濾索引；Chunking 預設繼承全部有效 metadata，排除功能有需求再規劃 | 2026-10-16 10:05 使用者確認前述三點／已確認，UI 尚未改 | 03／04／05／06；UIB-005／006 |
+| D-40 | 新增 Module Developer，依公開 Module 契約開發 Method，讓 Builder User 選用；04 維護 Engine 擴充規格，11 維護開發指南 | 2026-10-28 使用者提出角色／修改 L1，並要求依前述討論調整文件／需求方向；具體介面、套件與發布政策仍待決 | 03／04／11；Q-001／Q-002／Q-022；UIB-010 |
 
 「既有基線」不代表已涵蓋後續需求。D-23 的合併時點配置是使用者已提出的目標，不能以 D-11 的舊 Prototype 限制否決；兩層合併預設勾選並在 Retrieval 後的 UI 已於 2026-10-15 確認／實作，見 10 的歷史完成紀錄。Q-014 仍負責正式支援路徑、stage 命名及執行契約等剩餘細節。
 
@@ -142,6 +145,25 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 
 實際 UI 樣式、選擇性套用／撤銷及服務契約拼字仍依 Q-024／Q-025 核定。M4 與 M5 各自需要真實整合證據；規則助手或 Mock 可驗證互動，不能完成真實 AI 驗收。
 
+<a id="method-development-plan"></a>
+
+### 4.3 Module Developer 配套的分階段補充（2026-10-28）
+
+沿用 M0～M7 次序與既有方法範圍；下列是對 D-40 的規劃分工，不表示對應 SDK／服務已交付。方法擴充不能一直依賴 Engine 私有實作，故最小公開邊界安排於 M0／M1；正式套件發布細節留相關 Q-ID。
+
+| 階段 | 補充工作 | 驗收重點 |
+|---|---|---|
+| M0 | Module I/O／Config 與 SDK 邊界、method_id／版本、能力相依；界定首批可擴充 Module | 契約有正反例，Pending Schema 不被當正式 API；Q-001／Q-002／Q-022 依實際工作逐項核定 |
+| M1 | 最小 SDK／Registry／受控明確註冊；內建 Recursive 與外部示範 Chunker 遵循同一契約 | 獨立 repo 的 package 可安裝並接入既有最小 Engine 路徑，不修改核心；衝突／錯版／非法輸出可定位 |
+| M2 | 依方法擴充提供其他 Module 介面、能力／artifact 相容檢查、套件測試與受控交付；entry points 為候選 | Parser／Chunker、Indexing／Retrieval 成對方法可整合；未支援組合明確失敗，發布版本可追溯 |
+| M3 | Runtime 呈現實際可用方法／版本及初始化錯誤；精確 API 留 Q-019 | 套件已發布但 Runtime 未安裝時不宣稱可執行；無執行期任意下載／安裝 |
+| M4 | 獨立助手使用目標 Engine 的可用目錄、Schema 與相依規則 | 不捏造 method_id／版本，不推薦目標環境不支援的方法 |
+| M5 | Builder 方法目錄、基本設定與相依卡控、版本／不可用原因；UIB-010 | 新方法能以支援的表單能力選用；Edit 不靜默換版，手動／AI／匯出語意一致 |
+| M6 | Evaluation 方法沿用公開擴充／測試規則，報告可追溯方法與版本 | 新評估方法不繞過 Dataset／指標語意檢查；不是提早宣稱任意自訂評估已完成 |
+| M7 | Runtime Image 包含所需固定 Method packages；交付版本資訊、相容檢查與回復說明 | 無 Builder 環境可依 YAML＋Image 執行相同方法；缺失方法／錯版及索引不相容可定位 |
+
+此時不需要使用者先決定 repo 數量或套件倉庫產品才能整理文件。正式動工前的優先順序是：共用契約／最小 SDK（Q-002）→ 可安裝範本與載入細節（Q-001／Q-022）→ 進共享 DEV 的發布與信任政策（Q-022）→ 既有 System 升級及交付鎖定（Q-015／Q-021）。不要求所有 Q-ID 一次決完。
+
 ## 5. 驗收材料與完成定義
 
 ### 5.1 必備材料（在開發階段建立，並非本輪已存在）
@@ -154,6 +176,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 | provider fakes | 合法回應、Timeout、429、缺項、錯誤維度、非法 Rerank index、未知引用 |
 | usage examples | 直接 Engine、HTTP、CSV 映射、工作輪詢、部署後首次 Ingestion |
 | assistant cases | M4 無 Builder 的新建／修改 Config、缺服務／未知方法；M5 的同一建議與 UI 控制項對照、Diff／取消／過期草稿案例 |
+| method package cases | Engine repo 外的可安裝方法、單方法／整合測試、衝突／錯版／能力不足案例、發布與 Image 方法清單；詳見 11 |
 | env／commands | 不含 Secret 的環境範例；安裝、測試、啟動與 integration 指令 |
 
 05 有可解析的完整 YAML 草案，但正式 Schema／Engine 尚未實作，不能宣稱它現在已能運行。
@@ -179,6 +202,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 ### Q-001 技術棧、版本與相容矩陣
 
 - 已有方向：使用部門 LangChain／LangGraph 生態，並以 Python／Typed Contract 進行設計；不重新把 Haystack 當成已選框架。不清楚的是套件版本、Web／前端框架、ES 版本／授權及 BM25／Tokenizer。
+- 2026-10-28 補充：SDK／Engine 可獨立安裝的套件邊界、repo 目錄／命名及 Python／SDK／Engine 相容矩陣需在範本交付前核定；目錄草案見 11，套件發布政策見 Q-022。
 - 建議：沿用 Python／既有生態；選最小必要套件並鎖定。Web Framework／前端沿用部門標準；具體版本要實測再鎖。
 - 替代：以專案獨立技術棧開發，需增加維運／整合評估。
 - 負責角色：技術負責人＋Engine／前後端；阻擋 M0 正式依賴及 M2 ES 選型。
@@ -188,6 +212,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 ### Q-002 共用 Schema、Config、SDK 與版本凍結
 
 - 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System；Local Search 持久化模式隨 Config 跨環境固定（D-33）；全部 Chunk.fields／metadata 保存與合法 metadata 全繼承（D-39）。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile、InferenceState／QueryContext／ResultSet 草案，以及舊保存／繼承投影、原型短名稱／匯出標籤 migration。
+- 2026-10-28 補充：Method SDK 的 Module-specific I/O 包裝、run／初始化／釋放簽名、RunContext、Registry／Factory 與 Config Schema 介面待凍結；Registry 草案改稱 method_id，不直接改寫既有 Config。精確方法／版本引用、舊 module_id 別名與遷移須一致驗證；11 的 Python 程式只作介面示意。
 - 建議：先核定最小完整 Config＋單一公開 Engine interface；Pydantic 匯出 JSON Schema，UI 使用相同來源。用完整欄位路徑；未知別名拒絕。
 - 替代：直接沿用 Prototype 全部短名稱；需補齊其缺少型別與執行語意。
 - 負責角色：Engine＋Backend＋Frontend；阻擋 M0 契約凍結。
@@ -322,6 +347,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 ### Q-015 Revision、有效 Config Hash 與 Index 版本
 
 - 已確認：同一 System 的同版邏輯 Config 跨環境相同，部署設定分開；文件 source_revision 與 index_generation 概念分開。不清楚的是保存／生效時點、Hash、草稿衝突、CSV mapping 歸屬、環境部署識別／資料版本及快照切換。
+- 2026-10-28 補充：需定 Method／package／Engine 解析版本保存位置、如何納入可重現執行與相容判定、更新 Method 後的重測／重建與回復政策；新版發布不自動升級既有 System，僅看版本號不能判定索引相容。
 - 建議：分開保存版本與執行綁定；Hash 只納有效配置並保留有語意順序，使用樂觀版本檢查。
 - 替代：單一 active revision，改配置後阻擋到準備完成；仍須避免 lost update。
 - 負責角色：Engine＋Backend＋Frontend；阻擋 M0 Hash 凍結及 M5 版本操作。
@@ -377,6 +403,8 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 <a id="q-021"></a>
 ### Q-021 Export、FTEST／ENT 與 Secret Vault
 
+- 2026-10-28 補充：交付須讓目標 Runtime Image 包含 Config 所需的 Method packages，並保存實際方法／套件版本；精確 Image 方法清單／版本鎖定格式與缺失套件錯誤仍待決。YAML 不會自動提供獨立 repo 的 Python 程式，參見 04 §7.5／11 §7。
+
 - 已確認：同版邏輯 Config 不隨環境改變，環境連線／Secret／資源為部署設定；Memory／MongoDB 模式也跨環境保持一致（D-33），不能只換部署設定切換。不清楚的是 Image／Bundle 包裝、Vault／注入、Secret 型別、K8s 資源／Ingress／Probe 及 CD 流程。
 - 建議：版本鎖定 Runtime Image＋有效 Config＋環境覆寫；Local 單副本；明示未帶資料且無 Builder 依賴。
 - 替代：使用單位既有 Helm／GitOps 形式；仍需相同可驗證交付內容。
@@ -386,11 +414,12 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 <a id="q-022"></a>
 ### Q-022 自訂程式的交付與隔離
 
-- 不清楚：第一期僅核可套件還是 UI 上傳；依賴建置、Sandbox、Secret／網路、權限與版本測試。
-- 建議：先受控 Registry／核可 Adapter，保留固定 Contract；未完成隔離前不執行任意使用者 Python。
-- 替代：UI 上傳＋隔離試跑，需獨立安全與資源規格。
-- 負責角色：產品＋平台／Engine；阻擋自訂程式正式能力，不卡內建模組。
-- 決策：未定；更新 03／04／06／07。
+- 已確認方向：D-40 加入 Module Developer，由公開契約下的 Method 擴充能力供 Builder 使用；不是所有特殊策略都由平台核心開發者實作。2026-10-28 補齊 04 與 11 的規劃，未凍結套件／隔離細節。
+- 建議起步：本機 IDE＋SDK／範本，受控 Registry，核可內部 package 經 PR／CI 測試後納入固定 Runtime Image。SDK／Engine 可同 repo，團隊 Method 可獨立 repo；先明確註冊，再評估 entry points，不先建 Web IDE／任意程式上傳。
+- 尚待決：核可／發布角色與可信程式範圍、私有套件倉庫／依賴建置、Factory／entry point 解析、SDK 相容矩陣、package／Method 版本對照與撤回／升級。跨 System 多版本／依賴衝突、目標 Runtime 方法可用性與索引相容另連動 Q-015／Q-020／Q-021。
+- 若擴大為不受信任開發者或 UI 上傳：需另核定執行隔離、Secret／網路／資源限制與管理權限；Schema／RunContext 不能代替 Sandbox。未完成該方案前保留共享 Runtime 不任意執行使用者 Python 的限制。
+- 負責角色：產品＋Platform／Engine Developer＋Module Developer；M0／M1 核定最小公開介面與載入，進共享 DEV 前核定發布／信任政策；不阻擋本文整理及既定內建路徑的受限開發。
+- 決策狀態：需求方向已確認，技術與發布政策 **OPEN**；更新 03／04／11，整合時同步 06／07，UI 先記 10 UIB-010。本輪不以建議方案代替使用者核可全部細節。
 
 <a id="q-023"></a>
 ### Q-023 Fallback、無資料、Budget 與引用
@@ -707,3 +736,12 @@ Inference Schema／五份 JSON／Python 範例、圖面及其他服務實作均�
 - 使用者提出 Generation 可自訂 JSON、預設格式與收合進階設定。04 §5.4.1／06 §3.5 整理推薦設計，區分業務內容 Schema、平台回應／可信引用、主要回答文字路徑與完整回傳／Streaming。現有 QueryResult.answer 字串與 HTTP 範例未改；payload 容器／版本相容留 Q-002／Q-019，評估相容留 Q-018。
 - 以上為本輪提問後的討論提案，待使用者確認；不新增 D-ID、不把 Schema／預設值／UI 細節升格為定案。10 UIB-008／009 保持未完成，既有 007 試跑提案也不因此視為已核可。
 - 文件集 v0.19；M0～M7、D-ID 39、Q-ID 27、A-ID 40 維持。只更新九份 Markdown；Prototype v0.9、公開 Schema、Config YAML／HTTP JSON 範例與其他可執行產物未變。
+
+## 21. 2026-10-28 Module Developer 與文件分工
+
+- 使用者新增 Module Developer 需求，已要求 L1 呈現 Engine／開發關係；接續討論 SDK、Method 識別、repo／套件及 import。此次依前述討論整理文件，D-40 記錄角色與擴充需求，不把套件命名、載入 API、Schema 或發布政策視為已全部核定。
+- 04 補齊 SDK／Engine／Method package 責任、method_id／版本、安裝／註冊／執行、語意與能力驗證、配套方法、Builder 與部署邊界。原 Registry 草案的 module_id 用語改為 method_id；正式 Config／既有 UI 的遷移留 Q-002，沒有批次改動可執行範例。
+- 新增 11 開發指南，以 Python 介面示意與套件流程解釋開發者工作；引用 05 的資料契約，ParsedDocument 實際 Schema 繼續待討論。不新增已可執行 SDK／Runner 的宣稱。
+- 03 同步角色及套件名詞，README 補閱讀導引；本文 §4.3 將配套分配至既有 M0～M7，Q-022 保持 OPEN。10 新增 UIB-010 方法目錄／設定／相依卡控待辦，Prototype 維持 v0.9。
+- 本輪只調整文件，保留所有既有圖面、公共 Schema、Inference JSON／Python 範例與測試；D-ID 增至 40、Q-ID 維持 27。正式動工前需決定的事項見 §4.3 與 11 §8；沒有要求本次先決定全部技術細節。
+- 文件檢查：10 份 Markdown 的 179 個相對連結（含 102 個錨點連結）、15 段 JSON、3 段 YAML、5 段 Python 語法及 1 段 TOML 均通過；ParsedDocument 待決段落完整保留。Python 只解析語法，未執行尚未存在的 SDK；此紀錄不代表 Engine／UI／部署驗收。

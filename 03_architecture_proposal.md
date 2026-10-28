@@ -9,11 +9,12 @@
 | 文件 | 權威範圍 | 主要讀者 |
 |---|---|---|
 | 03 本文 | 正式名詞定義、產品目標、使用情境、架構邊界、功能範圍 | 所有開發者 |
-| [04 Engine 與模組](docs/04_module_methods_io_contracts.md) | Engine 載入、組裝、執行及各模組行為 | Engine／Adapter 開發 |
+| [04 Engine 與模組](docs/04_module_methods_io_contracts.md) | Engine 載入、組裝、執行、Method 擴充機制及各模組行為 | Engine／Module Developer |
 | [05 資料與 Config](docs/05_data_contracts_search_design.md) | 共用資料結構、設定形狀、欄位及版本規則 | 前後端、Engine |
 | [06 UI](docs/06_ui_development_spec.md) | 畫面、互動、漸進式設定、CSV 與 AI 助手 | 前端／產品 |
 | [07 Backend 與 Runtime](docs/07_backend_runtime_integration.md) | HTTP API、管理資料、任務、部署及串接 | Backend／Runtime／DevOps |
 | [08 開發計畫與決策](docs/08_implementation_plan.md) | 階段、驗收、確認決策、未決問題與阻擋範圍 | Coding agent／負責人 |
+| [11 Method 開發指南](docs/11_method_developer_guide.md) | SDK 使用、Method 實作／測試／打包與交付流程；引用 04／05 契約 | Module Developer |
 
 狀態用語：**已確認**為先前明確採用的方向；**建議**為本輪技術草案；**待決**以 Q-ID 追蹤；**後續**為未納入目前實作承諾的能力。03～07 引用問題 ID，08 是決策狀態的單一追蹤位置。文件版本不等於 Config contract_version、Engine 版本或完成進度。
 
@@ -43,15 +44,17 @@ AI 設定助手分兩階段交付：M4 先完成不依賴 Builder 的核心與 P
 |---|---|---|
 | 剛上手／快速試用 | 少量設定後看到測試結果 | CSV 入口、預設值、AI 設定草稿、資料預覽 |
 | 熟悉 RAG | 控制欄位、方法、Prompt 與搜尋策略 | 完整設定、變更差異、可展開 Trace、Config 匯出 |
-| 有特殊需求 | 替換指定處理邏輯 | 固定 Contract 的模組／Adapter 擴充；安全執行方案另決 |
+| Module Developer | 實作新的 Module Method，支援特殊資料／檢索策略 | SDK／公開 Contract、獨立套件、契約測試與受控交付；精確介面及發布政策另決 |
 
 起始範本、小量試跑、自動診斷及自訂程式上傳的優先級尚未全部定案，見 [Q-022](docs/08_implementation_plan.md#q-022)、[Q-025](docs/08_implementation_plan.md#q-025)。本段不直接擴大第一期範圍。
+
+2026-10-28 加入 Module Developer 的開發需求：允許開發者在公開契約下提供 Method，供 RAG Builder User 選用；角色與 Engine 關係已呈現於 L1 圖。04 記錄 Engine 擴充規格，11 記錄開發者流程。建議起步採本機 IDE＋SDK／範本＋受控套件交付；精確 SDK／Schema、發布權限與隔離仍依 08 核定，並不承諾所有 GraphRAG 策略都已符合目前固定 Pipeline。
 
 <a id="terminology"></a>
 
 ## 3. 名詞定義與元件責任
 
-**本章是 03～08 共用名詞定義的唯一依據。**04～07 引用本章，分別補充模組行為、資料／Config 結構、UI 及後端串接；08 記錄決策來源、狀態與待決事項。名詞或邊界變動時，先更新本章，再同步受影響的規格；不能在各文件另定同名概念。
+**本章是整份文件集共用名詞定義的唯一依據。**04～07 引用本章，分別補充模組行為、資料／Config 結構、UI 及後端串接；08 記錄決策來源、狀態與待決事項，11 說明 Method 開發流程。名詞或邊界變動時，先更新本章，再同步受影響的規格；不能在各文件另定同名概念。
 
 以下整理已確認方向及既有基線，不因此核定尚未決定的公共型別、欄位拼字、權限或部署政策。
 
@@ -134,6 +137,25 @@ Config 與部署設定的欄位、有效設定規則及範例見 [05 §6～8](do
 
 技術方向以 Python、Pydantic 與部門既有 LangChain／LangGraph 生態為基礎；使用者已說明部門技術棧，Haystack 是早期比較候選，不是本專案已選框架。固定模組骨架可直接組裝，受控融合路徑不等於通用 DAG 編輯器。套件版本及前後端框架仍見 [Q-001](docs/08_implementation_plan.md#q-001)。
 
+<a id="developer-terms"></a>
+
+### 3.6 開發角色與擴充套件（2026-10-28）
+
+| 名詞 | 責任／定義 |
+|---|---|
+| RAG Builder User | 使用可用方法設定 Config，執行測試／評估並匯出；不需撰寫 Method 程式 |
+| Module Developer | 依公開 Module 契約開發、測試與維護 Method package；發布權限與資料存取另行授權 |
+| Platform／Engine Developer | 維護 SDK、共用契約、Engine 組裝／執行、相容驗證與方法載入政策；平台管理權限可由同人兼任，實際授權另定 |
+| RAG Engine Developer（L1 圖） | 圖面開發角色的概括名稱；其中「開發 Module 的 Method」對應 Module Developer，不表示每次新增方法都要修改 Engine 核心 |
+| RAG Engine SDK（套件暫名 rag-engine-sdk） | 提供 Method 開發所需的公開型別、Module 介面、資源契約及開發工具；套件與精確 API 尚未實作／凍結 |
+| Method package | 可安裝及版本化交付的 Python distribution，依賴 SDK，可以提供一個或多個 Module 的 Method |
+| Registry | Engine 用來查找已註冊方法、設定 Schema、能力、版本與建構入口的目錄；不等同於 Git repo、套件倉庫或套件安裝器 |
+| method_id | 方法的穩定識別；搭配實作版本定位方法發布，與 module_type、Python class 名稱及套件名稱分開 |
+
+本章定義責任分工，不規定 repo 必須拆成幾個，也不凍結 Python 名稱。方法實作版本、套件版本、SDK／Engine 版本與 §3.4 的 Config／Contract／資料版本分開記錄；精確欄位與版本鎖定規則留 Q-002／Q-015／Q-022。
+
+本文新增的 SDK 指 Method 開發用套件。既有「透過 SDK／Python 直接使用 Engine」描述的是無 HTTP 的 Engine 公開呼叫能力，不表示它與 Method SDK 必須是同一發行套件，也不等於 Runtime HTTP client。具體邊界見 04 §1.1。
+
 ## 4. 使用流程與執行入口
 
 1. Build：設定 Schema、模組與外部服務，建立 RAG System。
@@ -215,4 +237,3 @@ Local Search 的 Memory／MongoDB 持久化模式隨邏輯 Config 固定：DEV �
 | Evaluation Gate | 匯出與部署流程 | [Q-018](docs/08_implementation_plan.md#q-018) |
 
 所有問題狀態、決策負責人及階段阻擋範圍見 08。
-

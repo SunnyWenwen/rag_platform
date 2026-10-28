@@ -28,18 +28,23 @@ v0.18 確認 Indexing 預設保存全部 Chunk.fields／metadata，拿掉使用�
 
 v0.19 討論提案：將 Rewrite／Multi-query 合併為單一 Query Rewrite，以產生數量 1／N 動態建立輸出 Schema；Generation 保留預設格式，在收合進階區明確啟用自訂回答 JSON Schema。自訂內容與平台 API 回應／可信引用分開，主要回答文字路徑與相容政策仍待核定，見 04 §5.1.2／§5.4.1。UIB-008／009 是未完成提案，不表示已確認或改過原型。
 
+2026-10-28 補充 **Module Developer**：04 增補 SDK／Engine／Method package 分工、方法註冊／載入及執行契約；新增 [11 Method 開發指南](docs/11_method_developer_guide.md)，說明獨立套件開發、測試、打包與 Builder／部署使用。03 統一角色名詞，08 記錄 D-40、M0～M7 配套及待決項，10 新增 UIB-010。共用資料定義仍以 05 為準；ParsedDocument 實際 Schema、正式 SDK／發布政策尚未凍結，原型與 Engine 程式未修改。
+
 | 文件 | 定位 |
 |---|---|
 | [03 系統概覽與架構](03_architecture_proposal.md) | 正式名詞定義、產品目的、新手／進階情境、元件分工、部署邊界與範圍 |
-| [04 Engine 組裝、執行與模組規格](docs/04_module_methods_io_contracts.md) | 手寫 Config 可獨立使用的 Engine、Pipeline、各模組與 Adapter |
+| [04 Engine 組裝、執行與模組規格](docs/04_module_methods_io_contracts.md) | 獨立 Engine、Pipeline、各模組與 Method 擴充／載入／驗證機制 |
 | [05 共用資料模型與 Config](docs/05_data_contracts_search_design.md) | ParsedDocument／Chunk／SearchHit、Schema、Config 草案與變更影響 |
 | [06 使用流程與 UI 開發規格](docs/06_ui_development_spec.md) | 基本／進階、CSV、AI 助手、預覽、Edit 與測試操作 |
 | [07 Backend、Runtime API 與整合](docs/07_backend_runtime_integration.md) | API、System／Revision、任務、持久化、Runtime 與 Export |
-| [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M7、助手獨立／UI 兩階段驗收、39 項決策、27 項待決問題及 40 項歷史要求對照 |
+| [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M7、助手與 Method 開發配套、40 項決策、27 項待決問題及 40 項歷史要求對照 |
 | [09 Inference Contract 與 UI 整合提案](docs/09_inference_contract_ui_plan.md) | 三種操作／共同排序的討論記錄、順序式 UI 設定、案例與待確認選項 |
-| [10 UI Prototype Backlog 與完成紀錄](docs/10_ui_adjustment_backlog.md) | §1～6 保留 v0.9 歷史完成項目；§7 記錄 Fixed-size／助手整合／內容保存／metadata 待辦與 Rewrite 試跑提案，收到改 UI 指示後才實作 |
+| [10 UI Prototype Backlog 與完成紀錄](docs/10_ui_adjustment_backlog.md) | §1～6 保留 v0.9 歷史完成項目；§7 集中新需求及提案，含 Method 選用／卡控 UIB-010；收到改 UI 指示後才實作 |
+| [11 Method 開發指南](docs/11_method_developer_guide.md) | Module Developer 的 SDK 介面示意、repo／套件、測試、註冊與交付流程 |
 
 建議先讀 03／08，再依任務讀 05／04／07／06。03 統一名詞與邊界，05 定義資料／版本規則，08 記錄決策與待決狀態。Engine 核心不依賴 Builder UI、HTTP 或 Builder DB；07 將其包裝為可管理服務。每份規格末尾列出相關 Q-ID，完整候選／決策／階段阻擋統一放在 08。
+
+Module Developer 可先讀 11 掌握開發流程，再依選定 Module 閱讀 04 與 05；11 的 Python 範例是尚未實作的介面草案，不是現在就能安裝使用的 SDK 教學。
 
 舊 04／05 的重複及覆蓋式章節已重整，歷史可由 Git commit `cf4dfdc0e29acc91a2fe63b1993f867c8facaf6d` 查閱。完整 Config 的拼字、型別及預設值仍屬 Q-002 草案；本輪沒有新增 Engine、API 或正式部署功能。
 
@@ -136,5 +141,3 @@ Document Schema／CSV 流程另經 jsdom 與 Chromium 驗證：兩種起始情�
 
 
 融合方式另經 jsdom／Chromium 驗證選單切換、參數卡控與保留、儲存／Edit、Inference-only 影響、選定策略匯出及桌面／手機版面；本版仍未實作真實分數計算或搜尋。
-
-
