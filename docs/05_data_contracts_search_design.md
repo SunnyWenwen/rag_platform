@@ -1,13 +1,13 @@
 # RAG Builder — 共用資料模型與 Config 規格
 
-> 文件集 v0.18 · 2026-10-16 · 開發規格草案
+> 文件集 v0.19 · 2026-10-16 · 開發規格草案
 >
 > 本文是資料形狀及設定規則的權威位置。已確認的語意保留；新增的程式型別、完整 Config 拼字與預設值為建議草案，待 Q-002 核定後才凍結。YAML 範例用於討論與驗收設計，目前沒有 Engine 可直接執行。
 
 ## 1. 範圍與讀法
 
 - 名詞意義與元件關係以 [03 §3](../03_architecture_proposal.md#terminology) 為準；本文負責資料結構、欄位、版本規則及範例，不另定同名概念。
-- 模組如何執行見 [04](04_module_methods_io_contracts.md)，UI 見 [06](06_ui_development_spec.md)，HTTP 包裝／儲存見 [07](07_backend_runtime_integration.md)。
+- 模組如何執行見 [04](04_module_components_io_contracts.md)，UI 見 [06](06_ui_development_spec.md)，HTTP 包裝／儲存見 [07](07_backend_runtime_integration.md)。
 - 本文統一 ParsedDocument、Chunk、SearchHit、Config 及 ModuleResult，避免各模組重複定義。
 - 物件形狀、Contract 版本與細節待 [Q-002](08_implementation_plan.md#q-002) 核定；已確認的五／六個頂層 key 不因此退回舊版。
 - `?` 表示可省略，不自動表示可為 null；`JSON` 必須可序列化，數值不可為 NaN／Infinity。正式 required／nullable／additionalProperties 須由 Schema 定義。
@@ -90,6 +90,8 @@ SourceAsset 是 Import → Parsing 的內部物件，**建議**包含 asset_id�
 
 ### 4.2 ParsedDocument：五個固定頂層 key
 
+> **實際 Schema 待討論（2026-10-28）**：使用者要求稍後再決定 ParsedDocument 的實際 Schema，待決清單集中於 [08 Q-002 子項](08_implementation_plan.md#parsed-document-schema-pending)。既有五個頂層 key 方向保留；本節的結構表示與範例維持草案，`structure.<field_name>.blocks` 的確切形狀、共用／自訂結構、page／跨頁表示及 Parser／Chunking 相容規則尚未定案，不因討論示例就凍結或宣稱為通用標準。
+
 | Key | 型別 | 語意 |
 |---|---|---|
 | document_id | string | 邏輯文件 ID |
@@ -162,6 +164,8 @@ Profile 是 Query／Document 配對契約；不能只比較維度或模型顯示
 | Citation | citation_id、chunk_id、document_id、source_revision、locations |
 | QueryResult | original_question、answer、citations、used_chunk_ids、finish_reason、usage、abstained |
 
+上表 answer 延續字串基線。2026-10-16 的 Generation 自訂 JSON 為待確認提案：回答業務內容可依使用者 Schema 形成物件，但不能覆寫 request／版本／可信引用等平台資訊。自訂 payload 的容器、answer 相容性、主要回答文字路徑與 SDK／HTTP 型別仍由 Q-002／Q-018／Q-019 核定，見 [04 §5.4.1](04_module_components_io_contracts.md#541-討論提案預設格式與進階自訂-json-輸出)。InferenceState 的既有 Schema 不因此改版。
+
 rank 從 1 起；score 是相關性分數，不是機率。搜尋融合用 chunk_id 去重，文件分組用 document_id，兩者不同。Rerank score 不覆寫而遺失原 Retrieval score。
 
 <a id="inference-state-draft"></a>
@@ -218,7 +222,7 @@ Operation 的四個欄位：
 | 欄位 | 型別 | 規則 |
 |---|---|---|
 | method | string | 實際使用的方法，例如 bm25、top_n、rerank_api、rrf、es_hybrid |
-| parameters | object | 本次真正使用的參數；逐 Method 參數 Schema 仍待核定 |
+| parameters | object | 本次真正使用的參數；逐 Component 參數 Schema 仍待核定 |
 | model_ref | string 或 null | 模型／Profile 邏輯引用；無模型時為 null，不放 URL／Secret |
 | scoring_query_id | string 或 null | 實際評分所用問題的 ID，可指向原始或衍生 Query；純候選後處理為 null |
 
@@ -294,13 +298,15 @@ v0.2 草案將單一 field_path 改為 field_paths、stage 改為 retrieval／me
 
 | 物件 | 建議欄位 |
 |---|---|
-| ModuleConfig | module_id、implementation_version、contract_version、method、parameters、服務引用 |
+| ModuleConfig | module_type、component_id、implementation_version、contract_version、parameters、服務引用；具體實例引用與完整巢狀結構待 Q-002 |
 | RunContext | workspace_id、system_id、config_revision、run_id／request_id、trace_id、deadline、attempt、可信 auth_scope；環境／部署綁定另明確記錄 |
 | ModuleResult[T] | status: succeeded／partial／failed，data、errors、warnings、metrics |
 | ModuleError | code、module、message、retryable、item_id?、details? |
 | ExecutionMetrics | duration_ms、input_count、output_count、token_usage?、provider_request_id? |
 
 failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項目，不能默默少資料。哪些模組允許 partial 及如何提交資料仍受 Q-009 限制。HTTP 任務狀態不是 ModuleResult.status，見 07。
+
+2026-10-29 D-43：上表以 component_id 選擇具體 Component，module_type 表示所屬 Module；它們與 Component Instance 的 node_ref 分開。§4.6 的 ResultSet.method 仍是演算法／操作紀錄，不能直接改成 component_id。舊 Config／Prototype 的選擇欄位需按版本遷移，詳見 [03 名詞對照](../03_architecture_proposal.md#component-terminology-migration)。
 
 未知 Token Usage 為 null／省略，不填 0。Secret 與敏感原文不進錯誤／追蹤。使用者無權設定可信租戶／ACL Context。
 
@@ -341,6 +347,8 @@ failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項�
 | ResultSet 後處理 | 去重＆合併／取 Top N／新模型算分；共同排序 | 分組、方法與參數的正式 Config Schema 仍待 Q-002／Q-014；最新 UI 原型配置見 10 |
 | Generation | 兩層模板、共用 LLM | llm_ref、chunk_template、prompt、temperature、max_output_tokens、context_budget |
 
+待確認的設定簡化／擴充：Query Rewrite 合併為一種啟用方法，N=1／N>1 由 count 表達，且用 count 動態產生 queries 輸出 Schema；Generation 增加預設／自訂 JSON 內容格式、自訂 Schema 與主要回答文字路徑。具體新欄位／枚舉未凍結，見 04 §5.1.2／§5.4.1。服務連線與模型共用，但各模組每次呼叫提供不同 Schema，不能在全域 LLM 設定固定一種輸出。原型舊 method／雙 Prompt 仍待明確遷移。
+
 正式枚舉建議用 snake_case，UI 可顯示自然語言。Prototype 的 chunking.split、embedding.mappings[].source、indexing.filters、transform 等短名稱不自動視為正式 Schema；需明確 migration。統一使用完整路徑 fields.text／vectors.text_vector／metadata.department。上述拼字及預設值需 Q-002 核定，禁止同時接受未宣告別名而掩蓋錯誤。
 
 ResultSet 是一次執行的資料；處理計畫是可保存的邏輯 Config，不能把 runtime result_set_id 寫死在 Config。§7 保留既有單層 YAML 草案；v0.9 的 UI 配置 `retrieval.processing` 是另一個明確標記的展示草案，不表示正式 Engine Schema 已凍結。最新對照、有效配置與未完成邊界見 [10 §6](10_ui_adjustment_backlog.md#6-v09-實作細節展示預設與限制)；[09](09_inference_contract_ui_plan.md) 僅保留早期 UI 提案。
@@ -362,7 +370,7 @@ ResultSet 是一次執行的資料；處理計畫是可保存的邏輯 Config，
 
 純 BM25 可跳過 Embedding，但 Chunking 仍需 Tokenizer。複製欄位長度可能大於 Chunk Size，Embedding 必須逐項檢查實際輸入。Tokenizer、模型極限及溢位政策見 Q-004。
 
-Fixed-size 的 separators／keep_separator／header_levels 保留在 UI Draft 時不參與 Effective Config、驗證或變更影響。方法名稱、size／overlap、有效 Tokenizer 及內容欄位屬執行語意；改變後需按 Ingestion 變更處理。視窗與來源位置規則見 [04 §4.3](04_module_methods_io_contracts.md#43-chunking)。正式 method 枚舉拼字仍待 Q-002，`fixed_size` 可作候選，不新增必須支援的別名。ParsedDocument／Chunk 的五／六個外層 key 不變。
+Fixed-size 的 separators／keep_separator／header_levels 保留在 UI Draft 時不參與 Effective Config、驗證或變更影響。方法名稱、size／overlap、有效 Tokenizer 及內容欄位屬執行語意；改變後需按 Ingestion 變更處理。視窗與來源位置規則見 [04 §4.3](04_module_components_io_contracts.md#43-chunking)。正式 method 枚舉拼字仍待 Q-002，`fixed_size` 可作候選，不新增必須支援的別名。ParsedDocument／Chunk 的五／六個外層 key 不變。
 
 「全部保存／繼承」取代舊的使用者 stored_fields／metadata_fields 投影；原型短名稱 indexing.stored／chunking.metadata 仍待正式遷移，不直接作為新的有效配置語意。舊索引未保存或舊 Chunk 未繼承的內容不會憑空補回，必要時須重新 Ingestion／重建，不能只刪 Config 欄位就宣稱資料齊全。精確遷移與 Hash／Revision 細節留 Q-002／Q-015。
 
@@ -383,6 +391,8 @@ Indexing 宣告可過濾欄位；Retrieval 保存預設條件；Query API 可加
 本版範例依 2026-10-16 確認的預設規則省略 chunking.metadata_fields 與 indexing.stored_fields：全部有效 metadata 自動繼承，全部 Chunk.fields／metadata 自動保存。這是目標 Config 草案更新；現有 Prototype v0.9 與歷史匯出尚未遷移。搜尋／Filter 選擇仍需明確列出。
 
 以下將 **既有單層融合基線的 Local Search／Memory 邏輯 Config** 與**部署設定**拆成兩個 YAML 範例。Config 不含環境 URL／認證或實體集合；部署設定按穩定引用綁定。具體 Schema 仍待 Q-002，融合時點需求待 Q-014；目前沒有 Engine 可執行這些草案。
+
+**D-43 遷移註記**：以下完整 YAML 及 §6 欄位摘要保留舊版 `method` 選擇形狀，方便對照現有 Prototype；它們不是新的 Component Config 範本。新目標識別採 component_id，不能只將 recursive／none 等舊選項值換個鍵名便當成已註冊的 Component。正式元件識別對照、None 分支及 Config 版本遷移需在 Q-002 核定後一併更新。融合演算法 method（例如 sum_score）與元件識別分開，不因本次命名而改義。
 
 ```yaml
 contract_version: 0.1-draft

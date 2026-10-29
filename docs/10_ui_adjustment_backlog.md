@@ -1,6 +1,6 @@
 # UI Prototype Backlog 與完成紀錄
 
-> 文件集 v0.18 · 2026-10-16（Asia/Taipei）· §1～6 歷史已完成／§7 新增待辦
+> 文件集 v0.19 · 2026-10-16（Asia/Taipei）· §1～6 歷史已完成／§7 新增待辦
 >
 > 2026-10-15 15:53 先記錄待辦；當日 18:55 使用者要求調整 UI，當時已實作原型設定、連動與卡控。§1～6 的勾選代表該輪 UI／邏輯預覽已完成，不表示真實 Engine、ES／模型或 API 已實作；驗收與限制見 §6。2026-10-16 的新需求只記錄於 §7，未修改 UI。
 
@@ -13,7 +13,7 @@
 - 15:37：基本設定可直接使用，完整設定在進階區；預設 Retrieval 後全部合併為一份 ResultSet，再進 Reranker。
 - 15:53：進階區的同 Query 多路合併、跨 Query 合併預設勾選；Reranker 預設選一個 fields 下的內容欄位；其餘依前述規劃，先不實作。
 
-本清單是最新 UI 待調整基準，取代 [09 §3～6](09_inference_contract_ui_plan.md) 早期以獨立 Top N／可任意排列操作卡片為主的提案。資料型別仍見 [05](05_data_contracts_search_design.md#inference-state-draft)，執行規則見 [04](04_module_methods_io_contracts.md#result-processing)；正式 Config 欄位、遷移與 Adapter 能力仍待相關 Q-ID 核定。
+本清單是最新 UI 待調整基準，取代 [09 §3～6](09_inference_contract_ui_plan.md) 早期以獨立 Top N／可任意排列操作卡片為主的提案。資料型別仍見 [05](05_data_contracts_search_design.md#inference-state-draft)，執行規則見 [04](04_module_components_io_contracts.md#result-processing)；正式 Config 欄位、遷移與 Adapter 能力仍待相關 Q-ID 核定。
 
 ## 2. 預設狀態
 
@@ -139,6 +139,12 @@ UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／
 
 10:05 追加：使用者已確認全部內容保存／metadata 全繼承的三點簡化，列為 UIB-005／006；Rewrite 試跑與固定輸出問題仍在討論，UIB-007 標為提案待確認。均未修改 Prototype。
 
+10:22 追加：UIB-008 記錄 Rewrite／Multi-query 合併建議、UIB-009 記錄 Generation 預設／進階 JSON 輸出建議；兩項均為討論提案，未新增已確認決策或實作。
+
+2026-10-28 追加：UIB-010 記錄 Module Developer 方法在 Builder 的選用、設定與相依驗證；新增角色／擴充需求見 D-40，具體目錄與 UI 呈現為規劃待細化。維持先文件、後 UI，不新增程式上傳／安裝入口。
+
+同日 D-42：使用者確認依建議規劃 Schema 驅動表單及五項操作行為，具體描述草案集中於 [12](12_component_schema_ui_contract.md)。UIB-010 增補實作／驗收項目，尚未要求修改 Prototype；原型版本維持 v0.9。
+
 | ID | 待調整項目 | 主責規格／階段 | 狀態 |
 |---|---|---|---|
 | UIB-001 | Chunking 增加 Fixed-size 及方法參數卡控 | 04 §4.3、05 §6.4、06 §3；Engine M2／Builder M5 | 待使用者要求改 UI |
@@ -148,6 +154,9 @@ UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／
 | UIB-005 | Indexing 移除儲存內容選單，預設保存全部 Chunk.fields／metadata | 04 §4.5、05 §6、06 §3；D-39 | 已確認，待要求改 UI |
 | UIB-006 | Chunking metadata 預設全部繼承，移除逐欄繼承選單 | 04 §4.3、05 §4.3、06 §3；D-39 | 已確認，待要求改 UI |
 | UIB-007 | Rewrite／Multi-query 單模組測試與結構化輸出檢視 | 04 §5.1.1、06 §3.3.1；Engine M2／Builder M5 | 提案待確認，尚未實作 |
+| UIB-008 | Rewrite／Multi-query 合併為單一 Query Rewrite，以 1／N 控制 | 04 §5.1.2、06 §3.3.2；Q-002／Q-003 | 提案待確認，尚未實作 |
+| UIB-009 | Generation 預設格式＋收合的進階自訂 JSON Schema | 04 §5.4.1、06 §3.5；Q-002／Q-003／Q-018／Q-019 | 提案待確認，尚未實作 |
+| UIB-010 | Runtime Component 目錄、Schema 動態表單、動態候選與相依卡控／版本資訊 | 04 §7.5～7.6、07 §5.8、11／12、08 §4.3；D-40～43／Q-019／Q-022／Q-025 | Component 命名、方向與五項操作行為已確認；格式為草案，待要求改 UI |
 
 ### UIB-001：Fixed-size 控制項與設定連動
 
@@ -196,3 +205,46 @@ UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／
 - [ ] 使用正式 Engine 的相同模組／Adapter／驗證；只檢查本模組必要設定。顯示生成 Prompt、要求筆數、解析後 Queries、保留原始問題的效果及格式／數量／非空／重複錯誤；原始回應可收合，Token／耗時僅顯示真實可取得數值。
 - [ ] 平台提供輸出 Schema，使用者主要編輯改寫內容 Prompt。服務能力不支援時明確說明；失敗／修正重試／拒答／截斷依核定政策呈現。None 不呼叫 LLM，Mock 不冒充真實試跑。
 - [ ] 測試輸入或 Prompt／LLM／count／原始問題選擇變更後，舊結果標示過期；舊非同步回應不覆蓋新測試。不自動保存 Config／Ingestion，也不把試跑列為儲存必要 Gate。
+
+### UIB-008：統一 Query Rewrite 設定（提案待確認）
+
+- [ ] 若採用，改成啟用／停用、Query 數量 N、一份有效 Prompt、LLM 及 include_original。N=1 為單筆改寫，N>1 為多個檢索表述；N 不含原始問題，停用不呼叫 LLM。
+- [ ] count 自動帶入輸出 Schema 的陣列長度約束及後端驗證；說明 Prompt 決定內容，平台契約決定格式／數量。提供固定格式要求預覽，保留自由編輯；改 N 不自動覆寫人工 Prompt，多樣性另需檢查。
+- [ ] 將試跑、流程摘要、Query／跨 Query 合併卡控、AI 建議與匯出對齊同一計畫；驗證 1／N、原始問題選項與未支援的模型能力。此項不等於 UIB-007 試跑已被核可。
+- [ ] Edit 遷移原 Rewrite 為 N=1、Multi-query 保留原 N 與當時有效 Prompt。另一份舊 Prompt 草稿的保存／恢復政策先核定，取消不改已存配置，不靜默丟棄手寫內容。
+
+### UIB-009：Generation 預設／自訂 JSON 輸出（提案待確認）
+
+- [ ] 若採用，基本區保留預設回答與引用的簡短格式預覽；「進階輸出設定」預設收合，自訂 JSON 預設關閉。只展開不改 Config，明確啟用後才生效，關閉仍保留草稿。
+- [ ] 可編輯回答業務內容的 JSON Schema，定義欄位／型別／必填／陣列等，提供格式範例及 Schema 驗證；不能以一般 JSON 範例或 Prompt 文字冒充結構限制。型別／Schema 子集依模型服務能力與正式規格核定。
+- [ ] 自訂僅控制回答內容，平台 request／版本／可信引用另外管理。顯示 API 受控邊界；payload 容器、answer 型別相容與版本遷移未定前，不直接更改現有 HTTP 回應／SDK。
+- [ ] 若需接 UI 答案顯示／Evaluation，可指定主要回答文字路徑；失效／非文字路徑可定位。不適用的評估明示，不默默把整個 JSON 當文字答案。完整生成／驗證後回傳與 Streaming 的支援範圍明確區分。
+- [ ] 驗證預設／自訂切換保留草稿、停用參數不驗證／匯出、Schema 錯誤／模型不支援／回應不符／引用錯誤及 Edit／AI／部署一致性。只改輸出格式不要求重建索引；不新增 Output 模組或額外格式化 LLM 呼叫。
+
+<a id="uib-010-method-catalog"></a>
+<a id="uib-010-component-catalog"></a>
+
+### UIB-010：Module Developer 方法選用與設定
+
+- [ ] 配合 D-41 的兩個 repo 邊界，rag_platform 的 UI／Backend 經公開 API 取得 rag_engine Runtime 的 Component 目錄／Schema／驗證結果；Builder 不內嵌全部 Components。相容的新方法在更新目標 Runtime 後可供既有表單選用，不要求每次都重新部署 Builder。
+- [ ] 目錄／Schema 快取與驗證結果對回目標 Runtime 版本；處理版本切換、過期回應、目錄不可用與未知控制項。保留既有草稿與失效引用，不把「新 Image 已發布」顯示成「目前 Runtime 已更新」，特殊 UI／不相容 API 明示需對應版本。
+- [ ] Create／Edit 沿用既有單一 Builder 介面，方法選項來自目標 Engine／Runtime 核可目錄；依權限顯示方法用途、維護者、實作版本、相容能力與可用狀態。發布套件不代表當前 Runtime 已安裝，不顯示虛假的可執行狀態。
+- [ ] 基本參數依方法 Config Schema／顯示資訊呈現，保留必要與進階層級。component_id 與 Python class／package 名稱分開；通常只需清楚顯示方法名稱，詳細識別與版本可在說明中查看。複雜元件／自訂版面需另定支援範圍，不承諾任意 Schema 自動生成完整 UI。
+- [ ] 依同一 Engine Validator 執行 Parser／Chunker、Indexing／Retrieval、欄位／模型等相依卡控；不相容選項仍可見且不能選，提供原因。缺套件、版本不符及能力不足標示 `[MODULE NAME]` 並定位，不靜默改成其他 Component。
+- [ ] Edit 保留既有方法／解析版本與草稿；方法撤回／目標 Runtime 不再支援時保留失效引用及原因。更新方法時提示必要的重測／重新 Ingestion 影響，依正式版本策略處理，不因目錄更新而自動升級 System。
+- [ ] AI 助手與手動設定使用相同 Component 目錄、Schema、相依規則及草稿基準；套用、取消、失效引用與匯出走同一有效 Config。助手不推薦未知／未支援的方法或自行安裝 package。
+- [ ] 匯出檢查目標 Runtime Image 是否包含所需方法／版本；缺失時顯示對應模組與待補條件，與外部 API／DB 連線缺項區分。DEV 與 FTEST／ENT 的方法／邏輯 Config 一致，環境服務綁定分開。
+- [ ] 以 rag_engine components 新增 Chunker、成對 Indexing／Retrieval、不相容 Parser 結構、缺套件／錯版及取消 Edit 作為未來驗收案例；只做 Prototype 示範時明示目錄／執行為模擬。本輪不修改 UI，也不新增 Web IDE／任意程式上傳／套件安裝按鈕。
+
+D-42 的具體補充（格式以 [12](12_component_schema_ui_contract.md) 為準）：
+
+- [ ] D-43：UI 中表示可擴充實作的名稱統一為 Component／元件；使用者操作仍可顯示「切分方式」等清楚標籤。內部目錄、component_id、Descriptor 與問題定位依新契約整合；舊 Prototype method 選擇需明確版本映射，不能直接全域改名。Python／HTTP method 與融合演算法欄位保留原義，對照見 [03 §3.8](../03_architecture_proposal.md#component-terminology-migration)。本項待使用者要求改 UI，尚未實作。
+
+- [ ] 固定 Create／Edit 流程內依 Descriptor 產生 Component 參數表單；基本型別使用共用控制項，order／groups／advanced／UI hints 由平台映射，不載入 Component 提供的前端程式。
+- [ ] field_picker／service_picker 使用當前 Engine 解析的候選，涵蓋欄位來源階段、型別、索引能力及可見 LLM／Tokenizer／服務；相關不相容選項保留停用，不洩漏不可見服務。
+- [ ] 區分不適用分支與已選設定不合法：Memory 隱藏 DB 綁定並保留草稿；刪除全文索引後已選的全文 Retrieval 保留報錯，不能直接從有效流程略過。
+- [ ] 進階預設收合；錯誤摘要使用 Module＋node_ref＋field_path 定位具體實例，能展開對應欄位。無效草稿可繼續編輯，正式儲存／建立／套用仍需驗證。
+- [ ] 未知必要 widget／描述版本／required_ui_features 明示不支援，不偷偷改為一般文字框或任意 JSON 編輯；既有合法 Runtime 不因 Builder 不支援就停止服務。
+- [ ] 顯示由 Engine 推導的固定值與原因，例如 Retrieval 後端；顯式衝突要報錯。UI 不自行補出能力、默默修值或執行 set_value 規則。
+- [ ] 驗證結果對回 Runtime／catalog／draft／context 版本；舊回應、目錄錯誤、未知候選保留草稿並標為待驗證，不能以舊成功結果套用新版。
+- [ ] 依 [12 SUI-01～14](12_component_schema_ui_contract.md#acceptance-cases) 建立互動與跨入口一致性驗收。後端／UI 未實作前保持未完成；Prototype 模擬與真實 Runtime 驗收分開。

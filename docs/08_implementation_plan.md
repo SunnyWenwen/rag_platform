@@ -1,6 +1,6 @@
 # RAG Builder — 開發計畫、驗收與決策追蹤
 
-> 文件集 v0.18 · 2026-10-16 · 開發規格草案
+> 文件集 v0.19 · 2026-10-16 · 開發規格草案
 >
 > 目的：讓 coding agent 依同一套規格分階段開發，並持續記錄尚不清楚的問題。本文是決策／待決狀態的權威位置；它不把技術建議自動轉成使用者已核可決策。
 
@@ -24,7 +24,7 @@ v0.13 從 `e52c4d74a469522155d814f0ff51fddf8946f957` 核對交接文件、本串
 
 ## 2. 文件責任與建議閱讀順序
 
-先讀 [03](../03_architecture_proposal.md)，以 [§3 名詞定義](../03_architecture_proposal.md#terminology) 統一概念與責任邊界，再讀本計畫；實作依序讀 [05 契約](05_data_contracts_search_design.md)、[04 Engine](04_module_methods_io_contracts.md)、[07 整合](07_backend_runtime_integration.md)、[06 UI](06_ui_development_spec.md)。
+先讀 [03](../03_architecture_proposal.md)，以 [§3 名詞定義](../03_architecture_proposal.md#terminology) 統一概念與責任邊界，再讀本計畫；實作依序讀 [05 契約](05_data_contracts_search_design.md)、[04 Engine](04_module_components_io_contracts.md)、[07 整合](07_backend_runtime_integration.md)、[06 UI](06_ui_development_spec.md)。
 
 | 權威範圍 | 文件 |
 |---|---|
@@ -35,6 +35,9 @@ v0.13 從 `e52c4d74a469522155d814f0ff51fddf8946f957` 核對交接文件、本串
 | HTTP、平台儲存、工作與部署整合 | 07 |
 | 決策狀態、階段、驗收／阻擋 | 08 |
 | Inference Contract 討論摘要與 UI 整合提案 | 09；欄位以 05、決策以 08 為準 |
+| Prototype 待辦與歷史完成證據 | 10；使用者要求改 UI 時才實作 |
+| Component 開發、測試及套件交付流程 | 11；Engine 機制以 04、資料契約以 05 為準 |
+| Component 設定描述、UI hints、動態選項與相依規則 | 12；設定介面草案，I/O 仍以 05 為準，互動待辦記於 10 |
 
 同一型別／規則不在多份文件各寫一套。03 定義名詞，05 規範對應的資料結構／版本規則，本文保存決策來源及狀態；決策摘要不取代 03 的現行定義。程式 Schema 與文件同步；不能只更新 UI、測試或其中一份規格。
 
@@ -48,7 +51,7 @@ v0.13 從 `e52c4d74a469522155d814f0ff51fddf8946f957` 核對交接文件、本串
 | D-04 | 固定 Ingestion／Inference；Builder 與獨立 API Runtime 使用同一 Engine | 舊 03 v0.8／既有基線 | 03／04／07 |
 | D-05 | ParsedDocument 五個、Chunk 六個頂層 key；vectors 位於 Chunk | 舊 05 §3～4／既有基線 | 05 |
 | D-06 | fields／metadata 宣告 Schema；CSV 每列映射一次為標準 records | 舊 05 §15～16／既有基線 | 05／06 |
-| D-07 | 原有 Recursive／Header-aware、一個主要切分欄位、Token 計量；Fixed-size 擴充見 D-36 | 舊 05 §13.1／既有基線，新增方法不取消原方法 | 04 |
+| D-07 | 原有 Recursive／Header-aware、一個主要切分欄位、Token 計量；Fixed-size 擴充見 D-36 | 舊 05 §13.1／既有基線，新增 Component 不取消原方法 | 04 |
 | D-08 | Embedding fields→vectors；摘要先由輸入提供；文字 Dense 優先 | 舊 05 §6／既有基線 | 04／05 |
 | D-09 | ES／Local Search（FAISS＋BM25）；Local Memory／MongoDB | 舊 05 §8／既有基線 | 03／04 |
 | D-10 | Local Search 同程序／單副本；MongoDB 只持久化並支援重建 | 舊 03 §5.3／既有基線 | 04／07 |
@@ -70,7 +73,7 @@ v0.13 從 `e52c4d74a469522155d814f0ff51fddf8946f957` 核對交接文件、本串
 | D-26 | Ingest／Inference 的 API 端點說明隨時可看，包含未 Ingestion 狀態 | 2026-10-14 13:11 使用者要求／已確認 | 06／07 |
 | D-27 | 以部門 LangChain／LangGraph 生態為技術背景；Haystack 未被使用者選定 | 2026-10-12 15:58 對話核對／已確認偏好 | 03／04／Q-001 |
 | D-28 | Engine 是模組組裝／執行核心，Runtime 加 API，System 是套用 Config 的具體應用；可直接 SDK 建立 | 2026-10-15 名詞對齊／已確認方向 | 03 §3、04、07 |
-| D-29 | 正式 Config 指模組 Method／參數與邏輯；Blueprint 是助理引入的名稱，移出正式領域模型 | 2026-10-15 10:06 使用者釐清／已確認 | 03／05／06／07 |
+| D-29 | 正式 Config 指模組 Component／參數與邏輯；Blueprint 是助理引入的名稱，移出正式領域模型 | 2026-10-15 10:06 使用者釐清／已確認 | 03／05／06／07 |
 | D-30 | 同一 System 同版 Config 在不同環境保持相同；部署設定可不同 | 2026-10-15 10:06 使用者確認／已確認 | 03／05／07／Q-015／Q-021 |
 | D-31 | 正式階層為 Workspace → System，無額外 Group 層 | 2026-10-15 10:06 使用者確認／已確認 | 03／05／06／07 |
 | D-32 | 名詞定義集中在 03 §3，05 保留資料／版本規則，08 保留決策紀錄；其他規格引用 03 | 2026-10-15 10:22～10:24 建議後由使用者確認撰寫／已確認 | 03 §3、04～08／README |
@@ -81,6 +84,10 @@ v0.13 從 `e52c4d74a469522155d814f0ff51fddf8946f957` 核對交接文件、本串
 | D-37 | 階段重排 M0～M7；M4 獨立 AI 設定助手，M5 Builder 前後端與助手 UI 整合，M6 評估，M7 獨立交付 | 2026-10-16 09:31～09:45 討論及使用者修正／已確認方向 | 03／06／07／08 |
 | D-38 | 後續需求先更新文件；Prototype 調整記入 backlog，使用者要求改 UI 時才實作 | 2026-10-16 09:42／09:45 使用者要求／已確認 | README／03／06／08／10 |
 | D-39 | Indexing 保存全部 Chunk.fields／metadata，移除「儲存內容」；只選全文／向量／過濾索引；Chunking 預設繼承全部有效 metadata，排除功能有需求再規劃 | 2026-10-16 10:05 使用者確認前述三點／已確認，UI 尚未改 | 03／04／05／06；UIB-005／006 |
+| D-40 | 新增 Module Developer，依公開 Module 契約開發 Component，讓 Builder User 選用；04 維護 Engine 擴充規格，11 維護開發指南 | 2026-10-28 使用者提出角色／修改 L1，並要求依前述討論調整文件／需求方向；具體介面、套件與發布政策仍待決 | 03／04／11；Q-001／Q-002／Q-022；UIB-010 |
+| D-41 | 固定兩個 repo：rag_platform 放 Builder 前後端與管理整合；rag_engine 放 SDK、Engine、Components／Adapters 與 Runtime API。Module Developer 在同 repo 提交 Component，整合測試後交付完整 Runtime Image；接口相容時 Builder／Runtime 可各自升級 | 2026-10-28 使用者確認 Builder 與 Engine＋擴充實作分為兩個 repo，並要求調整文件／已確認；精確套件／接口／CI 細節仍待決 | 03 §3.7／04／07／11；Q-001／Q-019／Q-021／Q-022；UIB-010 |
+| D-42 | 採 Schema 驅動 Component 設定表單：共用 Schema 輸出、UI hints、動態選項與 Engine 相依驗證；不相容選項可見且停用、無關欄位隱藏、進階收合、失效選擇保留報錯、未知必要控制項明示不支援 | 2026-10-28 使用者回覆「好，按照你的建議規劃」／方向與操作行為已確認；component-ui-0.1-draft 的鍵名、Meta-schema、工具與 API 仍待 M0 起分階段核定 | 04 §7.6／06／07 §5.8／11／12；Q-001／Q-002／Q-019／Q-022／Q-025；UIB-010 |
+| D-43 | 可擴充實作統一稱 Component；Module 為功能分類／契約，Component Instance 為配置後的實例。同步 component_id、SDK 類別、目錄／套件／entry point、Descriptor 及文件／L1 圖 | 2026-10-29 使用者確認「Component 好了，有疊積木的感覺」並要求更新相關文件／命名已確認；不改模組分工或執行行為 | 03 §3.8 為權威對照；04～12／README／L1；Q-002 遷移，UIB-010 |
 
 「既有基線」不代表已涵蓋後續需求。D-23 的合併時點配置是使用者已提出的目標，不能以 D-11 的舊 Prototype 限制否決；兩層合併預設勾選並在 Retrieval 後的 UI 已於 2026-10-15 確認／實作，見 10 的歷史完成紀錄。Q-014 仍負責正式支援路徑、stage 命名及執行契約等剩餘細節。
 
@@ -102,6 +109,8 @@ v0.13 從 `e52c4d74a469522155d814f0ff51fddf8946f957` 核對交接文件、本串
 M1 先跑標準 records 與既定的 Recursive 最小路徑；Fixed-size 已列入方法需求，於 M2 擴充驗收，不因增加方法而要求 M1 同時完成所有能力。CSV 由映射產生相同輸入。M2 按子任務交付，不必全部方法完成才開始 M3；Runtime 可先包裝已可用 Engine，再逐步增加能力。M4 只能建議當前 Registry 已支援的方法。
 
 Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，不要求每個 RAG System 各建一個 Image。匯出通常引用支援該 Config 的 Runtime Image 版本／Digest，另外交付 Config 與部署設定。M6 的評估純邏輯可在 M1／M2 先做，但不能把早期模組測試當作 M6 整體評估已完成。
+
+2026-10-28 D-41 補充：M0 規劃兩個 repo 及套件邊界；M1～M3 的 Engine／Components／Runtime API 在 rag_engine 開發，M5 Builder 在 rag_platform 開發。M4 獨立助手核心的目錄建議置於 rag_engine，保留無 Builder 的 Python／API 入口，M5 另做 UI 整合；實際包裝見 07 §2。M7 交付由 rag_engine 建置的完整 Runtime Image，不要求另一個 Components repo 進行 Image 二次組裝。階段順序與已確認功能範圍維持不變。
 
 ### 新舊階段對照
 
@@ -142,6 +151,28 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 
 實際 UI 樣式、選擇性套用／撤銷及服務契約拼字仍依 Q-024／Q-025 核定。M4 與 M5 各自需要真實整合證據；規則助手或 Mock 可驗證互動，不能完成真實 AI 驗收。
 
+<a id="method-development-plan"></a>
+<a id="component-development-plan"></a>
+
+### 4.3 Module Developer 配套的分階段補充（2026-10-28）
+
+沿用 M0～M7 次序與既有方法範圍；下列是對 D-40／D-41 的規劃分工，不表示對應 SDK／服務已交付。Component 擴充不能依賴 Engine 私有實作，故最小公開邊界安排於 M0／M1；SDK／Engine／Components 集中同 repo 不取消套件與契約邊界，正式建置發布細節留相關 Q-ID。
+
+| 階段 | 補充工作 | 驗收重點 |
+|---|---|---|
+| M0 | Module I/O／Config 與 SDK 邊界、component_id／版本、能力相依；界定首批可擴充 Module | 契約有正反例，Pending Schema 不被當正式 API；Q-001／Q-002／Q-022 依實際工作逐項核定 |
+| M1 | 最小 SDK／Registry／受控明確註冊；rag_engine components 中的內建 Recursive 與自訂示範 Chunker 遵循同一契約 | 建置 package 後在乾淨環境安裝並接入最小 Engine 路徑，不依賴原始碼路徑／私有介面；衝突／錯版／非法輸出可定位 |
+| M2 | 依 Component 擴充提供其他 Module 介面、能力／artifact 相容檢查、套件測試與受控交付；entry points 為候選 | Parser／Chunker、Indexing／Retrieval 成對方法可整合；未支援組合明確失敗，發布版本可追溯 |
+| M3 | Runtime 呈現實際可用方法／版本、Schema、Config 驗證與初始化錯誤；精確 API 留 Q-019 | 目錄／驗證對回相同目標 Runtime；Image 已發布但執行環境未更新時不宣稱新方法可用；無執行期任意下載／安裝 |
+| M4 | 獨立助手使用目標 Engine 的可用目錄、Schema 與相依規則 | 不捏造 component_id／版本，不推薦目標環境不支援的方法 |
+| M5 | Builder 透過公開 API 使用目標 Runtime 的 Component 目錄／Schema／驗證，呈現版本與不可用原因；UIB-010 | 相容的新方法在更新 Runtime 後可供既有表單選用，Builder 不內嵌全部方法；Edit 不靜默換版，手動／AI／匯出語意一致 |
+| M6 | Evaluation 方法沿用公開擴充／測試規則，報告可追溯方法與版本 | 新評估方法不繞過 Dataset／指標語意檢查；不是提早宣稱任意自訂評估已完成 |
+| M7 | rag_engine 統一交付 Engine＋核可 Components＋Runtime API Image；rag_platform 的 Builder 分開建置／部署 | 無 Builder 環境可依 YAML＋Image 執行相同方法；契約相容可各自升級，缺失方法／錯版及索引不相容可定位 |
+
+兩個 repo 的分工已依 D-41 確認；精確內部目錄與建置工具仍可逐步核定。正式動工前的優先順序是：共用契約／最小 SDK（Q-002）→ 同 repo 可安裝範本與載入細節（Q-001／Q-022）→ 進共享 DEV 的發布與信任政策（Q-022）→ 既有 System 升級及交付鎖定（Q-015／Q-021）。不要求所有 Q-ID 一次決完。
+
+D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor／Schema 子集、規則語意及 fixtures；M1 做共用 Schema 輸出／Registry／設定驗證，M2 擴充各方法能力；M3 提供目錄、Context／動態候選與驗證 API，M4 助手重用，M5 完成動態表單與 SUI-01～14 互動驗收。可用方法、有效 Config 與服務／資料就緒分開檢查；不依 Schema 文件存在就宣告 API 或 UI 已完成。
+
 ## 5. 驗收材料與完成定義
 
 ### 5.1 必備材料（在開發階段建立，並非本輪已存在）
@@ -154,6 +185,8 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 | provider fakes | 合法回應、Timeout、429、缺項、錯誤維度、非法 Rerank index、未知引用 |
 | usage examples | 直接 Engine、HTTP、CSV 映射、工作輪詢、部署後首次 Ingestion |
 | assistant cases | M4 無 Builder 的新建／修改 Config、缺服務／未知方法；M5 的同一建議與 UI 控制項對照、Diff／取消／過期草稿案例 |
+| component package cases | rag_engine components 的 package 在乾淨環境安裝、單一 Component／整合測試、衝突／錯版／能力不足案例、完整 Runtime Image Component 清單與 Builder 契約測試；詳見 11 |
+| component schema／UI cases | 12 的 SUI-01～14；Schema／Python 設定一致、動態選項、相依失效與不適用分支、未知必要控制項、多實例定位、版本過期、UI／AI／Python／HTTP 同規則 |
 | env／commands | 不含 Secret 的環境範例；安裝、測試、啟動與 integration 指令 |
 
 05 有可解析的完整 YAML 草案，但正式 Schema／Engine 尚未實作，不能宣稱它現在已能運行。
@@ -179,6 +212,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 ### Q-001 技術棧、版本與相容矩陣
 
 - 已有方向：使用部門 LangChain／LangGraph 生態，並以 Python／Typed Contract 進行設計；不重新把 Haystack 當成已選框架。不清楚的是套件版本、Web／前端框架、ES 版本／授權及 BM25／Tokenizer。
+- 2026-10-28 已確認 D-41：rag_platform 管理 Builder，rag_engine 集中 SDK／Engine／Components／Runtime API。仍待定的是 repo 內可獨立安裝的套件名稱／精確目錄、Python／SDK／Engine 相容矩陣與建置工具；目錄草案見 07／11，發布政策見 Q-022，不能再將 repo 邊界列為未決。
 - 建議：沿用 Python／既有生態；選最小必要套件並鎖定。Web Framework／前端沿用部門標準；具體版本要實測再鎖。
 - 替代：以專案獨立技術棧開發，需增加維運／整合評估。
 - 負責角色：技術負責人＋Engine／前後端；阻擋 M0 正式依賴及 M2 ES 選型。
@@ -188,16 +222,29 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 ### Q-002 共用 Schema、Config、SDK 與版本凍結
 
 - 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System；Local Search 持久化模式隨 Config 跨環境固定（D-33）；全部 Chunk.fields／metadata 保存與合法 metadata 全繼承（D-39）。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile、InferenceState／QueryContext／ResultSet 草案，以及舊保存／繼承投影、原型短名稱／匯出標籤 migration。
+- 2026-10-28 補充：Component SDK 的 Module-specific I/O 包裝、run／初始化／釋放簽名、RunContext、Registry／Factory 與 Config Schema 介面待凍結；Registry 草案改稱 component_id，不直接改寫既有 Config。精確方法／版本引用、舊 module_id 別名與遷移須一致驗證；11 的 Python 程式只作介面示意。
 - 建議：先核定最小完整 Config＋單一公開 Engine interface；Pydantic 匯出 JSON Schema，UI 使用相同來源。用完整欄位路徑；未知別名拒絕。
 - 替代：直接沿用 Prototype 全部短名稱；需補齊其缺少型別與執行語意。
 - 負責角色：Engine＋Backend＋Frontend；阻擋 M0 契約凍結。
 - 決策：未定；更新 04／05／07、Schema 及完整範例。
+
+<a id="parsed-document-schema-pending"></a>
+#### ParsedDocument 實際 Schema（2026-10-28 加入待討論）
+
+- 狀態：**待討論／延後定案**。使用者要求 ParsedDocument 的實際 Schema 之後再決定；本次只登錄待決事項。既有五個頂層 key 方向保留，不把討論中的細部結構或例子視為已核可的正式契約。
+- 欄位契約：各欄位的精確型別、必填／選填、預設值、空值及未知欄位政策，以及完整 Schema／驗證範例。
+- 結構表示：評估「完整文字＋位置標註」與 Element／樹狀模型等表示方式；`structure.<field_name>.blocks` 是目前草案，不是業界通用格式，也尚未定案。需釐清它與 `fields` 的對應方式，以及標題層級、段落、page／slide／表格等結構的必要範圍。
+- 位置與來源：討論頁面與章節的關係、跨頁區塊／多位置表示、閱讀順序、文字正規化後的位置映射，以及既有 Unicode code point／0-based 半開區間規則如何驗證及由外部 Parser 轉換。保留頁碼不等於已決定新增 Page-aware Chunking。
+- 模組相容：定義 Parser 能產出的共用結構、各 Chunking 方法需要的結構、自訂結構的名稱／版本／Schema，以及 Adapter、相容性驗證與缺少結構時的處理；具體方法與首批 Parser 範圍仍連動 Q-004／Q-005。
+- 輸入邊界：是否及如何接受上游已解析資料（含頁碼／結構），與原始資料由平台解析的輸入契約一起討論。目前 JSON records 不接受 `structure`；新增輸入模式、直接匯入 Chunk／vectors 均未因此核可。
+- 後續：定案後同步 05 ParsedDocument 定義與範例、04 模組契約及 07 Ingestion API；必要 UI 變更依既有工作方式登錄 10 backlog，待明確要求修改 UI 再實作。
 
 <a id="q-003"></a>
 ### Q-003 模型服務與 Adapter 契約
 
 - 不清楚：首組模型、Profile／版本辨識、Tokenizer 取得、Chat 角色／輸出格式、多 Query 解析、Rerank 服務限制。
 - 本輪待確認提案：Rewrite／Multi-query 採固定 queries 結構及 1／N 數量、Provider Structured Output／Tool／文字解析能力分級、模組 Schema 與共用 LLM Adapter 分工；格式與語意都由後端重驗。細節見 04 §5.1.1，不因寫入提案就凍結 Provider 或重試／fallback 預設。
+- 10:22 延續提案：Rewrite／Multi-query 可合併為一種啟用方法，以 count=1／N 區分；count 動態產生 Schema，Prompt 控制內容而不覆寫格式／筆數。Generation 另提預設格式＋收合的自訂 JSON Schema；支援能力、回傳 Schema 子集與拒答／截斷處理仍待核定，見 04 §5.1.2／§5.4.1。
 - 既有方向：Embedding API、System 共用 LLM 的 OpenAI-compatible API、平台約定 Rerank API；原型格式基線為 embeddings／Chat Completions／04 的 rerank。原型基線不等於所有 Provider 相容性都已核定。
 - 建議：先選一組可實測的 Adapter／服務及 Profile，各有 Fake 與真實契約測試；不同格式顯式 Adapter。
 - 替代：第一期支援多 Provider 格式，增加測試矩陣。
@@ -217,6 +264,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 ### Q-005 Parser／OCR 首批格式
 
 - 不清楚：PDF／PPTX／圖片／TXT／MD 哪些第一期支援；套件／外部 OCR、表格／標題 Schema、加密／損壞處理。
+- 關聯待決：ParsedDocument 實際 Schema、共用／自訂結構及 Parser／Chunking 相容契約見 [Q-002 子項](#parsed-document-schema-pending)；本節不自行凍結 `structure` 形狀或新增切分方法。
 - 建議：M1 先 structured records，Native text 及其他格式逐一有測資才開放；OCR 服務另驗證。
 - 替代：第一期納入全部格式，需增加品質／成本驗收。
 - 負責角色：產品＋Engine；阻擋 M2 格式能力，不卡 M1 records。
@@ -309,6 +357,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 ### Q-015 Revision、有效 Config Hash 與 Index 版本
 
 - 已確認：同一 System 的同版邏輯 Config 跨環境相同，部署設定分開；文件 source_revision 與 index_generation 概念分開。不清楚的是保存／生效時點、Hash、草稿衝突、CSV mapping 歸屬、環境部署識別／資料版本及快照切換。
+- 2026-10-28 補充：需定 Component／package／Engine 解析版本保存位置、如何納入可重現執行與相容判定、更新 Component 後的重測／重建與回復政策；新版發布不自動升級既有 System，僅看版本號不能判定索引相容。
 - 建議：分開保存版本與執行綁定；Hash 只納有效配置並保留有語意順序，使用樂觀版本檢查。
 - 替代：單一 active revision，改配置後阻擋到準備完成；仍須避免 lost update。
 - 負責角色：Engine＋Backend＋Frontend；阻擋 M0 Hash 凍結及 M5 版本操作。
@@ -336,6 +385,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 ### Q-018 Evaluation 範圍與 Gate
 
 - 不清楚：首批指標、Dataset／Ground Truth 格式、Judge／Rubric、Chunk／Document 層級、Rerank 前後、公開檢索 Target、Gate 門檻。
+- Generation 自訂 JSON 若採用，還需核定主要回答文字欄位映射、無文字 payload 時哪些指標不適用，以及 UI／Dataset 相容性；不得把未定的整個 JSON 序列化成答案後宣稱完成既有評估。
 - 建議：先有可驗算的 Retrieval 指標與操作指標，再加明示 Judge；缺資料拒絕或 skipped。
 - 替代：先 End-to-end Judge；不得冒充有可靠 Retrieval Ground Truth。
 - 負責角色：產品／資料＋Engine＋Backend；阻擋 M6 正式評估／Gate，不卡 Query 主線。
@@ -345,6 +395,9 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 ### Q-019 API／HTTP Envelope 與呼叫認證
 
 - 不清楚：完整 CRUD／助手／管理 API、OpenAPI、錯誤碼／狀態、上傳限制、manifest、冪等鍵、DEV 路由、認證及暴露 Trace。
+- D-41 補充：Builder 與 Runtime 透過 API／Component 目錄合作；需核定目標 Runtime 版本識別、Config Schema／能力目錄、完整 Config 驗證、快取失效與接口相容政策。能力範圍見 07 §5.8，精確端點與 Envelope 仍 OPEN。
+- D-42 已按建議規劃描述／Context／選項及驗證關聯值，候選格式見 12；精確路徑、認證、版本識別與公開 Meta-schema 仍 OPEN，不影響既有 Ingest／Query 範例。
+- 10:22 的 Generation 自訂 JSON 提案只針對業務內容；HTTP envelope 的平台欄位、payload 容器、answer 字串相容性、SDK 型別、錯誤／Streaming 需另核定。當前 07 範例不因提案而變動。
 - 建議：沿用 07 的 Endpoint 草案，先凍結 Ingestion／Status／Query，補齊 Backend API；HTTP 與領域錯誤分層。
 - 替代：沿用既有企業 API 規範並明確映射。
 - 負責角色：Backend＋Runtime＋Frontend／身分團隊；阻擋 M3 Runtime／M4 助手 API／M5 Builder 真實串接。
@@ -362,6 +415,8 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 <a id="q-021"></a>
 ### Q-021 Export、FTEST／ENT 與 Secret Vault
 
+- 2026-10-28 D-41 確認：rag_engine 統一建置含 Engine／核可 Components／Runtime API 的完整 Image，rag_platform 建置 Builder Image；採用新版 Engine／Component 時仍需更新 Runtime，接口相容的 Builder 可維持原版。目標 Image 須包含 Config 所需 Component packages 並保存版本；Component 清單／鎖定格式與缺失錯誤仍待決，YAML 不會自動提供 Python 方法程式。建置／發布／部署範圍見 07 §9.4。
+
 - 已確認：同版邏輯 Config 不隨環境改變，環境連線／Secret／資源為部署設定；Memory／MongoDB 模式也跨環境保持一致（D-33），不能只換部署設定切換。不清楚的是 Image／Bundle 包裝、Vault／注入、Secret 型別、K8s 資源／Ingress／Probe 及 CD 流程。
 - 建議：版本鎖定 Runtime Image＋有效 Config＋環境覆寫；Local 單副本；明示未帶資料且無 Builder 依賴。
 - 替代：使用單位既有 Helm／GitOps 形式；仍需相同可驗證交付內容。
@@ -371,11 +426,14 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 <a id="q-022"></a>
 ### Q-022 自訂程式的交付與隔離
 
-- 不清楚：第一期僅核可套件還是 UI 上傳；依賴建置、Sandbox、Secret／網路、權限與版本測試。
-- 建議：先受控 Registry／核可 Adapter，保留固定 Contract；未完成隔離前不執行任意使用者 Python。
-- 替代：UI 上傳＋隔離試跑，需獨立安全與資源規格。
-- 負責角色：產品＋平台／Engine；阻擋自訂程式正式能力，不卡內建模組。
-- 決策：未定；更新 03／04／06／07。
+- 已確認方向：D-40 加入 Module Developer，由公開契約下的 Component 擴充能力供 Builder 使用；不是所有特殊策略都由平台核心開發者實作。2026-10-28 補齊 04 與 11 的規劃，未凍結套件／隔離細節。
+- 已確認開發位置（D-41）：使用本機 IDE／SDK，在 rag_engine components 目錄開發並提交 PR；與同 repo 的 Engine／Runtime API 整合測試後交付完整 Runtime Image。公開套件／契約邊界保留，以乾淨環境安裝驗證替代「必須另建 Component repo」的驗收要求。
+- D-42 補充：Component 的設定描述與規則是受限 JSON 資料；共用 Schema 輸出與 Registry 驗證，不以瀏覽器腳本或任意 import 擴充 UI。具體能力／控制項名稱登錄、支援子集與契約測試待核定，見 12。
+- 建議起步：受控 Registry、核可 Component packages，先明確註冊再評估 entry points；不先建 Web IDE／任意程式上傳，也不要求以跨 repo Image 相依交付每次方法更新。
+- 尚待決：核可／發布角色與可信程式範圍、依賴建置／選配套件倉庫、Factory／entry point 解析、SDK 相容矩陣、package／Component 版本對照與撤回／升級。跨 System 多版本／依賴衝突、目標 Runtime 方法可用性與索引相容另連動 Q-015／Q-020／Q-021。
+- 若擴大為不受信任開發者或 UI 上傳：需另核定執行隔離、Secret／網路／資源限制與管理權限；Schema／RunContext 不能代替 Sandbox。未完成該方案前保留共享 Runtime 不任意執行使用者 Python 的限制。
+- 負責角色：產品＋Platform／Engine Developer＋Module Developer；M0／M1 核定最小公開介面與載入，進共享 DEV 前核定發布／信任政策；不阻擋本文整理及既定內建路徑的受限開發。
+- 決策狀態：角色／擴充需求與兩個 repo 分工已確認，具體技術與發布政策 **OPEN**；更新 03／04／06／07／11，UI 先記 10 UIB-010。本輪不以 repo 決策代替其餘細節核定。
 
 <a id="q-023"></a>
 ### Q-023 Fallback、無資料、Budget 與引用
@@ -390,6 +448,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 ### Q-024 真實 AI 設定助手
 
 - 已確認：可不開 Builder 由 Python／API 產生或修改 Config，且必須於 Builder 中使用相同助手核心並驗收 UI 草稿操作；正式服務及 Schema 不反向依賴 Builder DB。不清楚：模型／Prompt／成本、樣本抽取與保存、結構化輸出、Diff／Patch、過期建議、選擇性套用與撤銷。
+- D-41 下的目錄建議：獨立助手核心放 rag_engine，使用同一 Registry／Validator；rag_platform 負責 Builder UI／Backend 整合。此為套件配置建議，HTTP 宿主、可選依賴與 Image 包裝仍待核定，不使 FTEST／ENT Runtime 必須啟用助手。
 - 建議：限制 Schema／Registry、只用明確樣本、先顯示差異並驗證；以 Draft 基準防止覆蓋人工改動。
 - 替代：先保留規則助手，清楚標示 Mock；不得聲稱已由 LLM 理解資料。
 - 負責角色：產品＋Engine／Contracts＋Backend／AI；M5 另含 Frontend。阻擋 M4 真實獨立助手及 M5 的助手 UI 整合，不卡手動配置。
@@ -400,6 +459,9 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 
 - 已確認：Parsing 初始只顯示結構化 JSON，其他格式／設定全在預設關閉進階區；LLM／Prompt／範例及 API 說明要求見 06 §3.2。待定的是其餘基本／進階分組、展開記憶、改動摘要、範本、真實試跑與診斷範圍。
 - 2026-10-16 討論提案：在 Rewrite／Multi-query 旁提供不需 Ingestion 的單模組測試，使用當前草稿與相同 Engine／Adapter，顯示實際 Query 與格式驗證；是否採用及展示細節待確認，UIB-007 保持提案狀態，不擴張成所有模組都要試跑。
+- 後續提案 UIB-008／009：Rewrite 兩方法合併為 1／N 同一組設定，Generation 預設格式與預設收合的進階 JSON 輸出設定。均為待確認提案，不能覆蓋原型／既有 Config 或自動勾選為已實作。
+- D-41／UIB-010 補充：方法選單／設定依目標 Runtime 的目錄與 Schema，需定動態表單支援範圍、目錄更新／過期狀態及不相容 UI 提示；相容新增 Component 不要求每次重建 Builder。特殊控制項仍需前端配合，不承諾任意 Schema 均可自動呈現。
+- D-42 已確認固定 Builder 流程搭配動態 Component 參數表單，以及 12 §1 的五項操作行為；不再把這些方向列為未決。12 提供欄位／服務選擇器、相依狀態與 SUI-01～14 草案；具體控制項樣式、支援版本與其餘範本／試跑範圍仍待核定。
 - 建議：保留已確認互動，再核定其餘分組；必填錯誤可定位，保持同一 Config。試跑與範本逐項啟用。
 - 替代：單獨新手／專家入口，但兩者仍需共享 Config／驗證。
 - 負責角色：產品＋Frontend；阻擋 M5 正式 UX 凍結，不卡 Schema／Engine。
@@ -683,3 +745,51 @@ Inference Schema／五份 JSON／Python 範例、圖面及其他服務實作均�
 - 使用者提出 Rewrite 的 UI 試跑及如何固定 Query 數量／LLM 輸出。04 §5.1.1／06 §3.3.1 記錄 Structured Output＋後端驗證＋有限失敗處理與單模組試跑的提案；不是已確認預設，不新增 D-ID 代替使用者決策。Provider／格式／去重／重試／fallback 分別留 Q-003／Q-017／Q-023；接口細節留 Q-019。
 - 10 新增 UIB-005／006 已確認待 UI 實作、UIB-007 提案待確認。沒有新增畫面、呼叫模型或建立測試端點，Prototype 仍 v0.9。
 - 文件集 v0.18，D-ID 共 39、Q-ID 27、既有 A-ID 40。新規則與舊版 UI 完成紀錄分開；JSON Schema、Inference 範例、程式／測試、圖面未變。文件與 Python 示範驗證不能代替真實 Provider／Engine 驗收。
+
+## 20. 2026-10-16 10:22 Rewrite 合併與 Generation 格式提案
+
+- 使用者詢問 Rewrite 是否等於 Multi-query=1、是否合併，以及 count／Schema／自由 Prompt 的分工。核對原型為兩種選項與兩份 Prompt；建議合成一種啟用方法，以 N 控制單／多 Query，保持原始問題及設定遷移，見 04 §5.1.2／06 §3.3.2。
+- count 由平台動態帶入 queries Schema；Prompt 描述改寫語意，不能繞過格式／筆數驗證。格式正確仍不代表語意／多樣性正確。原生限制依服務能力，不支持時走已核定策略／明確錯誤，不能宣稱所有 OpenAI-compatible 服務都相同。
+- 使用者提出 Generation 可自訂 JSON、預設格式與收合進階設定。04 §5.4.1／06 §3.5 整理推薦設計，區分業務內容 Schema、平台回應／可信引用、主要回答文字路徑與完整回傳／Streaming。現有 QueryResult.answer 字串與 HTTP 範例未改；payload 容器／版本相容留 Q-002／Q-019，評估相容留 Q-018。
+- 以上為本輪提問後的討論提案，待使用者確認；不新增 D-ID、不把 Schema／預設值／UI 細節升格為定案。10 UIB-008／009 保持未完成，既有 007 試跑提案也不因此視為已核可。
+- 文件集 v0.19；M0～M7、D-ID 39、Q-ID 27、A-ID 40 維持。只更新九份 Markdown；Prototype v0.9、公開 Schema、Config YAML／HTTP JSON 範例與其他可執行產物未變。
+
+## 21. 2026-10-28 Module Developer 與文件分工
+
+- 使用者新增 Module Developer 需求，已要求 L1 呈現 Engine／開發關係；接續討論 SDK、Component 識別、repo／套件及 import。此次依前述討論整理文件，D-40 記錄角色與擴充需求，不把套件命名、載入 API、Schema 或發布政策視為已全部核定。
+- 04 補齊 SDK／Engine／Component package 責任、component_id／版本、安裝／註冊／執行、語意與能力驗證、配套方法、Builder 與部署邊界。原 Registry 草案的 module_id 用語改為 component_id；正式 Config／既有 UI 的遷移留 Q-002，沒有批次改動可執行範例。
+- 新增 11 開發指南，以 Python 介面示意與套件流程解釋開發者工作；引用 05 的資料契約，ParsedDocument 實際 Schema 繼續待討論。不新增已可執行 SDK／Runner 的宣稱。
+- 03 同步角色及套件名詞，README 補閱讀導引；本文 §4.3 將配套分配至既有 M0～M7，Q-022 保持 OPEN。10 新增 UIB-010 Component 目錄／設定／相依卡控待辦，Prototype 維持 v0.9。
+- 本輪只調整文件，保留所有既有圖面、公共 Schema、Inference JSON／Python 範例與測試；D-ID 增至 40、Q-ID 維持 27。正式動工前需決定的事項見 §4.3 與 11 §8；沒有要求本次先決定全部技術細節。
+- 文件檢查：10 份 Markdown 的 179 個相對連結（含 102 個錨點連結）、15 段 JSON、3 段 YAML、5 段 Python 語法及 1 段 TOML 均通過；ParsedDocument 待決段落完整保留。Python 只解析語法，未執行尚未存在的 SDK；此紀錄不代表 Engine／UI／部署驗收。
+
+## 22. 2026-10-28 確認 Builder／Engine 兩個 repo
+
+- D-41 記錄使用者對發布相依的討論與確認：rag_platform 管理 Builder；rag_engine 集中 SDK、Engine、Components／Adapters 與 Runtime API，Module Developer 在同 repo 提交 PR。此決策取代先前平台＋獨立 Component repo 的預設規劃。
+- 03 新增 repo／Image／服務邊界的權威定義；04／11 同步同 repo 開發、公開 SDK 邊界、乾淨環境 package 測試及完整 Runtime 交付。七項 Component 配套與 ParsedDocument 實際 Schema 待決狀態保留。
+- 07 明列目標程式分工、Runtime Component 目錄／Config 驗證能力，以及 Builder、Component、Engine 改動時的建置／部署範圍。新版本發布不自動升級所有 System，API／Schema 相容才可各自升級；不承諾 Component 熱插拔或零停機。
+- 06／10 同步相容 Component 目錄與表單整合待辦；UIB-010 維持未實作。README／本計畫補 D-41 與 M0～M7 的 repo 分工，Q-001／Q-019／Q-021／Q-022 只將已確認子題落定，其餘細節維持 OPEN。
+- 本輪只更新規劃文件，尚未建立 rag_engine repo、搬移程式、建置 Image 或修改 Prototype／圖面；D-ID 共 41、Q-ID 27、歷史 A-ID 40。M4 獨立助手／M5 Builder 整合的責任與順序保留，助手核心的目錄／Image 配置仍明示為建議。
+
+## 23. 2026-10-28 Component 設定描述與動態 UI 規劃
+
+- D-42 記錄使用者同意依建議規劃 Schema、UI hints 與相依規則；新增 12 作為設定描述的單一草案來源，區分 Module I/O、Component Config 與呈現資訊。
+- 規劃共用父類別從 config_type 產生 Schema；Component 補充動態選項、能力、規則及必要 UI feature。以 Fixed-size 提供 Python／JSON 設定描述範例，定義 Engine 相依驗證與可定位問題，不強迫每個 Component 重寫 Schema 產生方法。
+- 確認相依停用可見、無關欄位隱藏、進階收合、失效引用保留報錯及未知必要控制項不假裝可用。區分 applicability 排除分支與 constraint 阻擋錯誤；UI 收合不能跳過驗證，正式建立／儲存／套用依同一 Engine 規則。
+- 04／06／07／11 增補責任及導引，UIB-010 細化並列入 14 個未執行的開發驗收案例；M0～M7 次序不變。README／本計畫更新 D-ID 為 42，Q-ID 仍 27、歷史 A-ID 仍 40。
+- component-ui-0.1-draft 的精確協定與 SDK／API 仍待核定；本輪只改文件，不修改 Prototype、公開 I/O Schema、既有 Inference／HTTP 範例或圖面。ParsedDocument 實際 Schema 待討論段落及七項 Component 交付要求保留。
+
+## 24. 2026-10-29 Component 命名統一
+
+- 使用者確認 Component 的元件／積木概念；D-43 採用 Component 作為可註冊實作的正式名稱。Module Developer 角色保留，Module／Component／Component Instance 的區別與舊名對照統一於 03 §3.8。
+- 全文件的擴充單位與歷史敘述採現行術語，決策日期、原意與實作狀態不變。Registry／Descriptor／錯誤的識別欄位改為 component_id，範例 ID 值與 implementation_version 不變；ABC、套件／目錄與 entry point 示意一併更新，沒有建立新 repo 或搬移真實程式。
+- 04／11／12 檔名改為 module_components／component，所有文件內連結同步；08／10 舊錨點保留相容別名，正式引用用新錨點。七項交付、14 個 SUI 案例與 ParsedDocument 待討論項目內容保留。
+- 05 的新 ModuleConfig 目標引用 component_id；舊完整 YAML／Prototype 的 method 選擇欄位明示需依版本遷移。ResultSet／融合演算法 method、Python／HTTP method 保留，不全域替換公共 I/O 欄位；不得在未實作前宣稱支援舊別名。
+- L1 MMD／SVG／PNG 同步 Component 標籤，保留既有版面與連線。Prototype 名詞／內部設定遷移補在 UIB-010，沒有改動 UI 程式、Infra、Inference 公共 Schema 或其測試。D-ID 共 43、Q-ID 27、歷史 A-ID 40；里程碑仍為 M0～M7。
+
+## 25. 2026-10-29 Developer 四步流程與 Module／Component 示意圖
+
+- 依使用者要求，將 L1 開發區簡化為 D1 選 Module／讀契約 → D2 開發 Component → D3 測試與 PR 審查 → D4 發布並更新 Runtime。保留上方 Builder 測試、框外部署與中間 Engine 的版面／關係，D4 更新目標 Runtime 後才提供新元件選用。
+- 新增 [03 Module／Component 概念圖](../diagrams/03_module_component_concept.png)，含同名 MMD／SVG。以 Parsing、Chunking、Indexing 示意預設內建與 Developer 自訂元件；其他 Module 同理，元件遵循相同契約／Registry，由 Builder 依 Schema 與能力選用。
+- 預設提供不代表全部同時執行，也不表示目前已實作；自訂元件需測試、PR 審查、核可及目標 Runtime 更新。四步是既有流程摘要，D3／D4 權限由審查、CI／發布與部署角色分工；沒有新增直接上傳程式、任意熱載入或自動升級承諾。
+- README／03／11 同步說明與導引。本輪是既有 D-40～43 的展示與文件補充，不新增功能決策或修改 M0～M7；D-ID 43、Q-ID 27、歷史 A-ID 40 維持，Prototype／Infra／公開 I/O Schema 及執行程式未變。
