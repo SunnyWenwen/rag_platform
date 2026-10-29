@@ -1,59 +1,37 @@
 flowchart TB
-    %% 固定 SVG／PNG：上排 Inference、下排 Ingestion；Evaluation 為獨立評估能力。
-    %% 預設元件為目標規劃／顯示名稱，不是已實作清單或凍結的 SDK 識別。
+    %% 固定 SVG／PNG：上排 Ingestion、下排 Inference；每個內建選項獨立一格。
+    %% 選項是目標規劃；None 是略過，服務來源及搜尋模式不另列 Component。
     subgraph ENGINE["RAG Engine｜全部 Modules 的內建與擴充 Components"]
         direction TB
-        subgraph INFERENCE["Inference"]
-            direction LR
-            subgraph QUERY["Query Transformation"]
-                direction TB
-                QUERY_BUILTIN["預設提供：None／Rewrite／Multi-query"]
-                QUERY_CUSTOM["自訂 Query Rewriter"]
-            end
-            subgraph RETRIEVAL["Retrieval"]
-                direction TB
-                RETRIEVAL_BUILTIN["預設提供：ES／Local Search 檢索元件；全文／向量／Hybrid；依 Indexing"]
-                RETRIEVAL_CUSTOM["自訂 Retriever"]
-            end
-            subgraph RERANK["Rerank"]
-                direction TB
-                RERANK_BUILTIN["預設提供：None／Rerank API Adapter"]
-                RERANK_CUSTOM["自訂 Reranker"]
-            end
-            subgraph GENERATION["Generation"]
-                direction TB
-                GENERATION_BUILTIN["預設提供：LLM Generation Adapter；Context＋Prompt 模板"]
-                GENERATION_CUSTOM["自訂 Generator"]
-            end
-            QUERY --> RETRIEVAL
-            RETRIEVAL --> RERANK
-            RERANK --> GENERATION
-        end
         subgraph INGESTION["Ingestion"]
             direction LR
             subgraph IMPORT["Import"]
                 direction TB
-                IMPORT_BUILTIN["預設提供：來源接收元件；檔案／JSON records"]
+                IMPORT_B1["檔案接收"]
+                IMPORT_B2["JSON records 接收"]
                 IMPORT_CUSTOM["自訂 Importer"]
             end
             subgraph PARSING["Parsing"]
                 direction TB
-                PARSING_BUILTIN["預設提供：Structured records Parser"]
+                PARSING_B1["Structured records Parser"]
                 PARSING_CUSTOM["自訂 Parser"]
             end
             subgraph CHUNKING["Chunking"]
                 direction TB
-                CHUNKING_BUILTIN["預設提供：Fixed-size／Recursive；Header-aware"]
+                CHUNKING_B1["Fixed-size"]
+                CHUNKING_B2["Recursive"]
+                CHUNKING_B3["Header-aware"]
                 CHUNKING_CUSTOM["自訂 Chunker"]
             end
             subgraph EMBEDDING["Embedding"]
                 direction TB
-                EMBEDDING_BUILTIN["預設提供：Embedding API Adapter"]
+                EMBEDDING_B1["Embedding API Adapter"]
                 EMBEDDING_CUSTOM["自訂 Embedder"]
             end
             subgraph INDEXING["Indexing"]
                 direction TB
-                INDEXING_BUILTIN["預設提供：Elasticsearch／Local Search"]
+                INDEXING_B1["Elasticsearch"]
+                INDEXING_B2["Local Search"]
                 INDEXING_CUSTOM["自訂 Indexer"]
             end
             IMPORT --> PARSING
@@ -61,8 +39,44 @@ flowchart TB
             CHUNKING --> EMBEDDING
             EMBEDDING --> INDEXING
         end
+        subgraph INFERENCE["Inference"]
+            direction LR
+            subgraph QUERY["Query Transformation"]
+                direction TB
+                QUERY_B1["None（略過）"]
+                QUERY_B2["Rewrite"]
+                QUERY_B3["Multi-query"]
+                QUERY_CUSTOM["自訂 Query Rewriter"]
+            end
+            subgraph RETRIEVAL["Retrieval"]
+                direction TB
+                RETRIEVAL_B1["ES 檢索元件"]
+                RETRIEVAL_B2["Local Search 檢索元件"]
+                RETRIEVAL_CUSTOM["自訂 Retriever"]
+            end
+            subgraph RERANK["Rerank"]
+                direction TB
+                RERANK_B1["None（略過）"]
+                RERANK_B2["Rerank API Adapter"]
+                RERANK_CUSTOM["自訂 Reranker"]
+            end
+            subgraph GENERATION["Generation"]
+                direction TB
+                GENERATION_B1["LLM Generation Adapter"]
+                GENERATION_CUSTOM["自訂 Generator"]
+            end
+            QUERY --> RETRIEVAL
+            RETRIEVAL --> RERANK
+            RERANK --> GENERATION
+        end
         subgraph EVALUATION["Evaluation｜獨立評估模組（不在單次 Ingestion／Inference 主線）"]
-            EVALUATION_BUILTIN["預設規劃：Recall@K／MRR／答案品質等指標"]
+            EVALUATION_B1["Recall@K"]
+            EVALUATION_B2["MRR"]
+            EVALUATION_B3["Answer Correctness"]
+            EVALUATION_B4["Faithfulness"]
+            EVALUATION_B5["Latency"]
+            EVALUATION_B6["Usage"]
+            EVALUATION_B7["Error Rate"]
             EVALUATION_CUSTOM["自訂 Evaluator"]
         end
     end
@@ -76,10 +90,10 @@ flowchart TB
     classDef custom fill:#eee9fa,stroke:#9380bf,color:#443267
     classDef delivery fill:#fff5e5,stroke:#cf9b4a,color:#624516
     classDef builder fill:#ecf8f2,stroke:#599d85,color:#153f32
-    class QUERY_BUILTIN,RETRIEVAL_BUILTIN,RERANK_BUILTIN,GENERATION_BUILTIN,IMPORT_BUILTIN,PARSING_BUILTIN,CHUNKING_BUILTIN,EMBEDDING_BUILTIN,INDEXING_BUILTIN,EVALUATION_BUILTIN builtin
-    class QUERY_CUSTOM,RETRIEVAL_CUSTOM,RERANK_CUSTOM,GENERATION_CUSTOM,IMPORT_CUSTOM,PARSING_CUSTOM,CHUNKING_CUSTOM,EMBEDDING_CUSTOM,INDEXING_CUSTOM,EVALUATION_CUSTOM,DEV custom
+    class IMPORT_B1,IMPORT_B2,PARSING_B1,CHUNKING_B1,CHUNKING_B2,CHUNKING_B3,EMBEDDING_B1,INDEXING_B1,INDEXING_B2,QUERY_B1,QUERY_B2,QUERY_B3,RETRIEVAL_B1,RETRIEVAL_B2,RERANK_B1,RERANK_B2,GENERATION_B1,EVALUATION_B1,EVALUATION_B2,EVALUATION_B3,EVALUATION_B4,EVALUATION_B5,EVALUATION_B6,EVALUATION_B7 builtin
+    class IMPORT_CUSTOM,PARSING_CUSTOM,CHUNKING_CUSTOM,EMBEDDING_CUSTOM,INDEXING_CUSTOM,QUERY_CUSTOM,RETRIEVAL_CUSTOM,RERANK_CUSTOM,GENERATION_CUSTOM,EVALUATION_CUSTOM,DEV custom
     class CHECK,UPDATE delivery
     class UI builder
     style ENGINE fill:#f7faff,stroke:#9aafc9
-    style INFERENCE fill:#f7fcfa,stroke:#a2c1b4
     style INGESTION fill:#fbfaff,stroke:#b5a4d0
+    style INFERENCE fill:#f7fcfa,stroke:#a2c1b4

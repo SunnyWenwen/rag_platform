@@ -92,7 +92,7 @@ Engine 是可重用的處理框架，Runtime 是提供 API 的服務載體，Sys
 
 Module／Component 是職責與選擇層次，不以 Python Class 或 Function 的實作形式區分；實作及 I/O Contract 見 [04](docs/04_module_components_io_contracts.md)。Ingestion 與 Inference 透過資料／索引綁定銜接，不要求每次提問都重新 Ingestion。純全文模式略過 Embedding、None 的 pass-through，以及 Fusion 的合併時點等執行規則見 §5／04；本節不增加通用 DAG 編輯器。
 
-各 Module 規劃提供內建 Components，Module Developer 也可加入遵循相同契約、設定描述與相依要求的 Component。內建／自訂元件經同一 Registry 管理，使用者在 Builder 選用目標 Runtime 實際包含且核可的元件；預設提供不等於全部同時執行。[Module／Component 示意圖](diagrams/03_module_component_concept.png) 完整列出上排 Inference 的 Query Transformation／Retrieval／Rerank／Generation，以及下排 Ingestion 的 Import／Parsing／Chunking／Embedding／Indexing；Evaluation 獨立標示，不列入單次請求主線。圖中的「自訂 Parser／自訂 Retriever」是泛稱，開發者可自行命名 class；圖示不是已交付清單。服務綁定及結果處理不因此變成新的 Pipeline Module。
+各 Module 規劃提供內建 Components，Module Developer 也可加入遵循相同契約、設定描述與相依要求的 Component。內建／自訂元件經同一 Registry 管理，使用者在 Builder 選用目標 Runtime 實際包含且核可的元件；預設提供不等於全部同時執行。[Module／Component 示意圖](diagrams/03_module_component_concept.png) 完整列出上排 Ingestion 的 Import／Parsing／Chunking／Embedding／Indexing，以及下排 Inference 的 Query Transformation／Retrieval／Rerank／Generation；Evaluation 獨立標示，不列入單次請求主線。每個內建選項各佔一個方塊，不把多個元件擠在同一框中；圖中的「自訂 Parser／自訂 Retriever」是泛稱，開發者可自行命名 class；圖示不是已交付清單。服務綁定及結果處理不因此變成新的 Pipeline Module。
 
 <a id="config-terms"></a>
 
