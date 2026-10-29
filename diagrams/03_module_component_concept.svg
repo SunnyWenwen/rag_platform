@@ -57,8 +57,8 @@ text{font-family:'Noto Sans CJK TC','Noto Sans TC',sans-serif;font-weight:400;te
 <text x="685.0" y="885" font-size="25">測試＋PR 審查</text>
 <text x="685.0" y="932" font-size="22">驗證契約與設定</text>
 </g>
-<g id="UPDATE" class="node delivery" data-label="發布並更新 Runtime｜內建＋核可自訂 Components"><rect x="940" y="850" width="350" height="120" rx="11"/>
-<text x="1115.0" y="885" font-size="24">發布並更新 Runtime</text>
+<g id="UPDATE" class="node delivery" data-label="發布並更新 RAG Engine｜內建＋核可自訂 Components"><rect x="940" y="850" width="350" height="120" rx="11"/>
+<text x="1115.0" y="885" font-size="21">發布並更新 RAG Engine</text>
 <text x="1115.0" y="932" font-size="20">內建＋核可自訂 Components</text>
 </g>
 <g id="UI" class="node builder" data-label="RAG Builder User｜選 Component、填參數"><rect x="1370" y="850" width="350" height="120" rx="11"/>

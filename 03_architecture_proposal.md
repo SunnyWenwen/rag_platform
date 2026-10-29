@@ -216,7 +216,7 @@ Python 的 method／`@classmethod`／abstract method、HTTP method，以及既�
 
 圖面的既有使用者要求也屬規格，後續更新須保持：
 
-2026-10-29 新增 Developer 四步 block 及 Module／Component 示意圖：L1 下方依序 D1 選 Module／讀契約、D2 開發 Component、D3 測試與 PR 審查、D4 發布並更新 Runtime，再連至共用 Engine 的選用能力。四步是既有開發／交付流程的摘要，精確權限與工具仍待核定，見 [11](docs/11_component_developer_guide.md#developer-flow-blocks)。Module 圖的 [Mermaid](diagrams/03_module_component_concept.mmd) 與 [SVG](diagrams/03_module_component_concept.svg) 維護相同關係；兩圖皆以固定 SVG 版面輸出 PNG。
+2026-10-29 新增 Developer 四步 block 及 Module／Component 示意圖：L1 下方依序 D1 下載 repo / 確認開發 contract、D2 開發 Component、D3 測試與 PR 審查、D4 發布並更新 RAG Engine，再連至共用 Engine 的選用能力。四步是既有開發／交付流程的摘要，精確權限與工具仍待核定，見 [11](docs/11_component_developer_guide.md#developer-flow-blocks)。Module 圖的 [Mermaid](diagrams/03_module_component_concept.mmd) 與 [SVG](diagrams/03_module_component_concept.svg) 維護相同關係；兩圖皆以固定 SVG 版面輸出 PNG。
 
 - L1 的 1～5 左到右同一水平列，與「修改 Config」位於「RAG Builder測試」框內；6「Deploy YAML in FTEST/ENT」在框外右側。
 - 下方測試實體名稱為「RAG System for RAG Builder 測試」；6 以虛線連其下方「RAG System in k8s」，YAML 設定檔另有虛線連到該實體。

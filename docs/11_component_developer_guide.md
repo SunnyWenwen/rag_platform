@@ -31,12 +31,14 @@
 
 | Block | 要完成的工作 | 主要交付／銜接 |
 |---|---|---|
-| D1. 選 Module／讀契約 | 取得 rag_engine／SDK，選定功能分類，確認該 Module 的 I/O、語意及相依要求 | 明確的元件用途與契約／設定需求 |
+| D1. 下載 repo / 確認開發 contract | 取得 rag_engine／SDK，選定功能分類，確認該 Module 的 I/O、語意及相依要求 | 明確的元件用途與契約／設定需求 |
 | D2. 開發 Component | 在 components 目錄實作邏輯、Config Schema、UI hints、能力與資源宣告，準備七項交付材料 | 可安裝／註冊的 Component package 與範例 |
 | D3. 測試與 PR 審查 | 單元／契約／Engine 整合測試，提交同 repo PR，由 CI 與審查者核可 | 通過對應契約與整合驗收的元件版本 |
-| D4. 發布並更新 Runtime | 交付流程建置含 Engine＋核可 Components＋Runtime API 的完整 Image，更新選定 DEV Runtime 並驗證 | Builder 讀取該 Runtime 的 Component 目錄／Schema，使用者可選用 |
+| D4. 發布並更新 RAG Engine | 交付流程建置含 Engine＋核可 Components＋Runtime API 的完整 Image，更新選定 DEV Runtime 並驗證 | Builder 讀取該 Runtime 的 Component 目錄／Schema，使用者可選用 |
 
 D1～D2 主要由 Module Developer 完成；D3～D4 涉及審查者、CI／發布與平台部署權限，不表示每位開發者都能直接更新共享 Runtime。發布 Image 與更新執行環境分開，只有採用新版的 Runtime 才提供新元件；既有 System 不自動換版，FTEST／ENT 仍依相同 Image／邏輯 Config 交付。詳細流程見 §5～7，精確 SDK／命令／權限仍為待決。
+
+D4 的標題統一為「發布並更新 RAG Engine」，指共用 Engine／Components 與完整 Runtime Image 的版本交付；實際採用新版仍更新選定的 DEV Runtime，部署邊界不變。
 
 圖中的「預設提供」指平台規劃交付的內建選項；每個 System 依 Config 選用，不是把某個 Module 的所有 Components 一起執行。自訂 Component 與內建元件走相同契約／Registry；Builder User 不需撰寫程式。特殊 Parser／Chunker 或 Indexing／Retrieval 可能需要成對擴充，仍依能力檢查，不因放入元件目錄就自動相容。示意圖中的 TeamParser／TeamChunker／TeamIndexer 並非已交付實作。
 
