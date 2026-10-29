@@ -106,8 +106,8 @@ Package 版本與 Component 實作版本不一定一對一；一個 package 可�
 
 | 模組 | 業務 Input | 業務 Output | 另行注入／保留 |
 |---|---|---|---|
-| Import | 扁平 JSON：content／base64／uri 三選一 | 已驗證及取得／解碼的 Parser Input（內部包裝待定） | 來源授權、資產保存；Builder／呼叫端處理上傳轉換 |
-| Parsing | 正規化後的文件內容與識別／metadata | ParsedDocument 清單 | Schema、依能力自動路由、必要 profile |
+| Import | IngestionDocument：content／base64／uri 三選一 | 通過共同外層驗證的相同 IngestionDocument | 來源授權、共用內容取得；Builder／呼叫端處理上傳轉換 |
+| Parsing | 與 API 共用 Schema 的 IngestionDocument | ParsedDocument 清單 | SDK resolver／可信 Context、依能力自動路由、必要 profile |
 | Chunking | ParsedDocument 清單 | Chunk 清單，vectors={} | Tokenizer、必須繼承資訊 |
 | Embedding | Chunk 清單 | 相同成功 Chunk＋vectors | Profile、逐項錯誤；不回獨立 VectorSet |
 | Indexing | 帶向量或純文字的 Chunk 清單 | IndexBinding、逐項結果、可搜尋狀態 | 授權目標／刪除事件；提交政策待決 |
@@ -136,9 +136,9 @@ Timeout、重試預算、取消、partial 與 fallback 尚待 Q-009／Q-017／Q-
 
 ### 4.1 Import
 
-**目的與邊界**：Engine 接收扁平 JSON，驗證共同外層並取得／解碼內容；文件／CSV 上傳轉換由 Builder 或呼叫端處理，不提供 Engine multipart，不做 PDF／OCR 語意解析或 Embedding。
+**目的與邊界**：Engine 接收扁平 JSON，驗證共用 IngestionDocument，並提供共同的內容取得能力；文件／CSV 上傳轉換由 Builder 或呼叫端處理，不提供 Engine multipart，不做 PDF／OCR 語意解析或 Embedding。
 
-**Config／I/O**：[13](13_ingestion_parser_input_contract.md) 記錄 API Schema 與 ParserInput 區別。content／base64／uri 三選一，文件 ID、版本與 metadata 持續傳遞；URI 取得與 Base64 解碼共用，不要求每個 Parser 重做。內部來源物件、資源保存、大小／逾時及 Batch 政策仍待決。
+**Config／I/O**：[13](13_ingestion_parser_input_contract.md) 記錄 API／Parser 共用的 IngestionDocument 與 [同一份 JSON Schema](../schemas/ingestion_document.schema.json)。content／base64／uri 三選一，文件 ID、版本與 metadata 持續傳遞；SDK resolver 共用 URI 取得與 Base64 解碼，不另建 ParserInput envelope。資源保存、大小／逾時與 Batch 政策仍待決。
 
 **驗收方向**：相同內容經 inline／Base64／URI 後，在相容格式下具有相同解析語意；Builder CSV 映射一次後與直接 JSON 得到一致結果；不丟失身分／metadata，不接受未授權來源。外層多重來源、格式／內容不符及超限須明確失敗。
 
@@ -150,7 +150,7 @@ Timeout、重試預算、取消、partial 與 fallback 尚待 Q-009／Q-017／Q-
 
 **方法與派送**：Structured records 為預設方向；Native text、PDF／PPTX／其他模態需各自相容 Parser。可啟用多個 Component，依 media_type／必要 schema_id 自動派送，不要求一般使用者設定 Router；相同格式衝突才選預設或進階 parsing_profile。沒有相容 Parser、歧義或內容不符時明確報錯。首批套件與能力仍待 Q-005，不能因 UI 顯示選項就宣告可用。
 
-**Input**：同一筆 API 文件經 Import／共用資源層取得及解碼後的內容，帶 document_id／source_revision／metadata／來源資訊；不是要求各 Parser 原樣處理 HTTP payload。正式 Python 型別／執行簽名仍待 Q-002，見 [13 §4](13_ingestion_parser_input_contract.md#4-是否也是-parser-的-input)。
+**Input（D-45 已確認）**：與 API 單筆文件相同 Schema 的 IngestionDocument；可反序列化為相同 contract 的 SDK 物件，不轉成另一份 bytes-content envelope。Parser 透過 Engine 提供的共用 resolver 取得內容，Context 不是 API payload。正式 Python class、Context 屬性與執行簽名仍待 Q-002，見 [13 §4](13_ingestion_parser_input_contract.md#4-是否也是-parser-的-input)。
 
 **處理與相容**：依 Component input schema 驗證內容，產生 fields 與 structure；已在 Builder 映射的欄位不重複映射。沒有結構時不可捏造頁碼／headings。一來源多文件須定義 ID 派生及來源位置。Parser 宣告輸出能力、Chunker 宣告所需結構／版本；共同 ParsedDocument 格式不保證所有 Chunker 適用，不默默丟棄結構。
 

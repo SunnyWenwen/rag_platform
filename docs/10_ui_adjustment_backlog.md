@@ -252,6 +252,7 @@ D-42 的具體補充（格式以 [12](12_component_schema_ui_contract.md) 為準
 <a id="uib-011-ingestion-parser-routing"></a>
 ### UIB-011：JSON-only Ingestion 與 Parser 自動路由（方向已確認，尚未實作）
 
+- [ ] D-45：API 預覽與 Parser Input 說明引用同一份 IngestionDocument Schema，不再顯示另轉 bytes／source_info 的輸入契約；Context 與共用 resolver 是 Engine／SDK 執行資源，不要求使用者填寫。
 - [ ] 對齊 [13 輸入契約](13_ingestion_parser_input_contract.md) 及 JSON Schema：基本文字只需 document_id／content；Base64／URI 與必要格式識別在進階顯示，不新增 source／mode 必填層。
 - [ ] Builder 保留文件／CSV 上傳，映射／轉換後預覽實際 JSON，content 與 metadata 只映射一次；區分 API body 與 Parsing 後的 ParsedDocument。現有 records[].fields 及範例遷移需明示，不能假裝已支援相容別名。
 - [ ] Parsing 可啟用多個 Component，依宣告能力自動派送；無衝突不要求 Router 設定，有重疊才要求預設策略／進階 profile。格式不支援、歧義及缺 Chunker 結構顯示模組與原因，不靜默換 Parser。

@@ -1,21 +1,22 @@
-# Ingestion JSON Contract 與 Parser Input 草案
+# Ingestion API／Parser 共用輸入 Contract
 
-> 2026-10-29（Asia/Taipei）· 討論記錄／開發草案，尚未實作或凍結公開 API／SDK。
+> 2026-10-29（Asia/Taipei）· 共用輸入 Schema 與語意已確認（D-44／D-45）；尚未實作 API／SDK，批次、版本政策及執行細節另議。
 >
-> 本文記錄使用者確認的 JSON-only、扁平輸入與多 Parser 自動路由方向，以及要求先保存的 Schema。它更新 05／07 舊 records／multipart 輸入設計；不凍結 ParsedDocument／Chunker 實際 Schema。ParserInput 的內部包裝仍是建議，待下一輪討論。
+> 本文記錄 JSON-only、扁平輸入、多 Parser 自動路由，以及使用者確認「Ingestion API 與 Parser Input 使用相同 Schema」。共同物件稱 IngestionDocument；不另設另一份公開 ParserInput。它更新 05／07 舊 records／multipart 及先前 ParserInput 轉換設計；ParsedDocument／Chunker 實際 Schema 仍待討論。
 
 ## 1. 已確認方向與責任
 
 - Engine Runtime 的 Ingestion API 只接收 JSON body。RAG Builder 可提供文件／CSV 上傳及轉換；自行部署的呼叫端自行完成相同傳輸前處理，不要求部署 Builder。
 - JSON 支援 inline 文字／物件、Base64 檔案與資源 URI。傳輸前處理不等於語意解析；原始 PDF 等內容仍由 Engine 的相容 Parser 處理。
 - Payload 採扁平格式，不需要 source 或 mode；content／base64／uri 三選一。
+- **API 單筆文件與 Parser Input 共用 IngestionDocument 及同一份 JSON Schema**；Parser 可接收經共同驗證／反序列化的 SDK 物件，但欄位、型別與驗證規則一致，不維護第二份轉換後的輸入 contract。
 - 接受未解析內容與上游已解析內容；後者由相容 Parser／Adapter 驗證及正規化，不強制重做解析。這不等於已核可直接匯入 Chunk／vectors。
 - Parsing 可啟用多個 Parser，平台依能力自動路由；格式不重疊時不要求使用者配置 Router。同格式衝突才需預設策略或進階 parsing_profile。
 - 沒有相容 Parser、路由歧義、格式與實際內容不符時明確報錯，不以載入順序選第一個，不默默改用其他 Parser。
 
 ## 2. 單筆文件 JSON Schema
 
-機器可讀草案：[ingestion_document.schema.json](../schemas/ingestion_document.schema.json)。Schema 的單位是單筆文件，最小 request body 為：
+機器可讀共同定義：[ingestion_document.schema.json](../schemas/ingestion_document.schema.json)。它是 API 與 Parser Input 的同一份外層 Schema；單位是單筆文件，不是整個批次或 HTTP 回應。最小 request body／Parser Input 為：
 
 ```json
 {
@@ -88,43 +89,46 @@ content 可依已註冊 schema_id 傳入 fields／structure 等已解析內容�
 
 ## 4. 是否也是 Parser 的 Input？
 
-**是同一筆文件的資料來源，但不建議把 HTTP JSON 原封不動作為每個 Parser 的執行介面。** API contract 表達傳輸；Parser contract 表達已取得、可解析的內容。
+**是，Ingestion API 與 Parser 的 Input 共用 IngestionDocument 及相同 Schema。** 原先另建「content 已轉成 bytes、另加 source_info」的 ParserInput 草案已由本決策取代，不再作為目標介面。
 
-| API 輸入 | Import／共用資源層 | Parser 收到的內容 |
+### 4.1 共用物件，透過 SDK 取得內容
+
+| API／Parser 共用欄位 | SDK 共用內容取得能力 | Parser 取得後處理的值 |
 |---|---|---|
-| content 是文字 | 驗證、保留 | str |
-| content 是 JSON object | 驗證外層、保留物件 | dict；再依選定 schema 驗證 |
-| base64 | 檢查限制、嚴格解碼 | bytes 或受控可讀取資源 |
-| uri | 授權取得、檢查限制 | bytes／受控資源，再依格式處理；不得把 URL 本身當文件文字 |
+| content 是文字 | 直接使用 | str |
+| content 是 JSON object | 保留物件，驗證相容 schema | dict |
+| base64 | 檢查大小、嚴格解碼 | bytes／核可的可讀取資源 |
+| uri | 授權取得、檢查限制並依格式處理 | 文字、JSON 或二進位資源 |
 
-路由可先依宣告資訊選出候選，取得內容後再核對實際格式及 schema；取得、偵測與選定 Parser 的精確順序仍待實作設計。URL 指向 JSON 時，要依支援的格式正規化為物件或由對應 Adapter 解碼，不能假設所有 URL 都代表 PDF。
+這裡取得的值是 Parser 執行中使用的內容，不是第二份 Parser Input schema。共用文件仍保留原本 content／base64／uri 三選一；不得把解碼後 bytes 塞入共用 JSON content，也不因 resolve 而另加 content，使輸入同時存在兩種來源。API 的 JSON 與 SDK 物件可以有序列化層面的表示差異，不能改變共同契約的語意。
 
-以下是 ParserInput 的 Python 形狀示意，不是已發布的 SDK：
+JSON API 不直接傳 bytes；PDF／PPTX／Excel 等檔案使用 Base64 或 URI。media_type 表示內容格式，不能取代來源欄位判定；即使只有一個 Parser，仍需區分 literal 文字、編碼內容與資源引用。media_type／schema_id 可在 Config 或可靠資訊足以唯一判定時省略，不能用 Parser 數量作為唯一判準。
+
+SDK 提供共用的 resolver，Parser Developer 不自行重做 URL 下載、Base64 解碼與資源限制。下面只有介面示意，並不是已發布的 SDK，實際型別、函式命名與同步／非同步簽名仍待 Q-002／Q-017：
 
 ```python
-parser_input = {
-    "document_id": "report-001",
-    "source_revision": "v1",
-    "media_type": "application/pdf",
-    "schema_id": None,
-    "content": b"...PDF bytes...",
-    "metadata": {"department": "engineering"},
-    "source_info": {
-        "uri": "https://storage.example.com/report.pdf"
-    },
-}
+async def parse(self, document: IngestionDocument, context):
+    content = await context.content_resolver.resolve(document)
+    # 依此 Component 的能力解析 content，保留文件身分及 metadata，
+    # 再產生符合 ParsedDocument contract 的結果。
+    ...
 ```
 
-這裡的 None 是內部草案的未指定表示，不是放寬 HTTP Schema 接受 null。parsing_profile 由 Router 解析為核可實例，不需要每個 Parser 再路由。Config、Secret 與可信執行資訊另外注入；使用者 metadata 不能覆蓋可信權限／來源。
+路由依共同文件及已設定能力選出相容 Parser；parsing_profile 選已核可實例，不要求 Parser 再做一次路由。取得、格式偵測及預檢的精確時點待定，可由平台預先取得或共用 resolver 處理；不得因共用 Schema 就跳過實際格式與 Parser 內容驗證。
 
-| 持續傳遞資訊 | 原則 |
+### 4.2 context 不屬於 API payload
+
+context 是 Engine 建立的執行資源，由 Engine 傳給 Parser；呼叫端不用在 JSON 裡提供。以下為責任規劃，不表示公開 class 的屬性已凍結：
+
+| 執行資源 | 用途 |
 |---|---|
-| document_id／source_revision | 取得／解碼不能任意改變文件身分；省略版本政策另議 |
-| metadata | 保留已驗證業務資訊，遵守平台保留名稱 |
-| 來源資訊 | 保留可追溯引用；精確欄位、保存期與敏感資訊遮罩待決 |
-| 解析結果 | Parser 產生 ParsedDocument，而不是直接生成向量或任意 Chunk |
+| 共用內容 resolver | URI 取得、Base64 解碼與資源限制 |
+| request／run 追蹤 | 模組 Log、診斷與來源追溯 |
+| 執行控制 | 必要時提供取消／逾時與資源釋放 |
 
-大型內容的 bytes／stream／resource handle、來源物件名稱、async／batch 簽名與資源釋放都仍屬 Q-002／Q-016／Q-017；不要求各 Parser 自行下載 URI 或實作 Base64 處理。
+Component 參數與服務設定可在建立 Instance 時注入，不必全部塞進 context。可信來源資訊、授權與 Secret 由平台資源／受控 Context 處理；不新增 API 的 source_info 欄位，不信任 metadata 覆寫可信資訊。
+
+document_id、source_revision 及有效 metadata 持續傳遞；省略版本的生成政策仍待定。resolver 的 bytes／stream／resource handle、快取／重用、生命週期與 Context 精確介面待 Q-002／Q-016／Q-017，但「共用輸入 Schema」不再列為待決。
 
 ## 5. Parser 能力與 Chunker 相容
 
@@ -136,7 +140,7 @@ ParsedDocument 使用共同外層格式，但每種 Chunker 仍有內容／結�
 
 - 取代舊 API records[].fields 及 Engine multipart 的目標設計；不是新增永久相容別名。現有 Prototype／舊 YAML／圖面仍是歷史展示，沒有在本輪遷移。
 - Builder 文件／CSV 入口轉成這份 JSON，再使用相同 Engine Pipeline。Builder 是否提供暫存資源 URI、哪些格式在 Builder 先轉換、存取授權與清理策略待 Q-016／Q-019。
-- 舊 SourceAsset 是內部草案；ParserInput 可作它的後續具體化方向，正式類別／資源句柄尚未定案。
+- 舊 SourceAsset 及另設 ParserInput 是先前內部草案；公開 Parser 輸入統一用 IngestionDocument，不再轉換為另一份資料契約。內部資源管理可保留實作物件，不能要求 Developer 依賴它們或變更共同 schema。
 - 未決：ParsedDocument 實際結構、schema_id／profile 命名與版本、路由優先規則、輸入大小及逾時、批次包裝、回應／錯誤碼、舊資料遷移。已確認輸入方向不因此退回未定。
-- API 外層及 Parser 專屬 schema 分開；支援任意 JSON object 不表示任意內容或 Chunk／vectors 都可直接入庫。
+- API／Parser 的共同外層是同一份 Schema；各 Component 對 content 的專屬內容限制另宣告，屬共同契約上的進一步驗證，不是第二份輸入 envelope。支援 JSON object 不表示任意內容或 Chunk／vectors 都可直接入庫。
 - UI 所需調整只登錄 [UIB-011](10_ui_adjustment_backlog.md#uib-011-ingestion-parser-routing)，本輪不改 Prototype。

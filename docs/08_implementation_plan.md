@@ -88,7 +88,8 @@ v0.13 從 `e52c4d74a469522155d814f0ff51fddf8946f957` 核對交接文件、本串
 | D-41 | 固定兩個 repo：rag_platform 放 Builder 前後端與管理整合；rag_engine 放 SDK、Engine、Components／Adapters 與 Runtime API。Module Developer 在同 repo 提交 Component，整合測試後交付完整 Runtime Image；接口相容時 Builder／Runtime 可各自升級 | 2026-10-28 使用者確認 Builder 與 Engine＋擴充實作分為兩個 repo，並要求調整文件／已確認；精確套件／接口／CI 細節仍待決 | 03 §3.7／04／07／11；Q-001／Q-019／Q-021／Q-022；UIB-010 |
 | D-42 | 採 Schema 驅動 Component 設定表單：共用 Schema 輸出、UI hints、動態選項與 Engine 相依驗證；不相容選項可見且停用、無關欄位隱藏、進階收合、失效選擇保留報錯、未知必要控制項明示不支援 | 2026-10-28 使用者回覆「好，按照你的建議規劃」／方向與操作行為已確認；component-ui-0.1-draft 的鍵名、Meta-schema、工具與 API 仍待 M0 起分階段核定 | 04 §7.6／06／07 §5.8／11／12；Q-001／Q-002／Q-019／Q-022／Q-025；UIB-010 |
 | D-43 | 可擴充實作統一稱 Component；Module 為功能分類／契約，Component Instance 為配置後的實例。同步 component_id、SDK 類別、目錄／套件／entry point、Descriptor 及文件／L1 圖 | 2026-10-29 使用者確認「Component 好了，有疊積木的感覺」並要求更新相關文件／命名已確認；不改模組分工或執行行為 | 03 §3.8 為權威對照；04～12／README／L1；Q-002 遷移，UIB-010 |
-| D-44 | Engine JSON-only Ingestion；扁平 document_id＋content／base64／uri 三選一；Builder／呼叫端負責上傳轉換；原始／已解析資料需相容 Parser，多 Parser 自動路由 | 2026-10-29 使用者確認全部支援、自動路由、扁平格式並要求保存 Schema；具體內部 ParserInput、批次及輸出結構仍為草案 | 13／schemas/ingestion_document.schema.json；04～07；Q-002／Q-005／Q-019；UIB-011 |
+| D-44 | Engine JSON-only Ingestion；扁平 document_id＋content／base64／uri 三選一；Builder／呼叫端負責上傳轉換；原始／已解析資料需相容 Parser，多 Parser 自動路由 | 2026-10-29 使用者確認全部支援、自動路由、扁平格式並要求保存 Schema；共用 Parser 輸入後依 D-45 確認；批次及輸出結構仍為草案 | 13／schemas/ingestion_document.schema.json；04～07；Q-002／Q-005／Q-019；UIB-011 |
+| D-45 | API 單筆文件與 Parser Input 共用相同 IngestionDocument Schema；content／base64／uri 三選一保留，不另建 ParserInput；取得內容使用 SDK 共用能力，Context 不屬 API body | 2026-10-29 使用者確認「api schema 跟 parser 的 Input 都是相同 schema」並要求記錄；共用契約已確認，SDK／Context 精確簽名仍待決 | 13 §2／§4、schemas/ingestion_document.schema.json；04／05／07；Q-002／Q-016／Q-017；UIB-011 |
 
 「既有基線」不代表已涵蓋後續需求。D-23 的合併時點配置是使用者已提出的目標，不能以 D-11 的舊 Prototype 限制否決；兩層合併預設勾選並在 Retrieval 後的 UI 已於 2026-10-15 確認／實作，見 10 的歷史完成紀錄。Q-014 仍負責正式支援路徑、stage 命名及執行契約等剩餘細節。
 
@@ -237,7 +238,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 - 結構表示：評估「完整文字＋位置標註」與 Element／樹狀模型等表示方式；`structure.<field_name>.blocks` 是目前草案，不是業界通用格式，也尚未定案。需釐清它與 `fields` 的對應方式，以及標題層級、段落、page／slide／表格等結構的必要範圍。
 - 位置與來源：討論頁面與章節的關係、跨頁區塊／多位置表示、閱讀順序、文字正規化後的位置映射，以及既有 Unicode code point／0-based 半開區間規則如何驗證及由外部 Parser 轉換。保留頁碼不等於已決定新增 Page-aware Chunking。
 - 模組相容：定義 Parser 能產出的共用結構、各 Chunking 方法需要的結構、自訂結構的名稱／版本／Schema，以及 Adapter、相容性驗證與缺少結構時的處理；具體方法與首批 Parser 範圍仍連動 Q-004／Q-005。
-- 輸入邊界（2026-10-29 更新）：已確認可接受原始與上游已解析資料，Engine 以扁平 JSON 的 content／base64／uri 三選一接收，仍需相容 Parser／Adapter，見 [13](13_ingestion_parser_input_contract.md)。已解析 content 的 structure 實際形狀、schema_id 及內部 ParserInput 尚未凍結；舊 records 不接受 structure 的限制不再代表新模式，直接匯入 Chunk／vectors 仍未核可。
+- 輸入邊界（2026-10-29 更新）：已確認可接受原始與上游已解析資料，Engine 以扁平 JSON 的 content／base64／uri 三選一接收，仍需相容 Parser／Adapter，見 [13](13_ingestion_parser_input_contract.md)。D-45 已確認 API／Parser 共用 IngestionDocument，不另設 ParserInput；已解析 content 的 structure 實際形狀、schema_id 與 Context／SDK 執行介面仍待定；舊 records 不接受 structure 的限制不再代表新模式，直接匯入 Chunk／vectors 仍未核可。
 - 後續：定案後同步 05 ParsedDocument 定義與範例、04 模組契約及 07 Ingestion API；必要 UI 變更依既有工作方式登錄 10 backlog，待明確要求修改 UI 再實作。
 
 <a id="q-003"></a>
@@ -812,5 +813,12 @@ Inference Schema／五份 JSON／Python 範例、圖面及其他服務實作均�
 ## 28. 2026-10-29 Ingestion JSON 與 Parser Input 記錄
 
 - D-44 記錄 JSON-only、扁平輸入、原始／已解析資料、Base64／URI 與多 Parser 自動路由方向。新增 13 與 ingestion_document.schema.json，保留單筆文件 Schema 草案及欄位／範例／驗證說明。
-- 04／05／07 對齊目標邊界，舊 records／Engine multipart 不再作為新 API 目標；原型／舊 Config 不在本輪遷移。Import 負責共同取得／解碼，ParserInput 內部包裝仍屬建議，不因保存 Schema 就核定 SDK 簽名。
+- 04／05／07 對齊目標邊界，舊 records／Engine multipart 不再作為新 API 目標；原型／舊 Config 不在本輪遷移。當時建議 Import 取得／解碼後轉為另一份 ParserInput；後續已由 D-45 共用契約取代，不再作為目標介面；SDK 精確簽名仍未凍結。
 - ParsedDocument／結構與 Chunker 相容細節繼續討論，批次／資源限制／錯誤政策仍留 Q-002／Q-005／Q-016／Q-017／Q-019，未核可直接 Chunk／vectors 匯入。UIB-011 記錄對應調整，未改 UI／圖面／Engine。決策共 44 項，Q-ID 27、歷史 A-ID 40 及 M0～M7 保持。
+
+## 29. 2026-10-29 API 與 Parser 共用輸入 Schema
+
+- D-45 記錄使用者明確確認：Ingestion API 單筆文件與 Parser Input 使用相同 IngestionDocument Schema；保留 document_id 及 content／base64／uri 三選一，必要格式／schema／profile 識別按既有規則提供。
+- 13 §4 取代另設 ParserInput 的 bytes／source_info 包裝，說明 SDK resolver 與 Engine Context；04／05／07／README 對齊。共用 Schema 檔案補上角色說明，所有結構驗證規則保持不變。
+- 共用輸入不等於所有來源都改成 content；JSON 不能直接承載 bytes，URI／Base64 仍由 SDK 共用能力處理。執行時取得的內容不作為另一份公開輸入 contract，也不回寫破壞三選一規則。
+- 批次、來源版本生成、Parser 專屬內容、Context 精確屬性／簽名與 ParsedDocument 結構仍待討論；共用 Schema 方向不再列為待決。UIB-011 補說明待辦，未改 Prototype、圖面或 SDK／Engine 程式。D-ID 共 45、Q-ID 27、歷史 A-ID 40；M0～M7 不變。

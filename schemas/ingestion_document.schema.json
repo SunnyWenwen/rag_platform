@@ -80,5 +80,6 @@
         "uri"
       ]
     }
-  ]
+  ],
+  "description": "Ingestion API 單筆文件與 Parser Input 共用的 IngestionDocument Schema；content／base64／uri 三選一。取得內容由 SDK 共用能力提供，不另設轉換後的 ParserInput；執行 Context 不屬於本 payload。"
 }
