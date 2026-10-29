@@ -1,26 +1,73 @@
 flowchart TB
-    %% 目標設計示意，非已實作元件清單。固定版面由同名 SVG／PNG 表達。
-    %% Module 是功能分類／契約，Component 是可註冊實作；預設提供不代表全部同時執行。
-    subgraph ENGINE["RAG Engine｜各 Module 的內建與擴充 Components"]
-        direction LR
-        subgraph PARSING["Module：Parsing"]
-            direction TB
-            P0["預設提供：Records Parser"]
-            P1["Developer 擴充：TeamParser（示意）"]
+    %% 固定 SVG／PNG：上排 Inference、下排 Ingestion；Evaluation 為獨立評估能力。
+    %% 預設元件為目標規劃／顯示名稱，不是已實作清單或凍結的 SDK 識別。
+    subgraph ENGINE["RAG Engine｜全部 Modules 的內建與擴充 Components"]
+        direction TB
+        subgraph INFERENCE["Inference"]
+            direction LR
+            subgraph QUERY["Query Transformation"]
+                direction TB
+                QUERY_BUILTIN["預設提供：None／Rewrite／Multi-query"]
+                QUERY_CUSTOM["自訂 Query Rewriter"]
+            end
+            subgraph RETRIEVAL["Retrieval"]
+                direction TB
+                RETRIEVAL_BUILTIN["預設提供：ES／Local Search 檢索元件；全文／向量／Hybrid；依 Indexing"]
+                RETRIEVAL_CUSTOM["自訂 Retriever"]
+            end
+            subgraph RERANK["Rerank"]
+                direction TB
+                RERANK_BUILTIN["預設提供：None／Rerank API Adapter"]
+                RERANK_CUSTOM["自訂 Reranker"]
+            end
+            subgraph GENERATION["Generation"]
+                direction TB
+                GENERATION_BUILTIN["預設提供：LLM Generation Adapter；Context＋Prompt 模板"]
+                GENERATION_CUSTOM["自訂 Generator"]
+            end
+            QUERY --> RETRIEVAL
+            RETRIEVAL --> RERANK
+            RERANK --> GENERATION
         end
-        subgraph CHUNKING["Module：Chunking"]
-            direction TB
-            C0["預設提供：Fixed-size／Recursive／Header-aware"]
-            C1["Developer 擴充：TeamChunker（示意）"]
+        subgraph INGESTION["Ingestion"]
+            direction LR
+            subgraph IMPORT["Import"]
+                direction TB
+                IMPORT_BUILTIN["預設提供：來源接收元件；檔案／JSON records"]
+                IMPORT_CUSTOM["自訂 Importer"]
+            end
+            subgraph PARSING["Parsing"]
+                direction TB
+                PARSING_BUILTIN["預設提供：Structured records Parser"]
+                PARSING_CUSTOM["自訂 Parser"]
+            end
+            subgraph CHUNKING["Chunking"]
+                direction TB
+                CHUNKING_BUILTIN["預設提供：Fixed-size／Recursive；Header-aware"]
+                CHUNKING_CUSTOM["自訂 Chunker"]
+            end
+            subgraph EMBEDDING["Embedding"]
+                direction TB
+                EMBEDDING_BUILTIN["預設提供：Embedding API Adapter"]
+                EMBEDDING_CUSTOM["自訂 Embedder"]
+            end
+            subgraph INDEXING["Indexing"]
+                direction TB
+                INDEXING_BUILTIN["預設提供：Elasticsearch／Local Search"]
+                INDEXING_CUSTOM["自訂 Indexer"]
+            end
+            IMPORT --> PARSING
+            PARSING --> CHUNKING
+            CHUNKING --> EMBEDDING
+            EMBEDDING --> INDEXING
         end
-        subgraph INDEXING["Module：Indexing"]
-            direction TB
-            I0["預設提供：Elasticsearch／Local Search"]
-            I1["Developer 擴充：TeamIndexer（示意）"]
+        subgraph EVALUATION["Evaluation｜獨立評估模組（不在單次 Ingestion／Inference 主線）"]
+            EVALUATION_BUILTIN["預設規劃：Recall@K／MRR／答案品質等指標"]
+            EVALUATION_CUSTOM["自訂 Evaluator"]
         end
     end
 
-    DEV["Module Developer｜選 Module、開發 Component"] --> CHECK["測試＋PR 審查｜驗證契約與設定"]
+    DEV["Module Developer｜依契約開發 Component"] --> CHECK["測試＋PR 審查｜驗證契約與設定"]
     CHECK --> UPDATE["發布並更新 RAG Engine｜內建＋核可自訂 Components"]
     UPDATE -->|納入目標 Runtime| ENGINE
     ENGINE -. "Component 目錄＋Config Schema" .-> UI["RAG Builder User｜選 Component、填參數"]
@@ -29,11 +76,10 @@ flowchart TB
     classDef custom fill:#eee9fa,stroke:#9380bf,color:#443267
     classDef delivery fill:#fff5e5,stroke:#cf9b4a,color:#624516
     classDef builder fill:#ecf8f2,stroke:#599d85,color:#153f32
-    class P0,C0,I0 builtin
-    class P1,C1,I1,DEV custom
+    class QUERY_BUILTIN,RETRIEVAL_BUILTIN,RERANK_BUILTIN,GENERATION_BUILTIN,IMPORT_BUILTIN,PARSING_BUILTIN,CHUNKING_BUILTIN,EMBEDDING_BUILTIN,INDEXING_BUILTIN,EVALUATION_BUILTIN builtin
+    class QUERY_CUSTOM,RETRIEVAL_CUSTOM,RERANK_CUSTOM,GENERATION_CUSTOM,IMPORT_CUSTOM,PARSING_CUSTOM,CHUNKING_CUSTOM,EMBEDDING_CUSTOM,INDEXING_CUSTOM,EVALUATION_CUSTOM,DEV custom
     class CHECK,UPDATE delivery
     class UI builder
     style ENGINE fill:#f7faff,stroke:#9aafc9
-    style PARSING fill:#fff,stroke:#9aafc9
-    style CHUNKING fill:#fff,stroke:#9aafc9
-    style INDEXING fill:#fff,stroke:#9aafc9
+    style INFERENCE fill:#f7fcfa,stroke:#a2c1b4
+    style INGESTION fill:#fbfaff,stroke:#b5a4d0

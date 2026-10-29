@@ -793,3 +793,10 @@ Inference Schema／五份 JSON／Python 範例、圖面及其他服務實作均�
 - 新增 [03 Module／Component 概念圖](../diagrams/03_module_component_concept.png)，含同名 MMD／SVG。以 Parsing、Chunking、Indexing 示意預設內建與 Developer 自訂元件；其他 Module 同理，元件遵循相同契約／Registry，由 Builder 依 Schema 與能力選用。
 - 預設提供不代表全部同時執行，也不表示目前已實作；自訂元件需測試、PR 審查、核可及目標 Runtime 更新。四步是既有流程摘要，D3／D4 權限由審查、CI／發布與部署角色分工；沒有新增直接上傳程式、任意熱載入或自動升級承諾。
 - README／03／11 同步說明與導引。本輪是既有 D-40～43 的展示與文件補充，不新增功能決策或修改 M0～M7；D-ID 43、Q-ID 27、歷史 A-ID 40 維持，Prototype／Infra／公開 I/O Schema 及執行程式未變。
+
+## 26. 2026-10-29 全模組示意與自訂元件名稱
+
+- 依使用者要求，03 Module／Component 圖從三個 Module 範例擴充為完整雙主線：上排 Inference 為 Query Transformation → Retrieval → Rerank → Generation，下排 Ingestion 為 Import → Parsing → Chunking → Embedding → Indexing；Evaluation 以獨立評估模組另外呈現，不插入單次請求主線。
+- 移除圖中的 TeamParser／TeamChunker／TeamIndexer，改用各模組「自訂 Parser／自訂 Chunker」等泛稱。原 Team 前綴只是示例，沒有 class／命名空間／團隊權限上的必要性；不改實際 component_id 或載入規則。
+- 內建元件顯示名稱與選項依既有 04／05 規劃，非已實作清單；Query Transformation 的 Rewrite／Multi-query 合併提案仍待核定，Evaluation 首批指標／Judge 留 Q-018。DEV／自行提供是綁定來源，不新增元件；Fusion／Top N 是結果處理，不新增 Module。
+- MMD／SVG／PNG 及 README／03／11 同步。01 使用流程圖、Prototype、Infra、公共 I/O Schema、SDK／Engine 程式與契約待決狀態不變；D-ID 43、Q-ID 27、歷史 A-ID 40、M0～M7 維持。

@@ -40,7 +40,9 @@ D1～D2 主要由 Module Developer 完成；D3～D4 涉及審查者、CI／發�
 
 D4 的標題統一為「發布並更新 RAG Engine」，指共用 Engine／Components 與完整 Runtime Image 的版本交付；實際採用新版仍更新選定的 DEV Runtime，部署邊界不變。
 
-圖中的「預設提供」指平台規劃交付的內建選項；每個 System 依 Config 選用，不是把某個 Module 的所有 Components 一起執行。自訂 Component 與內建元件走相同契約／Registry；Builder User 不需撰寫程式。特殊 Parser／Chunker 或 Indexing／Retrieval 可能需要成對擴充，仍依能力檢查，不因放入元件目錄就自動相容。示意圖中的 TeamParser／TeamChunker／TeamIndexer 並非已交付實作。
+圖中的「預設提供」指平台規劃交付的內建選項；每個 System 依 Config 選用，不是把某個 Module 的所有 Components 一起執行。自訂 Component 與內建元件走相同契約／Registry；Builder User 不需撰寫程式。特殊 Parser／Chunker 或 Indexing／Retrieval 可能需要成對擴充，仍依能力檢查，不因放入元件目錄就自動相容。
+
+Module 圖上排完整列出 4 個 Inference Modules，下排列出 5 個 Ingestion Modules，Evaluation 另列為獨立評估能力。「自訂 Parser／自訂 Chunker／自訂 Evaluator」只是元件用途的泛稱，不是規定的 Python class 或 component_id；先前圖中的 Team 前綴也沒有團隊綁定或特殊載入語意，現已從圖面移除。真正的識別、版本與 class 分工見 §3；圖上全部選項仍為目標規劃，不是已交付實作。DEV test use／自行提供是相同元件的服務綁定來源，不能拿來當作兩個不同 Component 的識別。
 
 2026-10-28 已確認兩個 repo：`rag_platform` 管理 Builder 前後端與整合，`rag_engine` 集中 SDK、Engine、Components／Adapters 與 Runtime API。Module Developer 使用本機 IDE，在 rag_engine 的 components 目錄依 SDK／範本開發，提交 PR 後由同一 repo 的 CI 測試與交付 Runtime。這取代先前以獨立 Component repo 為預設的建議；精確內部目錄、套件名稱及發布工具仍待 Q-001／Q-022 核定。
 
