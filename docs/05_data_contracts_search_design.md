@@ -69,9 +69,13 @@ Builder 由 Workspace＋RAG System 名稱自動產生邏輯 collection，使用�
 
 ## 4. 共用業務資料
 
-### 4.1 輸入 records 與 SourceAsset
+### 4.1 Ingestion 輸入與 Parser Input
 
-JSON Ingestion 的每筆 Record 形狀已確認：
+**2026-10-29 更新**：API 共同外層改採 document_id＋content／base64／uri 三選一的扁平 JSON；Engine 不提供 multipart，Builder／呼叫端負責上傳轉換。完整欄位與語意以 [13 Ingestion／Parser Input](13_ingestion_parser_input_contract.md) 及 [JSON Schema](../schemas/ingestion_document.schema.json) 為本次草案來源。可接收未解析與已解析內容，但仍需相容 Parser；ParsedDocument 實際 Schema 尚未凍結。API Payload 經共用取得／解碼後交給 Parser，內部包裝仍待決。
+
+以下 records／SourceAsset 為**先前基線，已由上述方向更新**；不能與新 Schema 混用，或視為已實作的相容模式。
+
+先前 JSON Ingestion 的每筆 Record 範例（歷史格式）：
 
 ```json
 {

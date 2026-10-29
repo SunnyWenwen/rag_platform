@@ -114,7 +114,7 @@ System 列表／讀取、Workspace／Dataset CRUD、AI suggestion／連線檢查
 
 | Component | Path | 行為 |
 |---|---|---|
-| POST | /v1/ingestions | JSON records 或 multipart files；202 回 run_id、status、config_revision |
+| POST | /v1/ingestions | JSON-only：扁平文件輸入草案見 13；批次包裝待定；202 回 run_id、status、config_revision |
 | GET | /v1/ingestions/{run_id} | 工作狀態、進度、逐項錯誤及就緒資訊 |
 | POST | /v1/queries | 問題、本次 filters；回答、引用與版本 |
 | GET | /health/live | 程序是否存活 |
@@ -124,34 +124,30 @@ System 列表／讀取、Workspace／Dataset CRUD、AI suggestion／連線檢查
 
 ### 5.3 JSON Ingestion
 
-以下例子使用 05 §7 的 Document Schema，已宣告 `fields.text`／`fields.title` 與 `metadata.department`。呼叫者使用各 System 自己的 Schema；範例中的欄位不代表所有 System 都預設接受。輸入 Record 的四個 key 與 Parsing 後固定五個 key 的 ParsedDocument 分開，`structure` 由 Parser 產生。
+2026-10-29 更新：Runtime 只提供 JSON Ingestion。單筆文件以 document_id＋content／base64／uri 三選一表示，欄位與解析責任見 [13](13_ingestion_parser_input_contract.md)，機器可讀 [JSON Schema](../schemas/ingestion_document.schema.json)。以下為單筆 request body 草案；批次容器、上限及 partial 政策待 Q-019，舊 records[].fields 不作新設計的隱含相容別名。
 
 ```json
 {
-  "records": [{
-    "document_id": "manual-001",
-    "source_revision": "v1",
-    "fields": {"text": "設備每月需清潔散熱孔。", "title": "保養規範"},
-    "metadata": {"department": "manufacturing"}
-  }]
+  "document_id": "manual-001",
+  "source_revision": "v1",
+  "content": {"text": "設備每月需清潔散熱孔。", "title": "保養規範"},
+  "metadata": {"department": "manufacturing"}
 }
 ```
 
-Record 格式見 05；input 欄位已是 Schema 目標名，不傳 structure／vectors。請求與回應的大小／數量上限、冪等鍵見 Q-008／Q-019。
+content 由相容 Parser 轉成 ParsedDocument.fields；可接收已解析內容，但須符合對應 schema／Adapter，實際 ParsedDocument 結構仍待核定。API 外層不直接宣告 fields／structure／vectors。相同 JSON Schema 用於外層驗證，Parser 專屬內容 schema 另驗證。
 
 ```json
 {"run_id":"ing-001","status":"queued","config_revision":"C1-example"}
 ```
 
-以上 202 只表示接受；回應前須先完成授權、請求形狀與必要的同步預檢。正式預檢深度、排隊可用性、拒絕後是否留 run 記錄見 Q-017／Q-019。
+以上 202 只表示接受；回應前須完成授權、外層與必要同步預檢。正式預檢深度、下載／Parser 驗證所在階段、錯誤碼與拒絕後是否留 Run 見 Q-017／Q-019，不宣稱取得 run_id 就代表解析或索引成功。
 
-本文件的 `C1-example` 與 05 部署設定範例使用相同示意 Revision；正式 ID 型別與格式仍待 Q-002／Q-015，不由示例值凍結。
+### 5.4 Builder 上傳與自行部署
 
-### 5.4 檔案 Ingestion
+Engine 不提供 multipart 上傳端點。Builder 可接收檔案／CSV，轉成 content、Base64 或可存取 URI 再呼叫相同 JSON API；自行部署的呼叫端負責相同轉換。檔案傳輸轉換不等於語意 Parsing，原始檔案內容仍需 Engine 有相容 Parser。
 
-Content-Type 為 multipart/form-data，files 可重複多次，由 HTTP Client 生成 boundary。HTTP 層保存暫存／ArtifactRef，仍走同一 Import → Parsing → Pipeline。
-
-每檔 metadata manifest、穩定 ID 派生、混合檔案＋records、支援 MIME、檔案偵測、超限及清理的正式契約見 Q-005／Q-007／Q-016／Q-019。未核定前不得以「支援 multipart」宣稱所有 PDF／PPTX／圖片均可解析。
+Builder 上傳管理端點、暫存儲存與下載授權／生命週期尚待 Q-016／Q-019；獨立 Runtime 不得因此強制依賴 Builder Object Storage。MIME、大小／逾時限制與實際格式偵測待核定；選擇多個 Parser 不代表所有檔案都可解析。
 
 ### 5.5 工作查詢
 

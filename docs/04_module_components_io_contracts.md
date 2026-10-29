@@ -106,8 +106,8 @@ Package 版本與 Component 實作版本不一定一對一；一個 package 可�
 
 | 模組 | 業務 Input | 業務 Output | 另行注入／保留 |
 |---|---|---|---|
-| Import | files／標準 records | SourceAsset 清單 | 來源授權、資產保存 |
-| Parsing | SourceAsset 清單 | ParsedDocument 清單 | Schema、Parser routes |
+| Import | 扁平 JSON：content／base64／uri 三選一 | 已驗證及取得／解碼的 Parser Input（內部包裝待定） | 來源授權、資產保存；Builder／呼叫端處理上傳轉換 |
+| Parsing | 正規化後的文件內容與識別／metadata | ParsedDocument 清單 | Schema、依能力自動路由、必要 profile |
 | Chunking | ParsedDocument 清單 | Chunk 清單，vectors={} | Tokenizer、必須繼承資訊 |
 | Embedding | Chunk 清單 | 相同成功 Chunk＋vectors | Profile、逐項錯誤；不回獨立 VectorSet |
 | Indexing | 帶向量或純文字的 Chunk 清單 | IndexBinding、逐項結果、可搜尋狀態 | 授權目標／刪除事件；提交政策待決 |
@@ -136,44 +136,27 @@ Timeout、重試預算、取消、partial 與 fallback 尚待 Q-009／Q-017／Q-
 
 ### 4.1 Import
 
-**目的與邊界**：接收、驗證、建立來源資產；不做 PDF／OCR 或 Embedding。files 與 records 是同一流程的不同入口，不要求 System 二選一。
+**目的與邊界**：Engine 接收扁平 JSON，驗證共同外層並取得／解碼內容；文件／CSV 上傳轉換由 Builder 或呼叫端處理，不提供 Engine multipart，不做 PDF／OCR 語意解析或 Embedding。
 
-**Config／I/O**：依 05 的 accepted_inputs、CSV mapping 與 SourceAsset 草案；HTTP 大小限制由 07 執行，直接 SDK 也需同等限制。
+**Config／I/O**：[13](13_ingestion_parser_input_contract.md) 記錄 API Schema 與 ParserInput 區別。content／base64／uri 三選一，文件 ID、版本與 metadata 持續傳遞；URI 取得與 Base64 解碼共用，不要求每個 Parser 重做。內部來源物件、資源保存、大小／逾時及 Batch 政策仍待決。
 
-**處理**：
+**驗收方向**：相同內容經 inline／Base64／URI 後，在相容格式下具有相同解析語意；Builder CSV 映射一次後與直接 JSON 得到一致結果；不丟失身分／metadata，不接受未授權來源。外層多重來源、格式／內容不符及超限須明確失敗。
 
-1. 驗證來源可讀取、格式／大小與可信身分；檔案 MIME／內容偵測策略待定。
-2. JSON records 依 input 來源欄位檢查；Builder CSV 已映射為相同格式，不在 Parsing 重映射。
-3. 產生資產關聯；保持明確文件 ID／來源版本；檔案派生多文件由 Parser 合作處理。
-4. 提交可供下游讀取的資料；原始檔保留與暫存刪除需 Q-016。
-
-**例外**：空批、同批重複 ID、來源不存在、型別不符、超限、無權讀取。空批允許 no-op 或拒絕、資料重送見 Q-008，不用 Prototype 行為代替正式決策。
-
-**驗收**：CSV 轉標準 records 與直接 records 得到相同 ParsedDocument；來源／ID／保留資訊不遺失；未授權 URI 被拒絕。
-
-**待決**：Q-005、Q-007、Q-008、Q-016、Q-019。
+**待決**：Q-002、Q-005、Q-007、Q-008、Q-016、Q-017、Q-019。
 
 ### 4.2 Parsing
 
-**目的與邊界**：依格式擷取內容，輸出五個 key 的 ParsedDocument。Parsing 不生成向量、不自動摘要。
+**目的與邊界**：原始內容由相容 Parser 解析；上游已解析內容由相容 Adapter 驗證／正規化，共同產生 ParsedDocument。不生成向量、不自動摘要；五個外層 key 的方向保留，實際結構仍待討論。
 
-**方法**：Structured records、Native text、PDF／PPTX 擷取及 OCR 路由。首批實際支援格式／套件未定，不能因 UI 顯示選項就宣告支援。
+**方法與派送**：Structured records 為預設方向；Native text、PDF／PPTX／其他模態需各自相容 Parser。可啟用多個 Component，依 media_type／必要 schema_id 自動派送，不要求一般使用者設定 Router；相同格式衝突才選預設或進階 parsing_profile。沒有相容 Parser、歧義或內容不符時明確報錯。首批套件與能力仍待 Q-005，不能因 UI 顯示選項就宣告可用。
 
-**處理**：
+**Input**：同一筆 API 文件經 Import／共用資源層取得及解碼後的內容，帶 document_id／source_revision／metadata／來源資訊；不是要求各 Parser 原樣處理 HTTP payload。正式 Python 型別／執行簽名仍待 Q-002，見 [13 §4](13_ingestion_parser_input_contract.md#4-是否也是-parser-的-input)。
 
-1. 以格式路由至已註冊 Parser；同格式策略明確選定。
-2. 擷取文字／表格／章節，按 Schema 寫入 fields，位置寫 structure。
-3. 結構化 records 已使用目標欄位，僅整理及驗證；不做第二次 column mapping。
-4. 多文件來源派生穩定 ID，保留資產關聯；驗證完整 Schema。
-5. 沒有結構時 structure={}，不能捏造 headings 或頁碼。
+**處理與相容**：依 Component input schema 驗證內容，產生 fields 與 structure；已在 Builder 映射的欄位不重複映射。沒有結構時不可捏造頁碼／headings。一來源多文件須定義 ID 派生及來源位置。Parser 宣告輸出能力、Chunker 宣告所需結構／版本；共同 ParsedDocument 格式不保證所有 Chunker 適用，不默默丟棄結構。
 
-不同格式的 Parser routes 可在同一 System 同時啟用，依每筆來源格式分派；同一格式選一個有效策略，例如 PDF 使用原生擷取或核定的 OCR／fallback 策略。實際平行度受資源與執行政策控制，不要求使用者把不同格式拆成不同 System。
+**驗收方向**：原始與已解析輸入都能由相容 Component 處理；格式重疊／缺 Parser／缺 Chunker 結構有明確診斷；位置可追溯。損壞／加密檔案、掃描 OCR、讀取順序及空內容政策依 Q-005，不假裝可檢索成功。
 
-**例外**：掃描文件未啟用 OCR 回 `OCR_REQUIRED` 或等價領域錯誤；零文字不能當作可檢索成功。損壞／加密檔案、讀取順序、空白頁及表格策略見 Q-005。
-
-**驗收**：直接文字與掃描檔可辨別；Unicode offset／頁碼可對回內容；一檔多文件不共用同一 ID；未支援格式有明確錯誤。
-
-**待決**：Q-005、Q-006、Q-007；新格式能力需同步 Registry／UI。
+**待決**：Q-002、Q-005、Q-006、Q-007；新格式能力同步 Registry／UI，原型變更先記 UIB-011。
 
 ### 4.3 Chunking
 

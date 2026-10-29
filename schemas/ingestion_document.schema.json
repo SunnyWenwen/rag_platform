@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IngestionDocument",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "document_id"
+  ],
+  "properties": {
+    "document_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "文件的穩定識別碼"
+    },
+    "source_revision": {
+      "type": "string",
+      "minLength": 1,
+      "description": "來源內容版本；可省略，產生規則另行定義"
+    },
+    "content": {
+      "description": "直接傳入的文字或 JSON 物件，由相容 Parser 處理",
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": true
+        }
+      ]
+    },
+    "base64": {
+      "type": "string",
+      "minLength": 1,
+      "contentEncoding": "base64",
+      "description": "標準 Base64 編碼的檔案內容，不包含 data URI 前綴"
+    },
+    "uri": {
+      "type": "string",
+      "minLength": 1,
+      "format": "uri",
+      "description": "Engine 可存取的資源 URI；支援的協定由平台設定決定"
+    },
+    "media_type": {
+      "type": "string",
+      "minLength": 1,
+      "description": "內容的 MIME type，例如 text/plain 或 application/pdf"
+    },
+    "schema_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "JSON 內容的結構與版本識別，用於 Parser 路由及驗證"
+    },
+    "parsing_profile": {
+      "type": "string",
+      "minLength": 1,
+      "description": "此 RAG System 已設定的解析策略名稱"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "業務資訊；省略時由平台補入空物件"
+    }
+  },
+  "oneOf": [
+    {
+      "required": [
+        "content"
+      ]
+    },
+    {
+      "required": [
+        "base64"
+      ]
+    },
+    {
+      "required": [
+        "uri"
+      ]
+    }
+  ]
+}

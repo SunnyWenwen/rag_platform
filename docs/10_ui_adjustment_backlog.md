@@ -248,3 +248,11 @@ D-42 的具體補充（格式以 [12](12_component_schema_ui_contract.md) 為準
 - [ ] 顯示由 Engine 推導的固定值與原因，例如 Retrieval 後端；顯式衝突要報錯。UI 不自行補出能力、默默修值或執行 set_value 規則。
 - [ ] 驗證結果對回 Runtime／catalog／draft／context 版本；舊回應、目錄錯誤、未知候選保留草稿並標為待驗證，不能以舊成功結果套用新版。
 - [ ] 依 [12 SUI-01～14](12_component_schema_ui_contract.md#acceptance-cases) 建立互動與跨入口一致性驗收。後端／UI 未實作前保持未完成；Prototype 模擬與真實 Runtime 驗收分開。
+
+<a id="uib-011-ingestion-parser-routing"></a>
+### UIB-011：JSON-only Ingestion 與 Parser 自動路由（方向已確認，尚未實作）
+
+- [ ] 對齊 [13 輸入契約](13_ingestion_parser_input_contract.md) 及 JSON Schema：基本文字只需 document_id／content；Base64／URI 與必要格式識別在進階顯示，不新增 source／mode 必填層。
+- [ ] Builder 保留文件／CSV 上傳，映射／轉換後預覽實際 JSON，content 與 metadata 只映射一次；區分 API body 與 Parsing 後的 ParsedDocument。現有 records[].fields 及範例遷移需明示，不能假裝已支援相容別名。
+- [ ] Parsing 可啟用多個 Component，依宣告能力自動派送；無衝突不要求 Router 設定，有重疊才要求預設策略／進階 profile。格式不支援、歧義及缺 Chunker 結構顯示模組與原因，不靜默換 Parser。
+- [ ] 更新 API 說明、CSV／AI 樣本處理及匯出預覽，說明獨立 Runtime 接收 JSON，文件傳輸轉換由呼叫端負責。沿用進階預設收合；本輪不變更 Prototype，實際格式／Parser 能力不可由模擬選項冒充。

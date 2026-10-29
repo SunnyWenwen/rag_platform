@@ -8,6 +8,8 @@
 
 2026-10-28 D-41 確認：Builder Frontend／Backend 位於 rag_platform，SDK／Engine／Components／Runtime API 位於 rag_engine。UI 經 Backend 使用目標 Runtime 的 Component 目錄、Schema 與驗證能力，見 [07 §5.8](07_backend_runtime_integration.md#runtime-capability-contract)；Prototype 對應變更仍記於 UIB-010，未因此實作。
 
+**2026-10-29 輸入更新**：Engine 採 JSON-only 扁平輸入，Builder 文件／CSV 上傳轉成 content／base64／uri；Parsing 可多選並自動路由，衝突才要求預設／profile。新規格見 [13](13_ingestion_parser_input_contract.md)，原型及以下舊 records 預覽／映射的對應調整統一登錄 [UIB-011](10_ui_adjustment_backlog.md#uib-011-ingestion-parser-routing)，尚未實作。
+
 ## 1. 目標、相依與範圍
 
 - 新手透過預設、CSV 與 AI 助手快速開始；熟悉 RAG 者可展開完整設定。
