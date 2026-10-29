@@ -92,6 +92,8 @@ Engine 是可重用的處理框架，Runtime 是提供 API 的服務載體，Sys
 
 Module／Component 是職責與選擇層次，不以 Python Class 或 Function 的實作形式區分；實作及 I/O Contract 見 [04](docs/04_module_components_io_contracts.md)。Ingestion 與 Inference 透過資料／索引綁定銜接，不要求每次提問都重新 Ingestion。純全文模式略過 Embedding、None 的 pass-through，以及 Fusion 的合併時點等執行規則見 §5／04；本節不增加通用 DAG 編輯器。
 
+各 Module 規劃提供內建 Components，Module Developer 也可加入遵循相同契約、設定描述與相依要求的 Component。內建／自訂元件經同一 Registry 管理，使用者在 Builder 選用目標 Runtime 實際包含且核可的元件；預設提供不等於全部同時執行。[Module／Component 示意圖](diagrams/03_module_component_concept.png) 以 Parsing、Chunking、Indexing 為例，其他 Modules 同理；示例不是目前已完成的元件清單。
+
 <a id="config-terms"></a>
 
 ### 3.3 Config 與部署設定
@@ -149,7 +151,7 @@ Config 與部署設定的欄位、有效設定規則及範例見 [05 §6～8](do
 | Module Developer | 依公開 Module 契約開發、測試與維護 Component package；發布權限與資料存取另行授權 |
 | Platform Developer | 維護 rag_platform 的 Builder 前後端與管理整合；可兼任管理者或 Engine Developer，實際授權另定 |
 | Engine Developer | 維護 rag_engine 的 SDK、共用契約、Engine／Runtime API、相容驗證與 Component 載入政策；審查影響共用介面的變更 |
-| RAG Engine Developer（L1 圖） | 圖面開發角色的概括名稱；其中「開發 Module 的 Component」對應 Module Developer，不表示每次新增 Component 都要修改 Engine 核心 |
+| RAG Engine Developer（L1 圖） | 圖面開發角色的概括名稱；D1～D2 對應 Module Developer 依契約開發，D3～D4 包含審查者、CI／發布及平台部署分工，不表示每個開發者都有部署權限，或每次新增 Component 都要修改 Engine 核心 |
 | RAG Engine SDK（套件暫名 rag-engine-sdk） | 提供 Component 開發所需的公開型別、Module 介面、資源契約及開發工具；套件與精確 API 尚未實作／凍結 |
 | Component package | 可安裝及版本化交付的 Python distribution，依賴 SDK，可以提供一個或多個 Module 的 Component |
 | Registry | Engine 用來查找已註冊 Component、設定 Schema、能力、版本與建構入口的目錄；不等同於 Git repo、套件倉庫或套件安裝器 |
@@ -213,6 +215,8 @@ Python 的 method／`@classmethod`／abstract method、HTTP method，以及既�
 流程圖：[L1 PNG](diagrams/01_user_system_l1.png)、[Mermaid](diagrams/01_user_system_l1.mmd)、[固定版面 SVG](diagrams/01_user_system_l1.svg)。架構圖：[PNG](diagrams/02_infra_architecture.png)、[Mermaid](diagrams/02_infra_architecture.mmd)。2026-10-27 依使用者要求抽出共用 RAG Engine Platform，Runtime 內改標 RAG Service，並同步本章名詞／圖面規則。使用者確認後移除 Image→YAML 的「鎖定 Image 版本／Digest」連線並同步更新 PNG；Image 引用仍由 Export 記入 YAML，版本／Digest 規則保留於 07 的部署規格。同日後續 Mermaid 調整為 Platform 邊界直接連到 DEV 與獨立 Runtime，並增加自行部署環境外框；此輪只更新 Mermaid 與本章說明，PNG 保留前次同步版。本次不調整 L1。
 
 圖面的既有使用者要求也屬規格，後續更新須保持：
+
+2026-10-29 新增 Developer 四步 block 及 Module／Component 示意圖：L1 下方依序 D1 選 Module／讀契約、D2 開發 Component、D3 測試與 PR 審查、D4 發布並更新 Runtime，再連至共用 Engine 的選用能力。四步是既有開發／交付流程的摘要，精確權限與工具仍待核定，見 [11](docs/11_component_developer_guide.md#developer-flow-blocks)。Module 圖的 [Mermaid](diagrams/03_module_component_concept.mmd) 與 [SVG](diagrams/03_module_component_concept.svg) 維護相同關係；兩圖皆以固定 SVG 版面輸出 PNG。
 
 - L1 的 1～5 左到右同一水平列，與「修改 Config」位於「RAG Builder測試」框內；6「Deploy YAML in FTEST/ENT」在框外右側。
 - 下方測試實體名稱為「RAG System for RAG Builder 測試」；6 以虛線連其下方「RAG System in k8s」，YAML 設定檔另有虛線連到該實體。

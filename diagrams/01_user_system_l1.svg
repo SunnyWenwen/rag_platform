@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="2360" height="1370" viewBox="0 0 2360 1370" role="img" aria-labelledby="title desc">
-<title id="title">RAG Builder 測試、共用 Engine 與 Component 開發</title>
-<desc id="desc">上方為 RAG Builder User 的測試區塊，Build 產出 Config，Config 與共用 Engine 建立測試 System。框外的 YAML 部署與共用 Engine 建立 k8s System。中間為 RAG Engine，提供可選 Module／Component 的連線直接指向 Build。下方為 RAG Engine Developer 的開發區塊，開發 Component 並發布更新；角色名稱標示於區塊標題。實線為操作流程與發布，虛線為設定、產出及共用能力。</desc>
+<title id="title">RAG Builder 測試、共用 Engine 與四步 Component 開發流程</title>
+<desc id="desc">上方為 RAG Builder User 的測試區塊，Build 產出 Config，Config 與共用 Engine 建立測試 System。框外的 YAML 部署與共用 Engine 建立 k8s System。中間為 RAG Engine，提供可選 Module／Component 的連線直接指向 Build。下方為 RAG Engine Developer 的開發區塊，依序選 Module／讀契約、開發 Component、測試與 PR 審查、發布並更新 Runtime；角色名稱標示於區塊標題。實線為操作流程與發布，虛線為設定、產出及共用能力。</desc>
 <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 Z" fill="#66788b"/></marker></defs>
 <style>
 text{font-family:'Noto Sans CJK TC','Noto Sans TC','Microsoft JhengHei',sans-serif;font-weight:400;text-anchor:middle;dominant-baseline:central;fill:#143054}
@@ -34,7 +34,7 @@ text{font-family:'Noto Sans CJK TC','Noto Sans TC','Microsoft JhengHei',sans-ser
 <path id="edge-GE-S" data-source="GE" data-target="S" data-label="依 Config 建立" class="edge relation" d="M1000,865 L1000,785 L660,785 L660,710"/>
 <path id="edge-GE-K" data-source="GE" data-target="K" data-label="提供執行核心（Runtime Image）" class="edge relation" d="M1360,865 L1360,785 L2080,785 L2080,700"/>
 <path id="edge-GE-B" data-source="GE" data-target="B" data-label="提供可選 Module／Component" class="edge relation" d="M850,920 L42,920 L42,352 L60,352"/>
-<path id="edge-M-GE" data-source="M" data-target="GE" data-label="發布／更新 Component" class="edge" d="M1210,1170 L1210,965"/>
+<path id="edge-DEV4-GE" data-source="DEV4" data-target="GE" data-label="更新目標 Runtime" class="edge" d="M1985,1185 L1985,1055 L1210,1055 L1210,965"/>
 <circle cx="1080" cy="520" r="3" fill="#66788b"/>
 <g id="B" class="node step" data-label="1. Build（設定 Config）"><rect x="60" y="310" width="240" height="85" rx="10"/>
 <text x="180.0" y="337.0" font-size="23">1. Build</text>
@@ -80,10 +80,7 @@ text{font-family:'Noto Sans CJK TC','Noto Sans TC','Microsoft JhengHei',sans-ser
 <text x="1180.0" y="899.5" font-size="28">共用 RAG Engine</text>
 <text x="1180.0" y="930.5" font-size="22">Module／Component</text>
 </g>
-<g id="M" class="node engine" data-label="開發 Module 的 Component"><rect x="1020" y="1170" width="380" height="85" rx="10"/>
-<text x="1210.0" y="1197.0" font-size="25">開發 Module 的 Component</text>
-<text x="1210.0" y="1228.0" font-size="18">依模組契約實作</text>
-</g>
+
 <text class="edge-label" x="1330" y="330" font-size="20">準備部署到 k8s</text>
 <text class="edge-label" x="1160" y="250" font-size="20">驗證不達標，需調整</text>
 <text class="edge-label" x="730" y="110" font-size="20">調整 Ingestion 設定，需重新 Ingestion</text>
@@ -102,7 +99,14 @@ text{font-family:'Noto Sans CJK TC','Noto Sans TC','Microsoft JhengHei',sans-ser
 <text class="edge-label" x="825" y="785" font-size="22">依 Config 建立</text>
 <text class="edge-label" x="1760" y="785" font-size="22">提供執行核心（Runtime Image）</text>
 <text class="edge-label" x="450" y="920" font-size="23">提供可選 Module／Component</text>
-<text class="edge-label" x="1350" y="1060" font-size="23">發布／更新 Component</text>
-<text class="note" x="1830" y="1212">新增 Component 發布後，供 Builder User 選用</text>
+<text class="edge-label" x="1640" y="1055" font-size="23">更新目標 Runtime</text>
+
 <text class="note" x="1180" y="1345">實線：操作流程與發布　 ·　 虛線：設定、產出及共用能力</text>
+<path id="edge-DEV1-DEV2" data-source="DEV1" data-target="DEV2" data-label="" class="edge" d="M520,1229 L650,1229"/>
+<g id="DEV1" class="node engine" data-label="D1. 選 Module／讀契約"><rect x="90" y="1185" width="430" height="88" rx="10"/><text x="305" y="1213" font-size="24">D1. 選 Module／讀契約</text><text x="305" y="1248" font-size="20">SDK＋I/O Contract</text></g>
+<path id="edge-DEV2-DEV3" data-source="DEV2" data-target="DEV3" data-label="" class="edge" d="M1080,1229 L1210,1229"/>
+<g id="DEV2" class="node engine" data-label="D2. 開發 Component"><rect x="650" y="1185" width="430" height="88" rx="10"/><text x="865" y="1213" font-size="24">D2. 開發 Component</text><text x="865" y="1248" font-size="20">邏輯＋Schema＋相依宣告</text></g>
+<path id="edge-DEV3-DEV4" data-source="DEV3" data-target="DEV4" data-label="" class="edge" d="M1640,1229 L1770,1229"/>
+<g id="DEV3" class="node engine" data-label="D3. 測試與 PR 審查"><rect x="1210" y="1185" width="430" height="88" rx="10"/><text x="1425" y="1213" font-size="24">D3. 測試與 PR 審查</text><text x="1425" y="1248" font-size="20">契約／整合測試＋核可</text></g>
+<g id="DEV4" class="node engine" data-label="D4. 發布並更新 Runtime"><rect x="1770" y="1185" width="430" height="88" rx="10"/><text x="1985" y="1213" font-size="24">D4. 發布並更新 Runtime</text><text x="1985" y="1248" font-size="20">完整 Image＋DEV 部署</text></g>
 </svg>

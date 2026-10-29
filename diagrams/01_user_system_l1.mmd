@@ -42,9 +42,11 @@ flowchart TB
 
     subgraph DEVELOPMENT["RAG Engine 開發（for RAG Engine Developer）"]
         direction LR
-        M["開發 Module 的 Component"]
+        DEV1["D1. 選 Module／讀契約"] --> DEV2["D2. 開發 Component"]
+        DEV2 --> DEV3["D3. 測試與 PR 審查"]
+        DEV3 --> DEV4["D4. 發布並更新 Runtime"]
     end
-    M -->|發布／更新 Component| GE
+    DEV4 -->|更新目標 Runtime| GE
 
     classDef user fill:#e9f2ff,stroke:#6086c8,color:#143054
     classDef system fill:#ecf8f2,stroke:#599d85,color:#153f32
@@ -53,7 +55,7 @@ flowchart TB
     class B,I,Q,E,X,C user
     class F,S,R,Y,K system
     class D deploy
-    class GE,M engine
+    class GE,DEV1,DEV2,DEV3,DEV4 engine
     style BUILDER fill:#f7faff,stroke:#9aafc9
     style ENGINE fill:#f7f4fc,stroke:#b5a4d0
     style DEVELOPMENT fill:#faf8fd,stroke:#b5a4d0

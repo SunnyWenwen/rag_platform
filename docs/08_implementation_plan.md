@@ -786,3 +786,10 @@ Inference Schema／五份 JSON／Python 範例、圖面及其他服務實作均�
 - 04／11／12 檔名改為 module_components／component，所有文件內連結同步；08／10 舊錨點保留相容別名，正式引用用新錨點。七項交付、14 個 SUI 案例與 ParsedDocument 待討論項目內容保留。
 - 05 的新 ModuleConfig 目標引用 component_id；舊完整 YAML／Prototype 的 method 選擇欄位明示需依版本遷移。ResultSet／融合演算法 method、Python／HTTP method 保留，不全域替換公共 I/O 欄位；不得在未實作前宣稱支援舊別名。
 - L1 MMD／SVG／PNG 同步 Component 標籤，保留既有版面與連線。Prototype 名詞／內部設定遷移補在 UIB-010，沒有改動 UI 程式、Infra、Inference 公共 Schema 或其測試。D-ID 共 43、Q-ID 27、歷史 A-ID 40；里程碑仍為 M0～M7。
+
+## 25. 2026-10-29 Developer 四步流程與 Module／Component 示意圖
+
+- 依使用者要求，將 L1 開發區簡化為 D1 選 Module／讀契約 → D2 開發 Component → D3 測試與 PR 審查 → D4 發布並更新 Runtime。保留上方 Builder 測試、框外部署與中間 Engine 的版面／關係，D4 更新目標 Runtime 後才提供新元件選用。
+- 新增 [03 Module／Component 概念圖](../diagrams/03_module_component_concept.png)，含同名 MMD／SVG。以 Parsing、Chunking、Indexing 示意預設內建與 Developer 自訂元件；其他 Module 同理，元件遵循相同契約／Registry，由 Builder 依 Schema 與能力選用。
+- 預設提供不代表全部同時執行，也不表示目前已實作；自訂元件需測試、PR 審查、核可及目標 Runtime 更新。四步是既有流程摘要，D3／D4 權限由審查、CI／發布與部署角色分工；沒有新增直接上傳程式、任意熱載入或自動升級承諾。
+- README／03／11 同步說明與導引。本輪是既有 D-40～43 的展示與文件補充，不新增功能決策或修改 M0～M7；D-ID 43、Q-ID 27、歷史 A-ID 40 維持，Prototype／Infra／公開 I/O Schema 及執行程式未變。

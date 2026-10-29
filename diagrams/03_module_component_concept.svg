@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1180" viewBox="0 0 1800 1180" role="img" aria-labelledby="title desc">
+<title id="title">Module、預設 Component 與 Developer 擴充</title>
+<desc id="desc">每個 Module 有共用契約與平台預設提供的 Components，也能納入遵守相同契約的自訂 Component。開發者完成測試與 PR 審查後，由交付流程發布並更新目標 Runtime。RAG Builder User 從該 Runtime 的元件目錄選擇與設定，不需撰寫元件程式。圖中為目標設計與示例，非已實作清單。</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 Z" fill="#60768e"/></marker></defs>
+<style>
+text{font-family:'Noto Sans CJK TC','Noto Sans TC',sans-serif;font-weight:400;text-anchor:middle;dominant-baseline:central;fill:#143054}
+.frame-title{font-size:25;text-anchor:start;font-weight:500}.module-title{font-size:28;font-weight:500}
+.builtin rect{fill:#e9f2ff;stroke:#6086c8}.custom rect{fill:#eee9fa;stroke:#9380bf}.custom text{fill:#443267}
+.delivery rect{fill:#fff5e5;stroke:#cf9b4a}.delivery text{fill:#624516}.builder rect{fill:#ecf8f2;stroke:#599d85}.builder text{fill:#153f32}
+.node rect{stroke-width:1.8}.edge{fill:none;stroke:#60768e;stroke-width:2.2;marker-end:url(#arrow)}.relation{stroke-dasharray:7 7}
+.edge-label{fill:#485d71;stroke:white;stroke-width:10;paint-order:stroke fill;stroke-linejoin:round}.note{font-size:21;fill:#66788b}
+</style><rect width="1800" height="1180" fill="white"/>
+<text x="900" y="45" font-size="32" font-weight="500">Module 定義契約，Component 提供實作</text>
+<g id="ENGINE" class="frame"><rect x="40" y="100" width="1720" height="620" rx="14" fill="#f7faff" stroke="#9aafc9" stroke-width="1.8"/><text class="frame-title" x="65" y="135">RAG Engine｜各 Module 的內建與擴充 Components</text></g>
+<g id="PARSING" class="frame"><rect x="80" y="190" width="500" height="410" rx="14" fill="#fff" stroke="#9aafc9" stroke-width="1.8"/><text class="module-title" x="330.0" y="225">Module：Parsing</text></g>
+<text x="330" y="252" font-size="19" fill="#66788b">共用 I/O Contract 與模組語意</text>
+<g id="CHUNKING" class="frame"><rect x="650" y="190" width="500" height="410" rx="14" fill="#fff" stroke="#9aafc9" stroke-width="1.8"/><text class="module-title" x="900.0" y="225">Module：Chunking</text></g>
+<text x="900" y="252" font-size="19" fill="#66788b">共用 I/O Contract 與模組語意</text>
+<g id="INDEXING" class="frame"><rect x="1220" y="190" width="500" height="410" rx="14" fill="#fff" stroke="#9aafc9" stroke-width="1.8"/><text class="module-title" x="1470.0" y="225">Module：Indexing</text></g>
+<text x="1470" y="252" font-size="19" fill="#66788b">共用 I/O Contract 與模組語意</text>
+<g id="P0" class="node builtin" data-label="預設提供：Records Parser"><rect x="110" y="280" width="440" height="130" rx="11"/>
+<text x="330.0" y="310" font-size="21">預設提供的 Components</text>
+<text x="330.0" y="350" font-size="25">Records Parser</text>
+</g>
+<g id="C0" class="node builtin" data-label="預設提供：Fixed-size／Recursive／Header-aware"><rect x="680" y="280" width="440" height="130" rx="11"/>
+<text x="900.0" y="307" font-size="21">預設提供的 Components</text>
+<text x="900.0" y="346" font-size="25">Fixed-size／Recursive</text>
+<text x="900.0" y="381" font-size="24">Header-aware</text>
+</g>
+<g id="I0" class="node builtin" data-label="預設提供：Elasticsearch／Local Search"><rect x="1250" y="280" width="440" height="130" rx="11"/>
+<text x="1470.0" y="310" font-size="21">預設提供的 Components</text>
+<text x="1470.0" y="354" font-size="24">Elasticsearch／Local Search</text>
+</g>
+<g id="P1" class="node custom" data-label="Developer 擴充：TeamParser（示意）"><rect x="110" y="450" width="440" height="100" rx="11"/>
+<text x="330.0" y="480" font-size="23">可加入自訂 Component</text>
+<text x="330.0" y="520" font-size="24">TeamParser（示意）</text>
+</g>
+<g id="C1" class="node custom" data-label="Developer 擴充：TeamChunker（示意）"><rect x="680" y="450" width="440" height="100" rx="11"/>
+<text x="900.0" y="480" font-size="23">可加入自訂 Component</text>
+<text x="900.0" y="520" font-size="24">TeamChunker（示意）</text>
+</g>
+<g id="I1" class="node custom" data-label="Developer 擴充：TeamIndexer（示意）"><rect x="1250" y="450" width="440" height="100" rx="11"/>
+<text x="1470.0" y="480" font-size="23">可加入自訂 Component</text>
+<text x="1470.0" y="520" font-size="24">TeamIndexer（示意）</text>
+</g>
+<text class="note" x="900" y="650">同一 Module 的內建與自訂元件遵守相同契約，由 Engine Registry 管理。</text>
+<text class="note" x="900" y="686">其他 Modules 同理；Builder 依 Schema、能力與相依條件提供選擇。</text>
+<path id="edge-DEV-CHECK" data-source="DEV" data-target="CHECK" data-label="" class="edge" d="M430,910 L510,910"/>
+<path id="edge-CHECK-UPDATE" data-source="CHECK" data-target="UPDATE" data-label="" class="edge" d="M860,910 L940,910"/>
+<path id="edge-UPDATE-ENGINE" data-source="UPDATE" data-target="ENGINE" data-label="納入目標 Runtime" class="edge" d="M1115,850 L1115,800 L1080,800 L1080,720"/>
+<path id="edge-ENGINE-UI" data-source="ENGINE" data-target="UI" data-label="Component 目錄＋Config Schema" class="edge relation" d="M1545,720 L1545,850"/>
+<g id="DEV" class="node custom" data-label="Module Developer｜選 Module、開發 Component"><rect x="80" y="850" width="350" height="120" rx="11"/>
+<text x="255.0" y="885" font-size="25">Module Developer</text>
+<text x="255.0" y="932" font-size="21">選 Module、開發 Component</text>
+</g>
+<g id="CHECK" class="node delivery" data-label="測試＋PR 審查｜驗證契約與設定"><rect x="510" y="850" width="350" height="120" rx="11"/>
+<text x="685.0" y="885" font-size="25">測試＋PR 審查</text>
+<text x="685.0" y="932" font-size="22">驗證契約與設定</text>
+</g>
+<g id="UPDATE" class="node delivery" data-label="發布並更新 Runtime｜內建＋核可自訂 Components"><rect x="940" y="850" width="350" height="120" rx="11"/>
+<text x="1115.0" y="885" font-size="24">發布並更新 Runtime</text>
+<text x="1115.0" y="932" font-size="20">內建＋核可自訂 Components</text>
+</g>
+<g id="UI" class="node builder" data-label="RAG Builder User｜選 Component、填參數"><rect x="1370" y="850" width="350" height="120" rx="11"/>
+<text x="1545.0" y="885" font-size="25">RAG Builder User</text>
+<text x="1545.0" y="932" font-size="22">選 Component、填參數</text>
+</g>
+<text class="edge-label" x="1080" y="765" font-size="21">納入目標 Runtime</text>
+<text class="edge-label" x="1650" y="770" font-size="20">Component 目錄</text>
+<text class="edge-label" x="1650" y="805" font-size="20">＋Config Schema</text>
+<text class="note" x="900" y="1040">預設提供代表可選用的內建元件，實際執行哪些元件由 Config 與相依規則決定。</text>
+<text class="note" x="900" y="1085">自訂元件經核可、發布並更新目標 Runtime 後，才能提供 Builder User 使用。</text>
+<text class="note" x="900" y="1145">目標設計示意；元件與擴充能力依開發階段交付，非目前已實作清單。</text>
+</svg>
