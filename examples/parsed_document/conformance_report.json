@@ -34,6 +34,7 @@
       "uses_only_core_block_types": false,
       "vendor_specific_table_payloads": 0,
       "binary_assets_verified": false,
+      "report_excerpt_matches_official_mapping": true,
       "page_blocks": {
         "status": "not_losslessly_convertible_by_reference_adapter",
         "reason": "cannot losslessly infer a unique page for each block"

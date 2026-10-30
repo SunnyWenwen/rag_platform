@@ -1,0 +1,370 @@
+{
+  "date": "2026-10-30",
+  "contract": "parsed-document/0.1-draft",
+  "versions": {
+    "markitdown": "0.1.9",
+    "pymupdf": "2.0",
+    "pymupdf4llm": "2.0",
+    "pymupdf-layout": "2.0",
+    "markdown-it-py": "4.2.0",
+    "jsonschema": "4.26.0",
+    "python-docx": "1.2.0"
+  },
+  "scope": "Actual local synthetic PDF/DOCX/HTML conversions from validated Base64 ingestion bytes; no HTTP Engine, external API, OCR, image assets, real-world corpus or downstream Chunker.",
+  "fixture": {
+    "owned_synthetic_inputs": true,
+    "pdf_pages": 3,
+    "blank_page_number": 3,
+    "expected_table_columns": 2
+  },
+  "inputs": [
+    {
+      "file": "maintenance.pdf",
+      "media_type": "application/pdf",
+      "sha256": "80d74da3fd200e2b477de737fe13a66cf5cd91d83a2b29fd590a947ad0419444",
+      "base64_ingestion_schema_valid": true,
+      "decoded_bytes_equal": true
+    },
+    {
+      "file": "maintenance.docx",
+      "media_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "sha256": "3cafbcde57a3f20d963335cd5e44b79c210e7a7afa405d6642c023d125b50829",
+      "base64_ingestion_schema_valid": true,
+      "decoded_bytes_equal": true
+    },
+    {
+      "file": "maintenance.html",
+      "media_type": "text/html",
+      "sha256": "7e39125fb15f758e91d19bca70442a39e079dca77157fbd66cef17feb2e93970",
+      "base64_ingestion_schema_valid": true,
+      "decoded_bytes_equal": true
+    },
+    {
+      "file": "maintenance.pdf",
+      "media_type": "application/pdf",
+      "sha256": "80d74da3fd200e2b477de737fe13a66cf5cd91d83a2b29fd590a947ad0419444",
+      "base64_ingestion_schema_valid": true,
+      "decoded_bytes_equal": true
+    }
+  ],
+  "successful_parser_calls": 7,
+  "parser_calls": [
+    {
+      "provider": "markitdown",
+      "input": "pdf",
+      "output": "DocumentConverterResult",
+      "keys": [
+        "markdown",
+        "title"
+      ],
+      "pages_attribute": false,
+      "markdown_table_present": false
+    },
+    {
+      "provider": "markitdown",
+      "input": "docx",
+      "output": "DocumentConverterResult",
+      "keys": [
+        "markdown",
+        "title"
+      ],
+      "pages_attribute": false,
+      "markdown_table_present": true
+    },
+    {
+      "provider": "markitdown",
+      "input": "html",
+      "output": "DocumentConverterResult",
+      "keys": [
+        "markdown",
+        "title"
+      ],
+      "pages_attribute": false,
+      "markdown_table_present": true
+    },
+    {
+      "provider": "pymupdf4llm",
+      "mode": "legacy-markdown",
+      "output": "str",
+      "ocr": false
+    },
+    {
+      "provider": "pymupdf4llm",
+      "mode": "legacy-pages",
+      "output": "page list",
+      "ocr": false,
+      "page_dictionary_keys": [
+        "metadata",
+        "toc_items",
+        "tables",
+        "images",
+        "graphics",
+        "text",
+        "words"
+      ],
+      "page_metadata_keys": [
+        "format",
+        "title",
+        "author",
+        "subject",
+        "keywords",
+        "creator",
+        "producer",
+        "creationDate",
+        "modDate",
+        "trapped",
+        "encryption",
+        "file_path",
+        "page_count",
+        "page"
+      ]
+    },
+    {
+      "provider": "pymupdf4llm",
+      "mode": "layout-pages",
+      "output": "page list",
+      "ocr": false,
+      "page_dictionary_keys": [
+        "metadata",
+        "toc_items",
+        "page_boxes",
+        "text"
+      ],
+      "page_metadata_keys": [
+        "format",
+        "title",
+        "author",
+        "subject",
+        "keywords",
+        "creator",
+        "producer",
+        "creationDate",
+        "modDate",
+        "trapped",
+        "encryption",
+        "file_path",
+        "page_count",
+        "page_number"
+      ]
+    },
+    {
+      "provider": "pymupdf4llm",
+      "mode": "layout-json",
+      "output": "JSON",
+      "ocr": false,
+      "box_classes": {
+        "section-header": 2,
+        "text": 3,
+        "table": 1
+      },
+      "table_column_counts": [
+        1
+      ]
+    }
+  ],
+  "validated_mappings": 14,
+  "negative_adapter_cases": 4,
+  "legacy_json_requires_layout": true,
+  "document_method_equals_compatibility_alias": true,
+  "results": [
+    {
+      "id": "markitdown-pdf-plain",
+      "schema_and_semantics_valid": true,
+      "native_json_result_retained": true,
+      "profile": "unstructured",
+      "block_types": {},
+      "text_chars": 156,
+      "has_page_locations": false
+    },
+    {
+      "id": "markitdown-pdf-spans",
+      "schema_and_semantics_valid": true,
+      "native_json_result_retained": true,
+      "profile": "text-spans/0.1-draft",
+      "block_types": {
+        "paragraph": 9
+      },
+      "text_chars": 156,
+      "has_page_locations": false
+    },
+    {
+      "id": "markitdown-docx-plain",
+      "schema_and_semantics_valid": true,
+      "native_json_result_retained": true,
+      "profile": "unstructured",
+      "block_types": {},
+      "text_chars": 115,
+      "has_page_locations": false
+    },
+    {
+      "id": "markitdown-docx-spans",
+      "schema_and_semantics_valid": true,
+      "native_json_result_retained": true,
+      "profile": "text-spans/0.1-draft",
+      "block_types": {
+        "heading": 1,
+        "paragraph": 1,
+        "table": 1
+      },
+      "text_chars": 115,
+      "has_page_locations": false
+    },
+    {
+      "id": "markitdown-html-plain",
+      "schema_and_semantics_valid": true,
+      "native_json_result_retained": true,
+      "profile": "unstructured",
+      "block_types": {},
+      "text_chars": 107,
+      "has_page_locations": false
+    },
+    {
+      "id": "markitdown-html-spans",
+      "schema_and_semantics_valid": true,
+      "native_json_result_retained": true,
+      "profile": "text-spans/0.1-draft",
+      "block_types": {
+        "heading": 1,
+        "paragraph": 1,
+        "table": 1
+      },
+      "text_chars": 107,
+      "has_page_locations": false
+    },
+    {
+      "id": "pymupdf-legacy-markdown-plain",
+      "schema_and_semantics_valid": true,
+      "native_json_result_retained": true,
+      "profile": "unstructured",
+      "block_types": {},
+      "text_chars": 190,
+      "has_page_locations": false
+    },
+    {
+      "id": "pymupdf-legacy-markdown-spans",
+      "schema_and_semantics_valid": true,
+      "native_json_result_retained": true,
+      "profile": "text-spans/0.1-draft",
+      "block_types": {
+        "heading": 2,
+        "paragraph": 2,
+        "table": 1,
+        "code": 1
+      },
+      "text_chars": 190,
+      "has_page_locations": false
+    },
+    {
+      "id": "pymupdf-legacy-pages-text-spans",
+      "schema_and_semantics_valid": true,
+      "native_json_result_retained": true,
+      "profile": "text-spans/0.1-draft",
+      "block_types": {
+        "heading": 2,
+        "paragraph": 2,
+        "table": 1,
+        "code": 1
+      },
+      "text_chars": 194,
+      "has_page_locations": true,
+      "page_numbers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "id": "pymupdf-legacy-pages-page-blocks",
+      "schema_and_semantics_valid": true,
+      "native_json_result_retained": true,
+      "profile": "page-blocks/0.1-draft",
+      "block_types": {
+        "heading": 2,
+        "paragraph": 2,
+        "table": 1,
+        "code": 1
+      },
+      "text_chars": 192,
+      "has_page_locations": true,
+      "page_numbers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "id": "pymupdf-layout-pages-text-spans",
+      "schema_and_semantics_valid": true,
+      "native_json_result_retained": true,
+      "profile": "text-spans/0.1-draft",
+      "block_types": {
+        "heading": 2,
+        "paragraph": 2,
+        "table": 1,
+        "code": 1
+      },
+      "text_chars": 199,
+      "has_page_locations": true,
+      "page_numbers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "id": "pymupdf-layout-pages-page-blocks",
+      "schema_and_semantics_valid": true,
+      "native_json_result_retained": true,
+      "profile": "page-blocks/0.1-draft",
+      "block_types": {
+        "heading": 2,
+        "paragraph": 2,
+        "table": 1,
+        "code": 1
+      },
+      "text_chars": 197,
+      "has_page_locations": true,
+      "page_numbers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "id": "pymupdf-layout-json-text-spans",
+      "schema_and_semantics_valid": true,
+      "native_json_result_retained": true,
+      "profile": "text-spans/0.1-draft",
+      "block_types": {
+        "heading": 2,
+        "paragraph": 3,
+        "table": 1
+      },
+      "text_chars": 168,
+      "has_page_locations": true,
+      "page_numbers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "id": "pymupdf-layout-json-page-blocks",
+      "schema_and_semantics_valid": true,
+      "native_json_result_retained": true,
+      "profile": "page-blocks/0.1-draft",
+      "block_types": {
+        "heading": 2,
+        "paragraph": 3,
+        "table": 1
+      },
+      "text_chars": 168,
+      "has_page_locations": true,
+      "page_numbers": [
+        1,
+        2,
+        3
+      ]
+    }
+  ]
+}

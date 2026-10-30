@@ -156,7 +156,9 @@ Timeout、重試預算、取消、partial 與 fallback 尚待 Q-009／Q-017／Q-
 
 **驗收方向**：原始與已解析輸入都能由相容 Component 處理；格式重疊／缺 Parser／缺 Chunker 結構有明確診斷；位置可追溯。損壞／加密檔案、掃描 OCR、讀取順序及空內容政策依 Q-005，不假裝可檢索成功。
 
-**待決**：Q-002、Q-005、Q-006、Q-007；新格式能力同步 Registry／UI，原型變更先記 UIB-011。
+**供應者相容性補充（2026-10-30）**：MarkItDown 0.1.9 與 PyMuPDF4LLM／PyMuPDF 2.0 可作 Parser／Adapter 候選，已完成本地真實輸出的共同輸入／ParsedDocument 映射驗證，見 [14 §5.1](14_parsed_document_contract.md#51-markitdownpymupdf4llm實際本地解析與-contract-驗證)。Markdown 可保留全文或正規化標題等結構；逐頁輸出仍屬 ParsedDocument，平台 Chunking 另外執行。7 次解析／14 份映射不代表已註冊進 Engine；格式／套件版本、Layout 與 OCR 等能力需在正式 Component 宣告。
+
+**待決**：Q-002、Q-005、Q-006、Q-007；新格式能力同步 Registry／UI，原型變更先記 UIB-011／012。
 
 ### 4.3 Chunking
 

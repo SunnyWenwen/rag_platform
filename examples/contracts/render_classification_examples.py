@@ -111,7 +111,7 @@ def main():
         text13 += example(heading, description, ingestion[key]) + '\n'
     text13 += '上述五例都符合共同外層；media_type／schema_id 能省略的條件仍依正文。對應的 Parser／服務能力必須另外具備，範例通過 Schema 不代表 Runtime 已實作。'
 
-    text14 = '以下四例直接使用 ParsedDocument 的五個頂層 key。它們是 Parser 的輸出／Chunker 的輸入，與 13 的 IngestionDocument 分屬不同階段。前三例由 §1 的共用 JSON 範例產生報告用精簡視圖，只省略可選資訊；自訂例子的資料與示意註冊 Schema 見 [report_cases.json](../examples/contracts/report_cases.json)。\n\n'
+    text14 = '以下先列四種分類，再附一份從 Docling 官方輸出映射而來的精簡例子；都使用 ParsedDocument 的五個頂層 key。它們是 Parser 的輸出／Chunker 的輸入，與 13 的 IngestionDocument 分屬不同階段。前三種分類由 §1 的共用 JSON 範例產生報告用精簡視圖，只省略可選資訊；自訂例子的資料與示意註冊 Schema 見 [report_cases.json](../examples/contracts/report_cases.json)。\n\n'
     for heading, description, value in [
         ('#### 0.2.1 無額外結構：只有可處理的文字欄位', '原文與標題在 fields，structure 為空；一般文字 Chunker 可以依 Token 或分隔規則處理選定文字欄位。', plain),
         ('#### 0.2.2 text-spans：全文加上標題／段落範圍', 'fields.text 是基準；[0,4) 是標題、[5,12) 是段落，Block 不重複保存文字。完整範例另有頁碼與切分點，此處省略可選資訊。', spans),
@@ -119,10 +119,15 @@ def main():
         ('#### 0.2.4 已註冊自訂結構：企業自己的章節分類', 'company.custom/1 是示意客製規格，payload 記錄企業的章節分類；產生／驗證本例時，工具明確註冊了要求 section 為字串的 Schema。未註冊時會拒絕，且需要相容 Component，不表示平台預設支援此名稱。', custom),
     ]:
         text14 += example(heading, description, value) + '\n'
+    provider_excerpt = json.loads((source_dir / 'docling_report_excerpt.json').read_text())
+    validate_document(provider_excerpt)
+    text14 += example('#### 0.2.5 Docling 實際映射：標題、段落與來源頁碼',
+        '這是官方 multi_page 測資經既有參考 Adapter 轉換後，取前兩個 Block 的報告視圖；來源與雜湊見 §5。全文取至第二個 Block 結尾，省略其他內容、bbox 與原生擴充，metadata 明示為摘錄。這是轉成既有 text-spans 的例子，沒有建立自訂結構。Docling 第二個元素的局部 charspan 原為 [0,117)，重組全文後對應 [37,154)，因此不能把原生局部位置直接照搬。完整可驗證 JSON 見 [docling_report_excerpt.json](../examples/parsed_document/docling_report_excerpt.json)。',
+        provider_excerpt) + '\n'
     text14 += '四種表示的共同外層不變，差異集中在 structure 與內容基準；本輪未更改 Schema，也未新增 Parser／Chunker 執行能力。'
     replace_section(ROOT / 'docs/13_ingestion_parser_input_contract.md', 'ingestion', text13)
     replace_section(ROOT / 'docs/14_parsed_document_contract.md', 'parsed', text14)
-    report = {'ingestion_examples': len(ingestion), 'parsed_document_examples': len(parsed_examples),
+    report = {'ingestion_examples': len(ingestion), 'parsed_document_examples': len(parsed_examples) + 1,
               'custom_rejected_without_registration': custom_rejected_without_registration,
               'preparsed_input_reconstructs_valid_output': True,
               'base64_example_decodes_to_declared_text': True}

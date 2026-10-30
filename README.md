@@ -16,6 +16,8 @@ Config-driven RAG System 建立與測試平台。
 
 **2026-10-30 ParsedDocument 草案（D-46）**：新增 [14 規格與 Docling／MinerU 對照](docs/14_parsed_document_contract.md)、[共用 JSON Schema](schemas/parsed_document.schema.json) 及 [可重現報告](examples/parsed_document/conformance_report.json)。六份官方既有輸出共 145 個元素可映射與驗證，原生 JSON 可重建；公式／群組以擴充保留、圖片缺資源與分頁轉換限制另列，未驗證原始檔解析／模型／Chunker。這是 0.1 草案，不凍結所有結構／SDK；UI 變更先記 UIB-012，未改原型。
 
+**2026-10-30 Parser 相容性補充**：新增 [MarkItDown／PyMuPDF4LLM 實際解析驗證](docs/14_parsed_document_contract.md#51-markitdownpymupdf4llm實際本地解析與-contract-驗證)，7 次本地解析、14 份映射通過現有 Contract；保留版本／頁面／表格品質與未覆蓋情境。14 §0.2.5 補 Docling 官方映射摘錄，第 5 節區分「轉成既有結構」與「註冊自訂結構」。未修改 Schema／UI 或新增正式 Engine Component。
+
 **接續規劃**：先讀 [03 名詞與架構](03_architecture_proposal.md#terminology) 及 [08 開發計畫與決策](docs/08_implementation_plan.md)。原 RAG Builder 規劃對話與「畫userflow」的整合核對、直接修正及需討論的邊界集中於 08 §12；臨時交接摘要已依指示讀取後移除。
 
 ## 開發規格文件集 v0.19（2026-10-16）

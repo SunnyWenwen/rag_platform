@@ -89,6 +89,21 @@ def run(cache_dir, output_dir):
                   'uses_only_core_block_types': stats['extension_blocks'] == 0,
                   'vendor_specific_table_payloads': sum(b['type'] == 'table' for b in blocks),
                   'binary_assets_verified': False}
+        excerpt_path = here / 'docling_report_excerpt.json'
+        if case['id'] == 'docling-multi_page' and excerpt_path.exists():
+            excerpt = json.loads(excerpt_path.read_text())
+            validate_document(excerpt)
+            assert excerpt['source_revision'] == document['source_revision']
+            expected = deepcopy(document['structure']['text']['blocks'][:2])
+            for block in expected:
+                block.pop('extensions', None)
+                for location in block['locations']:
+                    location.pop('bbox', None)
+                    location.pop('source_ref', None)
+            assert excerpt['structure']['text']['blocks'] == expected
+            assert excerpt['fields']['text'] == document['fields']['text'][:expected[-1]['end']]
+            assert excerpt['metadata']['_rag']['preview'] is True
+            result['report_excerpt_matches_official_mapping'] = True
         if output_dir:
             (output_dir / (case['id'] + '.text-spans.json')).write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n')
         try:

@@ -266,3 +266,5 @@ D-42 的具體補充（格式以 [12](12_component_schema_ui_contract.md) 為準
 - [ ] Chunking 基本區固定選一個 Component；需要時提供依結構／格式／能力派送，無衝突自動，重疊要求預設策略。每筆切分任務只走一個有效 Chunker；不默默忽略 required 邊界。
 - [ ] Header-aware 區分直接處理 Markdown 與要求 heading Blocks 的能力；不以 structure 是否為空猜測格式。首版建議 Parser 正規化標題，確切輸出／格式宣告依核定契約整合。
 - [ ] AI 樣本、CSV／API 預覽與錯誤定位引用同一份 Contract；保留現有進階收合與模擬狀態。僅記錄待辦，待明確改 UI 指示再實作。
+
+- [ ] UIB-012 補充：若正式註冊 MarkItDown／PyMuPDF4LLM Component，顯示實際模式與版本、原生頁面是否可用、Layout／OCR 條件、結構與資源限制；區分 Schema 映射通過與解析品質／Chunker 可執行。純文件驗證不預先增加假可用選項。

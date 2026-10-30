@@ -831,3 +831,10 @@ Inference Schema／五份 JSON／Python 範例、圖面及其他服務實作均�
 - 實際比對發現 19 個群組／公式等元素需具名 extension、圖片測資缺原圖，以及 sheet／slide／無唯一頁面的群組無法直接套用 Page／Block 分組。報告保留限制，不把通過 Schema 當成完整語意／二進位／Chunker 相容。
 - Chunking 固定／依結構與能力路由、Markdown 內含語法與顯式 heading 區分、模型資料與執行能力分開，記入 04／14 與 UIB-012；本輪未改 Prototype、圖面、既有 Ingestion／Inference Schema 或 Engine 程式。
 - D-ID 共 46；Q-ID 27、歷史 A-ID 40 與 M0～M7 不變。Q-002 由沒有實際 Schema 改為已有候選待審閱，表格／圖片標準化、版本／來源／註冊／資源與完整供應者覆蓋仍待定。
+
+## 31. 2026-10-30 MarkItDown／PyMuPDF4LLM 及官方結果說明
+
+- 使用者要求確認兩個 Parser 是否能套入 Contract；固定 MarkItDown 0.1.9、PyMuPDF／PyMuPDF4LLM／Layout 2.0，實際以共同 IngestionDocument 的 Base64 bytes 解析自有 PDF／DOCX／HTML，7 次成功解析與 14 份映射通過，另有 4 個 Adapter 拒絕案例。原有 Schema 不變，未新增正式 Engine 元件。
+- 14 §5.1 與新機器報告保留每種輸出模式／版本及邊界；page_chunks 是解析組織方式，不是平台最終 Chunk。MarkItDown 整份 Markdown 不宣稱有原生頁面；PyMuPDF 2.0 移入核心與不同頁碼欄位已實測。表格辨識品質與 Contract 相容性分開驗收，不用小樣本保證準確度。
+- 依使用者追問，新增官方 Docling 映射的精簡 ParsedDocument 例子，標明摘錄並核對來源。14 第 5 節改為轉成既有 text-spans／page-blocks 的結果；通過不代表建立自訂結構，無法無損轉換也不等於目標結構整體不支援該 Parser。
+- 04／README／UIB-012 補充供應者與限制，UI 未改；本輪為 D-46 的驗證與展示補充，不新增產品決策。D-ID 46、Q-ID 27、歷史 A-ID 40 與 M0～M7 保持。

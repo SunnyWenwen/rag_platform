@@ -35,7 +35,7 @@ text-spans 與 page-blocks 是可並存的表示方式，不要求所有資料�
 
 <!-- classification-examples:parsed:start -->
 
-以下四例直接使用 ParsedDocument 的五個頂層 key。它們是 Parser 的輸出／Chunker 的輸入，與 13 的 IngestionDocument 分屬不同階段。前三例由 §1 的共用 JSON 範例產生報告用精簡視圖，只省略可選資訊；自訂例子的資料與示意註冊 Schema 見 [report_cases.json](../examples/contracts/report_cases.json)。
+以下先列四種分類，再附一份從 Docling 官方輸出映射而來的精簡例子；都使用 ParsedDocument 的五個頂層 key。它們是 Parser 的輸出／Chunker 的輸入，與 13 的 IngestionDocument 分屬不同階段。前三種分類由 §1 的共用 JSON 範例產生報告用精簡視圖，只省略可選資訊；自訂例子的資料與示意註冊 Schema 見 [report_cases.json](../examples/contracts/report_cases.json)。
 
 #### 0.2.1 無額外結構：只有可處理的文字欄位
 
@@ -112,6 +112,43 @@ company.custom/1 是示意客製規格，payload 記錄企業的章節分類；�
 }
 ```
 
+#### 0.2.5 Docling 實際映射：標題、段落與來源頁碼
+
+這是官方 multi_page 測資經既有參考 Adapter 轉換後，取前兩個 Block 的報告視圖；來源與雜湊見 §5。全文取至第二個 Block 結尾，省略其他內容、bbox 與原生擴充，metadata 明示為摘錄。這是轉成既有 text-spans 的例子，沒有建立自訂結構。Docling 第二個元素的局部 charspan 原為 [0,117)，重組全文後對應 [37,154)，因此不能把原生局部位置直接照搬。完整可驗證 JSON 見 [docling_report_excerpt.json](../examples/parsed_document/docling_report_excerpt.json)。
+
+```json
+{
+  "document_id": "docling-multi_page",
+  "source_revision": "e90f3440e9091b51a9c7fb0b138003933d71f540f24f4d04c05aa58fe3eb747a",
+  "fields": {
+    "text": "The Evolution of the Word Processor\n\nThe concept of the word processor predates modern computers and has evolved through several technological milestones."
+  },
+  "metadata": {"_rag": {"provider": "docling", "preview": true}},
+  "structure": {
+    "text": {
+      "schema_id": "text-spans/0.1-draft",
+      "blocks": [
+        {
+          "block_id": "b0000",
+          "type": "heading",
+          "locations": [{"kind": "page", "page_number": 1}],
+          "level": 1,
+          "start": 0,
+          "end": 35
+        },
+        {
+          "block_id": "b0001",
+          "type": "paragraph",
+          "locations": [{"kind": "page", "page_number": 1}],
+          "start": 37,
+          "end": 154
+        }
+      ]
+    }
+  }
+}
+```
+
 四種表示的共同外層不變，差異集中在 structure 與內容基準；本輪未更改 Schema，也未新增 Parser／Chunker 執行能力。
 
 <!-- classification-examples:parsed:end -->
@@ -131,6 +168,8 @@ Parser 宣告「能產生什麼」，Chunker 宣告「接受什麼」。相同�
 三個層次分開驗收。不能因 Schema 支援某種結構，就宣稱對應的 OCR、表格切分、多模態或路由能力已交付。
 
 ### 0.4 現有驗證結果與後續重點
+
+本節原有數字對應 Docling／MinerU；另新增 MarkItDown／PyMuPDF4LLM 真實解析驗證：7 次成功解析、14 份映射通過，模式與限制見 §5.1。§0.2.5 另附 Docling 官方映射的報告摘錄。
 
 本次用 5 份 Docling＋1 份 MinerU 官方既有輸出，共 145 個元素進行映射與驗證；皆可形成 text-spans，其中 3 份也可轉成 page-blocks。原生 JSON 可以重建，驗證的是輸出資料的映射與保留，不是重新執行解析模型或 Chunker。
 
@@ -240,25 +279,73 @@ Schema 檔案為共用核心與內建 $defs；RegisteredStructure 只定義擴�
 
 metadata／fields 為 JSON 資料，仍需 System Schema 及可信權限政策；公共 Schema 不是 ACL 驗證。參考 adapter 的 metadata._rag 是受控追溯區候選，正式名稱／隱私與保留政策留 Q-006／Q-016；呼叫端不得以輸入內容偽造。
 
-## 5. 官方測資實際對照結果
+## 5. 官方測資：轉成既有結構的實際驗證結果
 
 來源固定於 Docling repo revision af2dbadb4cd3fa39786916157a5c174eeb9bb7bf 與 MinerU revision 14db546c732e9829c949dbaefd9f1459c3da55a7，逐檔 SHA-256 見 provider_cases.json。Docling 測資原生格式為 DoclingDocument 1.10.0；MinerU 正例為 docvortex.middle／2.0、producer 4.0.12 的既有輸出。日期僅記錄本次驗證，不宣稱已覆蓋所有版本。
 
 **實際執行的是官方既有輸出 JSON 的轉換與驗證**，沒有執行 Docling／MinerU 模型、OCR、原始檔解析、圖片下載、Chunker 或檢索。上游原生測資不複製到此 repo，重跑時從固定 URL 取得並核對雜湊。
 
-| 官方案例 | 來源元素數 | text-spans | page-blocks | 限制／觀察 |
+本節的兩欄是**轉換目標**，不是「可否自訂新結構」的判定：
+
+- **text-spans 通過**：原生輸出經參考 Adapter 轉成已定義的 text-spans/0.1-draft，通過共同形狀、位置及引用等檢查；沒有因此建立新的 structure.schema_id。表中的 19 個 extension 是 Block 層級的原生資料保留，外層仍使用既有 text-spans；它與另註冊一種自訂 Structure 是不同層次。
+- **page-blocks 未能轉換**：這份測資無法由目前的參考 Adapter 在保留原意的前提下轉成 page-blocks，例如群組沒有唯一頁碼、來源是 sheet／slide，不能直接改標成物理 page。這不是宣稱 page-blocks 整體不支援該 Parser，也不只是 JSON Schema 驗證失敗；其餘三份案例確實可以轉換。
+- **自訂結構**：屬另一條擴充路徑，必須明確定義 schema_id、註冊 Schema／必要語意驗證，並具備相容 Chunker。官方表格中的通過數不等於已註冊自訂結構數。
+
+| 官方案例 | 來源元素數 | 轉成既有 text-spans | 轉成既有 page-blocks | 限制／觀察 |
 |---|---:|---|---|---|
-| Docling multi_page | 61 | 通過 | 參考轉換器明確拒絕 | 8 個群組沒有唯一頁面，不能猜頁碼或重排閱讀順序 |
-| Docling picture_classification | 11 | 通過 | 通過 | 有 2 個圖片元素，但測資沒有原圖，不能驗證原圖可用 |
-| Docling code_and_formula | 16 | 通過 | 通過 | 公式以 1 個已註冊原生 extension 保存，尚非通用公式語意 |
-| Docling xlsx_05_table_with_title | 3 | 通過 | 參考轉換器明確拒絕 | 2 個表格與 sheet 容器，使用 sheet 位置，表格 payload 仍是原生格式 |
-| Docling powerpoint_sample | 37 | 通過 | 參考轉換器明確拒絕 | 使用 slide 位置；9 個群組／容器以原生 extension 保存 |
-| MinerU before_middle | 17 | 通過 | 通過 | 頁碼 0→1；保留文字、標題、header／aside 與原生 bbox；未涵蓋 MinerU 表格／圖片案例 |
+| Docling multi_page | 61 | 映射／驗證通過 | 目前參考 Adapter 無法無損轉換 | 8 個群組沒有唯一頁面，不能猜頁碼或重排閱讀順序 |
+| Docling picture_classification | 11 | 映射／驗證通過 | 映射／驗證通過 | 有 2 個圖片元素，但測資沒有原圖，不能驗證原圖可用 |
+| Docling code_and_formula | 16 | 映射／驗證通過 | 映射／驗證通過 | 公式以 1 個已註冊原生 extension 保存，尚非通用公式語意 |
+| Docling xlsx_05_table_with_title | 3 | 映射／驗證通過 | 目前參考 Adapter 無法無損轉換 | 2 個表格與 sheet 容器，使用 sheet 位置，表格 payload 仍是原生格式 |
+| Docling powerpoint_sample | 37 | 映射／驗證通過 | 目前參考 Adapter 無法無損轉換 | 使用 slide 位置；9 個群組／容器以原生 extension 保存 |
+| MinerU before_middle | 17 | 映射／驗證通過 | 映射／驗證通過 | 頁碼 0→1；保留文字、標題、header／aside 與原生 bbox；未涵蓋 MinerU 表格／圖片案例 |
 | MinerU model_image_reference 測試資料容器 | — | 如預期拒絕 | — | 不是 MiddleJson，不把任意 JSON 當成可解析的原生文件 |
 
 六個正例共 145 個元素逐項映射，檢查無靜默漏項、文字與表格 payload 保留；利用具名 extensions／追溯資訊重建的**原生 JSON 與輸入相等**。共有 19 個 extension 元素，屬原生保留；不能把 JSON 可重建解讀為全部語意可攜、原始檔／圖片二進位可重建或下游 Chunker 已相容。
 
 page-blocks 有三個正例通過。其餘失敗是參考轉換器無法在保留原意的前提下完成分頁，不是用任意改頁碼讓它過 Schema；那些輸入仍可用 text-spans 保留來源，或後續增加專屬結構／Adapter。
+
+### 5.1 MarkItDown／PyMuPDF4LLM：實際本地解析與 Contract 驗證
+
+**結論：兩者都可經 Parser Component／Adapter 接入，目前 IngestionDocument 與 ParsedDocument Schema 不需修改。** 本節使用自行產生的數位 PDF／DOCX／HTML 進行真實解析，與 §5 前半使用 Docling／MinerU 官方既有輸出 JSON 的驗證方式分開統計。
+
+| Parser／模式 | 實際輸出 | 映射到既有 Contract | 實測結果／邊界 |
+|---|---|---|---|
+| MarkItDown 0.1.9，PDF／DOCX／HTML | DocumentConverterResult：markdown、可選 title | Markdown 放 fields.text，structure={}；或以 Markdown 語法解析成 text-spans | 3 次解析、6 份映射通過；DOCX／HTML 的標題與 Markdown 表格可標註，本次 PDF 結果只有文字段落 |
+| PyMuPDF4LLM／PyMuPDF 2.0，Legacy Markdown | 整份 Markdown 字串 | 無額外結構／text-spans | 1 次解析、2 份映射通過；保留完整輸出文字，整份字串不自動提供頁碼 |
+| PyMuPDF 2.0，Legacy／Layout 的 page_chunks | 每頁 dictionary 清單，含頁面 metadata 與 text | page-blocks／text-spans；依原生資料保留 page、空白頁與可取得的 bbox | 2 次解析、4 份映射通過；兩種模式都保留第 3 頁空白頁，Layout 另有 page_boxes／pos |
+| PyMuPDF 2.0，Layout JSON | pages／boxes、boxclass、文字行、表格及幾何 | text-spans／page-blocks，table payload 另存 fields，bbox 用 page locations | 1 次解析、2 份映射通過；本次涵蓋 heading／paragraph／table，原生表格資料保留 |
+
+合計 **7 次成功解析、14 份 ParsedDocument 映射**，均通過 Schema 與共同語意檢查。另測 4 個無效／衝突頁面資料及未知 Layout class 的拒絕案例；Legacy 模式的 to_json 如預期回 NotImplementedError，需明確選 Layout 能力。實際版本、呼叫方式與逐案結果見 [lightweight_conformance_report.json](../examples/parsed_document/lightweight_conformance_report.json)。
+
+#### 5.1.1 API／Parser 輸入如何接合
+
+本地工具先以共同 IngestionDocument Schema 驗證 base64 請求，再嚴格解碼並核對原始 bytes。MarkItDown 實際使用 convert_stream(BytesIO, StreamInfo)；PyMuPDF 實際使用 pymupdf.open(stream=bytes, filetype="pdf")。這證明不需在 Engine 增加 multipart，也不需為每個 Parser 更換公共輸入外層；正式路由、資源 resolver、Component 註冊與 Config 仍由 Engine 實作。
+
+#### 5.1.2 兩種輸出模式要明確區分
+
+- MarkItDown 0.1.9 的實測結果只有 markdown／title，沒有 pages 屬性。參考 Adapter 依 CommonMark 語法辨識標題、段落、程式碼與表格，範圍指向**輸出的 Markdown 字串**。它不能從全文猜出原始頁碼／bbox；Markdown 中的表格／圖片引用也不等於已取得標準儲存格模型／原圖。
+- PyMuPDF 的 page_chunks=True 是解析輸出的按頁組織方式，接入此平台時轉成 ParsedDocument 的頁面／Block 資訊；它不是平台最終 Chunk，也沒有因此略過 Chunking Module。
+- 本次 2.0 的 Legacy 頁碼在 metadata.page，Layout 在 metadata.page_number。Adapter 核對原生欄位；兩者衝突或缺少頁面身分時拒絕，不用陣列索引猜測頁碼。Layout page_boxes 的 pos 對應每頁 Markdown；轉成全文範圍時要加上頁面串接偏移。
+- Layout JSON 的 bbox 使用 top-left／pt，保留原生 page 尺寸。Markdown token 對到 page_boxes 時，bbox 代表原生元素範圍，並非每個字元的精確裁切範圍；沒有可靠對應的位置則只保留頁碼。
+- **版本注意**：官方 PyMuPDF4LLM 2.0 套件已改為相容性 shim，功能由 PyMuPDF 2.0 提供。官方建議改用 Document.to_markdown／to_json／to_text；本次也驗證 Document 方法與 pymupdf4llm 相容入口輸出相等。不可把舊 1.x 的呼叫／欄位假設直接套到全部版本。
+
+#### 5.1.3 相容性與解析品質分開驗收
+
+本次 PDF 原始表格是 2 欄：MarkItDown 的 PDF Markdown 沒有保留表格結構，PyMuPDF Layout JSON 在此小樣本辨識成 1 欄。Adapter 保留各自的實際結果，沒有為了符合 Schema 修補或捏造原始欄列。這是上游解析品質觀察，不能因 Contract 驗證成功，就宣稱原始版面／內容完全正確或用此單例評比整體品質。
+
+PDF 有兩頁文字、一頁空白頁，包含標題、段落、簡單表格與程式碼；所有 PyMuPDF 測試使用非 OCR 路徑或明確 use_ocr=False。未測掃描件、OCR、圖片資源、Office 延伸模式、所有 Markdown 巢狀／HTML 語法或真實企業語料。參考轉換器只覆蓋此次模式／類型；未知原生 class 明確拒絕，純 Markdown 仍保留全文，不能由未標註部分推論完整結構已識別。
+
+參考 Adapter 的 metadata._rag.field_formats 是範例格式提示，正式欄位／信任與路由協定仍待核定；不是新增已凍結的公開頂層 key。Parser 的輸出能力、生成的 table_* 欄位與相容 Chunker 須正式宣告，表格標準化與結構型 Chunker 邏輯另外交付。
+
+#### 5.1.4 重現方法與程式位置
+
+```bash
+python -m pip install -r examples/parsed_document/requirements_lightweight_parsers.txt
+python examples/parsed_document/check_lightweight_parsers.py --work-dir /tmp/rag-parser-fixtures --report /tmp/rag-parser-report.json
+```
+
+[check_lightweight_parsers.py](../examples/parsed_document/check_lightweight_parsers.py) 產生自有測資並執行本地套件；[markdown_parser_adapters.py](../examples/parsed_document/markdown_parser_adapters.py) 提供示範映射；[requirements_lightweight_parsers.txt](../examples/parsed_document/requirements_lightweight_parsers.txt) 固定本次直接依賴版本。二進位測資與完整映射結果寫到指定暫存目錄，不把外部套件或模型放入此 repo。這不是正式 Engine／Runtime／Chunker 整合測試，也沒有修改 UI。
 
 ## 6. 重現方法
 
@@ -286,6 +373,9 @@ python examples/parsed_document/check_provider_samples.py --cache-dir /tmp/pd-fi
 - [Docling 文件模型](https://docling-project.github.io/docling/concepts/docling_document/)
 - [Docling 官方測資目錄](https://github.com/docling-project/docling/tree/af2dbadb4cd3fa39786916157a5c174eeb9bb7bf/tests/data)
 - [MinerU 輸出格式與不同入口](https://opendatalab.github.io/MinerU/reference/output_files/)
+- [MarkItDown 官方結果物件（固定原始碼 revision）](https://github.com/microsoft/markitdown/blob/7482c092d9c0074a89803c9fdb63a969e7fe17fc/packages/markitdown/src/markitdown/_base_converter.py)
+- [PyMuPDF4LLM 官方 API 與 2.0 遷移](https://pymupdf.readthedocs.io/en/latest/pymupdf4llm/api.html)
+- [PyMuPDF4LLM 2.0 shim 說明（固定原始碼 revision）](https://github.com/pymupdf/pymupdf4llm/blob/38e2d1da51d0f198cda2aaa161f21f75074bcced/README.md)
 - [MinerU 官方 MiddleJson fixture](https://github.com/opendatalab/MinerU/blob/14db546c732e9829c949dbaefd9f1459c3da55a7/tests/fixtures/pdf_text_5635_5636/before_middle.json)
 
 外部格式與套件會演進；本文件的相容結論以固定來源與本次報告為界，不以目前網頁內容自動更新或自動承諾相容。
