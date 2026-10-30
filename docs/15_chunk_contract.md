@@ -160,12 +160,12 @@ Schema 形狀允許 metadata={}，供既有 Inference 範例／受控傳遞投�
 
 - 預設 split_field=text、output_field=text、copy_fields=[]；直接使用 ParsedDocument.fields.text。
 - 不自動複製所有其他 fields，也不自動新增 original_text；有效業務 metadata 仍全部繼承。
-- text 缺少、不是字串或內容不可處理時，回報 `[Chunking] fields.text`，不偷偷挑另一個欄位。空白／Token 邊界細節連動 Q-004／Q-005。
+- text 缺少、不是字串或內容不可處理時，回報 `[Chunking] fields.text`，不偷偷挑另一個欄位。第一版必要切分欄位全空白亦報錯，不將它當成功匯入；精確 Token 邊界連動 Q-004／Q-005。
 - 方法、size、overlap 與 Tokenizer 仍依 Config／Component 的有效設定執行。「不用選」指欄位選擇，不表示不需要有效切分參數。
 
 ### 2.2 有需要才開進階設定
 
-每個切分任務指定一個來源欄位、輸出名稱、Component／有效參數與附帶欄位映射。預設只有一個任務；進階才允許多個。同一來源可同時切分及完整複製，但兩份輸出名稱不可相同，避免覆蓋。
+每個切分任務指定一個來源欄位、輸出名稱、Component／有效參數與附帶欄位映射。預設只有一個任務；進階才允許多個。每個新任務的切分片段預設都輸出到 fields.text，無須另外選輸出欄位；進階仍允許明確自訂名稱。同一來源可同時切分及完整複製，但兩份輸出名稱不可相同，避免覆蓋。
 
 | 設定 | 例子 | 結果 |
 |---|---|---|
@@ -173,15 +173,15 @@ Schema 形狀允許 metadata={}，供既有 Inference 範例／受控傳遞投�
 | copy_fields 映射 | text → original_text | 每個 Chunk 額外帶切分前完整原文 |
 | copy_fields 映射 | title → title | 每個 Chunk 帶相同完整標題 |
 
-欄位名稱在參考 spec 中是 fields 容器內的 key，不是任意 JSONPath。參考工具要求明確選用的複製欄位存在；optional／巢狀路徑政策另由 Component Schema 與 Q-002 核定。複製保留原型別，不隱式轉文字；完整內容可能超過模型上限，需由 Embedding／Generation 另檢查。
+欄位名稱在參考 spec 中是 fields 容器內的 key，不是任意 JSONPath。第一版要求明確選用的複製欄位存在，缺少即報錯；不因它原本是 Document Schema 的選填欄位而默默省略。可選複製與巢狀路徑有明確需求再擴充。複製保留原型別，不隱式轉文字；完整內容可能超過模型上限，需由 Embedding／Generation 另檢查。
 
 ### 2.3 多欄位是結果串接，不是互相配對
 
-同文件 fields.text=T、fields.faq=F，T 切兩段、F 切三段時，得到 5 個獨立 Chunk。若指定互相完整複製，結果如 §0.2 的表；未指定則每個任務只輸出自己的片段及其他明確附帶欄位。
+同文件 fields.text=T、fields.faq=F，T 切兩段、F 切三段時，得到 5 個獨立 Chunk。一般多任務預設各自輸出 fields.text=T1／T2／F1／F2／F3；完整附帶內容建議改名為 original_text／original_faq，且須明確 copy，不能覆蓋切分片段。§0.2 的表為明確自訂輸出名稱 text／faq 的進階例子；未指定則每個任務只輸出自己的片段及其他明確附帶欄位。
 
 不同欄位的第 N 段不假設有對應關係，不做笛卡兒積。若業務資料本來有逐段對應，需專屬 Component 宣告配對契約。多個任務使用相同 Component 不代表 spec 相同；來源／輸出／複製規則不同也是有效設定差異。
 
-Embedding／Generation 依 Chunk 實際欄位與設定執行，不能假設所有任務都有相同欄位。可將不同任務的切分結果都映射到 text，其他完整來源用不同名稱附帶，以維持簡單下游；若保留 text／faq 異質配置，需明確宣告適用任務／欄位與缺欄位政策，不默默略過。互相複製完整欄位後再全部 Embedding 會重複處理，UI 應說明。
+Embedding／Generation 依 Chunk 實際欄位與設定執行，不能假設所有任務都有相同欄位。預設將不同任務的切分結果都映射到 text，其他完整來源有需要時用不同名稱附帶，以維持簡單下游；若保留 text／faq 異質配置，需明確宣告適用任務／欄位與缺欄位政策，不默默略過。互相複製完整欄位後再全部 Embedding 會重複處理，UI 應說明。
 
 ## 3. 來源追溯與 metadata
 
@@ -265,6 +265,8 @@ metadata._rag.chunking 記錄 chunking_fingerprint、chunk_ordinal、task_id。�
 
 Component Developer 仍由 [11](11_component_developer_guide.md) 的流程開發，遵守 ParsedDocument → Chunk 清單的公開邊界；宣告結構支援與欄位能力，不能因一般 UI 隱藏欄位就只接受硬編碼 text。Config Schema／UI hints 見 [12](12_component_schema_ui_contract.md)。Runtime 的權限、Context、Batch／Async 與正式類別簽名不由本資料草案代替。
 
+第一版必要切分任務不得默默產生零個 Chunk 後回成功；錯誤顯示來源欄位與 task_id。這是 2026-10-30 後續確認的目標規則，現有參考工具不等於正式 Ingestion／Tokenizer 驗收；批次失敗／提交仍由 Q-009 核定。
+
 ## 8. 重現與待核定事項
 
 ```bash
@@ -277,3 +279,11 @@ python examples/chunk/test_contract.py
 7 個正例情境共 11 個 Chunk；另外 33 個刻意破壞的 Chunk、4 個序列／設定反例，與 5 份既有 Inference 資料共用 Schema 檢查。測試涵蓋非空向量的新格式，不呼叫外部服務；輸出結果不是實際切分演算法品質或併行更新的驗收證據。
 
 已確認的是六鍵外層、text 預設、進階多任務／複製、來源追溯位置、向量資訊分層及穩定 ID 方向。精確鍵名／nullable／自訂型別與遷移仍以本稿供 M0 審閱；Q-002／Q-003／Q-004／Q-006／Q-007 及索引提交政策不因草案產出而全部結案。
+
+## 9. 後續確認與欄位組裝待討論（2026-10-30）
+
+- D-48 已確認：多任務預設將切分片段寫 fields.text；完整原文複製採不衝突名稱，進階仍可自訂。第一版必要切分欄位缺失／型別錯誤／全空白、明確 copy 欄位缺失或必要任務零產出均明確失敗；可選複製不先擴充。
+- Parser 改變需重新處理受影響文件：Parsing → Chunking → Embedding（有配置時）→ Indexing；原始資料可取得時不代表一定要重新上傳。多 Parser 路由的重跑範圍、原始資料保留、重新發布仍須依有效相依與儲存政策決定。這是執行影響說明，沒有新增已實作的重跑／快取能力。
+- 重新 Ingestion 與 ID 是否納入解析後輸入內容摘要是不同問題；目前 Hash 規則尚未修改。原始文件版本不變但 Parser 輸出改變時的 ID／index_generation 識別仍在 Q-007／Q-015。
+- **待討論，未核定**：切分後 concat 多個欄位、加入固定文字，可候選作為 Chunking 後的共用欄位組裝、在 Embedding 前執行；先不新增 Pipeline Module、不修改 Schema／程式或凍結模板拼字。
+- 待確認範圍：是否寫入獨立衍生欄位、來源／衍生血緣與 Token 檢查；與 Embedding Profile 的 encoding prefix、Generation 既有 chunk_template 的分工；模板改動需重跑哪些步驟。不能先把欄位組裝當成已交付能力。

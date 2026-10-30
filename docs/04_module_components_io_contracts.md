@@ -164,7 +164,7 @@ Timeout、重試預算、取消、partial 與 fallback 尚待 Q-009／Q-017／Q-
 
 **Output 草案（2026-10-30，D-47）**：[15](15_chunk_contract.md) 與 [Chunk Schema](../schemas/chunk.schema.json) 是六鍵輸出的共用定義。完整 Chunker 輸出須帶 metadata._rag.source_refs／chunking 且 vectors={}；多欄位 2＋3 得 5 個 Chunk，全域序號按任務／內容順序產生，不依併行完成順序。參考測試只驗已提供的切片／資料，不代替真實 Chunker 演算法與 Tokenizer 驗收。UI 待辦 UIB-013。
 
-**資料／能力補充（2026-10-30）**：Input 引用同一份 [ParsedDocument Schema](../schemas/parsed_document.schema.json)，不另寫 Chunking 專屬的重複物件。無結構、text-spans、page-blocks 與已註冊擴充的支援由 Component 宣告；Chunking 可固定一個或依選定欄位的結構／格式／能力路由，衝突需預設策略。每個切分任務只選一個 Chunker；預設只有 text 任務，進階明確設定多個欄位任務時，各自輸出後串接而非交叉配對；必要切分點不可忽略。Schema 可表示不代表演算法已實作，UI 待辦見 UIB-012。
+**資料／能力補充（2026-10-30）**：Input 引用同一份 [ParsedDocument Schema](../schemas/parsed_document.schema.json)，不另寫 Chunking 專屬的重複物件。無結構、text-spans、page-blocks 與已註冊擴充的支援由 Component 宣告；Chunking 可固定一個或依選定欄位的結構／格式／能力路由，衝突需預設策略。每個切分任務只選一個 Chunker；預設只有 text 任務；進階多任務也預設將各自切片輸出到 fields.text，完整附帶來源用明確且不衝突的名稱；進階明確設定多個欄位任務時，各自輸出後串接而非交叉配對；必要切分點不可忽略。Schema 可表示不代表演算法已實作，UI 待辦見 UIB-012。
 
 **目的與方法**：Fixed-size／Recursive／Header-aware；預設直接切 fields.text 並寫回 text，不顯示欄位選單、不自動複製其他 fields。進階才設定有序任務，每個任務一個 split_field／output_field＋明確 copy 映射；同來源可切分且完整複製，但輸出名稱不能衝突。metadata 預設全部繼承，不再逐欄勾選。三種方法均以 Token 計量，沿用指定 Tokenizer／revision。2026-10-16 新增的「fix chunk」統一稱 **Fixed-size Chunking（固定 Token 視窗）**；方法已列入需求，Engine 與 Prototype 尚未因此實作。
 
@@ -178,7 +178,7 @@ Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一�
 
 **處理**：
 
-1. 檢查主要欄位為非空必填 string、copy 欄位可取得。
+1. 檢查必要切分欄位存在、為非空白 string，且明確 copy 欄位可取得；缺失／型別錯誤／全空白不視為成功，必要任務零產出須明確失敗。可選複製第一版不先擴充（D-48）。
 2. 依所選方法切分：Fixed-size 使用上述固定視窗；Recursive 依 separators 優先序切分，必要時處理過長片段，size 是上限、overlap 是目標值。
 3. Header-aware 先依可靠標題層級切分，再對超長章節 Recursive；缺 headings 不能假裝成功。
 4. 計算原 fields 字串範圍及跨 block／page locations，不從帶 overlap 的文字猜測位置。

@@ -20,6 +20,8 @@ Config-driven RAG System 建立與測試平台。
 
 **2026-10-30 Chunk 草案（D-47）**：新增 [15 Chunk Contract](docs/15_chunk_contract.md)、[共用 JSON Schema](schemas/chunk.schema.json) 與 [7 個情境／11 個 Chunk](examples/chunk/cases.json)。基本設定直接切 fields.text；多欄位／完整原文複製收進階，來源追溯自動產生；向量項目包含 Profile／來源欄位，Inference 引用同一份 Chunk。精確規格／SDK 尚未凍結，UI 僅記 UIB-013，未改原型。
 
+**2026-10-30 Chunk 後續確認（D-48）**：多欄位任務預設都將切片寫 fields.text；完整來源只在明確 copy 時附帶且名稱不可衝突。第一版必要切分欄位／型別／全空白、必要任務零產出或明確 copy 缺失均報錯。concat／固定文字組裝另在 [15 §9](docs/15_chunk_contract.md#9-後續確認與欄位組裝待討論2026-10-30) 記錄待討論，尚未改 Schema／UI／程式。
+
 **接續規劃**：先讀 [03 名詞與架構](03_architecture_proposal.md#terminology) 及 [08 開發計畫與決策](docs/08_implementation_plan.md)。原 RAG Builder 規劃對話與「畫userflow」的整合核對、直接修正及需討論的邊界集中於 08 §12；臨時交接摘要已依指示讀取後移除。
 
 ## 開發規格文件集 v0.19（2026-10-16）
@@ -51,7 +53,7 @@ v0.19 討論提案：將 Rewrite／Multi-query 合併為單一 Query Rewrite，�
 | [05 共用資料模型與 Config](docs/05_data_contracts_search_design.md) | ParsedDocument／Chunk／SearchHit、Schema、Config 草案與變更影響 |
 | [06 使用流程與 UI 開發規格](docs/06_ui_development_spec.md) | 基本／進階、CSV、AI 助手、預覽、Edit 與測試操作 |
 | [07 Backend、Runtime API 與整合](docs/07_backend_runtime_integration.md) | API、System／Revision、任務、持久化、Runtime 與 Export |
-| [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M7、兩個 repo 與 Component 開發配套、47 項決策、27 項待決問題及 40 項歷史要求對照 |
+| [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M7、兩個 repo 與 Component 開發配套、48 項決策、27 項待決問題及 40 項歷史要求對照 |
 | [09 Inference Contract 與 UI 整合提案](docs/09_inference_contract_ui_plan.md) | 三種操作／共同排序的討論記錄、順序式 UI 設定、案例與待確認選項 |
 | [10 UI Prototype Backlog 與完成紀錄](docs/10_ui_adjustment_backlog.md) | §1～6 保留 v0.9 歷史完成項目；§7 集中新需求及提案，含 Component 選用／卡控 UIB-010；收到改 UI 指示後才實作 |
 | [11 Component 開發指南](docs/11_component_developer_guide.md) | Module Developer 在 rag_engine 開發 Components 的 SDK 介面示意、PR、套件測試、註冊與 Runtime 交付流程 |

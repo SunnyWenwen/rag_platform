@@ -92,6 +92,7 @@ v0.13 從 `e52c4d74a469522155d814f0ff51fddf8946f957` 核對交接文件、本串
 | D-45 | API 單筆文件與 Parser Input 共用相同 IngestionDocument Schema；content／base64／uri 三選一保留，不另建 ParserInput；取得內容使用 SDK 共用能力，Context 不屬 API body | 2026-10-29 使用者確認「api schema 跟 parser 的 Input 都是相同 schema」並要求記錄；共用契約已確認，SDK／Context 精確簽名仍待決 | 13 §2／§4、schemas/ingestion_document.schema.json；04／05／07；Q-002／Q-016／Q-017；UIB-011 |
 | D-46 | ParsedDocument 先提供五鍵外層、文字基線／全文標註／Page-Block 與註冊擴充的可驗證草案；資料能力與 Chunker 實作分開，引用單一共用定義；用固定 Docling／MinerU 輸出實際比對 | 2026-10-30 使用者要求先按前述建議寫 Schema 並實際比對；草案產出與驗證範圍已授權，具體擴充／子結構／版本與 SDK 尚未凍結 | 14／schemas/parsed_document.schema.json／examples/parsed_document；04～07／13；Q-002／Q-005／Q-006／Q-016；UIB-012 |
 | D-47 | Chunk 六鍵共用草案；預設直接切 text、不選欄位，進階才多任務／複製；來源追溯放 metadata._rag，向量項目記錄 Profile／來源；可重現 fingerprint＋全域 ordinal | 2026-10-30 使用者確認前述方向並要求 Schema／文件；語意方向已確認，精確格式／SDK 與索引發布仍為草案 | 15／schemas/chunk.schema.json／examples/chunk；04～12；Q-002／Q-003／Q-004／Q-006／Q-007～Q-010／Q-015；UIB-013 |
+| D-48 | 多欄位切分任務預設各自輸出 fields.text；完整來源需明確複製到不衝突名稱。第一版必要切分欄位缺失／型別錯誤／全空白、必要任務零產出及明確 copy 缺失均報錯 | 2026-10-30 使用者回覆「24 照你建議 OK」；concat／固定文字另討論，精確 Schema／SDK 未凍結 | 15 §2／§9；04／05／06／UIB-013；Q-002／Q-004／Q-009 |
 
 「既有基線」不代表已涵蓋後續需求。D-23 的合併時點配置是使用者已提出的目標，不能以 D-11 的舊 Prototype 限制否決；兩層合併預設勾選並在 Retrieval 後的 UI 已於 2026-10-15 確認／實作，見 10 的歷史完成紀錄。Q-014 仍負責正式支援路徑、stage 命名及執行契約等剩餘細節。
 
@@ -250,6 +251,8 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 - 本輪具體化 source_refs／chunking、DenseVector 物件、有效計畫 fingerprint／全域序號及參考 ID；既有 Inference 改引用同一份 Chunk，不重寫向量定義。
 - 正式鍵名／nullable／自訂轉換、異質任務下游欄位適用條件、舊向量陣列遷移、跨語言 canonicalization 與 SDK 仍需審閱。身份 Hash 不解決索引原子提交；Q-007～Q-010／Q-015 保持有待決細節。
 - UI 僅記 [UIB-013](10_ui_adjustment_backlog.md#uib-013-chunk-contract)，未實作；來源範例與資料測試不等於 Tokenizer／Chunker／DB 驗收。
+
+- 2026-10-30 後續 D-48：多任務預設輸出 text；必要切分欄位缺失／型別錯誤／全空白、必要任務零產出及明確 copy 欄位缺失報錯。concat／固定文字組裝仍待討論，沒有新增 Module 或修改執行 Schema。
 
 <a id="q-003"></a>
 ### Q-003 模型服務與 Adapter 契約
@@ -854,3 +857,9 @@ Inference Schema／五份 JSON／Python 範例、圖面及其他服務實作均�
 - source_refs／chunking 放 metadata._rag，不新增第七個 key；輔助資料可放 metadata，內容用途仍可用 fields。DenseVector 改具 Profile／來源欄位的物件，Inference Schema 直接引用同一 Chunk，既有 vectors={} 例子與型別同步。
 - 04～07／09／11／12 對齊資料及 UI／SDK 邊界，UIB-013 集中未實作調整；Prototype、圖面、Engine／API 未改。固定 Token／Recursive 等演算法與索引原子發布沒有因資料驗證而交付。
 - 33 個無效 Chunk 與 4 個序列／設定反例被拒絕；既有 5 份 Inference 範例通過共用 Schema。D-ID 增至 47、Q-ID 維持 27、歷史 A-ID 40，M0～M7 次序不變；Q-002 與 Q-007 的剩餘精確政策保持 OPEN。
+
+## 33. 2026-10-30 多任務預設與例外政策確認（D-48）
+
+- 使用者確認前述第 2／4 點，補充 15、04／05／06 與 UIB-013；多任務預設統一輸出 text、附帶完整來源明確改名，必要輸入／任務失敗不默默略過，可選複製不先擴充。
+- Parser 變更的重新 Ingestion 影響與 ID／輸入內容摘要分開記錄。concat／固定文字組裝候選仍在討論，未修改資料 Schema、參考工具、Prototype 或正式 Engine。
+- D-ID 增至 48，Q-ID 仍 27、歷史 A-ID 40，M0～M7 不變。本輪為文件確認，既有進階自訂輸出名稱案例保持合法，不宣稱新流程已實作。

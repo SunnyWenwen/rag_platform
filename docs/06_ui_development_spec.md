@@ -12,7 +12,7 @@
 
 **2026-10-30 資料結構草案**：[14](14_parsed_document_contract.md) 新增 ParsedDocument Schema 與官方輸出對照；UI 的結構預覽、相容能力、Chunker 路由與缺失資源提示先記 [UIB-012](10_ui_adjustment_backlog.md#uib-012-parsed-document-structures)。本輪沒有改 Prototype，不能由範例推定所有結構皆可切分。
 
-**2026-10-30 Chunk 更新（D-47）**：[15](15_chunk_contract.md) 定義預設只切 fields.text，基本區不顯示欄位選擇；多欄位任務、附帶欄位／原文保留才在進階設定。metadata／來源資訊自動繼承或產生，vectors 採共用新格式；對應 Prototype／AI／預覽／匯出變更先記 [UIB-013](10_ui_adjustment_backlog.md#uib-013-chunk-contract)，尚未實作。
+**2026-10-30 Chunk 更新（D-47）**：[15](15_chunk_contract.md) 定義預設只切 fields.text，基本區不顯示欄位選擇；多欄位任務、附帶欄位／原文保留才在進階設定。D-48 確認每個多欄位任務預設輸出 text，完整附帶內容用不衝突名稱；必要欄位／型別／全空白、明確 copy 欄位缺失及必要任務零產出提供定位錯誤。metadata／來源資訊自動繼承或產生，vectors 採共用新格式；對應 Prototype／AI／預覽／匯出變更先記 [UIB-013](10_ui_adjustment_backlog.md#uib-013-chunk-contract)，尚未實作。
 
 ## 1. 目標、相依與範圍
 

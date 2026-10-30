@@ -274,6 +274,8 @@ D-42 的具體補充（格式以 [12](12_component_schema_ui_contract.md) 為準
 
 - [ ] 引用 [15](15_chunk_contract.md) 與共用 Chunk Schema；基本區直接切 fields.text 並寫回 text，不顯示 split/copy 欄位選單；text 缺失／型別不合回 `[Chunking]`，不自動換欄位。
 - [ ] 進階才顯示新增有序任務、split／output／copy 映射與保留完整原文；預設 copy_fields=[]。同來源可切分又完整複製到 original_text 等不同名稱，重名阻止保存。
+- [ ] D-48：每個多欄位任務的切分片段預設輸出 fields.text；完整來源有需要時才 copy 到 original_text／original_faq 等不衝突名稱，進階仍可明確改名。
+- [ ] D-48：必要切分欄位缺失／型別錯誤／全空白、明確 copy 欄位缺失或必要任務零產出皆顯示 `[Chunking]`＋task_id／欄位，不顯示為成功匯入；第一版不新增可選複製開關。
 - [ ] 多欄位輸出為結果串接，示範 2＋3＝5，完整附帶另一欄位需明確選擇；顯示每個任務輸出欄位與下游可用內容，提示完整複製／Embedding 的重複與長度影響。
 - [ ] metadata 全繼承、不新增排除選單；source_refs／fingerprint／ordinal 由平台自動產生，一般設定不列選項。預覽／結果詳情可唯讀看來源欄位、Block／頁碼、全域序號；未知位置不捏造。
 - [ ] 向量預設 fields.text → vectors.text；顯示／序列化 values＋embedding_profile_id＋source_field，模型設定共用 Profile，不重填。舊非空向量陣列與原 Prototype text_vector 名稱依明確 Binding／遷移規則處理，不靠名稱猜模型或來源。

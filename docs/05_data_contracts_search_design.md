@@ -122,7 +122,7 @@ SourceAsset 是 Import → Parsing 的內部物件，**建議**包含 asset_id�
 | vectors | Chunking 為 {}；Embedding 寫入 values＋embedding_profile_id＋source_field 的命名物件 |
 | metadata | 預設繼承全部有效業務 metadata；可信來源與切分資訊放 _rag |
 
-基本 UI 不顯示欄位選擇，直接使用 fields.text；不自動複製其他 fields。保留切分前完整原文時，才進階設定 text → original_text 或其他不衝突名稱。同文件兩個欄位各切 2／3 段時，結果串接為 5 個 Chunk，不做交叉配對；互相附帶完整原文另需明確 copy 映射。
+基本 UI 不顯示欄位選擇，直接使用 fields.text；不自動複製其他 fields。保留切分前完整原文時，才進階設定 text → original_text 或其他不衝突名稱。D-48 確認每個多欄位任務預設將片段輸出到 fields.text；有需要才複製完整來源到 original_text／original_faq 等不衝突名稱。第一版必要切分欄位缺失／型別錯誤／全空白、必要任務零產出或明確 copy 欄位缺失均報錯；可選複製暫不擴充。同文件兩個欄位各切 2／3 段時，結果串接為 5 個 Chunk，不做交叉配對；互相附帶完整原文另需明確 copy 映射。
 
 metadata._rag.source_refs 保存來源欄位、對應輸出欄位、原文範圍／Block 及可取得的位置；用於引用、定位與追溯，不讓使用者逐項設定。metadata._rag.chunking 保存 fingerprint／全域序號／task_id，完整 spec 保存於可追溯 Config／Run。來源全文與 Block 內 offset 不混用；一個 Chunk 可以有多筆 refs，精確語意見 15 §3。
 
