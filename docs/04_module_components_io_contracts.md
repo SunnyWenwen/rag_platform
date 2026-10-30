@@ -152,13 +152,15 @@ Timeout、重試預算、取消、partial 與 fallback 尚待 Q-009／Q-017／Q-
 
 **Input（D-45 已確認）**：與 API 單筆文件相同 Schema 的 IngestionDocument；可反序列化為相同 contract 的 SDK 物件，不轉成另一份 bytes-content envelope。Parser 透過 Engine 提供的共用 resolver 取得內容，Context 不是 API payload。正式 Python class、Context 屬性與執行簽名仍待 Q-002，見 [13 §4](13_ingestion_parser_input_contract.md#4-是否也是-parser-的-input)。
 
-**處理與相容**：依 Component input schema 驗證內容，產生 fields 與 structure；已在 Builder 映射的欄位不重複映射。沒有結構時不可捏造頁碼／headings。一來源多文件須定義 ID 派生及來源位置。Parser 宣告輸出能力、Chunker 宣告所需結構／版本；共同 ParsedDocument 格式不保證所有 Chunker 適用，不默默丟棄結構。
+**處理與相容**：輸出資料依 [ParsedDocument 0.1 草案](14_parsed_document_contract.md) 與 [共用 JSON Schema](../schemas/parsed_document.schema.json) 驗證；這是待核定契約，不表示本輪有正式 Parser。依 Component input schema 驗證內容，產生 fields 與 structure；已在 Builder 映射的欄位不重複映射。沒有結構時不可捏造頁碼／headings。一來源多文件須定義 ID 派生及來源位置。Parser 宣告輸出能力、Chunker 宣告所需結構／版本；共同 ParsedDocument 格式不保證所有 Chunker 適用，不默默丟棄結構。
 
 **驗收方向**：原始與已解析輸入都能由相容 Component 處理；格式重疊／缺 Parser／缺 Chunker 結構有明確診斷；位置可追溯。損壞／加密檔案、掃描 OCR、讀取順序及空內容政策依 Q-005，不假裝可檢索成功。
 
 **待決**：Q-002、Q-005、Q-006、Q-007；新格式能力同步 Registry／UI，原型變更先記 UIB-011。
 
 ### 4.3 Chunking
+
+**資料／能力補充（2026-10-30）**：Input 引用同一份 [ParsedDocument Schema](../schemas/parsed_document.schema.json)，不另寫 Chunking 專屬的重複物件。無結構、text-spans、page-blocks 與已註冊擴充的支援由 Component 宣告；Chunking 可固定一個或依選定欄位的結構／格式／能力路由，衝突需預設策略。每個切分任務只選一個 Chunker，非自動平行切多份；必要切分點不可忽略。Schema 可表示不代表演算法已實作，UI 待辦見 UIB-012。
 
 **目的與方法**：Fixed-size／Recursive／Header-aware；一個主要 split_field＋多個 copy_fields，metadata 預設全部繼承，不再逐欄勾選。三種方法均以 Token 計量，沿用指定 Tokenizer／revision。2026-10-16 新增的「fix chunk」統一稱 **Fixed-size Chunking（固定 Token 視窗）**；方法已列入需求，Engine 與 Prototype 尚未因此實作。
 

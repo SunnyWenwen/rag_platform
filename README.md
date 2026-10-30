@@ -14,6 +14,8 @@ Config-driven RAG System 建立與測試平台。
 
 **2026-10-29 Ingestion 記錄（D-44）**：Engine 改採 JSON-only 扁平輸入，document_id＋content／base64／uri 三選一；Builder／呼叫端處理上傳轉換，多 Parser 依能力自動路由。新增 [13 Ingestion／Parser Input 說明](docs/13_ingestion_parser_input_contract.md) 與 [JSON Schema](schemas/ingestion_document.schema.json)。**D-45 已確認 API 與 Parser Input 共用同一份 IngestionDocument Schema**，保留 content／base64／uri 三選一；內容取得由 SDK 共用能力處理，不另維護 ParserInput。批次、Context／SDK 精確介面與 ParsedDocument 實際結構仍待討論；既有原型／圖面仍含歷史 files／records 入口，UI 變更記 UIB-011。
 
+**2026-10-30 ParsedDocument 草案（D-46）**：新增 [14 規格與 Docling／MinerU 對照](docs/14_parsed_document_contract.md)、[共用 JSON Schema](schemas/parsed_document.schema.json) 及 [可重現報告](examples/parsed_document/conformance_report.json)。六份官方既有輸出共 145 個元素可映射與驗證，原生 JSON 可重建；公式／群組以擴充保留、圖片缺資源與分頁轉換限制另列，未驗證原始檔解析／模型／Chunker。這是 0.1 草案，不凍結所有結構／SDK；UI 變更先記 UIB-012，未改原型。
+
 **接續規劃**：先讀 [03 名詞與架構](03_architecture_proposal.md#terminology) 及 [08 開發計畫與決策](docs/08_implementation_plan.md)。原 RAG Builder 規劃對話與「畫userflow」的整合核對、直接修正及需討論的邊界集中於 08 §12；臨時交接摘要已依指示讀取後移除。
 
 ## 開發規格文件集 v0.19（2026-10-16）
@@ -45,12 +47,13 @@ v0.19 討論提案：將 Rewrite／Multi-query 合併為單一 Query Rewrite，�
 | [05 共用資料模型與 Config](docs/05_data_contracts_search_design.md) | ParsedDocument／Chunk／SearchHit、Schema、Config 草案與變更影響 |
 | [06 使用流程與 UI 開發規格](docs/06_ui_development_spec.md) | 基本／進階、CSV、AI 助手、預覽、Edit 與測試操作 |
 | [07 Backend、Runtime API 與整合](docs/07_backend_runtime_integration.md) | API、System／Revision、任務、持久化、Runtime 與 Export |
-| [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M7、兩個 repo 與 Component 開發配套、45 項決策、27 項待決問題及 40 項歷史要求對照 |
+| [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M7、兩個 repo 與 Component 開發配套、46 項決策、27 項待決問題及 40 項歷史要求對照 |
 | [09 Inference Contract 與 UI 整合提案](docs/09_inference_contract_ui_plan.md) | 三種操作／共同排序的討論記錄、順序式 UI 設定、案例與待確認選項 |
 | [10 UI Prototype Backlog 與完成紀錄](docs/10_ui_adjustment_backlog.md) | §1～6 保留 v0.9 歷史完成項目；§7 集中新需求及提案，含 Component 選用／卡控 UIB-010；收到改 UI 指示後才實作 |
 | [11 Component 開發指南](docs/11_component_developer_guide.md) | Module Developer 在 rag_engine 開發 Components 的 SDK 介面示意、PR、套件測試、註冊與 Runtime 交付流程 |
 | [12 Component Schema、UI hints 與相依規則](docs/12_component_schema_ui_contract.md) | 設定描述格式草案、動態欄位／服務選項、相依狀態、版本／錯誤及 14 個驗收案例 |
 | [13 Ingestion JSON 與 Parser Input](docs/13_ingestion_parser_input_contract.md) | API／Parser 共用 IngestionDocument Schema、欄位／範例、自動路由與 SDK resolver／Context 邊界 |
+| [14 ParsedDocument Contract 與供應者對照](docs/14_parsed_document_contract.md) | 共用輸出 Schema、結構／位置／語意、註冊擴充與固定 Docling／MinerU 輸出驗證及限制 |
 
 建議先讀 03／08，再依任務讀 05／04／07／06。03 統一名詞與邊界，05 定義資料／版本規則，08 記錄決策與待決狀態。Engine 核心不依賴 Builder UI、HTTP 或 Builder DB；07 將其包裝為可管理服務。每份規格末尾列出相關 Q-ID，完整候選／決策／階段阻擋統一放在 08。
 

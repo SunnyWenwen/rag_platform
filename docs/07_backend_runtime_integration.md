@@ -135,7 +135,7 @@ System 列表／讀取、Workspace／Dataset CRUD、AI suggestion／連線檢查
 }
 ```
 
-content 由相容 Parser 轉成 ParsedDocument.fields；可接收已解析內容，但須符合對應 schema／Adapter，實際 ParsedDocument 結構仍待核定。API 外層不直接宣告 fields／structure／vectors。**API 與 Parser Input 使用同一份 IngestionDocument JSON Schema（D-45）**，Parser 專屬內容限制再驗證。Parser 透過 SDK 共用 resolver 取得／解碼內容，不另要求轉成另一份 ParserInput；Context 為 Engine 注入的執行資源，不是 HTTP body。
+content 由相容 Parser 轉成 ParsedDocument.fields；可接收已解析內容，但須符合對應 schema／Adapter，ParsedDocument 已有 [0.1 JSON Schema 草案與固定官方輸出驗證](14_parsed_document_contract.md)，尚未凍結；不代表 Runtime 已載入這些 Parser。API 外層不直接宣告 fields／structure／vectors。**API 與 Parser Input 使用同一份 IngestionDocument JSON Schema（D-45）**，Parser 專屬內容限制再驗證。Parser 透過 SDK 共用 resolver 取得／解碼內容，不另要求轉成另一份 ParserInput；Context 為 Engine 注入的執行資源，不是 HTTP body。
 
 ```json
 {"run_id":"ing-001","status":"queued","config_revision":"C1-example"}

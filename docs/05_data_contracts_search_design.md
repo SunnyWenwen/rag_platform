@@ -94,30 +94,21 @@ SourceAsset 是 Import → Parsing 的內部物件，**建議**包含 asset_id�
 
 ### 4.2 ParsedDocument：五個固定頂層 key
 
-> **實際 Schema 待討論（2026-10-28）**：使用者要求稍後再決定 ParsedDocument 的實際 Schema，待決清單集中於 [08 Q-002 子項](08_implementation_plan.md#parsed-document-schema-pending)。既有五個頂層 key 方向保留；本節的結構表示與範例維持草案，`structure.<field_name>.blocks` 的確切形狀、共用／自訂結構、page／跨頁表示及 Parser／Chunking 相容規則尚未定案，不因討論示例就凍結或宣稱為通用標準。
+> **2026-10-30：已有可驗證草案，尚未凍結**。依使用者要求，新增 [14 ParsedDocument 0.1 與官方輸出對照](14_parsed_document_contract.md)、[JSON Schema](../schemas/parsed_document.schema.json) 及 [驗證案例／報告](../examples/parsed_document/conformance_report.json)。本文維持共用總覽；精確形狀與語意以 14 為目前草案來源，後續取捨見 [Q-002](08_implementation_plan.md#parsed-document-schema-pending)。舊無 schema_id 的 blocks 範例不是本次正式結構識別。
 
-| Key | 型別 | 語意 |
+| Key | 型別 | 草案語意 |
 |---|---|---|
-| document_id | string | 邏輯文件 ID |
-| source_revision | string | 來源內容版本 |
-| fields | object | 原文、標題、已有摘要等內容 |
-| metadata | object | 來源、分類與平台保留資訊 |
-| structure | object | 依 fields 欄位對應的區塊／頁碼／標題；可為 {} |
+| document_id | 非空 string | 穩定文件 ID |
+| source_revision | 非空 string | 來源內容版本；Parsing 輸出須具備，省略輸入時的生成政策另議 |
+| fields | 非空 object | 內容欄位，值為 JSON，仍受 System／Parser output schema 限制 |
+| metadata | object | 業務與受控追溯資訊；可為 {} |
+| structure | object | 對應 fields 欄位的具名／有版本結構；無結構時 {} |
 
-```json
-{
-  "document_id": "doc-001",
-  "source_revision": "v1",
-  "fields": {"text": "第一段。第二段。", "title": "維修手冊"},
-  "metadata": {"department": "manufacturing"},
-  "structure": {"text": {"blocks": [
-    {"block_id": "b1", "kind": "text", "start": 0, "end": 4, "page_number": 1},
-    {"block_id": "b2", "kind": "text", "start": 4, "end": 8, "page_number": 2}
-  ]}}
-}
-```
+目前內建草案為 text-spans/0.1-draft 與 page-blocks/0.1-draft，另留須明確註冊的自訂結構。文字型內建規格對應 string；offset 採 Unicode code point、0-based 半開區間，頁碼從 1 起。Block 與頁面／Chunk 分開；來源位置可為 page／slide／sheet／element，不能把不同來源單位當同一種頁碼。
 
-start／end 為對應 fields 完整字串的 Unicode code point offset，0-based 半開區間；頁碼從 1 起。不能混用 block-local offset、UTF-8 bytes 或 JavaScript UTF-16 index。標題／表格 block 的完整 Schema 由 Q-005 核定。
+共用資料範例只維護在 [純文字](../examples/parsed_document/plain_text.json)、[全文＋標註](../examples/parsed_document/text_spans.json)、[Page／Block](../examples/parsed_document/page_blocks.json)，其他 Module 文件引用同一份，不另複製定義。JSON Schema 與 [語意驗證](../examples/parsed_document/validate.py) 共同檢查範圍／引用／循環／衍生文字；通過資料驗證不等於 Chunker 或多模態資源可用。
+
+六份固定官方輸出可映射為 text-spans，原生 JSON 可重建；其中公式／群組需明確 extension、圖片資源缺失與 Page／Block 分組限制仍在，具體結論與未覆蓋範圍見 14 §5。Chunk 的六個外層 key 與既有 Inference Schema 未因此變動。
 
 ### 4.3 Chunk：六個固定頂層 key
 

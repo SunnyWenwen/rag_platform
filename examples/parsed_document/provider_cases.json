@@ -1,0 +1,66 @@
+[
+  {
+    "provider": "docling",
+    "revision": "af2dbadb4cd3fa39786916157a5c174eeb9bb7bf",
+    "path": "tests/data/pdf/groundtruth/multi_page.json",
+    "url": "https://raw.githubusercontent.com/docling-project/docling/af2dbadb4cd3fa39786916157a5c174eeb9bb7bf/tests/data/pdf/groundtruth/multi_page.json",
+    "sha256": "e90f3440e9091b51a9c7fb0b138003933d71f540f24f4d04c05aa58fe3eb747a",
+    "id": "docling-multi_page",
+    "cache_name": "docling-multi_page.json"
+  },
+  {
+    "provider": "docling",
+    "revision": "af2dbadb4cd3fa39786916157a5c174eeb9bb7bf",
+    "path": "tests/data/pdf/groundtruth/picture_classification.json",
+    "url": "https://raw.githubusercontent.com/docling-project/docling/af2dbadb4cd3fa39786916157a5c174eeb9bb7bf/tests/data/pdf/groundtruth/picture_classification.json",
+    "sha256": "825941b1f476e116647f05d02d49bf8b840f5999ff69a5d239f1d73de3f37914",
+    "id": "docling-picture_classification",
+    "cache_name": "docling-picture_classification.json"
+  },
+  {
+    "provider": "docling",
+    "revision": "af2dbadb4cd3fa39786916157a5c174eeb9bb7bf",
+    "path": "tests/data/pdf/groundtruth/code_and_formula.json",
+    "url": "https://raw.githubusercontent.com/docling-project/docling/af2dbadb4cd3fa39786916157a5c174eeb9bb7bf/tests/data/pdf/groundtruth/code_and_formula.json",
+    "sha256": "5b40f355111a8e66ef4f3e3fad53582687d28cfa195815895702f5dcccbbef4f",
+    "id": "docling-code_and_formula",
+    "cache_name": "docling-code_and_formula.json"
+  },
+  {
+    "provider": "docling",
+    "revision": "af2dbadb4cd3fa39786916157a5c174eeb9bb7bf",
+    "path": "tests/data/xlsx/groundtruth/xlsx_05_table_with_title.xlsx.json",
+    "url": "https://raw.githubusercontent.com/docling-project/docling/af2dbadb4cd3fa39786916157a5c174eeb9bb7bf/tests/data/xlsx/groundtruth/xlsx_05_table_with_title.xlsx.json",
+    "sha256": "477d97a46cf6d0de72987ca808d009c5106fd6ff68d1d55e39debd1dd5e26029",
+    "id": "docling-xlsx_05_table_with_title-xlsx",
+    "cache_name": "docling-xlsx_05_table_with_title.xlsx.json"
+  },
+  {
+    "provider": "docling",
+    "revision": "af2dbadb4cd3fa39786916157a5c174eeb9bb7bf",
+    "path": "tests/data/pptx/groundtruth/powerpoint_sample.pptx.json",
+    "url": "https://raw.githubusercontent.com/docling-project/docling/af2dbadb4cd3fa39786916157a5c174eeb9bb7bf/tests/data/pptx/groundtruth/powerpoint_sample.pptx.json",
+    "sha256": "e1a27fa2e3eabc37a377b55bc7bb4ef86c267eaa90040994d8eaece0a9d48cf7",
+    "id": "docling-powerpoint_sample-pptx",
+    "cache_name": "docling-powerpoint_sample.pptx.json"
+  },
+  {
+    "provider": "mineru",
+    "revision": "14db546c732e9829c949dbaefd9f1459c3da55a7",
+    "path": "tests/fixtures/pdf_text_5635_5636/before_middle.json",
+    "url": "https://raw.githubusercontent.com/opendatalab/MinerU/14db546c732e9829c949dbaefd9f1459c3da55a7/tests/fixtures/pdf_text_5635_5636/before_middle.json",
+    "sha256": "95e22a0682937c38b86f111302fed047c388dd22528443482c569daeba87428f",
+    "id": "mineru-before_middle",
+    "cache_name": "mineru-before_middle.json"
+  },
+  {
+    "provider": "mineru",
+    "revision": "14db546c732e9829c949dbaefd9f1459c3da55a7",
+    "path": "tests/fixtures/model_image_reference.json",
+    "url": "https://raw.githubusercontent.com/opendatalab/MinerU/14db546c732e9829c949dbaefd9f1459c3da55a7/tests/fixtures/model_image_reference.json",
+    "sha256": "b3bd4093a627d398a9fb3b5c0349947ec396e0d5fc2e33a35ffb6f49915c975c",
+    "id": "mineru-model_image_reference",
+    "cache_name": "mineru-model_image_reference.json",
+    "expect_rejected": true
+  }
+]

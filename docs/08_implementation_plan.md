@@ -90,6 +90,7 @@ v0.13 從 `e52c4d74a469522155d814f0ff51fddf8946f957` 核對交接文件、本串
 | D-43 | 可擴充實作統一稱 Component；Module 為功能分類／契約，Component Instance 為配置後的實例。同步 component_id、SDK 類別、目錄／套件／entry point、Descriptor 及文件／L1 圖 | 2026-10-29 使用者確認「Component 好了，有疊積木的感覺」並要求更新相關文件／命名已確認；不改模組分工或執行行為 | 03 §3.8 為權威對照；04～12／README／L1；Q-002 遷移，UIB-010 |
 | D-44 | Engine JSON-only Ingestion；扁平 document_id＋content／base64／uri 三選一；Builder／呼叫端負責上傳轉換；原始／已解析資料需相容 Parser，多 Parser 自動路由 | 2026-10-29 使用者確認全部支援、自動路由、扁平格式並要求保存 Schema；共用 Parser 輸入後依 D-45 確認；批次及輸出結構仍為草案 | 13／schemas/ingestion_document.schema.json；04～07；Q-002／Q-005／Q-019；UIB-011 |
 | D-45 | API 單筆文件與 Parser Input 共用相同 IngestionDocument Schema；content／base64／uri 三選一保留，不另建 ParserInput；取得內容使用 SDK 共用能力，Context 不屬 API body | 2026-10-29 使用者確認「api schema 跟 parser 的 Input 都是相同 schema」並要求記錄；共用契約已確認，SDK／Context 精確簽名仍待決 | 13 §2／§4、schemas/ingestion_document.schema.json；04／05／07；Q-002／Q-016／Q-017；UIB-011 |
+| D-46 | ParsedDocument 先提供五鍵外層、文字基線／全文標註／Page-Block 與註冊擴充的可驗證草案；資料能力與 Chunker 實作分開，引用單一共用定義；用固定 Docling／MinerU 輸出實際比對 | 2026-10-30 使用者要求先按前述建議寫 Schema 並實際比對；草案產出與驗證範圍已授權，具體擴充／子結構／版本與 SDK 尚未凍結 | 14／schemas/parsed_document.schema.json／examples/parsed_document；04～07／13；Q-002／Q-005／Q-006／Q-016；UIB-012 |
 
 「既有基線」不代表已涵蓋後續需求。D-23 的合併時點配置是使用者已提出的目標，不能以 D-11 的舊 Prototype 限制否決；兩層合併預設勾選並在 Retrieval 後的 UI 已於 2026-10-15 確認／實作，見 10 的歷史完成紀錄。Q-014 仍負責正式支援路徑、stage 命名及執行契約等剩餘細節。
 
@@ -231,9 +232,9 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 - 決策：未定；更新 04／05／07、Schema 及完整範例。
 
 <a id="parsed-document-schema-pending"></a>
-#### ParsedDocument 實際 Schema（2026-10-28 加入待討論）
+#### ParsedDocument 實際 Schema（2026-10-28 加入；2026-10-30 已產出 0.1 草案）
 
-- 狀態：**待討論／延後定案**。使用者要求 ParsedDocument 的實際 Schema 之後再決定；本次只登錄待決事項。既有五個頂層 key 方向保留，不把討論中的細部結構或例子視為已核可的正式契約。
+- 狀態：**已有可驗證草案，仍待審閱／凍結**。使用者於 2026-10-30 要求按前述建議產出 Schema 並比對 Docling／MinerU，見 [14](14_parsed_document_contract.md) 與 [JSON Schema](../schemas/parsed_document.schema.json)。五個頂層 key 保留；text-spans／page-blocks、extension、位置與共同語意已具體化供核定，不代表正式 SDK 或所有 Parser／Chunker 已實作。
 - 欄位契約：各欄位的精確型別、必填／選填、預設值、空值及未知欄位政策，以及完整 Schema／驗證範例。
 - 結構表示：評估「完整文字＋位置標註」與 Element／樹狀模型等表示方式；`structure.<field_name>.blocks` 是目前草案，不是業界通用格式，也尚未定案。需釐清它與 `fields` 的對應方式，以及標題層級、段落、page／slide／表格等結構的必要範圍。
 - 位置與來源：討論頁面與章節的關係、跨頁區塊／多位置表示、閱讀順序、文字正規化後的位置映射，以及既有 Unicode code point／0-based 半開區間規則如何驗證及由外部 Parser 轉換。保留頁碼不等於已決定新增 Page-aware Chunking。
@@ -822,3 +823,11 @@ Inference Schema／五份 JSON／Python 範例、圖面及其他服務實作均�
 - 13 §4 取代另設 ParserInput 的 bytes／source_info 包裝，說明 SDK resolver 與 Engine Context；04／05／07／README 對齊。共用 Schema 檔案補上角色說明，所有結構驗證規則保持不變。
 - 共用輸入不等於所有來源都改成 content；JSON 不能直接承載 bytes，URI／Base64 仍由 SDK 共用能力處理。執行時取得的內容不作為另一份公開輸入 contract，也不回寫破壞三選一規則。
 - 批次、來源版本生成、Parser 專屬內容、Context 精確屬性／簽名與 ParsedDocument 結構仍待討論；共用 Schema 方向不再列為待決。UIB-011 補說明待辦，未改 Prototype、圖面或 SDK／Engine 程式。D-ID 共 45、Q-ID 27、歷史 A-ID 40；M0～M7 不變。
+
+## 30. 2026-10-30 ParsedDocument Schema 與官方輸出映射驗證
+
+- D-46 記錄 Schema 草案與實際比對工作；新增 14、ParsedDocument JSON Schema、三份共用例子、語意驗證與固定版本官方測資的參考轉換／重現工具。文件引用同一份資料定義，Component Config／UI hints 規格仍由 12 管理。
+- 六份原生輸出正例共 145 個元素映射後通過 text-spans 驗證，且原生 JSON 可重建；另有一個非 MiddleJson 測試容器如預期拒絕。共同契約 7 正例／29 反例；不是原始檔／OCR／模型或 Engine 整合測試。
+- 實際比對發現 19 個群組／公式等元素需具名 extension、圖片測資缺原圖，以及 sheet／slide／無唯一頁面的群組無法直接套用 Page／Block 分組。報告保留限制，不把通過 Schema 當成完整語意／二進位／Chunker 相容。
+- Chunking 固定／依結構與能力路由、Markdown 內含語法與顯式 heading 區分、模型資料與執行能力分開，記入 04／14 與 UIB-012；本輪未改 Prototype、圖面、既有 Ingestion／Inference Schema 或 Engine 程式。
+- D-ID 共 46；Q-ID 27、歷史 A-ID 40 與 M0～M7 不變。Q-002 由沒有實際 Schema 改為已有候選待審閱，表格／圖片標準化、版本／來源／註冊／資源與完整供應者覆蓋仍待定。

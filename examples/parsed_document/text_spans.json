@@ -1,0 +1,59 @@
+{
+  "document_id": "manual-001",
+  "source_revision": "v1",
+  "fields": {
+    "text": "保養規範\n清潔前先斷電。"
+  },
+  "metadata": {},
+  "structure": {
+    "text": {
+      "schema_id": "text-spans/0.1-draft",
+      "blocks": [
+        {
+          "block_id": "b1",
+          "type": "heading",
+          "start": 0,
+          "end": 4,
+          "level": 1,
+          "locations": [
+            {
+              "kind": "page",
+              "page_number": 1
+            }
+          ]
+        },
+        {
+          "block_id": "b2",
+          "type": "paragraph",
+          "start": 5,
+          "end": 12,
+          "parent_id": "b1",
+          "locations": [
+            {
+              "kind": "page",
+              "page_number": 2
+            }
+          ]
+        }
+      ],
+      "pages": [
+        {
+          "page_number": 1,
+          "start": 0,
+          "end": 5
+        },
+        {
+          "page_number": 2,
+          "start": 5,
+          "end": 12
+        }
+      ],
+      "split_points": [
+        {
+          "offset": 5,
+          "kind": "preferred"
+        }
+      ]
+    }
+  }
+}

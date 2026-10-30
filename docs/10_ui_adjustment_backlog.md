@@ -257,3 +257,12 @@ D-42 的具體補充（格式以 [12](12_component_schema_ui_contract.md) 為準
 - [ ] Builder 保留文件／CSV 上傳，映射／轉換後預覽實際 JSON，content 與 metadata 只映射一次；區分 API body 與 Parsing 後的 ParsedDocument。現有 records[].fields 及範例遷移需明示，不能假裝已支援相容別名。
 - [ ] Parsing 可啟用多個 Component，依宣告能力自動派送；無衝突不要求 Router 設定，有重疊才要求預設策略／進階 profile。格式不支援、歧義及缺 Chunker 結構顯示模組與原因，不靜默換 Parser。
 - [ ] 更新 API 說明、CSV／AI 樣本處理及匯出預覽，說明獨立 Runtime 接收 JSON，文件傳輸轉換由呼叫端負責。沿用進階預設收合；本輪不變更 Prototype，實際格式／Parser 能力不可由模擬選項冒充。
+
+<a id="uib-012-parsed-document-structures"></a>
+### UIB-012：ParsedDocument 結構與 Chunker 相容／路由（草案待審閱，尚未實作）
+
+- [ ] 引用 [14](14_parsed_document_contract.md) 與同一份 ParsedDocument JSON Schema，提供無結構／text-spans／page-blocks 預覽；不要另寫前端資料型別或用範例宣稱所有格式可用。
+- [ ] 顯示選定 fields 欄位的結構種類／版本、內容基準、閱讀順序、頁面或 slide／sheet 來源、必要切分點；圖像缺資源、原生 extension 未正規化與未知版本明確顯示。
+- [ ] Chunking 基本區固定選一個 Component；需要時提供依結構／格式／能力派送，無衝突自動，重疊要求預設策略。每筆切分任務只走一個有效 Chunker；不默默忽略 required 邊界。
+- [ ] Header-aware 區分直接處理 Markdown 與要求 heading Blocks 的能力；不以 structure 是否為空猜測格式。首版建議 Parser 正規化標題，確切輸出／格式宣告依核定契約整合。
+- [ ] AI 樣本、CSV／API 預覽與錯誤定位引用同一份 Contract；保留現有進階收合與模擬狀態。僅記錄待辦，待明確改 UI 指示再實作。

@@ -1,0 +1,737 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rag-builder:parsed-document:0.1-draft",
+  "title": "ParsedDocument",
+  "description": "五個固定頂層 key；ParsedDocument 0.1 討論草案，不代表 Engine／Chunker 已實作。除 JSON Schema 外仍需跨欄位語意與已註冊擴充驗證。",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "document_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fields": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      }
+    },
+    "structure": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/Structure"
+      }
+    }
+  },
+  "required": [
+    "document_id",
+    "source_revision",
+    "fields",
+    "metadata",
+    "structure"
+  ],
+  "$defs": {
+    "JsonValue": {
+      "anyOf": [
+        {
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ]
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        }
+      ]
+    },
+    "BoundingBox": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "left": {
+          "type": "number"
+        },
+        "top": {
+          "type": "number"
+        },
+        "right": {
+          "type": "number"
+        },
+        "bottom": {
+          "type": "number"
+        },
+        "origin": {
+          "enum": [
+            "top-left",
+            "bottom-left"
+          ]
+        },
+        "unit": {
+          "enum": [
+            "pt",
+            "px",
+            "emu",
+            "normalized",
+            "source"
+          ]
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "left",
+        "top",
+        "right",
+        "bottom",
+        "origin",
+        "unit"
+      ]
+    },
+    "Location": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "page"
+            },
+            "source_ref": {
+              "type": "string",
+              "minLength": 1
+            },
+            "page_number": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "bbox": {
+              "$ref": "#/$defs/BoundingBox"
+            }
+          },
+          "required": [
+            "kind",
+            "page_number"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "slide"
+            },
+            "source_ref": {
+              "type": "string",
+              "minLength": 1
+            },
+            "slide_number": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "bbox": {
+              "$ref": "#/$defs/BoundingBox"
+            }
+          },
+          "required": [
+            "kind",
+            "slide_number"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "sheet"
+            },
+            "source_ref": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sheet_name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "cell_range": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "sheet_name"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "element"
+            },
+            "source_ref": {
+              "type": "string",
+              "minLength": 1
+            },
+            "element_ref": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "element_ref"
+          ]
+        }
+      ]
+    },
+    "SpanBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "block_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": [
+            "heading",
+            "paragraph",
+            "list_item",
+            "table",
+            "image",
+            "code",
+            "extension"
+          ]
+        },
+        "parent_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "continuation_of": {
+          "type": "string",
+          "minLength": 1
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "role": {
+          "enum": [
+            "body",
+            "header",
+            "footer",
+            "caption",
+            "note",
+            "aside"
+          ]
+        },
+        "locations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Location"
+          }
+        },
+        "data_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "extension_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "extensions": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_-]*[.][a-zA-Z0-9_.-]+$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "block_id",
+        "type"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "heading",
+                  "paragraph",
+                  "list_item",
+                  "code"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "start",
+              "end"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "table",
+                  "image",
+                  "extension"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "data_ref"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "extension"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "extension_type"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "extension_type"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "not": {
+              "properties": {
+                "type": {
+                  "const": "heading"
+                }
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "level"
+              ]
+            }
+          }
+        }
+      ],
+      "dependentRequired": {
+        "start": [
+          "end"
+        ],
+        "end": [
+          "start"
+        ]
+      }
+    },
+    "PageBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "block_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": [
+            "heading",
+            "paragraph",
+            "list_item",
+            "table",
+            "image",
+            "code",
+            "extension"
+          ]
+        },
+        "parent_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "continuation_of": {
+          "type": "string",
+          "minLength": 1
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "role": {
+          "enum": [
+            "body",
+            "header",
+            "footer",
+            "caption",
+            "note",
+            "aside"
+          ]
+        },
+        "locations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Location"
+          }
+        },
+        "data_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "extension_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "extensions": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_-]*[.][a-zA-Z0-9_.-]+$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "block_id",
+        "type"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "heading",
+                  "paragraph",
+                  "list_item",
+                  "code"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "text"
+            ],
+            "properties": {
+              "text": {
+                "minLength": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "table",
+                  "image",
+                  "extension"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "data_ref"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "extension"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "extension_type"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "extension_type"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "not": {
+              "properties": {
+                "type": {
+                  "const": "heading"
+                }
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "level"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "PageSpan": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "page_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "page_number",
+        "start",
+        "end"
+      ]
+    },
+    "OffsetSplitPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "kind": {
+          "enum": [
+            "preferred",
+            "required"
+          ]
+        }
+      },
+      "required": [
+        "offset",
+        "kind"
+      ]
+    },
+    "BlockSplitPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "before_block_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "preferred",
+            "required"
+          ]
+        }
+      },
+      "required": [
+        "before_block_id",
+        "kind"
+      ]
+    },
+    "TextSpans": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_id": {
+          "const": "text-spans/0.1-draft"
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SpanBlock"
+          }
+        },
+        "pages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PageSpan"
+          }
+        },
+        "split_points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OffsetSplitPoint"
+          }
+        },
+        "extensions": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_-]*[.][a-zA-Z0-9_.-]+$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        }
+      },
+      "required": [
+        "schema_id",
+        "blocks"
+      ]
+    },
+    "PageBlocks": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_id": {
+          "const": "page-blocks/0.1-draft"
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "page_number": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "blocks": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/PageBlock"
+                }
+              }
+            },
+            "required": [
+              "page_number",
+              "blocks"
+            ]
+          }
+        },
+        "split_points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BlockSplitPoint"
+          }
+        },
+        "extensions": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_-]*[.][a-zA-Z0-9_.-]+$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        }
+      },
+      "required": [
+        "schema_id",
+        "pages"
+      ]
+    },
+    "RegisteredStructure": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+          "not": {
+            "enum": [
+              "text-spans/0.1-draft",
+              "page-blocks/0.1-draft"
+            ]
+          }
+        },
+        "payload": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "schema_id",
+        "payload"
+      ]
+    },
+    "Structure": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/TextSpans"
+        },
+        {
+          "$ref": "#/$defs/PageBlocks"
+        },
+        {
+          "$ref": "#/$defs/RegisteredStructure"
+        }
+      ]
+    }
+  }
+}

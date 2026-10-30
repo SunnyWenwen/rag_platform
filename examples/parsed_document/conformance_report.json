@@ -1,0 +1,202 @@
+{
+  "contract": "parsed-document/0.1-draft",
+  "date": "2026-10-30",
+  "scope": "Pinned official output JSON mapping and conformance only; no parser model, OCR, binary download, Chunker, retrieval or production SDK executed.",
+  "counts": {
+    "cases": 7,
+    "positive": 6,
+    "negative": 1
+  },
+  "results": [
+    {
+      "id": "docling-multi_page",
+      "source": {
+        "url": "https://raw.githubusercontent.com/docling-project/docling/af2dbadb4cd3fa39786916157a5c174eeb9bb7bf/tests/data/pdf/groundtruth/multi_page.json",
+        "sha256": "e90f3440e9091b51a9c7fb0b138003933d71f540f24f4d04c05aa58fe3eb747a",
+        "revision": "af2dbadb4cd3fa39786916157a5c174eeb9bb7bf",
+        "path": "tests/data/pdf/groundtruth/multi_page.json"
+      },
+      "status": "mapped_and_validated",
+      "source_items": 61,
+      "mapped_items": 61,
+      "extension_blocks": 8,
+      "missing_image_assets": 0,
+      "location_kind": "page",
+      "normalized_types": {
+        "heading": 11,
+        "paragraph": 16,
+        "extension": 8,
+        "list_item": 26
+      },
+      "native_json_reconstruction_equal": true,
+      "normalized_text_chars": 9321,
+      "text_spans_valid": true,
+      "uses_only_core_block_types": false,
+      "vendor_specific_table_payloads": 0,
+      "binary_assets_verified": false,
+      "page_blocks": {
+        "status": "not_losslessly_convertible_by_reference_adapter",
+        "reason": "cannot losslessly infer a unique page for each block"
+      }
+    },
+    {
+      "id": "docling-picture_classification",
+      "source": {
+        "url": "https://raw.githubusercontent.com/docling-project/docling/af2dbadb4cd3fa39786916157a5c174eeb9bb7bf/tests/data/pdf/groundtruth/picture_classification.json",
+        "sha256": "825941b1f476e116647f05d02d49bf8b840f5999ff69a5d239f1d73de3f37914",
+        "revision": "af2dbadb4cd3fa39786916157a5c174eeb9bb7bf",
+        "path": "tests/data/pdf/groundtruth/picture_classification.json"
+      },
+      "status": "mapped_and_validated",
+      "source_items": 11,
+      "mapped_items": 11,
+      "extension_blocks": 0,
+      "missing_image_assets": 2,
+      "location_kind": "page",
+      "normalized_types": {
+        "heading": 1,
+        "paragraph": 8,
+        "image": 2
+      },
+      "native_json_reconstruction_equal": true,
+      "normalized_text_chars": 3428,
+      "text_spans_valid": true,
+      "uses_only_core_block_types": true,
+      "vendor_specific_table_payloads": 0,
+      "binary_assets_verified": false,
+      "page_blocks": {
+        "status": "mapped_and_validated"
+      }
+    },
+    {
+      "id": "docling-code_and_formula",
+      "source": {
+        "url": "https://raw.githubusercontent.com/docling-project/docling/af2dbadb4cd3fa39786916157a5c174eeb9bb7bf/tests/data/pdf/groundtruth/code_and_formula.json",
+        "sha256": "5b40f355111a8e66ef4f3e3fad53582687d28cfa195815895702f5dcccbbef4f",
+        "revision": "af2dbadb4cd3fa39786916157a5c174eeb9bb7bf",
+        "path": "tests/data/pdf/groundtruth/code_and_formula.json"
+      },
+      "status": "mapped_and_validated",
+      "source_items": 16,
+      "mapped_items": 16,
+      "extension_blocks": 1,
+      "missing_image_assets": 0,
+      "location_kind": "page",
+      "normalized_types": {
+        "heading": 2,
+        "paragraph": 12,
+        "code": 1,
+        "extension": 1
+      },
+      "native_json_reconstruction_equal": true,
+      "normalized_text_chars": 5499,
+      "text_spans_valid": true,
+      "uses_only_core_block_types": false,
+      "vendor_specific_table_payloads": 0,
+      "binary_assets_verified": false,
+      "page_blocks": {
+        "status": "mapped_and_validated"
+      }
+    },
+    {
+      "id": "docling-xlsx_05_table_with_title-xlsx",
+      "source": {
+        "url": "https://raw.githubusercontent.com/docling-project/docling/af2dbadb4cd3fa39786916157a5c174eeb9bb7bf/tests/data/xlsx/groundtruth/xlsx_05_table_with_title.xlsx.json",
+        "sha256": "477d97a46cf6d0de72987ca808d009c5106fd6ff68d1d55e39debd1dd5e26029",
+        "revision": "af2dbadb4cd3fa39786916157a5c174eeb9bb7bf",
+        "path": "tests/data/xlsx/groundtruth/xlsx_05_table_with_title.xlsx.json"
+      },
+      "status": "mapped_and_validated",
+      "source_items": 3,
+      "mapped_items": 3,
+      "extension_blocks": 1,
+      "missing_image_assets": 0,
+      "location_kind": "sheet",
+      "normalized_types": {
+        "extension": 1,
+        "table": 2
+      },
+      "native_json_reconstruction_equal": true,
+      "normalized_text_chars": 112,
+      "text_spans_valid": true,
+      "uses_only_core_block_types": false,
+      "vendor_specific_table_payloads": 2,
+      "binary_assets_verified": false,
+      "page_blocks": {
+        "status": "not_losslessly_convertible_by_reference_adapter",
+        "reason": "cannot losslessly infer a unique page for each block"
+      }
+    },
+    {
+      "id": "docling-powerpoint_sample-pptx",
+      "source": {
+        "url": "https://raw.githubusercontent.com/docling-project/docling/af2dbadb4cd3fa39786916157a5c174eeb9bb7bf/tests/data/pptx/groundtruth/powerpoint_sample.pptx.json",
+        "sha256": "e1a27fa2e3eabc37a377b55bc7bb4ef86c267eaa90040994d8eaece0a9d48cf7",
+        "revision": "af2dbadb4cd3fa39786916157a5c174eeb9bb7bf",
+        "path": "tests/data/pptx/groundtruth/powerpoint_sample.pptx.json"
+      },
+      "status": "mapped_and_validated",
+      "source_items": 37,
+      "mapped_items": 37,
+      "extension_blocks": 9,
+      "missing_image_assets": 0,
+      "location_kind": "slide",
+      "normalized_types": {
+        "extension": 9,
+        "heading": 2,
+        "table": 1,
+        "paragraph": 7,
+        "list_item": 18
+      },
+      "native_json_reconstruction_equal": true,
+      "normalized_text_chars": 543,
+      "text_spans_valid": true,
+      "uses_only_core_block_types": false,
+      "vendor_specific_table_payloads": 1,
+      "binary_assets_verified": false,
+      "page_blocks": {
+        "status": "not_losslessly_convertible_by_reference_adapter",
+        "reason": "cannot losslessly infer a unique page for each block"
+      }
+    },
+    {
+      "id": "mineru-before_middle",
+      "source": {
+        "url": "https://raw.githubusercontent.com/opendatalab/MinerU/14db546c732e9829c949dbaefd9f1459c3da55a7/tests/fixtures/pdf_text_5635_5636/before_middle.json",
+        "sha256": "95e22a0682937c38b86f111302fed047c388dd22528443482c569daeba87428f",
+        "revision": "14db546c732e9829c949dbaefd9f1459c3da55a7",
+        "path": "tests/fixtures/pdf_text_5635_5636/before_middle.json"
+      },
+      "status": "mapped_and_validated",
+      "source_items": 17,
+      "mapped_items": 17,
+      "extension_blocks": 0,
+      "missing_image_assets": 0,
+      "location_kind": "page",
+      "normalized_types": {
+        "paragraph": 16,
+        "heading": 1
+      },
+      "native_json_reconstruction_equal": true,
+      "normalized_text_chars": 6772,
+      "text_spans_valid": true,
+      "uses_only_core_block_types": true,
+      "vendor_specific_table_payloads": 0,
+      "binary_assets_verified": false,
+      "page_blocks": {
+        "status": "mapped_and_validated"
+      }
+    },
+    {
+      "id": "mineru-model_image_reference",
+      "source": {
+        "url": "https://raw.githubusercontent.com/opendatalab/MinerU/14db546c732e9829c949dbaefd9f1459c3da55a7/tests/fixtures/model_image_reference.json",
+        "sha256": "b3bd4093a627d398a9fb3b5c0349947ec396e0d5fc2e33a35ffb6f49915c975c",
+        "revision": "14db546c732e9829c949dbaefd9f1459c3da55a7",
+        "path": "tests/fixtures/model_image_reference.json"
+      },
+      "status": "rejected_as_expected",
+      "reason": "reference adapter only covers MiddleJson docvortex.middle/2.0; not ModelJson or CLI envelopes"
+    }
+  ]
+}

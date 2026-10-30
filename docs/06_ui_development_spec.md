@@ -10,6 +10,8 @@
 
 **2026-10-29 輸入更新**：Engine 採 JSON-only 扁平輸入，Builder 文件／CSV 上傳轉成 content／base64／uri；Parsing 可多選並自動路由，衝突才要求預設／profile。新規格見 [13](13_ingestion_parser_input_contract.md)，原型及以下舊 records 預覽／映射的對應調整統一登錄 [UIB-011](10_ui_adjustment_backlog.md#uib-011-ingestion-parser-routing)，尚未實作。
 
+**2026-10-30 資料結構草案**：[14](14_parsed_document_contract.md) 新增 ParsedDocument Schema 與官方輸出對照；UI 的結構預覽、相容能力、Chunker 路由與缺失資源提示先記 [UIB-012](10_ui_adjustment_backlog.md#uib-012-parsed-document-structures)。本輪沒有改 Prototype，不能由範例推定所有結構皆可切分。
+
 ## 1. 目標、相依與範圍
 
 - 新手透過預設、CSV 與 AI 助手快速開始；熟悉 RAG 者可展開完整設定。

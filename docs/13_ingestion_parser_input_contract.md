@@ -85,7 +85,7 @@ JSON Schema 中沒有 default 副作用；metadata={} 是平台正規化行為�
 
 ### 3.4 上游已解析資料
 
-content 可依已註冊 schema_id 傳入 fields／structure 等已解析內容，但具體識別、內容 schema 與 Adapter 尚待核定；此處不提供假定已凍結的結構範例。ID、版本與 metadata 由外層提供。若 Adapter 支援接收完整的外部文件物件，必須明定重複 ID／metadata 的一致性政策，不能靜默覆寫。
+content 可依已註冊 schema_id 傳入 fields／structure 等已解析內容。2026-10-30 已新增 [ParsedDocument 0.1 輸出草案與參考映射](14_parsed_document_contract.md)，但 API 的原生 content 格式識別與正式 Adapter 仍須核定，不能直接把 ParsedDocument Schema 當成共同 IngestionDocument；此處不提供假定已凍結的結構範例。ID、版本與 metadata 由外層提供。若 Adapter 支援接收完整的外部文件物件，必須明定重複 ID／metadata 的一致性政策，不能靜默覆寫。
 
 ## 4. 是否也是 Parser 的 Input？
 
@@ -134,7 +134,7 @@ document_id、source_revision 及有效 metadata 持續傳遞；省略版本的�
 
 Parser 宣告可接受的 media_type、schema 及必要資源；多個 Parser 的啟用不代表每筆都執行全部，也不保證混合模態的聯合理解。相同格式只有一個可用實例時自動選用；有重疊時需明確預設／profile。格式副檔名僅為提示，不取代實際驗證。
 
-ParsedDocument 使用共同外層格式，但每種 Chunker 仍有內容／結構需求。Parser 與 Chunker 依 produces／requires 能力及版本配對，不依特定實作名稱綁死；標題、頁面、表格與自訂結構的具體 schema 仍見 [Q-002 待討論清單](08_implementation_plan.md#parsed-document-schema-pending)。不相容時明確報錯；不默默攤平成文字。
+ParsedDocument 使用共同外層格式，但每種 Chunker 仍有內容／結構需求。Parser 與 Chunker 依 produces／requires 能力及版本配對，不依特定實作名稱綁死；標題、頁面、表格與自訂結構的具體 schema 現有 [14 的可驗證草案](14_parsed_document_contract.md)，剩餘取捨仍見 [Q-002 待討論清單](08_implementation_plan.md#parsed-document-schema-pending)。不相容時明確報錯；不默默攤平成文字。
 
 ## 6. 舊設計與待決事項
 
