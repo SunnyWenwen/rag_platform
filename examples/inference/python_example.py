@@ -11,12 +11,19 @@ from pathlib import Path
 from typing import Any, Literal, TypedDict, cast
 
 
+class DenseVector(TypedDict):
+    values: list[float]
+    embedding_profile_id: str
+    source_field: str
+
+
+# Shape follows schemas/chunk.schema.json; TypedDict is illustrative only.
 class Chunk(TypedDict):
     chunk_id: str
     document_id: str
     source_revision: str
     fields: dict[str, Any]
-    vectors: dict[str, list[float]]
+    vectors: dict[str, DenseVector]
     metadata: dict[str, Any]
 
 

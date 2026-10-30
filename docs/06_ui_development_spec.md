@@ -12,6 +12,8 @@
 
 **2026-10-30 資料結構草案**：[14](14_parsed_document_contract.md) 新增 ParsedDocument Schema 與官方輸出對照；UI 的結構預覽、相容能力、Chunker 路由與缺失資源提示先記 [UIB-012](10_ui_adjustment_backlog.md#uib-012-parsed-document-structures)。本輪沒有改 Prototype，不能由範例推定所有結構皆可切分。
 
+**2026-10-30 Chunk 更新（D-47）**：[15](15_chunk_contract.md) 定義預設只切 fields.text，基本區不顯示欄位選擇；多欄位任務、附帶欄位／原文保留才在進階設定。metadata／來源資訊自動繼承或產生，vectors 採共用新格式；對應 Prototype／AI／預覽／匯出變更先記 [UIB-013](10_ui_adjustment_backlog.md#uib-013-chunk-contract)，尚未實作。
+
 ## 1. 目標、相依與範圍
 
 - 新手透過預設、CSV 與 AI 助手快速開始；熟悉 RAG 者可展開完整設定。
@@ -67,7 +69,7 @@ Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保�
 | Document Schema | 主要 text、需要的內容欄位、metadata | 型別、required／default／source、unknown_fields |
 | 服務 | DEV／自行提供、必要 URL／模型／認證引用 | Timeout、精確 Profile／Tokenizer 等 |
 | Parsing（已確認） | 只顯示結構化 JSON | 其他格式及相關設定全部收在預設關閉進階區 |
-| Chunking | Fixed-size／Recursive／Header-aware、主要切分欄位、複製欄位；metadata 預設全繼承 | 共用 Token Size／Overlap／Tokenizer；分隔符／標題層級依方法啟用；不提供 metadata 排除表單，UI 尚待辦 |
+| Chunking（欄位簡化已確認） | 切分方式／必要參數，直接用 text；不顯示切分／複製欄位選單，metadata 全繼承 | 有序多欄位任務、輸出名稱、附帶欄位與完整原文保留；共用 Token 設定與依方法啟用的分隔符／標題層級，不提供 metadata 排除；UIB-013 |
 | Embedding | 來源欄位、輸出向量、模型 | 維度／Encoding／Normalization、Batch、輸入限制 |
 | Indexing | 後端、全文／向量欄位、過濾能力；全部內容自動保存的摘要 | 後端特有參數、進階 Mapping（支援後才顯示）；不要求再勾選保存內容 |
 | Query Transformation | 既有 None／Rewrite／Multi-query、LLM；合併提案見 §3.3.2 | Prompt、count、include_original |

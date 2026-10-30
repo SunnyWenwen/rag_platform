@@ -18,6 +18,8 @@ Config-driven RAG System 建立與測試平台。
 
 **2026-10-30 Parser 相容性補充**：新增 [MarkItDown／PyMuPDF4LLM 實際解析驗證](docs/14_parsed_document_contract.md#51-markitdownpymupdf4llm實際本地解析與-contract-驗證)，7 次本地解析、14 份映射通過現有 Contract；保留版本／頁面／表格品質與未覆蓋情境。14 §0.2.5 補 Docling 官方映射摘錄，第 5 節區分「轉成既有結構」與「註冊自訂結構」。未修改 Schema／UI 或新增正式 Engine Component。
 
+**2026-10-30 Chunk 草案（D-47）**：新增 [15 Chunk Contract](docs/15_chunk_contract.md)、[共用 JSON Schema](schemas/chunk.schema.json) 與 [7 個情境／11 個 Chunk](examples/chunk/cases.json)。基本設定直接切 fields.text；多欄位／完整原文複製收進階，來源追溯自動產生；向量項目包含 Profile／來源欄位，Inference 引用同一份 Chunk。精確規格／SDK 尚未凍結，UI 僅記 UIB-013，未改原型。
+
 **接續規劃**：先讀 [03 名詞與架構](03_architecture_proposal.md#terminology) 及 [08 開發計畫與決策](docs/08_implementation_plan.md)。原 RAG Builder 規劃對話與「畫userflow」的整合核對、直接修正及需討論的邊界集中於 08 §12；臨時交接摘要已依指示讀取後移除。
 
 ## 開發規格文件集 v0.19（2026-10-16）
@@ -49,13 +51,14 @@ v0.19 討論提案：將 Rewrite／Multi-query 合併為單一 Query Rewrite，�
 | [05 共用資料模型與 Config](docs/05_data_contracts_search_design.md) | ParsedDocument／Chunk／SearchHit、Schema、Config 草案與變更影響 |
 | [06 使用流程與 UI 開發規格](docs/06_ui_development_spec.md) | 基本／進階、CSV、AI 助手、預覽、Edit 與測試操作 |
 | [07 Backend、Runtime API 與整合](docs/07_backend_runtime_integration.md) | API、System／Revision、任務、持久化、Runtime 與 Export |
-| [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M7、兩個 repo 與 Component 開發配套、46 項決策、27 項待決問題及 40 項歷史要求對照 |
+| [08 開發計畫、驗收與決策追蹤](docs/08_implementation_plan.md) | M0～M7、兩個 repo 與 Component 開發配套、47 項決策、27 項待決問題及 40 項歷史要求對照 |
 | [09 Inference Contract 與 UI 整合提案](docs/09_inference_contract_ui_plan.md) | 三種操作／共同排序的討論記錄、順序式 UI 設定、案例與待確認選項 |
 | [10 UI Prototype Backlog 與完成紀錄](docs/10_ui_adjustment_backlog.md) | §1～6 保留 v0.9 歷史完成項目；§7 集中新需求及提案，含 Component 選用／卡控 UIB-010；收到改 UI 指示後才實作 |
 | [11 Component 開發指南](docs/11_component_developer_guide.md) | Module Developer 在 rag_engine 開發 Components 的 SDK 介面示意、PR、套件測試、註冊與 Runtime 交付流程 |
 | [12 Component Schema、UI hints 與相依規則](docs/12_component_schema_ui_contract.md) | 設定描述格式草案、動態欄位／服務選項、相依狀態、版本／錯誤及 14 個驗收案例 |
 | [13 Ingestion JSON 與 Parser Input](docs/13_ingestion_parser_input_contract.md) | API／Parser 共用 IngestionDocument Schema、欄位／範例、自動路由與 SDK resolver／Context 邊界 |
 | [14 ParsedDocument Contract 與供應者對照](docs/14_parsed_document_contract.md) | 共用輸出 Schema、結構／位置／語意、註冊擴充與固定 Docling／MinerU 輸出驗證及限制 |
+| [15 Chunk Contract](docs/15_chunk_contract.md) | 預設 text、進階多欄位／複製、來源位置、命名向量、fingerprint／ID 與共用驗證 |
 
 建議先讀 03／08，再依任務讀 05／04／07／06。03 統一名詞與邊界，05 定義資料／版本規則，08 記錄決策與待決狀態。Engine 核心不依賴 Builder UI、HTTP 或 Builder DB；07 將其包裝為可管理服務。每份規格末尾列出相關 Q-ID，完整候選／決策／階段阻擋統一放在 08。
 

@@ -8,6 +8,8 @@
 
 > **2026-10-16 討論提案**：Rewrite 單模組試跑、兩方法合併成 1／N 設定、Generation 收合的進階 JSON 輸出分別見 10 的 UIB-007～009；尚待確認，原型未修改。此處的 Inference 清單 Contract 不決定 Generation 業務 payload／HTTP 回應型別。
 
+**2026-10-30 共用 Chunk 草案**：ResultItem.chunk 改由 [15](15_chunk_contract.md)／[Chunk Schema](../schemas/chunk.schema.json) 定義；非空向量包含 values／embedding_profile_id／source_field，原向量陣列草案不再適用。ResultItem.source_refs 是 ResultSet 血緣，與 Chunk.metadata._rag.source_refs 的文件來源位置分開。ResultSet 三種操作與本文件的既有流程不變。
+
 ## 1. 文件定位與確認狀態
 
 資料欄位以 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft) 為主責；Engine 執行以 [04 §5.2.1](04_module_components_io_contracts.md#result-processing) 為主責；UI 原則見 [06](06_ui_development_spec.md)。本文集中對話摘要、UI 提案與討論案例，不另創一份不同的 Contract。決策狀態見 [08 D-34／D-35、Q-014](08_implementation_plan.md#q-014)。

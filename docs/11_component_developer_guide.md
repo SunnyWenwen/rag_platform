@@ -19,7 +19,7 @@
 | Config Schema、UI hints、動態選項與相依規則 | [12 設定描述契約草案](12_component_schema_ui_contract.md) |
 | 開發者如何使用以上規格完成一個 Component | 本文件 |
 
-先選一個既有 Module 與具體需求，描述預期輸入／輸出、設定、必要能力及測試案例；可開始起草方法與套件結構。正式公開 SDK、可執行範本及相容測試需等相關契約核定。尤其 ParsedDocument 實際 Schema 已明確延後討論，見 [待決子題](08_implementation_plan.md#parsed-document-schema-pending)；本指南不另定 structure 模型。
+先選一個既有 Module 與具體需求，描述預期輸入／輸出、設定、必要能力及測試案例；可開始起草方法與套件結構。正式公開 SDK、可執行範本及相容測試需等相關契約核定。ParsedDocument 已有 [14 草案](14_parsed_document_contract.md)，Chunk 已有 [15 草案](15_chunk_contract.md) 與對應 JSON Schema／語意案例，仍待審閱／正式 SDK 凍結；本指南不另定 structure 或向量格式。預設 UI 不選欄位不表示 Chunker 只能硬編碼 text，進階任務需依公開欄位映射與能力宣告處理。
 
 ## 2. 開發模式與 repo 分工
 

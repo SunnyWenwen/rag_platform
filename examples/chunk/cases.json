@@ -1,0 +1,834 @@
+[
+  {
+    "case_id": "default_text",
+    "source": {
+      "document_id": "manual-001",
+      "source_revision": "v1",
+      "fields": {
+        "text": "保養規範\n清潔前先斷電。"
+      },
+      "metadata": {
+        "department": "engineering"
+      },
+      "structure": {}
+    },
+    "effective_spec": {
+      "spec_version": "chunking-spec/0.1-draft",
+      "tasks": [
+        {
+          "task_id": "text",
+          "component_id": "example.recursive-token",
+          "component_version": "1.0.0-fixture",
+          "split_field": "text",
+          "output_field": "text",
+          "copy_fields": [],
+          "parameters": {
+            "chunk_size": 512,
+            "overlap": 64,
+            "tokenizer_id": "fixture-tokenizer",
+            "tokenizer_revision": "v1",
+            "separators": [
+              "\n\n",
+              "\n",
+              "。"
+            ],
+            "keep_separator": true
+          }
+        }
+      ]
+    },
+    "chunks": [
+      {
+        "chunk_id": "chk_25f40b1f36ef7154df4806eb5fe1317db1836f46e0705749efd676b44cbe9182",
+        "document_id": "manual-001",
+        "source_revision": "v1",
+        "fields": {
+          "text": "清潔前先斷電。"
+        },
+        "metadata": {
+          "department": "engineering",
+          "_rag": {
+            "source_refs": [
+              {
+                "field": "text",
+                "output_field": "text",
+                "role": "split",
+                "start": 5,
+                "end": 12
+              }
+            ],
+            "chunking": {
+              "chunking_fingerprint": "40da9219f54a8d552281e6fa3573e98352e450df39d8ac6e6c3ed287877a31a3",
+              "chunk_ordinal": 0,
+              "task_id": "text"
+            }
+          }
+        },
+        "vectors": {}
+      }
+    ]
+  },
+  {
+    "case_id": "copy_original",
+    "source": {
+      "document_id": "manual-001",
+      "source_revision": "v1",
+      "fields": {
+        "text": "保養規範\n清潔前先斷電。",
+        "title": "設備手冊"
+      },
+      "metadata": {
+        "department": "engineering"
+      },
+      "structure": {}
+    },
+    "effective_spec": {
+      "spec_version": "chunking-spec/0.1-draft",
+      "tasks": [
+        {
+          "task_id": "text",
+          "component_id": "example.recursive-token",
+          "component_version": "1.0.0-fixture",
+          "split_field": "text",
+          "output_field": "text",
+          "copy_fields": [
+            {
+              "source_field": "text",
+              "output_field": "original_text"
+            },
+            {
+              "source_field": "title",
+              "output_field": "title"
+            }
+          ],
+          "parameters": {
+            "chunk_size": 512,
+            "overlap": 64,
+            "tokenizer_id": "fixture-tokenizer",
+            "tokenizer_revision": "v1",
+            "separators": [
+              "\n\n",
+              "\n",
+              "。"
+            ],
+            "keep_separator": true
+          }
+        }
+      ]
+    },
+    "chunks": [
+      {
+        "chunk_id": "chk_365f0edc351b995f0466382fbd2ff7572cdd129109bbe71aa313c7e998c1a772",
+        "document_id": "manual-001",
+        "source_revision": "v1",
+        "fields": {
+          "text": "清潔前先斷電。",
+          "original_text": "保養規範\n清潔前先斷電。",
+          "title": "設備手冊"
+        },
+        "metadata": {
+          "department": "engineering",
+          "_rag": {
+            "source_refs": [
+              {
+                "field": "text",
+                "output_field": "text",
+                "role": "split",
+                "start": 5,
+                "end": 12
+              },
+              {
+                "field": "text",
+                "output_field": "original_text",
+                "role": "copy"
+              },
+              {
+                "field": "title",
+                "output_field": "title",
+                "role": "copy"
+              }
+            ],
+            "chunking": {
+              "chunking_fingerprint": "44ebd373526a0abf733e6731183151ed6b53173f3976627e30a1c852d521c424",
+              "chunk_ordinal": 0,
+              "task_id": "text"
+            }
+          }
+        },
+        "vectors": {}
+      }
+    ]
+  },
+  {
+    "case_id": "two_plus_three",
+    "source": {
+      "document_id": "multi-001",
+      "source_revision": "v1",
+      "fields": {
+        "text": "甲段。乙段。",
+        "faq": "問一。問二。問三。"
+      },
+      "metadata": {
+        "department": "engineering"
+      },
+      "structure": {}
+    },
+    "effective_spec": {
+      "spec_version": "chunking-spec/0.1-draft",
+      "tasks": [
+        {
+          "task_id": "text",
+          "component_id": "example.recursive-token",
+          "component_version": "1.0.0-fixture",
+          "split_field": "text",
+          "output_field": "text",
+          "copy_fields": [
+            {
+              "source_field": "faq",
+              "output_field": "faq"
+            }
+          ],
+          "parameters": {
+            "chunk_size": 512,
+            "overlap": 64,
+            "tokenizer_id": "fixture-tokenizer",
+            "tokenizer_revision": "v1",
+            "separators": [
+              "\n\n",
+              "\n",
+              "。"
+            ],
+            "keep_separator": true
+          }
+        },
+        {
+          "task_id": "faq",
+          "component_id": "example.recursive-token",
+          "component_version": "1.0.0-fixture",
+          "split_field": "faq",
+          "output_field": "faq",
+          "copy_fields": [
+            {
+              "source_field": "text",
+              "output_field": "text"
+            }
+          ],
+          "parameters": {
+            "chunk_size": 512,
+            "overlap": 64,
+            "tokenizer_id": "fixture-tokenizer",
+            "tokenizer_revision": "v1",
+            "separators": [
+              "\n\n",
+              "\n",
+              "。"
+            ],
+            "keep_separator": true
+          }
+        }
+      ]
+    },
+    "chunks": [
+      {
+        "chunk_id": "chk_6a9af88cd831ac54d2e85014b33e564cf03c57037e5b54a5253a3c119e7de292",
+        "document_id": "multi-001",
+        "source_revision": "v1",
+        "fields": {
+          "text": "甲段。",
+          "faq": "問一。問二。問三。"
+        },
+        "metadata": {
+          "department": "engineering",
+          "_rag": {
+            "source_refs": [
+              {
+                "field": "text",
+                "output_field": "text",
+                "role": "split",
+                "start": 0,
+                "end": 3
+              },
+              {
+                "field": "faq",
+                "output_field": "faq",
+                "role": "copy"
+              }
+            ],
+            "chunking": {
+              "chunking_fingerprint": "62db0cfb52b422d26017ca66b9543a4fa7be3bef51c8cc63edd7da675cf0ad71",
+              "chunk_ordinal": 0,
+              "task_id": "text"
+            }
+          }
+        },
+        "vectors": {}
+      },
+      {
+        "chunk_id": "chk_126ebf69cb7620a3c209a82f9b0c89198bb3cf741d70df391275ce04dd271be7",
+        "document_id": "multi-001",
+        "source_revision": "v1",
+        "fields": {
+          "text": "乙段。",
+          "faq": "問一。問二。問三。"
+        },
+        "metadata": {
+          "department": "engineering",
+          "_rag": {
+            "source_refs": [
+              {
+                "field": "text",
+                "output_field": "text",
+                "role": "split",
+                "start": 3,
+                "end": 6
+              },
+              {
+                "field": "faq",
+                "output_field": "faq",
+                "role": "copy"
+              }
+            ],
+            "chunking": {
+              "chunking_fingerprint": "62db0cfb52b422d26017ca66b9543a4fa7be3bef51c8cc63edd7da675cf0ad71",
+              "chunk_ordinal": 1,
+              "task_id": "text"
+            }
+          }
+        },
+        "vectors": {}
+      },
+      {
+        "chunk_id": "chk_b1b085f58a0278c34357caf5e11b129cef97e9db9a66a3056fb09862189e4722",
+        "document_id": "multi-001",
+        "source_revision": "v1",
+        "fields": {
+          "faq": "問一。",
+          "text": "甲段。乙段。"
+        },
+        "metadata": {
+          "department": "engineering",
+          "_rag": {
+            "source_refs": [
+              {
+                "field": "faq",
+                "output_field": "faq",
+                "role": "split",
+                "start": 0,
+                "end": 3
+              },
+              {
+                "field": "text",
+                "output_field": "text",
+                "role": "copy"
+              }
+            ],
+            "chunking": {
+              "chunking_fingerprint": "62db0cfb52b422d26017ca66b9543a4fa7be3bef51c8cc63edd7da675cf0ad71",
+              "chunk_ordinal": 2,
+              "task_id": "faq"
+            }
+          }
+        },
+        "vectors": {}
+      },
+      {
+        "chunk_id": "chk_d7096eccb2c1cbe1934f01ef22c8061d3d92f0f67dde6e09060f6d6c8a7b66c3",
+        "document_id": "multi-001",
+        "source_revision": "v1",
+        "fields": {
+          "faq": "問二。",
+          "text": "甲段。乙段。"
+        },
+        "metadata": {
+          "department": "engineering",
+          "_rag": {
+            "source_refs": [
+              {
+                "field": "faq",
+                "output_field": "faq",
+                "role": "split",
+                "start": 3,
+                "end": 6
+              },
+              {
+                "field": "text",
+                "output_field": "text",
+                "role": "copy"
+              }
+            ],
+            "chunking": {
+              "chunking_fingerprint": "62db0cfb52b422d26017ca66b9543a4fa7be3bef51c8cc63edd7da675cf0ad71",
+              "chunk_ordinal": 3,
+              "task_id": "faq"
+            }
+          }
+        },
+        "vectors": {}
+      },
+      {
+        "chunk_id": "chk_6b75a067ac66d8da716af70e1958aec95ae3252cd92ae4611a14548d3f15c065",
+        "document_id": "multi-001",
+        "source_revision": "v1",
+        "fields": {
+          "faq": "問三。",
+          "text": "甲段。乙段。"
+        },
+        "metadata": {
+          "department": "engineering",
+          "_rag": {
+            "source_refs": [
+              {
+                "field": "faq",
+                "output_field": "faq",
+                "role": "split",
+                "start": 6,
+                "end": 9
+              },
+              {
+                "field": "text",
+                "output_field": "text",
+                "role": "copy"
+              }
+            ],
+            "chunking": {
+              "chunking_fingerprint": "62db0cfb52b422d26017ca66b9543a4fa7be3bef51c8cc63edd7da675cf0ad71",
+              "chunk_ordinal": 4,
+              "task_id": "faq"
+            }
+          }
+        },
+        "vectors": {}
+      }
+    ]
+  },
+  {
+    "case_id": "text_spans",
+    "source": {
+      "document_id": "manual-001",
+      "source_revision": "v1",
+      "fields": {
+        "text": "保養規範\n清潔前先斷電。"
+      },
+      "metadata": {},
+      "structure": {
+        "text": {
+          "schema_id": "text-spans/0.1-draft",
+          "blocks": [
+            {
+              "block_id": "b1",
+              "type": "heading",
+              "start": 0,
+              "end": 4,
+              "level": 1,
+              "locations": [
+                {
+                  "kind": "page",
+                  "page_number": 1
+                }
+              ]
+            },
+            {
+              "block_id": "b2",
+              "type": "paragraph",
+              "start": 5,
+              "end": 12,
+              "parent_id": "b1",
+              "locations": [
+                {
+                  "kind": "page",
+                  "page_number": 2
+                }
+              ]
+            }
+          ],
+          "pages": [
+            {
+              "page_number": 1,
+              "start": 0,
+              "end": 5
+            },
+            {
+              "page_number": 2,
+              "start": 5,
+              "end": 12
+            }
+          ],
+          "split_points": [
+            {
+              "offset": 5,
+              "kind": "preferred"
+            }
+          ]
+        }
+      }
+    },
+    "effective_spec": {
+      "spec_version": "chunking-spec/0.1-draft",
+      "tasks": [
+        {
+          "task_id": "text",
+          "component_id": "example.recursive-token",
+          "component_version": "1.0.0-fixture",
+          "split_field": "text",
+          "output_field": "text",
+          "copy_fields": [],
+          "parameters": {
+            "chunk_size": 512,
+            "overlap": 64,
+            "tokenizer_id": "fixture-tokenizer",
+            "tokenizer_revision": "v1",
+            "separators": [
+              "\n\n",
+              "\n",
+              "。"
+            ],
+            "keep_separator": true
+          }
+        }
+      ]
+    },
+    "chunks": [
+      {
+        "chunk_id": "chk_25f40b1f36ef7154df4806eb5fe1317db1836f46e0705749efd676b44cbe9182",
+        "document_id": "manual-001",
+        "source_revision": "v1",
+        "fields": {
+          "text": "清潔前先斷電。"
+        },
+        "metadata": {
+          "_rag": {
+            "source_refs": [
+              {
+                "field": "text",
+                "output_field": "text",
+                "role": "split",
+                "start": 5,
+                "end": 12,
+                "schema_id": "text-spans/0.1-draft",
+                "block_id": "b2",
+                "locations": [
+                  {
+                    "kind": "page",
+                    "page_number": 1
+                  }
+                ]
+              }
+            ],
+            "chunking": {
+              "chunking_fingerprint": "40da9219f54a8d552281e6fa3573e98352e450df39d8ac6e6c3ed287877a31a3",
+              "chunk_ordinal": 0,
+              "task_id": "text"
+            }
+          }
+        },
+        "vectors": {}
+      }
+    ]
+  },
+  {
+    "case_id": "page_blocks",
+    "source": {
+      "document_id": "manual-001",
+      "source_revision": "v1",
+      "fields": {
+        "text": "保養規範\n\n清潔前先斷電。"
+      },
+      "metadata": {},
+      "structure": {
+        "text": {
+          "schema_id": "page-blocks/0.1-draft",
+          "pages": [
+            {
+              "page_number": 1,
+              "blocks": [
+                {
+                  "block_id": "b1",
+                  "type": "heading",
+                  "text": "保養規範",
+                  "level": 1
+                }
+              ]
+            },
+            {
+              "page_number": 2,
+              "blocks": [
+                {
+                  "block_id": "b2",
+                  "type": "paragraph",
+                  "text": "清潔前先斷電。",
+                  "parent_id": "b1"
+                }
+              ]
+            }
+          ],
+          "split_points": [
+            {
+              "before_block_id": "b2",
+              "kind": "required"
+            }
+          ]
+        }
+      }
+    },
+    "effective_spec": {
+      "spec_version": "chunking-spec/0.1-draft",
+      "tasks": [
+        {
+          "task_id": "text",
+          "component_id": "example.recursive-token",
+          "component_version": "1.0.0-fixture",
+          "split_field": "text",
+          "output_field": "text",
+          "copy_fields": [],
+          "parameters": {
+            "chunk_size": 512,
+            "overlap": 64,
+            "tokenizer_id": "fixture-tokenizer",
+            "tokenizer_revision": "v1",
+            "separators": [
+              "\n\n",
+              "\n",
+              "。"
+            ],
+            "keep_separator": true
+          }
+        }
+      ]
+    },
+    "chunks": [
+      {
+        "chunk_id": "chk_25f40b1f36ef7154df4806eb5fe1317db1836f46e0705749efd676b44cbe9182",
+        "document_id": "manual-001",
+        "source_revision": "v1",
+        "fields": {
+          "text": "保養規範\n\n清潔前先斷電。"
+        },
+        "metadata": {
+          "_rag": {
+            "source_refs": [
+              {
+                "field": "text",
+                "output_field": "text",
+                "role": "split",
+                "schema_id": "page-blocks/0.1-draft",
+                "block_id": "b1",
+                "block_start": 0,
+                "block_end": 4,
+                "chunk_start": 0,
+                "chunk_end": 4,
+                "locations": [
+                  {
+                    "kind": "page",
+                    "page_number": 1
+                  }
+                ]
+              },
+              {
+                "field": "text",
+                "output_field": "text",
+                "role": "split",
+                "schema_id": "page-blocks/0.1-draft",
+                "block_id": "b2",
+                "block_start": 0,
+                "block_end": 7,
+                "chunk_start": 6,
+                "chunk_end": 13,
+                "locations": [
+                  {
+                    "kind": "page",
+                    "page_number": 2
+                  }
+                ]
+              }
+            ],
+            "chunking": {
+              "chunking_fingerprint": "40da9219f54a8d552281e6fa3573e98352e450df39d8ac6e6c3ed287877a31a3",
+              "chunk_ordinal": 0,
+              "task_id": "text"
+            }
+          }
+        },
+        "vectors": {}
+      }
+    ]
+  },
+  {
+    "case_id": "auxiliary_metadata",
+    "source": {
+      "document_id": "table-001",
+      "source_revision": "v1",
+      "fields": {
+        "text": "設備 A 每月保養。"
+      },
+      "metadata": {
+        "department": "engineering",
+        "maintenance_table": {
+          "columns": [
+            "設備",
+            "週期"
+          ],
+          "rows": [
+            [
+              "A",
+              "每月"
+            ]
+          ]
+        }
+      },
+      "structure": {}
+    },
+    "effective_spec": {
+      "spec_version": "chunking-spec/0.1-draft",
+      "tasks": [
+        {
+          "task_id": "text",
+          "component_id": "example.recursive-token",
+          "component_version": "1.0.0-fixture",
+          "split_field": "text",
+          "output_field": "text",
+          "copy_fields": [],
+          "parameters": {
+            "chunk_size": 512,
+            "overlap": 64,
+            "tokenizer_id": "fixture-tokenizer",
+            "tokenizer_revision": "v1",
+            "separators": [
+              "\n\n",
+              "\n",
+              "。"
+            ],
+            "keep_separator": true
+          }
+        }
+      ]
+    },
+    "chunks": [
+      {
+        "chunk_id": "chk_fe7683e862180332d16701362cad2e07f99f8c0d4ac42e97f5e512f38b276b76",
+        "document_id": "table-001",
+        "source_revision": "v1",
+        "fields": {
+          "text": "設備 A 每月保養。"
+        },
+        "metadata": {
+          "department": "engineering",
+          "maintenance_table": {
+            "columns": [
+              "設備",
+              "週期"
+            ],
+            "rows": [
+              [
+                "A",
+                "每月"
+              ]
+            ]
+          },
+          "_rag": {
+            "source_refs": [
+              {
+                "field": "text",
+                "output_field": "text",
+                "role": "split",
+                "start": 0,
+                "end": 10
+              }
+            ],
+            "chunking": {
+              "chunking_fingerprint": "40da9219f54a8d552281e6fa3573e98352e450df39d8ac6e6c3ed287877a31a3",
+              "chunk_ordinal": 0,
+              "task_id": "text"
+            }
+          }
+        },
+        "vectors": {}
+      }
+    ]
+  },
+  {
+    "case_id": "embedded",
+    "source": {
+      "document_id": "manual-001",
+      "source_revision": "v1",
+      "fields": {
+        "text": "保養規範\n清潔前先斷電。"
+      },
+      "metadata": {
+        "department": "engineering"
+      },
+      "structure": {}
+    },
+    "effective_spec": {
+      "spec_version": "chunking-spec/0.1-draft",
+      "tasks": [
+        {
+          "task_id": "text",
+          "component_id": "example.recursive-token",
+          "component_version": "1.0.0-fixture",
+          "split_field": "text",
+          "output_field": "text",
+          "copy_fields": [],
+          "parameters": {
+            "chunk_size": 512,
+            "overlap": 64,
+            "tokenizer_id": "fixture-tokenizer",
+            "tokenizer_revision": "v1",
+            "separators": [
+              "\n\n",
+              "\n",
+              "。"
+            ],
+            "keep_separator": true
+          }
+        }
+      ]
+    },
+    "chunks": [
+      {
+        "chunk_id": "chk_25f40b1f36ef7154df4806eb5fe1317db1836f46e0705749efd676b44cbe9182",
+        "document_id": "manual-001",
+        "source_revision": "v1",
+        "fields": {
+          "text": "清潔前先斷電。"
+        },
+        "metadata": {
+          "department": "engineering",
+          "_rag": {
+            "source_refs": [
+              {
+                "field": "text",
+                "output_field": "text",
+                "role": "split",
+                "start": 5,
+                "end": 12
+              }
+            ],
+            "chunking": {
+              "chunking_fingerprint": "40da9219f54a8d552281e6fa3573e98352e450df39d8ac6e6c3ed287877a31a3",
+              "chunk_ordinal": 0,
+              "task_id": "text"
+            }
+          }
+        },
+        "vectors": {
+          "text": {
+            "values": [
+              0.12,
+              -0.08,
+              0.31
+            ],
+            "embedding_profile_id": "embedding-demo-v1",
+            "source_field": "text"
+          }
+        }
+      }
+    ],
+    "vector_bindings": {
+      "text": {
+        "embedding_profile_id": "embedding-demo-v1",
+        "source_field": "text",
+        "dimensions": 3
+      }
+    }
+  }
+]

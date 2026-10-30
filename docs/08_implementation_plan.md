@@ -91,6 +91,7 @@ v0.13 從 `e52c4d74a469522155d814f0ff51fddf8946f957` 核對交接文件、本串
 | D-44 | Engine JSON-only Ingestion；扁平 document_id＋content／base64／uri 三選一；Builder／呼叫端負責上傳轉換；原始／已解析資料需相容 Parser，多 Parser 自動路由 | 2026-10-29 使用者確認全部支援、自動路由、扁平格式並要求保存 Schema；共用 Parser 輸入後依 D-45 確認；批次及輸出結構仍為草案 | 13／schemas/ingestion_document.schema.json；04～07；Q-002／Q-005／Q-019；UIB-011 |
 | D-45 | API 單筆文件與 Parser Input 共用相同 IngestionDocument Schema；content／base64／uri 三選一保留，不另建 ParserInput；取得內容使用 SDK 共用能力，Context 不屬 API body | 2026-10-29 使用者確認「api schema 跟 parser 的 Input 都是相同 schema」並要求記錄；共用契約已確認，SDK／Context 精確簽名仍待決 | 13 §2／§4、schemas/ingestion_document.schema.json；04／05／07；Q-002／Q-016／Q-017；UIB-011 |
 | D-46 | ParsedDocument 先提供五鍵外層、文字基線／全文標註／Page-Block 與註冊擴充的可驗證草案；資料能力與 Chunker 實作分開，引用單一共用定義；用固定 Docling／MinerU 輸出實際比對 | 2026-10-30 使用者要求先按前述建議寫 Schema 並實際比對；草案產出與驗證範圍已授權，具體擴充／子結構／版本與 SDK 尚未凍結 | 14／schemas/parsed_document.schema.json／examples/parsed_document；04～07／13；Q-002／Q-005／Q-006／Q-016；UIB-012 |
+| D-47 | Chunk 六鍵共用草案；預設直接切 text、不選欄位，進階才多任務／複製；來源追溯放 metadata._rag，向量項目記錄 Profile／來源；可重現 fingerprint＋全域 ordinal | 2026-10-30 使用者確認前述方向並要求 Schema／文件；語意方向已確認，精確格式／SDK 與索引發布仍為草案 | 15／schemas/chunk.schema.json／examples/chunk；04～12；Q-002／Q-003／Q-004／Q-006／Q-007～Q-010／Q-015；UIB-013 |
 
 「既有基線」不代表已涵蓋後續需求。D-23 的合併時點配置是使用者已提出的目標，不能以 D-11 的舊 Prototype 限制否決；兩層合併預設勾選並在 Retrieval 後的 UI 已於 2026-10-15 確認／實作，見 10 的歷史完成紀錄。Q-014 仍負責正式支援路徑、stage 命名及執行契約等剩餘細節。
 
@@ -242,6 +243,14 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 - 輸入邊界（2026-10-29 更新）：已確認可接受原始與上游已解析資料，Engine 以扁平 JSON 的 content／base64／uri 三選一接收，仍需相容 Parser／Adapter，見 [13](13_ingestion_parser_input_contract.md)。D-45 已確認 API／Parser 共用 IngestionDocument，不另設 ParserInput；已解析 content 的 structure 實際形狀、schema_id 與 Context／SDK 執行介面仍待定；舊 records 不接受 structure 的限制不再代表新模式，直接匯入 Chunk／vectors 仍未核可。
 - 後續：定案後同步 05 ParsedDocument 定義與範例、04 模組契約及 07 Ingestion API；必要 UI 變更依既有工作方式登錄 10 backlog，待明確要求修改 UI 再實作。
 
+<a id="chunk-schema-pending"></a>
+#### Chunk 實際 Schema（2026-10-30 已產出 0.1 草案）
+
+- 已確認 D-47：六鍵外層、預設 text 免選欄位、進階多任務／copy、2＋3 結果串接、metadata 追溯與向量 Profile／來源資訊；精確資料見 [15](15_chunk_contract.md) 與 [JSON Schema](../schemas/chunk.schema.json)。
+- 本輪具體化 source_refs／chunking、DenseVector 物件、有效計畫 fingerprint／全域序號及參考 ID；既有 Inference 改引用同一份 Chunk，不重寫向量定義。
+- 正式鍵名／nullable／自訂轉換、異質任務下游欄位適用條件、舊向量陣列遷移、跨語言 canonicalization 與 SDK 仍需審閱。身份 Hash 不解決索引原子提交；Q-007～Q-010／Q-015 保持有待決細節。
+- UI 僅記 [UIB-013](10_ui_adjustment_backlog.md#uib-013-chunk-contract)，未實作；來源範例與資料測試不等於 Tokenizer／Chunker／DB 驗收。
+
 <a id="q-003"></a>
 ### Q-003 模型服務與 Adapter 契約
 
@@ -285,7 +294,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 <a id="q-007"></a>
 ### Q-007 文件／Chunk ID 與 source_revision
 
-- 不清楚：省略 revision 的生成、檔案拆多文件、CSV 無主鍵、內容 Hash、切分 signature 的穩定算法。
+- 2026-10-30 D-47：已同意可重現 ID 方向；15 §5～6 提供有效切分計畫 fingerprint＋文件內全域 ordinal 的 Python 參考演算法。仍不清楚：省略 revision 的生成、檔案拆多文件、CSV 無主鍵、同 revision 不同內容的衝突政策、跨語言 canonicalization 與正式遷移；不能再將穩定 ID 方向全部列為未決。
 - 建議：跨批更新要求穩定 document_id，內容版本與 Config 分開；採明確可重現的衍生 ID 規則。
 - 替代：每批當新文件；需接受無法自然更新與重複資料後果。
 - 負責角色：Engine＋資料／產品；阻擋 M1 正式 ID 規範及 M2 更新。
@@ -838,3 +847,10 @@ Inference Schema／五份 JSON／Python 範例、圖面及其他服務實作均�
 - 14 §5.1 與新機器報告保留每種輸出模式／版本及邊界；page_chunks 是解析組織方式，不是平台最終 Chunk。MarkItDown 整份 Markdown 不宣稱有原生頁面；PyMuPDF 2.0 移入核心與不同頁碼欄位已實測。表格辨識品質與 Contract 相容性分開驗收，不用小樣本保證準確度。
 - 依使用者追問，新增官方 Docling 映射的精簡 ParsedDocument 例子，標明摘錄並核對來源。14 第 5 節改為轉成既有 text-spans／page-blocks 的結果；通過不代表建立自訂結構，無法無損轉換也不等於目標結構整體不支援該 Parser。
 - 04／README／UIB-012 補充供應者與限制，UI 未改；本輪為 D-46 的驗證與展示補充，不新增產品決策。D-ID 46、Q-ID 27、歷史 A-ID 40 與 M0～M7 保持。
+
+## 32. 2026-10-30 Chunk Schema 與欄位簡化（D-47）
+
+- 新增 15、Chunk JSON Schema、7 個共用情境／11 個 Chunk、參考 ID／來源／向量語意工具與測試；預設 text 免選欄位，進階才設定多任務與明確 copy，2＋3＝5，不做笛卡兒積。
+- source_refs／chunking 放 metadata._rag，不新增第七個 key；輔助資料可放 metadata，內容用途仍可用 fields。DenseVector 改具 Profile／來源欄位的物件，Inference Schema 直接引用同一 Chunk，既有 vectors={} 例子與型別同步。
+- 04～07／09／11／12 對齊資料及 UI／SDK 邊界，UIB-013 集中未實作調整；Prototype、圖面、Engine／API 未改。固定 Token／Recursive 等演算法與索引原子發布沒有因資料驗證而交付。
+- 33 個無效 Chunk 與 4 個序列／設定反例被拒絕；既有 5 份 Inference 範例通過共用 Schema。D-ID 增至 47、Q-ID 維持 27、歷史 A-ID 40，M0～M7 次序不變；Q-002 與 Q-007 的剩餘精確政策保持 OPEN。

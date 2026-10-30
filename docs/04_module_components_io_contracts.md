@@ -162,9 +162,11 @@ Timeout、重試預算、取消、partial 與 fallback 尚待 Q-009／Q-017／Q-
 
 ### 4.3 Chunking
 
-**資料／能力補充（2026-10-30）**：Input 引用同一份 [ParsedDocument Schema](../schemas/parsed_document.schema.json)，不另寫 Chunking 專屬的重複物件。無結構、text-spans、page-blocks 與已註冊擴充的支援由 Component 宣告；Chunking 可固定一個或依選定欄位的結構／格式／能力路由，衝突需預設策略。每個切分任務只選一個 Chunker，非自動平行切多份；必要切分點不可忽略。Schema 可表示不代表演算法已實作，UI 待辦見 UIB-012。
+**Output 草案（2026-10-30，D-47）**：[15](15_chunk_contract.md) 與 [Chunk Schema](../schemas/chunk.schema.json) 是六鍵輸出的共用定義。完整 Chunker 輸出須帶 metadata._rag.source_refs／chunking 且 vectors={}；多欄位 2＋3 得 5 個 Chunk，全域序號按任務／內容順序產生，不依併行完成順序。參考測試只驗已提供的切片／資料，不代替真實 Chunker 演算法與 Tokenizer 驗收。UI 待辦 UIB-013。
 
-**目的與方法**：Fixed-size／Recursive／Header-aware；一個主要 split_field＋多個 copy_fields，metadata 預設全部繼承，不再逐欄勾選。三種方法均以 Token 計量，沿用指定 Tokenizer／revision。2026-10-16 新增的「fix chunk」統一稱 **Fixed-size Chunking（固定 Token 視窗）**；方法已列入需求，Engine 與 Prototype 尚未因此實作。
+**資料／能力補充（2026-10-30）**：Input 引用同一份 [ParsedDocument Schema](../schemas/parsed_document.schema.json)，不另寫 Chunking 專屬的重複物件。無結構、text-spans、page-blocks 與已註冊擴充的支援由 Component 宣告；Chunking 可固定一個或依選定欄位的結構／格式／能力路由，衝突需預設策略。每個切分任務只選一個 Chunker；預設只有 text 任務，進階明確設定多個欄位任務時，各自輸出後串接而非交叉配對；必要切分點不可忽略。Schema 可表示不代表演算法已實作，UI 待辦見 UIB-012。
+
+**目的與方法**：Fixed-size／Recursive／Header-aware；預設直接切 fields.text 並寫回 text，不顯示欄位選單、不自動複製其他 fields。進階才設定有序任務，每個任務一個 split_field／output_field＋明確 copy 映射；同來源可切分且完整複製，但輸出名稱不能衝突。metadata 預設全部繼承，不再逐欄勾選。三種方法均以 Token 計量，沿用指定 Tokenizer／revision。2026-10-16 新增的「fix chunk」統一稱 **Fixed-size Chunking（固定 Token 視窗）**；方法已列入需求，Engine 與 Prototype 尚未因此實作。
 
 | 方法 | 切分依據 | 有效設定 |
 |---|---|---|
@@ -180,8 +182,8 @@ Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一�
 2. 依所選方法切分：Fixed-size 使用上述固定視窗；Recursive 依 separators 優先序切分，必要時處理過長片段，size 是上限、overlap 是目標值。
 3. Header-aware 先依可靠標題層級切分，再對超長章節 Recursive；缺 headings 不能假裝成功。
 4. 計算原 fields 字串範圍及跨 block／page locations，不從帶 overlap 的文字猜測位置。
-5. 複製指定 fields；文件摘要保持文件摘要。繼承 ParsedDocument 中經 Schema 驗證的全部業務 metadata，並保留／加入可信來源、ACL、片段 locations；輸入不能覆蓋平台保留資訊，精確命名見 Q-006。第一版不新增 metadata 排除表單，有明確需求再規劃。
-6. 依有效切分設定及位置產生 chunk_id，初始化 vectors={}。
+5. 複製指定 fields；文件摘要保持文件摘要。繼承 ParsedDocument 中經 Schema 驗證的全部業務 metadata，並保留／加入可信來源、ACL、metadata._rag.source_refs；平台切分資訊放 metadata._rag.chunking，輸入不能覆蓋平台保留資訊，完整可信區協定見 Q-006。第一版不新增 metadata 排除表單，有明確需求再規劃。
+6. 依文件 ID／source_revision、有效切分計畫 fingerprint 與全域 ordinal 產生 chunk_id，初始化 vectors={}；參考 Hash 與實際計畫版本見 15 §5～6。
 
 **驗證／例外**：size 為正整數、overlap 為整數且 `0 ≤ overlap < size`、Tokenizer 可用；涵蓋重複文字、非 BMP 字元、空段及極長無分隔文字。Fixed-size 不啟用 separators／keep_separator／header_levels，也不要求 Parser headings；未啟用的方法參數可保留草稿，但不驗證或匯出為有效參數。複製欄位未被主要內容切分，不保證其長度小於 size。
 
@@ -200,7 +202,7 @@ Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一�
 3. 按 Batch Size 呼叫 Embedding Adapter；現有 Prototype 的格式基線為 OpenAI-compatible embeddings。正式首組服務、相容範圍及模型契約仍待 Q-003，不把原型格式當作所有 Embedding API 的通用標準。
 4. 驗證回應 index 對應、數量、維度與有限值；不能因回傳順序錯誤把向量寫給其他 Chunk。
 5. normalization 與 metric 依 Profile 執行；記錄模型／版本／Provider request ID。
-6. 寫回原 Chunk.vectors；保留 fields／metadata。純全文 Pipeline 不初始化此服務。
+6. 寫回原 Chunk.vectors 的命名物件（values、embedding_profile_id、source_field），精確格式引用 15／共用 Chunk Schema；保留 fields／metadata。預設 fields.text → vectors.text，其他映射由進階設定；純全文 Pipeline 不初始化此服務。
 
 **例外**：缺欄位、超長、429／Timeout、批次缺項、維度錯誤與非法數值。截斷或 partial 需明確政策，不能默默處理。
 

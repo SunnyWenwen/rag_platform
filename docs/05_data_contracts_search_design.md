@@ -112,32 +112,23 @@ SourceAsset 是 Import → Parsing 的內部物件，**建議**包含 asset_id�
 
 ### 4.3 Chunk：六個固定頂層 key
 
+> **2026-10-30：已有可驗證 0.1 草案（D-47），尚未凍結 SDK**。精確形狀與語意以 [15 Chunk Contract](15_chunk_contract.md) 及 [同一份 JSON Schema](../schemas/chunk.schema.json) 為目前來源；共用情境／資料見 [cases.json](../examples/chunk/cases.json)。
+
 | Key | 責任 |
 |---|---|
-| chunk_id | Chunking 產生 |
-| document_id、source_revision | 繼承文件 |
-| fields | 主要欄位的切分片段＋指定複製欄位 |
-| vectors | Chunking 為 {}；Embedding 寫入命名向量 |
-| metadata | 預設繼承全部經驗證的業務 metadata，加上必要保留資訊與片段位置 |
+| chunk_id | Chunking 產生；文件版本＋有效切分計畫 fingerprint＋全域 ordinal |
+| document_id、source_revision | 繼承文件；只改切分設定不改來源內容版本 |
+| fields | 預設只切 text 並寫回 text；需要時進階選切分／輸出／完整複製欄位 |
+| vectors | Chunking 為 {}；Embedding 寫入 values＋embedding_profile_id＋source_field 的命名物件 |
+| metadata | 預設繼承全部有效業務 metadata；可信來源與切分資訊放 _rag |
 
-```json
-{
-  "chunk_id": "doc-001:v1:c1",
-  "document_id": "doc-001",
-  "source_revision": "v1",
-  "fields": {"text": "第一段。", "title": "維修手冊"},
-  "vectors": {"text_vector": [0.12, 0.34, 0.56]},
-  "metadata": {"department": "manufacturing", "locations": [
-    {"field": "text", "start": 0, "end": 4, "page_number": 1, "block_id": "b1"}
-  ]}
-}
-```
+基本 UI 不顯示欄位選擇，直接使用 fields.text；不自動複製其他 fields。保留切分前完整原文時，才進階設定 text → original_text 或其他不衝突名稱。同文件兩個欄位各切 2／3 段時，結果串接為 5 個 Chunk，不做交叉配對；互相附帶完整原文另需明確 copy 映射。
 
-chunk_id 與三維向量僅示例。位置指原 ParsedDocument 欄位，不是 Chunk 內的重新起算位置。跨頁可有多個 locations。權限、來源、locations、切分及 Parser 版本應有平台保留區或 Run 記錄，精確命名 Q-006；不額外增加 Chunk 頂層 key。
+metadata._rag.source_refs 保存來源欄位、對應輸出欄位、原文範圍／Block 及可取得的位置；用於引用、定位與追溯，不讓使用者逐項設定。metadata._rag.chunking 保存 fingerprint／全域序號／task_id，完整 spec 保存於可追溯 Config／Run。來源全文與 Block 內 offset 不混用；一個 Chunk 可以有多筆 refs，精確語意見 15 §3。
 
-Chunk 須自帶 Rerank／Generation 需要的內容，不強制回查 ParsedDocument。Indexing 預設保存其全部 fields／metadata，使用者不再勾選內容保存投影；完整向量保存在索引／Chunk Store，檢索傳遞可令 vectors={}。回傳／傳遞時可依下游需求投影，但不能因此刪除已保存內容。
+Chunk 須自帶 Rerank／Generation 需要的內容，不強制回查 ParsedDocument。Indexing 預設保存全部 fields／metadata；完整向量保存在索引／Chunk Store，檢索傳遞可令 vectors={}，不能因此刪除已保存內容。追溯用輔助結構可在 metadata；供下游內容選單使用則建議放 fields，不新增頂層 structure。
 
-metadata 的「全部繼承」限於 Document Schema 驗證後的有效欄位及可信平台資訊，不放寬 unknown_fields／保留欄位規則。業務值依原型別複製到 Chunk，片段位置由 Chunking 產生；輸入不能覆蓋 ACL／系統來源。第一版不提供 metadata 排除選單；有明確需求再定受控排除，必要權限／來源不可排除。這不影響 fields 仍由主要切分欄位＋copy_fields 決定。
+metadata 全部繼承限於驗證後的業務欄位及可信平台資訊，ACL／來源不能由輸入覆蓋；必要平台資訊不可排除，第一版不提供 metadata 排除選單。此規則不表示 copy_fields 自動包含所有 fields。正式可信區協定／索引發布機制仍在 Q-006～Q-010 等待決項，不能把資料草案當成已實作原子更新。
 
 ### 4.4 Embedding Profile 與 IndexBinding
 
@@ -146,7 +137,7 @@ metadata 的「全部繼承」限於 Document Schema 驗證後的有效欄位及
 | EmbeddingProfile | 模型／版本、維度、document/query encoding、normalization、Tokenizer／revision、向量種類；向量邏輯名稱對應來源欄位及 Profile |
 | IndexBinding | System 範圍、後端／集合、資料版本、Mapping／Schema 版本、capabilities、每個向量的 Profile 綁定及可搜尋狀態 |
 
-Profile 是 Query／Document 配對契約；不能只比較維度或模型顯示名稱。Profile／Binding 不在每筆 Chunk 重複。第一版多個命名 Dense 向量已確認；不同 Profile／模型同時配置的優先級見 Q-002／Q-003。
+Profile 是 Query／Document 配對契約；不能只比較維度或模型顯示名稱。Profile／Binding 的完整設定不在每筆 Chunk 重複；每個向量項目保存 Profile 識別與來源欄位，精確格式見 15 §4。第一版多個命名 Dense 向量已確認；不同 Profile／模型同時配置的優先級見 Q-002／Q-003。
 
 ### 4.5 SearchQuery、SearchHit 與 Citation
 
@@ -169,7 +160,7 @@ rank 從 1 起；score 是相關性分數，不是機率。搜尋融合用 chunk
 
 本節依 2026-10-15 的 Query 物件及 14:10～14:31（Asia/Taipei）ResultSet 討論整理。**三種後處理及共同排序為已確認語意；具體欄位是供審閱的 `inference-0.2-draft`，尚未核定正式 SDK／HTTP Contract。**Q-002／Q-014 仍開放；Schema／例子可檢查，不表示 Engine 已實作。§4.5 的扁平 SearchHit 僅是既有單層基線。
 
-機器可讀定義：[JSON Schema](../schemas/inference_context.schema.json)，使用 Draft 2020-12。根物件 InferenceState 只承接同一次 Inference 的多個 QueryContext 與有效輸出選擇。RunContext 仍負責 System／版本／授權，ModuleResult 負責錯誤／Metrics，不把它們塞入 Chunk。
+機器可讀定義：[JSON Schema](../schemas/inference_context.schema.json)，使用 Draft 2020-12。其中 Chunk 直接引用共用 chunk/0.1-draft，不另定向量／metadata 格式；驗證時明確註冊本地 ParsedDocument／Chunk Schema，可用 [Chunk 驗證工具](../examples/chunk/contract.py) 的 local_registry，禁止由識別自動下載。既有 vectors={} 例子仍有效，舊非空向量陣列須依 15 §4 遷移。根物件 InferenceState 只承接同一次 Inference 的多個 QueryContext 與有效輸出選擇。RunContext 仍負責 System／版本／授權，ModuleResult 負責錯誤／Metrics，不把它們塞入 Chunk。
 
 #### 4.6.1 InferenceState
 
@@ -329,12 +320,14 @@ failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項�
 
 ### 6.3 模組設定詞彙
 
+15 的有效切分 spec 使用 fields 容器內的 key；本文件舊單層 Config 範例使用 fields.text 等完整路徑。兩者屬不同層次，需由 Engine 依正式 Config Schema 解析，不同時接受未宣告別名。下方保留的 copy_fields=[fields.title] 是明確開啟附帶欄位的例子，不是預設自動複製標題。
+
 | 模組 | 已確認語意 | 本版建議 Config 欄位 |
 |---|---|---|
 | Import | files／records；CSV 先映射到 records | accepted_inputs、csv_mapping |
 | Parsing | 格式路由、結構化 records 驗證 | routes |
-| Chunking | Fixed-size／Recursive／Header-aware；Token 計量；metadata 預設全部繼承 | method、split_field、copy_fields、size、overlap、tokenizer；separators／keep_separator／header_levels 依方法啟用；不再要求 metadata_fields |
-| Embedding | fields → 命名 vectors | profile、mappings（source_field、output_name） |
+| Chunking | Fixed-size／Recursive／Header-aware；預設 text、不選欄位；進階多任務／複製；metadata 全繼承 | split_field／output_field／copy 映射與有序 tasks 草案見 15；size／overlap／tokenizer 及有效方法參數，無 metadata_fields |
+| Embedding | 預設 fields.text → vectors.text；命名向量包含 Profile 識別與來源欄位 | profile、mappings（source_field、output_name）；現有下方 text_vector 為明確命名例子，不是唯一預設 |
 | Indexing | 全部 fields／metadata 保存，搜尋與過濾另外選；持久化模式跨環境固定 | backend、fulltext_fields、vector_fields、filter_fields、persistence、metric；移除使用者 stored_fields，persistence 屬邏輯 Config，collection 在部署 Binding |
 | Query Transformation | None／Rewrite／Multi-query | method、llm_ref、prompt、count、include_original |
 | Retrieval／Fusion Plan | 選已索引欄位、推導模式；可配置策略及合併時點 | fulltext_fields、vector_fields、per_route_k、top_k、filters、fusion；stages／scope／placement 具體 Schema 待 Q-014 |

@@ -268,3 +268,15 @@ D-42 的具體補充（格式以 [12](12_component_schema_ui_contract.md) 為準
 - [ ] AI 樣本、CSV／API 預覽與錯誤定位引用同一份 Contract；保留現有進階收合與模擬狀態。僅記錄待辦，待明確改 UI 指示再實作。
 
 - [ ] UIB-012 補充：若正式註冊 MarkItDown／PyMuPDF4LLM Component，顯示實際模式與版本、原生頁面是否可用、Layout／OCR 條件、結構與資源限制；區分 Schema 映射通過與解析品質／Chunker 可執行。純文件驗證不預先增加假可用選項。
+
+<a id="uib-013-chunk-contract"></a>
+### UIB-013：Chunk Contract、預設 text 與進階欄位任務（方向已確認，尚未實作）
+
+- [ ] 引用 [15](15_chunk_contract.md) 與共用 Chunk Schema；基本區直接切 fields.text 並寫回 text，不顯示 split/copy 欄位選單；text 缺失／型別不合回 `[Chunking]`，不自動換欄位。
+- [ ] 進階才顯示新增有序任務、split／output／copy 映射與保留完整原文；預設 copy_fields=[]。同來源可切分又完整複製到 original_text 等不同名稱，重名阻止保存。
+- [ ] 多欄位輸出為結果串接，示範 2＋3＝5，完整附帶另一欄位需明確選擇；顯示每個任務輸出欄位與下游可用內容，提示完整複製／Embedding 的重複與長度影響。
+- [ ] metadata 全繼承、不新增排除選單；source_refs／fingerprint／ordinal 由平台自動產生，一般設定不列選項。預覽／結果詳情可唯讀看來源欄位、Block／頁碼、全域序號；未知位置不捏造。
+- [ ] 向量預設 fields.text → vectors.text；顯示／序列化 values＋embedding_profile_id＋source_field，模型設定共用 Profile，不重填。舊非空向量陣列與原 Prototype text_vector 名稱依明確 Binding／遷移規則處理，不靠名稱猜模型或來源。
+- [ ] 下游 Picker 依 Chunk 實際輸出 Schema／任務產生選項，處理多任務不同欄位與缺欄位，不默默略過；純文字路徑仍可不經額外設定使用。
+- [ ] 手動／AI／Create／Edit／CSV 預覽／匯出用同一有效設定；僅展開進階不變更 Config，取消保留舊設定；欄位失效保留並報錯，不靜默覆蓋。指紋不含 UI 狀態／停用參數／Secret。
+- [ ] 更新 API／Chunk 預覽、測試與說明，區分 IngestionDocument 輸入、ParsedDocument、Chunk 及 ResultItem 的兩種 source_refs；不新增直接 Chunk 匯入入口。本輪只記錄待辦，待使用者明確要求改 UI 再實作。
