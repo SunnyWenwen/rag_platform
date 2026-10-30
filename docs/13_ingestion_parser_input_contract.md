@@ -31,6 +31,86 @@
 
 三個維度可以組合，例如「透過 URL 提供已解析 JSON」或「用 Base64 提供原始 PDF」。多個 Parser 的用途是提供相容路徑，不是讓每筆資料依序執行全部 Parser。API 及 Parser 共用 IngestionDocument；內容取得使用 SDK 共用資源，不另維護第二份輸入 Schema。
 
+<!-- classification-examples:ingestion:start -->
+
+以下是符合目前 IngestionDocument 外層 Schema 的單筆例子，與 Parser Input 使用同一份契約。例子由 [共用資料來源及產生工具](../examples/contracts/render_classification_examples.py) 驗證／產生，資料見 [report_cases.json](../examples/contracts/report_cases.json)；此處驗證資料形狀，尚未執行 API。
+
+#### 0.2.1 content：直接傳文字
+
+只有文件 ID 與內容即可表達最簡單情境；相容 Parser 產生 ParsedDocument。
+
+```json
+{
+  "document_id": "manual-001",
+  "content": "清潔前先斷電。"
+}
+```
+
+#### 0.2.2 content：直接傳多欄位 JSON
+
+這是一筆文件的原文、標題與既有摘要；metadata 另外保存部門。CSV 映射後也可形成這種單筆資料。
+
+```json
+{
+  "document_id": "manual-001",
+  "content": {"text": "清潔前先斷電。", "title": "設備手冊", "summary": "清潔前的安全步驟"},
+  "metadata": {"department": "engineering"}
+}
+```
+
+#### 0.2.3 base64：傳送編碼後的檔案內容
+
+用短文字檔示範 Base64，實際可解碼為「清潔前先斷電。」。PDF／PPTX／Excel 使用相同傳輸欄位，須填入完整檔案內容、正確 media_type 並有相容 Parser。
+
+```json
+{
+  "document_id": "manual-file-001",
+  "base64": "5riF5r2U5YmN5YWI5pa36Zu744CC",
+  "media_type": "text/plain"
+}
+```
+
+#### 0.2.4 uri：取得 URL 指向的檔案
+
+只傳資源位置，由共用能力取得 PDF，再交給相容 Parser；這個示意網址未進行下載／連線驗證。
+
+```json
+{
+  "document_id": "report-001",
+  "uri": "https://storage.example.com/report.pdf",
+  "media_type": "application/pdf"
+}
+```
+
+#### 0.2.5 content：上游已經解析並保留結構
+
+原文與 heading／paragraph 範圍已整理好，由相容 Adapter 驗證與組成 ParsedDocument。外層 schema_id 是「輸入內容形狀」的示意識別，須註冊對應 Adapter；內層 schema_id 是文字結構規格。API body 使用 IngestionDocument，Adapter 以 content 中的 fields／structure 組成 ParsedDocument。
+
+```json
+{
+  "document_id": "manual-001",
+  "source_revision": "v1",
+  "schema_id": "example.preparsed-content/0.1-draft",
+  "content": {
+    "fields": {"text": "保養規範\n清潔前先斷電。"},
+    "structure": {
+      "text": {
+        "schema_id": "text-spans/0.1-draft",
+        "blocks": [
+          {"block_id": "b1", "type": "heading", "start": 0, "end": 4, "level": 1},
+          {"block_id": "b2", "type": "paragraph", "start": 5, "end": 12, "parent_id": "b1"}
+        ]
+      }
+    }
+  },
+  "metadata": {}
+}
+```
+
+上述五例都符合共同外層；media_type／schema_id 能省略的條件仍依正文。對應的 Parser／服務能力必須另外具備，範例通過 Schema 不代表 Runtime 已實作。
+
+<!-- classification-examples:ingestion:end -->
+
 ### 0.3 責任分工與目前範圍
 
 | 層級 | 責任 |

@@ -1,0 +1,51 @@
+{
+  "ingestion": {
+    "text": {
+      "document_id": "manual-001",
+      "content": "清潔前先斷電。"
+    },
+    "record": {
+      "document_id": "manual-001",
+      "content": {
+        "text": "清潔前先斷電。",
+        "title": "設備手冊",
+        "summary": "清潔前的安全步驟"
+      },
+      "metadata": {
+        "department": "engineering"
+      }
+    },
+    "base64": {
+      "document_id": "manual-file-001",
+      "base64": "5riF5r2U5YmN5YWI5pa36Zu744CC",
+      "media_type": "text/plain"
+    },
+    "uri": {
+      "document_id": "report-001",
+      "uri": "https://storage.example.com/report.pdf",
+      "media_type": "application/pdf"
+    }
+  },
+  "base64_decoded_text": "清潔前先斷電。",
+  "custom_structure": {
+    "schema_id": "company.custom/1",
+    "payload": {
+      "section": "設備保養"
+    }
+  },
+  "structure_schemas": {
+    "company.custom/1": {
+      "type": "object",
+      "required": [
+        "section"
+      ],
+      "properties": {
+        "section": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -33,6 +33,89 @@
 
 text-spans 與 page-blocks 是可並存的表示方式，不要求所有資料統一成其中一種；同一內容欄位採明確的一份結構規格。無 structure 不等於文字中沒有 Markdown 等內含語法，因此相容性還要考慮格式與能力。
 
+<!-- classification-examples:parsed:start -->
+
+以下四例直接使用 ParsedDocument 的五個頂層 key。它們是 Parser 的輸出／Chunker 的輸入，與 13 的 IngestionDocument 分屬不同階段。前三例由 §1 的共用 JSON 範例產生報告用精簡視圖，只省略可選資訊；自訂例子的資料與示意註冊 Schema 見 [report_cases.json](../examples/contracts/report_cases.json)。
+
+#### 0.2.1 無額外結構：只有可處理的文字欄位
+
+原文與標題在 fields，structure 為空；一般文字 Chunker 可以依 Token 或分隔規則處理選定文字欄位。
+
+```json
+{
+  "document_id": "manual-001",
+  "source_revision": "v1",
+  "fields": {"text": "清潔前先斷電。", "title": "設備手冊"},
+  "metadata": {"department": "engineering"},
+  "structure": {}
+}
+```
+
+#### 0.2.2 text-spans：全文加上標題／段落範圍
+
+fields.text 是基準；[0,4) 是標題、[5,12) 是段落，Block 不重複保存文字。完整範例另有頁碼與切分點，此處省略可選資訊。
+
+```json
+{
+  "document_id": "manual-001",
+  "source_revision": "v1",
+  "fields": {"text": "保養規範\n清潔前先斷電。"},
+  "metadata": {},
+  "structure": {
+    "text": {
+      "schema_id": "text-spans/0.1-draft",
+      "blocks": [
+        {"block_id": "b1", "type": "heading", "start": 0, "end": 4, "level": 1},
+        {"block_id": "b2", "type": "paragraph", "start": 5, "end": 12, "parent_id": "b1"}
+      ]
+    }
+  }
+}
+```
+
+#### 0.2.3 page-blocks：按頁保存 Block 物件
+
+Block.text 是基準；例子有兩頁。fields.text 是以兩個換行串接的衍生值，Chunker 仍可依設定跨頁合併，頁面不是強制切分邊界。
+
+```json
+{
+  "document_id": "manual-001",
+  "source_revision": "v1",
+  "fields": {"text": "保養規範\n\n清潔前先斷電。"},
+  "metadata": {},
+  "structure": {
+    "text": {
+      "schema_id": "page-blocks/0.1-draft",
+      "pages": [
+        {"page_number": 1, "blocks": [{"block_id": "b1", "type": "heading", "text": "保養規範", "level": 1}]},
+        {
+          "page_number": 2,
+          "blocks": [{"block_id": "b2", "type": "paragraph", "text": "清潔前先斷電。", "parent_id": "b1"}]
+        }
+      ]
+    }
+  }
+}
+```
+
+#### 0.2.4 已註冊自訂結構：企業自己的章節分類
+
+company.custom/1 是示意客製規格，payload 記錄企業的章節分類；產生／驗證本例時，工具明確註冊了要求 section 為字串的 Schema。未註冊時會拒絕，且需要相容 Component，不表示平台預設支援此名稱。
+
+```json
+{
+  "document_id": "manual-001",
+  "source_revision": "v1",
+  "fields": {"text": "清潔前先斷電。", "title": "設備手冊"},
+  "metadata": {"department": "engineering"},
+  "structure": {"text": {"schema_id": "company.custom/1", "payload": {"section": "設備保養"}}}
+}
+```
+
+四種表示的共同外層不變，差異集中在 structure 與內容基準；本輪未更改 Schema，也未新增 Parser／Chunker 執行能力。
+
+<!-- classification-examples:parsed:end -->
+
 ### 0.3 Parser／Chunker 的分工與能力分類
 
 Parser 負責產生內容與文件結構；Block／Element 是標題、段落、表格等文件單位。Chunker 再依 Token、策略與約束產生檢索單位：數個 Block 可合為一個 Chunk，過長 Block 也可再切。頁面、Block 與 Chunk 分開定義。
