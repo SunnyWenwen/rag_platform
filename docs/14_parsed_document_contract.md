@@ -2,6 +2,57 @@
 
 > 2026-10-30（Asia/Taipei）· D-46：依討論產出可驗證草案及實際映射案例；尚未凍結正式 SDK／API，不表示 Parser、Chunker 或部署能力已實作。
 
+## 0. 情境整理與分類總覽（報告摘要）
+
+**這份文件整理的是「不同來源解析後，要用什麼共同格式保留內容與結構，交給後續 Chunker」**。設計保留簡單文字路徑，也允許頁面、段落、表格等結構；先定義資料如何表達與驗證，再由各 Component 分階段實作處理能力。
+
+### 0.1 從哪些資料情境整理而來
+
+| 資料情境 | 需要保留的資訊 | 分類／表示方向 |
+|---|---|---|
+| 純文字或簡單紀錄 | 原文、標題、已有摘要與業務 metadata | fields 保留內容，structure 可為 {} |
+| 已有全文與標註位置 | 段落、標題、頁面範圍或上游切分點 | 全文＋範圍標註，即 text-spans |
+| 上游已按頁／元素整理 | 每頁中的標題、段落、Block 內容及閱讀順序 | Page／Block 物件，即 page-blocks；全文依明確規則衍生 |
+| 章節與跨頁內容 | 歸屬關係、來源頁面、跨頁延續 | 可選 parent_id／continuation_of 與多個 locations；頁面不預設為切分邊界 |
+| 表格與 Excel | 欄列結構、搜尋用文字、sheet／儲存格來源 | 表格內容與文字表示分開保留；sheet 不冒充 PDF 頁碼，複雜內部格式可用註冊擴充 |
+| 圖片與混合模態 | 原始資源引用、位置，以及可取得的 OCR／caption | 圖片 Block 關聯資源；沒有原圖時明確保留缺失狀態，不假設文字 Chunker 可處理 |
+| PPTX | 投影片、元素及其結構／位置 | 以 slide 位置表示，按可保留資訊選擇共用或專屬結構 |
+| Markdown 標題 | 文字內 #／## 等語法所表達的層級 | 建議 Parser 產生共用 heading Blocks；直接處理 Markdown 的 Chunker 另宣告能力 |
+| Docling／MinerU 等工具輸出 | 原生閱讀順序、元素、來源與特殊資訊 | 透過版本明確的 Adapter 映射；核心能表達者正規化，特殊資訊明確擴充 |
+
+### 0.2 分類結果：固定外層，結構按類型擴充
+
+所有情境共用五個頂層 key：document_id／source_revision／fields／metadata／structure。內容放 fields，結構按對應欄位放 structure，例如 structure.text 對應 fields.text。
+
+| 分類 | 直觀說明 | 內容基準 | 後續處理方向 |
+|---|---|---|---|
+| **無額外結構** | 有文字，未另外標註段落等資訊 | fields 的內容 | 相容的一般文字 Chunker |
+| **全文＋範圍標註（text-spans）** | 原文存一份，Block 用 start／end 指出標題或段落在哪裡 | fields 完整字串 | 支援標註結構的 Chunker；一般文字使用須遵守必要約束 |
+| **Page／Block（page-blocks）** | 內容先整理成多頁、多個元素物件 | Block.text，完整文字為衍生值 | 相容的結構型 Chunker |
+| **已註冊的自訂結構** | 特殊需求有明確類型／版本與驗證規格 | 由該規格定義 | 支援該規格的 Chunker／Adapter，未註冊則拒絕 |
+
+text-spans 與 page-blocks 是可並存的表示方式，不要求所有資料統一成其中一種；同一內容欄位採明確的一份結構規格。無 structure 不等於文字中沒有 Markdown 等內含語法，因此相容性還要考慮格式與能力。
+
+### 0.3 Parser／Chunker 的分工與能力分類
+
+Parser 負責產生內容與文件結構；Block／Element 是標題、段落、表格等文件單位。Chunker 再依 Token、策略與約束產生檢索單位：數個 Block 可合為一個 Chunk，過長 Block 也可再切。頁面、Block 與 Chunk 分開定義。
+
+Parser 宣告「能產生什麼」，Chunker 宣告「接受什麼」。相同結構可由不同 Parser 產生，也可由不同策略的 Chunker 處理；配對依 Contract／版本／能力，不綁定特定實作名稱。Chunking 可固定一個 Component，或在多種輸入情境下依選定欄位的結構／格式自動派送；重疊時指定預設策略，每個切分任務預設只使用一個 Chunker。
+
+| 能力層次 | 代表的結果 |
+|---|---|
+| **能表達／保存** | Schema 有位置保留內容、結構或具名擴充 |
+| **能驗證／映射** | 符合形狀與語意，參考 Adapter 可轉換並檢查資訊保留 |
+| **能實際執行** | 已有相容 Parser／Chunker，且資源、服務與必要約束都可滿足 |
+
+三個層次分開驗收。不能因 Schema 支援某種結構，就宣稱對應的 OCR、表格切分、多模態或路由能力已交付。
+
+### 0.4 現有驗證結果與後續重點
+
+本次用 5 份 Docling＋1 份 MinerU 官方既有輸出，共 145 個元素進行映射與驗證；皆可形成 text-spans，其中 3 份也可轉成 page-blocks。原生 JSON 可以重建，驗證的是輸出資料的映射與保留，不是重新執行解析模型或 Chunker。
+
+實測發現 19 個群組／公式等元素需要具名擴充、圖片測資缺原圖，以及部分群組、sheet／slide 不能直接套進按實體頁分組的形式。這些結果用來界定草案的支援範圍，後續再核定共用表格／圖片／特殊結構、正式供應者版本與實際 Chunker 能力。詳細證據與重現方式見 §5～6；本稿仍為 0.1 草案，UI／Engine 未因文件完成而實作。
+
 ## 1. 範圍與檔案
 
 本文是 ParsedDocument 細節草案的權威位置；05 保留共用資料總覽，04 記錄 Module I/O，13 定義 API／Parser 共用輸入。IngestionDocument 與 ParsedDocument 是不同處理階段，不能直接互換。

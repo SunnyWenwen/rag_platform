@@ -4,6 +4,43 @@
 >
 > 本文記錄 JSON-only、扁平輸入、多 Parser 自動路由，以及使用者確認「Ingestion API 與 Parser Input 使用相同 Schema」。共同物件稱 IngestionDocument；不另設另一份公開 ParserInput。它更新 05／07 舊 records／multipart 及先前 ParserInput 轉換設計；ParsedDocument／Chunker 實際 Schema 仍待討論。
 
+## 0. 情境整理與分類總覽（報告摘要）
+
+**這份文件整理的是「各種來源的資料，如何透過同一個入口交給 RAG Engine」**。使用者可以送簡單文字、結構化紀錄、原始文件，或已被其他工具解析好的內容；平台統一接收 JSON，由相容 Parser 處理，不要求所有呼叫端先完成同樣程度的解析。
+
+### 0.1 從哪些使用情境整理而來
+
+| 使用情境 | 輸入方式與例子 | 誰負責處理 |
+|---|---|---|
+| 直接送一段文字 | content 是文字，例如操作說明 | 相容文字 Parser 驗證並產生 ParsedDocument |
+| 一筆資料有多個內容欄位 | content 是 JSON object，包含原文、標題、已有摘要等；不是多筆文件 | 相容 records Parser／Adapter 轉成內容欄位，後續模組另選欄位用途 |
+| 在 Builder 上傳 CSV 測試 | 每列映射為一筆 JSON，分清內容與 metadata | Builder 做欄位映射與傳輸轉換，再呼叫相同 API |
+| 傳入 PDF／PPTX／Excel／圖片等原始檔 | 用 base64 帶檔案，或用 uri 指向可存取資源 | SDK 共用能力取得／解碼，具有對應能力的 Parser 再解析 |
+| 透過 URL 傳入資料 | uri 可指向文字、JSON 或原始檔；URL 不是文件格式 | 平台取得內容，再依格式與能力選 Parser；不自動代表網站爬取 |
+| 上游已完成解析 | content 內含頁面、段落、切分標註，或 Docling／MinerU 原生結果 | 相容 Adapter 驗證與正規化，避免重做原始檔解析；原生格式不直接等於 ParsedDocument |
+| 同一個 System 接收多種資料 | 文字、PDF、已解析 JSON 等混合使用 | 啟用多個 Parser 並依能力自動路由；重疊時才需預設策略／profile |
+| 自行部署後由業務系統串接 | 呼叫端自行讀檔／轉換，再送 JSON | 不需部署 Builder；仍使用相同 Engine 輸入契約與解析流程 |
+
+### 0.2 分類結果：傳入方式、內容格式、處理程度分開看
+
+| 分類維度 | 分類結果 | 對設計的影響 |
+|---|---|---|
+| **怎麼取得內容** | content 直接內容／base64 編碼檔案／uri 資源引用，三選一 | 決定直接讀取、解碼或下載，不決定要用哪個解析演算法 |
+| **內容是什麼格式** | 文字、JSON、PDF、PPTX、Excel、圖片等 | 依 media_type、必要 schema_id 及實際內容，驗證是否有相容 Parser |
+| **已經處理到哪一步** | 未解析內容／上游已解析內容 | 前者解析來源；後者驗證與轉換，不強迫全部重新解析 |
+
+三個維度可以組合，例如「透過 URL 提供已解析 JSON」或「用 Base64 提供原始 PDF」。多個 Parser 的用途是提供相容路徑，不是讓每筆資料依序執行全部 Parser。API 及 Parser 共用 IngestionDocument；內容取得使用 SDK 共用資源，不另維護第二份輸入 Schema。
+
+### 0.3 責任分工與目前範圍
+
+| 層級 | 責任 |
+|---|---|
+| RAG Builder／自行部署的呼叫端 | 提供方便的上傳／映射／檔案傳輸轉換；組成 JSON |
+| Engine 的共用入口／SDK 資源能力 | 驗證共同外層、授權取得內容、解碼及必要限制；路由到已設定的 Parser |
+| Parser／Adapter | 理解來源或轉換已解析資料，產出統一 ParsedDocument，詳見 [14 的情境與結構分類](14_parsed_document_contract.md#0-情境整理與分類總覽報告摘要) |
+
+JSON-only、扁平輸入、三種來源、API／Parser 共用契約與多 Parser 路由方向已確認；API／SDK 尚未實作，實際格式需有相容 Component 才可執行。單筆外層 Schema 已記錄；批次、限制、版本與正式供應者支援仍依正文逐項核定。直接匯入最終 Chunk／vectors 另外討論，不混入「上游已解析」的支援承諾。
+
 ## 1. 已確認方向與責任
 
 - Engine Runtime 的 Ingestion API 只接收 JSON body。RAG Builder 可提供文件／CSV 上傳及轉換；自行部署的呼叫端自行完成相同傳輸前處理，不要求部署 Builder。
