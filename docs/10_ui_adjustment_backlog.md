@@ -2,6 +2,20 @@
 
 > 文件同步：2026-10-31。§2～6 記錄 Prototype 已有的結果處理能力；§7 集中尚未實作的需求。勾選完成只代表模擬 UI／邏輯預覽，並非 Engine／API 已完成。
 
+
+## 2026-10-31 Prototype v0.10 更新
+
+本輪依使用者要求實作資料契約相關 UI，以下取代較早「未改 Prototype」的狀態描述；其他待辦仍依各項範圍追蹤。
+
+- 已完成：單筆 IngestionDocument JSON／CSV 每列轉換與預覽；拒絕舊根層 fields、多來源及不合法 metadata。API 說明提供 content／URI／Base64，移除 multipart。
+- 已完成：ParsedDocument 五鍵及無結構／text-spans／page-blocks 範例說明；Chunk 六鍵、metadata._rag 追溯與命名向量物件預覽。ID／fingerprint／向量明示為展示資料。
+- 已完成：預設 text，切分／copy 收進階；多任務 JSON 編輯器支援各任務輸出名稱、原文複製與重名／來源驗證。預覽每任務展示一個 Chunk，未實際執行 Tokenizer，不宣稱模擬出真實切分數量。
+- 已完成：Fixed-size 選項及不適用參數排除；Indexing 全部內容保存、metadata 全繼承，移除兩種保存勾選。
+- 仍待串接：相容 Parser／Chunker 目錄、資源 resolver、真實結構解析、完整共用語意驗證、真實 fingerprint／ID／Embedding。URI／Base64 在原型明確拒絕執行，不把解析未支援當作成功。
+- 進階多任務先提供 JSON 設定，逐列圖形化任務編輯器仍可後續改善；未核定的 concat／固定文字未實作。
+
+驗證：既有設定／結果處理回歸與 jsdom 事件流程，以及新增資料契約檢查；未連線外部模型或 DB。
+
 ## 1. 範圍與最新依據
 
 現行設計見 [09](09_inference_contract_ui_plan.md)，資料定義見 [05](05_data_contracts_search_design.md#inference-state-draft) 及 [13](13_ingestion_parser_input_contract.md)／[14](14_parsed_document_contract.md)／[15](15_chunk_contract.md)。後續需求先更新文件，對應 Prototype 調整記入 [§7](#ui-backlog-pending)，使用者明確要求改 UI 後才實作。

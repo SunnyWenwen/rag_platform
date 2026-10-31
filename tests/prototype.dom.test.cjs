@@ -17,7 +17,7 @@ run('openCreate()');click('button[onclick="selectMod(\'llms\')"]');field('llms.0
 run("$('createDialog').close();$('exportDialog').close();openOperation(systems.at(-1).id,'ingest')");
 const beforeDocs=run('active.docs');
 click('[data-api-help="ingest"]');assert(d.querySelector('#helpDialog').open);assert(d.querySelector('#helpTitle').textContent.includes('Ingestion'));
-let apiText=d.querySelector('#helpBody').textContent;for(const text of ['/v1/ingestions','202 Accepted','multipart/form-data','processed_records'])assert(apiText.includes(text),text);assert.equal(run('active.docs'),beforeDocs);
+let apiText=d.querySelector('#helpBody').textContent;for(const text of ['/v1/ingestions','202 Accepted','processed_documents'])assert(apiText.includes(text),text);assert.equal(run('active.docs'),beforeDocs);
 click('#helpDialog .close');assert(!d.querySelector('#helpDialog').open);assert(d.querySelector('#operationDialog').open);
 run("$('operationDialog').close();openOperation(systems.at(-1).id,'inference')");assert(d.querySelector('button[onclick="runInference()"]').disabled);
 click('[data-api-help="inference"]');assert(d.querySelector('#helpDialog').open);apiText=d.querySelector('#helpBody').textContent;for(const text of ['/v1/queries','citations','request_id','INDEX_NOT_READY'])assert(apiText.includes(text),text);

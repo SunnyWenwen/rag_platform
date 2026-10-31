@@ -44,7 +44,7 @@ Chunk 預設切 fields.text 並寫回 text；進階多欄位任務各自切分�
 
 ## 原型、圖面與驗證
 
-- [UI Prototype](01_ui_prototype.html)：瀏覽器模擬設定與操作；三份新資料契約的 UI 遷移記於 UIB-011～013。
+- [UI Prototype](01_ui_prototype.html)：瀏覽器模擬設定與操作；v0.10 已更新 JSON Ingestion、三階段預覽、Fixed-size、多任務映射及完整內容保存；能力範圍與剩餘串接見 UIB-011～013。
 - [L1 流程 PNG](diagrams/01_user_system_l1.png) · [MMD](diagrams/01_user_system_l1.mmd) · [SVG](diagrams/01_user_system_l1.svg)
 - [Infra PNG](diagrams/02_infra_architecture.png) · [MMD](diagrams/02_infra_architecture.mmd)
 - [Module／Component PNG](diagrams/03_module_component_concept.png) · [MMD](diagrams/03_module_component_concept.mmd) · [SVG](diagrams/03_module_component_concept.svg)
