@@ -1,6 +1,6 @@
 # RAG Builder — 使用流程與 UI 開發規格
 
-> 文件集 v0.19 · 2026-10-16 · 開發規格草案
+> 文件同步：2026-10-31 · 開發規格草案（正式 SDK／Config 尚未凍結）
 >
 > 本文定義 UI 目標互動。現有 HTML Prototype 的搜尋、模型、評估及 API 為模擬。Parsing 的預設收合、LLM／Prompt／範例按鈕等已確認要求如下；其他基本／進階分組、正式框架、範本與試跑優先級仍待決。
 
@@ -8,7 +8,7 @@
 
 2026-10-28 D-41 確認：Builder Frontend／Backend 位於 rag_platform，SDK／Engine／Components／Runtime API 位於 rag_engine。UI 經 Backend 使用目標 Runtime 的 Component 目錄、Schema 與驗證能力，見 [07 §5.8](07_backend_runtime_integration.md#runtime-capability-contract)；Prototype 對應變更仍記於 UIB-010，未因此實作。
 
-**2026-10-29 輸入更新**：Engine 採 JSON-only 扁平輸入，Builder 文件／CSV 上傳轉成 content／base64／uri；Parsing 可多選並自動路由，衝突才要求預設／profile。新規格見 [13](13_ingestion_parser_input_contract.md)，原型及以下舊 records 預覽／映射的對應調整統一登錄 [UIB-011](10_ui_adjustment_backlog.md#uib-011-ingestion-parser-routing)，尚未實作。
+**2026-10-29 輸入更新**：Engine 採 JSON-only 扁平輸入，Builder 文件／CSV 上傳轉成 content／base64／uri；Parsing 可多選並自動路由，衝突才要求預設／profile。新規格見 [13](13_ingestion_parser_input_contract.md)，原型的輸入預覽／映射遷移統一登錄 [UIB-011](10_ui_adjustment_backlog.md#uib-011-ingestion-parser-routing)，尚未實作。
 
 **2026-10-30 資料結構草案**：[14](14_parsed_document_contract.md) 新增 ParsedDocument Schema 與官方輸出對照；UI 的結構預覽、相容能力、Chunker 路由與缺失資源提示先記 [UIB-012](10_ui_adjustment_backlog.md#uib-012-parsed-document-structures)。本輪沒有改 Prototype，不能由範例推定所有結構皆可切分。
 
@@ -50,7 +50,7 @@ Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保�
 
 ### 3.2 已確認互動與基本／進階分組
 
-以下涵蓋已確認的使用者要求及既有 Prototype 行為（U／B 來源見 08 §10）；不將明確要求重新列為是否需要的待決項目：
+以下涵蓋已確認的使用者要求及既有 Prototype 行為（確認決策見 08 §3）；不將明確要求重新列為是否需要的待決項目：
 
 - Parsing 初始只顯示「結構化 JSON」；其他格式及所有相關設定集中在預設關閉的「進階選項」，展開才出現。正式 Parser 能力另依 Q-005，顯示選項不等於可執行。
 - Create／Edit 前段有 Document Schema；先宣告 fields／metadata，再產生下游欄位選項。
@@ -144,7 +144,7 @@ UIB-007 試跑如採用，也改用這組相同草稿與 Schema。Edit／AI／�
 
 基本表單讓使用者選可讀的上游步驟、每個 Query 內／跨 Query 範圍、方法及參數；runtime IDs 與 operation／source 由執行時產生。排序及 rank 更新固定執行，不提供排序開關；score_kind／score_order 由方法決定。ES 內部 Hybrid 已回傳一份清單時，預覽不得假裝仍有獨立全文／向量排名。
 
-早期方案與案例保留於 [09 UI 整合提案](09_inference_contract_ui_plan.md)，最新控制項、預設與卡控以 10 為準。v0.9 只推導清單身分、數量上限與有效設定，不實際計算搜尋／模型分數。正式 Config、遷移、模型覆蓋率及 Adapter 能力仍由 Q-002／Q-003／Q-014／Q-025 核定。
+現行 Contract／控制項對照及案例見 [09 UI 整合規格](09_inference_contract_ui_plan.md)，原型完成狀態與後續待辦見 10。v0.9 只推導清單身分、數量上限與有效設定，不實際計算搜尋／模型分數。正式 Config、遷移、模型覆蓋率及 Adapter 能力仍由 Q-002／Q-003／Q-014／Q-025 核定。
 
 同 Query 合併以 Query 身分分組，跨 Query 合併以相同搜尋路徑群組分組，兩層可各自移到 Reranker 後。ES 預設內部融合時，不再套同 Query 的跨路融合。跨 Query 已合併時，Reranker 有效提問固定原始問題，但保留各自 Query 選擇的草稿。Rerank=None 不會取消後置處理。
 
@@ -171,19 +171,19 @@ UIB-007 試跑如採用，也改用這組相同草稿與 Schema。Edit／AI／�
 A. 先 Create Config，之後 Ingest 上傳 CSV 並映射。
 B. 先上傳 CSV 樣本，描述用途／問題範例，AI 提出 Schema、映射及 Pipeline 草稿，使用者確認後建立 System。
 
-CSV 每 row 對應一筆 records，不把每個 column 當文件。需要以多列合併文件的能力尚未定案，見 Q-007／Q-025。
+CSV 每 row 對應一份 IngestionDocument，不把每個 column 當文件。需要以多列合併文件的能力尚未定案，見 Q-007／Q-025。
 
 ### 4.2 映射與預覽
 
 | 項目 | 要求 |
 |---|---|
 | CSV 預檢 | 處理 BOM／引號／換行；欄名非空唯一；每列欄數一致；正式編碼／超限政策待決 |
-| 目標 | document_id、source_revision、Schema 中 input 的 fields.*／metadata.* |
+| 目標 | document_id、source_revision、Parser 接受的 content.*／外層 metadata.*；解析後的 fields 宣告用來核對內容映射 |
 | 映射 | 可將同一 column 填入多個目標；未映射欄位不送出 |
 | 必填 | 無預設值的 input 必填欄位須映射 |
 | 型別 | number 有限值；boolean 規則明確；array 用 JSON 解析；正式強制轉型政策 Q-002 |
 | ID | 優先映射穩定鍵；自動 ID 的跨批更新限制要明示 |
-| 預覽 | 原始列、標準 API Record、ParsedDocument；Schema 錯誤與列號對應 |
+| 預覽 | 原始列 → IngestionDocument request → ParsedDocument → Chunk；標示實際解析或模擬，錯誤對應列號／模組／欄位 |
 | 保存 | 成功後保存映射；是否成為執行 Config Revision 的一部分見 Q-015 |
 
 Prototype 限制 ≤1 MB 且在瀏覽器讀取，不等於正式產品限制。正式檔案上傳、樣本保留、敏感欄位與大小限制見 Q-016／Q-019／Q-024。
@@ -218,10 +218,10 @@ Prototype 限制 ≤1 MB 且在瀏覽器讀取，不等於正式產品限制。�
 
 ## 5. Ingestion 畫面
 
-上傳／records → 預覽與檢查 → 明確啟動 → 顯示 run_id／狀態 → 結果。長工作由 07 管理，不依靠前端視窗存活。
+上傳／JSON → IngestionDocument 預覽與檢查 → 明確啟動 → 顯示 run_id／狀態 → 結果。長工作由 07 管理，不依靠前端視窗存活。
 
 - 區分接收成功、處理完成、索引可查詢；202 不代表可問答。
-- 顯示文件數與 Chunk 數時分開標示；進度分母不混用檔案／records／Chunk。
+- 顯示文件數與 Chunk 數時分開標示；進度分母不混用上傳檔案／IngestionDocument／ParsedDocument／Chunk。
 - 部分失敗列出可對應 item 的錯誤，不用單一成功 Toast 遮蔽。
 - 重新打開視窗應可查現有工作；跨重啟是否恢復依 Job Store 政策。
 - 重送／取消／重試按鈕僅在對應 API 及冪等行為實作後開放。

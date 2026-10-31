@@ -185,7 +185,7 @@
           "copy_fields": [
             {
               "source_field": "faq",
-              "output_field": "faq"
+              "output_field": "original_faq"
             }
           ],
           "parameters": {
@@ -206,11 +206,11 @@
           "component_id": "example.recursive-token",
           "component_version": "1.0.0-fixture",
           "split_field": "faq",
-          "output_field": "faq",
+          "output_field": "text",
           "copy_fields": [
             {
               "source_field": "text",
-              "output_field": "text"
+              "output_field": "original_text"
             }
           ],
           "parameters": {
@@ -230,12 +230,12 @@
     },
     "chunks": [
       {
-        "chunk_id": "chk_6a9af88cd831ac54d2e85014b33e564cf03c57037e5b54a5253a3c119e7de292",
+        "chunk_id": "chk_e6bd3ee51ed8d98ebd6154a2e763b5c66c1b923d34f39db8c43b8af6cfe0997b",
         "document_id": "multi-001",
         "source_revision": "v1",
         "fields": {
           "text": "甲段。",
-          "faq": "問一。問二。問三。"
+          "original_faq": "問一。問二。問三。"
         },
         "metadata": {
           "department": "engineering",
@@ -250,12 +250,12 @@
               },
               {
                 "field": "faq",
-                "output_field": "faq",
+                "output_field": "original_faq",
                 "role": "copy"
               }
             ],
             "chunking": {
-              "chunking_fingerprint": "62db0cfb52b422d26017ca66b9543a4fa7be3bef51c8cc63edd7da675cf0ad71",
+              "chunking_fingerprint": "92f0f3c2106378fb6cc25e519ed5c98416ca871fa1971d696cad82aa344ac953",
               "chunk_ordinal": 0,
               "task_id": "text"
             }
@@ -264,12 +264,12 @@
         "vectors": {}
       },
       {
-        "chunk_id": "chk_126ebf69cb7620a3c209a82f9b0c89198bb3cf741d70df391275ce04dd271be7",
+        "chunk_id": "chk_1d7627f76dce33a094dd6ca86f8e2926ecb3b364c7215f28b1801d6d87e845d9",
         "document_id": "multi-001",
         "source_revision": "v1",
         "fields": {
           "text": "乙段。",
-          "faq": "問一。問二。問三。"
+          "original_faq": "問一。問二。問三。"
         },
         "metadata": {
           "department": "engineering",
@@ -284,12 +284,12 @@
               },
               {
                 "field": "faq",
-                "output_field": "faq",
+                "output_field": "original_faq",
                 "role": "copy"
               }
             ],
             "chunking": {
-              "chunking_fingerprint": "62db0cfb52b422d26017ca66b9543a4fa7be3bef51c8cc63edd7da675cf0ad71",
+              "chunking_fingerprint": "92f0f3c2106378fb6cc25e519ed5c98416ca871fa1971d696cad82aa344ac953",
               "chunk_ordinal": 1,
               "task_id": "text"
             }
@@ -298,12 +298,12 @@
         "vectors": {}
       },
       {
-        "chunk_id": "chk_b1b085f58a0278c34357caf5e11b129cef97e9db9a66a3056fb09862189e4722",
+        "chunk_id": "chk_baf51a8501e8b0b2223a93979cba88a63ec7694ec9fbe9a994fd309dc24f9867",
         "document_id": "multi-001",
         "source_revision": "v1",
         "fields": {
-          "faq": "問一。",
-          "text": "甲段。乙段。"
+          "text": "問一。",
+          "original_text": "甲段。乙段。"
         },
         "metadata": {
           "department": "engineering",
@@ -311,19 +311,19 @@
             "source_refs": [
               {
                 "field": "faq",
-                "output_field": "faq",
+                "output_field": "text",
                 "role": "split",
                 "start": 0,
                 "end": 3
               },
               {
                 "field": "text",
-                "output_field": "text",
+                "output_field": "original_text",
                 "role": "copy"
               }
             ],
             "chunking": {
-              "chunking_fingerprint": "62db0cfb52b422d26017ca66b9543a4fa7be3bef51c8cc63edd7da675cf0ad71",
+              "chunking_fingerprint": "92f0f3c2106378fb6cc25e519ed5c98416ca871fa1971d696cad82aa344ac953",
               "chunk_ordinal": 2,
               "task_id": "faq"
             }
@@ -332,12 +332,12 @@
         "vectors": {}
       },
       {
-        "chunk_id": "chk_d7096eccb2c1cbe1934f01ef22c8061d3d92f0f67dde6e09060f6d6c8a7b66c3",
+        "chunk_id": "chk_6522dc5626444de71022f0085d0fe2b1d6d8750baf0c5dc288581d2d0890500b",
         "document_id": "multi-001",
         "source_revision": "v1",
         "fields": {
-          "faq": "問二。",
-          "text": "甲段。乙段。"
+          "text": "問二。",
+          "original_text": "甲段。乙段。"
         },
         "metadata": {
           "department": "engineering",
@@ -345,19 +345,19 @@
             "source_refs": [
               {
                 "field": "faq",
-                "output_field": "faq",
+                "output_field": "text",
                 "role": "split",
                 "start": 3,
                 "end": 6
               },
               {
                 "field": "text",
-                "output_field": "text",
+                "output_field": "original_text",
                 "role": "copy"
               }
             ],
             "chunking": {
-              "chunking_fingerprint": "62db0cfb52b422d26017ca66b9543a4fa7be3bef51c8cc63edd7da675cf0ad71",
+              "chunking_fingerprint": "92f0f3c2106378fb6cc25e519ed5c98416ca871fa1971d696cad82aa344ac953",
               "chunk_ordinal": 3,
               "task_id": "faq"
             }
@@ -366,12 +366,12 @@
         "vectors": {}
       },
       {
-        "chunk_id": "chk_6b75a067ac66d8da716af70e1958aec95ae3252cd92ae4611a14548d3f15c065",
+        "chunk_id": "chk_38735809f375ba17e9ae0f36f5e11272c2b9b6b8d76ecce265a4250cb134c8c4",
         "document_id": "multi-001",
         "source_revision": "v1",
         "fields": {
-          "faq": "問三。",
-          "text": "甲段。乙段。"
+          "text": "問三。",
+          "original_text": "甲段。乙段。"
         },
         "metadata": {
           "department": "engineering",
@@ -379,19 +379,19 @@
             "source_refs": [
               {
                 "field": "faq",
-                "output_field": "faq",
+                "output_field": "text",
                 "role": "split",
                 "start": 6,
                 "end": 9
               },
               {
                 "field": "text",
-                "output_field": "text",
+                "output_field": "original_text",
                 "role": "copy"
               }
             ],
             "chunking": {
-              "chunking_fingerprint": "62db0cfb52b422d26017ca66b9543a4fa7be3bef51c8cc63edd7da675cf0ad71",
+              "chunking_fingerprint": "92f0f3c2106378fb6cc25e519ed5c98416ca871fa1971d696cad82aa344ac953",
               "chunk_ordinal": 4,
               "task_id": "faq"
             }

@@ -37,9 +37,11 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(len(case['chunks']), 5)
         self.assertEqual([c['metadata']['_rag']['chunking']['chunk_ordinal'] for c in case['chunks']], list(range(5)))
         for chunk in case['chunks'][:2]:
-            self.assertEqual(chunk['fields']['faq'], case['source']['fields']['faq'])
+            self.assertEqual(chunk['fields']['original_faq'], case['source']['fields']['faq'])
         for chunk in case['chunks'][2:]:
-            self.assertEqual(chunk['fields']['text'], case['source']['fields']['text'])
+            self.assertEqual(chunk['fields']['original_text'], case['source']['fields']['text'])
+        self.assertEqual([c['fields']['text'] for c in case['chunks']],
+                         ['甲段。', '乙段。', '問一。', '問二。', '問三。'])
 
     def test_default_has_no_implicit_copies(self):
         self.assertEqual(set(BY_ID['default_text']['chunks'][0]['fields']), {'text'})
@@ -147,6 +149,8 @@ class ContractTests(unittest.TestCase):
         bad_spec['tasks'][1]['task_id'] = 'text'
         with self.assertRaises(ValueError):
             validate_spec(bad_spec)
+        with self.assertRaisesRegex(ValueError, 'each required task'):
+            validate_sequence(case['chunks'][:2], case['effective_spec'])
 
 
 if __name__ == '__main__':

@@ -1,8 +1,8 @@
 # RAG Builder — 系統概覽與架構
 
-> 文件集 v0.19 · 2026-10-16 · 開發規格草案
+> 文件同步：2026-10-31 · 開發規格草案（正式 SDK／Config 尚未凍結）
 >
-> 本輪重整 03～08 的責任，保留既有已確認方向。本文負責產品與架構總覽，具體規格及未決問題見專題文件與 08。文件更新不表示 Engine、Runtime API 或部署服務已實作。
+> 本輪重整 03～08 的責任，保留既有已確認方向。本文負責產品與架構總覽；資料契約已同步至 IngestionDocument／ParsedDocument／Chunk，具體規格及未決問題見專題文件與 08。文件更新不表示 Engine、Runtime API 或部署服務已實作。
 
 ## 1. 文件責任與狀態
 
@@ -10,16 +10,19 @@
 |---|---|---|
 | 03 本文 | 正式名詞定義、產品目標、使用情境、架構邊界、功能範圍 | 所有開發者 |
 | [04 Engine 與模組](docs/04_module_components_io_contracts.md) | Engine 載入、組裝、執行、Component 擴充機制及各模組行為 | Engine／Module Developer |
-| [05 資料與 Config](docs/05_data_contracts_search_design.md) | 共用資料結構、設定形狀、欄位及版本規則 | 前後端、Engine |
+| [05 資料與 Config](docs/05_data_contracts_search_design.md) | 資料流總覽、Inference、設定與版本規則 | 前後端、Engine |
 | [06 UI](docs/06_ui_development_spec.md) | 畫面、互動、漸進式設定、CSV 與 AI 助手 | 前端／產品 |
 | [07 Backend 與 Runtime](docs/07_backend_runtime_integration.md) | HTTP API、管理資料、任務、部署及串接 | Backend／Runtime／DevOps |
 | [08 開發計畫與決策](docs/08_implementation_plan.md) | 階段、驗收、確認決策、未決問題與阻擋範圍 | Coding agent／負責人 |
 | [11 Component 開發指南](docs/11_component_developer_guide.md) | SDK 使用、Component 實作／測試／打包與交付流程；引用 04／05 契約 | Module Developer |
 | [12 Component 設定描述](docs/12_component_schema_ui_contract.md) | Config Schema、UI hints、動態選項、相依規則與驗證回傳草案 | Module／Engine／Frontend Developer |
+| [13 IngestionDocument](docs/13_ingestion_parser_input_contract.md) | API／Import／Parser 共用輸入 Schema 與路由 | Backend／Module Developer |
+| [14 ParsedDocument](docs/14_parsed_document_contract.md) | Parser 輸出／Chunker 輸入、結構／位置與相容驗證 | Engine／Module Developer |
+| [15 Chunk](docs/15_chunk_contract.md) | Chunking 下游共用資料、向量／追溯與切分語意 | Engine／Module Developer |
 
 狀態用語：**已確認**為先前明確採用的方向；**建議**為本輪技術草案；**待決**以 Q-ID 追蹤；**後續**為未納入目前實作承諾的能力。03～07 引用問題 ID，08 是決策狀態的單一追蹤位置。文件版本不等於 Config contract_version、Engine 版本或完成進度。
 
-舊 04 的 Chunk.text／獨立 VectorSet／單一向量假設已由新版 05 取代；舊 05 的逐次討論已按責任移入 04～07，不再依後章覆蓋前章閱讀。歷史內容保留在 Git commit `cf4dfdc0e29acc91a2fe63b1993f867c8facaf6d` 及以前的版本。遇到衝突，回報並修正相應權威文件，不自行按檔案日期猜測優先級。
+資料契約的單一來源為 schemas/ 及 13～15 的語意規則。其餘文件引用而不另定格式：API／Import／Parser 共用 IngestionDocument；Parser 產生 ParsedDocument；Chunker 產生 Chunk；Embedding、Indexing 及 Inference 沿用 Chunk。歷史規格由 Git 保留，不能用舊格式覆蓋現行契約。
 
 ## 2. 產品目的與核心概念
 
@@ -197,7 +200,7 @@ Repo 是程式維護單位，Image 是交付產物，服務是部署單位；一
 
 這是術語及草案介面的一致性更新，沒有改變模組分工、I/O、相依規則或兩個 repo 的部署流程。`module_type`、`implementation_version`、`config_type`、`node_ref` 仍各有用途；不因改名重產生 Component 識別值或自動升級 System。
 
-Python 的 method／`@classmethod`／abstract method、HTTP method，以及既有 Inference ResultSet 中表示演算法／操作紀錄的 `method` 保留原義。05 的舊版完整 Config YAML／Prototype 仍使用部分 `method` 選擇欄位，屬明確標示的待遷移草案；不是新 Component Registry 的 component_id。正式 Config 遷移由 Q-002／Q-015 處理，需按格式版本明確映射與檢查衝突，不能全域替換所有 method 或宣稱 Runtime 已接受舊別名。
+Python 的 method／`@classmethod`／abstract method、HTTP method，以及既有 Inference ResultSet 中表示演算法／操作紀錄的 `method` 保留原義。Prototype 仍使用部分 `method` 選擇欄位，屬明確標示的待遷移草案；不是新 Component Registry 的 component_id。正式 Config 遷移由 Q-002／Q-015 處理，需按格式版本明確映射與檢查衝突，不能全域替換所有 method 或宣稱 Runtime 已接受舊別名。
 
 04／11／12 檔名同步使用 components／component，所有文件內引用更新；歷史敘述中的擴充單位採現行術語，原決策日期與功能狀態保留。L1 的 MMD／SVG／PNG 同步改標籤並保持既有版面與連線；Prototype 的實際介面及內部欄位留待 UIB-010 遷移。
 
@@ -243,7 +246,7 @@ Python 的 method／`@classmethod`／abstract method、HTTP method，以及既�
 | Inference | Query Transformation → Retrieval → 依配置組合去重合併／取 Top N／模型算分 → Generation；每次輸出共同排序，現有 Prototype 仍為融合在 Rerank 前的舊基線 |
 | Evaluation | Dataset → 呼叫相同檢索／Inference 入口 → 指標 → 報告 |
 
-全文模式可略過 Embedding；None 模組明確 pass-through。Ingestion 與 Inference 透過 IndexBinding 銜接，不是同一次串行呼叫。使用者已要求可設定融合策略及合併時點；v0.8 原型的單層、Rerank 前融合只是歷史基線。v0.9 已依 [10](docs/10_ui_adjustment_backlog.md) 實作兩層合併的 UI 設定、時點連動與四處 Top N 預覽；Engine 尚未實作，正式 Config 與 Adapter 細節仍由 Q-014 核定。三類結果操作與共同排序見 04／05；[09](docs/09_inference_contract_ui_plan.md) 保留早期提案，最新 UI 以 10 為準。
+全文模式可略過 Embedding；None 模組明確 pass-through。Ingestion 與 Inference 透過 IndexBinding 銜接，不是同一次串行呼叫。使用者已要求可設定融合策略及合併時點；v0.9 已依 [10](docs/10_ui_adjustment_backlog.md) 實作兩層合併的 UI 設定、時點連動與四處 Top N 預覽；Engine 尚未實作，正式 Config 與 Adapter 細節仍由 Q-014 核定。三類結果操作與共同排序見 04／05；[09](docs/09_inference_contract_ui_plan.md) 整理兩層融合與四處 Top N 的現行設計，實作狀態及待辦見 10。
 
 | 搜尋模式 | 搜尋與資料 | 執行限制 |
 |---|---|---|
@@ -269,7 +272,7 @@ Local Search 的 Memory／MongoDB 持久化模式隨邏輯 Config 固定：DEV �
 
 基準版本只有 HTML Prototype 及其測試。CSV／JSON 讀取、Schema／映射檢查、草稿互動在瀏覽器執行；模型、搜尋、評估、API、部署為模擬。AI 助手是規則示意，未呼叫 LLM。README 記錄實作現況，06 記錄目標互動，Mock 不代表後端完成。
 
-已選方向：固定流程、文字 RAG、多欄位、ES／Local Search、CSV／records、手動與 AI 設定、漸進式 UI、獨立 Runtime。Parser／OCR、套件、更新一致性、平台儲存等仍待決。
+已選方向：固定流程、文字 RAG、多欄位、ES／Local Search、Builder CSV 轉換／Engine JSON Ingestion、手動與 AI 設定、漸進式 UI、獨立 Runtime。Parser／OCR、套件、更新一致性、平台儲存等仍待決。
 
 後續能力：通用 DAG、多模態向量、自動摘要、Parent–Child、Plugin Marketplace、Local Search 跨 Pod 同步、Streaming／History、熱更新。沒有核可前不自動加入。
 

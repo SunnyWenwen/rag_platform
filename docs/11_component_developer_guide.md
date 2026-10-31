@@ -13,7 +13,7 @@
 | Module／Component、SDK 與角色名稱 | [03 名詞與責任](../03_architecture_proposal.md#developer-terms) |
 | 兩個 repo、Image 與部署邊界 | [03 §3.7](../03_architecture_proposal.md#repository-boundaries)、[07 建置與整合](07_backend_runtime_integration.md#repository-build-boundaries) |
 | Engine 如何載入、執行與驗證 Component | [04 §1.1／§2.3～2.4／§7](04_module_components_io_contracts.md) |
-| ParsedDocument／Chunk、Inference 物件與 Config | [05 共用資料與 Config](05_data_contracts_search_design.md)；Inference Schema／示例由 05 導引 |
+| 三份共用資料／Inference／Config | [13 IngestionDocument](13_ingestion_parser_input_contract.md)／[14 ParsedDocument](14_parsed_document_contract.md)／[15 Chunk](15_chunk_contract.md) 定義資料；[05](05_data_contracts_search_design.md) 統整 Config／Inference |
 | 交付階段、未決項與驗收 | [08](08_implementation_plan.md#component-development-plan) |
 | Builder 對應互動待辦 | [10 UIB-010](10_ui_adjustment_backlog.md#uib-010-component-catalog) |
 | Config Schema、UI hints、動態選項與相依規則 | [12 設定描述契約草案](12_component_schema_ui_contract.md) |
@@ -42,7 +42,7 @@ D4 的標題統一為「發布並更新 RAG Engine」，指共用 Engine／Compo
 
 圖中的「預設提供」指平台規劃交付的內建選項；每個 System 依 Config 選用，不是把某個 Module 的所有 Components 一起執行。自訂 Component 與內建元件走相同契約／Registry；Builder User 不需撰寫程式。特殊 Parser／Chunker 或 Indexing／Retrieval 可能需要成對擴充，仍依能力檢查，不因放入元件目錄就自動相容。
 
-Module 圖上排完整列出 5 個 Ingestion Modules，下排列出 4 個 Inference Modules，Evaluation 另列為獨立評估能力。內建選項一個選項一個方塊，例如 Fixed-size、Recursive、Header-aware 分開呈現；None 標為略過，Import 多入口不因此變成二選一，Retrieval 後端仍依 Indexing 推導。「自訂 Parser／自訂 Chunker／自訂 Evaluator」只是元件用途的泛稱，不是規定的 Python class 或 component_id；先前圖中的 Team 前綴也沒有團隊綁定或特殊載入語意，現已從圖面移除。真正的識別、版本與 class 分工見 §3；圖上全部選項仍為目標規劃，不是已交付實作。DEV test use／自行提供是相同元件的服務綁定來源，不能拿來當作兩個不同 Component 的識別。
+Module 圖上排完整列出 5 個 Ingestion Modules，下排列出 4 個 Inference Modules，Evaluation 另列為獨立評估能力。內建選項一個選項一個方塊，例如 Fixed-size、Recursive、Header-aware 分開呈現；None 標為略過，Import 共用 JSON 入口，content／base64／uri 由每筆資料選一種來源；驗證／內容取得為共同能力，Retrieval 後端仍依 Indexing 推導。「自訂 Parser／自訂 Chunker／自訂 Evaluator」只是元件用途的泛稱，不是規定的 Python class 或 component_id；真正的識別、版本與 class 分工見 §3；圖上全部選項仍為目標規劃，不是已交付實作。DEV test use／自行提供是相同元件的服務綁定來源，不能拿來當作兩個不同 Component 的識別。
 
 2026-10-28 已確認兩個 repo：`rag_platform` 管理 Builder 前後端與整合，`rag_engine` 集中 SDK、Engine、Components／Adapters 與 Runtime API。Module Developer 使用本機 IDE，在 rag_engine 的 components 目錄依 SDK／範本開發，提交 PR 後由同一 repo 的 CI 測試與交付 Runtime。這取代先前以獨立 Component repo 為預設的建議；精確內部目錄、套件名稱及發布工具仍待 Q-001／Q-022 核定。
 
@@ -122,7 +122,7 @@ class TeamChunker(ChunkingComponent):
         raise NotImplementedError("待 Chunking 契約核定後實作")
 ```
 
-`ModuleResult` 的邏輯用法沿用 04：業務輸出位於 data，metrics／errors 不混進下游業務物件。Module-specific Input／Output 包裝與實際方法簽名由 Q-002 決定。完整方法宣告另需 Config Schema、相依能力、相容版本與維護資訊，範例 class 不代表宣告已齊全。
+`ModuleResult` 的邏輯用法沿用 04：業務輸出位於 data，metrics／errors 不混進下游業務物件。ChunkingInput 的業務內容引用 14 的 ParsedDocument，ChunkingOutput 引用 15 的 Chunk 清單；不得重新宣告另一份欄位形狀。Module-specific Input／Output 包裝與實際方法簽名由 Q-002 決定。完整方法宣告另需 Config Schema、相依能力、相容版本與維護資訊，範例 class 不代表宣告已齊全。
 
 Component 不自己重建 Engine 的重試、排程與授權流程。必要 Client／Tokenizer 等經受控資源介面取得，初始化與清理配合 Engine；禁止在輸入文字、Config 或自訂輸出中夾帶可執行指令交給 Engine 動態執行。Schema／RunContext 不等於程序隔離，核可與隔離邊界見 04 §7.4。
 

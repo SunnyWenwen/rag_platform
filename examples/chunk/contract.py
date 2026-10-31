@@ -269,5 +269,7 @@ def validate_sequence(chunks: list[dict], spec: dict) -> None:
         task_order.append(order[info['task_id']])
     if task_order != sorted(task_order):
         raise ValueError('task output order differs from resolved spec')
+    if set(task_order) != set(order.values()):
+        raise ValueError('each required task must produce at least one chunk')
     if len({c['chunk_id'] for c in chunks}) != len(chunks):
         raise ValueError('duplicate chunk_id')

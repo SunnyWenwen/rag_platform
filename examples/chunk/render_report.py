@@ -18,9 +18,9 @@ def main():
         '### 0.2 使用同一份 Schema 的資料例子',
         '以下由共用 cases.json 產生，包含完整預設 Chunk、進階多欄位結果及來源／向量片段。Hash 是參考規則的實際結果；完整來源與設定見同一案例檔。',
         '**預設：只切 text，不複製其他 fields**', compact_json(plain),
-        '**進階：T 切 2 段、F 切 3 段，明確設定互相複製完整欄位**',
-        '| ordinal | task_id | fields.text | fields.faq |\n|---|---|---|---|\n' + '\n'.join(
-            f"| {c['metadata']['_rag']['chunking']['chunk_ordinal']} | {c['metadata']['_rag']['chunking']['task_id']} | {c['fields']['text']} | {c['fields']['faq']} |" for c in multi),
+        '**進階：T 切 2 段、F 切 3 段，各自預設輸出 text；完整來源明確複製到不同名稱**',
+        '| ordinal | task_id | fields.text（片段） | fields.original_faq（完整） | fields.original_text（完整） |\n|---|---|---|---|---|\n' + '\n'.join(
+            f"| {c['metadata']['_rag']['chunking']['chunk_ordinal']} | {c['metadata']['_rag']['chunking']['task_id']} | {c['fields']['text']} | {c['fields'].get('original_faq', '—')} | {c['fields'].get('original_text', '—')} |" for c in multi),
         '**結構來源：從兩頁 Block 組成同一 Chunk，保留兩筆來源與各自輸出位置**',
         '以下是 page_blocks 案例的 metadata._rag.source_refs；頁面不是預設強制切分邊界。',
         compact_json(cases['page_blocks']['chunks'][0]['metadata']['_rag']['source_refs']),

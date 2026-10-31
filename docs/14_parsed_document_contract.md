@@ -2,6 +2,8 @@
 
 > 2026-10-30（Asia/Taipei）· D-46：依討論產出可驗證草案及實際映射案例；尚未凍結正式 SDK／API，不表示 Parser、Chunker 或部署能力已實作。
 
+> 2026-10-31 文件同步：輸入為 [13 IngestionDocument](13_ingestion_parser_input_contract.md)，本文件定義 Parser 輸出／Chunker 輸入，切分後使用 [15 Chunk](15_chunk_contract.md)。三份 JSON Schema 各自單一維護，正式 SDK 版本凍結仍由 Q-002 追蹤。
+
 ## 0. 情境整理與分類總覽（報告摘要）
 
 **這份文件整理的是「不同來源解析後，要用什麼共同格式保留內容與結構，交給後續 Chunker」**。設計保留簡單文字路徑，也允許頁面、段落、表格等結構；先定義資料如何表達與驗證，再由各 Component 分階段實作處理能力。

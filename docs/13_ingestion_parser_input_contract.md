@@ -2,7 +2,7 @@
 
 > 2026-10-29（Asia/Taipei）· 共用輸入 Schema 與語意已確認（D-44／D-45）；尚未實作 API／SDK，批次、版本政策及執行細節另議。
 >
-> 本文記錄 JSON-only、扁平輸入、多 Parser 自動路由，以及使用者確認「Ingestion API 與 Parser Input 使用相同 Schema」。共同物件稱 IngestionDocument；不另設另一份公開 ParserInput。它更新 05／07 舊 records／multipart 及先前 ParserInput 轉換設計；ParsedDocument／Chunker 實際 Schema 仍待討論。
+> 本文記錄 JSON-only、扁平輸入、多 Parser 自動路由，以及使用者確認「Ingestion API 與 Parser Input 使用相同 Schema」。共同物件稱 IngestionDocument；不另設另一份公開 ParserInput。解析後輸出依 [14 ParsedDocument](14_parsed_document_contract.md)，切分後依 [15 Chunk](15_chunk_contract.md)；三者各有共用 Schema，不混用輸入與輸出欄位。
 
 ## 0. 情境整理與分類總覽（報告摘要）
 
@@ -13,7 +13,7 @@
 | 使用情境 | 輸入方式與例子 | 誰負責處理 |
 |---|---|---|
 | 直接送一段文字 | content 是文字，例如操作說明 | 相容文字 Parser 驗證並產生 ParsedDocument |
-| 一筆資料有多個內容欄位 | content 是 JSON object，包含原文、標題、已有摘要等；不是多筆文件 | 相容 records Parser／Adapter 轉成內容欄位，後續模組另選欄位用途 |
+| 一筆資料有多個內容欄位 | content 是 JSON object，包含原文、標題、已有摘要等；不是多筆文件 | 相容 Structured JSON Parser／Adapter 轉成內容欄位，後續模組另選欄位用途 |
 | 在 Builder 上傳 CSV 測試 | 每列映射為一筆 JSON，分清內容與 metadata | Builder 做欄位映射與傳輸轉換，再呼叫相同 API |
 | 傳入 PDF／PPTX／Excel／圖片等原始檔 | 用 base64 帶檔案，或用 uri 指向可存取資源 | SDK 共用能力取得／解碼，具有對應能力的 Parser 再解析 |
 | 透過 URL 傳入資料 | uri 可指向文字、JSON 或原始檔；URL 不是文件格式 | 平台取得內容，再依格式與能力選 Parser；不自動代表網站爬取 |
@@ -176,7 +176,7 @@ JSON Schema 中沒有 default 副作用；metadata={} 是平台正規化行為�
 }
 ```
 
-預設 Structured records Parser 可依既定設定把 content 的鍵轉入 fields；正式預設／必要欄位與未知欄位政策仍由 Q-002 決定。Builder CSV 映射只做一次；若已映射成目標鍵，Parser 不重複映射。metadata 使用外層欄位，不從任意 content 欄位自動猜測。
+預設 Structured JSON Parser 可依既定設定把 content 的鍵轉入 fields；正式預設／必要欄位與未知欄位政策仍由 Q-002 決定。Builder CSV 映射只做一次；若已映射成目標鍵，Parser 不重複映射。metadata 使用外層欄位，不從任意 content 欄位自動猜測。
 
 ### 3.2 PDF 資源引用
 
@@ -206,7 +206,7 @@ content 可依已註冊 schema_id 傳入 fields／structure 等已解析內容�
 
 ## 4. 是否也是 Parser 的 Input？
 
-**是，Ingestion API 與 Parser 的 Input 共用 IngestionDocument 及相同 Schema。** 原先另建「content 已轉成 bytes、另加 source_info」的 ParserInput 草案已由本決策取代，不再作為目標介面。
+**是，Ingestion API 與 Parser 的 Input 共用 IngestionDocument 及相同 Schema。** 內容解碼由共用 resolver 處理，不建立另一份公開輸入契約。
 
 ### 4.1 共用物件，透過 SDK 取得內容
 
@@ -253,11 +253,10 @@ Parser 宣告可接受的 media_type、schema 及必要資源；多個 Parser �
 
 ParsedDocument 使用共同外層格式，但每種 Chunker 仍有內容／結構需求。Parser 與 Chunker 依 produces／requires 能力及版本配對，不依特定實作名稱綁死；標題、頁面、表格與自訂結構的具體 schema 現有 [14 的可驗證草案](14_parsed_document_contract.md)，剩餘取捨仍見 [Q-002 待討論清單](08_implementation_plan.md#parsed-document-schema-pending)。不相容時明確報錯；不默默攤平成文字。
 
-## 6. 舊設計與待決事項
+## 6. 驗證邊界與待決事項
 
-- 取代舊 API records[].fields 及 Engine multipart 的目標設計；不是新增永久相容別名。現有 Prototype／舊 YAML／圖面仍是歷史展示，沒有在本輪遷移。
-- Builder 文件／CSV 入口轉成這份 JSON，再使用相同 Engine Pipeline。Builder 是否提供暫存資源 URI、哪些格式在 Builder 先轉換、存取授權與清理策略待 Q-016／Q-019。
-- 舊 SourceAsset 及另設 ParserInput 是先前內部草案；公開 Parser 輸入統一用 IngestionDocument，不再轉換為另一份資料契約。內部資源管理可保留實作物件，不能要求 Developer 依賴它們或變更共同 schema。
-- 未決：ParsedDocument 實際結構、schema_id／profile 命名與版本、路由優先規則、輸入大小及逾時、批次包裝、回應／錯誤碼、舊資料遷移。已確認輸入方向不因此退回未定。
-- API／Parser 的共同外層是同一份 Schema；各 Component 對 content 的專屬內容限制另宣告，屬共同契約上的進一步驗證，不是第二份輸入 envelope。支援 JSON object 不表示任意內容或 Chunk／vectors 都可直接入庫。
-- UI 所需調整只登錄 [UIB-011](10_ui_adjustment_backlog.md#uib-011-ingestion-parser-routing)，本輪不改 Prototype。
+- API／Parser 先驗同一份 IngestionDocument 外層，再驗相容 Component 的 content／實際格式限制；支援 JSON object 不代表可匯入任意內容、Chunk 或向量。
+- Parser 輸出依 [14](14_parsed_document_contract.md) 的五鍵 Schema 與語意驗證；Chunker 輸出依 [15](15_chunk_contract.md) 的六鍵 Schema、來源／任務／向量規則。資料形狀符合仍須檢查 Component 能力相容。
+- Builder 將文件／CSV 轉成共同 JSON；是否提供暫存 URI、格式轉換範圍、存取與清理見 Q-016／Q-019。
+- 剩餘待決：schema_id／profile 命名與版本、路由衝突的精確政策、輸入／解碼／下載大小與逾時、批次 envelope、回應／錯誤碼、ID／版本省略政策及正式 SDK。已確認的共同外層不重開。
+- UI 遷移記 [UIB-011](10_ui_adjustment_backlog.md#uib-011-ingestion-parser-routing)；ParsedDocument／Chunk 預覽另見 UIB-012／013，本次不修改 Prototype。

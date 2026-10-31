@@ -52,8 +52,8 @@ def build_cases():
                   'chunks': [sliced(source, plan, 'text', 0, 5, 12)]})
 
     source = document('multi-001', {'text': '甲段。乙段。', 'faq': '問一。問二。問三。'})
-    plan = spec(task('text', 'text', 'text', [('faq', 'faq')]),
-                task('faq', 'faq', 'faq', [('text', 'text')]))
+    plan = spec(task('text', 'text', 'text', [('faq', 'original_faq')]),
+                task('faq', 'faq', 'text', [('text', 'original_text')]))
     chunks = [sliced(source, plan, 'text', i, i * 3, i * 3 + 3) for i in range(2)]
     chunks += [sliced(source, plan, 'faq', i + 2, i * 3, i * 3 + 3) for i in range(3)]
     cases.append({'case_id': 'two_plus_three', 'source': source, 'effective_spec': plan,

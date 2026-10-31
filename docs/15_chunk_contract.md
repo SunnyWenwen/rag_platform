@@ -68,15 +68,15 @@ JSON Schema 檢查資料形狀；語意工具另驗證來源範圍、內容對�
 }
 ```
 
-**進階：T 切 2 段、F 切 3 段，明確設定互相複製完整欄位**
+**進階：T 切 2 段、F 切 3 段，各自預設輸出 text；完整來源明確複製到不同名稱**
 
-| ordinal | task_id | fields.text | fields.faq |
-|---|---|---|---|
-| 0 | text | 甲段。 | 問一。問二。問三。 |
-| 1 | text | 乙段。 | 問一。問二。問三。 |
-| 2 | faq | 甲段。乙段。 | 問一。 |
-| 3 | faq | 甲段。乙段。 | 問二。 |
-| 4 | faq | 甲段。乙段。 | 問三。 |
+| ordinal | task_id | fields.text（片段） | fields.original_faq（完整） | fields.original_text（完整） |
+|---|---|---|---|---|
+| 0 | text | 甲段。 | 問一。問二。問三。 | — |
+| 1 | text | 乙段。 | 問一。問二。問三。 | — |
+| 2 | faq | 問一。 | — | 甲段。乙段。 |
+| 3 | faq | 問二。 | — | 甲段。乙段。 |
+| 4 | faq | 問三。 | — | 甲段。乙段。 |
 
 **結構來源：從兩頁 Block 組成同一 Chunk，保留兩筆來源與各自輸出位置**
 
@@ -177,7 +177,7 @@ Schema 形狀允許 metadata={}，供既有 Inference 範例／受控傳遞投�
 
 ### 2.3 多欄位是結果串接，不是互相配對
 
-同文件 fields.text=T、fields.faq=F，T 切兩段、F 切三段時，得到 5 個獨立 Chunk。一般多任務預設各自輸出 fields.text=T1／T2／F1／F2／F3；完整附帶內容建議改名為 original_text／original_faq，且須明確 copy，不能覆蓋切分片段。§0.2 的表為明確自訂輸出名稱 text／faq 的進階例子；未指定則每個任務只輸出自己的片段及其他明確附帶欄位。
+同文件 fields.text=T、fields.faq=F，T 切兩段、F 切三段時，得到 5 個獨立 Chunk。多任務預設各自輸出 fields.text=T1／T2／F1／F2／F3；完整附帶內容改名為 original_text／original_faq，且須明確 copy，不能覆蓋切分片段。§0.2 與共用案例採此預設；未配置 copy 則每個任務只輸出自己的片段。有需要仍可進階自訂輸出名稱。
 
 不同欄位的第 N 段不假設有對應關係，不做笛卡兒積。若業務資料本來有逐段對應，需專屬 Component 宣告配對契約。多個任務使用相同 Component 不代表 spec 相同；來源／輸出／複製規則不同也是有效設定差異。
 
@@ -276,7 +276,7 @@ python examples/chunk/render_report.py
 python examples/chunk/test_contract.py
 ```
 
-7 個正例情境共 11 個 Chunk；另外 33 個刻意破壞的 Chunk、4 個序列／設定反例，與 5 份既有 Inference 資料共用 Schema 檢查。測試涵蓋非空向量的新格式，不呼叫外部服務；輸出結果不是實際切分演算法品質或併行更新的驗收證據。
+7 個正例情境共 11 個 Chunk；另外 33 個刻意破壞的 Chunk、5 個序列／設定反例（含必要任務零產出），與 5 份既有 Inference 資料共用 Schema 檢查。測試涵蓋非空向量格式，不呼叫外部服務；輸出結果不是實際切分演算法品質或併行更新的驗收證據。
 
 已確認的是六鍵外層、text 預設、進階多任務／複製、來源追溯位置、向量資訊分層及穩定 ID 方向。精確鍵名／nullable／自訂型別與遷移仍以本稿供 M0 審閱；Q-002／Q-003／Q-004／Q-006／Q-007 及索引提交政策不因草案產出而全部結案。
 

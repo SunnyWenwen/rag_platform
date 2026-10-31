@@ -1,19 +1,12 @@
 # UI Prototype Backlog 與完成紀錄
 
-> 文件集 v0.19 · 2026-10-16（Asia/Taipei）· §1～6 歷史已完成／§7 新增待辦
->
-> 2026-10-15 15:53 先記錄待辦；當日 18:55 使用者要求調整 UI，當時已實作原型設定、連動與卡控。§1～6 的勾選代表該輪 UI／邏輯預覽已完成，不表示真實 Engine、ES／模型或 API 已實作；驗收與限制見 §6。2026-10-16 的新需求只記錄於 §7，未修改 UI。
-
-**最新工作方式（2026-10-16）**：後續需求先更新文件，所需 Prototype 調整統一記在本文件。§1～6 保留 2026-10-15 的結果處理完成紀錄；[§7](#ui-backlog-pending) 為本次新增、尚未實作的待辦。使用者明確要求「改 UI」後才開始原型修改，不能因規格更新就自行勾選完成。
+> 文件同步：2026-10-31。§2～6 記錄 Prototype 已有的結果處理能力；§7 集中尚未實作的需求。勾選完成只代表模擬 UI／邏輯預覽，並非 Engine／API 已完成。
 
 ## 1. 範圍與最新依據
 
-- 14:49：Query 範圍與 ResultSet／搜尋路徑範圍分開；merge_key 限 chunk_id／document_id。
-- 14:54～15:16：合併可在 Retrieval 後或 Reranker 後；Top N 為動作完成後的收尾參數，UI 固定提供四個位置。
-- 15:37：基本設定可直接使用，完整設定在進階區；預設 Retrieval 後全部合併為一份 ResultSet，再進 Reranker。
-- 15:53：進階區的同 Query 多路合併、跨 Query 合併預設勾選；Reranker 預設選一個 fields 下的內容欄位；其餘依前述規劃，先不實作。
+現行設計見 [09](09_inference_contract_ui_plan.md)，資料定義見 [05](05_data_contracts_search_design.md#inference-state-draft) 及 [13](13_ingestion_parser_input_contract.md)／[14](14_parsed_document_contract.md)／[15](15_chunk_contract.md)。後續需求先更新文件，對應 Prototype 調整記入 [§7](#ui-backlog-pending)，使用者明確要求改 UI 後才實作。
 
-本清單是最新 UI 待調整基準，取代 [09 §3～6](09_inference_contract_ui_plan.md) 早期以獨立 Top N／可任意排列操作卡片為主的提案。資料型別仍見 [05](05_data_contracts_search_design.md#inference-state-draft)，執行規則見 [04](04_module_components_io_contracts.md#result-processing)；正式 Config 欄位、遷移與 Adapter 能力仍待相關 Q-ID 核定。
+本次文件同步未改 Prototype。UIB-011～013 應一併使用三份 Schema：CSV 每列 → IngestionDocument.content／metadata → ParsedDocument.fields／structure → Chunk.fields／metadata／vectors；不得繼續產生舊 API 根層 fields。來源資訊唯讀顯示，必要欄位與結構相容由 Engine 驗證。
 
 ## 2. 預設狀態
 
@@ -108,7 +101,7 @@ UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／
 
 ### 6.2 明確的原型邊界
 
-- ES 原有內部 Sum Score／RRF 獨立保留，預設 Sum Score。新增平台合併卡片預設 RRF，避免把不同來源分數直接相加；使用者仍可選 Sum Score。搜尋 Top K=10、Retrieval 後 Top N=5、Reranker 後合併 Top N=3 為展示初值，並非新增產品決策。
+- ES 原有內部 Sum Score／RRF 獨立保留，預設 Sum Score。平台合併設定預設 RRF，避免把不同來源分數直接相加；使用者仍可選 Sum Score。搜尋 Top K=10、Retrieval 後 Top N=5、Reranker 後合併 Top N=3 為展示初值，並非新增產品決策。
 - 平台 Sum Score 提供各來源權重，以及不轉換／逐清單 Min–max。未轉換時需明確勾選分數可比；先依 score_order 統一方向。同分清單轉換為 1、未命中來源為 0 是原型規則草案，真實方法與 Adapter 仍待核定。
 - 為使單份 ResultSet 也能設定文件去重，新增「文件去重時機」。先在該時點融合相同 chunk_id，再按 document_id 取最高分代表 Chunk，最後 Top N；禁止在最後一次跨清單合併之前完成最終文件去重，以免後續再出現同文件多 Chunk。
 - 最終仍有多份 ResultSet 時阻止保存，明示 Generation 需要一份；使用者可觀察關閉／部分路徑合併的中間計畫，但需完成合併才能儲存。這版不增加多份清單的 Generation 消費策略，也不隱含跨清單排序。
@@ -117,7 +110,7 @@ UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／
 - 摘要只計算設定上限，不執行候選命中、Chunk 去重、模型評分、融合分數或 rank 生成。實際候選不足／同一 Chunk 多路命中均可能降低結果數量；不宣稱固定得到 N 份文件。
 - DEV 與部署匯出使用相同結果處理設定；部署頁僅補服務連線，Memory／MongoDB 模式不因部署切換。原型尚未檢查 ES 版本／授權或遠端模型能力，仍顯示「未驗證」。
 
-### 6.3 驗證記錄
+### 6.3 既有 Prototype 驗證紀錄（2026-10-15）
 
 - `tests/prototype.test.cjs`：56 項既有規則通過；更新兩個已被需求取代的預期（跨 Query 融合不等於 ES 內部融合；Top N 不需遞減）。
 - `tests/inference-processing.test.cjs`：23 項新增規則通過，包含 ES 獨立／Local 各自的四種合併時點組合、兩層分組、四處上限、None、文件模式、有效草稿分離、Edit／AI／匯出。
@@ -135,28 +128,8 @@ UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／
 
 ## 7. 新增 UI Backlog（2026-10-16，尚未實作）
 
-來源：09:42 新增 fix chunk、後續先調文件；09:45 要求 UI 調整記入 backlog，M5 必須涵蓋 Builder 中的 AI 設定助手。Prototype 仍 v0.9，尚無 Fixed-size 選項；原型助手仍為規則模擬，沒有接上真實 AI。文件集版本與 Prototype 版本分開。
+已確認需求與討論提案分開標示，所有待辦均未因本次文件同步而實作。Component 動態表單見 12，三份新資料契約的介面遷移集中在 UIB-011～013。
 
-10:05 追加：使用者已確認全部內容保存／metadata 全繼承的三點簡化，列為 UIB-005／006；Rewrite 試跑與固定輸出問題仍在討論，UIB-007 標為提案待確認。均未修改 Prototype。
-
-10:22 追加：UIB-008 記錄 Rewrite／Multi-query 合併建議、UIB-009 記錄 Generation 預設／進階 JSON 輸出建議；兩項均為討論提案，未新增已確認決策或實作。
-
-2026-10-28 追加：UIB-010 記錄 Module Developer 方法在 Builder 的選用、設定與相依驗證；新增角色／擴充需求見 D-40，具體目錄與 UI 呈現為規劃待細化。維持先文件、後 UI，不新增程式上傳／安裝入口。
-
-同日 D-42：使用者確認依建議規劃 Schema 驅動表單及五項操作行為，具體描述草案集中於 [12](12_component_schema_ui_contract.md)。UIB-010 增補實作／驗收項目，尚未要求修改 Prototype；原型版本維持 v0.9。
-
-| ID | 待調整項目 | 主責規格／階段 | 狀態 |
-|---|---|---|---|
-| UIB-001 | Chunking 增加 Fixed-size 及方法參數卡控 | 04 §4.3、05 §6.4、06 §3；Engine M2／Builder M5 | 待使用者要求改 UI |
-| UIB-002 | Fixed-size 說明、流程摘要與示範／驗收案例 | 04 §4.3、06；Builder M5 | 待使用者要求改 UI |
-| UIB-003 | Builder 呼叫 M4 的同一個 AI 設定助手核心 | 07 §8、08 §4.2；Builder M5 | 待使用者要求改 UI |
-| UIB-004 | 助手建議與 UI 草稿／Diff／套用／取消／過期狀態 | 06 §4.3、08 §4.2；Builder M5 | 待使用者要求改 UI |
-| UIB-005 | Indexing 移除儲存內容選單，預設保存全部 Chunk.fields／metadata | 04 §4.5、05 §6、06 §3；D-39 | 已確認，待要求改 UI |
-| UIB-006 | Chunking metadata 預設全部繼承，移除逐欄繼承選單 | 04 §4.3、05 §4.3、06 §3；D-39 | 已確認，待要求改 UI |
-| UIB-007 | Rewrite／Multi-query 單模組測試與結構化輸出檢視 | 04 §5.1.1、06 §3.3.1；Engine M2／Builder M5 | 提案待確認，尚未實作 |
-| UIB-008 | Rewrite／Multi-query 合併為單一 Query Rewrite，以 1／N 控制 | 04 §5.1.2、06 §3.3.2；Q-002／Q-003 | 提案待確認，尚未實作 |
-| UIB-009 | Generation 預設格式＋收合的進階自訂 JSON Schema | 04 §5.4.1、06 §3.5；Q-002／Q-003／Q-018／Q-019 | 提案待確認，尚未實作 |
-| UIB-010 | Runtime Component 目錄、Schema 動態表單、動態候選與相依卡控／版本資訊 | 04 §7.5～7.6、07 §5.8、11／12、08 §4.3；D-40～43／Q-019／Q-022／Q-025 | Component 命名、方向與五項操作行為已確認；格式為草案，待要求改 UI |
 
 ### UIB-001：Fixed-size 控制項與設定連動
 

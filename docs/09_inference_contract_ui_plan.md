@@ -1,27 +1,12 @@
-# Inference Contract 討論記錄與 UI 整合提案
+# Inference Contract 與 UI 設定對照
 
-> 文件集 v0.19 · 2026-10-16 · Contract 規則記錄／UI 待討論
->
-> 記錄本串 14:10～14:31（Asia/Taipei）的討論。三種操作及共同排序為已確認方向；本文的版面、控制項、Config 拼字、預設與第一版範圍均為提案。現有 Prototype／Engine 未因此實作。
+> 文件同步：2026-10-31。結果處理語意與 UI 方向已確認；正式 Config／SDK 及真實搜尋執行仍待核定／開發。
 
-> **UI 後續更新**：15:53 記錄的 [10_ui_adjustment_backlog.md](10_ui_adjustment_backlog.md)，已依 18:55 的使用者要求落實至 Prototype v0.9，驗收與限制見該文件 §6。§3～6 的獨立 Top N／任意順序卡片是早期提案；實作方向為動作附帶四處 Top N、基本／進階設定及 Retrieval 後預設合併，不據舊提案直接開發。§2 的 Contract 記錄仍保留，Engine 尚未實作。
+## 1. 資料基準
 
-> **2026-10-16 討論提案**：Rewrite 單模組試跑、兩方法合併成 1／N 設定、Generation 收合的進階 JSON 輸出分別見 10 的 UIB-007～009；尚待確認，原型未修改。此處的 Inference 清單 Contract 不決定 Generation 業務 payload／HTTP 回應型別。
+InferenceState → QueryContext → ResultSet → ResultItem 使用 [共用 Inference Schema](../schemas/inference_context.schema.json)。ResultItem.chunk 直接引用 [Chunk Schema](../schemas/chunk.schema.json)／[15](15_chunk_contract.md)；Embedding、索引與檢索不能各寫一份 Chunk 定義。
 
-**2026-10-30 共用 Chunk 草案**：ResultItem.chunk 改由 [15](15_chunk_contract.md)／[Chunk Schema](../schemas/chunk.schema.json) 定義；非空向量包含 values／embedding_profile_id／source_field，原向量陣列草案不再適用。ResultItem.source_refs 是 ResultSet 血緣，與 Chunk.metadata._rag.source_refs 的文件來源位置分開。ResultSet 三種操作與本文件的既有流程不變。
-
-## 1. 文件定位與確認狀態
-
-資料欄位以 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft) 為主責；Engine 執行以 [04 §5.2.1](04_module_components_io_contracts.md#result-processing) 為主責；UI 原則見 [06](06_ui_development_spec.md)。本文集中對話摘要、UI 提案與討論案例，不另創一份不同的 Contract。決策狀態見 [08 D-34／D-35、Q-014](08_implementation_plan.md#q-014)。
-
-| 狀態 | 本輪結論 |
-|---|---|
-| 已確認 | ResultSet 後處理收斂為去重＆合併、取 Top N、新模型算分三類 |
-| 已確認 | 排序及 rank 更新抽成共同處理；每個對外輸出的 ResultSet 都已排序，rank=1 最好且連續 |
-| 延續的傳遞方向 | QueryContext 擁有多份 ResultSet；同 Chunk 在不同清單的分數各自保留；下游只使用 active 選中的清單 |
-| 本輪補充的情境 | ES 內部已融合時接收一份 Hybrid 清單；平台外部融合才有可引用的獨立輸入清單 |
-| 草案調整 | `inference-0.2-draft` 的 stage 拼字、`source.field_paths`、跨 Query 的 q-merged 等仍待正式欄位核定 |
-| UI 提案 | 在既有 Create／Edit 中增加順序式「結果處理」區；不開新主畫面，不增加通用 DAG 畫布 |
+QueryContext 保留 query／ori_query 與來源 Query；一個 Query 可有多份 ResultSet。操作後建立新 ResultSet，保留來源清單，只有 active 選取的輸出參與下一步。歷史結果保存於同次推論的邏輯狀態；永久 Trace 的保存政策另議。
 
 ## 2. Contract 討論摘要
 
@@ -54,118 +39,64 @@ ES `query + knn` 可由 boost 加權相加並回傳最終 `_score`。Adapter 把
 
 參考：[Elastic approximate kNN query examples](https://www.elastic.co/docs/solutions/search/vector/knn/approximate-knn-query-examples)、[Search API explain](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-search)。本輪沒有連線執行 ES。
 
-例子及可執行 Python 見 [05 §4.6.6](05_data_contracts_search_design.md#inference-state-draft)；其中 Top N 範例取代 v0.15 的候選分數 Filter 展示。Retrieval 的業務 Filter／ACL 仍保留，並在 Top-K 前限制合法候選。
+例子及可執行 Python 見 [05 §4.6.6](05_data_contracts_search_design.md#inference-state-draft)；Retrieval 的業務 Filter／ACL 仍保留，並在 Top-K 前限制合法候選。
 
-## 3. UI 整合方案（待討論）
+## 3. 現行 UI 規劃
 
-### 3.1 放在同一份 Create／Edit
+保留單一 Create／Edit 介面。Retrieval 的「進階結果處理」預設收合；Reranker 沿用原模組表單。Top N 是動作完成後的收尾設定，不新增可任意排列的操作卡片或 DAG。
 
-| 既有位置 | 建議呈現 | 使用者設定 |
+### 3.1 兩層合併
+
+| 控制項 | 新建預設 | 相依／有效範圍 |
 |---|---|---|
-| Query Transformation | 沿用現有設定 | Rewrite／Multi-query、Prompt、LLM、include_original |
-| Retrieval | 搜尋欄位及「輸出方式」 | 已索引欄位、每路候選數、Filter；後端內部融合或分路輸出的可用能力 |
-| 結果處理（新增區塊） | 依執行順序排列的設定卡，可新增、移除、上移、下移 | 僅三種操作；方法與參數依卡片條件顯示 |
-| Generation | 沿用模板與 LLM，補上最終輸入摘要 | 最終結果來源、Chunk 模板及回答 Prompt |
+| 同 Query 多路合併 | 勾選；Retrieval 後 | 有多個獨立 ResultSet 才融合；ES 已內部融合時顯示原因並停用 |
+| 跨 Query 合併 | 勾選；Retrieval 後 | 同原始問題有多個有效 Query 才執行 |
+| 每層合併時機 | 可選 Retrieval 後／Reranker 後 | 顯示有效順序，無效組合阻止套用；不默默改時機 |
+| 合併策略 | RRF／Sum Score | RRF 設 k；Sum Score 設來源權重與可比性／轉換；ES 內部策略另外設定 |
+| 身分合併 | chunk_id；可選 document_id | 文件模式先完成 chunk_id 融合，再於最後有效合併點選同文件最高分代表；單份清單也可文件去重 |
 
-建議將原 Rerank 表單重用為「新模型算分」卡片中的 Rerank 設定，避免原模組與此處各自保存一套有效參數。這是版面／migration 建議，尚未移動原型。LLM、Embedding 與 Rerank 的服務格式維持既有不同能力；共用服務只引用，DEV／自行提供的部署綁定不放到處理步驟中。
+每個 Query 內是第一層分組，同原始問題跨 Query 是第二層。Query ID／ResultSet ID 由 Engine 管理，使用者不需手填。merge_key 選 document_id 不會產生虛構 Chunk，仍保留代表的 chunk_id 與原始引用。
 
-### 3.2 每張卡片的欄位
+### 3.2 四個固定 Top N 位置
 
-| 操作 | 共同設定 | 方法設定 |
+| 位置 | 作用對象 | 停用情境 |
 |---|---|---|
-| 去重＆合併 | 輸入來源；每個 Query 內／同原始問題跨 Query | chunk_id；Sum Score 的權重與轉換，或 RRF 的 k。文件分組另需代表 Chunk 政策 |
-| 取 Top N | 輸入來源 | N；作用於每份選入清單，不暗中先合併 |
-| 新模型算分 | 輸入來源 | Rerank 服務、評分使用原始／當前 Query、內容欄位 |
+| Retrieval 搜尋 Top K | 每 Query／每路搜尋；ES 內部融合則是一份 Hybrid 輸出 | 無搜尋路徑是錯誤，不自動略過 |
+| Retrieval 後合併 Top N | 該時點適用合併／文件去重完成後的各群組 | 該時點無處理時不參與有效設定 |
+| Reranker 評分後 Top N | 每份模型評分 ResultSet；新建預設 3 | Reranker=None 時停用此上限 |
+| Reranker 後合併 Top N | 後置合併／文件去重完成後的各群組 | 沒有後置處理時停用；None 不會取消必要後置合併 |
 
-只有一個合法輸入來源時自動帶入。多個來源時以「Retrieval 輸出」「步驟 1 輸出」等標籤選取；內部 `step_ref`／query_id／result_set_id 自動產生。一般操作接續上一步有效輸出，只有明確選入的分支才參與；歷史清單不自動回流。選取互相衍生的原始與合併清單時需偵測重複計入風險，明示錯誤／待決政策，不悄悄將同一路貢獻加兩次。
+每次處理後依 score_order 排序，再取上限並重編連續 rank；沒有獨立排序開關。多份清單各自 Top N 不等於全域 Top N。後續模型與融合不能找回已截掉的候選，預覽需標出清單數與截斷位置。
 
-「每個 Query 內」映射到 query_id 分組；「同原始問題跨 Query」映射到 ori_query_id 分組，僅針對選中的輸出。Top N 若選到多份 ResultSet，就各自取 N；若要全域 Top N，需先以合併卡片取得一份清單。
+### 3.3 模型與內容欄位
 
-Retrieval 的每路候選 k 控制搜尋返回量，Top N 則在已取得的候選內截取；兩者在 UI 分開標示。後續合併／模型無法找回先前已截斷的候選，預覽應標出各處截斷位置。
+Reranker 預選合法的 fields.text；基本區選一個內容欄位，進階才展開其他內容設定。提問預設原始問題；逐 Query 情境可依有效計畫使用當前 Query，跨 Query 已合併則使用原始問題。內容欄位來自 Chunk，不從 ParsedDocument 臨時補欄位。
 
-### 3.3 排序與追溯欄位的呈現
+Provider 的 top_n 與平台評分後保留數分開：Adapter 應取得選入候選的完整評分，再由平台截斷；服務不支援時明示能力／限制，不隱性少回結果。正式覆蓋率／錯誤政策見 Q-003／Q-014。
 
-- 不提供獨立排序開關；顯示說明「每次處理後自動依分數排序並更新名次」。
-- score_kind／score_order 由方法／Adapter 的宣告產生並唯讀；一般使用者不用手填。
-- source／operation／來源 ID 不出現在基本 Config 表單，於測試結果的「執行詳情」按需展開。
-- 合併演算法、權重、模型等設定仍可修改；執行後由系統記錄實際 operation，避免設定意圖與歷史輸出混用。
+Generation 使用最終有效清單，維持 chunk_template → context → prompt。Chunk 的來源位置由 metadata._rag.source_refs 產生可信引用；ResultItem.source_refs 則追溯分數與候選，兩種來源不能混用。
 
-### 3.4 ES 原生融合的設定與卡控
+### 3.4 共同卡控
 
-Retrieval 的「輸出方式」建議提供：
+- 後端由 Indexing 繼承；搜尋只能選已建立索引且型別相容的欄位。
+- ES 內部 Hybrid 一次只回一份清單時，不捏造分項 ResultSet 或再做同 Query 融合。獨立分路輸出須 Adapter 明確支援。
+- 單 Query／單路徑停用不適用控制項並保留草稿；切回多路時恢復選擇。
+- 改上游欄位／服務造成失效時保留原值，錯誤顯示 `[Module]` 與欄位；不能靜默替換。
+- 展開進階不改 Config。Create／Edit／AI／預覽／匯出使用同一有效計畫；取消不修改既有 System。
 
-1. **後端內部融合**：ES 能力支援時可選 Sum Score／RRF；每個 Query 輸出一份 Hybrid 結果。
-2. **各路獨立輸出**：Adapter 支援時才可選，產生各欄位／路徑的清單，交給後續合併卡片。
+## 4. 說明案例
 
-後端繼承 Indexing，仍不新增 Retrieval Implementation 選單。以上是結果輸出粒度，不是第二次選搜尋後端。可用項目依已選 ES 版本／授權／Adapter 能力推導；不支援的選項顯示並停用，說明原因，不自動改為另一個計分方法。
-
-選 ES 內部 Sum Score 後，預覽直接顯示「每 Query：1 份 Hybrid ResultSet」；不再自動加一張同 Query 的 BM25＋Vector 融合卡。跨 Query 合併仍可在使用者指定的合法位置加入。
-
-### 3.5 模型算分與 Top N 解耦
-
-Rerank 卡片負責模型與輸入欄位；使用者想限制候選時，增加獨立 Top N 卡，位置決定成本及結果。例如先 Top 50 再評分，與先評分全部再 Top 5 是不同計畫，不互相代換。
-
-原型 Rerank.Top-N 及固定服務 payload 的 top_n 必須有明確遷移：UI 的結果保留數移到 Top N 卡；Adapter 若需 top_n 才能回傳完整評分，應依選入候選數請求，並驗證回傳覆蓋率。若服務無法評完，需明示能力／限制或錯誤政策，不能藉 API 預設值默默截斷。這屬待核定的 Adapter 細節（Q-003／Q-014），不能因 UI 拆卡就宣稱已實現。
-
-## 4. 三個設定案例
-
-| 案例 | Retrieval 輸出 | 結果處理的卡片順序 | 重點 |
-|---|---|---|---|
-| A：ES Hybrid，再 Rerank | 每個 Query 一份已 Sum Score 的清單 | 跨 Query RRF → 模型算分（原始問題）→ Top 5 | 單 Query 可略過跨 Query 卡；沒有額外重算 ES 內部融合 |
-| B：各 Query 先 Rerank | 每個 Query 一份已 Sum Score 的清單 | 每份模型算分（當前問題）→ 每份 Top 20 → 跨 Query RRF → Top 5 | 截斷發生在跨 Query 融合前，保留清單排名供 RRF |
-| C：欄位與 Query 分兩層 | 每個 Query 有全文／向量等多份清單 | 每個 Query 內 Sum Score → 跨 Query RRF → 模型算分 → Top 5 | 展示兩層合併；選用支援分路輸出的 Adapter |
-
-案例不是僅能選 A／B／C 的固定模板，使用者可在合法順序中安排操作。數值 20／5 是說明例子，不是核定預設。範本只協助起步，套用後仍顯示完整可編輯步驟。
-
-下列僅為 UI 意圖的 Python 草圖，不是正式可執行 Config Schema：
-
-```python
-steps = [
-    {"ref": "cross_query", "type": "merge", "input": "retrieval", "scope": "original_query", "method": "rrf", "k": 60},
-    {"ref": "rerank", "type": "model_score", "input": "cross_query", "model_ref": "reranker-a", "query_source": "original", "content_fields": ["fields.text"]},
-    {"ref": "answer_top", "type": "top_n", "input": "rerank", "n": 5},
-]
-```
-
-實際 Config 只引用邏輯步驟與服務，不保存一次執行才存在的 ResultSet ID；Engine 展開到各 Query／群組後再產生 ID。Backend／DEV Runtime／FTEST／ENT 使用同一份邏輯計畫，只有服務連線綁定不同。
-
-## 5. Validator 與結果預覽
-
-### 5.1 建議卡控
-
-| 條件 | UI／Engine 應檢查 |
-|---|---|
-| 操作順序／來源 | 只引用上游步驟、無循環、刪除上游後保留失效引用並阻止儲存 |
-| ES 已融合 | 沒有實際取得的 BM25／Vector 子清單不能選，也不能顯示虛構 rank |
-| RRF | 輸入必須有各自有效 rank；取 Top N 後以保留下來的候選排名參與 |
-| Sum Score | 明列路徑權重、方向／轉換與是否正規化；不同尺度的相加不是相同影響力；不擅自啟用正規化 |
-| 模型算分 | 模型服務有效、內容欄位存在、Query 來源合法；合併後不存在唯一「當前改寫問題」時，需選原始問題或明確策略 |
-| Top N | N 為正整數；N 超過當前候選數回傳可用筆數；未來若支援零值需另定 |
-| 文件去重 | document_id 不當作 chunk_id；代表片段與計分策略未選定時不當作已支援 |
-| Generation | 建議每個原始問題有一份最終有效清單；若仍有多份，要求使用者明確合併，這是待討論的 UI Gate |
-
-錯誤沿用 `[模組／步驟] 原因`，例如 `[結果處理：步驟 2] 來源步驟已刪除`、`[Generation] 有兩份最終結果，請指定合併方式`。不以停用 Save 取代可定位的說明。
-
-### 5.2 預覽與真實測試分開
-
-- 儲存前的靜態預覽：Query 分支、預期每組清單數、合併時點、各階段候選上限；以「上限／依實際結果」標示，未知數量不填成確定值。
-- DEV Inference 執行後：每步輸入／輸出份數、候選數、score／rank、來源、使用 Query／模型；可對比合併及 Rerank 前後。
-- 只顯示實際取得的分項分數；ES 只有總分時顯示總分。來源詳情按需展開，不要求模型前端知道各後端儲存結構。
-- 靜態示例不假裝真實模型試跑；沒有 Runtime 時標示模擬，延續現有產品界線。
-
-## 6. 建議實作順序與待討論事項
-
-本輪只整理文件／草案 Schema／資料例子；沒有修改 HTML Prototype、正式 Engine、服務或部署。
-
-1. 先討論下列 UI 選項與 Config 意圖；不因有 JSON Schema 就視為畫面已核定。
-2. 核定後調整 Prototype：卡片順序、條件欄位、靜態輸出預覽、失效引用、Create／Edit／匯出一致性；搜尋／模型仍標示模擬。
-3. Engine／Adapter 實作時再驗證真實排序、分數、候選數、模型覆蓋率與 ES 能力；接入共同 Registry／Validator。
-4. Runtime／Builder／獨立部署使用同一份經核定計畫；僅 Inference 變更時重測，不重建已相容的索引。
-
-| 討論項目 | 建議起點 | 需要確認的影響 |
+| 案例 | Retrieval 輸出 | 有效處理順序 |
 |---|---|---|
-| UI-01：設定放哪裡 | 統一結果處理區＋順序卡片，重用原 Rerank 表單 | 是否接受將原本 Rerank 的模型設定移入此區；避免兩份配置 |
-| UI-02：第一版結果粒度與文件去重 | 依 Adapter 顯示 ES 內部融合／分路；跨 Query 與同 Query 均可安排；文件去重先定「每篇保留代表 Chunk」規則 | 分路支援範圍、文件代表如何選、需要每文件 N 個嗎；未核定不造完整支援 |
-| UI-03：Generation 最終清單 | 每個原始問題一份最終有效結果；多份時明確合併後才進 Generation | 是否接受以 Validator 要求明確合併，或另設多清單 Context 政策 |
+| 單 Query＋ES Hybrid | 一份已融合清單 | 略過兩層跨清單合併 → Rerank → Top 3 → Generation |
+| 多 Query＋ES Hybrid | 每 Query 一份清單 | Retrieval 後跨 Query RRF → 合併 Top N → Rerank → Top 3 |
+| 多 Query＋Local 多路 | 每 Query 有全文／向量清單 | 各 Query 內融合 → 跨 Query 融合 → 合併 Top N → Rerank → Top 3 |
+| 先逐 Query 評分 | 各 Query 內已完成融合 | Retrieval 後合併 Top N → 每 Query Rerank／Top N → 跨 Query RRF → 後置合併 Top N |
 
-以上項目由 Q-014／Q-025 追蹤，欄位與版本由 Q-002，服務限制由 Q-003；沒有重開已確認的「可設定合併時點」需求，也沒有以三個案例限制所有合法路徑。
+前三個採預設時機；第四個展示進階配置。這些案例不限制合法計畫只能選固定模板；實際支援能力由 Registry／Adapter 驗證。完整資料與 Python 範例見 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft)。
+
+## 5. 實作狀態與驗收
+
+Prototype v0.9 已有兩層時機、四處上限、卡控與清單數預覽，見 [10 §6](10_ui_adjustment_backlog.md#6-v09-實作細節展示預設與限制)；尚無真實 Engine 搜尋／融合。三份新資料 Schema 的 UI 遷移仍記 UIB-011～013。
+
+正式驗收須涵蓋：Chunk 共用格式與可取回欄位、各 Query／來源的分數血緣、ES 已融合邊界、兩個時機與四處上限、空結果、None 與文件去重、非法相依拒絕及有效計畫與執行結果一致。Q-002／Q-003／Q-011／Q-014 保留正式 Config、Adapter、同分與分數細節；未以 UI 展示當作後端驗收。

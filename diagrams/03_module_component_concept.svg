@@ -16,20 +16,17 @@ text{font-family:'Noto Sans CJK TC','Noto Sans TC',sans-serif;font-weight:400;te
 <g id="INFERENCE" class="frame" data-label="Inference"><rect x="70" y="680" width="2560" height="465" rx="14" fill="#f7fcfa" stroke="#a2c1b4" stroke-width="1.8"/><text class="section-title" x="95" y="712">Inference</text></g>
 <g id="IMPORT" class="frame" data-label="Import"><rect x="95" y="245" width="470" height="350" rx="14" fill="#fff" stroke="#9aafc9" stroke-width="1.8"/><text class="module-title" x="330.0" y="277">Import</text></g>
 <text x="330" y="305" font-size="19" fill="#66788b">預設提供的選項</text>
-<g id="IMPORT_B1" class="node builtin" data-label="檔案接收"><rect x="115" y="352.5" width="430" height="44" rx="11"/>
-<text x="330.0" y="374.5" font-size="23">檔案接收</text>
+<g id="IMPORT_B2" class="node builtin" data-label="JSON Ingestion"><rect x="115" y="380.0" width="430" height="44" rx="11"/>
+<text x="330.0" y="402.0" font-size="23">JSON Ingestion</text>
 </g>
-<g id="IMPORT_B2" class="node builtin" data-label="JSON records 接收"><rect x="115" y="407.5" width="430" height="44" rx="11"/>
-<text x="330.0" y="429.5" font-size="23">JSON records 接收</text>
-</g>
-<text x="330" y="495" font-size="19" fill="#66788b">多入口可同時提供</text>
+<text x="330" y="495" font-size="19" fill="#66788b">content / base64 / uri 三選一</text>
 <g id="IMPORT_CUSTOM" class="node custom" data-label="自訂 Importer"><rect x="115" y="515" width="430" height="55" rx="11"/>
 <text x="330.0" y="542.5" font-size="24">自訂 Importer</text>
 </g>
 <g id="PARSING" class="frame" data-label="Parsing"><rect x="605" y="245" width="470" height="350" rx="14" fill="#fff" stroke="#9aafc9" stroke-width="1.8"/><text class="module-title" x="840.0" y="277">Parsing</text></g>
 <text x="840" y="305" font-size="19" fill="#66788b">預設提供的選項</text>
-<g id="PARSING_B1" class="node builtin" data-label="Structured records Parser"><rect x="625" y="380.0" width="430" height="44" rx="11"/>
-<text x="840.0" y="402.0" font-size="23">Structured records Parser</text>
+<g id="PARSING_B1" class="node builtin" data-label="Structured JSON Parser"><rect x="625" y="380.0" width="430" height="44" rx="11"/>
+<text x="840.0" y="402.0" font-size="23">Structured JSON Parser</text>
 </g>
 <g id="PARSING_CUSTOM" class="node custom" data-label="自訂 Parser"><rect x="625" y="515" width="430" height="55" rx="11"/>
 <text x="840.0" y="542.5" font-size="24">自訂 Parser</text>

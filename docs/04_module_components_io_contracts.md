@@ -1,10 +1,10 @@
 # RAG Engine — 組裝、執行與模組開發規格
 
-> 文件集 v0.19 · 2026-10-16 · 開發規格草案
+> 文件同步：2026-10-31 · 開發規格草案（正式 SDK／Config 尚未凍結）
 >
 > 本文涵蓋可獨立執行的 Engine 與各模組；正式名詞定義見 [03 §3](../03_architecture_proposal.md#terminology)，共用資料／Config 結構見 05。既有產品語意為已確認方向，新增 SDK、Registry 形狀、執行政策為建議，須經對應 Q-ID 核定。本次未新增 Engine 程式。
 
-> 2026-10-28 補充 Module Developer 擴充規劃：本文負責 Engine 必須提供的機制與限制；[11 Component 開發指南](11_component_developer_guide.md) 負責開發、測試與交付流程。開放 Component 開發是需求方向，以下公開介面、套件結構及載入方式仍為設計草案；本輪不凍結 ParsedDocument 等待決 Schema。
+> 2026-10-28 補充 Module Developer 擴充規劃：本文負責 Engine 必須提供的機制與限制；[11 Component 開發指南](11_component_developer_guide.md) 負責開發、測試與交付流程。開放 Component 開發是需求方向，以下公開介面、套件結構及載入方式仍為設計草案；三份共用資料以 13～15 及 schemas/ 為現行草案基準，正式 SDK／版本凍結仍待 Q-002。
 
 ## 1. 目標與依賴邊界
 
@@ -24,7 +24,7 @@ Evaluation：重用相同檢索／問答入口的評估邏輯，任務排程與�
 
 | 元件 | 職責 | 依賴邊界 |
 |---|---|---|
-| `rag-engine-sdk`（暫名） | 共用 I/O 型別、各 Module 的公開介面、Config 驗證與受控 RunContext；另規劃契約測試工具 | 不依賴 Engine 私有實作或 Builder；資料形狀以 05 為準 |
+| `rag-engine-sdk`（暫名） | 共用 I/O 型別、各 Module 的公開介面、Config 驗證與受控 RunContext；另規劃契約測試工具 | 不依賴 Engine 私有實作或 Builder；資料總覽見 05，IngestionDocument／ParsedDocument／Chunk 精確定義見 13～15 |
 | `rag-engine`（暫名） | Registry、相容性驗證、Pipeline 組裝、生命週期、執行政策與資源管理 | 使用 SDK 契約，載入已安裝且核可的 Component package |
 | rag_engine 內的 Component package | 實作一個或多個 Module 的 Component，附設定、能力宣告、測試與說明 | 依賴 SDK 公開介面及自身必要套件；不依賴 Builder 或 Engine 私有類別 |
 
@@ -79,7 +79,7 @@ module_type: chunking
 implementation_version: 1.0.0
 contract_version: 0.1-draft
 requires: [document.string_field, tokenizer]
-provides: [chunk.fields, chunk.locations]
+provides: [chunk.fields, chunk.metadata._rag.source_refs]
 supports: {async: true, batch: true, streaming: false}
 ```
 
@@ -111,10 +111,10 @@ Package 版本與 Component 實作版本不一定一對一；一個 package 可�
 | Chunking | ParsedDocument 清單 | Chunk 清單，vectors={} | Tokenizer、必須繼承資訊 |
 | Embedding | Chunk 清單 | 相同成功 Chunk＋vectors | Profile、逐項錯誤；不回獨立 VectorSet |
 | Indexing | 帶向量或純文字的 Chunk 清單 | IndexBinding、逐項結果、可搜尋狀態 | 授權目標／刪除事件；提交政策待決 |
-| Query Transformation | 原始問題 | 原始問題＋SearchQuery 清單 | llm_ref、Prompt |
-| Retrieval | 原始問題、SearchQuery 清單、IndexBinding、filters | 基線為原始問題＋SearchHit 清單；可配置 Fusion Plan 需保留逐路候選，形狀待 Q-002／Q-014 | Query Encoding、可信授權範圍、query／route identity |
-| Rerank | 原始問題、SearchHit 清單 | 原始問題＋重排後 SearchHit 清單、applied | 模型服務與內容欄位 |
-| Generation | 原始問題、SearchHit 清單 | QueryResult | 共用 LLM、Context Budget |
+| Query Transformation | 含原始問題的 InferenceState／QueryContext | 保留 ori_query 的原始／衍生 QueryContext 與有效 Query 選擇 | llm_ref、Prompt；共同 Schema 見 05 §4.6 |
+| Retrieval | 有效 QueryContext、IndexBinding、filters | 各 Query 的有序 ResultSet；items 引用共用 Chunk | Query Encoding、可信授權範圍、query／route identity；按配置融合 |
+| Rerank | InferenceState 中選定 QueryContext／ResultSet | 新 model_score ResultSet，保留原始分數清單；None 不評分 | 模型服務、Query 來源與 Chunk.fields 內容；評分後 Top N |
+| Generation | 原始問題與最終有效 ResultSet 的 Chunk | QueryResult；平台回應／引用草案見 05／07 | 共用 LLM、模板與 Context Budget |
 | Evaluation | Dataset、Target | 逐題結果與指標摘要 | 版本綁定、Judge；工作儲存由 07 提供 |
 
 原始問題不被 Rewrite 覆蓋。新版不預設公開對話歷史；歷史若啟用需另訂契約，不因舊草案有 history 欄位就宣告已支援。
@@ -146,13 +146,13 @@ Timeout、重試預算、取消、partial 與 fallback 尚待 Q-009／Q-017／Q-
 
 ### 4.2 Parsing
 
-**目的與邊界**：原始內容由相容 Parser 解析；上游已解析內容由相容 Adapter 驗證／正規化，共同產生 ParsedDocument。不生成向量、不自動摘要；五個外層 key 的方向保留，實際結構仍待討論。
+**目的與邊界**：原始內容由相容 Parser 解析；上游已解析內容由相容 Adapter 驗證／正規化，共同產生 ParsedDocument。不生成向量、不自動摘要；輸出五鍵共用 ParsedDocument；structure={}、text-spans、page-blocks 或已註冊擴充，詳細規則見 14。
 
-**方法與派送**：Structured records 為預設方向；Native text、PDF／PPTX／其他模態需各自相容 Parser。可啟用多個 Component，依 media_type／必要 schema_id 自動派送，不要求一般使用者設定 Router；相同格式衝突才選預設或進階 parsing_profile。沒有相容 Parser、歧義或內容不符時明確報錯。首批套件與能力仍待 Q-005，不能因 UI 顯示選項就宣告可用。
+**方法與派送**：Structured JSON 為預設方向；Native text、PDF／PPTX／其他模態需各自相容 Parser。可啟用多個 Component，依 media_type／必要 schema_id 自動派送，不要求一般使用者設定 Router；相同格式衝突才選預設或進階 parsing_profile。沒有相容 Parser、歧義或內容不符時明確報錯。首批套件與能力仍待 Q-005，不能因 UI 顯示選項就宣告可用。
 
 **Input（D-45 已確認）**：與 API 單筆文件相同 Schema 的 IngestionDocument；可反序列化為相同 contract 的 SDK 物件，不轉成另一份 bytes-content envelope。Parser 透過 Engine 提供的共用 resolver 取得內容，Context 不是 API payload。正式 Python class、Context 屬性與執行簽名仍待 Q-002，見 [13 §4](13_ingestion_parser_input_contract.md#4-是否也是-parser-的-input)。
 
-**處理與相容**：輸出資料依 [ParsedDocument 0.1 草案](14_parsed_document_contract.md) 與 [共用 JSON Schema](../schemas/parsed_document.schema.json) 驗證；這是待核定契約，不表示本輪有正式 Parser。依 Component input schema 驗證內容，產生 fields 與 structure；已在 Builder 映射的欄位不重複映射。沒有結構時不可捏造頁碼／headings。一來源多文件須定義 ID 派生及來源位置。Parser 宣告輸出能力、Chunker 宣告所需結構／版本；共同 ParsedDocument 格式不保證所有 Chunker 適用，不默默丟棄結構。
+**處理與相容**：輸出資料依 [ParsedDocument 0.1 草案](14_parsed_document_contract.md) 與 [共用 JSON Schema](../schemas/parsed_document.schema.json) 驗證；這是待核定契約，不表示本輪有正式 Parser。依 Component input schema 驗證內容，產生 fields 與 structure；Builder 將 column 映射到 IngestionDocument.content／metadata；Parser 依相容格式正規化為 fields／structure，不重複要求使用者設定同一映射。沒有結構時不可捏造頁碼／headings。一來源多文件須定義 ID 派生及來源位置。Parser 宣告輸出能力、Chunker 宣告所需結構／版本；共同 ParsedDocument 格式不保證所有 Chunker 適用，不默默丟棄結構。
 
 **驗收方向**：原始與已解析輸入都能由相容 Component 處理；格式重疊／缺 Parser／缺 Chunker 結構有明確診斷；位置可追溯。損壞／加密檔案、掃描 OCR、讀取順序及空內容政策依 Q-005，不假裝可檢索成功。
 
@@ -317,21 +317,21 @@ result = Result.model_validate({"queries": [
 3. 建立每個 Query × 全文／向量欄位的路徑；向量路徑依其 Profile 使用 query encoding。
 4. 每路在合法候選範圍內取 per_route_k，保留實際回傳的 rank、分數、方向與命中 Query。若 Adapter 在 ES 內部完成融合，接收已融合的一份清單並記錄計分設定；不要求憑空還原未回傳的分項清單／排名。
 5. 轉換距離為越大越相關的 relevance；保留 query／route identity，依核定計畫及 chunk_id 對齊融合。
-6. 在計畫指定的最終合併點後才取最終 top_k；既有單層基線在 Rerank 前完成。若計畫在逐 Query Rerank 後才跨 Query 融合，不能提前攤平或套用全域截斷；各階段 K／N 由 Q-014 定義。
+6. 按四個已確認位置取上限：搜尋 Top K、Retrieval 後合併 Top N、模型評分後 Top N、Reranker 後合併 Top N。每個上限只作用於該步輸出的各清單；逐 Query Rerank 後才跨 Query 融合時，不能提前攤平成全域清單。
 7. 在 Rerank／Generation 使用候選前批次取回所需 fields／metadata，保留各路排序與身分；vectors 可省為 {}，下游無須知道 MongoDB 或 FAISS。
 
-**需求與基線要分開**：使用者在 2026-10-14 明確追問「在哪一步合併」，因此必須能表達融合策略及合併時點。v0.8 Prototype 的所有 Query × 欄位單層融合、Rerank 前執行只是歷史基線。v0.9 已提供 [10](10_ui_adjustment_backlog.md) 的兩層時點 UI 與有效計畫推導；未實作真正的搜尋／融合。單一路是否略過融合仍依有效計畫判斷，文件分組不以清單數量為必要條件。
+**實作狀態**：Prototype v0.9 已提供 [10](10_ui_adjustment_backlog.md) 的兩層時點 UI 與有效計畫推導；未實作真正的搜尋／融合。單一路是否略過融合仍依有效計畫判斷，文件分組不以清單數量為必要條件。
 
 已確認的 UI 範圍：同一 Query 多路合併、跨 Query 合併，各自可在 Retrieval 後或 Reranker 後執行；兩者新建預設勾選且在 Retrieval 後。先逐 Query Sum Score、再跨 Query RRF 是可表達情境。具體 stage 枚舉、分數方法、正式配置 Schema 與 Adapter 支援仍由 Q-014 核定，原型展示初值不等同新增產品決策。
 
-Engine 必須在計畫需要時保留 query_id／route_id、各路候選／分數／rank，不能先攤平成唯一 SearchHit 清單而丟失後續跨 Query 融合所需資訊。規格核定前可交付現有單層基線，但不得宣稱合併時點選擇已完成。
+Engine 必須在計畫需要時保留 query_id／route_id、各路候選／分數／rank，以 QueryContext／ResultSet 分開保存，不能先攤平成唯一清單而丟失後續跨 Query 融合所需資訊。最小實作可限制可用能力，但須明確標示，不能宣稱已完成所有合併路徑。
 
 2026-10-15 使用者進一步確認可自行決定在哪個合法步驟後融合，並要求先討論 Inference 的資料／評分紀錄。以 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft) 的 InferenceState／QueryContext／ResultSet 草案作為下一輪討論起點；具體型別未定案，不把說明用 Plan A／B 寫成唯一可用的固定流程。
 
-- Sum Score（現有單層基線預設）：`sum(weight × relevance_score)`；未命中該路為 0；同類型欄位及各 Query 共用全文／向量權重；不自動正規化。
+- Sum Score（ES 內部 Hybrid 預設；平台跨清單可另選）：`sum(weight × relevance_score)`；未命中該路為 0；來源權重與已核定轉換顯式配置；不因選 Sum Score 就默默正規化。
 - RRF：`sum(1 / (k + rank))`；各路 rank 從 1；預設 k=60。
 
-原始 BM25／向量分數尺度可能不同；現有單層基線採 Sum Score，不等於等權就有相同實際影響，也不預先決定新 Fusion Plan 的預設。距離轉換、同分順序、各路候選截斷的評估仍需 Q-011／Q-014。
+原始 BM25／向量分數尺度可能不同；等權 Sum Score 不代表相同實際影響。ES 內部計分與平台跨清單融合分開；後者原型預設 RRF，正式 Adapter 必須驗證分數可比性。距離轉換、同分順序、各路候選截斷的評估仍需 Q-011／Q-014。
 
 同文件片段分組不是 chunk_id 去重。max_chunks_per_document 仍待定。融合計畫的具體規格追蹤 Q-014：若先逐 Query Rerank 再跨 Query 融合，需定義 Rerank 的問題、每路 Top-N、跨路相同 Chunk 與分數比較，不能只搬動一條流程箭頭；Rerank=None 時也不能無聲丟掉必要融合。
 
@@ -351,7 +351,7 @@ Engine 必須在計畫需要時保留 query_id／route_id、各路候選／分�
 
 三者共用排序與 rank 更新，對外 ResultSet 永遠有序，rank 為從 1 起的連續整數；不輸出 rank=None。Top N 的輸入已排序，截取後仍符合此契約。共用排序按 score_order，平手規則仍待 Q-011／Q-014。每次建立新 ResultSet，保留選入來源；歷史結果不自動再參與，None 原樣傳遞 active 結果。
 
-ResultSet 是資料；下一步由邏輯 Config 的核定計畫驅動。operation 記錄已執行的方法而非下一步指令，source 可供來源策略與追溯，score_kind／score_order 提供分數語意。正式 DTO 與範例見 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft)。使用者要求的是可配置合法位置，不只固定 A／B 流程；[09](09_inference_contract_ui_plan.md) 提供尚待討論的順序式 UI 與來源選取方案。
+ResultSet 是資料；下一步由邏輯 Config 的核定計畫驅動。operation 記錄已執行的方法而非下一步指令，source 可供來源策略與追溯，score_kind／score_order 提供分數語意。正式 DTO 與範例見 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft)。使用者要求的是可配置合法位置，不只固定 A／B 流程；[09](09_inference_contract_ui_plan.md) 對照現行兩層合併與四處 Top N，正式 Config 細節仍見 Q-014。
 
 ### 5.3 Rerank
 
@@ -367,7 +367,7 @@ ResultSet 是資料；下一步由邏輯 Config 的核定計畫驅動。operatio
 
 這是平台契約，不是所有模型服務的通用標準。POST 路徑為選定 Base URL 下的 /rerank；其他格式需 Adapter。
 
-**處理（既有 API／原型基線，目標遷移見下段）**：按 content_fields 順序把每筆候選組成文字；保持候選 index 對照；驗證 index 唯一且在範圍內、score 有限；映回原 SearchHit。輸出只能是候選子集，不改文件／ACL。None 原樣傳遞且不使用 Top-N；實際候選少於 top_n 時取可用數量；零筆不呼叫服務。
+**處理**：從選定 ResultSet 的 Chunk.fields 取評分內容，保留候選 index 對照；驗證 index 唯一且在範圍內、score 有限，映回相同 Chunk，建立 model_score ResultSet，再排序與取平台設定的 Top N。原清單保留供追溯，不改文件／ACL 或生成新候選。None 不評分、不使用其評分後 Top N，但仍執行配置的後置融合；零筆不呼叫服務。服務端 top_n 與平台保留數的邊界如下。
 
 **驗收**：不生成新 chunk_id；重新 rank；保留原 Retrieval Trace。串接 Timeout／錯誤時不假裝 Rerank=None。
 
@@ -458,7 +458,7 @@ Module Developer 可針對各 Module 實作 Component；不再只把 Chunking／
 
 同一 Module 的公開 I/O 與語意由平台維護，Component 必須相容；Component 自身 Config 可以不同。可使用契約明定的擴充欄位或具名稱／版本的能力宣告，不能自行增改必要頂層 key、把字典任意形狀視為相容，或要求下游默默猜測結構。公開契約可經版本化演進，並非永遠不能改。
 
-ParsedDocument 的實際欄位／structure 尚待 [Q-002 子題](08_implementation_plan.md#parsed-document-schema-pending)；本輪沒有定案 blocks／page／Element 模型，也不新增直接匯入 Chunk／vectors 的入口。Inference 物件沿用 05 與 `inference-0.2-draft`，不得在開發指南另立第二套型別。
+IngestionDocument／ParsedDocument／Chunk 的現行草案分別引用 13／14／15 與 schemas/。ParsedDocument 已具體定義無結構、text-spans、page-blocks 與註冊擴充；正式版本／SDK 及細節凍結見 [Q-002](08_implementation_plan.md#parsed-document-schema-pending)。不新增直接匯入 Chunk／vectors 的入口。Inference 沿用 05 與 inference-0.2-draft，ResultItem 直接引用共用 Chunk，不另立第二套型別。
 
 ### 7.2 Component 必須宣告與配合的行為
 
@@ -509,7 +509,7 @@ DEV 與 FTEST／ENT 維持相同方法選擇／解析版本與邏輯 Config，�
 2026-10-28 已確認依 Schema／UI hints／相依規則規劃 Component 設定。具體描述與驗收案例集中於 [12](12_component_schema_ui_contract.md)，不在本文件另建第二套欄位定義；`component-ui-0.1-draft` 尚未凍結為正式 SDK／HTTP 契約。
 
 - Component 宣告 `config_type`，共用父類別提供 Schema 輸出，Registry 強制檢查；不要求每個 Component 重寫產生 Schema 的 abstract method。UI hints 可使用預設值，特殊控制項明確宣告必要功能。
-- Config Schema、動態選項／能力與跨欄位規則共同參與 Engine 驗證，UI／AI／Python／HTTP 不能各自維護不同的有效性規則。Config Schema 與 Module I/O Contract 分開，ParsedDocument 待決狀態不變。
+- Config Schema、動態選項／能力與跨欄位規則共同參與 Engine 驗證，UI／AI／Python／HTTP 不能各自維護不同的有效性規則。Config Schema 與 Module I/O Contract 分開；三份資料的既定語意及現行 Schema 由 13～15 維護，正式 SDK／版本凍結仍見 Q-002。
 - 取得 Component 描述不應初始化模型或外部服務；候選欄位／LLM／索引能力由 Engine 的版本化 Context 解析。目錄可用不代表真實連線／資料就緒已驗證。
 - 區分「不適用所以排除有效值」與「已選設定不合法所以阻擋」；UI 停用／收合不等於 Engine 可以略過必要驗證。相依失效保留原選擇，不自動換 Component 或搜尋路徑。
 

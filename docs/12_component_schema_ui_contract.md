@@ -20,15 +20,15 @@ Module Developer 宣告 Component 的參數、顯示需求及相依能力；Engi
 
 使用者可以繼續編輯無效草稿；這不等於允許儲存為可執行的 ConfigRevision。是否將編輯草稿持久化到 DB 仍依 Q-016／Q-025，既有正式儲存／套用驗證不能繞過。
 
-## 2. 三種 Schema 與責任邊界
+## 2. 三類描述與責任邊界
 
 | 描述 | 定義內容 | 權威來源 |
 |---|---|---|
-| Module I/O Contract | 執行資料的型別與語意，例如 ParsedDocument、Chunk、ResultSet | SDK／05；Component 必須符合 |
+| Module I/O Contract | 執行資料的型別與語意，例如 IngestionDocument、ParsedDocument、Chunk、ResultSet | 04 的接線、13～15／schemas/ 的資料定義、05 的 Inference；Component 必須符合 |
 | Component Config Schema | 特定方法的參數、型別、必填、預設值與限制 | Component 的 `config_type`；Engine 驗證 |
 | UI hints | 同一參數如何呈現、順序、進階區與控制項需求 | Component 宣告；Builder 轉換成前端控制項 |
 
-另外以能力、選項來源及相依規則描述可組裝條件；不能以 UI hints 改變 I/O Contract，或讓隱藏欄位跳過必要驗證。ParsedDocument／Chunk 已有 [14](14_parsed_document_contract.md)／[15](15_chunk_contract.md) 可驗證草案，正式凍結仍見 [Q-002](08_implementation_plan.md#q-002)。D-47 的 Chunking 預設直接使用 text，split／copy／多任務選項只在進階顯示；共用有效 Config 仍由 Engine 解析，隱藏欄位不免除必要驗證。
+上述為 I/O、設定及顯示三類描述，並非三份 Ingestion 資料 Schema。另以能力、選項來源及相依規則描述可組裝條件；不能以 UI hints 改變 I/O Contract，或讓隱藏欄位跳過必要驗證。ParsedDocument／Chunk 已有 [14](14_parsed_document_contract.md)／[15](15_chunk_contract.md) 可驗證草案，正式凍結仍見 [Q-002](08_implementation_plan.md#q-002)。D-47 的 Chunking 預設直接使用 text，split／copy／多任務選項只在進階顯示；共用有效 Config 仍由 Engine 解析，隱藏欄位不免除必要驗證。
 
 `rag_engine` 管理 SDK、Registry、Component 宣告、Config 編譯與驗證；`rag_platform` 經 Runtime API 取得資料並呈現表單，不安裝所有 Component packages。AI 助手／Python／CLI 使用同一 Engine 規則。Component 目錄／驗證 API 邊界見 [07 §5.8](07_backend_runtime_integration.md#runtime-capability-contract)。
 
@@ -80,7 +80,7 @@ class BaseComponent(ABC):
 
 class FixedChunkConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
-    source_field: str = Field(title="主要切分欄位")
+    source_field: str = Field(default="fields.text", title="主要切分欄位（進階）")
     tokenizer_ref: str = Field(title="Tokenizer")
     max_tokens: int = Field(default=500, ge=1, title="Chunk Token 上限")
     overlap_tokens: int = Field(default=50, ge=0, title="重疊 Token 數")
@@ -229,9 +229,9 @@ Schema 的條件必填必須與 applicability 分支一致；禁止一面無條�
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
     "additionalProperties": false,
-    "required": ["source_field", "tokenizer_ref"],
+    "required": ["tokenizer_ref"],
     "properties": {
-      "source_field": {"type": "string", "title": "主要切分欄位"},
+      "source_field": {"type": "string", "title": "主要切分欄位（進階）", "default": "fields.text"},
       "tokenizer_ref": {"type": "string", "title": "Tokenizer"},
       "max_tokens": {"type": "integer", "title": "Chunk Token 上限", "default": 500, "minimum": 1},
       "overlap_tokens": {"type": "integer", "title": "重疊 Token 數", "default": 50, "minimum": 0}
@@ -239,6 +239,7 @@ Schema 的條件必填必須與 applicability 分支一致；禁止一面無條�
   },
   "ui_hints": {
     "order": ["/source_field", "/tokenizer_ref", "/max_tokens", "/overlap_tokens"],
+    "groups": [{"id": "field_mapping", "title": "進階欄位設定", "fields": ["/source_field"], "advanced": true}],
     "fields": {
       "/source_field": {"widget": "field_picker", "option_source": "text_fields"},
       "/tokenizer_ref": {"widget": "service_picker", "option_source": "tokenizers"}
@@ -264,7 +265,7 @@ Schema 的條件必填必須與 applicability 分支一致；禁止一面無條�
 }
 ```
 
-使用者選 Fixed-size 後看到兩個候選選擇器及兩個數值欄位；沒有 Prompt、Markdown 標題層級或分隔符。`source_field` 的值可為 fields.text，但實際候選需通過該 System 的 Schema／來源階段檢查。Tokenizer profile 只是穩定引用，不假設使用付費 API，也不由此範例決定 tokenizer 方法。
+使用者選 Fixed-size 後，基本區只顯示 Tokenizer 與兩個數值欄位，預設使用 fields.text；來源欄位選擇收在進階區。實際候選需通過 System Schema／來源階段檢查。這是單一任務的設定描述示意，完整有序任務與 copy 映射見 15；Config 編譯時將 fields.text 解析為有效切分 spec 中的 text，不另訂第二種執行欄位格式。Tokenizer profile 只是穩定引用，不假設使用付費 API，也不由此範例決定 tokenizer 方法。
 
 ## 10. Runtime 回傳、定位與版本
 

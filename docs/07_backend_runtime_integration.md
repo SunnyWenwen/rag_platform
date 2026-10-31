@@ -1,6 +1,6 @@
 # RAG Builder — Backend、Runtime API 與整體串接規格
 
-> 文件集 v0.19 · 2026-10-16 · 開發規格草案
+> 文件同步：2026-10-31 · 開發規格草案（正式 SDK／Config 尚未凍結）
 >
 > 本文包裝 04 的 Engine，負責管理、HTTP、任務、持久化與交付。Endpoint 大方向沿用既有提案；精確 Envelope、認證、狀態與儲存細節為建議，依 Q-ID 核定後實作。
 
@@ -101,7 +101,7 @@ Backend 儲存前以有效設定比較，依 05 判定影響；UI 與 AI 都不�
 
 以下路徑沿用原提案，完整 OpenAPI／認證／欄位 Q-019：
 
-| Component | Path | 責任 |
+| HTTP method | Path | 責任 |
 |---|---|---|
 | POST | /api/rag-systems | 在授權 Workspace 建立 System |
 | POST | /api/rag-systems/{id}/config:validate | Schema／相依驗證，回傳模組及欄位錯誤 |
@@ -114,7 +114,7 @@ System 列表／讀取、Workspace／Dataset CRUD、AI suggestion／連線檢查
 
 ### 5.2 Runtime API
 
-| Component | Path | 行為 |
+| HTTP method | Path | 行為 |
 |---|---|---|
 | POST | /v1/ingestions | JSON-only：扁平文件輸入草案見 13；批次包裝待定；202 回 run_id、status、config_revision |
 | GET | /v1/ingestions/{run_id} | 工作狀態、進度、逐項錯誤及就緒資訊 |
@@ -126,7 +126,7 @@ System 列表／讀取、Workspace／Dataset CRUD、AI suggestion／連線檢查
 
 ### 5.3 JSON Ingestion
 
-2026-10-29 更新：Runtime 只提供 JSON Ingestion。單筆文件以 document_id＋content／base64／uri 三選一表示，欄位與解析責任見 [13](13_ingestion_parser_input_contract.md)，機器可讀 [JSON Schema](../schemas/ingestion_document.schema.json)。以下為單筆 request body 草案；批次容器、上限及 partial 政策待 Q-019，舊 records[].fields 不作新設計的隱含相容別名。
+2026-10-29 更新：Runtime 只提供 JSON Ingestion。單筆文件以 document_id＋content／base64／uri 三選一表示，欄位與解析責任見 [13](13_ingestion_parser_input_contract.md)，機器可讀 [JSON Schema](../schemas/ingestion_document.schema.json)。以下為單筆 request body 草案；批次容器、上限及 partial 政策待 Q-019，每筆文件驗證同一份 IngestionDocument；批次不能另定不同的文件形狀。
 
 ```json
 {
@@ -138,6 +138,18 @@ System 列表／讀取、Workspace／Dataset CRUD、AI suggestion／連線檢查
 ```
 
 content 由相容 Parser 轉成 ParsedDocument.fields；可接收已解析內容，但須符合對應 schema／Adapter，ParsedDocument 已有 [0.1 JSON Schema 草案與固定官方輸出驗證](14_parsed_document_contract.md)，尚未凍結；不代表 Runtime 已載入這些 Parser。API 外層不直接宣告 fields／structure／vectors。**API 與 Parser Input 使用同一份 IngestionDocument JSON Schema（D-45）**，Parser 專屬內容限制再驗證。Parser 透過 SDK 共用 resolver 取得／解碼內容，不另要求轉成另一份 ParserInput；Context 為 Engine 注入的執行資源，不是 HTTP body。
+
+Runtime 驗證分層，不以 API 外層通過就宣稱資料可搜尋：
+
+| 交接位置 | 必須檢查 |
+|---|---|
+| 接收／Import → Parser | 13 的共同外層、單一來源、授權／資源限制及 Parser 專屬內容／路由能力 |
+| Parser → Chunking | 14 的五鍵 Schema、結構／位置語意、System 欄位宣告及 Chunker 相容能力 |
+| Chunking → Embedding | 15 的六鍵 Schema、來源身分、有效 metadata、來源 refs／切分計畫、必要任務非零產出；vectors={} |
+| Embedding → Indexing | 同一 Chunk，命名向量 values／Profile／來源／維度與 Binding 一致；純全文可略過 Embedding |
+| 索引發布 → Retrieval | 完整 Chunk 的保存與可查詢版本狀態；回傳投影可 vectors={}，不能丟失下游所需內容或可信引用 |
+
+錯誤須含模組、文件及可定位欄位／task_id。Partial、索引提交原子性與 HTTP 錯誤包裝仍待 Q-009／Q-019，不以參考資料驗證器取代正式執行政策。
 
 ```json
 {"run_id":"ing-001","status":"queued","config_revision":"C1-example"}
@@ -158,12 +170,12 @@ Builder 上傳管理端點、暫存儲存與下載授權／生命週期尚待 Q-
 ```json
 {
   "run_id":"ing-001","status":"completed","config_revision":"C1-example",
-  "processed_records":1,"total_records":1,
+  "processed_documents":1,"total_documents":1,
   "searchable":true,"errors":[]
 }
 ```
 
-processed_records／total_records 指解析後的邏輯文件數，不是 Chunk 數；可另有模組層 Chunk 計數。檔案尚未解析完時 total 可能未知，不能偽造固定百分比。正式未知計數表示、partial 狀態與 searchable 是否在本回應返回見 Q-002／Q-009／Q-019。
+processed_documents／total_documents 在此回應草案指解析後的邏輯文件數，不是 Chunk 數；可另有模組層 Chunk 計數。檔案尚未解析完時 total 可能未知，不能偽造固定百分比。正式未知計數表示、partial 狀態與 searchable 是否在本回應返回見 Q-002／Q-009／Q-019。
 
 ### 5.6 Query
 

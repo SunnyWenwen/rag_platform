@@ -1,5 +1,6 @@
 flowchart TB
     %% 固定 SVG／PNG：上排 Ingestion、下排 Inference；每個內建選項獨立一格。
+    %% API／Import／Parser 共用 IngestionDocument；content／base64／uri 三選一，內容由 SDK resolver 取得。
     %% 選項是目標規劃；None 是略過，服務來源及搜尋模式不另列 Component。
     subgraph ENGINE["RAG Engine｜全部 Modules 的內建與擴充 Components"]
         direction TB
@@ -7,13 +8,12 @@ flowchart TB
             direction LR
             subgraph IMPORT["Import"]
                 direction TB
-                IMPORT_B1["檔案接收"]
-                IMPORT_B2["JSON records 接收"]
+                IMPORT_B2["JSON Ingestion"]
                 IMPORT_CUSTOM["自訂 Importer"]
             end
             subgraph PARSING["Parsing"]
                 direction TB
-                PARSING_B1["Structured records Parser"]
+                PARSING_B1["Structured JSON Parser"]
                 PARSING_CUSTOM["自訂 Parser"]
             end
             subgraph CHUNKING["Chunking"]
@@ -90,7 +90,7 @@ flowchart TB
     classDef custom fill:#eee9fa,stroke:#9380bf,color:#443267
     classDef delivery fill:#fff5e5,stroke:#cf9b4a,color:#624516
     classDef builder fill:#ecf8f2,stroke:#599d85,color:#153f32
-    class IMPORT_B1,IMPORT_B2,PARSING_B1,CHUNKING_B1,CHUNKING_B2,CHUNKING_B3,EMBEDDING_B1,INDEXING_B1,INDEXING_B2,QUERY_B1,QUERY_B2,QUERY_B3,RETRIEVAL_B1,RETRIEVAL_B2,RERANK_B1,RERANK_B2,GENERATION_B1,EVALUATION_B1,EVALUATION_B2,EVALUATION_B3,EVALUATION_B4,EVALUATION_B5,EVALUATION_B6,EVALUATION_B7 builtin
+    class IMPORT_B2,PARSING_B1,CHUNKING_B1,CHUNKING_B2,CHUNKING_B3,EMBEDDING_B1,INDEXING_B1,INDEXING_B2,QUERY_B1,QUERY_B2,QUERY_B3,RETRIEVAL_B1,RETRIEVAL_B2,RERANK_B1,RERANK_B2,GENERATION_B1,EVALUATION_B1,EVALUATION_B2,EVALUATION_B3,EVALUATION_B4,EVALUATION_B5,EVALUATION_B6,EVALUATION_B7 builtin
     class IMPORT_CUSTOM,PARSING_CUSTOM,CHUNKING_CUSTOM,EMBEDDING_CUSTOM,INDEXING_CUSTOM,QUERY_CUSTOM,RETRIEVAL_CUSTOM,RERANK_CUSTOM,GENERATION_CUSTOM,EVALUATION_CUSTOM,DEV custom
     class CHECK,UPDATE delivery
     class UI builder
