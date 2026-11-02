@@ -13,9 +13,10 @@ from remote_adapter import RemoteApiParser
 from remote_service import app
 
 ROOT = Path(__file__).resolve().parents[2]
-PAYLOAD = {"document_id": "manual-001", "source_revision": "v1",
-           "content": {"text": "清潔前先斷電。", "title": "設備手冊", "page": 1},
-           "metadata": {"department": "IT"}}
+HERE = Path(__file__).parent
+PAYLOAD = json.loads((HERE / "multi_page_input.json").read_text())
+EXPECTED = json.loads((HERE / "multi_page_output.json").read_text())
+
 
 
 class Contracts(unittest.TestCase):
@@ -60,16 +61,37 @@ class EndToEnd(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(expected.data,remote.data)
             output=remote.data[0].model_dump(mode='json')
             Draft202012Validator(json.loads((ROOT/'schemas/parsed_document.schema.json').read_text())).validate(output)
-            self.assertEqual(output['units'],[PAYLOAD['content']])
+            self.assertEqual([d.model_dump(mode='json') for d in remote.data],EXPECTED)
+            self.assertEqual([u['page'] for u in output['units']],[1,2])
+            self.assertTrue(all('=== PAGE' not in u['text'] for u in output['units']))
             self.assertEqual(output['metadata'],PAYLOAD['metadata'])
             for payload in ({**PAYLOAD,'source_revision':None}, {**PAYLOAD,'uri':'https://example.com'}):
                 self.assertEqual((await client.post('/parse',json=payload)).status_code,422)
             self.assertEqual((await client.post('/parse',json={'document_id':'a','source_revision':'v1','uri':'https://example.com/file'})).status_code,400)
             self.assertEqual((await client.post('/parse',json={'document_id':'a','content':'text'})).status_code,400)
 
+    async def test_page_policy_and_plain_text_regression(self):
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app),base_url='http://parser') as client:
+            for content in ("沒有頁面標記的文字", {"text":"沒有頁面標記的文字", "page":7}):
+                value={"document_id":"plain","source_revision":"v1","content":content}
+                local=await StructuredJsonParser().run(IngestionDocument.model_validate(value),RunContext('plain'))
+                remote=(await client.post('/parse',json=value)).json()
+                self.assertEqual([d.model_dump(mode='json') for d in local.data],remote)
+                self.assertEqual(len(remote[0]['units']),1)
+            for content in (
+                {"text":"preamble\n=== PAGE 1 ===\nA"},
+                {"text":"=== PAGE 1 ===\nA\n=== PAGE 1 ===\nB"},
+                {"text":"=== PAGE 2 ===\nA\n=== PAGE 1 ===\nB"},
+                {"text":"=== PAGE 1 ===\n \n=== PAGE 2 ===\nB"},
+                {"text":PAYLOAD['content']['text'],"page":99},
+            ):
+                value={"document_id":"bad-page","source_revision":"v1","content":content}
+                with self.assertRaises(ValueError): await StructuredJsonParser().run(IngestionDocument.model_validate(value),RunContext('bad'))
+                self.assertEqual((await client.post('/parse',json=value)).status_code,400)
+
     async def test_adapter_forwards_only_wire_input_and_validates_response(self):
         data=IngestionDocument.model_validate(PAYLOAD)
-        good={"document_id":"manual-001","source_revision":"v1","units":[PAYLOAD['content']],"metadata":PAYLOAD['metadata']}
+        good=deepcopy(EXPECTED[0])
         async def valid(request):
             self.assertEqual(json.loads(request.content),PAYLOAD)
             self.assertEqual(request.headers['X-Request-ID'],'trace-1')
@@ -87,3 +109,4 @@ class EndToEnd(unittest.IsolatedAsyncioTestCase):
 
 
 if __name__=='__main__':unittest.main(verbosity=2)
+

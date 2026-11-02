@@ -7,11 +7,11 @@
 | 開發方式 | Developer 做什麼 | 對應 04 圖 |
 |---|---|---|
 | Local Component | 依 SDK 的 Parser ABC 實作，提交原始碼並納入 Library／Runtime Image | 01 Local Component |
-| Remote API | 自行實作符合契約的 Parser API，不要求提交原始碼或依賴 ABC；Runtime 內由我們的 Adapter 呼叫 | 02 Image Deployment、03 External Endpoint |
+| Remote API | 自行實作符合契約的 Parser API，不要求提交原始碼或依賴 ABC；Runtime 內由 Retrieval Builder 提供的 Remote API Adapter 呼叫 | 02 Image Deployment、03 External Endpoint |
 
-Remote 的兩種交付方式使用相同 API：Image 模式附部署描述，由使用單位部署；Endpoint 模式由 Developer 自行部署，我們只綁定連線。**開發模式有兩種，交付模式有三種。**
+Remote 的兩種交付方式使用相同 API：Image 模式附部署描述，由使用單位部署；Endpoint 模式由 Developer 自行部署，使用單位只需綁定連線。**開發模式有兩種，交付模式有三種。**
 
-本例共同邏輯：輸入一筆文字／JSON 紀錄，輸出一份文件、其中一個 Unit。不做切分、不產生向量；Chunker 後續再逐 Unit 切分。
+本例共同邏輯：輸入一筆 JSON，content.text 是包含兩頁內容的單一字串；Parser 辨識頁面後輸出一份 ParsedDocument、其中兩個 Unit。不做 Token 長度切分、不產生向量；Chunker 後續再逐 Unit 切分。
 
 ## 2. 共用 Pydantic Contract：先給一版具體型別
 
@@ -49,31 +49,77 @@ class ParsedDocument(BaseModel):
 - 共用 ParsedDocument 不強制一定有 text，以保留進階欄位選擇；本示範 Parser 的能力另外要求非空白 text。
 - 形狀驗證與語意驗證分開。本例另外檢查只輸出一份文件、文件 ID／revision 與 metadata 繼承；一般 Parser 仍可輸出多文件，但需另有明確 ID 派生政策。
 
-### 同一組 Input／Output
+### 同一組 Input／Output：一個多頁字串 → 多個 Unit
 
-Parser Input 就是 API 接收的 IngestionDocument，不另建 ParserInput：
+Parser Input 仍是 IngestionDocument；text 是 **一個 str**，不是預先切好的 page array。本例用獨立一行的 `=== PAGE N ===` 明確表示頁面邊界，方便示範 Parser 如何辨識頁面。這是本示範 Parser 的文字格式約定，不是平台共用 Schema 的新規定，也不代表所有 PDF 匯出的文字都有這種標記。
+
+完整 [輸入 JSON](../examples/component_development/multi_page_input.json)：
 
 ```json
 {
   "document_id": "manual-001",
   "source_revision": "v1",
-  "content": {"text": "清潔前先斷電。", "title": "設備手冊", "page": 1},
-  "metadata": {"department": "IT"}
+  "content": {
+    "text": "=== PAGE 1 ===\n# 設備保養\n## 安全注意事項\n清潔前先斷電，並確認設備已冷卻。\n作業時請配戴防護手套。\n\n=== PAGE 2 ===\n# 設備保養\n## 清潔週期\n每月清潔散熱孔。\n若環境粉塵較多，請提高檢查頻率。",
+    "title": "設備保養手冊"
+  },
+  "metadata": {
+    "department": "manufacturing",
+    "filename": "maintenance-manual.pdf"
+  }
 }
 ```
 
-Parser 業務 Output 是 **list[ParsedDocument]**；即使只有一份，也回傳列表：
+為方便閱讀，content.text 展開如下：
+
+```text
+=== PAGE 1 ===
+# 設備保養
+## 安全注意事項
+清潔前先斷電，並確認設備已冷卻。
+作業時請配戴防護手套。
+
+=== PAGE 2 ===
+# 設備保養
+## 清潔週期
+每月清潔散熱孔。
+若環境粉塵較多，請提高檢查頻率。
+```
+
+輸出仍為 **list[ParsedDocument]**；一份文件內有兩個 Unit，並不是拆成兩份文件。完整 [輸出 JSON](../examples/component_development/multi_page_output.json)：
 
 ```json
 [
   {
     "document_id": "manual-001",
     "source_revision": "v1",
-    "units": [{"text": "清潔前先斷電。", "title": "設備手冊", "page": 1}],
-    "metadata": {"department": "IT"}
+    "units": [
+      {
+        "text": "# 設備保養\n## 安全注意事項\n清潔前先斷電，並確認設備已冷卻。\n作業時請配戴防護手套。",
+        "title": "設備保養手冊",
+        "page": 1
+      },
+      {
+        "text": "# 設備保養\n## 清潔週期\n每月清潔散熱孔。\n若環境粉塵較多，請提高檢查頻率。",
+        "title": "設備保養手冊",
+        "page": 2
+      }
+    ],
+    "metadata": {
+      "department": "manufacturing",
+      "filename": "maintenance-manual.pdf"
+    }
   }
 ]
 ```
+
+本例處理規則：
+
+1. Parser 辨識頁面標記，取出頁碼與頁面文字，移除標記及頁面文字頭尾空白，頁內 Markdown 標題保留。
+2. 每頁產生一個 Unit；title 等其他 content 欄位複製到各 Unit，page 由標記推導。document_id、source_revision 及文件 metadata 保留。
+3. 頁碼必須為正整數、唯一且遞增，允許有間隔；有效標記前有未歸屬文字、空白頁，或同時提供 content.page，都明確報錯，不自行猜測或覆寫。本示範不處理任意／損壞的分頁標記。
+4. 沒有分頁標記時沿用原行為：文字／單筆 JSON 產生一個 Unit。實際 PDF、PPT 或 OCR 的頁面辨識由相應 Parser 實作。
+5. Chunker 不再辨識頁面標記；它只在每個 Unit 內以所選文字策略切分，不跨 Unit 合併。page、title 要供下游使用時，仍依 Chunking 的 copy 設定帶入 Chunk.fields。
 
 本例要求明確提供 source_revision，省略時回明確錯誤，不自行假設 v1。共同 Input 仍允許省略；正式自動產生政策依 Q-007。本例只支援直接 content 的文字／單筆 JSON，不支援 URI、Base64、PDF 或已解析 content.units；那些必須選用有宣告能力的 Parser。這不是移除共同輸入的來源選項。
 
@@ -112,7 +158,7 @@ class StructuredJsonParser(ParserComponent):
         return ModuleResult(data=documents)
 ```
 
-parse_structured_json() 把文字變成 {"text": ...}，或保留 JSON record 的內容欄位，放入一個 Unit，並繼承版本與 metadata。演算法示意在 [parser_logic.py](../examples/component_development/parser_logic.py)，與共用型別分開。
+parse_structured_json() 辨識 text 中的示範分頁標記，產生多個 Unit；未分頁則保留單一 Unit。此處按頁辨識內容單位，不是依 Token 長度切 Chunk，且不跨頁合併。演算法示意在 [parser_logic.py](../examples/component_development/parser_logic.py)，與共用型別分開。
 
 Engine 取 ModuleResult.data 傳下游；ModuleResult 是本地 SDK 包裝，不是 ParsedDocument 的根欄位。示範 RunContext 只有 request_id；正式受控資源、metrics／errors、初始化及清理介面仍依 [04](04_module_components_io_contracts.md)／[11](11_component_developer_guide.md) 凍結，不把本教學 dataclass 當完整 SDK。
 
@@ -139,7 +185,7 @@ async def parse(data: IngestionDocument) -> list[ParsedDocument]:
 
 此示範 HTTP 約定：POST /parse，JSON body 直接是 IngestionDocument，200 body 直接是 list[ParsedDocument]；不包 ModuleResult／data，也不要求傳 RunContext。FastAPI 的輸入驗證錯誤為 422，本例不支援的來源／未提供版本為 400；**狀態碼與錯誤 Envelope 尚非全平台正式協定**。
 
-### 我們提供的 Remote API Adapter
+### Retrieval Builder 提供的 Remote API Adapter
 
 [remote_adapter.py](../examples/component_development/remote_adapter.py) 仍實作本地 Parser ABC，讓 Engine 使用相同呼叫方式：
 
@@ -195,3 +241,4 @@ python -m venv .venv-demo
 ```
 
 測試會以本地 ASGI Transport 跑 FastAPI 與 Remote Adapter，對照 Local 輸出；不呼叫外部模型／服務，也不代表已完成 Image 部署、Secret 管理或正式 Exporter。Shared Schema、Pydantic、HTTP 回應形狀與語意的相容性，都應列為正式 Component 驗收材料。
+

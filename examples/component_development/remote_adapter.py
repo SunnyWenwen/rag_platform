@@ -1,4 +1,4 @@
-"""Platform-owned adapter: local ABC implementation, remote algorithm execution."""
+"""Retrieval Builder-provided adapter: local ABC, remote algorithm execution."""
 import httpx
 from pydantic import TypeAdapter
 from contracts import IngestionDocument, ParsedDocument, validate_structured_json_output
@@ -28,3 +28,4 @@ class RemoteApiParser(ParserComponent):
         # The remote service is not trusted to validate its own output.
         validate_structured_json_output(data, documents)
         return ModuleResult(data=documents)
+

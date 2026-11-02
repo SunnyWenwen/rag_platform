@@ -1,0 +1,22 @@
+[
+  {
+    "document_id": "manual-001",
+    "source_revision": "v1",
+    "units": [
+      {
+        "text": "# 設備保養\n## 安全注意事項\n清潔前先斷電，並確認設備已冷卻。\n作業時請配戴防護手套。",
+        "title": "設備保養手冊",
+        "page": 1
+      },
+      {
+        "text": "# 設備保養\n## 清潔週期\n每月清潔散熱孔。\n若環境粉塵較多，請提高檢查頻率。",
+        "title": "設備保養手冊",
+        "page": 2
+      }
+    ],
+    "metadata": {
+      "department": "manufacturing",
+      "filename": "maintenance-manual.pdf"
+    }
+  }
+]
