@@ -111,6 +111,34 @@ class ModelTests(unittest.TestCase):
             ParsedDocument.model_validate(doc)
         validate_chunk_binding(Chunk.model_validate(examples['chunk_after_embedding']),IndexBinding.model_validate(examples['index_binding_PROPOSAL']))
 
+    def test_each_public_type_has_an_executable_example(self):
+        from typed_examples import TYPE_EXAMPLES, chunk, parsed_doc, index_binding, inference_state
+        self.assertEqual(set(TYPE_EXAMPLES), {model.__name__ for model in PUBLIC_MODELS} | {'ModuleResult'})
+        snapshots=json.loads(Path(__file__).with_name('examples.json').read_text())['type_examples']
+        for name, value in TYPE_EXAMPLES.items():
+            with self.subTest(type=name):
+                payload=value.to_payload()
+                self.assertEqual(type(value).model_validate_json(json.dumps(payload)).to_payload(), payload)
+                self.assertEqual(snapshots[name],payload)
+        for name, schema_name in [('IngestionDocument','ingestion_document'), ('ParsedDocument','parsed_document'),
+                                  ('Chunk','chunk'), ('InferenceState','inference_context')]:
+            schema=json.loads((ROOT/'schemas'/f'{schema_name}.schema.json').read_text())
+            Draft202012Validator(schema,registry=registry()).validate(snapshots[name])
+        validate_chunk_binding(chunk,index_binding)
+        for context in inference_state.query_contexts:
+            by_id={rs.result_set_id:rs for rs in context.result_sets}
+            for rs in context.result_sets:
+                validate_result_order(rs)
+                for parent_id in rs.input_result_set_ids:self.assertIn(parent_id,by_id)
+                for item in rs.items:
+                    for ref in item.source_refs:
+                        self.assertIn(ref.result_set_id,rs.input_result_set_ids)
+                        self.assertIn(ref.chunk_id,{i.chunk.chunk_id for i in by_id[ref.result_set_id].items})
+        for ref in chunk.metadata['_rag']['source_refs']:
+            original=parsed_doc.units[ref['unit_index']][ref['field']]
+            expected=original[ref['start']:ref['end']] if ref['role']=='split' else original
+            self.assertEqual(chunk.fields[ref['output_field']],expected)
+
     def test_generated_catalog_and_module_result(self):
         from pydantic.json_schema import models_json_schema
         _,schema=models_json_schema([(m,'validation') for m in PUBLIC_MODELS])
@@ -121,3 +149,4 @@ class ModelTests(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main(verbosity=2)
+

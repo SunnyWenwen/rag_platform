@@ -643,5 +643,735 @@
         "q-original"
       ]
     }
+  },
+  "type_examples": {
+    "IngestionDocument": {
+      "document_id": "manual-001",
+      "source_revision": "v1",
+      "content": {
+        "title": "設備保養手冊",
+        "text": "=== PAGE 1 ===\n清潔前先斷電。\n=== PAGE 2 ===\n每月清潔散熱孔。"
+      },
+      "media_type": "application/json",
+      "metadata": {
+        "department": "製造部",
+        "filename": "maintenance.txt"
+      }
+    },
+    "ParsedDocument": {
+      "document_id": "manual-001",
+      "source_revision": "v1",
+      "units": [
+        {
+          "text": "清潔前先斷電。",
+          "title": "設備保養手冊",
+          "page": 1
+        },
+        {
+          "text": "每月清潔散熱孔。",
+          "title": "設備保養手冊",
+          "page": 2
+        }
+      ],
+      "metadata": {
+        "department": "製造部",
+        "filename": "maintenance.txt"
+      }
+    },
+    "DenseVector": {
+      "values": [
+        0.1,
+        0.2,
+        0.3
+      ],
+      "embedding_profile_id": "embedding-demo-v1",
+      "source_field": "text"
+    },
+    "Chunk": {
+      "chunk_id": "chunk-demo-001",
+      "document_id": "manual-001",
+      "source_revision": "v1",
+      "fields": {
+        "text": "清潔前先斷電。",
+        "title": "設備保養手冊",
+        "page": 1
+      },
+      "metadata": {
+        "department": "製造部",
+        "filename": "maintenance.txt",
+        "_rag": {
+          "source_refs": [
+            {
+              "unit_index": 0,
+              "field": "text",
+              "output_field": "text",
+              "role": "split",
+              "start": 0,
+              "end": 7
+            },
+            {
+              "unit_index": 0,
+              "field": "title",
+              "output_field": "title",
+              "role": "copy"
+            },
+            {
+              "unit_index": 0,
+              "field": "page",
+              "output_field": "page",
+              "role": "copy"
+            }
+          ],
+          "chunking": {
+            "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+            "chunk_ordinal": 0,
+            "task_id": "text"
+          }
+        }
+      },
+      "vectors": {
+        "text": {
+          "values": [
+            0.1,
+            0.2,
+            0.3
+          ],
+          "embedding_profile_id": "embedding-demo-v1",
+          "source_field": "text"
+        }
+      }
+    },
+    "ResultSourceRef": {
+      "result_set_id": "rs-retrieval",
+      "chunk_id": "chunk-demo-001"
+    },
+    "ResultItem": {
+      "chunk": {
+        "chunk_id": "chunk-demo-001",
+        "document_id": "manual-001",
+        "source_revision": "v1",
+        "fields": {
+          "text": "清潔前先斷電。",
+          "title": "設備保養手冊",
+          "page": 1
+        },
+        "metadata": {
+          "department": "製造部",
+          "filename": "maintenance.txt",
+          "_rag": {
+            "source_refs": [
+              {
+                "unit_index": 0,
+                "field": "text",
+                "output_field": "text",
+                "role": "split",
+                "start": 0,
+                "end": 7
+              },
+              {
+                "unit_index": 0,
+                "field": "title",
+                "output_field": "title",
+                "role": "copy"
+              },
+              {
+                "unit_index": 0,
+                "field": "page",
+                "output_field": "page",
+                "role": "copy"
+              }
+            ],
+            "chunking": {
+              "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+              "chunk_ordinal": 0,
+              "task_id": "text"
+            }
+          }
+        },
+        "vectors": {
+          "text": {
+            "values": [
+              0.1,
+              0.2,
+              0.3
+            ],
+            "embedding_profile_id": "embedding-demo-v1",
+            "source_field": "text"
+          }
+        }
+      },
+      "score": 0.95,
+      "rank": 1,
+      "source_refs": [
+        {
+          "result_set_id": "rs-retrieval",
+          "chunk_id": "chunk-demo-001"
+        }
+      ]
+    },
+    "RetrievalSource": {
+      "route_id": "es-hybrid",
+      "index_ref": "idx-demo",
+      "field_paths": [
+        "fields.text",
+        "vectors.text"
+      ]
+    },
+    "Operation": {
+      "method": "cross_encoder",
+      "parameters": {
+        "field": "fields.text"
+      },
+      "model_ref": "rerank-demo-v1",
+      "scoring_query_id": "q-original"
+    },
+    "ResultSet": {
+      "result_set_id": "rs-rerank",
+      "stage": "model_score",
+      "input_result_set_ids": [
+        "rs-retrieval"
+      ],
+      "source": null,
+      "operation": {
+        "method": "cross_encoder",
+        "parameters": {
+          "field": "fields.text"
+        },
+        "model_ref": "rerank-demo-v1",
+        "scoring_query_id": "q-original"
+      },
+      "score_kind": "reranker_score",
+      "score_order": "higher_is_better",
+      "items": [
+        {
+          "chunk": {
+            "chunk_id": "chunk-demo-001",
+            "document_id": "manual-001",
+            "source_revision": "v1",
+            "fields": {
+              "text": "清潔前先斷電。",
+              "title": "設備保養手冊",
+              "page": 1
+            },
+            "metadata": {
+              "department": "製造部",
+              "filename": "maintenance.txt",
+              "_rag": {
+                "source_refs": [
+                  {
+                    "unit_index": 0,
+                    "field": "text",
+                    "output_field": "text",
+                    "role": "split",
+                    "start": 0,
+                    "end": 7
+                  },
+                  {
+                    "unit_index": 0,
+                    "field": "title",
+                    "output_field": "title",
+                    "role": "copy"
+                  },
+                  {
+                    "unit_index": 0,
+                    "field": "page",
+                    "output_field": "page",
+                    "role": "copy"
+                  }
+                ],
+                "chunking": {
+                  "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+                  "chunk_ordinal": 0,
+                  "task_id": "text"
+                }
+              }
+            },
+            "vectors": {
+              "text": {
+                "values": [
+                  0.1,
+                  0.2,
+                  0.3
+                ],
+                "embedding_profile_id": "embedding-demo-v1",
+                "source_field": "text"
+              }
+            }
+          },
+          "score": 0.95,
+          "rank": 1,
+          "source_refs": [
+            {
+              "result_set_id": "rs-retrieval",
+              "chunk_id": "chunk-demo-001"
+            }
+          ]
+        }
+      ]
+    },
+    "QueryContext": {
+      "query_id": "q-original",
+      "query": "清潔前應注意什麼？",
+      "ori_query_id": "q-original",
+      "ori_query": "清潔前應注意什麼？",
+      "source_query_ids": [],
+      "result_sets": [
+        {
+          "result_set_id": "rs-retrieval",
+          "stage": "retrieval",
+          "input_result_set_ids": [],
+          "source": {
+            "route_id": "es-hybrid",
+            "index_ref": "idx-demo",
+            "field_paths": [
+              "fields.text",
+              "vectors.text"
+            ]
+          },
+          "operation": {
+            "method": "es_sum_score",
+            "parameters": {},
+            "model_ref": null,
+            "scoring_query_id": null
+          },
+          "score_kind": "es_sum_score",
+          "score_order": "higher_is_better",
+          "items": [
+            {
+              "chunk": {
+                "chunk_id": "chunk-demo-001",
+                "document_id": "manual-001",
+                "source_revision": "v1",
+                "fields": {
+                  "text": "清潔前先斷電。",
+                  "title": "設備保養手冊",
+                  "page": 1
+                },
+                "metadata": {
+                  "department": "製造部",
+                  "filename": "maintenance.txt",
+                  "_rag": {
+                    "source_refs": [
+                      {
+                        "unit_index": 0,
+                        "field": "text",
+                        "output_field": "text",
+                        "role": "split",
+                        "start": 0,
+                        "end": 7
+                      },
+                      {
+                        "unit_index": 0,
+                        "field": "title",
+                        "output_field": "title",
+                        "role": "copy"
+                      },
+                      {
+                        "unit_index": 0,
+                        "field": "page",
+                        "output_field": "page",
+                        "role": "copy"
+                      }
+                    ],
+                    "chunking": {
+                      "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+                      "chunk_ordinal": 0,
+                      "task_id": "text"
+                    }
+                  }
+                },
+                "vectors": {
+                  "text": {
+                    "values": [
+                      0.1,
+                      0.2,
+                      0.3
+                    ],
+                    "embedding_profile_id": "embedding-demo-v1",
+                    "source_field": "text"
+                  }
+                }
+              },
+              "score": 0.83,
+              "rank": 1,
+              "source_refs": []
+            }
+          ]
+        },
+        {
+          "result_set_id": "rs-rerank",
+          "stage": "model_score",
+          "input_result_set_ids": [
+            "rs-retrieval"
+          ],
+          "source": null,
+          "operation": {
+            "method": "cross_encoder",
+            "parameters": {
+              "field": "fields.text"
+            },
+            "model_ref": "rerank-demo-v1",
+            "scoring_query_id": "q-original"
+          },
+          "score_kind": "reranker_score",
+          "score_order": "higher_is_better",
+          "items": [
+            {
+              "chunk": {
+                "chunk_id": "chunk-demo-001",
+                "document_id": "manual-001",
+                "source_revision": "v1",
+                "fields": {
+                  "text": "清潔前先斷電。",
+                  "title": "設備保養手冊",
+                  "page": 1
+                },
+                "metadata": {
+                  "department": "製造部",
+                  "filename": "maintenance.txt",
+                  "_rag": {
+                    "source_refs": [
+                      {
+                        "unit_index": 0,
+                        "field": "text",
+                        "output_field": "text",
+                        "role": "split",
+                        "start": 0,
+                        "end": 7
+                      },
+                      {
+                        "unit_index": 0,
+                        "field": "title",
+                        "output_field": "title",
+                        "role": "copy"
+                      },
+                      {
+                        "unit_index": 0,
+                        "field": "page",
+                        "output_field": "page",
+                        "role": "copy"
+                      }
+                    ],
+                    "chunking": {
+                      "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+                      "chunk_ordinal": 0,
+                      "task_id": "text"
+                    }
+                  }
+                },
+                "vectors": {
+                  "text": {
+                    "values": [
+                      0.1,
+                      0.2,
+                      0.3
+                    ],
+                    "embedding_profile_id": "embedding-demo-v1",
+                    "source_field": "text"
+                  }
+                }
+              },
+              "score": 0.95,
+              "rank": 1,
+              "source_refs": [
+                {
+                  "result_set_id": "rs-retrieval",
+                  "chunk_id": "chunk-demo-001"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "active_result_set_ids": [
+        "rs-rerank"
+      ]
+    },
+    "InferenceState": {
+      "contract_version": "inference-0.2-draft",
+      "query_contexts": [
+        {
+          "query_id": "q-original",
+          "query": "清潔前應注意什麼？",
+          "ori_query_id": "q-original",
+          "ori_query": "清潔前應注意什麼？",
+          "source_query_ids": [],
+          "result_sets": [
+            {
+              "result_set_id": "rs-retrieval",
+              "stage": "retrieval",
+              "input_result_set_ids": [],
+              "source": {
+                "route_id": "es-hybrid",
+                "index_ref": "idx-demo",
+                "field_paths": [
+                  "fields.text",
+                  "vectors.text"
+                ]
+              },
+              "operation": {
+                "method": "es_sum_score",
+                "parameters": {},
+                "model_ref": null,
+                "scoring_query_id": null
+              },
+              "score_kind": "es_sum_score",
+              "score_order": "higher_is_better",
+              "items": [
+                {
+                  "chunk": {
+                    "chunk_id": "chunk-demo-001",
+                    "document_id": "manual-001",
+                    "source_revision": "v1",
+                    "fields": {
+                      "text": "清潔前先斷電。",
+                      "title": "設備保養手冊",
+                      "page": 1
+                    },
+                    "metadata": {
+                      "department": "製造部",
+                      "filename": "maintenance.txt",
+                      "_rag": {
+                        "source_refs": [
+                          {
+                            "unit_index": 0,
+                            "field": "text",
+                            "output_field": "text",
+                            "role": "split",
+                            "start": 0,
+                            "end": 7
+                          },
+                          {
+                            "unit_index": 0,
+                            "field": "title",
+                            "output_field": "title",
+                            "role": "copy"
+                          },
+                          {
+                            "unit_index": 0,
+                            "field": "page",
+                            "output_field": "page",
+                            "role": "copy"
+                          }
+                        ],
+                        "chunking": {
+                          "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+                          "chunk_ordinal": 0,
+                          "task_id": "text"
+                        }
+                      }
+                    },
+                    "vectors": {
+                      "text": {
+                        "values": [
+                          0.1,
+                          0.2,
+                          0.3
+                        ],
+                        "embedding_profile_id": "embedding-demo-v1",
+                        "source_field": "text"
+                      }
+                    }
+                  },
+                  "score": 0.83,
+                  "rank": 1,
+                  "source_refs": []
+                }
+              ]
+            },
+            {
+              "result_set_id": "rs-rerank",
+              "stage": "model_score",
+              "input_result_set_ids": [
+                "rs-retrieval"
+              ],
+              "source": null,
+              "operation": {
+                "method": "cross_encoder",
+                "parameters": {
+                  "field": "fields.text"
+                },
+                "model_ref": "rerank-demo-v1",
+                "scoring_query_id": "q-original"
+              },
+              "score_kind": "reranker_score",
+              "score_order": "higher_is_better",
+              "items": [
+                {
+                  "chunk": {
+                    "chunk_id": "chunk-demo-001",
+                    "document_id": "manual-001",
+                    "source_revision": "v1",
+                    "fields": {
+                      "text": "清潔前先斷電。",
+                      "title": "設備保養手冊",
+                      "page": 1
+                    },
+                    "metadata": {
+                      "department": "製造部",
+                      "filename": "maintenance.txt",
+                      "_rag": {
+                        "source_refs": [
+                          {
+                            "unit_index": 0,
+                            "field": "text",
+                            "output_field": "text",
+                            "role": "split",
+                            "start": 0,
+                            "end": 7
+                          },
+                          {
+                            "unit_index": 0,
+                            "field": "title",
+                            "output_field": "title",
+                            "role": "copy"
+                          },
+                          {
+                            "unit_index": 0,
+                            "field": "page",
+                            "output_field": "page",
+                            "role": "copy"
+                          }
+                        ],
+                        "chunking": {
+                          "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+                          "chunk_ordinal": 0,
+                          "task_id": "text"
+                        }
+                      }
+                    },
+                    "vectors": {
+                      "text": {
+                        "values": [
+                          0.1,
+                          0.2,
+                          0.3
+                        ],
+                        "embedding_profile_id": "embedding-demo-v1",
+                        "source_field": "text"
+                      }
+                    }
+                  },
+                  "score": 0.95,
+                  "rank": 1,
+                  "source_refs": [
+                    {
+                      "result_set_id": "rs-retrieval",
+                      "chunk_id": "chunk-demo-001"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "active_result_set_ids": [
+            "rs-rerank"
+          ]
+        }
+      ],
+      "active_query_ids": [
+        "q-original"
+      ]
+    },
+    "ChunkSourceRef": {
+      "unit_index": 0,
+      "field": "text",
+      "output_field": "text",
+      "role": "split",
+      "start": 0,
+      "end": 7
+    },
+    "ChunkingIdentity": {
+      "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+      "chunk_ordinal": 0,
+      "task_id": "text"
+    },
+    "RagMetadata": {
+      "source_refs": [
+        {
+          "unit_index": 0,
+          "field": "text",
+          "output_field": "text",
+          "role": "split",
+          "start": 0,
+          "end": 7
+        },
+        {
+          "unit_index": 0,
+          "field": "title",
+          "output_field": "title",
+          "role": "copy"
+        },
+        {
+          "unit_index": 0,
+          "field": "page",
+          "output_field": "page",
+          "role": "copy"
+        }
+      ],
+      "chunking": {
+        "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+        "chunk_ordinal": 0,
+        "task_id": "text"
+      }
+    },
+    "VectorIndexBinding": {
+      "embedding_profile_id": "embedding-demo-v1",
+      "source_field": "text",
+      "dimensions": 3
+    },
+    "IndexBinding": {
+      "contract_version": "index-binding-0.1-proposal",
+      "index_ref": "idx-demo",
+      "system_id": "system-A",
+      "backend": "elasticsearch",
+      "collection": "workspace-demo-system-a",
+      "index_generation": "g1",
+      "mapping_version": "mapping-v1",
+      "document_schema_version": "unit-schema-v1",
+      "capabilities": [
+        "fulltext",
+        "dense_vector",
+        "filter"
+      ],
+      "fulltext_fields": [
+        "fields.text"
+      ],
+      "filter_fields": [
+        "metadata.department"
+      ],
+      "vector_bindings": {
+        "text": {
+          "embedding_profile_id": "embedding-demo-v1",
+          "source_field": "text",
+          "dimensions": 3
+        }
+      },
+      "searchable": true
+    },
+    "ModuleResult": {
+      "data": [
+        {
+          "document_id": "manual-001",
+          "source_revision": "v1",
+          "units": [
+            {
+              "text": "清潔前先斷電。",
+              "title": "設備保養手冊",
+              "page": 1
+            },
+            {
+              "text": "每月清潔散熱孔。",
+              "title": "設備保養手冊",
+              "page": 2
+            }
+          ],
+          "metadata": {
+            "department": "製造部",
+            "filename": "maintenance.txt"
+          }
+        }
+      ]
+    }
   }
 }
