@@ -93,7 +93,9 @@ flowchart TB
     style INFERENCE fill:#f7fcfa,stroke:#a2c1b4
 
 
-    %% A = builtin, B = Library-developed Local Component, C = remote Parsing API.
+    %% A = builtin.
+    %% B｜有使用到 Developer 在 Library 開發的 Component
+    %% C｜在某個 Module 有使用 Remote API 來連結 Developer 提供的 Service
     CFG_A["Config A"]
     BUILD_A["Library ＋ Config A"]
     subgraph SYS_A["Retrieval System A"]
@@ -194,4 +196,5 @@ flowchart TB
     classDef remote fill:#fff5e5,stroke:#b38039,color:#855e2a
     class IMPORT_REMOTE,PARSING_REMOTE,CHUNKING_REMOTE,EMBEDDING_REMOTE,INDEXING_REMOTE,QUERY_REMOTE,RETRIEVAL_REMOTE,RERANK_REMOTE remote
     class CHUNKING_XXX custom
+
 
