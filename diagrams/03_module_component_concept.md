@@ -37,3 +37,21 @@ C 的例子假設遠端 Parser 產出相容、保留 Markdown 標題的 Unit.tex
 Developer 的 Local Component 沿原有 PR／測試／Runtime Image 交付；Remote Developer 可保留私有實作，交付 API Image 或端點。Runtime 必須已包含相容 Adapter，目錄與服務綁定亦須驗證，不能把外部程式直接塞入 Config 執行。
 
 
+
+
+## Library 內 Module 之間的 Contract 名稱
+
+圖中 `[]` 表示清單；線上標示相鄰 Module 的主要業務資料，引用 [04 §3.1](../docs/04_module_components_io_contracts.md#31-io-接線)，不另定新物件或 HTTP Envelope。
+
+| 連線 | 標示 | 說明 |
+|---|---|---|
+| Import → Parsing | IngestionDocument | API／Import／Parser 共用相同輸入 |
+| Parsing → Chunking | ParsedDocument[] | 每份文件有平面 Units；Parser 可輸出多文件 |
+| Chunking → Embedding | Chunk[] (vectors={}) | Chunker 輸出初始化為空向量 |
+| Embedding → Indexing | Chunk[] (Embedding 後) | 向量寫回原 Chunk.vectors，不另傳 VectorSet；略過 Embedding 時仍可為 {} |
+| Indexing ⇢ Retrieval | IndexBinding | 索引／資料目標、版本與可用狀態的綁定，不是每次 Query 重跑 Ingestion |
+| Query Transformation → Retrieval | QueryContext[] | 原始／改寫 Query 與有效選擇，仍由 InferenceState 保留執行外框 |
+| Retrieval → Rerank | ResultSet[] | 各 Query／路徑的有序結果，保留 QueryContext、分數與來源追溯 |
+| Rerank → 檢索結果 | ResultSet[] | 評分／排序後的有效清單；None 不虛構新分數，最終有效選擇依配置 |
+
+本地 Module 呼叫仍遵守 `run(input, context) -> ModuleResult[T]`，下游讀取 `result.data`。QueryContext／ResultSet 是巢狀在既有 InferenceState 的主要資料；標示清單不表示把原始 Query 或 Trace 外框丟掉。A／B／C 與 Remote Parsing 的示例維持原樣。

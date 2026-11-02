@@ -40,10 +40,10 @@ flowchart TB
                 INDEXING_CUSTOM["自訂 Indexer"]
                 INDEXING_REMOTE["Remote API Component"]
             end
-            IMPORT --> PARSING
-            PARSING --> CHUNKING
-            CHUNKING --> EMBEDDING
-            EMBEDDING --> INDEXING
+            IMPORT -->|"IngestionDocument"| PARSING
+            PARSING -->|"ParsedDocument[]"| CHUNKING
+            CHUNKING -->|"Chunk[] (vectors={})"| EMBEDDING
+            EMBEDDING -->|"Chunk[] (Embedding 後)"| INDEXING
         end
         subgraph INFERENCE["Inference"]
             direction LR
@@ -69,9 +69,9 @@ flowchart TB
                 RERANK_CUSTOM["自訂 Reranker"]
                 RERANK_REMOTE["Remote API Component"]
             end
-            QUERY --> RETRIEVAL
-            RETRIEVAL --> RERANK
-            RERANK --> OUTPUT["檢索結果｜ResultSets / Chunks / Scores"]
+            QUERY -->|"QueryContext[]"| RETRIEVAL
+            RETRIEVAL -->|"ResultSet[]"| RERANK
+            RERANK -->|"ResultSet[]"| OUTPUT["檢索結果｜ResultSets / Chunks / Scores"]
         end
     end
 
@@ -198,3 +198,8 @@ flowchart TB
     class CHUNKING_XXX custom
 
 
+
+
+    %% Contract binding: Ingestion prepares the index; queries reuse it.
+    INDEXING -.->|"IndexBinding"| RETRIEVAL
+    %% [] means a collection. Labels show primary business data; keep InferenceState/QueryContext wrappers.
