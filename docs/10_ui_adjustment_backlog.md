@@ -1,3 +1,5 @@
+> 2026-11-02 D-50：本產品改為 Retrieval-only；以下 v0.9／v0.10 的 Generation 與單清單 Gate 是歷史實作紀錄，非後續需求，已由 UIB-015 取代。UIB-009 取消。本次未修改 Prototype。
+
 # UI Prototype Backlog 與完成紀錄
 
 ## 2026-11-02 契約更新狀態
@@ -165,7 +167,7 @@ UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／
 
 ### UIB-003：Builder 的 AI 助手整合
 
-- [ ] M5 Builder 前後端呼叫 M4 已交付的同一核心／API，不另寫一套產生 Config 的規則。沿用既有助手入口，不另建 RAG 主畫面。
+- [ ] M5 Builder 前後端呼叫 M4 已交付的同一核心／API，不另寫一套產生 Config 的規則。沿用既有助手入口，不另建 Retrieval 主畫面。
 - [ ] 以當前 Draft、Schema、映射、選用服務、明確允許的樣本與需求產生建議；涵蓋從 CSV 開始、已有 Config 的局部修改及新建。UI 包裝狀態與 Effective Config 分開。
 - [ ] 建議可對回模組與控制項，使用同一 Schema／Registry／Validator；缺連線／服務、未支援方法、失效欄位及需要重新 Ingestion 的影響可定位。M4 的獨立 Config 成功不能代替這項 UI 驗收。
 - [ ] M5 驗收真實助手串接；若只改原型互動，繼續明示模擬，不冒充已完成 M4／M5 真實能力。助手模型／服務契約的具體 UI 依 Q-003／Q-024 核定。
@@ -182,7 +184,7 @@ UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／
 ### UIB-005：Indexing 自動保存全部內容（已確認）
 
 - [ ] 移除「儲存內容」勾選，只顯示全部 Chunk.fields／metadata 自動保存的摘要；使用者繼續選全文／向量／可過濾欄位，不增加第一版保存排除表單。
-- [ ] Rerank／Generation／引用的內容選項依 Chunk 可取得欄位及型別產生，不再綁 indexing.stored。未建立全文索引的 title／summary 仍可用；未存在／未複製進 Chunk 的欄位仍保留失效引用並阻止保存。
+- [ ] Rerank／檢索結果消費端／引用的內容選項依 Chunk 可取得欄位及型別產生，不再綁 indexing.stored。未建立全文索引的 title／summary 仍可用；未存在／未複製進 Chunk 的欄位仍保留失效引用並阻止保存。
 - [ ] 手動、AI、Edit、驗證、預覽及匯出採相同規則；遷移舊 indexing.stored 不宣稱能補回已遺失資料，必要時提示重新 Ingestion。未選搜尋／Filter 的欄位仍保留內容，且不自動取得對應搜尋能力。
 
 ### UIB-006：metadata 預設全部繼承（已確認）
@@ -193,7 +195,7 @@ UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／
 
 ### UIB-007：Query Rewrite 單模組測試（提案待確認）
 
-- [ ] 若採用，在 Query Transformation 提供問題輸入及「測試 Rewrite／Multi-query」，使用當前 Prompt／LLM／count 草稿，不先 Ingestion／保存 System，不執行 Retrieval／Rerank／Generation。
+- [ ] 若採用，在 Query Transformation 提供問題輸入及「測試 Rewrite／Multi-query」，使用當前 Prompt／LLM／count 草稿，不先 Ingestion／保存 System，不執行 Retrieval／Rerank／檢索結果消費端。
 - [ ] 使用正式 Engine 的相同模組／Adapter／驗證；只檢查本模組必要設定。顯示生成 Prompt、要求筆數、解析後 Queries、保留原始問題的效果及格式／數量／非空／重複錯誤；原始回應可收合，Token／耗時僅顯示真實可取得數值。
 - [ ] 平台提供輸出 Schema，使用者主要編輯改寫內容 Prompt。服務能力不支援時明確說明；失敗／修正重試／拒答／截斷依核定政策呈現。None 不呼叫 LLM，Mock 不冒充真實試跑。
 - [ ] 測試輸入或 Prompt／LLM／count／原始問題選擇變更後，舊結果標示過期；舊非同步回應不覆蓋新測試。不自動保存 Config／Ingestion，也不把試跑列為儲存必要 Gate。
@@ -205,17 +207,11 @@ UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／
 - [ ] 將試跑、流程摘要、Query／跨 Query 合併卡控、AI 建議與匯出對齊同一計畫；驗證 1／N、原始問題選項與未支援的模型能力。此項不等於 UIB-007 試跑已被核可。
 - [ ] Edit 遷移原 Rewrite 為 N=1、Multi-query 保留原 N 與當時有效 Prompt。另一份舊 Prompt 草稿的保存／恢復政策先核定，取消不改已存配置，不靜默丟棄手寫內容。
 
-### UIB-009：Generation 預設／自訂 JSON 輸出（提案待確認）
+### UIB-009：舊答案 JSON 格式設定（取消）
 
-- [ ] 若採用，基本區保留預設回答與引用的簡短格式預覽；「進階輸出設定」預設收合，自訂 JSON 預設關閉。只展開不改 Config，明確啟用後才生效，關閉仍保留草稿。
-- [ ] 可編輯回答業務內容的 JSON Schema，定義欄位／型別／必填／陣列等，提供格式範例及 Schema 驗證；不能以一般 JSON 範例或 Prompt 文字冒充結構限制。型別／Schema 子集依模型服務能力與正式規格核定。
-- [ ] 自訂僅控制回答內容，平台 request／版本／可信引用另外管理。顯示 API 受控邊界；payload 容器、answer 型別相容與版本遷移未定前，不直接更改現有 HTTP 回應／SDK。
-- [ ] 若需接 UI 答案顯示／Evaluation，可指定主要回答文字路徑；失效／非文字路徑可定位。不適用的評估明示，不默默把整個 JSON 當文字答案。完整生成／驗證後回傳與 Streaming 的支援範圍明確區分。
-- [ ] 驗證預設／自訂切換保留草稿、停用參數不驗證／匯出、Schema 錯誤／模型不支援／回應不符／引用錯誤及 Edit／AI／部署一致性。只改輸出格式不要求重建索引；不新增 Output 模組或額外格式化 LLM 呼叫。
+Generation 已由 D-50 移除，不實作答案模板／自訂答案 Schema／主要回答文字路徑。現有 Prototype 的答案功能移除及檢索呈現改依 UIB-015。
 
-<a id="uib-010-method-catalog"></a>
 <a id="uib-010-component-catalog"></a>
-
 ### UIB-010：Module Developer 方法選用與設定
 
 - [ ] 配合 D-41 的兩個 repo 邊界，rag_platform 的 UI／Backend 經公開 API 取得 rag_engine Runtime 的 Component 目錄／Schema／驗證結果；Builder 不內嵌全部 Components。相容的新方法在更新目標 Runtime 後可供既有表單選用，不要求每次都重新部署 Builder。
@@ -282,3 +278,14 @@ v0.10 的無結構／text-spans／page-blocks 展示僅代表舊契約。現行�
 - [ ] 預設 text；進階 split／copy 候選來自 Unit 欄位。驗證所有 Units 的必要欄位，缺失顯示 [Chunking]＋task_id＋unit_index＋欄位；不僅檢查第一筆。
 - [ ] Chunk 預覽保留六鍵；source_refs 改 unit_index＋field＋start/end，移除 block_id／schema_id／block offsets。來源只讀，page 等依 copy 帶入 fields。
 - [ ] 舊 config／樣本顯示明確遷移需求，不靜默變更；更新 DOM／契約測試與說明，仍清楚標示模擬／未接真實 Parser、Tokenizer、模型。
+
+<a id="uib-015-retrieval-only"></a>
+### UIB-015：Retrieval-only 命名與結果呈現（待修改 Prototype）
+
+- [ ] RAG Builder／System／Runtime 的使用者標籤改為 Retrieval Builder／System／Runtime；Create Retrieval System；Library／Platform 說明引用 03。
+- [ ] 移除 Generation 卡、LLM 選取、答案 Prompt／chunk_template、Context Budget、自訂答案 Schema 與示例；共用 LLM 留給 Rewrite／Multi-query／AI 助手。
+- [ ] Inference 改呈現 ResultSets／items、Chunk 內容、score／rank、來源與 Trace；移除示意答案／生成 citations。
+- [ ] 移除「為 Generation 必須合併成一份」的保存 Gate，允許最終多份分組清單；不隱含新增融合或全域排序。
+- [ ] Evaluation 移除 Answer Correctness／Faithfulness 與參考答案欄位；保留 Recall@K、MRR、Latency、Usage、Error Rate。
+- [ ] 手動／助手／Create／Edit／匯出／API 說明一致；舊 config.generation 顯示需遷移，不靜默執行或刪除。更新測試與截圖。
+- [ ] 技術命名另做明確 migration：repo／branch、Python package、URN／Schema ID、_rag、RAGBlueprint 與儲存 key。此輪只改規格與圖，不做技術識別全域取代。

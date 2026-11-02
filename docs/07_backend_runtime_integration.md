@@ -1,4 +1,4 @@
-# RAG Builder — Backend、Runtime API 與整體串接規格
+# Retrieval Builder — Backend、Runtime API 與整體串接規格
 
 > 文件同步：2026-10-31 · 開發規格草案（正式 SDK／Config 尚未凍結）
 >
@@ -54,7 +54,7 @@ M4 助手核心的建議位置在 rag_engine，以便使用相同 Registry／Val
 | 資料 | 保存語意 |
 |---|---|
 | Workspace | 使用者可見範圍與系統組織；權限規則 Q-006 |
-| RAGSystem | 穩定 system_id、顯示名稱、collection、管理狀態 |
+| RetrievalSystem（模型名草案） | 穩定 system_id、顯示名稱、collection、管理狀態 |
 | ConfigRevision | 同一 System 的邏輯 Config、草稿關聯、版本／Hash、時間與作者；不因環境 URL 不同另改邏輯版本 |
 | 部署紀錄（建議形狀） | 對應同一 system_id／config_revision，另記環境、連線／Secret 引用、資料目標及 Runtime 資源；欄位與部署 ID 待 Q-015／Q-021 |
 | IndexBinding | System／Config 對應的索引資料版本、Profile、searchable 狀態 |
@@ -118,7 +118,7 @@ System 列表／讀取、Workspace／Dataset CRUD、AI suggestion／連線檢查
 |---|---|---|
 | POST | /v1/ingestions | JSON-only：扁平文件輸入草案見 13；批次包裝待定；202 回 run_id、status、config_revision |
 | GET | /v1/ingestions/{run_id} | 工作狀態、進度、逐項錯誤及就緒資訊 |
-| POST | /v1/queries | 問題、本次 filters；回答、引用與版本 |
+| POST | /v1/queries | 問題、本次 filters；檢索清單、分數／來源與版本 |
 | GET | /health/live | 程序是否存活 |
 | GET | /health/ready | Config／必要資源是否初始化；不等同已有可查索引 |
 
@@ -185,15 +185,47 @@ processed_documents／total_documents 在此回應草案指解析後的邏輯文
 
 ```json
 {
-  "request_id":"req-001","config_revision":"C1-example",
-  "answer":"依保養規範，每月清潔散熱孔。[1]",
-  "citations":[{"citation_id":"1","document_id":"manual-001","chunk_id":"chunk-example","source_revision":"v1","locations":[]}]
+  "request_id": "req-001",
+  "config_revision": "C1-example",
+  "query": "設備多久需要清潔？",
+  "result_sets": [
+    {
+      "result_set_id": "final-1",
+      "query_ids": [
+        "q-original"
+      ],
+      "items": [
+        {
+          "chunk": {
+            "chunk_id": "chunk-example",
+            "document_id": "manual-001",
+            "source_revision": "v1",
+            "fields": {
+              "text": "每月清潔散熱孔。"
+            },
+            "metadata": {
+              "department": "manufacturing"
+            },
+            "vectors": {}
+          },
+          "score": 0.92,
+          "rank": 1,
+          "source_refs": [
+            {
+              "result_set_id": "rerank-1",
+              "chunk_id": "chunk-example"
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }
 ```
 
-HTTP query 映射成 Engine 的原始問題；filters 與預設／ACL AND。Index 版本、Usage／Trace 回傳層級待 Q-019；引用完整規格見 05。合併時點是系統 Config／Fusion Plan 的需求，Backend 保存並交由 Engine 執行，不另寫一套融合，也不讓單次請求任意改執行計畫。若核定 Rerank 後融合，Trace 必須保留各階段候選；欄位與回傳細節見 Q-014／Q-019。Streaming、History、任意 Config override 不預設納入。
+以上為 HTTP 回應示意切片，非已凍結 OpenAPI；result_sets 列出最終有效清單，完整 ResultSet 的 operation／source／score_kind 等診斷欄位依 05／Q-019 選擇回傳層級。items 沿用共用 ResultItem／Chunk，score／rank 是實際檢索或 Rerank 結果，不是生成模型信心。跨 Query 未合併時可回多個清單，不為了 API 回應再任意融合。空命中應回空 items，失敗使用錯誤 Envelope，不能混成生成式拒答。
 
-2026-10-16 10:22 的 Generation 自訂 JSON 是待確認提案，見 04 §5.4.1／06 §3.5。預設保留上例 answer 字串及平台引用的基線；自訂範圍建議限回答業務內容，不能直接取代 request_id／config_revision／可信 citations 等平台資訊。自訂物件的容器（例如 output 候選）、預設相容、SDK／HTTP 型別、狀態／錯誤及 Streaming 均需 Q-002／Q-019 核定，本輪不修改既有 HTTP 例子或公共 Schema。平台引用由實際 Context 對照，不信任模型自造 document_id／chunk_id／位置。UI／Evaluation 讀取自訂回答的主要文字路徑見 Q-018。
+HTTP Query 映射原始問題；filters 與預設／ACL AND。Backend 保存 Fusion Plan 並交 Library 執行，不自行新增融合。生成 answer／citations、答案 Streaming／History 不在範圍內。最終結果選擇、Usage／Trace、分頁及精確公開回應 Schema 仍由 Q-014／Q-019 核定。
 
 2026-10-15 的結果操作已收斂為去重合併／Top N／模型算分，各輸出共用排序與 rank 更新（05 §4.6）。Backend 保存的是經核定的邏輯處理計畫；步驟引用與本次執行的 ResultSet ID 分開，不能以回傳 operation 指揮下一步，也不能在 API 層多融合一次。ES 內部已融合時只包裝實際取得的 Hybrid 結果。UI 計畫見 [09](09_inference_contract_ui_plan.md)，仍屬待核定設定形狀。
 
@@ -254,7 +286,7 @@ Q-008～Q-010／Q-017 需決定：
 
 | 模式 | 重啟 | 正式要求 |
 |---|---|---|
-| Memory | Chunk／向量／搜尋結構遺失 | 回需要 Ingestion；不回示意答案 |
+| Memory | Chunk／向量／搜尋結構遺失 | 回需要 Ingestion；不回示意檢索結果 |
 | MongoDB | 讀保存的 Chunk／vectors／Manifest 重建 | 驗證 Config／Profile／資料版本，完成前不提供不完整索引 |
 | ES | 驗證既有 Index／Mapping／Profile | 有相容可用資料才 Query；不存在時可接受 Ingestion |
 
@@ -264,7 +296,7 @@ MongoDB 保存不等於跨 Pod 索引同步。重建失敗、DB 中斷、Profile
 
 另有待確認的 Query Rewrite 單模組測試提案，見 06 §3.3.1／10 UIB-007：若採用，Backend 以請求草稿呼叫相同 Engine 模組／LLM Adapter，測試不依賴已保存 System 或索引。認證、服務引用與逾時規則仍需核定；接口精確路徑／Envelope 留 Q-019，不新增已凍結的公開 Runtime API。M2 可先由 SDK 驗證模組，Builder 入口屬 M5；Mock 與真實呼叫分開驗收。
 
-Evaluation Runner 於 M6 交付完整驗收，綁定 Dataset／Config／Index／Engine／Judge 版本，逐題呼叫同一 Target，收集實際候選／Context／答案／錯誤後交 04 評分。可重用 Query Client，但 Retrieval-only 入口是否公開需核定。併發、快取、重試、成本與 Gate 見 Q-018／Q-027。
+Evaluation Runner 於 M6 交付完整驗收，綁定 Dataset／Config／Index／Engine／Judge 版本，逐題呼叫同一 Target，收集實際 ResultSets／排名／來源／錯誤後交 04 評分。重用相同 Retrieval-only Query API；不收集生成答案或做答案正確性評估。併發、快取、重試、成本與 Gate 見 Q-018／Q-027。
 
 AI 助手在 M4 先交付獨立核心與 Python／API 入口：接受需求、明確允許的樣本、可用服務資訊及可選的既有 Config／基準識別，產生受 Schema／Registry 限制的 Config 草稿、理由、Diff、缺少設定與驗證結果。資訊不足可回需補齊的草稿，不宣稱已可執行；不猜服務／憑證，不自動 Ingestion。Config 合法仍需使用者／驗收腳本明確交給 Engine／Runtime 執行，不等同檢索品質已驗收。
 
@@ -276,7 +308,7 @@ Prototype 規則模擬不能當作正式助手。Prompt、資料保留、最大�
 
 ### 9.1 Bundle 目標
 
-交付 RAG Runtime，不打包整個 Builder。
+交付 Retrieval Runtime，不打包整個 Builder。
 
 Runtime Image 可自 M3 開始建置；M7 才驗收完整 FTEST／ENT 獨立交付。以同一版本／Digest 的可配置 Runtime 承載相容 System，不要求每份 Config 建一個 Image。獨立 Runtime 讀取已提供的 Config 即可啟動，使用 AI 助手生成 Config 是可選的前置操作，不能變成部署後必須連回 Builder 的依賴。
 

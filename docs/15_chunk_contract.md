@@ -226,7 +226,7 @@
 
 文件 metadata 全繼承，平台可信欄位由 Engine 控制；unit_index／範圍／fingerprint 自動產生，不列一般 UI 設定。Unit 內可選 unit_id 只是 Parser 欄位，通用 Chunker 不依賴它。
 
-vectors[name] 仍為 `{values: [...], embedding_profile_id: "...", source_field: "text"}`，有限數值、維度／Profile／來源需符合 Binding。Indexing 預設保留完整 fields／metadata／vectors；Rerank／Generation 所需內容在 Chunk 自備，不強制回查 ParsedDocument。
+vectors[name] 仍為 `{values: [...], embedding_profile_id: "...", source_field: "text"}`，有限數值、維度／Profile／來源需符合 Binding。Indexing 預設保留完整 fields／metadata／vectors；Rerank／檢索結果消費端 所需內容在 Chunk 自備，不強制回查 ParsedDocument。
 
 ## 5. 有效切分設定與 fingerprint
 
@@ -239,7 +239,7 @@ chunking_spec 是 Engine 解析後的**有效切分執行設定**，不是每個
 | split／output／copy 映射 | 決定輸出內容與欄位 |
 | 解析後有效參數／Tokenizer ID 與 revision | size／overlap／分隔符／正規化等會影響結果 |
 
-未啟用的方法參數、UI 收合狀態、HTTP 連線、Secret、Run ID、Embedding／Retrieval／Generation 設定不納入。預設值須先補齊；每個任務記錄選用的 Component／版本與有效設定。本文範例 tokenizer 是示意識別，沒有下載或驗證真實 Tokenizer。
+未啟用的方法參數、UI 收合狀態、HTTP 連線、Secret、Run ID、Embedding／Retrieval／Rerank 設定不納入。預設值須先補齊；每個任務記錄選用的 Component／版本與有效設定。本文範例 tokenizer 是示意識別，沒有下載或驗證真實 Tokenizer。
 
 同一份解析後設定處理不同文件，fingerprint 相同；同一個 Recursive Component 改欄位、長度或版本，fingerprint 不同。本輪採**整份有效任務計畫的一個 fingerprint**；改其中一個任務會影響這份文件所有 Chunk ID，換取簡單一致的重建語意，暫不承諾逐任務局部保留 ID。
 
@@ -286,4 +286,4 @@ python examples/chunk/test_contract.py
 - Parser 改變需重新處理受影響文件：Parsing → Chunking → Embedding（有配置時）→ Indexing；原始資料可取得時不代表一定要重新上傳。多 Parser 路由的重跑範圍、原始資料保留、重新發布仍須依有效相依與儲存政策決定。這是執行影響說明，沒有新增已實作的重跑／快取能力。
 - 重新 Ingestion 與 ID 是否納入解析後輸入內容摘要是不同問題；目前 Hash 規則尚未修改。原始文件版本不變但 Parser 輸出改變時的 ID／index_generation 識別仍在 Q-007／Q-015。
 - **待討論，未核定**：切分後 concat 多個欄位、加入固定文字，可候選作為 Chunking 後的共用欄位組裝、在 Embedding 前執行；先不新增 Pipeline Module、不修改 Schema／程式或凍結模板拼字。
-- 待確認範圍：是否寫入獨立衍生欄位、來源／衍生血緣與 Token 檢查；與 Embedding Profile 的 encoding prefix、Generation 既有 chunk_template 的分工；模板改動需重跑哪些步驟。不能先把欄位組裝當成已交付能力。
+- 待確認範圍：是否寫入獨立衍生欄位、來源／衍生血緣與 Token 檢查；與 Embedding Profile 的 encoding prefix的分工；模板改動需重跑哪些步驟。不能先把欄位組裝當成已交付能力。

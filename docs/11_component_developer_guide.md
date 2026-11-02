@@ -1,10 +1,10 @@
-# RAG Engine — Component 開發指南
+# Retrieval Engine Library — Component 開發指南
 
 2026-10-29 D-43：原擴充單位名稱已統一為 Component；本文件改名為 `11_component_developer_guide.md`。Module Developer 角色與開發／發布流程保留，SDK／套件／識別欄位對照見 [03 §3.8](../03_architecture_proposal.md#component-terminology-migration)。
 
 > 2026-10-28 · 開發流程與 SDK 介面草案
 >
-> 讀者：Module Developer。目標是在公開契約下開發、測試及交付 Component，讓 Engine 與 RAG Builder 使用。**目前 repository 只有規格與 UI Prototype，尚無可安裝的正式 SDK、Engine、範本套件或測試 Runner；本文 Python API 與套件名稱均為示意，不能當作已可執行的教學。**
+> 讀者：Module Developer。目標是在公開契約下開發、測試及交付 Component，讓 Engine 與 Retrieval Builder 使用。**目前 repository 只有規格與 UI Prototype，尚無可安裝的正式 SDK、Engine、範本套件或測試 Runner；本文 Python API 與套件名稱均為示意，不能當作已可執行的教學。**
 
 ## 1. 文件責任與目前可開始的工作
 
@@ -34,15 +34,15 @@
 | D1. 下載 repo / 確認開發 contract | 取得 rag_engine／SDK，選定功能分類，確認該 Module 的 I/O、語意及相依要求 | 明確的元件用途與契約／設定需求 |
 | D2. 開發 Component | 在 components 目錄實作邏輯、Config Schema、UI hints、能力與資源宣告，準備七項交付材料 | 可安裝／註冊的 Component package 與範例 |
 | D3. 測試與 PR 審查 | 單元／契約／Engine 整合測試，提交同 repo PR，由 CI 與審查者核可 | 通過對應契約與整合驗收的元件版本 |
-| D4. 發布並更新 RAG Engine | 交付流程建置含 Engine＋核可 Components＋Runtime API 的完整 Image，更新選定 DEV Runtime 並驗證 | Builder 讀取該 Runtime 的 Component 目錄／Schema，使用者可選用 |
+| D4. 發布並更新 Retrieval Engine Library | 交付流程建置含 Engine＋核可 Components＋Runtime API 的完整 Image，更新選定 DEV Runtime 並驗證 | Builder 讀取該 Runtime 的 Component 目錄／Schema，使用者可選用 |
 
 D1～D2 主要由 Module Developer 完成；D3～D4 涉及審查者、CI／發布與平台部署權限，不表示每位開發者都能直接更新共享 Runtime。發布 Image 與更新執行環境分開，只有採用新版的 Runtime 才提供新元件；既有 System 不自動換版，FTEST／ENT 仍依相同 Image／邏輯 Config 交付。詳細流程見 §5～7，精確 SDK／命令／權限仍為待決。
 
-D4 的標題統一為「發布並更新 RAG Engine」，指共用 Engine／Components 與完整 Runtime Image 的版本交付；實際採用新版仍更新選定的 DEV Runtime，部署邊界不變。
+D4 的標題統一為「發布並更新 Retrieval Engine Library」，指共用 Engine／Components 與完整 Runtime Image 的版本交付；實際採用新版仍更新選定的 DEV Runtime，部署邊界不變。
 
 圖中的「預設提供」指平台規劃交付的內建選項；每個 System 依 Config 選用，不是把某個 Module 的所有 Components 一起執行。自訂 Component 與內建元件走相同契約／Registry；Builder User 不需撰寫程式。Indexing／Retrieval 可能需要成對擴充；Parser／Chunker 共用 Units，但仍需文字欄位與格式能力相容，仍依能力檢查，不因放入元件目錄就自動相容。
 
-Module 圖上排完整列出 5 個 Ingestion Modules，下排列出 4 個 Inference Modules，Evaluation 另列為獨立評估能力。內建選項一個選項一個方塊，例如 Fixed-size、Recursive、Header-aware 分開呈現；None 標為略過，Import 共用 JSON 入口，content／base64／uri 由每筆資料選一種來源；驗證／內容取得為共同能力，Retrieval 後端仍依 Indexing 推導。「自訂 Parser／自訂 Chunker／自訂 Evaluator」只是元件用途的泛稱，不是規定的 Python class 或 component_id；真正的識別、版本與 class 分工見 §3；圖上全部選項仍為目標規劃，不是已交付實作。DEV test use／自行提供是相同元件的服務綁定來源，不能拿來當作兩個不同 Component 的識別。
+Module 圖上排完整列出 5 個 Ingestion Modules，下排列出 3 個 Inference Modules，Evaluation 另列為獨立評估能力。內建選項一個選項一個方塊，例如 Fixed-size、Recursive、Header-aware 分開呈現；None 標為略過，Import 共用 JSON 入口，content／base64／uri 由每筆資料選一種來源；驗證／內容取得為共同能力，Retrieval 後端仍依 Indexing 推導。「自訂 Parser／自訂 Chunker／自訂 Evaluator」只是元件用途的泛稱，不是規定的 Python class 或 component_id；真正的識別、版本與 class 分工見 §3；圖上全部選項仍為目標規劃，不是已交付實作。DEV test use／自行提供是相同元件的服務綁定來源，不能拿來當作兩個不同 Component 的識別。
 
 2026-10-28 已確認兩個 repo：`rag_platform` 管理 Builder 前後端與整合，`rag_engine` 集中 SDK、Engine、Components／Adapters 與 Runtime API。Module Developer 使用本機 IDE，在 rag_engine 的 components 目錄依 SDK／範本開發，提交 PR 後由同一 repo 的 CI 測試與交付 Runtime。這取代先前以獨立 Component repo 為預設的建議；精確內部目錄、套件名稱及發布工具仍待 Q-001／Q-022 核定。
 

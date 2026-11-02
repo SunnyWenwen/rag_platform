@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="2360" height="1370" viewBox="0 0 2360 1370" role="img" aria-labelledby="title desc">
-<title id="title">RAG Builder 測試、共用 Engine 與四步 Component 開發流程</title>
-<desc id="desc">上方為 RAG Builder User 的測試區塊，Build 產出 Config，Config 與共用 Engine 建立測試 System。框外的 YAML 部署與共用 Engine 建立 k8s System。中間為 RAG Engine，提供可選 Module／Component 的連線直接指向 Build。下方為 RAG Engine Developer 的開發區塊，依序下載 repo／確認開發 contract、開發 Component、測試與 PR 審查、發布並更新 RAG Engine；角色名稱標示於區塊標題。實線為操作流程與發布，虛線為設定、產出及共用能力。</desc>
-<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 Z" fill="#66788b"/></marker></defs>
+<title id="title">Retrieval Builder 測試、共用 Engine 與四步 Component 開發流程</title>
+<desc id="desc">上方為 Retrieval Builder User 的測試區塊，Build 產出 Config，Config 與共用 Engine 建立測試 System。框外的 YAML 部署與共用 Engine 建立 k8s System。中間為 Retrieval Engine Library，提供可選 Module／Component 的連線直接指向 Build。下方為 Retrieval Engine Developer 的開發區塊，依序下載 repo／確認開發 contract、開發 Component、測試與 PR 審查、發布並更新 Retrieval Engine Library；角色名稱標示於區塊標題。實線為操作流程與發布，虛線為設定、產出及共用能力。</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 Z" fill="#66788b" /></marker></defs>
 <style>
 text{font-family:'Noto Sans CJK TC','Noto Sans TC','Microsoft JhengHei',sans-serif;font-weight:400;text-anchor:middle;dominant-baseline:central;fill:#143054}
 .step rect{fill:#e9f2ff;stroke:#6086c8}.object rect{fill:#ecf8f2;stroke:#599d85}.object text{fill:#153f32}
@@ -9,104 +9,104 @@ text{font-family:'Noto Sans CJK TC','Noto Sans TC','Microsoft JhengHei',sans-ser
 .node rect{stroke-width:1.8}.edge{fill:none;stroke:#60768e;stroke-width:2;marker-end:url(#arrow)}
 .relation{stroke:#66788b;stroke-dasharray:7 7}.edge-label{fill:#485d71;stroke:white;stroke-width:11;stroke-linejoin:round;paint-order:stroke fill}
 .frame-title{font-size:26;text-anchor:start;font-weight:500}.note{font-size:18;fill:#66788b}
-</style><rect width="2360" height="1370" fill="white"/>
-<g id="BUILDER" class="frame"><rect x="30" y="35" width="1700" height="700" rx="12" fill="#f7faff" stroke="#9aafc9" stroke-width="1.8"/><text class="frame-title" x="55" y="65">RAG Builder 測試（for RAG Builder User）</text></g>
-<g id="ENGINE" class="frame"><rect x="30" y="830" width="2250" height="180" rx="12" fill="#f7f4fc" stroke="#b5a4d0" stroke-width="1.8"/><text class="frame-title" x="55" y="860">RAG Engine</text></g>
-<g id="DEVELOPMENT" class="frame"><rect x="30" y="1110" width="2250" height="200" rx="12" fill="#faf8fd" stroke="#b5a4d0" stroke-width="1.8"/><text class="frame-title" x="55" y="1140">RAG Engine Component 開發（for RAG Engine Developer）</text></g>
-<path id="edge-B-I" data-source="B" data-target="I" data-label="" class="edge" d="M300,352 L360,352"/>
-<path id="edge-I-Q" data-source="I" data-target="Q" data-label="" class="edge" d="M600,352 L660,352"/>
-<path id="edge-Q-E" data-source="Q" data-target="E" data-label="" class="edge" d="M900,352 L960,352"/>
-<path id="edge-E-X" data-source="E" data-target="X" data-label="準備部署到 k8s" class="edge" d="M1200,352 L1460,352"/>
-<path id="edge-E-C" data-source="E" data-target="C" data-label="驗證不達標，需調整" class="edge" d="M1140,310 L1140,185"/>
-<path id="edge-C-I" data-source="C" data-target="I" data-label="調整 Ingestion 設定，需重新 Ingestion" class="edge" d="M1020,125 L480,125 L480,310"/>
-<path id="edge-C-Q" data-source="C" data-target="Q" data-label="只調整 Inference 設定，不需重新 Ingestion" class="edge" d="M1020,170 L780,170 L780,310"/>
-<path id="edge-B-F" data-source="B" data-target="F" data-label="產出" class="edge relation" d="M180,395 L180,520"/>
-<path id="edge-C-F" data-source="C" data-target="F" data-label="更新設定" class="edge relation" d="M1140,100 L1140,90 L330,90 L330,342 Q346,352 330,362 L330,560 L290,560"/>
-<path id="edge-F-S" data-source="F" data-target="S" data-label="套用 Config" class="edge relation" d="M290,580 L365,580 L365,660 L420,660"/>
-<path id="edge-I-S" data-source="I" data-target="S" data-label="建立 Chunks / Indexes" class="edge relation" d="M480,395 L480,610"/>
-<path id="edge-Q-S" data-source="Q" data-target="S" data-label="查詢" class="edge relation" d="M780,395 L780,610"/>
-<path id="edge-E-S" data-source="E" data-target="S" data-label="評估" class="edge relation" d="M1080,520 L860,520 L860,610"/>
-<path id="edge-E-R" data-source="E" data-target="R" data-label="產出" class="edge relation" d="M1080,395 L1080,620"/>
-<path id="edge-X-Y" data-source="X" data-target="Y" data-label="產出" class="edge relation" d="M1580,395 L1580,620"/>
-<path id="edge-X-D" data-source="X" data-target="D" data-label="使用匯出的 YAML" class="edge" d="M1700,352 L1810,352 L1810,487 L1900,487"/>
-<path id="edge-D-K" data-source="D" data-target="K" data-label="部署" class="edge relation" d="M2080,530 L2080,620"/>
-<path id="edge-Y-K" data-source="Y" data-target="K" data-label="套用 YAML" class="edge relation" d="M1700,660 L1900,660"/>
-<path id="edge-GE-S" data-source="GE" data-target="S" data-label="依 Config 建立" class="edge relation" d="M1000,865 L1000,785 L660,785 L660,710"/>
-<path id="edge-GE-K" data-source="GE" data-target="K" data-label="提供執行核心（Runtime Image）" class="edge relation" d="M1360,865 L1360,785 L2080,785 L2080,700"/>
-<path id="edge-GE-B" data-source="GE" data-target="B" data-label="提供可選 Module／Component" class="edge relation" d="M850,920 L42,920 L42,352 L60,352"/>
-<path id="edge-DEV4-GE" data-source="DEV4" data-target="GE" data-label="更新 RAG Engine" class="edge" d="M1985,1185 L1985,1055 L1210,1055 L1210,965"/>
-<circle cx="1080" cy="520" r="3" fill="#66788b"/>
-<g id="B" class="node step" data-label="1. Build（設定 Config）"><rect x="60" y="310" width="240" height="85" rx="10"/>
-<text x="180.0" y="337.0" font-size="23">1. Build</text>
-<text x="180.0" y="368.0" font-size="19">設定 Config</text>
+</style><rect width="2360" height="1370" fill="white" />
+<g id="BUILDER" class="frame"><rect x="30" y="35" width="1700" height="700" rx="12" fill="#f7faff" stroke="#9aafc9" stroke-width="1.8" /><text class="frame-title" x="55" y="65" style="stroke:none">Retrieval Builder 測試（for Retrieval Builder User）</text></g>
+<g id="ENGINE" class="frame"><rect x="30" y="830" width="2250" height="180" rx="12" fill="#f7f4fc" stroke="#b5a4d0" stroke-width="1.8" /><text class="frame-title" x="55" y="860" style="stroke:none">Retrieval Engine Library</text></g>
+<g id="DEVELOPMENT" class="frame"><rect x="30" y="1110" width="2250" height="200" rx="12" fill="#faf8fd" stroke="#b5a4d0" stroke-width="1.8" /><text class="frame-title" x="55" y="1140" style="stroke:none">Retrieval Engine Component 開發（for Retrieval Engine Developer）</text></g>
+<path id="edge-B-I" data-source="B" data-target="I" data-label="" class="edge" d="M300,352 L360,352" />
+<path id="edge-I-Q" data-source="I" data-target="Q" data-label="" class="edge" d="M600,352 L660,352" />
+<path id="edge-Q-E" data-source="Q" data-target="E" data-label="" class="edge" d="M900,352 L960,352" />
+<path id="edge-E-X" data-source="E" data-target="X" data-label="準備部署到 k8s" class="edge" d="M1200,352 L1460,352" />
+<path id="edge-E-C" data-source="E" data-target="C" data-label="驗證不達標，需調整" class="edge" d="M1140,310 L1140,185" />
+<path id="edge-C-I" data-source="C" data-target="I" data-label="調整 Ingestion 設定，需重新 Ingestion" class="edge" d="M1020,125 L480,125 L480,310" />
+<path id="edge-C-Q" data-source="C" data-target="Q" data-label="只調整 Inference 設定，不需重新 Ingestion" class="edge" d="M1020,170 L780,170 L780,310" />
+<path id="edge-B-F" data-source="B" data-target="F" data-label="產出" class="edge relation" d="M180,395 L180,520" />
+<path id="edge-C-F" data-source="C" data-target="F" data-label="更新設定" class="edge relation" d="M1140,100 L1140,90 L330,90 L330,342 Q346,352 330,362 L330,560 L290,560" />
+<path id="edge-F-S" data-source="F" data-target="S" data-label="套用 Config" class="edge relation" d="M290,580 L365,580 L365,660 L420,660" />
+<path id="edge-I-S" data-source="I" data-target="S" data-label="建立 Chunks / Indexes" class="edge relation" d="M480,395 L480,610" />
+<path id="edge-Q-S" data-source="Q" data-target="S" data-label="查詢" class="edge relation" d="M780,395 L780,610" />
+<path id="edge-E-S" data-source="E" data-target="S" data-label="評估" class="edge relation" d="M1080,520 L860,520 L860,610" />
+<path id="edge-E-R" data-source="E" data-target="R" data-label="產出" class="edge relation" d="M1080,395 L1080,620" />
+<path id="edge-X-Y" data-source="X" data-target="Y" data-label="產出" class="edge relation" d="M1580,395 L1580,620" />
+<path id="edge-X-D" data-source="X" data-target="D" data-label="使用匯出的 YAML" class="edge" d="M1700,352 L1810,352 L1810,487 L1900,487" />
+<path id="edge-D-K" data-source="D" data-target="K" data-label="部署" class="edge relation" d="M2080,530 L2080,620" />
+<path id="edge-Y-K" data-source="Y" data-target="K" data-label="套用 YAML" class="edge relation" d="M1700,660 L1900,660" />
+<path id="edge-GE-S" data-source="GE" data-target="S" data-label="依 Config 建立" class="edge relation" d="M1000,865 L1000,785 L660,785 L660,710" />
+<path id="edge-GE-K" data-source="GE" data-target="K" data-label="Library 執行核心（由 Platform Image 封裝）" class="edge relation" d="M1360,865 L1360,785 L2080,785 L2080,700" />
+<path id="edge-GE-B" data-source="GE" data-target="B" data-label="提供可選 Module／Component" class="edge relation" d="M850,920 L42,920 L42,352 L60,352" />
+<path id="edge-DEV4-GE" data-source="DEV4" data-target="GE" data-label="更新 Retrieval Engine Library" class="edge" d="M1985,1185 L1985,1055 L1210,1055 L1210,965" />
+<circle cx="1080" cy="520" r="3" fill="#66788b" />
+<g id="B" class="node step" data-label="1. Build（設定 Config）"><rect x="60" y="310" width="240" height="85" rx="10" />
+<text x="180.0" y="337.0" font-size="23" style="stroke:none">1. Build</text>
+<text x="180.0" y="368.0" font-size="19" style="stroke:none">設定 Config</text>
 </g>
-<g id="I" class="node step" data-label="2. Ingestion"><rect x="360" y="310" width="240" height="85" rx="10"/>
-<text x="480.0" y="352.5" font-size="23">2. Ingestion</text>
+<g id="I" class="node step" data-label="2. Ingestion"><rect x="360" y="310" width="240" height="85" rx="10" />
+<text x="480.0" y="352.5" font-size="23" style="stroke:none">2. Ingestion</text>
 </g>
-<g id="Q" class="node step" data-label="3. Inference"><rect x="660" y="310" width="240" height="85" rx="10"/>
-<text x="780.0" y="352.5" font-size="23">3. Inference</text>
+<g id="Q" class="node step" data-label="3. Inference"><rect x="660" y="310" width="240" height="85" rx="10" />
+<text x="780.0" y="352.5" font-size="23" style="stroke:none">3. Inference</text>
 </g>
-<g id="E" class="node step" data-label="4. Evaluation"><rect x="960" y="310" width="240" height="85" rx="10"/>
-<text x="1080.0" y="352.5" font-size="23">4. Evaluation</text>
+<g id="E" class="node step" data-label="4. Evaluation"><rect x="960" y="310" width="240" height="85" rx="10" />
+<text x="1080.0" y="352.5" font-size="23" style="stroke:none">4. Evaluation</text>
 </g>
-<g id="X" class="node step" data-label="5. Export YAML"><rect x="1460" y="310" width="240" height="85" rx="10"/>
-<text x="1580.0" y="352.5" font-size="23">5. Export YAML</text>
+<g id="X" class="node step" data-label="5. Export YAML"><rect x="1460" y="310" width="240" height="85" rx="10" />
+<text x="1580.0" y="352.5" font-size="23" style="stroke:none">5. Export YAML</text>
 </g>
-<g id="C" class="node step" data-label="修改 Config"><rect x="1020" y="100" width="240" height="85" rx="10"/>
-<text x="1140.0" y="142.5" font-size="24">修改 Config</text>
+<g id="C" class="node step" data-label="修改 Config"><rect x="1020" y="100" width="240" height="85" rx="10" />
+<text x="1140.0" y="142.5" font-size="24" style="stroke:none">修改 Config</text>
 </g>
-<g id="F" class="node object" data-label="Config"><rect x="90" y="520" width="200" height="80" rx="10"/>
-<text x="190.0" y="560.0" font-size="25">Config</text>
+<g id="F" class="node object" data-label="Config"><rect x="90" y="520" width="200" height="80" rx="10" />
+<text x="190.0" y="560.0" font-size="25" style="stroke:none">Config</text>
 </g>
-<g id="S" class="node object" data-label="RAG System for RAG Builder 測試"><rect x="420" y="610" width="480" height="100" rx="10"/>
-<text x="660.0" y="644.5" font-size="26">RAG System for</text>
-<text x="660.0" y="675.5" font-size="26">RAG Builder 測試</text>
+<g id="S" class="node object" data-label="Retrieval System for Retrieval Builder 測試"><rect x="420" y="610" width="480" height="100" rx="10" />
+<text x="660.0" y="644.5" font-size="26" style="stroke:none">Retrieval System for</text>
+<text x="660.0" y="675.5" font-size="26" style="stroke:none">Retrieval Builder 測試</text>
 </g>
-<g id="R" class="node object" data-label="評估報告"><rect x="980" y="620" width="240" height="80" rx="10"/>
-<text x="1100.0" y="660.0" font-size="25">評估報告</text>
+<g id="R" class="node object" data-label="評估報告"><rect x="980" y="620" width="240" height="80" rx="10" />
+<text x="1100.0" y="660.0" font-size="25" style="stroke:none">評估報告</text>
 </g>
-<g id="Y" class="node object" data-label="YAML 設定檔（Config＋部署設定）"><rect x="1460" y="620" width="240" height="80" rx="10"/>
-<text x="1580.0" y="644.5" font-size="24">YAML 設定檔</text>
-<text x="1580.0" y="675.5" font-size="18">Config＋部署設定</text>
+<g id="Y" class="node object" data-label="YAML 設定檔（Config＋部署設定）"><rect x="1460" y="620" width="240" height="80" rx="10" />
+<text x="1580.0" y="644.5" font-size="24" style="stroke:none">YAML 設定檔</text>
+<text x="1580.0" y="675.5" font-size="18" style="stroke:none">Config＋部署設定</text>
 </g>
-<g id="D" class="node deploy" data-label="6. Deploy YAML in FTEST/ENT"><rect x="1900" y="445" width="360" height="85" rx="10"/>
-<text x="2080.0" y="472.0" font-size="24">6. Deploy YAML</text>
-<text x="2080.0" y="503.0" font-size="22">in FTEST/ENT</text>
+<g id="D" class="node deploy" data-label="6. Deploy YAML in FTEST/ENT"><rect x="1900" y="445" width="360" height="85" rx="10" />
+<text x="2080.0" y="472.0" font-size="24" style="stroke:none">6. Deploy YAML</text>
+<text x="2080.0" y="503.0" font-size="22" style="stroke:none">in FTEST/ENT</text>
 </g>
-<g id="K" class="node object" data-label="RAG System in k8s"><rect x="1900" y="620" width="360" height="80" rx="10"/>
-<text x="2080.0" y="660.0" font-size="26">RAG System in k8s</text>
+<g id="K" class="node object" data-label="Retrieval System in k8s"><rect x="1900" y="620" width="360" height="80" rx="10" />
+<text x="2080.0" y="660.0" font-size="26" style="stroke:none">Retrieval System in k8s</text>
 </g>
-<g id="GE" class="node engine" data-label="共用 RAG Engine（Module／Component）"><rect x="850" y="865" width="660" height="100" rx="10"/>
-<text x="1180.0" y="899.5" font-size="28">共用 RAG Engine</text>
-<text x="1180.0" y="930.5" font-size="22">Module／Component</text>
+<g id="GE" class="node engine" data-label="共用 Retrieval Engine Library（Module／Component）"><rect x="850" y="865" width="660" height="100" rx="10" />
+<text x="1180.0" y="899.5" font-size="28" style="stroke:none">共用 Retrieval Engine Library</text>
+<text x="1180.0" y="930.5" font-size="22" style="stroke:none">Module／Component</text>
 </g>
 
-<text class="edge-label" x="1330" y="330" font-size="20">準備部署到 k8s</text>
-<text class="edge-label" x="1160" y="250" font-size="20">驗證不達標，需調整</text>
-<text class="edge-label" x="730" y="110" font-size="20">調整 Ingestion 設定，需重新 Ingestion</text>
-<text class="edge-label" x="770" y="245" font-size="20">只調整 Inference 設定，不需重新 Ingestion</text>
-<text class="edge-label" x="700" y="65" font-size="20">更新設定</text>
-<text class="edge-label" x="180" y="465" font-size="21">產出</text>
-<text class="edge-label" x="365" y="630" font-size="19">套用 Config</text>
-<text class="edge-label" x="480" y="465" font-size="20">建立 Chunks / Indexes</text>
-<text class="edge-label" x="780" y="465" font-size="21">查詢</text>
-<text class="edge-label" x="950" y="520" font-size="21">評估</text>
-<text class="edge-label" x="1080" y="575" font-size="21">產出</text>
-<text class="edge-label" x="1580" y="515" font-size="21">產出</text>
-<text class="edge-label" x="1850" y="410" font-size="19">使用匯出的 YAML</text>
-<text class="edge-label" x="2080" y="575" font-size="21">部署</text>
-<text class="edge-label" x="1800" y="640" font-size="20">套用 YAML</text>
-<text class="edge-label" x="825" y="785" font-size="22">依 Config 建立</text>
-<text class="edge-label" x="1760" y="785" font-size="22">提供執行核心（Runtime Image）</text>
-<text class="edge-label" x="450" y="920" font-size="23">提供可選 Module／Component</text>
-<text class="edge-label" x="1640" y="1055" font-size="23">更新 RAG Engine</text>
+<text class="edge-label" x="1330" y="330" font-size="20" style="stroke:none">準備部署到 k8s</text>
+<text class="edge-label" x="1160" y="250" font-size="20" style="stroke:none">驗證不達標，需調整</text>
+<text class="edge-label" x="730" y="110" font-size="20" style="stroke:none">調整 Ingestion 設定，需重新 Ingestion</text>
+<text class="edge-label" x="770" y="245" font-size="20" style="stroke:none">只調整 Inference 設定，不需重新 Ingestion</text>
+<text class="edge-label" x="820" y="78" font-size="20" style="stroke:none">更新設定</text>
+<text class="edge-label" x="180" y="465" font-size="21" style="stroke:none">產出</text>
+<text class="edge-label" x="365" y="630" font-size="19" style="stroke:none">套用 Config</text>
+<text class="edge-label" x="480" y="465" font-size="20" style="stroke:none">建立 Chunks / Indexes</text>
+<text class="edge-label" x="780" y="465" font-size="21" style="stroke:none">查詢</text>
+<text class="edge-label" x="950" y="520" font-size="21" style="stroke:none">評估</text>
+<text class="edge-label" x="1080" y="575" font-size="21" style="stroke:none">產出</text>
+<text class="edge-label" x="1580" y="515" font-size="21" style="stroke:none">產出</text>
+<text class="edge-label" x="1850" y="410" font-size="19" style="stroke:none">使用匯出的 YAML</text>
+<text class="edge-label" x="2080" y="575" font-size="21" style="stroke:none">部署</text>
+<text class="edge-label" x="1800" y="640" font-size="20" style="stroke:none">套用 YAML</text>
+<text class="edge-label" x="825" y="785" font-size="22" style="stroke:none">依 Config 建立</text>
+<text class="edge-label" x="1760" y="785" font-size="22" style="stroke:none">Library 執行核心（由 Platform Image 封裝）</text>
+<text class="edge-label" x="450" y="920" font-size="23" style="stroke:none">提供可選 Module／Component</text>
+<text class="edge-label" x="1640" y="1055" font-size="23" style="stroke:none">更新 Retrieval Engine Library</text>
 
-<text class="note" x="1180" y="1345">實線：操作流程與發布　 ·　 虛線：設定、產出及共用能力</text>
-<path id="edge-DEV1-DEV2" data-source="DEV1" data-target="DEV2" data-label="" class="edge" d="M520,1229 L650,1229"/>
-<g id="DEV1" class="node engine" data-label="D1. 下載 repo / 確認開發 contract"><rect x="90" y="1185" width="430" height="88" rx="10"/><text x="305" y="1213" font-size="24">D1. 下載 repo /</text><text x="305" y="1248" font-size="22">確認開發 contract</text></g>
-<path id="edge-DEV2-DEV3" data-source="DEV2" data-target="DEV3" data-label="" class="edge" d="M1080,1229 L1210,1229"/>
-<g id="DEV2" class="node engine" data-label="D2. 開發 Component"><rect x="650" y="1185" width="430" height="88" rx="10"/><text x="865" y="1213" font-size="24">D2. 開發 Component</text><text x="865" y="1248" font-size="20">邏輯＋Schema＋相依宣告</text></g>
-<path id="edge-DEV3-DEV4" data-source="DEV3" data-target="DEV4" data-label="" class="edge" d="M1640,1229 L1770,1229"/>
-<g id="DEV3" class="node engine" data-label="D3. 測試與 PR 審查"><rect x="1210" y="1185" width="430" height="88" rx="10"/><text x="1425" y="1213" font-size="24">D3. 測試與 PR 審查</text><text x="1425" y="1248" font-size="20">契約／整合測試＋核可</text></g>
-<g id="DEV4" class="node engine" data-label="D4. 發布並更新 RAG Engine"><rect x="1770" y="1185" width="430" height="88" rx="10"/><text x="1985" y="1213" font-size="24">D4. 發布並更新 RAG Engine</text><text x="1985" y="1248" font-size="20">完整 Image＋DEV 部署</text></g>
+<text class="note" x="1180" y="1345" style="stroke:none">實線：操作流程與發布　 ·　 虛線：設定、產出及共用能力</text>
+<path id="edge-DEV1-DEV2" data-source="DEV1" data-target="DEV2" data-label="" class="edge" d="M520,1229 L650,1229" />
+<g id="DEV1" class="node engine" data-label="D1. 下載 repo / 確認開發 contract"><rect x="90" y="1185" width="430" height="88" rx="10" /><text x="305" y="1213" font-size="24" style="stroke:none">D1. 下載 repo /</text><text x="305" y="1248" font-size="22" style="stroke:none">確認開發 contract</text></g>
+<path id="edge-DEV2-DEV3" data-source="DEV2" data-target="DEV3" data-label="" class="edge" d="M1080,1229 L1210,1229" />
+<g id="DEV2" class="node engine" data-label="D2. 開發 Component"><rect x="650" y="1185" width="430" height="88" rx="10" /><text x="865" y="1213" font-size="24" style="stroke:none">D2. 開發 Component</text><text x="865" y="1248" font-size="20" style="stroke:none">邏輯＋Schema＋相依宣告</text></g>
+<path id="edge-DEV3-DEV4" data-source="DEV3" data-target="DEV4" data-label="" class="edge" d="M1640,1229 L1770,1229" />
+<g id="DEV3" class="node engine" data-label="D3. 測試與 PR 審查"><rect x="1210" y="1185" width="430" height="88" rx="10" /><text x="1425" y="1213" font-size="24" style="stroke:none">D3. 測試與 PR 審查</text><text x="1425" y="1248" font-size="20" style="stroke:none">契約／整合測試＋核可</text></g>
+<g id="DEV4" class="node engine" data-label="D4. 發布並更新 Retrieval Engine Library"><rect x="1770" y="1185" width="430" height="88" rx="10" /><text x="1985" y="1213" font-size="22.5" style="stroke:none">D4. 發布並更新 Retrieval Engine Library</text><text x="1985" y="1248" font-size="20" style="stroke:none">完整 Image＋DEV 部署</text></g>
 </svg>

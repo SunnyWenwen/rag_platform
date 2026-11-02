@@ -6,7 +6,7 @@
 
 ## 0. 情境整理與分類總覽（報告摘要）
 
-**這份文件整理的是「各種來源的資料，如何透過同一個入口交給 RAG Engine」**。使用者可以送簡單文字、結構化紀錄、原始文件，或已被其他工具解析好的內容；平台統一接收 JSON，由相容 Parser 處理，不要求所有呼叫端先完成同樣程度的解析。
+**這份文件整理的是「各種來源的資料，如何透過同一個入口交給 Retrieval Engine Library」**。使用者可以送簡單文字、結構化紀錄、原始文件，或已被其他工具解析好的內容；平台統一接收 JSON，由相容 Parser 處理，不要求所有呼叫端先完成同樣程度的解析。
 
 ### 0.1 從哪些使用情境整理而來
 
@@ -109,7 +109,7 @@ content.units 是平面的內容單位列表，由相容 Adapter 驗證後與外
 
 | 層級 | 責任 |
 |---|---|
-| RAG Builder／自行部署的呼叫端 | 提供方便的上傳／映射／檔案傳輸轉換；組成 JSON |
+| Retrieval Builder／自行部署的呼叫端 | 提供方便的上傳／映射／檔案傳輸轉換；組成 JSON |
 | Engine 的共用入口／SDK 資源能力 | 驗證共同外層、授權取得內容、解碼及必要限制；路由到已設定的 Parser |
 | Parser／Adapter | 理解來源或轉換已解析資料，產出統一 ParsedDocument，詳見 [14 的情境與結構分類](14_parsed_document_contract.md#0-情境與分類結果報告摘要) |
 
@@ -117,7 +117,7 @@ JSON-only、扁平輸入、三種來源、API／Parser 共用契約與多 Parser
 
 ## 1. 已確認方向與責任
 
-- Engine Runtime 的 Ingestion API 只接收 JSON body。RAG Builder 可提供文件／CSV 上傳及轉換；自行部署的呼叫端自行完成相同傳輸前處理，不要求部署 Builder。
+- Engine Runtime 的 Ingestion API 只接收 JSON body。Retrieval Builder 可提供文件／CSV 上傳及轉換；自行部署的呼叫端自行完成相同傳輸前處理，不要求部署 Builder。
 - JSON 支援 inline 文字／物件、Base64 檔案與資源 URI。傳輸前處理不等於語意解析；原始 PDF 等內容仍由 Engine 的相容 Parser 處理。
 - Payload 採扁平格式，不需要 source 或 mode；content／base64／uri 三選一。
 - **API 單筆文件與 Parser Input 共用 IngestionDocument 及同一份 JSON Schema**；Parser 可接收經共同驗證／反序列化的 SDK 物件，但欄位、型別與驗證規則一致，不維護第二份轉換後的輸入 contract。

@@ -1,4 +1,4 @@
-# RAG Builder — 共用資料模型與 Config 規格
+# Retrieval Builder — 共用資料模型與 Config 規格
 
 > 文件同步：2026-10-31 · 開發規格草案（正式 SDK／Config 尚未凍結）
 >
@@ -16,7 +16,7 @@
 
 ## 2. 識別、版本與作用域
 
-版本概念的正式定義見 [03 §3.4](../03_architecture_proposal.md#version-terms)。下表是對應的欄位用途與未決實作政策；其中 source_revision 指匯入 RAG 的來源文件內容，不是本 repository 的 Markdown 規格版本。
+版本概念的正式定義見 [03 §3.4](../03_architecture_proposal.md#version-terms)。下表是對應的欄位用途與未決實作政策；其中 source_revision 指匯入 Retrieval 的來源文件內容，不是本 repository 的 Markdown 規格版本。
 
 | 欄位／概念 | 語意 | 狀態 |
 |---|---|---|
@@ -40,7 +40,7 @@ CSV 每列是邏輯文件。跨批更新需映射穩定鍵；Prototype 的批次
 | 初次匯入 | A:v1、B:v1 | C1 | I1 |
 | A 原文修改並成功更新索引 | A:v2、B:v1 | C1 | I2 |
 | 原文不變，改 Chunk Size 並重建 | A:v2、B:v1 | C2 | I3 |
-| 只改 Generation Prompt | A:v2、B:v1 | C3 | 仍可沿用 I3 |
+| 只改 Query Rewrite Prompt | A:v2、B:v1 | C3 | 仍可沿用 I3 |
 
 以上 I1～I3 是說明概念的識別，不是已選定快照實作。即使 source_revision 不變，重切／重新 Embedding／索引重建也可能形成新索引資料版本；新文件尚未成功發布時，不能先把現有索引說成已含新版內容。兩者不一對一。
 
@@ -48,7 +48,7 @@ CSV 每列是邏輯文件。跨批更新需映射穩定鍵；Prototype 的批次
 
 ### 2.2 collection 命名（已確認方向）
 
-Builder 由 Workspace＋RAG System 名稱自動產生邏輯 collection，使用者不用手填。既有實作附穩定 System ID，避免同名及正規化碰撞；建立後改顯示名稱不重命名既有目標。UI 的邏輯名稱唯讀；各環境的 DB／實體索引目標由部署綁定及 Adapter 管理，不因實體目標不同修改處理 Config。正規化演算法、長度與匯入既有集合的權限規則仍屬 Q-007／Q-019，不重開「是否自動命名」的方向。直接 Engine 則使用 Config／可信 Binding 中明確的集合，不依賴 Builder 才可運作。
+Builder 由 Workspace＋Retrieval System 名稱自動產生邏輯 collection，使用者不用手填。既有實作附穩定 System ID，避免同名及正規化碰撞；建立後改顯示名稱不重命名既有目標。UI 的邏輯名稱唯讀；各環境的 DB／實體索引目標由部署綁定及 Adapter 管理，不因實體目標不同修改處理 Config。正規化演算法、長度與匯入既有集合的權限規則仍屬 Q-007／Q-019，不重開「是否自動命名」的方向。直接 Engine 則使用 Config／可信 Binding 中明確的集合，不依賴 Builder 才可運作。
 
 ## 3. Document Schema
 
@@ -119,7 +119,7 @@ Parser 整理來源結構為 Units；Chunker 僅在每筆文字內切分，不�
 
 metadata._rag.source_refs 保存來源欄位、對應輸出欄位、原文範圍／Block 及可取得的位置；用於引用、定位與追溯，不讓使用者逐項設定。metadata._rag.chunking 保存 fingerprint／全域序號／task_id，完整 spec 保存於可追溯 Config／Run。來源全文與 Block 內 offset 不混用；一個 Chunk 可以有多筆 refs，精確語意見 15 §3。
 
-Chunk 須自帶 Rerank／Generation 需要的內容，不強制回查 ParsedDocument。Indexing 預設保存全部 fields／metadata；完整向量保存在索引／Chunk Store，檢索傳遞可令 vectors={}，不能因此刪除已保存內容。追溯用輔助結構可在 metadata；供下游內容選單使用則建議放 fields，不新增頂層 structure。
+Chunk 須自帶 Rerank／檢索結果消費端 需要的內容，不強制回查 ParsedDocument。Indexing 預設保存全部 fields／metadata；完整向量保存在索引／Chunk Store，檢索傳遞可令 vectors={}，不能因此刪除已保存內容。追溯用輔助結構可在 metadata；供下游內容選單使用則建議放 fields，不新增頂層 structure。
 
 metadata 全部繼承限於驗證後的業務欄位及可信平台資訊，ACL／來源不能由輸入覆蓋；必要平台資訊不可排除，第一版不提供 metadata 排除選單。此規則不表示 copy_fields 自動包含所有 fields。正式可信區協定／索引發布機制仍在 Q-006～Q-010 等待決項，不能把資料草案當成已實作原子更新。
 
@@ -132,7 +132,7 @@ metadata 全部繼承限於驗證後的業務欄位及可信平台資訊，ACL�
 
 Profile 是 Query／Document 配對契約；不能只比較維度或模型顯示名稱。Profile／Binding 的完整設定不在每筆 Chunk 重複；每個向量項目保存 Profile 識別與來源欄位，精確格式見 15 §4。第一版多個命名 Dense 向量已確認；不同 Profile／模型同時配置的優先級見 Q-002／Q-003。
 
-### 4.5 Inference 與回答邊界
+### 4.5 Inference 與檢索輸出邊界
 
 Inference 使用 InferenceState → QueryContext → ResultSet → ResultItem，詳細定義見 §4.6。ResultItem.chunk 引用與 Ingestion 下游相同的 Chunk Schema；不另維護扁平 SearchHit 或獨立向量物件。
 
@@ -142,10 +142,9 @@ Inference 使用 InferenceState → QueryContext → ResultSet → ResultItem，
 | QueryContext | 當前／原始問題、來源 Query 與多份 ResultSet |
 | ResultSet | 一次 Retrieval／合併／Top N／模型評分的有序輸出，保留分數方向及來源 |
 | ResultItem | Chunk、當前 score／rank、來源結果引用 |
-| Citation（API 草案） | citation_id、chunk_id、document_id、source_revision、locations；由實際使用的 Chunk 來源產生 |
-| QueryResult（API 草案） | original_question、answer、citations、used_chunk_ids、finish_reason、usage、abstained |
+| QueryResult（API 草案） | request／版本資訊、原始 Query、最終 result_sets；ResultItem 包含 Chunk、score、rank、lineage |
 
-QueryResult 的 answer 目前為字串；Generation 自訂 JSON 仍是待確認提案，見 [04 §5.4.1](04_module_components_io_contracts.md#541-討論提案預設格式與進階自訂-json-輸出)。回答業務格式不能覆寫 request／版本／可信引用；正式 API 包裝由 Q-002／Q-018／Q-019 核定。
+QueryResult 回傳檢索資料，不包含生成答案、生成引用、finish_reason 或 abstained。最終 ResultSet 選擇、空命中與 API 包裝由 Q-014／Q-019 核定；07 提供示意，不另建第二套 Chunk。
 
 rank 從 1 起；score 是相關性分數，不是機率。新 Rerank ResultSet 不覆寫原 Retrieval ResultSet。ResultItem.source_refs 追溯候選／分數來源；Chunk.metadata._rag.source_refs 追溯文件位置，兩者分工不同。
 
@@ -230,7 +229,7 @@ ResultItem 直接帶 Chunk，符合後續無需回查 ParsedDocument 的方向�
 - group_by 對**選入的結果**分組：query_id 表示逐 Query；ori_query_id 表示同原始問題跨 Query。merge_key 決定候選身分，例子使用 chunk_id；如何計分由 method 決定。
 - 不同 score_kind 的 Sum Score 權重／轉換需要另外核定；RRF 依輸入清單各自的 rank 計算。不能直接取不同分數尺度的最大值代表融合。
 - document_id 是文件分組；代表 Chunk／每篇保留 N 個的策略另訂，保留原 chunk_id／引用，不把多個片段偽造成同一 Chunk。
-- None Rerank 原樣傳遞 active 清單，不新增虛構分數。Generation 使用哪份最終結果／如何組 Context 仍需明確配置。
+- None Rerank 原樣傳遞 active 清單，不新增虛構分數。API 使用哪份最終有效 ResultSet 仍需明確配置。
 - JSON Schema 檢查形狀；ID 唯一與引用存在、來源不成環、原始問題不變、同 Chunk 身分一致、rank／score 語意、授權及方法能力仍需 Engine 語意驗證。
 
 #### 4.6.6 五個完整例子
@@ -328,9 +327,8 @@ failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項�
 | Retrieval／Fusion Plan | 選已索引欄位、推導模式；可配置策略及合併時點 | fulltext_fields、vector_fields、per_route_k、top_k、filters、fusion；stages／scope／placement 具體 Schema 待 Q-014 |
 | Rerank | 新模型算分的方法；服務為 None／DEV／Rerank API | method、service、content_fields；UI 將 top_n 作評分後收尾參數，見 10 |
 | ResultSet 後處理 | 去重＆合併／取 Top N／新模型算分；共同排序 | 分組、方法與參數的正式 Config Schema 仍待 Q-002／Q-014；最新 UI 原型配置見 10 |
-| Generation | 兩層模板、共用 LLM | llm_ref、chunk_template、prompt、temperature、max_output_tokens、context_budget |
 
-待確認的設定簡化／擴充：Query Rewrite 合併為一種啟用方法，N=1／N>1 由 count 表達，且用 count 動態產生 queries 輸出 Schema；Generation 增加預設／自訂 JSON 內容格式、自訂 Schema 與主要回答文字路徑。具體新欄位／枚舉未凍結，見 04 §5.1.2／§5.4.1。服務連線與模型共用，但各模組每次呼叫提供不同 Schema，不能在全域 LLM 設定固定一種輸出。原型舊 method／雙 Prompt 仍待明確遷移。
+Query Rewrite／Multi-query 的 1／N、Structured Output 與共用 LLM Adapter 提案保留，見 04 §5.1；取消答案生成及自訂答案 JSON 設定。
 
 正式枚舉建議用 snake_case，UI 可顯示自然語言。Prototype 的 chunking.split、embedding.mappings[].source、indexing.filters、transform 等短名稱不自動視為正式 Schema；需明確 migration。Chunk 後的引用使用 fields.text／vectors.text／metadata.department；Chunking 來源用當筆 Unit 的 key，例如 text。上述拼字及預設值需 Q-002 核定，禁止同時接受未宣告別名而掩蓋錯誤。
 
@@ -381,7 +379,7 @@ Indexing 宣告可過濾欄位；Retrieval 保存預設條件；Query API 可加
 | Chunking | 基本 text；進階有序 tasks、每任務 Component／參數、split_field／output_field／copy_fields | 逐 Unit 檢查來源欄位與文字格式相容；完整 Chunk 輸出、追溯、序號／ID 及必要任務產出驗證 |
 | Embedding | 來源欄位、向量名稱、不可變 Profile 識別 | 預設 fields.text → vectors.text；寫入 values／embedding_profile_id／source_field |
 | Indexing | 全文／向量／Filter 欄位、搜尋後端、持久化模式 | 保存全部 Chunk 內容；Binding 檢查向量來源、Profile、維度及索引能力 |
-| Inference | Query、搜尋欄位／Filter、兩層融合時機與四處 Top N、Rerank／Generation 內容欄位 | 操作 QueryContext／ResultSet；使用 Chunk 已保留的內容，不強制回查 ParsedDocument |
+| Inference | Query、搜尋欄位／Filter、兩層融合時機與四處 Top N、Rerank／檢索結果消費端 內容欄位 | 操作 QueryContext／ResultSet；使用 Chunk 已保留的內容，不強制回查 ParsedDocument |
 | 部署設定 | DEV／FTEST／ENT 的服務 URL、Secret、集合與資源綁定 | 不改變同版 Config 的邏輯；Memory／MongoDB 模式不能在 Export 時任意覆寫 |
 
 Chunk 後的 UI／跨容器引用使用 fields.text、vectors.text、metadata.department。15 的切分計畫 split_field／copy.source_field 使用當筆 Unit 的 key；output_field 與 DenseVector.source_field 使用 Chunk.fields 的 key（例如 text）。每階段明確解析，不將舊 ParsedDocument.fields 路徑當別名。
@@ -395,7 +393,7 @@ ParsedDocument.units 每筆直接放內容欄位；Chunk 的 metadata._rag.sourc
 | Document Schema、Import／Parsing／Chunking／Embedding／Indexing 的邏輯配置 | 新 Config Revision，標記需重新 Ingestion；中間產物重用另決 |
 | 部署設定的 DB／實體索引目標 | Config Revision 不因此改變；更新部署綁定，目標需有相容資料或重新 Ingestion |
 | 同 Profile 的模型服務 URL／Secret | 邏輯 Config 不變；驗證連線與實際模型相容性，不能把不相容模型當成純換 URL |
-| Query Transformation、Retrieval、Rerank、Generation、被引用的 LLM | 不需重建；需重新測試／評估 |
+| Query Transformation、Retrieval、Rerank、被引用的 LLM | 不需重建；需重新測試／評估 |
 | Indexing filter_fields | 需重建搜尋能力 |
 | Retrieval filters 詞值、本次 filters | 僅影響查詢 |
 | 顯示名稱 | 不更換穩定 collection |
@@ -416,7 +414,7 @@ CSV 映射保存、Revision 計算、canonical JSON／Hash、部署綁定是否�
 | 修改共用 Chunk Size／切分規則 | 重新處理採用該規則的既有文件，可能涵蓋此 System 全部文件；後續 Embedding／索引隨新的 Chunk 更新 |
 | 更換 Embedding 語意 Profile | 針對受影響內容重算向量並建立相容的向量索引；是否可重用 Chunk 等中間產物待 Q-015 |
 | 改 Indexing 欄位／Mapping | 重建或補建受影響索引能力；實際步驟由 ES／Local Adapter 及相容政策決定 |
-| 只改 Query Transformation／Retrieval／Rerank／Generation | 不重做 Ingestion；重新測試／評估 |
+| 只改 Query Transformation／Retrieval／Rerank／檢索結果消費端 | 不重做 Ingestion；重新測試／評估 |
 | Local Memory 程序重啟 | 記憶體 Chunk／vectors／搜尋結構已遺失，需重新 Ingestion 才可 Query |
 | Local MongoDB 程序重啟 | 以已保存 Chunk／vectors 恢復 FAISS／BM25／Chunk Store；相容時不需重新 Parsing／Embedding，屬索引恢復 |
 

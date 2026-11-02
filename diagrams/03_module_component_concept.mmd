@@ -2,7 +2,7 @@ flowchart TB
     %% 固定 SVG／PNG：上排 Ingestion、下排 Inference；每個內建選項獨立一格。
     %% API／Import／Parser 共用 IngestionDocument；content／base64／uri 三選一，內容由 SDK resolver 取得。
     %% 選項是目標規劃；None 是略過，服務來源及搜尋模式不另列 Component。
-    subgraph ENGINE["RAG Engine｜全部 Modules 的內建與擴充 Components"]
+    subgraph ENGINE["Retrieval Engine Library｜全部 Modules 的內建與擴充 Components"]
         direction TB
         subgraph INGESTION["Ingestion"]
             direction LR
@@ -60,20 +60,13 @@ flowchart TB
                 RERANK_B2["Rerank API Adapter"]
                 RERANK_CUSTOM["自訂 Reranker"]
             end
-            subgraph GENERATION["Generation"]
-                direction TB
-                GENERATION_B1["LLM Generation Adapter"]
-                GENERATION_CUSTOM["自訂 Generator"]
-            end
             QUERY --> RETRIEVAL
             RETRIEVAL --> RERANK
-            RERANK --> GENERATION
+            RERANK --> OUTPUT["檢索結果｜ResultSets / Chunks / Scores"]
         end
         subgraph EVALUATION["Evaluation｜獨立評估模組（不在單次 Ingestion／Inference 主線）"]
             EVALUATION_B1["Recall@K"]
             EVALUATION_B2["MRR"]
-            EVALUATION_B3["Answer Correctness"]
-            EVALUATION_B4["Faithfulness"]
             EVALUATION_B5["Latency"]
             EVALUATION_B6["Usage"]
             EVALUATION_B7["Error Rate"]
@@ -82,16 +75,16 @@ flowchart TB
     end
 
     DEV["Module Developer｜依契約開發 Component"] --> CHECK["測試＋PR 審查｜驗證契約與設定"]
-    CHECK --> UPDATE["發布並更新 RAG Engine｜內建＋核可自訂 Components"]
+    CHECK --> UPDATE["發布並更新 Retrieval Engine Library｜內建＋核可自訂 Components"]
     UPDATE -->|納入目標 Runtime| ENGINE
-    ENGINE -. "Component 目錄＋Config Schema" .-> UI["RAG Builder User｜選 Component、填參數"]
+    ENGINE -. "Component 目錄＋Config Schema" .-> UI["Retrieval Builder User｜選 Component、填參數"]
 
     classDef builtin fill:#e9f2ff,stroke:#6086c8,color:#143054
     classDef custom fill:#eee9fa,stroke:#9380bf,color:#443267
     classDef delivery fill:#fff5e5,stroke:#cf9b4a,color:#624516
     classDef builder fill:#ecf8f2,stroke:#599d85,color:#153f32
-    class IMPORT_B2,PARSING_B1,CHUNKING_B1,CHUNKING_B2,CHUNKING_B3,EMBEDDING_B1,INDEXING_B1,INDEXING_B2,QUERY_B1,QUERY_B2,QUERY_B3,RETRIEVAL_B1,RETRIEVAL_B2,RERANK_B1,RERANK_B2,GENERATION_B1,EVALUATION_B1,EVALUATION_B2,EVALUATION_B3,EVALUATION_B4,EVALUATION_B5,EVALUATION_B6,EVALUATION_B7 builtin
-    class IMPORT_CUSTOM,PARSING_CUSTOM,CHUNKING_CUSTOM,EMBEDDING_CUSTOM,INDEXING_CUSTOM,QUERY_CUSTOM,RETRIEVAL_CUSTOM,RERANK_CUSTOM,GENERATION_CUSTOM,EVALUATION_CUSTOM,DEV custom
+    class IMPORT_B2,PARSING_B1,CHUNKING_B1,CHUNKING_B2,CHUNKING_B3,EMBEDDING_B1,INDEXING_B1,INDEXING_B2,QUERY_B1,QUERY_B2,QUERY_B3,RETRIEVAL_B1,RETRIEVAL_B2,RERANK_B1,RERANK_B2,EVALUATION_B1,EVALUATION_B2,EVALUATION_B5,EVALUATION_B6,EVALUATION_B7 builtin
+    class IMPORT_CUSTOM,PARSING_CUSTOM,CHUNKING_CUSTOM,EMBEDDING_CUSTOM,INDEXING_CUSTOM,QUERY_CUSTOM,RETRIEVAL_CUSTOM,RERANK_CUSTOM,EVALUATION_CUSTOM,DEV custom
     class CHECK,UPDATE delivery
     class UI builder
     style ENGINE fill:#f7faff,stroke:#9aafc9

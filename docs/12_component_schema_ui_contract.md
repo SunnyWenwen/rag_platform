@@ -8,7 +8,7 @@
 
 ## 1. 目的與已確認行為
 
-Module Developer 宣告 Component 的參數、顯示需求及相依能力；Engine 彙整核可方法，Builder 依描述產生 Component 選單與設定表單。沿用固定的 RAG Builder Create／Edit 流程，不增加通用 DAG 畫布。
+Module Developer 宣告 Component 的參數、顯示需求及相依能力；Engine 彙整核可方法，Builder 依描述產生 Component 選單與設定表單。沿用固定的 Retrieval Builder Create／Edit 流程，不增加通用 DAG 畫布。
 
 已確認的操作行為：
 
@@ -150,7 +150,7 @@ UI hints 使用平台自己的 JSON 描述，再由 Builder 映射至選定表�
 
 規則可讀的 `context` 是 Engine 產生的唯讀、版本化事實，例如 upstream、available_services、effective_index、derived；精確各 Module 事實型別在 M0／M2 按案例擴充。UI 不能自己宣稱具有向量索引／DEV 服務或寫入可信事實。服務清單只含邏輯引用與可呈現資訊，不含 Secret 值。
 
-新增 Config 的相容性可依計畫中的索引能力驗證；實際 Ingestion 是否完成、索引版本是否匹配、外部服務是否連通另列執行就緒檢查。不能因尚無資料就禁止建立 RAG System，也不能因 Config 合法就宣稱已有可查詢資料。
+新增 Config 的相容性可依計畫中的索引能力驗證；實際 Ingestion 是否完成、索引版本是否匹配、外部服務是否連通另列執行就緒檢查。不能因尚無資料就禁止建立 Retrieval System，也不能因 Config 合法就宣稱已有可查詢資料。
 
 <a id="dependency-rules"></a>
 

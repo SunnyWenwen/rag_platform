@@ -1,4 +1,4 @@
-# RAG Builder — 開發計畫、驗收與決策追蹤
+# Retrieval Builder — 開發計畫、驗收與決策追蹤
 
 > 文件同步：2026-10-31 · 開發規格草案（正式 SDK／Config 尚未凍結）
 >
@@ -44,7 +44,7 @@
 | ID | 方向 | 依據／狀態 | 主責文件 |
 |---|---|---|---|
 | D-01 | 03 概覽；04 獨立 Engine；05 資料／Config；06 UI；07 Backend；08 開發與決策 | 2026-10-15 對話／已確認 | 03～08 |
-| D-02 | 同一系統支援新手與熟悉 RAG 者；AI 設定、CSV 起始、進階收合 | 2026-10-15 使用者提出／已確認 | 03／06 |
+| D-02 | 同一系統支援新手與熟悉 Retrieval 者；AI 設定、CSV 起始、進階收合 | 2026-10-15 使用者提出／已確認 | 03／06 |
 | D-03 | 手寫 Config 可直接執行 Engine；UI 產生 Config，不另生成一套 Engine 程式 | 2026-10-15 對話／已確認 | 04／05 |
 | D-04 | 固定 Ingestion／Inference；Builder 與獨立 API Runtime 使用同一 Engine | 舊 03 v0.8／既有基線 | 03／04／07 |
 | D-05 | ParsedDocument 五個、Chunk 六個頂層 key；vectors 位於 Chunk | 既有五／六鍵方向；D-46／47 具體化 | 13～15／schemas/ |
@@ -55,8 +55,8 @@
 | D-10 | Local Search 同程序／單副本；MongoDB 只持久化並支援重建 | 舊 03 §5.3／既有基線 | 04／07 |
 | D-11 | 結果處理採兩層合併時點設定／四處 Top N；Prototype 已有設定與預覽，Engine 未實作 | 2026-10-15 已確認 UI 與原型更新；現行紀錄見 10 | 04／05／10 |
 | D-12 | Sum Score 不自動正規化；RRF 預設 k=60；兩種策略有效參數分開 | 舊 05 §17／既有基線 | 04／05 |
-| D-13 | System 共用 LLM 清單；Rewrite／Generation 以 llm_ref 引用 | 舊 05 §14／既有基線 | 05／06 |
-| D-14 | 原始問題保留；Rerank 使用平台約定 API；Generation 兩層單次模板替換 | 舊 05 §13～14／既有基線 | 04／05 |
+| D-13 | System 共用 LLM 清單；Rewrite 以 llm_ref 引用 | 舊 05 §14／既有基線 | 05／06 |
+| D-14 | 原始問題保留；Rerank 使用平台約定 API；舊 Generation 模板已由 D-50 撤銷 | 舊 05 §13～14／既有基線 | 04／05 |
 | D-15 | Filter 區分可過濾欄位／預設條件／本次條件；eq／in 字串、全部與 ACL AND、Top-K 前限制 | 舊 05 §15／既有基線 | 04／05／07 |
 | D-16 | Ingestion 有效配置變動需重建；Inference 變動重測；未啟用草稿不影響執行 | 舊 05 §13.7／既有基線 | 05／07 |
 | D-17 | 助手建議需驗證及使用者套用，不自動執行 Ingestion／猜憑證 | 舊 05 §13.7／既有基線 | 06／07 |
@@ -66,7 +66,7 @@
 | D-21 | collection 由 Workspace＋System 名稱自動產生，不要求手填；穩定 ID 防重，改名不換實體 | 2026-10-14 09:31（台北）使用者要求／已確認 | 05／06／07 |
 | D-22 | Parsing 只顯示結構化 JSON；其他格式及所有相關設定預設收合 | 2026-10-14 17:09 使用者要求／已確認 | 06 |
 | D-23 | 使用者可配置融合策略及在哪個合法處理步驟後合併；先釐清 Inference 傳遞物件／多路分數，再核定具體 stages／兩層／預設 | 2026-10-14 要求及 2026-10-15 11:03 釐清／需求已確認，細節 Q-014 | 03／04／05／06／07 |
-| D-24 | 共用 LLM、可編輯 Query Prompt、Generation 模板範例／套用按鈕與 Rerank 格式說明 | 2026-10-14 10:44～11:00 對話／已確認方向 | 04／05／06 |
+| D-24 | 共用 LLM、可編輯 Query Prompt、（舊 Generation 模板範例已取消）及 Rerank 格式說明 | 2026-10-14 10:44～11:00 對話／已確認方向 | 04／05／06 |
 | D-25 | L1／Infra 的框、標籤、方向、圖示及省略線依使用者既有修改保留 | 2026-10-14～15 對話與基準圖／已確認 | 03 §4／既有圖面 |
 | D-26 | Ingest／Inference 的 API 端點說明隨時可看，包含未 Ingestion 狀態 | 2026-10-14 13:11 使用者要求／已確認 | 06／07 |
 | D-27 | 以部門 LangChain／LangGraph 生態為技術背景；Haystack 未被使用者選定 | 2026-10-12 15:58 對話核對／已確認偏好 | 03／04／Q-001 |
@@ -92,6 +92,7 @@
 | D-47 | Chunk 六鍵共用草案；預設直接切 text、不選欄位，進階才多任務／複製；來源追溯放 metadata._rag，向量項目記錄 Profile／來源；可重現 fingerprint＋全域 ordinal | 2026-10-30 使用者確認前述方向並要求 Schema／文件；語意方向已確認，精確格式／SDK 與索引發布仍為草案 | 15／schemas/chunk.schema.json／examples/chunk；04～12；Q-002／Q-003／Q-004／Q-006／Q-007～Q-010／Q-015；UIB-013 |
 | D-48 | 多欄位切分任務預設各自輸出 fields.text；完整來源需明確複製到不衝突名稱。第一版必要切分欄位缺失／型別錯誤／全空白、必要任務零產出及明確 copy 缺失均報錯 | 2026-10-30 使用者回覆「24 照你建議 OK」；concat／固定文字另討論，精確 Schema／SDK 未凍結 | 15 §2／§9；04／05／06／UIB-013；Q-002／Q-004／Q-009 |
 | D-49 | ParsedDocument 統一為平面 units；Parser 整理結構，Chunker 單筆切分，不跨 Unit 合併／overlap；來源以 unit_index 追溯 | 2026-11-02 已確認 units 名稱及無 fields／unit_id 包裝 | 04～08／10～15／schemas／examples；UIB-014 |
+| D-50 | Retrieval-only；產品名統一 Retrieval；Library＋Config 建立 System，Platform 包含 Library／API／Image；取消 Generation 及答案評估 | 2026-11-02 使用者確認 | 03～15／架構圖；UIB-015 |
 
 兩層合併預設勾選且在 Retrieval 後已確認，Prototype 的設定／預覽狀態見 10；不能把展示能力當作 Engine 已實作。Q-014 仍負責正式支援路徑、stage 命名及執行契約等剩餘細節。
 
@@ -112,7 +113,7 @@
 
 M1 先跑 IngestionDocument.content object → Structured JSON Parser → ParsedDocument → Recursive → Chunk 的最小路徑；Fixed-size 已列入方法需求，於 M2 擴充驗收，不因增加方法而要求 M1 同時完成所有能力。CSV 由映射產生相同輸入。M2 按子任務交付，不必全部方法完成才開始 M3；Runtime 可先包裝已可用 Engine，再逐步增加能力。M4 只能建議當前 Registry 已支援的方法。
 
-Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，不要求每個 RAG System 各建一個 Image。匯出通常引用支援該 Config 的 Runtime Image 版本／Digest，另外交付 Config 與部署設定。M6 的評估純邏輯可在 M1／M2 先做，但不能把早期模組測試當作 M6 整體評估已完成。
+Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，不要求每個 Retrieval System 各建一個 Image。匯出通常引用支援該 Config 的 Runtime Image 版本／Digest，另外交付 Config 與部署設定。M6 的評估純邏輯可在 M1／M2 先做，但不能把早期模組測試當作 M6 整體評估已完成。
 
 2026-10-28 D-41 補充：M0 規劃兩個 repo 及套件邊界；M1～M3 的 Engine／Components／Runtime API 在 rag_engine 開發，M5 Builder 在 rag_platform 開發。M4 獨立助手核心的目錄建議置於 rag_engine，保留無 Builder 的 Python／API 入口，M5 另做 UI 整合；實際包裝見 07 §2。M7 交付由 rag_engine 建置的完整 Runtime Image，不要求另一個 Components repo 進行 Image 二次組裝。階段順序與已確認功能範圍維持不變。
 
@@ -192,7 +193,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 5. UI：基本／進階、CSV、AI Diff、取消、Edit 影響與 API 端對端。
 6. 部署：無 Builder 的乾淨目標環境啟動、Ingest／Query 與健康檢查。
 
-不要要求 LLM 回答逐字相同。應檢查引用來自實際 Context、未知引用處理、資料不足政策及輸出 Contract。效能、品質／成本門檻由 Q-018／Q-027 決定，不捏造精確 SLA。
+不驗收生成答案。應檢查檢索排名／來源追溯、空命中、錯誤與輸出 Contract；Rewrite／助手另驗結構與語意，不要求 LLM 逐字相同。效能、品質／成本門檻由 Q-018／Q-027 決定，不捏造精確 SLA。
 
 每個交付記錄：變更與對應規格、重現指令、實際執行結果、使用 Fake 或真實服務、未完成部分／Q-ID。不能用 Mock 通過宣稱真實模型／DB 已驗證；不能只測試實作自我重複的函式。
 
@@ -246,8 +247,8 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 
 - 不清楚：首組模型、Profile／版本辨識、Tokenizer 取得、Chat 角色／輸出格式、多 Query 解析、Rerank 服務限制。
 - 本輪待確認提案：Rewrite／Multi-query 採固定 queries 結構及 1／N 數量、Provider Structured Output／Tool／文字解析能力分級、模組 Schema 與共用 LLM Adapter 分工；格式與語意都由後端重驗。細節見 04 §5.1.1，不因寫入提案就凍結 Provider 或重試／fallback 預設。
-- 10:22 延續提案：Rewrite／Multi-query 可合併為一種啟用方法，以 count=1／N 區分；count 動態產生 Schema，Prompt 控制內容而不覆寫格式／筆數。Generation 另提預設格式＋收合的自訂 JSON Schema；支援能力、回傳 Schema 子集與拒答／截斷處理仍待核定，見 04 §5.1.2／§5.4.1。
-- 既有方向：Embedding API、System 共用 LLM 的 OpenAI-compatible API、平台約定 Rerank API；原型格式基線為 embeddings／Chat Completions／04 的 rerank。原型基線不等於所有 Provider 相容性都已核定。
+- Rewrite 的 count=1／N、Schema 輸出約束提案保留（04 §5.1）；Generation 及其答案格式提案由 D-50 撤銷。
+- 既有方向：Embedding API、System Rewrite／助手共用 LLM 的 OpenAI-compatible API、平台約定 Rerank API；原型格式基線為 embeddings／Chat Completions／04 的 rerank。原型基線不等於所有 Provider 相容性都已核定。
 - 建議：先選一組可實測的 Adapter／服務及 Profile，各有 Fake 與真實契約測試；不同格式顯式 Adapter。
 - 替代：第一期支援多 Provider 格式，增加測試矩陣。
 - 負責角色：Engine＋模型服務提供方；阻擋 M1 真實服務。
@@ -387,7 +388,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 ### Q-018 Evaluation 範圍與 Gate
 
 - 不清楚：首批指標、Dataset／Ground Truth 格式、Judge／Rubric、Chunk／Document 層級、Rerank 前後、公開檢索 Target、Gate 門檻。
-- Generation 自訂 JSON 若採用，還需核定主要回答文字欄位映射、無文字 payload 時哪些指標不適用，以及 UI／Dataset 相容性；不得把未定的整個 JSON 序列化成答案後宣稱完成既有評估。
+- 已移除答案正確性／Faithfulness 與自訂答案 JSON 的驗收；Evaluation 聚焦檢索排名、延遲、Usage／錯誤。
 - 建議：先有可驗算的 Retrieval 指標與操作指標，再加明示 Judge；缺資料拒絕或 skipped。
 - 替代：先 End-to-end Judge；不得冒充有可靠 Retrieval Ground Truth。
 - 負責角色：產品／資料＋Engine＋Backend；阻擋 M6 正式評估／Gate，不卡 Query 主線。
@@ -399,7 +400,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 - 不清楚：完整 CRUD／助手／管理 API、OpenAPI、錯誤碼／狀態、上傳限制、manifest、冪等鍵、DEV 路由、認證及暴露 Trace。
 - D-41 補充：Builder 與 Runtime 透過 API／Component 目錄合作；需核定目標 Runtime 版本識別、Config Schema／能力目錄、完整 Config 驗證、快取失效與接口相容政策。能力範圍見 07 §5.8，精確端點與 Envelope 仍 OPEN。
 - D-42 已按建議規劃描述／Context／選項及驗證關聯值，候選格式見 12；精確路徑、認證、版本識別與公開 Meta-schema 仍 OPEN，不影響既有 Ingest／Query 範例。
-- 10:22 的 Generation 自訂 JSON 提案只針對業務內容；HTTP envelope 的平台欄位、payload 容器、answer 字串相容性、SDK 型別、錯誤／Streaming 需另核定。當前 07 範例不因提案而變動。
+- Query API 回傳最終 ResultSets／ResultItems，保留分數、排名、來源與版本；精確 HTTP Schema 及診斷投影待核定。
 - 建議：沿用 07 的 Endpoint 草案，先凍結 Ingestion／Status／Query，補齊 Backend API；HTTP 與領域錯誤分層。
 - 替代：沿用既有企業 API 規範並明確映射。
 - 負責角色：Backend＋Runtime＋Frontend／身分團隊；阻擋 M3 Runtime／M4 助手 API／M5 Builder 真實串接。
@@ -438,12 +439,12 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 - 決策狀態：角色／擴充需求與兩個 repo 分工已確認，具體技術與發布政策 **OPEN**；更新 03／04／06／07／11，UI 先記 10 UIB-010。本輪不以 repo 決策代替其餘細節核定。
 
 <a id="q-023"></a>
-### Q-023 Fallback、無資料、Budget 與引用
+### Q-023 Fallback、無命中與資源上限
 
-- 不清楚：無 Context 是否一律 abstain、Context 截斷順序、未知引用、多 Query／Rerank 失敗降級、生成回應格式。
-- 建議：錯誤與無命中分開；預設不靜默降級；明確定義無資料與超限回應，保留實際 Context。
+- 不清楚：空清單、部分檢索路徑失敗、多 Query／Rerank 失敗降級與候選數／資源上限。
+- 建議：錯誤與無命中分開；預設不靜默降級；明確定義空命中與超限回應，保留實際 ResultSets／Trace。
 - 替代：可設定 fallback，但需 Trace／warnings 與測試。
-- 負責角色：產品＋Engine；阻擋 M1 正式回答邊界及 M2 降級。
+- 負責角色：產品＋Engine；阻擋 M1 正式檢索輸出邊界及 M2 降級。
 - 決策：未定；更新 04／05／06／07。
 
 <a id="q-024"></a>
@@ -461,7 +462,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 
 - 已確認：Parsing 初始只顯示結構化 JSON，其他格式／設定全在預設關閉進階區；LLM／Prompt／範例及 API 說明要求見 06 §3.2。待定的是其餘基本／進階分組、展開記憶、改動摘要、範本、真實試跑與診斷範圍。
 - 2026-10-16 討論提案：在 Rewrite／Multi-query 旁提供不需 Ingestion 的單模組測試，使用當前草稿與相同 Engine／Adapter，顯示實際 Query 與格式驗證；是否採用及展示細節待確認，UIB-007 保持提案狀態，不擴張成所有模組都要試跑。
-- 後續提案 UIB-008／009：Rewrite 兩方法合併為 1／N 同一組設定，Generation 預設格式與預設收合的進階 JSON 輸出設定。均為待確認提案，不能覆蓋原型／既有 Config 或自動勾選為已實作。
+- UIB-008 Rewrite 設定提案保留；UIB-009 答案格式提案取消，產品名稱／結果呈現遷移見 UIB-015。
 - D-41／UIB-010 補充：方法選單／設定依目標 Runtime 的目錄與 Schema，需定動態表單支援範圍、目錄更新／過期狀態及不相容 UI 提示；相容新增 Component 不要求每次重建 Builder。特殊控制項仍需前端配合，不承諾任意 Schema 均可自動呈現。
 - D-42 已確認固定 Builder 流程搭配動態 Component 參數表單，以及 12 §1 的五項操作行為；不再把這些方向列為未決。12 提供欄位／服務選擇器、相依狀態與 SUI-01～14 草案；具體控制項樣式、支援版本與其餘範本／試跑範圍仍待核定。
 - 建議：保留已確認互動，再核定其餘分組；必填錯誤可定位，保持同一 Config。試跑與範本逐項啟用。
@@ -530,3 +531,7 @@ Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract�
 ## D-49：Parser／Chunker 分工與平面 Units（2026-11-02）
 
 ParsedDocument 採 units 列表，Unit 直接放內容欄位；無 fields 包裝、無必要 unit_id、無 structure。Parser 整理來源結構；Chunker 僅單筆文字內切分，不跨 Unit 合併／overlap。Fixed-size、Recursive、Markdown Header-aware 保留。來源追溯採 unit_index；其他既定 Chunk／Embedding／Indexing 規則延續。文件、Schema、範例同步；Prototype 遷移獨立列 UIB-014。
+
+## D-50：Retrieval-only 與 Library／Platform（2026-11-02）
+
+Generation 不在開發或驗收範圍；Inference 輸出檢索結果。Rewrite／Multi-query、助手的 LLM 仍保留。03 §3 統一定義 Library、Platform、Runtime、System；Library 配 Config 並綁定必要資源才成為可執行 System。舊 D-14／D-24 中答案相關部分撤銷，UIB-009 取消。實際 repo／package／URN／保留欄位暫不更名，另列遷移；不修改現有 Prototype。

@@ -1,6 +1,6 @@
-# RAG Builder
+# Retrieval Builder
 
-以 Config 建立、測試及交付 RAG System。Builder 提供設定、資料上傳轉換、問答與評估介面；獨立部署的 Runtime 提供 API，使用相同 Engine 與邏輯 Config。
+以 Config 建立、測試及交付 Retrieval System。Builder 提供設定、資料上傳轉換、檢索查詢與評估介面；獨立部署的 Runtime 提供 API，使用相同 Engine 與邏輯 Config。
 
 目前為開發規格、契約驗證範例與模擬 UI，尚未完成可部署的 Engine／Runtime。文件同步日期：2026-10-31。需求先更新文件，UI 差異記入 [Backlog](docs/10_ui_adjustment_backlog.md#ui-backlog-pending)，收到改 UI 指示後才實作。
 
@@ -27,9 +27,9 @@ Chunk 預設切 fields.text 並寫回 text；進階多欄位任務各自切分�
 | [05 資料與 Config](docs/05_data_contracts_search_design.md) | 契約總覽、Inference 物件、設定責任與變更影響 |
 | [06 UI 開發規格](docs/06_ui_development_spec.md) | Create／Edit、欄位相依、CSV、預覽及助手 |
 | [07 Backend 與 Runtime API](docs/07_backend_runtime_integration.md) | JSON API、工作狀態、儲存、服務綁定與 Export |
-| [08 開發計畫與決策](docs/08_implementation_plan.md) | M0～M7、D-01～D-49、Q-001～Q-027 與驗收 |
+| [08 開發計畫與決策](docs/08_implementation_plan.md) | M0～M7、D-01～D-50、Q-001～Q-027 與驗收 |
 | [09 Inference Contract 與 UI](docs/09_inference_contract_ui_plan.md) | ResultSet、兩層融合、四處 Top N 與連動 |
-| [10 UI Backlog](docs/10_ui_adjustment_backlog.md) | 現有原型能力及未實作 UIB-001～014 |
+| [10 UI Backlog](docs/10_ui_adjustment_backlog.md) | 現有原型能力及未實作 UIB-001～015 |
 | [11 Component 開發指南](docs/11_component_developer_guide.md) | SDK 示意、開發、契約測試、PR 與發布 |
 | [12 Component 設定描述](docs/12_component_schema_ui_contract.md) | Config Schema、UI hints、動態選項與相依規則 |
 | [13 IngestionDocument](docs/13_ingestion_parser_input_contract.md) | 輸入分類、路由、API／Parser 相同 Schema |
@@ -54,3 +54,5 @@ Chunk 預設切 fields.text 並寫回 text；進階多欄位任務各自切分�
 舊輸入格式、完整單層 YAML、可任意排列結果處理卡片及逐次更新流水帳已移除；歷史由 Git 保留。尚未確認的 concat／固定文字組裝、LLM 結構化輸出及正式發布政策保留為提案，不當成既定功能。
 
 2026-11-02：ParsedDocument／Chunk 已更新至 0.2-draft（units 與 unit_index 來源追溯）；Prototype v0.10 尚未遷移，對應改動見 UIB-014。舊 provider 0.1 報告不作新版驗收證據。
+
+2026-11-02 D-50：改為 Retrieval-only；不做 Generation。Library＋Config（及必要資源綁定）建立 Retrieval System，Platform 包含 Library／Runtime API／共用 Image。查詢輸出檢索清單；Rewrite／助手仍可使用 LLM。Prototype 名稱與答案功能尚未遷移，見 UIB-015。repo rag_platform、rag_engine、套件與 Schema ID／_rag 保留為既有技術識別，非產品名稱。

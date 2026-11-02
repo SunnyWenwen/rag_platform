@@ -1,4 +1,4 @@
-# RAG Builder — 使用流程與 UI 開發規格
+# Retrieval Builder — 使用流程與 UI 開發規格
 
 > 文件同步：2026-10-31 · 開發規格草案（正式 SDK／Config 尚未凍結）
 >
@@ -16,13 +16,13 @@
 
 ## 1. 目標、相依與範圍
 
-- 新手透過預設、CSV 與 AI 助手快速開始；熟悉 RAG 者可展開完整設定。
+- 新手透過預設、CSV 與 AI 助手快速開始；熟悉 Retrieval 者可展開完整設定。
 - 同一份 Config 可由手動或 AI 修改，不建立兩套不相容模式。
 - 畫面名詞與元件關係以 [03 §3](../03_architecture_proposal.md#terminology) 為準；UI 標籤與說明不得另定同名概念。
 - 資料／Config 以 [05](05_data_contracts_search_design.md) 為準；模組能力由 [04](04_module_components_io_contracts.md) 提供；API 見 [07](07_backend_runtime_integration.md)。
 - 正式階層為 Workspace → System；側欄選 Workspace，主區顯示 System 卡片與操作視窗，不另建 Group。原型的 Groups 標籤／內部變數屬舊命名，正式化時遷移，不新增通用 DAG 編輯器。
 - 保留單一主畫面：左側切換 Workspace，中間以圖示／卡片呈現已建 System，卡片提供 Ingest／Inference／Evaluation／Edit Config／Export 入口。
-- 右上角放顯眼的「Create RAG System」。開啟設定介面時沿用此名稱；Edit Config 重用同一份表單與模組設定元件，載入所選 System 的獨立草稿。
+- 右上角放顯眼的「Create Retrieval System」。開啟設定介面時沿用此名稱；Edit Config 重用同一份表單與模組設定元件，載入所選 System 的獨立草稿。
 - UI 設定 Config，Engine 組裝實例；前端不直接存取 Secret 或自行執行正式 Pipeline。
 
 ## 2. 畫面與操作地圖
@@ -33,7 +33,7 @@
 | Create／Edit | 設定 Schema、模組 Component／參數、Pipeline 與服務邏輯引用 | 經驗證的 Config 草稿／Revision；環境連線另存部署設定 |
 | 從 CSV 開始 | 樣本、用途、映射與 AI 建議 | 建議草稿；確認後仍由使用者建立／匯入 |
 | Ingest | 上傳、預覽、確認映射、執行 | run_id、進度、結果及可處理錯誤 |
-| Inference | 問題、本次 filters | 回答、引用、可展開診斷 |
+| Inference | 問題、本次 filters | 檢索清單、分數／來源、可展開診斷 |
 | Evaluation | 選 Dataset／指標、啟動 | 工作狀態、報告、與版本對應 |
 | Export | 補齊 FTEST／ENT 目標服務 | 待設定草稿／已填妥但未驗證的匯出檔 |
 | 查看 API | 查看目前 System／Runtime 的呼叫方法 | 端點、輸入／回應範例；不啟動工作 |
@@ -55,9 +55,8 @@ Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保�
 - Parsing 初始只顯示「結構化 JSON」；其他格式及所有相關設定集中在預設關閉的「進階選項」，展開才出現。正式 Parser 能力另依 Q-005，顯示選項不等於可執行。
 - Create／Edit 前段有 Document Schema；先宣告 Unit 內容欄位／文件 metadata，再產生下游欄位選項。
 - 2026-10-16 已確認：Indexing 預設保存全部 Chunk.fields／metadata，移除「儲存內容」選單，只選全文／向量索引與可過濾欄位；Chunking 預設繼承全部合法 metadata，第一版不新增排除表單。對應 UI 尚未修改，見 10 的 UIB-005／006。
-- LLM 服務集中管理；Rewrite／Multi-query／Generation 在需要時以下拉引用，同一服務不重填連線。
+- LLM 服務集中管理；Rewrite／Multi-query 在需要時以下拉引用，同一服務不重填連線。
 - Rewrite／Multi-query 的 Prompt 可編輯，分別保留草稿；提供變數插入、驗證與預覽。
-- Generation 有「模板說明與範例」及「套用範例」入口，展示兩筆 Chunk→逐筆模板→Context→完整回答 Prompt。
 - Rerank 可查看固定平台 Request／Response 範例及 index／score 對應說明；不宣稱是所有模型的統一標準。
 - collection 由 Workspace＋System 名稱／穩定 ID 自動帶入且唯讀；改顯示名稱不換既有實體。
 - Retrieval 不另選 Implementation；由使用者選全文／向量欄位推導模式。原型 v0.9 已提供同 Query／跨 Query 兩層合併及各自的 Retrieval 後／Reranker 後時點；正式 Config 與 Engine 執行細節仍由 Q-014 追蹤。
@@ -75,7 +74,6 @@ Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保�
 | Query Transformation | 既有 None／Rewrite／Multi-query、LLM；合併提案見 §3.3.2 | Prompt、count、include_original |
 | Retrieval／Fusion Plan | 搜尋欄位、每 Query／每路 Top K、有效流程摘要、預設 filters | 同／跨 Query 合併、時點、演算法、去重及兩處合併後 Top N；見 §3.4 |
 | Rerank | None／服務、單一評分內容欄位、評分後 Top N（預設 3）、實際提問來源 | 逐 Query 問題選擇、附加內容欄位、Timeout／服務輸入限制 |
-| Generation | LLM、回答要求；預設輸出格式提案見 §3.5 | 兩層模板、變數、Temperature、Budget；自訂 JSON Schema（提案） |
 
 必填但缺失的設定不能因進階區收合而無法發現；錯誤摘要可直接展開並定位。改動過的進階設定收起後，建議顯示已修改項數／簡短摘要。範圍、預設值及「每次記住展開」政策見 Q-025。
 
@@ -86,7 +84,7 @@ Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保�
 | Embedding | DEV test use／Embedding API | 自行提供時設定 API URL、Model、認證引用及必要模型資訊；不另增加使用者管理本地模型的選項 |
 | Indexing／Elasticsearch | DEV test use／使用者提供 Elasticsearch | 後者才要求 ES URL／認證等連線設定 |
 | Indexing／Local Search | Memory／MongoDB | 選 MongoDB 才展開 DEV test use／使用者提供 MongoDB；Memory 不要求 DB。模式隨 Config 跨環境固定，不在 Export 中改模式 |
-| 共用 LLM 服務 | DEV test use／OpenAI-compatible API | 自行提供時設定 Base URL、Model、認證引用；Query Transformation／Generation 以下拉 llm_ref 引用，不各填一份連線 |
+| 共用 LLM 服務 | DEV test use／OpenAI-compatible API | 自行提供時設定 Base URL、Model、認證引用；Query Transformation 以下拉 llm_ref 引用，不各填一份連線 |
 | Rerank | None／DEV test use／Rerank API | 啟用時設定內容欄位與 Top-N；自行提供時另填 API URL、Model、認證引用 |
 
 DEV test use 使用平台測試資源；匯出部署時需填入使用單位的綁定。Embedding／LLM 的現有原型格式分別為 OpenAI-compatible embeddings／Chat Completions，Rerank 為 04 的平台契約；首組真實服務的相容範圍仍由 Q-003 核定。
@@ -95,7 +93,7 @@ DEV test use 使用平台測試資源；匯出部署時需填入使用單位的�
 
 - 外部服務選自行提供才要求必要 URL／Model／Secret reference；DEV 不曝光平台憑證。
 - Local Search 選 MongoDB 才呈現 DB 連線；Memory 不要求資料庫。
-- Query Transformation／Generation 只選 llm_ref；共用服務只管理一次。
+- Query Transformation 只選 llm_ref；共用服務只管理一次。
 - None 的 Top-N／Prompt 等欄位可保留草稿但停用，不參與有效 Config 驗證／匯出。
 - 上游刪欄位或模型引用失效：保留失效選擇、標示原因、阻止儲存；不自動選另一值。
 - 不支援能力顯示且停用，附可理解原因；不能讓顯示的 Mock 選項假裝正式可用。
@@ -111,7 +109,7 @@ DEV test use 使用平台測試資源；匯出部署時需填入使用單位的�
 | Indexing 選 ES／Local Search | Retrieval 顯示繼承的後端資訊，不增加 Implementation 選單 |
 | 欄位未建立全文／向量索引 | 對應搜尋選項顯示且停用，說明需先在 Indexing 建立能力；既有選擇失效則保留錯誤並阻止保存 |
 | Embedding 移除某個 output_name | Indexing／Retrieval 的向量引用標為失效，不默默改為其他向量或欄位 |
-| 欄位未建立全文／向量索引，但已存在於 Chunk | 仍可用於 Rerank／Generation 等內容消費；只有相對應的搜尋能力不能選，不能以「未勾儲存」拒絕 |
+| 欄位未建立全文／向量索引，但已存在於 Chunk | 仍可用於 Rerank／檢索結果消費端 等內容消費；只有相對應的搜尋能力不能選，不能以「未勾儲存」拒絕 |
 | metadata 已繼承／保存但未宣告可過濾 | 保留內容，Filter 選單停用該欄位並說明要先在 Indexing 啟用；不自動索引全部 metadata |
 | Chunking 選 Fixed-size（待實作） | Token Size／Overlap／Tokenizer 有效；分隔符／keep_separator／標題層級不生效且保留草稿，不要求 Parsing headings |
 | Header-aware 所需標題能力未開啟 | 顯示相依原因，提供定位 Parsing 進階設定的方式；無法滿足時阻止保存 |
@@ -124,7 +122,7 @@ DEV test use 使用平台測試資源；匯出部署時需填入使用單位的�
 
 ### 3.3.1 討論提案：Query Rewrite 單模組測試
 
-**待使用者確認，尚未改 UI。** 建議在 Query Transformation 放「測試 Rewrite／Multi-query」：輸入一個問題，用當前草稿的 Prompt／LLM／count 執行該模組，不要求先建立／保存 System 或 Ingestion，也不執行 Retrieval／Rerank／Generation。
+**待使用者確認，尚未改 UI。** 建議在 Query Transformation 放「測試 Rewrite／Multi-query」：輸入一個問題，用當前草稿的 Prompt／LLM／count 執行該模組，不要求先建立／保存 System 或 Ingestion，也不執行 Retrieval／Rerank／檢索結果消費端。
 
 測試前驗證本模組與引用服務的必要設定，不以其他無關模組未填完阻擋。顯示實際生成的 Prompt、要求筆數、解析後 Query 清單、原始問題是否另外加入及格式／筆數／非空／重複驗證；原始回應可收合，耗時／Token 用量僅顯示實際可取得數據。None 不呼叫 LLM。
 
@@ -148,21 +146,12 @@ UIB-007 試跑如採用，也改用這組相同草稿與 Schema。Edit／AI／�
 
 同 Query 合併以 Query 身分分組，跨 Query 合併以相同搜尋路徑群組分組，兩層可各自移到 Reranker 後。ES 預設內部融合時，不再套同 Query 的跨路融合。跨 Query 已合併時，Reranker 有效提問固定原始問題，但保留各自 Query 選擇的草稿。Rerank=None 不會取消後置處理。
 
-文件模式先完成 chunk_id 融合，再於選定時點按 document_id 選最高分代表 Chunk，最後 Top N；文件去重不得早於最後一次跨清單合併。原型尚不提供 Generation 多份清單的消費策略，因此最終不為單一 ResultSet 時阻止保存，並定位合併設定，不隱含串接清單。
+文件模式先完成 chunk_id 融合，再於選定時點按 document_id 選最高分代表 Chunk，最後 Top N；文件去重不得早於最後一次跨清單合併。Retrieval-only 可以回多份分組 ResultSets；舊原型為 Generation 強制單一清單的保存 Gate 需移除，見 UIB-015。
 
-### 3.5 討論提案：Generation 預設／進階輸出格式
+### 3.5 檢索結果呈現（取代舊答案輸出設定）
 
-**待確認，UIB-009 未實作。** 基本區沿用預設回答文字與平台引用的格式，提供簡短預覽；「進階輸出設定」預設收合，自訂 JSON 開關預設關閉。只展開說明不改 Config；啟用後才讓自訂 Schema 生效。
+Inference 顯示最終 ResultSets／ResultItems、排名、分數、內容、來源與可展開 Trace。跨 Query 未合併時分組呈現，不捏造單一答案／生成引用。不提供 Generation Module、答案模板、Context Budget 或答案 JSON Schema 編輯器；Prototype 遷移見 UIB-015。
 
-| 控制項 | 提案行為 |
-|---|---|
-| 自訂 JSON 輸出 | 使用者有需要才啟用；停用保留自訂草稿，不驗證／匯出其停用參數 |
-| 回答內容 JSON Schema | 定義欄位名、型別、必填、陣列等；有說明／預設 Schema 可參考，不只填一份 JSON 範例就假裝限制型別 |
-| 格式範例與驗證 | 顯示預期業務內容形狀，檢查 Schema 與所選 Provider 支援能力；未接模型的範例明示示意 |
-| 主要回答文字欄位 | 自訂時可選 summary 等文字路徑供 UI／Evaluation 使用；無效／非文字路徑可定位，無適用文字時需明示相容政策 |
-| 平台回應資訊 | request_id／版本／可信 citations 等由平台管理，與可自訂的回答內容分開；不在此編輯整個 Runtime API 回應 |
-
-若採用，保留既有 chunk_template → context → prompt，不增加 Output 模組。預設格式、Schema 子集、主要回答路徑及 API payload 容器／遷移仍需核定，見 [04 §5.4.1](04_module_components_io_contracts.md#541-討論提案預設格式與進階自訂-json-輸出)／Q-002／Q-003／Q-018／Q-019。自訂格式只影響 Inference，修改後重測而不重建索引；若初版先完整生成後回傳，不宣稱支援自訂 JSON 的逐字 Streaming。
 
 ## 4. 從 CSV 開始
 
@@ -203,7 +192,7 @@ Prototype 限制 ≤1 MB 且在瀏覽器讀取，不等於正式產品限制。�
 | 取消與儲存 | 取消建議不改草稿；取消 Create／Edit 不改已存 System；Create／Save 前不改 active Config，不自動 Ingestion |
 | 欄位與方法能力 | AI 建議、手動表單與 Engine 使用同一份 Schema／Registry；未支援方法、失效欄位／服務可定位，不靜默換值 |
 
-助手的結構化輸出與 UI 的暫存／收合等呈現狀態分開；手寫 Config 與 UI Draft 可有不同包裝，但產生的有效 Config 語意需一致。此處不新增原始 Config 編輯器或另一個 RAG 主畫面；Prototype 調整先列 10。
+助手的結構化輸出與 UI 的暫存／收合等呈現狀態分開；手寫 Config 與 UI Draft 可有不同包裝，但產生的有效 Config 語意需一致。此處不新增原始 Config 編輯器或另一個 Retrieval 主畫面；Prototype 調整先列 10。
 
 **建議的正式流程，需 Q-024 核定**：
 
@@ -220,7 +209,7 @@ Prototype 限制 ≤1 MB 且在瀏覽器讀取，不等於正式產品限制。�
 
 上傳／JSON → IngestionDocument 預覽與檢查 → 明確啟動 → 顯示 run_id／狀態 → 結果。長工作由 07 管理，不依靠前端視窗存活。
 
-- 區分接收成功、處理完成、索引可查詢；202 不代表可問答。
+- 區分接收成功、處理完成、索引可查詢；202 不代表可檢索查詢。
 - 顯示文件數與 Chunk 數時分開標示；進度分母不混用上傳檔案／IngestionDocument／ParsedDocument／Chunk。
 - 部分失敗列出可對應 item 的錯誤，不用單一成功 Toast 遮蔽。
 - 重新打開視窗應可查現有工作；跨重啟是否恢復依 Job Store 政策。
@@ -229,11 +218,11 @@ Prototype 限制 ≤1 MB 且在瀏覽器讀取，不等於正式產品限制。�
 
 ## 6. Inference 與診斷
 
-問題＋本次 filters → 呼叫相同 Runtime API → 回答及引用。基礎結果簡潔呈現；詳細資訊按需展開。
+問題＋本次 filters → 呼叫相同 Runtime API → 排序的檢索清單及來源。基礎結果簡潔呈現；詳細資訊按需展開。
 
 | 層級 | 建議呈現 |
 |---|---|
-| 基本 | 回答、來源引用、索引未就緒／服務錯誤 |
+| 基本 | 檢索內容、分數／排名／來源、索引未就緒／服務錯誤 |
 | 進階 | 原始與衍生 Query、各路候選、融合結果、Rerank 前後、實際 Context、耗時／用量 |
 | 版本 | config_revision、index_generation、request_id；不可顯示為另一版的結果 |
 

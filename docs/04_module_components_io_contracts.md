@@ -1,4 +1,4 @@
-# RAG Engine — 組裝、執行與模組開發規格
+# Retrieval Engine Library — 組裝、執行與模組開發規格
 
 > 文件同步：2026-10-31 · 開發規格草案（正式 SDK／Config 尚未凍結）
 >
@@ -11,8 +11,8 @@
 **開發者提供 Config 及必要服務，即可直接執行 Ingestion／Inference；不需要 Builder UI、Builder DB 或 HTTP。**Engine 負責模組組裝，07 只呼叫此能力並包裝 API／工作狀態。
 
 Ingestion：Import → Parsing → Chunking → Embedding → Indexing。
-Inference 基線：Query Transformation → Retrieval／Fusion → Rerank → Generation。目標需可設定融合策略與合併時點；Engine 依核定 Fusion Plan 保留逐路結果與組合 Fusion／Rerank，見 §5.2。
-Evaluation：重用相同檢索／問答入口的評估邏輯，任務排程與報告儲存由 07 負責。
+Inference 基線：Query Transformation → Retrieval／Fusion → Rerank → 最終檢索結果。目標需可設定融合策略與合併時點；Engine 依核定 Fusion Plan 保留逐路結果與組合 Fusion／Rerank，見 §5.2。
+Evaluation：重用相同檢索入口的評估邏輯，任務排程與報告儲存由 07 負責。
 
 - 固定 Pipeline，不要求使用者建 DAG。
 - Config、業務 Payload、可信 RunContext 分開；資料結構見 [05](05_data_contracts_search_design.md)。
@@ -38,17 +38,17 @@ SDK 的「獨立」是可安裝、可依賴的公開邊界；不表示 Component
 
 ```python
 # 目標用法示意；目前尚未存在這些類別，命名待 Q-002 核定。
-config = load_config("rag.yaml")
-engine = RAGEngine.from_config(
+config = load_config("retrieval.yaml")
+system = RetrievalEngineLibrary.from_config(
     config,
     service_resolver=services,
     state_store=stores,
     registry=registry,
 )
-await engine.start()
+await system.start()
 try:
-    result = await engine.ingest(ingestion_input, context=trusted_context)
-    answer = await engine.query(query_input, context=trusted_context)
+    result = await system.ingest(ingestion_input, context=trusted_context)
+    retrieval_result = await system.query(query_input, context=trusted_context)
 finally:
     await engine.aclose()
 ```
@@ -114,12 +114,11 @@ Package 版本與 Component 實作版本不一定一對一；一個 package 可�
 | Query Transformation | 含原始問題的 InferenceState／QueryContext | 保留 ori_query 的原始／衍生 QueryContext 與有效 Query 選擇 | llm_ref、Prompt；共同 Schema 見 05 §4.6 |
 | Retrieval | 有效 QueryContext、IndexBinding、filters | 各 Query 的有序 ResultSet；items 引用共用 Chunk | Query Encoding、可信授權範圍、query／route identity；按配置融合 |
 | Rerank | InferenceState 中選定 QueryContext／ResultSet | 新 model_score ResultSet，保留原始分數清單；None 不評分 | 模型服務、Query 來源與 Chunk.fields 內容；評分後 Top N |
-| Generation | 原始問題與最終有效 ResultSet 的 Chunk | QueryResult；平台回應／引用草案見 05／07 | 共用 LLM、模板與 Context Budget |
 | Evaluation | Dataset、Target | 逐題結果與指標摘要 | 版本綁定、Judge；工作儲存由 07 提供 |
 
 原始問題不被 Rewrite 覆蓋。新版不預設公開對話歷史；歷史若啟用需另訂契約，不因舊草案有 history 欄位就宣告已支援。
 
-原始問題是 Inference 的持續傳遞資料：Query Transformation → Retrieval／Fusion → Rerank（含 None）→ Generation 都必須保留，不能只在第一步或 HTTP 層暫存後丟失。`include_original` 只控制是否把原始問題加入搜尋 Query 清單，不影響 Rerank／Generation 仍取得原始問題。逐 Query 的 Rerank 若改用衍生 Query，需依 Q-014 的計畫顯式定義。
+原始問題是 Inference 的持續傳遞資料：Query Transformation → Retrieval／Fusion → Rerank（含 None）→ 最終檢索結果都必須保留，不能只在第一步或 HTTP 層暫存後丟失。`include_original` 只控制是否把原始問題加入搜尋 Query 清單，不影響 Rerank／檢索結果消費端 仍取得原始問題。逐 Query 的 Rerank 若改用衍生 Query，需依 Q-014 的計畫顯式定義。
 
 ### 3.2 錯誤、重試與觀測
 
@@ -214,7 +213,7 @@ Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一�
 
 **目的**：保存 Chunk，依欄位用途建索引，回報寫入與可搜尋狀態。Engine 在初始化時透過 Adapter 準備授權範圍內的目標；不依賴 Builder 才能 provision。
 
-**2026-10-16 已確認的簡化**：預設保存 Chunk 的全部 fields／metadata，不再要求使用者填 stored_fields 或勾「儲存內容」。保存內容與建立搜尋索引分開：使用者只選全文欄位、向量欄位與可過濾欄位；未選搜尋索引的 title 等欄位仍可供 Rerank／Generation／引用使用。保留 metadata 不代表自動對所有 metadata 建立 Filter／全文索引。向量保存與恢復沿用既有完整 Chunk／vectors 政策，不因拿掉內容選單而刪除 vectors。
+**2026-10-16 已確認的簡化**：預設保存 Chunk 的全部 fields／metadata，不再要求使用者填 stored_fields 或勾「儲存內容」。保存內容與建立搜尋索引分開：使用者只選全文欄位、向量欄位與可過濾欄位；未選搜尋索引的 title 等欄位仍可供 Rerank／檢索結果消費端／引用使用。保留 metadata 不代表自動對所有 metadata 建立 Filter／全文索引。向量保存與恢復沿用既有完整 Chunk／vectors 政策，不因拿掉內容選單而刪除 vectors。
 
 **處理**：
 
@@ -246,7 +245,7 @@ FAISS 的維度／metric 不足以證明向量空間相容。cosine／inner prod
 
 **驗證**：非空問題、合法模板、LLM 引用、衍生結果數量／文字合法。去除相同問題、模型輸出格式不符及降級政策由 Q-003／Q-023 核定；不自動忽略壞結果。
 
-**驗收**：Rewrite 不覆蓋 original_question；Multi-query count 與原始問題選項獨立；None 不呼叫 LLM；Rerank／Generation 始終取得原始問題。
+**驗收**：Rewrite 不覆蓋 original_question；Multi-query count 與原始問題選項獨立；None 不呼叫 LLM；Rerank／檢索結果消費端 始終取得原始問題。
 
 ### 5.1.1 討論提案：Rewrite 的結構化輸出與共用 LLM 邊界
 
@@ -290,7 +289,6 @@ result = Result.model_validate({"queries": [
 |---|---|---|
 | Rewrite／Multi-query | queries 的 1／N 筆字串清單 | 數量、非空、重複、原始問題保存 |
 | AI 設定助手 | Config 草稿、建議／Diff、缺項 | Schema、Registry、欄位相依與草稿基準 |
-| Generation | 預設回答文字由平台包裝；進階自訂 JSON 提案見 §5.4.1 | 引用來自真實 Context；業務內容 Schema、主要回答欄位與 API／Streaming 契約分開 |
 
 服務連線與模型引用集中管理，Schema 由每次模組呼叫傳入，不在同一 LLM 服務上固定一種輸出格式。使用 LangChain 時可採其 Model structured-output 介面，不需要為單次 Rewrite 引入完整 Agent。
 
@@ -318,7 +316,7 @@ result = Result.model_validate({"queries": [
 4. 每路在合法候選範圍內取 per_route_k，保留實際回傳的 rank、分數、方向與命中 Query。若 Adapter 在 ES 內部完成融合，接收已融合的一份清單並記錄計分設定；不要求憑空還原未回傳的分項清單／排名。
 5. 轉換距離為越大越相關的 relevance；保留 query／route identity，依核定計畫及 chunk_id 對齊融合。
 6. 按四個已確認位置取上限：搜尋 Top K、Retrieval 後合併 Top N、模型評分後 Top N、Reranker 後合併 Top N。每個上限只作用於該步輸出的各清單；逐 Query Rerank 後才跨 Query 融合時，不能提前攤平成全域清單。
-7. 在 Rerank／Generation 使用候選前批次取回所需 fields／metadata，保留各路排序與身分；vectors 可省為 {}，下游無須知道 MongoDB 或 FAISS。
+7. 在 Rerank／檢索結果消費端 使用候選前批次取回所需 fields／metadata，保留各路排序與身分；vectors 可省為 {}，下游無須知道 MongoDB 或 FAISS。
 
 **實作狀態**：Prototype v0.9 已提供 [10](10_ui_adjustment_backlog.md) 的兩層時點 UI 與有效計畫推導；未實作真正的搜尋／融合。單一路是否略過融合仍依有效計畫判斷，文件分組不以清單數量為必要條件。
 
@@ -375,77 +373,25 @@ ResultSet 是資料；下一步由邏輯 Config 的核定計畫驅動。operatio
 
 **待決**：Q-003、Q-014、Q-017、Q-023；內容欄位分隔、輸入極限、全候選評分與服務回傳缺項政策需核定。
 
-### 5.4 Generation
+### 5.4 最終檢索輸出
 
-**方法**：由 llm_ref 取共用 LLM，沿用已確認的 DEV test use／OpenAI-compatible API 服務方向；現有 Prototype 以 Chat Completions 為格式基線，正式首組服務相容範圍見 Q-003。Context Assembly 在本模組內，不增加 UI 模組。
+Inference 在完成配置的 Fusion／Rerank／Top N 後，回傳最終有效 ResultSet 及其 ResultItems，包含 Chunk、score／rank 與 lineage。跨 Query 合併停用時保留分組結果，不任意再融合一次。API 包裝見 07 §5.6，最終結果選擇與版本政策仍由 Q-014／Q-019 核定。
 
-**處理**：
+不呼叫回答生成模型、不建立答案 Prompt／Context Budget，也不回傳模型生成的 answer 或 citations。Embedding、Rewrite 與助手所需服務仍依其各自契約使用。
 
-1. 依候選排序、內容欄位及 Token Budget 決定實際送出的 Chunk。
-2. 逐筆套用 chunk_template，例如 `[{{citation_id}}] {{fields.title}}\n{{fields.text}}`。
-3. 合併成 {{context}}，再代入回答 Prompt 的 {{query}}／{{context}}；query 是原始問題。
-4. 只做一次變數替換，不執行程式或遞迴解讀文件內的 {{...}}。
-5. 計算整體輸入與輸出預留，呼叫 LLM，驗證引用對應並產出 QueryResult。
+<a id="541-討論提案預設格式與進階自訂-json-輸出"></a>
+舊 §5.4.1 答案 JSON 格式提案已撤銷；此錨點僅保留供舊文件連結遷移。
 
-Budget 必須計入 Prompt、問題、模板、Context、特殊 Token 與輸出預留。Context Budget 不是模型總長度。used_chunk_ids 表示實際送入內容，不保證模型每項主張都獲支持。
-
-**例外／待決**：空 Context 的建議行為為 abstain；Context 截斷、過大單塊、未知引用、模型拒答／Timeout、Prompt 角色、Temperature 限制與 Citation 擷取見 Q-003／Q-023。不能把建議 abstain 當成已核可的所有場景政策。
-
-**驗收**：引用只指向實際 Context；超限不默默丟資料；正確處理缺 title 等選填欄位；原文中的模板符號不再執行；不以固定答案通過整合驗收。
-
-### 5.4.1 討論提案：預設格式與進階自訂 JSON 輸出
-
-**2026-10-16 10:22 提案，待確認；尚未實作。** 建議保留現有 Generation 模組與基本操作，預設輸出「回答文字＋平台引用」。進階輸出設定預設收合、自訂 JSON 未啟用；展開說明不改 Config。需要機器處理欄位時，使用者明確啟用並編輯回答內容的 JSON Schema，不另加一次 LLM 格式化呼叫或 Output 模組。
-
-以下僅示範 **Generation 的業務內容**，不是整個 HTTP 回應，也不是已凍結的模型／API 格式。預設內容可理解為：
-
-```json
-{"answer": "依規範，建議每月清潔設備。"}
-```
-
-使用者有需要時可定義：
-
-```json
-{"summary": "建議每月清潔設備。", "steps": ["關機並切斷電源", "清除散熱孔灰塵"]}
-```
-
-對應的 Schema 示意如下；第一版支援的型別／巢狀深度／限制需依 Provider 能力與 Q-002／Q-003 核定，不宣稱任意 JSON Schema 均可原生生成：
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "summary": {"type": "string", "description": "根據 context 回答原始問題的摘要"},
-    "steps": {"type": "array", "items": {"type": "string"}, "description": "可執行的處理步驟"}
-  },
-  "required": ["summary", "steps"],
-  "additionalProperties": false
-}
-```
-
-共用 §5.1.1 的 LLM Adapter／格式驗證邊界，每次呼叫提供各自 Schema；Prompt 控制內容，Schema 控制結構。Provider 支援時優先原生約束生成，回應仍由後端驗證，拒答／截斷／格式錯誤依核定政策處理。只改已知欄位名稱／包裝時，平台可確定性序列化，不需要再問一次 LLM；新增 summary／steps 等語意內容則在同一次 Generation 中產生並驗證。
-
-**需要核定的邊界**：
-
-- 使用者自訂的是回答業務內容；request_id、版本、usage／狀態及可信 citations 由平台管理，不讓自訂 Schema 改寫可信執行資訊。模型只能提出受控引用 ID，文件／Chunk／位置由 Engine 驗證與補齊。
-- 既有 QueryResult.answer 與 07 的 HTTP 範例仍是字串基線。自訂物件的容器位置（例如 output 候選）、預設相容與版本遷移留 Q-002／Q-019，本輪不把字串 answer 靜默改成物件或直接替換整個 API 回應。
-- 為接既有 UI／Evaluation，可指定主要回答文字欄位，例如 summary。路徑無效／非文字時須有可定位錯誤；沒有適用文字欄位的結構化結果，相關評估應明示不支援／略過政策，不能默默把整個 JSON 當答案字串。具體要求 Q-018。
-- 第一版可先完整生成並驗證後回傳物件；若另支援 Streaming，部分 JSON／片段事件不視為已驗證最終結果，事件與錯誤契約由 Q-019 核定。
-- 只調輸出 Schema／主要回答欄位屬 Inference Config 變更，需要重新測試／評估，不重建相容索引。停用時保留自訂草稿，不驗證／匯出其無效參數，不靜默丟棄使用者設定。
-
-上述預設、控制項與 Schema 示意均為本次討論建議，UI 待辦見 10 UIB-009；Schema 型別通過不保證回答內容受資料支持。
 
 ## 6. Evaluation 邏輯
 
-獨立 Engine 測試可直接對本機 Engine Target 執行；Builder Runner 也可透過 Runtime Client Target 呼叫相同功能。**評分邏輯在本層，工作排程、狀態與報告保存由 07 管理**。檢索專用 Target 是否提供公開 API 由 Q-018／Q-019 核定，不能重寫一套不一致的 Retrieval。
+獨立 Engine 測試可直接對本機 Engine Target 執行；Builder Runner 也可透過 Runtime Client Target 呼叫相同功能。**評分邏輯在本層，工作排程、狀態與報告保存由 07 管理**。Runner 使用相同公開 Query API；精確 Target Schema 由 Q-018／Q-019 核定，不能重寫不一致的檢索邏輯。
 
-建議 QARecord：case_id、question、expected_answer?、relevant_document_ids?、relevant_chunk_ids?、metadata_filter?。DatasetRef／Target 綁定 System、Config、資料版本、Engine／模型／Judge Profile。
+建議 QARecord：case_id、question、relevant_document_ids?、relevant_chunk_ids?、metadata_filter?。DatasetRef／Target 綁定 System、Config、資料版本、Engine／模型／Judge Profile。
 
 | 指標 | 必要輸入 | 要定義的語意 |
 |---|---|---|
 | Recall@K／MRR | relevant IDs、實際候選與排序 | Chunk／Document 層級、Rerank 前或後、K |
-| Answer Correctness | 問題、答案、參考答案及 Rubric | Judge／Rubric 版本 |
-| Faithfulness | 答案、實際 Generation Context | 是否受資料支持，不等於世界真實性 |
 | Latency／Usage／Error Rate | 各題 Trace／結果 | 失敗題不能任意排除 |
 
 缺 Ground Truth 的指標應拒絕或明示 skipped，不能填 0 假裝已評分。relevant IDs 缺失與空清單不同；Chunking 改變後舊 chunk-level 標註不可直接沿用。詳細首批指標、Dataset Schema、Gate、Target API 與 Judge 見 Q-018。
@@ -454,7 +400,7 @@ Budget 必須計入 Prompt、問題、模板、Context、特殊 Token 與輸出�
 
 ### 7.1 開放範圍與共用契約
 
-Module Developer 可針對各 Module 實作 Component；不再只把 Chunking／Rewrite／Rerank 視為可客製範圍。各 Module 的首批 SDK 介面與方法依 M0～M2／M6 逐步提供，未交付的介面不得宣稱已可擴充。Generation 的一般需求仍可先用 Prompt／內容設定，需替換演算法時走同一公開 Component 邊界。
+Module Developer 可針對各 Module 實作 Component；不再只把 Chunking／Rewrite／Rerank 視為可客製範圍。各 Module 的首批 SDK 介面與方法依 M0～M2／M6 逐步提供，未交付的介面不得宣稱已可擴充。Generation 不屬本產品 Module，不能藉自訂 Component 默默重新加入固定 Pipeline。
 
 同一 Module 的公開 I/O 與語意由平台維護，Component 必須相容；Component 自身 Config 可以不同。可使用契約明定的擴充欄位或具名稱／版本的能力宣告，不能自行增改必要頂層 key、把字典任意形狀視為相容，或要求下游默默猜測結構。公開契約可經版本化演進，並非永遠不能改。
 
@@ -528,7 +474,7 @@ DEV 與 FTEST／ENT 維持相同方法選擇／解析版本與邏輯 Config，�
 - 不啟動 Builder／HTTP，就能用完整 Config 跑真實 ingest／query。
 - Config、Registry 與下游欄位相依可驗證；缺服務／能力得到可定位錯誤。
 - Local Memory／MongoDB／ES 的差異被 Adapter 封裝；同一對外 Contract 不依賴框架內部物件。
-- 固定測試可驗算 Chunk／offset／fusion／Filter／Citation；真實模型／搜尋另有 integration 證據。
+- 固定測試可驗算 Chunk／offset／fusion／Filter／來源追溯；真實模型／搜尋另有 integration 證據。
 - 在乾淨環境以 rag_engine 的 Component package 建置產物驗證安裝、註冊、設定、單一 Component 與完整流程，避免靠原始碼路徑或私有匯入才能執行；不要求另建 repo，也不能靠修改 Engine 核心或 Builder 原始碼才加入每個普通 Component。
 - 重複識別、缺失套件、不相容版本／結構／artifact、違反語意的輸出均可定位失敗；Image／方法版本可追溯，升級不默默改變既有 System。
 - 尚未核定能力回報不支援，不以 Mock 或靜默 fallback 代表完成。

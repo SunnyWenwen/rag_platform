@@ -15,7 +15,7 @@ QueryContext 保留 query／ori_query 與來源 Query；一個 Query 可有多�
 - `items` 是後續主要運算資料，含 Chunk、當前 score、當前 rank。
 - `result_set_id` 用於選取、引用及追溯；不是由終端使用者命名的設定欄位。
 - `operation` 描述已執行的方法、參數與模型；下一步由邏輯 Config 決定，不由這份歷史記錄推測。
-- `source` 追蹤檢索路徑；當策略依來源加權時可供 Adapter／Engine 對應權重，普通 Generation 不需解讀。
+- `source` 追蹤檢索路徑；當策略依來源加權時可供 Adapter／Engine 對應權重，一般結果消費端不需解讀。
 - `score_kind` 描述分數語意，不能單靠相同字串認定跨 Query 分數可比；`score_order` 會供共用排序使用。
 - Query／ResultSet 來源、歷史清單與來源項目保留在同次推論快照，可由 ID 找回；不因此要求永久保存所有 Trace。
 
@@ -74,7 +74,7 @@ Reranker 預選合法的 fields.text；基本區選一個內容欄位，進階�
 
 Provider 的 top_n 與平台評分後保留數分開：Adapter 應取得選入候選的完整評分，再由平台截斷；服務不支援時明示能力／限制，不隱性少回結果。正式覆蓋率／錯誤政策見 Q-003／Q-014。
 
-Generation 使用最終有效清單，維持 chunk_template → context → prompt。Chunk 的來源位置由 metadata._rag.source_refs 產生可信引用；ResultItem.source_refs 則追溯分數與候選，兩種來源不能混用。
+API 回傳最終有效清單。Chunk.metadata._rag.source_refs 追溯原始 Unit／文字位置；ResultItem.source_refs 追溯分數與候選，兩種來源不能混用。
 
 ### 3.4 共同卡控
 
@@ -88,7 +88,7 @@ Generation 使用最終有效清單，維持 chunk_template → context → prom
 
 | 案例 | Retrieval 輸出 | 有效處理順序 |
 |---|---|---|
-| 單 Query＋ES Hybrid | 一份已融合清單 | 略過兩層跨清單合併 → Rerank → Top 3 → Generation |
+| 單 Query＋ES Hybrid | 一份已融合清單 | 略過兩層跨清單合併 → Rerank → Top 3 → 回傳檢索結果 |
 | 多 Query＋ES Hybrid | 每 Query 一份清單 | Retrieval 後跨 Query RRF → 合併 Top N → Rerank → Top 3 |
 | 多 Query＋Local 多路 | 每 Query 有全文／向量清單 | 各 Query 內融合 → 跨 Query 融合 → 合併 Top N → Rerank → Top 3 |
 | 先逐 Query 評分 | 各 Query 內已完成融合 | Retrieval 後合併 Top N → 每 Query Rerank／Top N → 跨 Query RRF → 後置合併 Top N |

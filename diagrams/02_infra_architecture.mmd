@@ -1,10 +1,10 @@
 flowchart TB
   %% Target architecture; components and integrations are not implemented in the Prototype.
   %% Terminology: 03_architecture_proposal.md section 3 is authoritative.
-  %% RAG Engine Platform groups reusable Engine/Runtime code and its versioned Image.
+  %% Retrieval Engine Platform groups reusable Engine/Runtime code and its versioned Image.
   %% It is not a central online service required by DEV or independently deployed Runtimes.
   %% A Runtime loads the shared code/Image plus Config and environment-specific bindings.
-  %% RAG Service labels the System execution instance created by Engine inside a Runtime;
+  %% Retrieval Service labels the System execution instance created by Engine inside a Runtime;
   %% it is not a new management object, mandatory microservice or Kubernetes Service object.
   %% Same System/Config Revision keeps the same logical Config across DEV/FTEST/ENT.
   %% Deployment Settings bind environment URLs, Secrets, data/index targets and resources.
@@ -18,29 +18,29 @@ flowchart TB
   %% Platform connects directly to both Runtime boundaries to show code reuse.
   %% Export records the Image reference in YAML; Image-version details are omitted here.
 
-  subgraph PLATFORM["RAG Engine Platform｜共用執行框架"]
+  subgraph PLATFORM["Retrieval Engine Platform｜共用執行框架"]
     direction TB
-    ENGINE["RAG Engine｜Config 驗證／模組組裝與執行"]
-    IMAGE["共用 Runtime Image｜Runtime API + RAG Engine"]
+    ENGINE["Retrieval Engine Library｜Config 驗證／模組組裝與執行"]
+    IMAGE["共用 Runtime Image｜Runtime API + Retrieval Engine Library"]
     ENGINE -->|"封裝"| IMAGE
   end
 
   USER["使用者"] -->|"登入"| SSO["tSSO 認證"]
   SSO -->|"登入成功"| UI
 
-  subgraph DEV["RAG Builder｜設定與測試"]
+  subgraph DEV["Retrieval Builder｜設定與測試"]
     direction TB
-    subgraph CP["RAG Builder Control Plane"]
-      UI["RAG Builder UI (Frontend)"] --> BACKEND["RAG Builder Backend"]
+    subgraph CP["Retrieval Builder Control Plane"]
+      UI["Retrieval Builder UI (Frontend)"] --> BACKEND["Retrieval Builder Backend"]
       BACKEND --> META[("Config Store")]
     end
 
-    BACKEND -->|"上傳／問答"| DAPI
+    BACKEND -->|"上傳／檢索查詢"| DAPI
     BACKEND --> EVAL["Evaluation Runner"]
-    EVAL -->|"批次問答"| DAPI
+    EVAL -->|"批次檢索查詢"| DAPI
 
-    subgraph SANDBOX["DEV RAG Runtime"]
-      DAPI["Runtime API｜Ingest / Query / Status"] --> DSERVICE["RAG Service｜System 執行實例"]
+    subgraph SANDBOX["DEV Retrieval Runtime"]
+      DAPI["Runtime API｜Ingest / Query / Status"] --> DSERVICE["Retrieval Service｜System 執行實例"]
     end
 
     BACKEND -.->|"建立／設定 Runtime"| SANDBOX
@@ -67,9 +67,9 @@ flowchart TB
     direction TB
     VAULT[("Secret Vault")]
 
-    subgraph PROD["獨立 RAG Runtime（API only）"]
+    subgraph PROD["獨立 Retrieval Runtime（API only）"]
       direction TB
-      RAPI["Runtime API｜Ingest / Query / Status"] --> PSERVICE["RAG Service｜System 執行實例"]
+      RAPI["Runtime API｜Ingest / Query / Status"] --> PSERVICE["Retrieval Service｜System 執行實例"]
     end
 
     POBS["Logs / Metrics / Traces"]
