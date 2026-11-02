@@ -8,7 +8,7 @@
 
 ## 報告說明重點
 
-1. **上半部保留完整 Library 目錄。**原有內建 Component、自訂 Component、Module 及 Developer 測試／發布流程都保留；每個既有選項獨立一格。9 個 Module（Import／Parsing／Chunking／Embedding／Indexing／Query Transformation／Retrieval／Rerank／Evaluation）各增 Remote API Component，不增加 Generation。
+1. **上半部保留完整 Library 目錄。**原有內建 Component、自訂 Component、Module 及 Developer 測試／發布流程都保留；每個既有選項獨立一格。8 個 Module（Import／Parsing／Chunking／Embedding／Indexing／Query Transformation／Retrieval／Rerank）各增 Remote API Component，不增加 Generation。
 2. **A：直接使用內建。**Config A 選既有 Component，無須開發者額外交付方法程式。內建 API Adapter 仍可能呼叫模型／DB，並不表示所有處理都沒有外部依賴。
 3. **B：使用 Developer 在 Library 開發的 Local Component。**Chunking 目錄新增 XXX_component，Config B 選它，System B 的實例標為「Chunking B｜XXX_component（Local）」。圖中的名稱是示例；正式 component_id／版本依 Registry 規範登錄，不新增名為 XXX_component 的 Module。
 4. **C：使用 Developer 的 Remote API Service。**Config C 的 Parsing 選 Remote API Component，System C 內仍是 Retrieval Builder 提供的 Parsing C Adapter，私有解析邏輯在額外的 Parsing Service。傳入 IngestionDocument、回傳 list[ParsedDocument]；Image Deployment／External Endpoint 交付均適用，見 [04](04_component_delivery_modes.md)。
@@ -27,7 +27,7 @@ C 的例子假設遠端 Parser 產出相容、保留 Markdown 標題的 Unit.tex
 - 實線表示組裝或執行順序；虛線表示共用 Library 或索引／資料綁定，並不表示 Query 會重新跑 Ingestion。
 - Parsing C 與額外服務的雙向箭頭是 HTTP request／response；不是每一個 Module 都需要變成獨立微服務。
 - Ingestion Service／Retrieval Service 是邏輯功能邊界；Runtime 的程序、Pod 與多 System 配置仍由架構／部署政策決定。
-- Evaluation 獨立於單次處理主線；Fusion／Top N 由配置的結果處理計畫執行，這裡不新增 Module 或 Generation。
+- Fusion／Top N 由配置的結果處理計畫執行，這裡不新增 Module 或 Generation。
 
 
 ## Remote API 目錄的解讀
@@ -35,3 +35,4 @@ C 的例子假設遠端 Parser 產出相容、保留 Markdown 標題的 Unit.tex
 每個 Module 的 Remote API Component 是該 Module 契約下的 Adapter，並非一支不檢查資料的通用 HTTP 呼叫器。Config Schema／能力／版本／錯誤仍需登錄與驗證；有狀態的 Indexing／Retrieval 還需匹配索引、資料版本及讀寫政策。圖中新增目標選項不代表已有完整 HTTP／部署契約或正式實作。
 
 Developer 的 Local Component 沿原有 PR／測試／Runtime Image 交付；Remote Developer 可保留私有實作，交付 API Image 或端點。Runtime 必須已包含相容 Adapter，目錄與服務綁定亦須驗證，不能把外部程式直接塞入 Config 執行。
+
