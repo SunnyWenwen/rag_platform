@@ -45,7 +45,7 @@ D4 的標題統一為「發布並更新 Retrieval Engine Library」，指共用 
 
 內建 Components 指平台規劃交付的可選項；每個 System 依 Config 選用，不是把某個 Module 的所有 Components 一起執行。自訂 Component 與內建元件走相同契約／Registry；Builder User 不需撰寫程式。Indexing／Retrieval 可能需要成對擴充；Parser／Chunker 共用 Units，但仍需文字欄位與格式能力相容，仍依能力檢查，不因放入元件目錄就自動相容。
 
-[03 圖](../diagrams/03_module_component_concept.png) 改以 Library＋Config A／B／C 建立三個 System 展示組裝結果，詳見 [圖說](../diagrams/03_module_component_concept.md)。每個 System 明列 5 個 Ingestion Modules 與 3 個 Retrieval／Inference Modules，模組實例附 A／B／C；相同 class 可用不同設定重複建立。Config C 的 Parsing 選 Remote API Component，由 Retrieval Builder 提供的 Parsing C Adapter 呼叫 Developer 的獨立 Parsing Service；服務可交付 Image 或提供既有 Endpoint，沿用同一 I/O Contract。URL／Secret／Image 放部署設定，不混進文件 Input。圖中的兩個 Service 是邏輯功能邊界，不預先要求不同程序／Pod；各模組輸入、輸出與相容能力仍依 04／13～16。
+[03 圖](../diagrams/03_module_component_concept.png) 上半部恢復完整 Module／Component 目錄、既有內建／自訂選項與 Developer 交付流程；9 個 Module 各提供 Remote API Component 作為目標選項，Chunking 加入示例 XXX_component（Developer Local）。下半部同一 Library 配 Config A／B／C 建立三個 System：A 直接使用內建；B 的 Chunking 選 Library 中已核可的 XXX_component；C 的 Parsing 由 Retrieval Builder 提供的 Remote API Adapter 呼叫 Developer 的 Parsing Service。詳見 [圖說](../diagrams/03_module_component_concept.md)。每個 System 展開 5 個 Ingestion Modules 與 3 個 Retrieval／Inference Modules，A／B／C 是配置後實例，不要求三套 class。Remote API 可交付 Image 或既有 Endpoint；URL／Secret／Image 放部署設定。共用服務／程序邊界、方法可用性、I/O 及格式相容仍依 04／13～16，不因圖中新增選項就視為已實作。
 
 2026-10-28 已確認兩個 repo：`rag_platform` 管理 Builder 前後端與整合，`rag_engine` 集中 SDK、Engine、Components／Adapters 與 Runtime API。Module Developer 使用本機 IDE，在 rag_engine 的 components 目錄依 SDK／範本開發，提交 PR 後由同一 repo 的 CI 測試與交付 Runtime。這取代先前以獨立 Component repo 為預設的建議；精確內部目錄、套件名稱及發布工具仍待 Q-001／Q-022 核定。
 
@@ -229,5 +229,6 @@ Python Packaging User Guide 說明以套件 metadata／entry points 發現及載
 | 實作／套件版本記錄、既有 System 升級／索引相容與部署鎖定 | 更新既有資料或正式交付前；Q-015／Q-021／Q-022 | 設計相容檢查與失敗案例，不自動升級 |
 
 這些事項不阻擋本輪文件整理；規格定案與工具實作後，再將介面示意換成經測試、可直接執行的開發教學。完整決策狀態只維護於 08，不因本指南提供建議就自動關閉 Q-ID。
+
 
 
