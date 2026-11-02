@@ -8,7 +8,7 @@
 
 ## 報告說明重點
 
-1. **上半部保留完整 Library 目錄。**原有內建 Component、自訂 Component、Module 及 Developer 測試／發布流程都保留；每個既有選項獨立一格。8 個 Module（Import／Parsing／Chunking／Embedding／Indexing／Query Transformation／Retrieval／Rerank）各增 Remote API Component，不增加 Generation。
+1. **上半部保留完整 Library 目錄。**原有內建 Component、可自行開發的擴充點、Module 及 Developer 測試／發布流程都保留；每個既有選項獨立一格。8 個 Module（Import／Parsing／Chunking／Embedding／Indexing／Query Transformation／Retrieval／Rerank）各增 Remote API Component，不增加 Generation。
 2. **A：直接使用內建。**Config A 選既有 Component，無須開發者額外交付方法程式。內建 API Adapter 仍可能呼叫模型／DB，並不表示所有處理都沒有外部依賴。
 3. **B：有使用到 Developer 在 Library 開發的 Component。**Chunking 目錄新增 XXX_component，Config B 選它，System B 的實例標為「Chunking B｜XXX_component（Local）」。圖中的名稱是示例；正式 component_id／版本依 Registry 規範登錄，不新增名為 XXX_component 的 Module。
 4. **C：在某個 Module 有使用 Remote API 來連結 Developer 提供的 Service。**Config C 的 Parsing 選 Remote API Component，System C 內仍是 Retrieval Builder 提供的 Parsing C Adapter，私有解析邏輯在額外的 Parsing Service。傳入 IngestionDocument、回傳 list[ParsedDocument]；Image Deployment／External Endpoint 交付均適用，見 [04](04_component_delivery_modes.md)。
@@ -55,3 +55,8 @@ Developer 的 Local Component 沿原有 PR／測試／Runtime Image 交付；Rem
 | Rerank → 檢索結果 | ResultSet[] | 評分／排序後的有效清單；None 不虛構新分數，最終有效選擇依配置 |
 
 本地 Module 呼叫仍遵守 `run(input, context) -> ModuleResult[T]`，下游讀取 `result.data`。QueryContext／ResultSet 是巢狀在既有 InferenceState 的主要資料；標示清單不表示把原始 Query 或 Trace 外框丟掉。A／B／C 與 Remote Parsing 的示例維持原樣。
+
+
+## 開發擴充點的呈現
+
+Library 目錄中原本的「自訂 Importer／Parser／Chunker／Embedder／Indexer／Query Rewriter／Retriever／Reranker」已統一改為虛線框，文字為「允許自行開發 XXX」。這些是允許開發的擴充方向，尚未實作，不應解讀成已有可選的實體 Component。XXX_component 仍是 B 案例的示意名稱；A／B／C 的配置與連線保持原樣。

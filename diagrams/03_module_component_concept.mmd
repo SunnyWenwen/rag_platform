@@ -9,13 +9,13 @@ flowchart TB
             subgraph IMPORT["Import"]
                 direction TB
                 IMPORT_B2["JSON Ingestion"]
-                IMPORT_CUSTOM["自訂 Importer"]
+                IMPORT_CUSTOM["允許自行開發 Importer"]
                 IMPORT_REMOTE["Remote API Component"]
             end
             subgraph PARSING["Parsing"]
                 direction TB
                 PARSING_B1["Structured JSON Parser"]
-                PARSING_CUSTOM["自訂 Parser"]
+                PARSING_CUSTOM["允許自行開發 Parser"]
                 PARSING_REMOTE["Remote API Component"]
             end
             subgraph CHUNKING["Chunking"]
@@ -23,21 +23,21 @@ flowchart TB
                 CHUNKING_B1["Fixed-size"]
                 CHUNKING_B2["Recursive"]
                 CHUNKING_B3["Header-aware"]
-                CHUNKING_CUSTOM["自訂 Chunker"]
+                CHUNKING_CUSTOM["允許自行開發 Chunker"]
                 CHUNKING_XXX["XXX_component（Developer Local）"]
                 CHUNKING_REMOTE["Remote API Component"]
             end
             subgraph EMBEDDING["Embedding"]
                 direction TB
                 EMBEDDING_B1["Embedding API Adapter"]
-                EMBEDDING_CUSTOM["自訂 Embedder"]
+                EMBEDDING_CUSTOM["允許自行開發 Embedder"]
                 EMBEDDING_REMOTE["Remote API Component"]
             end
             subgraph INDEXING["Indexing"]
                 direction TB
                 INDEXING_B1["Elasticsearch"]
                 INDEXING_B2["Local Search"]
-                INDEXING_CUSTOM["自訂 Indexer"]
+                INDEXING_CUSTOM["允許自行開發 Indexer"]
                 INDEXING_REMOTE["Remote API Component"]
             end
             IMPORT -->|"IngestionDocument"| PARSING
@@ -52,21 +52,21 @@ flowchart TB
                 QUERY_B1["None（略過）"]
                 QUERY_B2["Rewrite"]
                 QUERY_B3["Multi-query"]
-                QUERY_CUSTOM["自訂 Query Rewriter"]
+                QUERY_CUSTOM["允許自行開發 Query Rewriter"]
                 QUERY_REMOTE["Remote API Component"]
             end
             subgraph RETRIEVAL["Retrieval"]
                 direction TB
                 RETRIEVAL_B1["ES 檢索元件"]
                 RETRIEVAL_B2["Local Search 檢索元件"]
-                RETRIEVAL_CUSTOM["自訂 Retriever"]
+                RETRIEVAL_CUSTOM["允許自行開發 Retriever"]
                 RETRIEVAL_REMOTE["Remote API Component"]
             end
             subgraph RERANK["Rerank"]
                 direction TB
                 RERANK_B1["None（略過）"]
                 RERANK_B2["Rerank API Adapter"]
-                RERANK_CUSTOM["自訂 Reranker"]
+                RERANK_CUSTOM["允許自行開發 Reranker"]
                 RERANK_REMOTE["Remote API Component"]
             end
             QUERY -->|"QueryContext[]"| RETRIEVAL
@@ -203,3 +203,13 @@ flowchart TB
     %% Contract binding: Ingestion prepares the index; queries reuse it.
     INDEXING -.->|"IndexBinding"| RETRIEVAL
     %% [] means a collection. Labels show primary business data; keep InferenceState/QueryContext wrappers.
+
+    style IMPORT_CUSTOM stroke-dasharray:8 6
+    style PARSING_CUSTOM stroke-dasharray:8 6
+    style CHUNKING_CUSTOM stroke-dasharray:8 6
+    style EMBEDDING_CUSTOM stroke-dasharray:8 6
+    style INDEXING_CUSTOM stroke-dasharray:8 6
+    style QUERY_CUSTOM stroke-dasharray:8 6
+    style RETRIEVAL_CUSTOM stroke-dasharray:8 6
+    style RERANK_CUSTOM stroke-dasharray:8 6
+    %% Dashed extension placeholders are development possibilities, not implemented Components.
