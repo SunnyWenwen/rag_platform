@@ -1,5 +1,7 @@
 # 16 — Parser 開發模式：Local Component 與 Remote API
 
+> 2026-11-02 D-51：本篇維持無參數、單 Parser 的可執行教學；產品端由 Developer 提供 Manifest 註冊服務，Builder User 不手填 API。Adapter 的 endpoint 由部署綁定注入。連續多 Module、Image／External 及固定資料責任見 [18](18_remote_service_pipeline_integration.md)，不因新方向改寫本例 HTTP body。
+
 2026-11-02｜可執行的教學草案，非已發布 SDK。搭配 [04 三種交付模式](../diagrams/04_component_delivery_modes.md)／[比較圖](../diagrams/04_component_delivery_modes.png) 介紹。
 
 ## 1. 先分清楚「開發」與「交付」
@@ -242,8 +244,7 @@ python -m venv .venv-demo
 
 測試會以本地 ASGI Transport 跑 FastAPI 與 Remote Adapter，對照 Local 輸出；不呼叫外部模型／服務，也不代表已完成 Image 部署、Secret 管理或正式 Exporter。Shared Schema、Pydantic、HTTP 回應形狀與語意的相容性，都應列為正式 Component 驗收材料。
 
-
-
 ## 延伸：03 圖全部 Contract 的 Pydantic 草案
 
 本篇的 Parser 教學維持原樣；需要一起檢視 Chunk／IndexBinding／QueryContext／ResultSet／InferenceState 時，見 [17 Pydantic Contract 草案](17_pydantic_contracts_draft.md)。該集合是獨立可執行草案，尚未合併成正式 SDK；IndexBinding 欄位另外標為待確認提案。
+

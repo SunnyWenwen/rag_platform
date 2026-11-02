@@ -89,9 +89,17 @@ Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保�
 
 DEV test use 使用平台測試資源；匯出部署時需填入使用單位的綁定。Embedding／LLM 的現有原型格式分別為 OpenAI-compatible embeddings／Chat Completions，Rerank 為 04 的平台契約；首組真實服務的相容範圍仍由 Q-003 核定。
 
+### 3.2.2 已註冊 Developer Service／Remote Pipeline（D-51，UI 待實作）
+
+以上 DEV／BYO LLM、Embedding、ES 等資源設定流程保留；Developer 提供的 Remote Component／Pipeline 另走 Service Manifest 註冊目錄。一般 Builder User 選已註冊服務，不填該服務 URL、API Path、認證 Header 或 Image 部署細節。
+
+連續範圍由 Developer 宣告，第一個 Module 作選擇入口，顯示涵蓋範圍及邊界 Contract；其他涵蓋 Modules 保持可見，標示「由 XXX Pipeline 管理」並鎖定獨立設定。不提供參數的固定服務只顯示能力／限制；有 Config Schema 才展開可調參數。Indexing／Retrieval 相容配對、重疊範圍及目標 Runtime Adapter 能力都須卡控。
+
+Remote Image 顯示平台管理的部署就緒／失敗狀態；External 顯示固定資料空間與可能共用資料的說明，不提供 data_space_id 或共享切換。UI 具體驗收見 [10 UIB-016](10_ui_adjustment_backlog.md#uib-016-remote-service-pipeline)，完整方向見 [18](18_remote_service_pipeline_integration.md)。
+
 ### 3.3 條件欄位與相依驗證
 
-- 外部服務選自行提供才要求必要 URL／Model／Secret reference；DEV 不曝光平台憑證。
+- 既有 BYO 模型／DB 資源選自行提供時要求必要 URL／Model／Secret reference；已註冊 Developer Service 的連線由管理者／部署者綁定，不要求一般 Builder User 手填。DEV 不曝光平台憑證。
 - Local Search 選 MongoDB 才呈現 DB 連線；Memory 不要求資料庫。
 - Query Transformation 只選 llm_ref；共用服務只管理一次。
 - None 的 Top-N／Prompt 等欄位可保留草稿但停用，不參與有效 Config 驗證／匯出。
@@ -254,7 +262,8 @@ Runtime 的新舊 Revision／Index 發布策略見 Q-010／Q-015；UI 不單靠�
 - 沿用選定 System 的同版 Config，逐項填入部署環境的 LLM、Embedding、Rerank、ES／MongoDB 綁定；同 llm_ref 不重複填連線。改 URL／Secret 不覆寫邏輯 Config。
 - 使用 DEV 綁定者可下載待設定草稿；必要資訊已填妥者標示「已填妥，尚未驗證」。
 - 只允許合法環境覆寫；更改 Embedding Model 提示返回 Edit Config 並重建。
-- 不含實際 Secret、Chunk／vectors 或測試原文；提醒需在目標環境準備資料／Ingestion。
+- Remote Image 額外輸出遠端 Deployment／Service／設定檔與 Secret 引用 YAML；External Endpoint 只輸出環境連線引用，綁定由部署責任者處理。
+- 不含實際 Secret、Image 本體、Chunk／vectors 或測試原文；提醒需在目標環境準備資料／Ingestion。
 - Local Search 單程序／單副本；不可透過 UI 匯出多副本而宣稱可共享索引。
 - FTEST／ENT 檔名、環境值與完整 Bundle 待 Q-021；正式文案稱 Config／部署設定。原型舊的 RAGBlueprint／blueprint.json 僅是待遷移標籤，不是另立的產品物件；單份示意 YAML 不代表正式交付完成。
 
@@ -279,3 +288,4 @@ UI Mock、Schema 驗證、HTTP integration、實際端對端驗收分開記錄�
 | [Q-018](08_implementation_plan.md#q-018) | Evaluation 介面指標、比較與 Gate |
 
 決策狀態與實作階段見 [08](08_implementation_plan.md)。
+

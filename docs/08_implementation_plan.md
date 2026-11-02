@@ -93,6 +93,7 @@
 | D-48 | 多欄位切分任務預設各自輸出 fields.text；完整來源需明確複製到不衝突名稱。第一版必要切分欄位缺失／型別錯誤／全空白、必要任務零產出及明確 copy 缺失均報錯 | 2026-10-30 使用者回覆「24 照你建議 OK」；concat／固定文字另討論，精確 Schema／SDK 未凍結 | 15 §2／§9；04／05／06／UIB-013；Q-002／Q-004／Q-009 |
 | D-49 | ParsedDocument 統一為平面 units；Parser 整理結構，Chunker 單筆切分，不跨 Unit 合併／overlap；來源以 unit_index 追溯 | 2026-11-02 已確認 units 名稱及無 fields／unit_id 包裝 | 04～08／10～15／schemas／examples；UIB-014 |
 | D-50 | Retrieval-only；產品名統一 Retrieval；Library＋Config 建立 System，Platform 包含 Library／API／Image；取消 Generation 及答案評估 | 2026-11-02 使用者確認 | 03～15／架構圖；UIB-015 |
+| D-51 | Remote Pipeline 可承接連續多 Module；Developer 以 Manifest 註冊服務，User 選用；Local 共用 Runtime、Image 每 System 獨立部署、External 自行部署／固定資料空間；第一版不加 data_space_id | 2026-11-02 使用者確認 1～5、Indexing 配對及簡化資料空間後授權更新文件 | 18／03～07／10～12／16；UIB-016；Q-002／Q-019～Q-022／Q-028 |
 
 兩層合併預設勾選且在 Retrieval 後已確認，Prototype 的設定／預覽狀態見 10；不能把展示能力當作 Engine 已實作。Q-014 仍負責正式支援路徑、stage 命名及執行契約等剩餘細節。
 
@@ -229,8 +230,6 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 - Chunk 來源採 unit_index＋field＋文字範圍；metadata 全繼承，Unit 其他欄位依 copy 帶入。Schema、範例與來源追溯同步升版，見 [14](14_parsed_document_contract.md)、[15](15_chunk_contract.md)。
 - API／Parser Input 仍共用 IngestionDocument，content／base64／uri 不變；上游已解析 Units 經對應 Adapter 驗證，不新增直接 Chunk 輸入。
 - 仍待：正式 SDK／發布版、Parser 空內容與表格／圖片政策、Tokenizer／Header-aware 細節、Parser 變更下的 revision／重建與舊資料遷移。UI 調整登錄 UIB-014，未改 Prototype。
-
-
 
 <a id="chunk-schema-pending"></a>
 #### Chunk 實際 Schema（2026-11-02 更新為 0.2 單位追溯）
@@ -409,6 +408,8 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 <a id="q-020"></a>
 ### Q-020 DEV 共享 Runtime 與資源隔離
 
+- D-51 已確認 Local 可同程序／Pod 建多 System；Remote Image 第一版每 System 獨立服務及儲存綁定；External 由 Developer 管理固定資料空間，無 data_space_id。下列快取／配額／清理細節仍 OPEN。
+
 - 不清楚：每 System 實例快取、Tenant／System 路由、同時工作、記憶體配額、回收、是否獨立程序。
 - 建議：先有受限共享 Runtime 與明確隔離 Binding；Local Search 每 System 的 Ingest／Query 必須同程序。
 - 替代：每 System 獨立 Runtime，增加部署／資源管理成本。
@@ -417,6 +418,8 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 
 <a id="q-021"></a>
 ### Q-021 Export、FTEST／ENT 與 Secret Vault
+
+- D-51：Remote Image 額外匯出遠端 Deployment／Service／設定／Secret 引用 YAML；External 只匯出連線引用。無 Image 本體或資料搬移，Manifest／控制介面連動 Q-028。
 
 - 2026-10-28 D-41 確認：rag_engine 統一建置含 Engine／核可 Components／Runtime API 的完整 Image，rag_platform 建置 Builder Image；採用新版 Engine／Component 時仍需更新 Runtime，接口相容的 Builder 可維持原版。目標 Image 須包含 Config 所需 Component packages 並保存版本；Component 清單／鎖定格式與缺失錯誤仍待決，YAML 不會自動提供 Python 方法程式。建置／發布／部署範圍見 07 §9.4。
 
@@ -428,6 +431,8 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 
 <a id="q-022"></a>
 ### Q-022 自訂程式的交付與隔離
+
+- D-51：下列同 repo 提交流程適用 Local；Remote Developer 可保留私有實作，提供 Manifest＋Image 或自行部署端點，服務註冊不要求提交原始碼／逐 Module ABC。
 
 - 已確認方向：D-40 加入 Module Developer，由公開契約下的 Component 擴充能力供 Builder 使用；不是所有特殊策略都由平台核心開發者實作。2026-10-28 補齊 04 與 11 的規劃，未凍結套件／隔離細節。
 - 已確認開發位置（D-41）：使用本機 IDE／SDK，在 rag_engine components 目錄開發並提交 PR；與同 repo 的 Engine／Runtime API 整合測試後交付完整 Runtime Image。公開套件／契約邊界保留，以乾淨環境安裝驗證替代「必須另建 Component repo」的驗收要求。
@@ -488,6 +493,17 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 - 負責角色：產品＋平台／Engine／QA；阻擋生產容量承諾與 M7 運維驗收。
 - 決策：未定；更新 03／04／07／08。
 
+<a id="q-028"></a>
+### Q-028 Service Manifest／Remote Pipeline 的具體協定（方向已確認）
+
+- 已確認 D-51：連續範圍替換、Manifest 註冊／User 選服務、可無參數表單、Image 由平台部署／每 System 獨立實例與儲存綁定、External 固定資料空間、不加 data_space_id；含 Indexing 要相容 Retrieval。
+- 尚待核定：Manifest／Deployment Descriptor Meta-schema、服務識別／版本及目錄包裝、範圍選擇與成對綁定欄位、邊界批次／部分失敗包裝、啟動設定檔及 per-call 參數協定；不另造三份共用資料型別、不變更 QueryContext／Rerank Contract。
+- 部署／維運細節：控制器與管理 API、更新／停止／刪除／失敗回收、儲存保留、服務健康與配置版本查核；沿用 Q-008～Q-010／Q-017／Q-020／Q-021 的重試、冪等與狀態決策，不以一般 HTTP 重試保證 Indexing 可安全重送。
+- 負責角色：Platform／Engine／Backend／Frontend Developer、Remote Developer 與部署管理者。
+- 分階段：M0 核定宣告與協定；M1～M2 編譯／Adapter／範圍驗證；M3 目錄與管理整合；M5 UI／DEV 部署；M7 Remote Image YAML 與 External 綁定交付。不改 M0～M7 原有順序，不聲稱本輪已完成這些能力。
+- 驗收：依 18 §7 及 UIB-016，包括只呼叫一次、輸出語意、索引讀寫配對、固定服務無表單、實例／儲存隔離及 Export 差異。
+- 狀態：產品方向已確認，精確格式及控制介面 OPEN；主責文件 [18](18_remote_service_pipeline_integration.md)。
+
 ## 7. 優先討論順序
 
 第一輪先討論 Q-001／Q-002（技術與契約）、Q-003／Q-004／Q-011（可跑的模型／搜尋基線）、Q-007～Q-010（資料更新及可見性）。第二輪處理 API／儲存／Runtime，再依 M4 獨立 AI 助手、M5 Builder 與助手 UI、M6 評估、M7 交付的順序決策。
@@ -535,3 +551,4 @@ ParsedDocument 採 units 列表，Unit 直接放內容欄位；無 fields 包裝
 ## D-50：Retrieval-only 與 Library／Platform（2026-11-02）
 
 Generation 不在開發或驗收範圍；Inference 輸出檢索結果。Rewrite／Multi-query、助手的 LLM 仍保留。03 §3 統一定義 Library、Platform、Runtime、System；Library 配 Config 並綁定必要資源才成為可執行 System。舊 D-14／D-24 中答案相關部分撤銷，UIB-009 取消。實際 repo／package／URN／保留欄位暫不更名，另列遷移；不修改現有 Prototype。
+

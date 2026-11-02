@@ -1,5 +1,7 @@
 # 完整 Library 目錄與三種 Retrieval System 配置
 
+> 2026-11-02 D-51 補充：圖中 Remote API Component 是單 Module 範例；新確認的 Remote Pipeline 也可承接連續多 Module，透過 Manifest 註冊供 User 選用。組裝、部署與資料責任見 [18](../docs/18_remote_service_pipeline_integration.md)。本次只同步圖說，不變更圖面或 QueryContext／Rerank 接線。
+
 2026-11-02｜目標設計示例，非已交付能力。
 
 ![完整 Library 目錄與三種 System 配置](03_module_component_concept.png)
@@ -37,8 +39,6 @@ C 的例子假設遠端 Parser 產出相容、保留 Markdown 標題的 Unit.tex
 Developer 的 Local Component 沿原有 PR／測試／Runtime Image 交付；Remote Developer 可保留私有實作，交付 API Image 或端點。Runtime 必須已包含相容 Adapter，目錄與服務綁定亦須驗證，不能把外部程式直接塞入 Config 執行。
 
 
-
-
 ## Library 內 Module 之間的 Contract 名稱
 
 圖中 `[]` 表示清單；線上標示相鄰 Module 的主要業務資料，引用 [04 §3.1](../docs/04_module_components_io_contracts.md#31-io-接線)，不另定新物件或 HTTP Envelope。
@@ -65,3 +65,4 @@ Library 目錄中原本的「自訂 Importer／Parser／Chunker／Embedder／Ind
 ## 對應 Pydantic 型別
 
 圖中 Contract 物件的可執行 Pydantic 草案與完整欄位見 [17](../docs/17_pydantic_contracts_draft.md)。既有共用形狀對齊 schemas/；IndexBinding 的欄位是本次新增提案，尚待確認，不代表正式 SDK 已凍結。
+

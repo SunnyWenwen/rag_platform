@@ -1,5 +1,7 @@
 # Retrieval Engine Library — 組裝、執行與模組開發規格
 
+> 2026-11-02 D-51：[18 Remote Service／Pipeline](18_remote_service_pipeline_integration.md) 補充連續多 Module 的遠端替換、Manifest 註冊及部署模式。以下單 Module I/O／ABC 與共用資料 Schema 維持原定義；Remote Pipeline 不另造中間資料型別。
+
 > 文件同步：2026-10-31 · 開發規格草案（正式 SDK／Config 尚未凍結）
 >
 > 本文涵蓋可獨立執行的 Engine 與各模組；正式名詞定義見 [03 §3](../03_architecture_proposal.md#terminology)，共用資料／Config 結構見 05。既有產品語意為已確認方向，新增 SDK、Registry 形狀、執行政策為建議，須經對應 Q-ID 核定。本次未新增 Engine 程式。
@@ -28,7 +30,7 @@ Evaluation：重用相同檢索入口的評估邏輯，任務排程與報告儲�
 | `rag-engine`（暫名） | Registry、相容性驗證、Pipeline 組裝、生命週期、執行政策與資源管理 | 使用 SDK 契約，載入已安裝且核可的 Component package |
 | rag_engine 內的 Component package | 實作一個或多個 Module 的 Component，附設定、能力宣告、測試與說明 | 依賴 SDK 公開介面及自身必要套件；不依賴 Builder 或 Engine 私有類別 |
 
-內建與開發者提供的 Component 應遵循相同公開契約與語意檢查，不能以內建方法的私有捷徑作為唯一可行用法。2026-10-28 已確認：SDK、Engine、所有 Components／Adapters 與 Runtime API 同放 `rag_engine` repo，Builder 前後端放 `rag_platform`，見 [03 §3.7](../03_architecture_proposal.md#repository-boundaries)。Module Developer 在 components 目錄提交 PR，不要求另建 Component repo；同一 package 可包含成對的 Indexing／Retrieval。套件邊界仍保留，精確名稱／目錄由 Q-001 核定。
+內建與開發者提供的 Component 應遵循相同公開契約與語意檢查，不能以內建方法的私有捷徑作為唯一可行用法。2026-10-28 已確認：SDK、Engine、本地 Components／Remote Adapters 與 Runtime API 同放 `rag_engine` repo，Builder 前後端放 `rag_platform`，見 [03 §3.7](../03_architecture_proposal.md#repository-boundaries)。Module Developer 在 components 目錄提交 PR，不要求另建 Component repo；同一 package 可包含成對的 Indexing／Retrieval。套件邊界仍保留，精確名稱／目錄由 Q-001 核定。
 
 SDK 的「獨立」是可安裝、可依賴的公開邊界；不表示 Component 的完整 Engine 整合測試不需要 Engine。單一 Component 測試可用 SDK 測試工具與資源替身，整合測試使用同一交付版本中的相容 Engine。Engine 與 Component packages 共同納入完整 Runtime Image；不以拆出另一個 Components 服務作為首期執行模型。
 
@@ -98,6 +100,14 @@ supports: {async: true, batch: true, streaming: false}
 
 Package 版本與 Component 實作版本不一定一對一；一個 package 可交付多個 Component。首版不承諾同一 Python 程序並存同一 package 的多個版本；不相容依賴可先由不同 Runtime Image／環境承載，具體路由與共存政策仍待決。
 
+### 2.5 Remote Service 註冊與整段執行
+
+Local 仍依 §2.3～2.4 載入 package；Remote 實作可保留在 Developer 私有服務，透過核可 Manifest／環境綁定及 Runtime 已支援的共用 Adapter 接入，不要求將遠端演算法安裝進 Runtime。目錄須分清 Local 實作與已註冊 Remote 能力，不能只以 Image 內的 Python 類別清單判斷服務可用性。
+
+Remote Pipeline 宣告同一 Pipeline 中連續範圍、邊界 Contract 與 requires／provides；有效計畫僅保留一次遠端節點，跳過接管的本地步驟，拒絕重疊或不相容接線。例：IngestionDocument → 遠端 Parsing／Chunking／Embedding → Chunk[] → 本地 Indexing。輸出仍須符合原有 metadata／來源／向量語意，不要求傳中間 ParsedDocument。涵蓋 Indexing 時需相容的 Retrieval 與可信索引綁定；精確返回／傳參協定尚待核定，不能據此假定任意成對服務都相容。
+
+API 只傳可序列化且已核定的業務資料及明確支援的參數，不傳完整 RunContext；第一版不傳 data_space_id。計畫驗證、呼叫錯誤／版本與整段 Trace 由 Engine／Adapter 處理，部署則由 07 管理。詳細邊界、固定服務及驗收見 [18](18_remote_service_pipeline_integration.md)。
+
 ## 3. 共用執行政策
 
 ### 3.1 I/O 接線
@@ -126,7 +136,7 @@ Package 版本與 Component 實作版本不一定一對一；一個 package 可�
 - `partial` 的提交方式未定前，不能自行接受半文件索引並刪舊文件。
 - 重試由共用政策管理；HTTP 重送與內部重試不能形成無界倍增。僅在可安全重試且暫時性錯誤時啟用。
 - Indexing／資產提交具副作用，需冪等與版本檢查。讀取 checkpoint 不等於提交 checkpoint。
-- 每個模組記錄 System／Config／Run／Trace、耗時、數量及標準錯誤；不記錄真實 Secret。未知用量不填 0。
+- 每個本地模組／單 Module 遠端呼叫記錄 System／Config／Run／Trace、耗時、數量及標準錯誤；Remote Pipeline 預設以整段呼叫記錄，內部各步診斷為選配。不記錄真實 Secret，未知用量不填 0。
 - Provider failure 不偽裝成沒有相關資料；fallback 需明示 warnings 及實際方法。
 
 Timeout、重試預算、取消、partial 與 fallback 尚待 Q-009／Q-017／Q-023 定案；開發可先以明確錯誤與不自動重試完成骨架。
@@ -153,8 +163,6 @@ Timeout、重試預算、取消、partial 與 fallback 尚待 Q-009／Q-017／Q-
 
 **供應者相容性**：Docling／MinerU／MarkItDown／PyMuPDF4LLM 的新版映射方向與驗證限制見 [14 §5](14_parsed_document_contract.md#5-parser-相容性與驗證範圍)。舊結構契約的通過報告不當成 units 新契約驗收；正式 Component 及解析品質需另驗證。
 
-
-
 **待決**：Q-002、Q-005、Q-006、Q-007；新格式能力同步 Registry／UI，原型變更先記 UIB-011／012。
 
 ### 4.3 Chunking
@@ -162,8 +170,6 @@ Timeout、重試預算、取消、partial 與 fallback 尚待 Q-009／Q-017／Q-
 **Output 草案（2026-10-30，D-47）**：[15](15_chunk_contract.md) 與 [Chunk Schema](../schemas/chunk.schema.json) 是六鍵輸出的共用定義。完整 Chunker 輸出須帶 metadata._rag.source_refs／chunking 且 vectors={}；多欄位 2＋3 得 5 個 Chunk，全域序號按任務／內容順序產生，不依併行完成順序。參考測試只驗已提供的切片／資料，不代替真實 Chunker 演算法與 Tokenizer 驗收。UI 待辦 UIB-013。
 
 **資料／能力補充（2026-11-02）**：Input 引用 [ParsedDocument 0.2 Schema](../schemas/parsed_document.schema.json)。每個任務選一個 Chunker，逐一處理所有 Units，不跨 Unit 合併或 overlap；移除依 structure 類型選 Chunker 的 Router。進階多欄位任務各自輸出後串接，不交叉配對。欄位／Markdown 格式／Tokenizer 能力仍需檢查，UI 遷移見 UIB-014。
-
-
 
 **目的與方法**：Fixed-size／Recursive／Header-aware；預設直接切 units[i].text 並寫回 text，不顯示欄位選單、不自動複製其他 fields。進階才設定有序任務，每個任務一個 split_field／output_field＋明確 copy 映射；同來源可切分且完整複製，但輸出名稱不能衝突。metadata 預設全部繼承，不再逐欄勾選。三種方法均以 Token 計量，沿用指定 Tokenizer／revision。2026-10-16 新增的「fix chunk」統一稱 **Fixed-size Chunking（固定 Token 視窗）**；方法已列入需求；Prototype v0.10 有設定展示，正式 Engine／Tokenizer 尚未實作。
 
@@ -480,3 +486,4 @@ DEV 與 FTEST／ENT 維持相同方法選擇／解析版本與邏輯 Config，�
 - 尚未核定能力回報不支援，不以 Mock 或靜默 fallback 代表完成。
 
 開發階段與驗收資料見 [08](08_implementation_plan.md)。
+

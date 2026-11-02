@@ -101,8 +101,6 @@ Parser 整理來源結構為 Units；Chunker 僅在每筆文字內切分，不�
 
 [單筆文字](../examples/parsed_document/plain_text.json)、[多筆 Units](../examples/parsed_document/units.json)、[表格逐列](../examples/parsed_document/table_rows.json) 共用同一形狀。來源參照為 unit_index＋field＋Unicode 字元範圍。舊供應者結構報告不能當成新版通過證據，詳見 14 §5。
 
-
-
 ### 4.3 Chunk：六個固定頂層 key
 
 > **2026-11-02：已有可驗證 0.2 草案（D-47／D-49），尚未凍結 SDK**。精確形狀與語意以 [15 Chunk Contract](15_chunk_contract.md) 及 [同一份 JSON Schema](../schemas/chunk.schema.json) 為目前來源；共用情境／資料見 [cases.json](../examples/chunk/cases.json)。
@@ -304,6 +302,12 @@ failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項�
 
 原型曾把服務 URL／Secret 引用與 Pipeline 放在同一物件，需明確 migration。具體型別與檔案包裝 Q-002 未凍結，但分離方向已確認。依 03 的正式用語，正式契約不新增 Blueprint 領域物件；舊匯出型別／檔名的遷移見 06。
 
+### 6.1.1 Remote Pipeline 與固定服務
+
+D-51 的有效 Config 以整段引用保存服務識別／版本、連續範圍、邊界 Contract 與開放的邏輯參數；具體巢狀格式待 Q-002／Q-028。UI 使用第一個 Module 當入口，不因此在 Parser 私有 Config 複製整段設定。編譯時排除涵蓋 Module 的本地草稿，並拒絕重複／重疊執行。
+
+服務 Manifest 與各環境 Endpoint／Secret／儲存綁定分開。演算法參數即使由啟動設定檔載入仍屬邏輯 Config；External 的固定模型／索引語意記入服務版本與相容資料，不把無參數表單當成無版本要求。第一版不加入 data_space_id 或 shared 開關，不修改 13～15／Inference Schema。External 固定資料空間由 Developer 管理，可能多 System 共用；平台管理的 Image 實例以啟動綁定分配獨立儲存範圍。詳見 [18](18_remote_service_pipeline_integration.md)。
+
 ### 6.2 草稿、有效 Config 與部署綁定
 
 - UI Draft 保存基本／進階欄位及未啟用方法的草稿；不是所有欄位都參與執行。
@@ -439,4 +443,5 @@ CSV 映射保存、Revision 計算、canonical JSON／Hash、部署綁定是否�
 ## 10. 交付與驗收要求
 
 Q-002 核定後，開發階段需提供 Pydantic Models、可匯出的 JSON Schema、完整 Local／ES／MongoDB 範例與無效範例。相同資料在 UI／HTTP／直接 Engine 呼叫得到相容驗證結果；Unicode offset、向量維度及欄位路徑有獨立驗收資料。實作 Schema 是程式可驗證的產物，變更時同步更新本文與範例，不允許各層另創契約。
+
 

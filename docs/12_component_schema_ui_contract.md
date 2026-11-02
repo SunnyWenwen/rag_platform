@@ -1,5 +1,7 @@
 # Component 設定 Schema、動態表單與相依規則
 
+> 2026-11-02 D-51：本文的單 Component Descriptor 維持不變；新增 Service Manifest 的整合責任見 [18](18_remote_service_pipeline_integration.md)。整段 Remote Pipeline 的涵蓋範圍與部署需求不能只靠單一 module_type 描述，正式擴充格式仍待 Q-028。
+
 日期：2026-10-28。狀態：**D-42 已確認規劃方向與操作行為；`component-ui-0.1-draft` 為待 M0 核定的介面草案，尚未實作。**
 
 2026-10-29 D-43 命名更新：本文的 Component、component_id、BaseComponent、目錄 components 與規則 target.kind=component 取代舊擴充單位名稱；Descriptor 草案現稱 component-ui-0.1-draft，未改既有規則／I/O 語意。舊名對照見 [03 §3.8](../03_architecture_proposal.md#component-terminology-migration)，不表示已發布相容轉換 API。
@@ -93,6 +95,12 @@ class FixedChunker(BaseComponent):
 `overlap_tokens < max_tokens` 另由下述共用規則驗證；不假設 Python 自訂 Validator 都會自動輸出成 JSON Schema。進階 Python 語意檢查由核可 Engine／Component 程式執行，需回標準問題格式，不傳送 Python／JavaScript 給瀏覽器執行。
 
 描述取得不可要求先實例化模型、下載權重、連線 ES／DB 或取得 Secret。Python import 本身仍是執行程式，沿用同 repo 審查／受控載入政策；可讀取 Schema 不代表不受信任程式已被隔離。
+
+### 4.1 Remote Service 的描述與表單邊界
+
+Manifest 引用既有 Config Schema／UI hints／rules 的支援子集，並補充服務範圍、邊界 Contract、呼叫及部署需求；不把整段流程假裝成 Parser 的單 Module Descriptor。Remote Manifest 可沒有使用者參數；Builder 不顯示空參數表單，Adapter 若需既有 Descriptor 則使用合法空設定 Schema。
+
+服務目錄由核可 Manifest 與目標 Runtime Adapter 能力共同決定；服務識別／版本、授權範圍與目錄版本需納入候選／驗證關聯，不能把「已註冊」視為「連線就緒」。環境 URL／Secret 不放入功能 Config Schema。UI 編譯整段時，涵蓋 Modules 的獨立設定不進有效計畫；前端鎖定之外 Engine 也需驗證重疊與 Indexing／Retrieval 配對。正式 Manifest Meta-schema／目錄包裝仍未定，不改現行 component-ui-0.1-draft。
 
 ## 5. Config Schema 的第一版支援範圍
 
@@ -345,3 +353,4 @@ UI 顯示 `[Chunking] 重疊 Token 數必須小於 Chunk Token 上限。`，點�
 參考：Pydantic 的 [JSON Schema 產生](https://docs.pydantic.dev/latest/concepts/json_schema/)、RJSF 的 [Schema 表單](https://rjsf-team.github.io/react-jsonschema-form/docs/) 與 [uiSchema](https://rjsf-team.github.io/react-jsonschema-form/docs/api-reference/uiSchema/)（2026-10-28 查閱）。參考資料支持可行性，未替本專案鎖定前端套件；本文 UI hints／rules 是本專案草案，並非 RJSF 原生格式。
 
 2026-11-02 補充：unit_fields 候選來自 Parser 輸出 Unit 的欄位 Schema／樣本；必須標示所有 Units 的欄位可用性，不能僅用第一筆推定全部符合。移除 structure 類型候選與 Chunker 結構 Router；Parser 輸入格式派送仍保留。
+

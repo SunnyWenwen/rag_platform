@@ -1,5 +1,7 @@
 # Retrieval Builder — 系統概覽與架構
 
+> 2026-11-02 D-51：支援單 Module Remote Component 與連續多 Module Remote Pipeline；由 Developer 提供 Service Manifest 註冊，Builder User 選服務。三種交付模式與資料責任見 [18](docs/18_remote_service_pipeline_integration.md)；UI 待辦見 UIB-016，本次不改圖面／Prototype。
+
 > 文件同步：2026-10-31 · 開發規格草案（正式 SDK／Config 尚未凍結）
 >
 > 本輪重整 03～08 的責任，保留既有已確認方向。本文負責產品與架構總覽；資料契約已同步至 IngestionDocument／ParsedDocument／Chunk，具體規格及未決問題見專題文件與 08。文件更新不表示 Engine、Runtime API 或部署服務已實作。
@@ -81,7 +83,7 @@ Query Rewrite／Multi-query 的 1／N 統一設定提案仍保留；舊回答生
 
 核心關係是 **Retrieval Engine Library ＋ Config → Retrieval System**；實際執行還需解析必要的資源／服務綁定。Python 使用者可直接載入 Library 建立 System，不需要 HTTP 或 Builder。Platform 將 Library 與 Runtime API 打包為共用 Image，部署時再載入 Config／環境設定，無須每份 Config 重新建 Image。
 
-Builder 管理設定與測試，Library 執行模組，Platform 交付執行框架，Runtime 承載 API，System 是依 Config 建立的具體應用。System 不等於 Pod／程序；一個 Runtime 管理多 System 的配置仍見 Q-017／Q-020。
+Builder 管理設定與測試，Library 執行模組，Platform 交付執行框架，Runtime 承載 API，System 是依 Config 建立的具體應用。System 不等於 Pod／程序；Local 模式同一程序／Pod 可建立多個 System，各自保有設定與資料作用範圍，資源限制與生命週期細節仍見 Q-017／Q-020。Remote Image 第一版每 System 獨立服務實例；External Endpoint 由 Developer 自行部署。
 
 **範圍：Retrieval-only，不提供 Generation。** Inference 回傳排序後的檢索結果、分數與來源／追溯資訊，由呼叫端決定如何消費。Query Rewrite／Multi-query 與 AI 設定助手仍可使用 LLM；取消 Generation 不等於移除所有 LLM。
 
@@ -103,6 +105,12 @@ Module／Component 是職責與選擇層次，不以 Python Class 或 Function �
 各 Module 規劃提供內建 Components，Module Developer 也可加入遵循相同契約、設定描述與相依要求的 Component。內建／自訂元件經同一 Registry 管理，使用者在 Builder 選用目標 Runtime 實際包含且核可的元件；預設提供不等於全部同時執行。[Library／Config／System 示意圖](diagrams/03_module_component_concept.png) 上半部保留完整 Library 的 Module／Component 目錄與 Developer 交付流程，逐項呈現既有內建／自訂選項，並於 8 個 Module 各增 Remote API Component。Chunking 額外列出 Developer 在 Library 開發的 XXX_component。下半部以同一 Library 配三份 Config 建立 System：A 全部選內建，B 的 Chunking 選 XXX_component（Local），C 的 Parsing 選 Remote API Component 並連到獨立 Parsing Service。各 System 展開 Ingestion Service 的 Import／Parsing／Chunking／Embedding／Indexing，以及 Retrieval Service 的 Query Transformation／Retrieval／Rerank；實例名稱附 A／B／C。URL／Secret／Image 由部署設定綁定。詳細說明見 [03 圖說](diagrams/03_module_component_concept.md)。Service 是邏輯邊界，不強制拆 Pod；圖中目錄及示例是目標設計，不是已交付清單。
 
 <a id="config-terms"></a>
+
+### 3.2.1 Remote Service 與整段 Pipeline（D-51）
+
+Remote Pipeline 可用一次 API 呼叫替換同一流程內連續 Modules，只驗證其輸入／輸出邊界及語意，不要求輸出中間物件或逐 Module 寫 ABC。涵蓋 Indexing 時須宣告相容 Retrieval 並卡控。Service Manifest 註冊名稱、範圍、Contract、可選參數與部署需求；一般 Builder User 不填 Developer Service 的 API URL。第一個 Module 是整段設定入口，其他涵蓋 Modules 保持可見並鎖定。
+
+三種交付仍是 Local、Remote Image、Remote External Endpoint。External 使用既有固定資料空間，多 System 可能共用資料；第一版不加入 data_space_id。服務實例與 Persistent Layer 是兩個層次；獨立 Pod 仍須獨立儲存綁定。完整規則見 [18](docs/18_remote_service_pipeline_integration.md)。
 
 ### 3.3 Config 與部署設定
 
@@ -270,7 +278,7 @@ Local Search 的 Memory／MongoDB 持久化模式隨邏輯 Config 固定：DEV �
 - Ingestion 有效配置變動標記需重建；Inference 配置變動需重測。精確矩陣見 05。
 - LLM 清單以 System 為作用域；Query Transformation 以 llm_ref 引用；Embedding／Rerank 保留自己的服務契約。
 - Secret 僅存引用，不把憑證寫入 Config、Prompt、Trace 或匯出檔。
-- Export 交付 Runtime Image 引用、Config、Secret 引用與部署說明，不包含 Chunk／vectors 或外部服務。
+- Export 交付 Runtime Image 引用、Config、Secret 引用與部署說明；選 Remote Image 時另含遠端 Deployment／Service 等 YAML，External Endpoint 則只有連線引用。不搬移 Image 本體、Chunk／vectors 或外部 DB。
 - 已填妥不等於連線、模型或部署已驗證；目標環境須驗證並準備資料。
 
 ## 7. 現況與範圍
@@ -294,6 +302,5 @@ Local Search 的 Memory／MongoDB 持久化模式隨邏輯 Config 固定：DEV �
 所有問題狀態、決策負責人及階段阻擋範圍見 08。
 
 資料邊界（2026-11-02）：IngestionDocument → ParsedDocument.units → Chunk.fields；Parser 整理文件結構，Chunker 只在每個 Unit 的指定文字欄位內切分，不跨 Unit 合併／overlap。ParsedDocument 無 structure／fields 包裝，Chunk 外層與後續模組保持六鍵設計。
-
 
 

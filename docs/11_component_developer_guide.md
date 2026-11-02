@@ -1,5 +1,7 @@
 # Retrieval Engine Library — Component 開發指南
 
+> 2026-11-02 D-51：Remote Developer 交付核可的 Service Manifest＋Image 部署描述或外部 Endpoint 綁定；可一次承接連續多個 Module，不要求提供私有原始碼、逐 Module ABC 或重建 Runtime Image。Local 的同 repo 流程維持不變。註冊／參數／部署分工見 [18](18_remote_service_pipeline_integration.md)。
+
 > **2026-11-02 新增具體教學**：[16 Parser 開發範例](16_parser_component_development_examples.md) 提供可執行的 Pydantic、Local ABC、Remote API Adapter 與選用 FastAPI 範本；搭配 [04 三種交付模式](../diagrams/04_component_delivery_modes.md) 說明。這是獨立教學程式，不是正式 SDK。本文的同 repo 提交／納入 Runtime Image 流程適用 Local Component；Remote Developer 可保留私有實作，只交付 Image＋部署描述或既有端點。Remote HTTP／參數與部署協定仍待正式核定。
 
 
@@ -28,7 +30,7 @@
 
 <a id="developer-flow-blocks"></a>
 
-### 四個 block 看開發流程（2026-10-29）
+### Local Component：四個 block 看開發流程（2026-10-29）
 
 總覽見 [01 L1 使用流程圖](../diagrams/01_user_system_l1.png) 的最下層；Module 與元件關係見 [03 Module／Component 示意圖](../diagrams/03_module_component_concept.png)。
 
@@ -71,6 +73,15 @@ components 目錄可依 Parsing、Chunking、Indexing、Retrieval 等 Module 組
 在同 repo 透過 PR 審查區分 Component 與 Engine 核心的維護責任，權限與發布核可方式仍由 Q-022 核定。首期可集中建置一個 Component package，後續有必要再於同 repo 拆分套件；repo 數量不隨方法數量增加。
 
 首期不因開放開發而要求另建 Web IDE 或開發者入口網站。發布權限不等於可以讀取所有 Workspace 資料；使用平台測試服務仍依各環境授權。
+
+### 2.1 Remote Developer 的四個步驟
+
+1. 確認單 Module 或連續 Pipeline 的邊界 Contract；若含 Indexing，宣告相容 Retrieval／索引能力。
+2. 實作符合 API Contract 的 Service／必要適配，交付 Manifest、可選 Config Schema／UI hints、能力及測試材料；不強制 FastAPI 或 Component ABC。
+3. Image 模式提供 Port／Probe／設定注入／資源與依賴描述；External 模式由 Developer 部署，與管理者登錄各環境連線及固定能力。
+4. 審核註冊後在 DEV 驗證，Builder User 從選單使用；Image 模式由平台管理部署，External 保持 Developer 維運。
+
+第一版 External 採固定資料空間，不提供 data_space_id；Image 需可綁定獨立儲存範圍。單純新增相容的服務宣告不要求重建 Runtime；新增不支援的 Adapter／協定或邊界能力仍需更新 Engine／Runtime。Manifest 及協定正式格式未凍結，細節見 [18](18_remote_service_pipeline_integration.md)。
 
 ## 3. 識別、版本與相依能力
 
@@ -229,7 +240,6 @@ Python Packaging User Guide 說明以套件 metadata／entry points 發現及載
 | 實作／套件版本記錄、既有 System 升級／索引相容與部署鎖定 | 更新既有資料或正式交付前；Q-015／Q-021／Q-022 | 設計相容檢查與失敗案例，不自動升級 |
 
 這些事項不阻擋本輪文件整理；規格定案與工具實作後，再將介面示意換成經測試、可直接執行的開發教學。完整決策狀態只維護於 08，不因本指南提供建議就自動關閉 Q-ID。
-
 
 
 

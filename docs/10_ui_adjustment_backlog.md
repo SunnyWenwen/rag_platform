@@ -251,8 +251,6 @@ D-42 的具體補充（格式以 [12](12_component_schema_ui_contract.md) 為準
 
 v0.10 的無結構／text-spans／page-blocks 展示僅代表舊契約。現行設計不再需要結構類型／版本選單或 Chunker 結構 Router；後續實作改依 UIB-014，不執行舊待辦。
 
-
-
 <a id="uib-013-chunk-contract"></a>
 ### UIB-013：Chunk Contract、預設 text 與進階欄位任務（方向已確認，尚未實作）
 
@@ -289,3 +287,18 @@ v0.10 的無結構／text-spans／page-blocks 展示僅代表舊契約。現行�
 - [ ] Evaluation 移除 Answer Correctness／Faithfulness 與參考答案欄位；保留 Recall@K、MRR、Latency、Usage、Error Rate。
 - [ ] 手動／助手／Create／Edit／匯出／API 說明一致；舊 config.generation 顯示需遷移，不靜默執行或刪除。更新測試與截圖。
 - [ ] 技術命名另做明確 migration：repo／branch、Python package、URN／Schema ID、_rag、RAGBlueprint 與儲存 key。此輪只改規格與圖，不做技術識別全域取代。
+
+<a id="uib-016-remote-service-pipeline"></a>
+### UIB-016：已註冊 Remote Service／連續 Pipeline（D-51，待修改 Prototype）
+
+依據：[18](18_remote_service_pipeline_integration.md)。本次只記錄規格，尚未修改 UI／部署服務。
+
+- [ ] 顯示核可服務名稱／版本、涵蓋 Module、邊界 Contract 與相容性；一般 User 不填 Developer Service 的 URL／API Path／Header／Image。
+- [ ] 在連續範圍第一個 Module 選 Remote Pipeline，其他涵蓋 Module 保持可見、標「由 XXX Pipeline 管理」並鎖定；不讓使用者任意更改範圍。
+- [ ] 底層整段綁定只編譯一次；阻止重疊範圍，切回本地時還原草稿但重新驗證，不把隱藏設定納入有效計畫。
+- [ ] 有開放 Config Schema 才展開參數；固定服務只顯示能力／限制。既有 BYO LLM／Embedding／ES 設定不因此移除。
+- [ ] 包含 Indexing 時檢查相容 Retrieval／索引能力；顯示失效選擇與原因，不靜默替換。
+- [ ] Local 多 System 共用 Runtime；Remote Image 顯示每 System 獨立實例的部署／健康／錯誤狀態及自動 Endpoint 綁定結果。
+- [ ] External 顯示 Developer 管理、固定資料空間、多 System 可能共用資料；不提供 data_space_id／shared 開關。無狀態服務不顯示儲存提示。
+- [ ] Export 區分 Image 的額外 Deployment／Service YAML 與 External 的連線引用；環境綁定交給部署責任者，不展示 Secret 值。
+- [ ] 服務目錄／Adapter 不相容、未就緒、初始化失敗及版本變更對回 [Module／服務]；保留草稿，不宣稱已註冊即已可執行。

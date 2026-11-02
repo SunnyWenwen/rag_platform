@@ -79,6 +79,12 @@ M4 助手核心的建議位置在 rag_engine，以便使用相同 Registry／Val
 
 共享 Runtime 不代表每建立 System 就新建 Pod。實例快取、資源配額、LRU／釋放、租戶隔離與同時工作限制見 Q-020。
 
+### 4.1.1 Remote Image／External 的生命週期
+
+D-51 下，Local 可在同程序／Pod 建立多個 System。Remote Image 每 System 額外建立獨立服務實例，整段不逐 Module 起 Pod；Backend 協調部署機制注入設定檔與 Secret 引用，建立 Deployment／Service、健康檢查並自動解析 Endpoint。記錄 System／Revision 與部署的對應，更新、失敗回收及停止／刪除時清理受管理資源；Ready 前阻止相依操作。具體控制介面、清理及儲存保留政策留 Q-017／Q-020／Q-021。
+
+Remote External 不由 Builder 啟動／重啟；Developer／管理者登錄 Endpoint／認證並做相容／連線檢查，User 只選服務。該模式固定存取既有資料空間，平台不加 data_space_id、不承諾多 System 自動隔離。無狀態服務無儲存需求；Image 有儲存時必須透過啟動綁定分配獨立範圍，不以 Pod 獨立當作資料隔離證據。見 [18](18_remote_service_pipeline_integration.md)。
+
 ### 4.2 Config 更新
 
 Backend 儲存前以有效設定比較，依 05 判定影響；UI 與 AI 都不能繞過。Edit 使用獨立草稿，取消不生效。
@@ -253,7 +259,7 @@ HTTP Query 映射原始問題；filters 與預設／ACL AND。Backend 保存 Fus
 
 兩個 repo 的服務透過 Runtime API 與 Component 目錄合作；實際路徑、認證與 Envelope 由 Q-019 核定，以下為需要覆蓋的介面能力，不新增已凍結端點：
 
-- **方法與能力目錄**：提供目標 Runtime 的版本識別、核可 component_id／module_type／實作版本、相容 Contract、Config Schema、requires／provides 與支援的表單顯示資訊。資訊應來自該 Image／Runtime 真正包含的內容，不把 repo 中未交付的方法當成已可用。
+- **方法與能力目錄**：提供目標 Runtime 的版本識別、核可 component_id／module_type／實作版本、相容 Contract、Config Schema、requires／provides 與支援的表單顯示資訊。Local 資訊應來自該 Image／Runtime 真正包含的內容；Remote 資訊來自核可 Manifest 與目標 Runtime 實際支援的 Adapter／範圍／協定，不把只有 repo 原始碼或只有 Manifest 的方法當成已 Ready。
 - **完整 Config 驗證**：Builder／助手提交有效設定與目標版本，重用 Engine 的型別、跨模組相依與索引相容檢查；回傳可定位到 `[MODULE NAME]`／欄位的結果。格式有效、可組裝、服務已連通與資料可查詢分開，不把目錄查詢當成真實連線測試。
 - **版本與目錄一致性**：目錄／Schema／驗證結果要能對回同一目標 Runtime 版本；Runtime 更新後，舊快取或過期驗證不得靜默套用。既有 System 保留所選版本，尚未安裝／不相容方法應明示，不自動取最新版。
 - **相容範圍**：既有 API、Config Schema 與 UI 控制項足以支援時，新增 Component 可只發布／部署 Runtime；需要新型表單或破壞性接口時，需更新 Builder 並完成契約相容測試。目錄傳輸格式與欄位演進政策仍待 Q-002／Q-019／Q-025。
@@ -320,9 +326,18 @@ Runtime Image 可自 M3 開始建置；M7 才驗收完整 FTEST／ENT 獨立交�
 - FTEST／ENT 的環境檔案、啟動與 API 說明、資料準備步驟。
 - 若有評估報告，清楚綁定測試環境／資料版本，不能宣稱目標環境已驗證。
 
-不含真實 Secret、原始文件、Chunk／vectors、Builder DB 或外部模型／搜尋服務。目標環境需有相容資料或執行 Ingestion；部署後仍可持續 API 匯入。
+Remote Image 另輸出所選遠端服務的 Image 引用、Deployment／Service／資源／設定檔／Secret 引用等 YAML；External Endpoint 只輸出目標環境連線／Secret 引用，不建立遠端部署。
+
+不含 Image 本體、真實 Secret、原始文件、Chunk／vectors、Builder DB 或外部 DB／模型資料。目標環境需有相容資料或執行 Ingestion；部署後仍可持續 API 匯入。
 
 Local Search 的持久化模式沿用同版 Config：DEV 為 Memory，FTEST／ENT 也為 Memory；Export 只補齊該模式所需部署綁定，不將 Memory 切成 MongoDB。MongoDB 模式可填不同環境的 URI／Secret／DB／Collection，實際資料不隨匯出搬移。
+
+<a id="remote-service-deployment"></a>
+### 9.1.1 Remote Service Manifest 與環境綁定
+
+Developer 提供 Manifest 描述服務識別／版本、操作範圍、Contract、可選設定描述與 Image 部署需求；管理者審核並綁定各環境連線／Secret，User 不自行輸入 Developer Service 的 API。Metadata／Contract 版本檢查與健康／連線檢查分開，目錄查詢不得觸發任意部署。
+
+DEV 自動部署與 Export 共用部署描述的語意；FTEST／ENT 補齊目標環境資源，維持相同邏輯參數與相容服務版本。固定服務不要求參數表單，支援 per-call 參數時另定傳遞協定；不把設定藏入文件 metadata 或改寫 Parser 輸入。Manifest 與部署描述的正式 Schema 及管理 API 仍為 Q-028／Q-019／Q-021，完整責任與驗收見 [18](18_remote_service_pipeline_integration.md)。
 
 ### 9.2 驗證與部署
 
@@ -345,8 +360,9 @@ Secret Vault 位於 Runtime 外，以環境支援的解析／注入方式提供�
 | 變更來源 | 建置／測試與部署範圍 | 跨 repo 配合條件 |
 |---|---|---|
 | 僅 Builder UI／Backend | 建置並部署受影響的 Builder Image，驗證與所支援 Runtime 的契約 | 沿用相容 Runtime；不因 Builder 發版而重建所有 Runtime |
-| 新增／修改 Component | rag_engine 的方法與整合測試後，建置完整 Runtime Image；欲使用新版的環境更新 Runtime | API／Schema／表單相容時 Builder 可維持原版，更新目錄即可；新 UI 能力另配合 |
+| 新增／修改 Local Component／Runtime Adapter | rag_engine 的方法與整合測試後，建置完整 Runtime Image；欲使用新版的環境更新 Runtime | API／Schema／表單相容時 Builder 可維持原版，更新目錄即可；新 UI 能力另配合 |
 | Engine／SDK／Runtime API | 在 rag_engine 驗證受影響 Components 與 API，再建置並部署 Runtime；SDK 如另發行須保留版本對照 | 破壞性 API／Config／SDK 變更需要使用方適配；不能承諾所有變更都單邊升級 |
+| Remote Service／Manifest（D-51） | 相容宣告可更新核可目錄／環境綁定，不因新服務強制重建 Runtime；Image 服務更新其部署，External 由 Developer 更新 | 若新協定／連續範圍能力不被 Adapter 支援，仍需更新 Engine／Runtime；語意改變須重新驗證 |
 | 文件／未納入產物的測試資料 | 執行相應文件／測試檢查 | 不僅因 repo 有新 commit 就強制重新部署服務 |
 
 每個完整 Runtime Image 應可追溯同一 rag_engine 交付來源、SDK／Engine／Component package 版本與依賴鎖定結果。同 repo 可以讓它們一起驗證，並不抹去各自的契約／實作版本。既有 System 可維持鎖定版本，新版發布不自動觸發所有 DEV／FTEST／ENT 升級；欲交付的選定版本應完成 DEV 驗證，再由使用單位以同一 Runtime Image／邏輯 Config 補齊環境設定進行部署。
@@ -372,3 +388,4 @@ tSSO 是 Builder 的登入方向，實際 Token／Gateway／Backend 驗證見 Q-
 ## 12. 完成條件
 
 直接 SDK 與 HTTP 入口在相同配置／資料上得到相容結果；UI 呼叫真實 API；獨立 Runtime 不需要 Builder 啟動；Config／Run／Index 版本可追蹤。建立、重送、錯誤、重啟、併發與部署驗收按 08 分階段完成，不用示意 YAML／固定回應取代整合證據。
+
