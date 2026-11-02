@@ -137,14 +137,14 @@ System 列表／讀取、Workspace／Dataset CRUD、AI suggestion／連線檢查
 }
 ```
 
-content 由相容 Parser 轉成 ParsedDocument.fields；可接收已解析內容，但須符合對應 schema／Adapter，ParsedDocument 已有 [0.1 JSON Schema 草案與固定官方輸出驗證](14_parsed_document_contract.md)，尚未凍結；不代表 Runtime 已載入這些 Parser。API 外層不直接宣告 fields／structure／vectors。**API 與 Parser Input 使用同一份 IngestionDocument JSON Schema（D-45）**，Parser 專屬內容限制再驗證。Parser 透過 SDK 共用 resolver 取得／解碼內容，不另要求轉成另一份 ParserInput；Context 為 Engine 注入的執行資源，不是 HTTP body。
+content 由相容 Parser 轉成 ParsedDocument.units；可接收已解析內容，但須符合對應 schema／Adapter，ParsedDocument 已有 [0.2 units 契約與驗證範圍](14_parsed_document_contract.md)，尚未凍結；不代表 Runtime 已載入這些 Parser。API 外層不直接宣告 fields／structure／vectors。**API 與 Parser Input 使用同一份 IngestionDocument JSON Schema（D-45）**，Parser 專屬內容限制再驗證。Parser 透過 SDK 共用 resolver 取得／解碼內容，不另要求轉成另一份 ParserInput；Context 為 Engine 注入的執行資源，不是 HTTP body。
 
 Runtime 驗證分層，不以 API 外層通過就宣稱資料可搜尋：
 
 | 交接位置 | 必須檢查 |
 |---|---|
 | 接收／Import → Parser | 13 的共同外層、單一來源、授權／資源限制及 Parser 專屬內容／路由能力 |
-| Parser → Chunking | 14 的五鍵 Schema、結構／位置語意、System 欄位宣告及 Chunker 相容能力 |
+| Parser → Chunking | 14 的四鍵 Units Schema、Unit／位置語意、System 欄位宣告及 Chunker 相容能力 |
 | Chunking → Embedding | 15 的六鍵 Schema、來源身分、有效 metadata、來源 refs／切分計畫、必要任務非零產出；vectors={} |
 | Embedding → Indexing | 同一 Chunk，命名向量 values／Profile／來源／維度與 Binding 一致；純全文可略過 Embedding |
 | 索引發布 → Retrieval | 完整 Chunk 的保存與可查詢版本狀態；回傳投影可 vectors={}，不能丟失下游所需內容或可信引用 |

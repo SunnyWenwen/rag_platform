@@ -4,13 +4,14 @@
     "source": {
       "document_id": "manual-001",
       "source_revision": "v1",
-      "fields": {
-        "text": "保養規範\n清潔前先斷電。"
-      },
+      "units": [
+        {
+          "text": "保養規範\n清潔前先斷電。"
+        }
+      ],
       "metadata": {
         "department": "engineering"
-      },
-      "structure": {}
+      }
     },
     "effective_spec": {
       "spec_version": "chunking-spec/0.1-draft",
@@ -50,6 +51,7 @@
           "_rag": {
             "source_refs": [
               {
+                "unit_index": 0,
                 "field": "text",
                 "output_field": "text",
                 "role": "split",
@@ -73,14 +75,15 @@
     "source": {
       "document_id": "manual-001",
       "source_revision": "v1",
-      "fields": {
-        "text": "保養規範\n清潔前先斷電。",
-        "title": "設備手冊"
-      },
+      "units": [
+        {
+          "text": "保養規範\n清潔前先斷電。",
+          "title": "設備手冊"
+        }
+      ],
       "metadata": {
         "department": "engineering"
-      },
-      "structure": {}
+      }
     },
     "effective_spec": {
       "spec_version": "chunking-spec/0.1-draft",
@@ -131,6 +134,7 @@
           "_rag": {
             "source_refs": [
               {
+                "unit_index": 0,
                 "field": "text",
                 "output_field": "text",
                 "role": "split",
@@ -138,11 +142,13 @@
                 "end": 12
               },
               {
+                "unit_index": 0,
                 "field": "text",
                 "output_field": "original_text",
                 "role": "copy"
               },
               {
+                "unit_index": 0,
                 "field": "title",
                 "output_field": "title",
                 "role": "copy"
@@ -164,14 +170,15 @@
     "source": {
       "document_id": "multi-001",
       "source_revision": "v1",
-      "fields": {
-        "text": "甲段。乙段。",
-        "faq": "問一。問二。問三。"
-      },
+      "units": [
+        {
+          "text": "甲段。乙段。",
+          "faq": "問一。問二。問三。"
+        }
+      ],
       "metadata": {
         "department": "engineering"
-      },
-      "structure": {}
+      }
     },
     "effective_spec": {
       "spec_version": "chunking-spec/0.1-draft",
@@ -242,6 +249,7 @@
           "_rag": {
             "source_refs": [
               {
+                "unit_index": 0,
                 "field": "text",
                 "output_field": "text",
                 "role": "split",
@@ -249,6 +257,7 @@
                 "end": 3
               },
               {
+                "unit_index": 0,
                 "field": "faq",
                 "output_field": "original_faq",
                 "role": "copy"
@@ -276,6 +285,7 @@
           "_rag": {
             "source_refs": [
               {
+                "unit_index": 0,
                 "field": "text",
                 "output_field": "text",
                 "role": "split",
@@ -283,6 +293,7 @@
                 "end": 6
               },
               {
+                "unit_index": 0,
                 "field": "faq",
                 "output_field": "original_faq",
                 "role": "copy"
@@ -310,6 +321,7 @@
           "_rag": {
             "source_refs": [
               {
+                "unit_index": 0,
                 "field": "faq",
                 "output_field": "text",
                 "role": "split",
@@ -317,6 +329,7 @@
                 "end": 3
               },
               {
+                "unit_index": 0,
                 "field": "text",
                 "output_field": "original_text",
                 "role": "copy"
@@ -344,6 +357,7 @@
           "_rag": {
             "source_refs": [
               {
+                "unit_index": 0,
                 "field": "faq",
                 "output_field": "text",
                 "role": "split",
@@ -351,6 +365,7 @@
                 "end": 6
               },
               {
+                "unit_index": 0,
                 "field": "text",
                 "output_field": "original_text",
                 "role": "copy"
@@ -378,6 +393,7 @@
           "_rag": {
             "source_refs": [
               {
+                "unit_index": 0,
                 "field": "faq",
                 "output_field": "text",
                 "role": "split",
@@ -385,6 +401,7 @@
                 "end": 9
               },
               {
+                "unit_index": 0,
                 "field": "text",
                 "output_field": "original_text",
                 "role": "copy"
@@ -402,64 +419,22 @@
     ]
   },
   {
-    "case_id": "text_spans",
+    "case_id": "independent_units",
     "source": {
-      "document_id": "manual-001",
+      "document_id": "units-001",
       "source_revision": "v1",
-      "fields": {
-        "text": "保養規範\n清潔前先斷電。"
-      },
-      "metadata": {},
-      "structure": {
-        "text": {
-          "schema_id": "text-spans/0.1-draft",
-          "blocks": [
-            {
-              "block_id": "b1",
-              "type": "heading",
-              "start": 0,
-              "end": 4,
-              "level": 1,
-              "locations": [
-                {
-                  "kind": "page",
-                  "page_number": 1
-                }
-              ]
-            },
-            {
-              "block_id": "b2",
-              "type": "paragraph",
-              "start": 5,
-              "end": 12,
-              "parent_id": "b1",
-              "locations": [
-                {
-                  "kind": "page",
-                  "page_number": 2
-                }
-              ]
-            }
-          ],
-          "pages": [
-            {
-              "page_number": 1,
-              "start": 0,
-              "end": 5
-            },
-            {
-              "page_number": 2,
-              "start": 5,
-              "end": 12
-            }
-          ],
-          "split_points": [
-            {
-              "offset": 5,
-              "kind": "preferred"
-            }
-          ]
+      "units": [
+        {
+          "text": "甲段。乙段。",
+          "page": 1
+        },
+        {
+          "text": "問一。問二。問三。",
+          "page": 2
         }
+      ],
+      "metadata": {
+        "department": "engineering"
       }
     },
     "effective_spec": {
@@ -471,7 +446,12 @@
           "component_version": "1.0.0-fixture",
           "split_field": "text",
           "output_field": "text",
-          "copy_fields": [],
+          "copy_fields": [
+            {
+              "source_field": "page",
+              "output_field": "page"
+            }
+          ],
           "parameters": {
             "chunk_size": 512,
             "overlap": 64,
@@ -489,161 +469,179 @@
     },
     "chunks": [
       {
-        "chunk_id": "chk_25f40b1f36ef7154df4806eb5fe1317db1836f46e0705749efd676b44cbe9182",
-        "document_id": "manual-001",
+        "chunk_id": "chk_eac47672ea50846887ce40b970dec2aaa5cf6a6078aaf4913ca18960d33d4824",
+        "document_id": "units-001",
         "source_revision": "v1",
         "fields": {
-          "text": "清潔前先斷電。"
+          "text": "甲段。",
+          "page": 1
         },
         "metadata": {
+          "department": "engineering",
           "_rag": {
             "source_refs": [
               {
+                "unit_index": 0,
                 "field": "text",
                 "output_field": "text",
                 "role": "split",
-                "start": 5,
-                "end": 12,
-                "schema_id": "text-spans/0.1-draft",
-                "block_id": "b2",
-                "locations": [
-                  {
-                    "kind": "page",
-                    "page_number": 1
-                  }
-                ]
+                "start": 0,
+                "end": 3
+              },
+              {
+                "unit_index": 0,
+                "field": "page",
+                "output_field": "page",
+                "role": "copy"
               }
             ],
             "chunking": {
-              "chunking_fingerprint": "40da9219f54a8d552281e6fa3573e98352e450df39d8ac6e6c3ed287877a31a3",
+              "chunking_fingerprint": "2d2e1b6859e83a003a5ffeb7c13fbf3cd19b473abc0d2ae8c039c84de7cefdd2",
               "chunk_ordinal": 0,
               "task_id": "text"
             }
           }
         },
         "vectors": {}
-      }
-    ]
-  },
-  {
-    "case_id": "page_blocks",
-    "source": {
-      "document_id": "manual-001",
-      "source_revision": "v1",
-      "fields": {
-        "text": "保養規範\n\n清潔前先斷電。"
       },
-      "metadata": {},
-      "structure": {
-        "text": {
-          "schema_id": "page-blocks/0.1-draft",
-          "pages": [
-            {
-              "page_number": 1,
-              "blocks": [
-                {
-                  "block_id": "b1",
-                  "type": "heading",
-                  "text": "保養規範",
-                  "level": 1
-                }
-              ]
-            },
-            {
-              "page_number": 2,
-              "blocks": [
-                {
-                  "block_id": "b2",
-                  "type": "paragraph",
-                  "text": "清潔前先斷電。",
-                  "parent_id": "b1"
-                }
-              ]
-            }
-          ],
-          "split_points": [
-            {
-              "before_block_id": "b2",
-              "kind": "required"
-            }
-          ]
-        }
-      }
-    },
-    "effective_spec": {
-      "spec_version": "chunking-spec/0.1-draft",
-      "tasks": [
-        {
-          "task_id": "text",
-          "component_id": "example.recursive-token",
-          "component_version": "1.0.0-fixture",
-          "split_field": "text",
-          "output_field": "text",
-          "copy_fields": [],
-          "parameters": {
-            "chunk_size": 512,
-            "overlap": 64,
-            "tokenizer_id": "fixture-tokenizer",
-            "tokenizer_revision": "v1",
-            "separators": [
-              "\n\n",
-              "\n",
-              "。"
-            ],
-            "keep_separator": true
-          }
-        }
-      ]
-    },
-    "chunks": [
       {
-        "chunk_id": "chk_25f40b1f36ef7154df4806eb5fe1317db1836f46e0705749efd676b44cbe9182",
-        "document_id": "manual-001",
+        "chunk_id": "chk_1a728cc2dacb02bb16538fa6a52b6580d851db592d518882d16ce92d72315667",
+        "document_id": "units-001",
         "source_revision": "v1",
         "fields": {
-          "text": "保養規範\n\n清潔前先斷電。"
+          "text": "乙段。",
+          "page": 1
         },
         "metadata": {
+          "department": "engineering",
           "_rag": {
             "source_refs": [
               {
+                "unit_index": 0,
                 "field": "text",
                 "output_field": "text",
                 "role": "split",
-                "schema_id": "page-blocks/0.1-draft",
-                "block_id": "b1",
-                "block_start": 0,
-                "block_end": 4,
-                "chunk_start": 0,
-                "chunk_end": 4,
-                "locations": [
-                  {
-                    "kind": "page",
-                    "page_number": 1
-                  }
-                ]
+                "start": 3,
+                "end": 6
               },
               {
-                "field": "text",
-                "output_field": "text",
-                "role": "split",
-                "schema_id": "page-blocks/0.1-draft",
-                "block_id": "b2",
-                "block_start": 0,
-                "block_end": 7,
-                "chunk_start": 6,
-                "chunk_end": 13,
-                "locations": [
-                  {
-                    "kind": "page",
-                    "page_number": 2
-                  }
-                ]
+                "unit_index": 0,
+                "field": "page",
+                "output_field": "page",
+                "role": "copy"
               }
             ],
             "chunking": {
-              "chunking_fingerprint": "40da9219f54a8d552281e6fa3573e98352e450df39d8ac6e6c3ed287877a31a3",
-              "chunk_ordinal": 0,
+              "chunking_fingerprint": "2d2e1b6859e83a003a5ffeb7c13fbf3cd19b473abc0d2ae8c039c84de7cefdd2",
+              "chunk_ordinal": 1,
+              "task_id": "text"
+            }
+          }
+        },
+        "vectors": {}
+      },
+      {
+        "chunk_id": "chk_a2c715354e0535cfa726f8fb220213a7b9e5bfe5eeac73d02e1f8a9371729014",
+        "document_id": "units-001",
+        "source_revision": "v1",
+        "fields": {
+          "text": "問一。",
+          "page": 2
+        },
+        "metadata": {
+          "department": "engineering",
+          "_rag": {
+            "source_refs": [
+              {
+                "unit_index": 1,
+                "field": "text",
+                "output_field": "text",
+                "role": "split",
+                "start": 0,
+                "end": 3
+              },
+              {
+                "unit_index": 1,
+                "field": "page",
+                "output_field": "page",
+                "role": "copy"
+              }
+            ],
+            "chunking": {
+              "chunking_fingerprint": "2d2e1b6859e83a003a5ffeb7c13fbf3cd19b473abc0d2ae8c039c84de7cefdd2",
+              "chunk_ordinal": 2,
+              "task_id": "text"
+            }
+          }
+        },
+        "vectors": {}
+      },
+      {
+        "chunk_id": "chk_985c68e5c9c8843143cad8bddf2cfd269b155aa9db5825a0d7232526aafdde5f",
+        "document_id": "units-001",
+        "source_revision": "v1",
+        "fields": {
+          "text": "問二。",
+          "page": 2
+        },
+        "metadata": {
+          "department": "engineering",
+          "_rag": {
+            "source_refs": [
+              {
+                "unit_index": 1,
+                "field": "text",
+                "output_field": "text",
+                "role": "split",
+                "start": 3,
+                "end": 6
+              },
+              {
+                "unit_index": 1,
+                "field": "page",
+                "output_field": "page",
+                "role": "copy"
+              }
+            ],
+            "chunking": {
+              "chunking_fingerprint": "2d2e1b6859e83a003a5ffeb7c13fbf3cd19b473abc0d2ae8c039c84de7cefdd2",
+              "chunk_ordinal": 3,
+              "task_id": "text"
+            }
+          }
+        },
+        "vectors": {}
+      },
+      {
+        "chunk_id": "chk_a7b64783d4dd5f320b1a5ec3475a2e006603aaaeb7e128285b7eb884dc086c47",
+        "document_id": "units-001",
+        "source_revision": "v1",
+        "fields": {
+          "text": "問三。",
+          "page": 2
+        },
+        "metadata": {
+          "department": "engineering",
+          "_rag": {
+            "source_refs": [
+              {
+                "unit_index": 1,
+                "field": "text",
+                "output_field": "text",
+                "role": "split",
+                "start": 6,
+                "end": 9
+              },
+              {
+                "unit_index": 1,
+                "field": "page",
+                "output_field": "page",
+                "role": "copy"
+              }
+            ],
+            "chunking": {
+              "chunking_fingerprint": "2d2e1b6859e83a003a5ffeb7c13fbf3cd19b473abc0d2ae8c039c84de7cefdd2",
+              "chunk_ordinal": 4,
               "task_id": "text"
             }
           }
@@ -657,9 +655,11 @@
     "source": {
       "document_id": "table-001",
       "source_revision": "v1",
-      "fields": {
-        "text": "設備 A 每月保養。"
-      },
+      "units": [
+        {
+          "text": "設備 A 每月保養。"
+        }
+      ],
       "metadata": {
         "department": "engineering",
         "maintenance_table": {
@@ -674,8 +674,7 @@
             ]
           ]
         }
-      },
-      "structure": {}
+      }
     },
     "effective_spec": {
       "spec_version": "chunking-spec/0.1-draft",
@@ -727,6 +726,7 @@
           "_rag": {
             "source_refs": [
               {
+                "unit_index": 0,
                 "field": "text",
                 "output_field": "text",
                 "role": "split",
@@ -750,13 +750,14 @@
     "source": {
       "document_id": "manual-001",
       "source_revision": "v1",
-      "fields": {
-        "text": "保養規範\n清潔前先斷電。"
-      },
+      "units": [
+        {
+          "text": "保養規範\n清潔前先斷電。"
+        }
+      ],
       "metadata": {
         "department": "engineering"
-      },
-      "structure": {}
+      }
     },
     "effective_spec": {
       "spec_version": "chunking-spec/0.1-draft",
@@ -796,6 +797,7 @@
           "_rag": {
             "source_refs": [
               {
+                "unit_index": 0,
                 "field": "text",
                 "output_field": "text",
                 "role": "split",

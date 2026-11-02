@@ -21,9 +21,8 @@ def main():
         '**進階：T 切 2 段、F 切 3 段，各自預設輸出 text；完整來源明確複製到不同名稱**',
         '| ordinal | task_id | fields.text（片段） | fields.original_faq（完整） | fields.original_text（完整） |\n|---|---|---|---|---|\n' + '\n'.join(
             f"| {c['metadata']['_rag']['chunking']['chunk_ordinal']} | {c['metadata']['_rag']['chunking']['task_id']} | {c['fields']['text']} | {c['fields'].get('original_faq', '—')} | {c['fields'].get('original_text', '—')} |" for c in multi),
-        '**結構來源：從兩頁 Block 組成同一 Chunk，保留兩筆來源與各自輸出位置**',
-        '以下是 page_blocks 案例的 metadata._rag.source_refs；頁面不是預設強制切分邊界。',
-        compact_json(cases['page_blocks']['chunks'][0]['metadata']['_rag']['source_refs']),
+        '**兩個獨立 Units：第一筆切 2 段、第二筆切 3 段，共 5 個 Chunk，不跨筆合併**',
+        compact_json([{'text':c['fields']['text'], 'source_refs':c['metadata']['_rag']['source_refs']} for c in cases['independent_units']['chunks']]),
         '**Embedding 後：vectors.text 的內容**',
         '以下向量為契約用示意數值，沒有呼叫模型；Profile 與來源欄位必須符合可信 Binding。',
         compact_json(cases['embedded']['chunks'][0]['vectors']['text']),
@@ -35,7 +34,7 @@ def main():
     before, rest = text.split(start)
     _, after = rest.split(end)
     p.write_text(before + start + '\n\n' + content + '\n\n' + end + after)
-    print('rendered docs/15_chunk_contract.md from 7 canonical cases')
+    print('rendered docs/15_chunk_contract.md from canonical flat-unit cases')
 
 
 if __name__ == '__main__':

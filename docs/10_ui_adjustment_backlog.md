@@ -1,5 +1,10 @@
 # UI Prototype Backlog 與完成紀錄
 
+## 2026-11-02 契約更新狀態
+
+文件與 Schema 已遷移至平面 Units；Prototype v0.10 尚未改動。下列 v0.10 完成項目為歷史實作紀錄，不表示符合 0.2；與 UIB-012／013 衝突時，以 UIB-014 為準。
+
+
 > 文件同步：2026-10-31。§2～6 記錄 Prototype 已有的結果處理能力；§7 集中尚未實作的需求。勾選完成只代表模擬 UI／邏輯預覽，並非 Engine／API 已完成。
 
 
@@ -20,7 +25,7 @@
 
 現行設計見 [09](09_inference_contract_ui_plan.md)，資料定義見 [05](05_data_contracts_search_design.md#inference-state-draft) 及 [13](13_ingestion_parser_input_contract.md)／[14](14_parsed_document_contract.md)／[15](15_chunk_contract.md)。後續需求先更新文件，對應 Prototype 調整記入 [§7](#ui-backlog-pending)，使用者明確要求改 UI 後才實作。
 
-本次文件同步未改 Prototype。UIB-011～013 應一併使用三份 Schema：CSV 每列 → IngestionDocument.content／metadata → ParsedDocument.fields／structure → Chunk.fields／metadata／vectors；不得繼續產生舊 API 根層 fields。來源資訊唯讀顯示，必要欄位與結構相容由 Engine 驗證。
+本次文件同步未改 Prototype。UIB-011～013 應一併使用三份 Schema：CSV 每列 → IngestionDocument.content／metadata → ParsedDocument.units → Chunk.fields／metadata／vectors；不得繼續產生舊 API 根層 fields。來源資訊唯讀顯示，必要欄位與結構相容由 Engine 驗證。
 
 ## 2. 預設狀態
 
@@ -242,30 +247,38 @@ D-42 的具體補充（格式以 [12](12_component_schema_ui_contract.md) 為準
 - [ ] D-45：API 預覽與 Parser Input 說明引用同一份 IngestionDocument Schema，不再顯示另轉 bytes／source_info 的輸入契約；Context 與共用 resolver 是 Engine／SDK 執行資源，不要求使用者填寫。
 - [ ] 對齊 [13 輸入契約](13_ingestion_parser_input_contract.md) 及 JSON Schema：基本文字只需 document_id／content；Base64／URI 與必要格式識別在進階顯示，不新增 source／mode 必填層。
 - [ ] Builder 保留文件／CSV 上傳，映射／轉換後預覽實際 JSON，content 與 metadata 只映射一次；區分 API body 與 Parsing 後的 ParsedDocument。現有 records[].fields 及範例遷移需明示，不能假裝已支援相容別名。
-- [ ] Parsing 可啟用多個 Component，依宣告能力自動派送；無衝突不要求 Router 設定，有重疊才要求預設策略／進階 profile。格式不支援、歧義及缺 Chunker 結構顯示模組與原因，不靜默換 Parser。
+- [ ] Parsing 可啟用多個 Component，依宣告能力自動派送；無衝突不要求 Router 設定，有重疊才要求預設策略／進階 profile。格式不支援、歧義及Unit 欄位／文字格式不相容顯示模組與原因，不靜默換 Parser。
 - [ ] 更新 API 說明、CSV／AI 樣本處理及匯出預覽，說明獨立 Runtime 接收 JSON，文件傳輸轉換由呼叫端負責。沿用進階預設收合；本輪不變更 Prototype，實際格式／Parser 能力不可由模擬選項冒充。
 
 <a id="uib-012-parsed-document-structures"></a>
-### UIB-012：ParsedDocument 結構與 Chunker 相容／路由（草案待審閱，尚未實作）
+### UIB-012：舊 ParsedDocument 結構預覽（由 UIB-014 取代）
 
-- [ ] 引用 [14](14_parsed_document_contract.md) 與同一份 ParsedDocument JSON Schema，提供無結構／text-spans／page-blocks 預覽；不要另寫前端資料型別或用範例宣稱所有格式可用。
-- [ ] 顯示選定 fields 欄位的結構種類／版本、內容基準、閱讀順序、頁面或 slide／sheet 來源、必要切分點；圖像缺資源、原生 extension 未正規化與未知版本明確顯示。
-- [ ] Chunking 基本區固定選一個 Component；需要時提供依結構／格式／能力派送，無衝突自動，重疊要求預設策略。每筆切分任務只走一個有效 Chunker；不默默忽略 required 邊界。
-- [ ] Header-aware 區分直接處理 Markdown 與要求 heading Blocks 的能力；不以 structure 是否為空猜測格式。首版建議 Parser 正規化標題，確切輸出／格式宣告依核定契約整合。
-- [ ] AI 樣本、CSV／API 預覽與錯誤定位引用同一份 Contract；保留現有進階收合與模擬狀態。僅記錄待辦，待明確改 UI 指示再實作。
+v0.10 的無結構／text-spans／page-blocks 展示僅代表舊契約。現行設計不再需要結構類型／版本選單或 Chunker 結構 Router；後續實作改依 UIB-014，不執行舊待辦。
 
-- [ ] UIB-012 補充：若正式註冊 MarkItDown／PyMuPDF4LLM Component，顯示實際模式與版本、原生頁面是否可用、Layout／OCR 條件、結構與資源限制；區分 Schema 映射通過與解析品質／Chunker 可執行。純文件驗證不預先增加假可用選項。
+
 
 <a id="uib-013-chunk-contract"></a>
 ### UIB-013：Chunk Contract、預設 text 與進階欄位任務（方向已確認，尚未實作）
 
-- [ ] 引用 [15](15_chunk_contract.md) 與共用 Chunk Schema；基本區直接切 fields.text 並寫回 text，不顯示 split/copy 欄位選單；text 缺失／型別不合回 `[Chunking]`，不自動換欄位。
+- [ ] 引用 [15](15_chunk_contract.md) 與共用 Chunk Schema；基本區直接切 units[i].text 並寫回 text，不顯示 split/copy 欄位選單；text 缺失／型別不合回 `[Chunking]`，不自動換欄位。
 - [ ] 進階才顯示新增有序任務、split／output／copy 映射與保留完整原文；預設 copy_fields=[]。同來源可切分又完整複製到 original_text 等不同名稱，重名阻止保存。
 - [ ] D-48：每個多欄位任務的切分片段預設輸出 fields.text；完整來源有需要時才 copy 到 original_text／original_faq 等不衝突名稱，進階仍可明確改名。
 - [ ] D-48：必要切分欄位缺失／型別錯誤／全空白、明確 copy 欄位缺失或必要任務零產出皆顯示 `[Chunking]`＋task_id／欄位，不顯示為成功匯入；第一版不新增可選複製開關。
 - [ ] 多欄位輸出為結果串接，示範 2＋3＝5，完整附帶另一欄位需明確選擇；顯示每個任務輸出欄位與下游可用內容，提示完整複製／Embedding 的重複與長度影響。
-- [ ] metadata 全繼承、不新增排除選單；source_refs／fingerprint／ordinal 由平台自動產生，一般設定不列選項。預覽／結果詳情可唯讀看來源欄位、Block／頁碼、全域序號；未知位置不捏造。
+- [ ] metadata 全繼承、不新增排除選單；source_refs／fingerprint／ordinal 由平台自動產生，一般設定不列選項。預覽／結果詳情可唯讀看unit_index、來源欄位／範圍、已複製頁碼、全域序號；未知位置不捏造。
 - [ ] 向量預設 fields.text → vectors.text；顯示／序列化 values＋embedding_profile_id＋source_field，模型設定共用 Profile，不重填。舊非空向量陣列與原 Prototype text_vector 名稱依明確 Binding／遷移規則處理，不靠名稱猜模型或來源。
 - [ ] 下游 Picker 依 Chunk 實際輸出 Schema／任務產生選項，處理多任務不同欄位與缺欄位，不默默略過；純文字路徑仍可不經額外設定使用。
 - [ ] 手動／AI／Create／Edit／CSV 預覽／匯出用同一有效設定；僅展開進階不變更 Config，取消保留舊設定；欄位失效保留並報錯，不靜默覆蓋。指紋不含 UI 狀態／停用參數／Secret。
 - [ ] 更新 API／Chunk 預覽、測試與說明，區分 IngestionDocument 輸入、ParsedDocument、Chunk 及 ResultItem 的兩種 source_refs；不新增直接 Chunk 匯入入口。本輪只記錄待辦，待使用者明確要求改 UI 再實作。
+
+<a id="uib-014-flat-units"></a>
+### UIB-014：平面 Units 與 Parser／Chunker 分工（待修改 Prototype）
+
+- [ ] 預覽／AI／Create／Edit／CSV／API 範例對齊 ParsedDocument 0.2：document_id、source_revision、units、metadata；Unit 直接放欄位，不包 fields、不要求 unit_id。
+- [ ] API 單筆 IngestionDocument 不變；JSON record／CSV 每列由 Parser 正規化為一個 Unit；預解析 content.units 由已宣告的 Adapter 處理，不自動猜格式。
+- [ ] 移除 text-spans／page-blocks 共用輸出分類、structure 選項與 Chunker 結構 Router；Parser 依輸入格式的派送保留。
+- [ ] Fixed-size／Recursive／Header-aware 保留，Header-aware 顯示 Markdown 標題需求與超長章節 Recursive 設定；不要求 heading Blocks。
+- [ ] 每筆 Unit 獨立切分、不跨筆合併／overlap；說明過短 Unit 需由 Parser 先整理。加入兩個 Units 切成 2＋3＝5 的範例。
+- [ ] 預設 text；進階 split／copy 候選來自 Unit 欄位。驗證所有 Units 的必要欄位，缺失顯示 [Chunking]＋task_id＋unit_index＋欄位；不僅檢查第一筆。
+- [ ] Chunk 預覽保留六鍵；source_refs 改 unit_index＋field＋start/end，移除 block_id／schema_id／block offsets。來源只讀，page 等依 copy 帶入 fields。
+- [ ] 舊 config／樣本顯示明確遷移需求，不靜默變更；更新 DOM／契約測試與說明，仍清楚標示模擬／未接真實 Parser、Tokenizer、模型。

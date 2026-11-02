@@ -52,18 +52,18 @@ Builder 由 Workspace＋RAG System 名稱自動產生邏輯 collection，使用�
 
 ## 3. Document Schema
 
-固定外層不可自訂。每個 System 宣告 fields／metadata 的內部欄位：
+固定外層不可自訂。每個 System 宣告每筆 Unit 的內容欄位及文件 metadata；Chunk.fields 由切分／複製映射推導：
 
 | 屬性 | 規則 |
 |---|---|
 | name | 容器內非空、唯一；不可占用平台保留欄位 |
-| type | 共用 fields 值可為任意合法 JSON；System／Component 可縮限 string／number／boolean／array／object／null；UI 支援子集仍待 Q-002 |
-| required | API 外層與 Parser content 各依 Schema 檢查；解析後再驗證所有必要 fields／metadata |
+| type | 共用 Unit 欄位值可為合法 JSON；System／Component 可縮限 string／number／boolean／array／object／null；UI 支援子集仍待 Q-002 |
+| required | API 外層與 Parser content 各依 Schema 檢查；解析後逐 Unit 驗證必要內容欄位及文件 metadata |
 | source | input／parser；不能要求呼叫者偽造 Parser 產生的結構 |
 | default | 必須符合型別；缺值、null、空字串的區別需核定 |
 | unknown_fields | Prototype 預設 reject；allow 可保留，後續選單仍只取已宣告欄位 |
 
-預設只有必填 string 的 fields.text。主要切分欄位必填且為 string；Embedding／全文／Prompt 的文字用途只選型別相容欄位。第一版精確 Filter 只支援字串。Schema 名稱修改保留失效引用並阻止保存，不自動轉移到同名欄位。
+預設每筆 Unit 有必填 string 的 text。主要切分欄位必填且為 string；Embedding／全文／Prompt 的文字用途只選型別相容欄位。第一版精確 Filter 只支援字串。Schema 名稱修改保留失效引用並阻止保存，不自動轉移到同名欄位。
 
 **待決**：default 與 required 的順序、null／空白政策、缺少選填 Embedding 欄位如何處理、array 元素、保留名稱及 Schema migration，見 Q-002／Q-006。正式後端不得直接沿用 Prototype 的寬鬆 JavaScript 行為。
 
@@ -82,31 +82,30 @@ API／Import／Parser 共用同一份 [IngestionDocument Schema](../schemas/inge
 }
 ```
 
-此例由相容的 Structured JSON Parser 將 content 鍵轉為 ParsedDocument.fields；metadata 使用外層欄位。CSV 每列映射成一份 IngestionDocument，API 根層不直接放 fields／structure／vectors。來源版本省略時的產生政策仍待 Q-007。
+此例由相容的 Structured JSON Parser 將 content 鍵整理成 ParsedDocument.units 中的一筆 dict；metadata 使用外層欄位。CSV 每列映射成一份 IngestionDocument，API 根層不直接放 fields／structure／vectors。來源版本省略時的產生政策仍待 Q-007。
 
 Parser 透過可信 Context 的共用 resolver 取得 URI 或解碼 Base64，原 IngestionDocument 形狀不變。Context、資源生命週期及批次 envelope 另見 Q-002／Q-016／Q-017／Q-019。已解析內容仍放 content 並使用相容 Adapter，不等於直接接收 Chunk 或向量。
 
-### 4.2 ParsedDocument：五個固定頂層 key
+### 4.2 ParsedDocument：四個固定頂層 key
 
-> **2026-10-30：已有可驗證草案，尚未凍結**。依使用者要求，新增 [14 ParsedDocument 0.1 與官方輸出對照](14_parsed_document_contract.md)、[JSON Schema](../schemas/parsed_document.schema.json) 及 [驗證案例／報告](../examples/parsed_document/conformance_report.json)。本文維持共用總覽；精確形狀與語意以 14 為目前草案來源，後續取捨見 [Q-002](08_implementation_plan.md#parsed-document-schema-pending)。structure 使用明確 schema_id；資料能力與演算法實作分開。
+> **2026-11-02：ParsedDocument 0.2-draft**。以 [14](14_parsed_document_contract.md) 與 [Schema](../schemas/parsed_document.schema.json) 為唯一來源。
 
-| Key | 型別 | 草案語意 |
+| Key | 型別 | 語意 |
 |---|---|---|
-| document_id | 非空 string | 穩定文件 ID |
-| source_revision | 非空 string | 來源內容版本；Parsing 輸出須具備，省略輸入時的生成政策另議 |
-| fields | 非空 object | 內容欄位，值為 JSON，仍受 System／Parser output schema 限制 |
-| metadata | object | 業務與受控追溯資訊；可為 {} |
-| structure | object | 對應 fields 欄位的具名／有版本結構；無結構時 {} |
+| document_id | 非空 string | 文件 ID |
+| source_revision | 非空 string | 來源內容版本；生成政策另議 |
+| units | 非空 list[dict] | 有序、獨立的平面內容單位；直接放 text 等欄位，不包 fields、不要求 unit_id |
+| metadata | object | 文件業務與受控追溯資訊，可為 {} |
 
-目前內建草案為 text-spans/0.1-draft 與 page-blocks/0.1-draft，另留須明確註冊的自訂結構。文字型內建規格對應 string；offset 採 Unicode code point、0-based 半開區間，頁碼從 1 起。Block 與頁面／Chunk 分開；來源位置可為 page／slide／sheet／element，不能把不同來源單位當同一種頁碼。
+Parser 整理來源結構為 Units；Chunker 僅在每筆文字內切分，不跨筆合併或 overlap。移除頂層 structure 與結構路由；Header-aware 使用當筆 Markdown 標題，Fixed-size／Recursive 使用字串與 Tokenizer。
 
-共用資料範例只維護在 [純文字](../examples/parsed_document/plain_text.json)、[全文＋標註](../examples/parsed_document/text_spans.json)、[Page／Block](../examples/parsed_document/page_blocks.json)，其他 Module 文件引用同一份，不另複製定義。JSON Schema 與 [語意驗證](../examples/parsed_document/validate.py) 共同檢查範圍／引用／循環／衍生文字；通過資料驗證不等於 Chunker 或多模態資源可用。
+[單筆文字](../examples/parsed_document/plain_text.json)、[多筆 Units](../examples/parsed_document/units.json)、[表格逐列](../examples/parsed_document/table_rows.json) 共用同一形狀。來源參照為 unit_index＋field＋Unicode 字元範圍。舊供應者結構報告不能當成新版通過證據，詳見 14 §5。
 
-六份固定官方輸出可映射為 text-spans，原生 JSON 可重建；其中公式／群組需明確 extension、圖片資源缺失與 Page／Block 分組限制仍在，具體結論與未覆蓋範圍見 14 §5。Chunk 定義見 15，Inference Schema 直接引用同一份 Chunk。
+
 
 ### 4.3 Chunk：六個固定頂層 key
 
-> **2026-10-30：已有可驗證 0.1 草案（D-47），尚未凍結 SDK**。精確形狀與語意以 [15 Chunk Contract](15_chunk_contract.md) 及 [同一份 JSON Schema](../schemas/chunk.schema.json) 為目前來源；共用情境／資料見 [cases.json](../examples/chunk/cases.json)。
+> **2026-11-02：已有可驗證 0.2 草案（D-47／D-49），尚未凍結 SDK**。精確形狀與語意以 [15 Chunk Contract](15_chunk_contract.md) 及 [同一份 JSON Schema](../schemas/chunk.schema.json) 為目前來源；共用情境／資料見 [cases.json](../examples/chunk/cases.json)。
 
 | Key | 責任 |
 |---|---|
@@ -116,7 +115,7 @@ Parser 透過可信 Context 的共用 resolver 取得 URI 或解碼 Base64，原
 | vectors | Chunking 為 {}；Embedding 寫入 values＋embedding_profile_id＋source_field 的命名物件 |
 | metadata | 預設繼承全部有效業務 metadata；可信來源與切分資訊放 _rag |
 
-基本 UI 不顯示欄位選擇，直接使用 fields.text；不自動複製其他 fields。保留切分前完整原文時，才進階設定 text → original_text 或其他不衝突名稱。D-48 確認每個多欄位任務預設將片段輸出到 fields.text；有需要才複製完整來源到 original_text／original_faq 等不衝突名稱。第一版必要切分欄位缺失／型別錯誤／全空白、必要任務零產出或明確 copy 欄位缺失均報錯；可選複製暫不擴充。同文件兩個欄位各切 2／3 段時，結果串接為 5 個 Chunk，不做交叉配對；互相附帶完整原文另需明確 copy 映射。
+基本 UI 不顯示欄位選擇，直接切 units[i].text 並輸出 fields.text；不自動複製其他 Unit 欄位。保留切分前完整原文時，才進階設定 text → original_text 或其他不衝突名稱。D-48 確認每個多欄位任務預設將片段輸出到 fields.text；有需要才複製完整來源到 original_text／original_faq 等不衝突名稱。第一版必要切分欄位缺失／型別錯誤／全空白、必要任務零產出或明確 copy 欄位缺失均報錯；可選複製暫不擴充。同一 Unit 兩個欄位各切 2／3 段時，結果串接為 5 個 Chunk，不做交叉配對；互相附帶完整原文另需明確 copy 映射。
 
 metadata._rag.source_refs 保存來源欄位、對應輸出欄位、原文範圍／Block 及可取得的位置；用於引用、定位與追溯，不讓使用者逐項設定。metadata._rag.chunking 保存 fingerprint／全域序號／task_id，完整 spec 保存於可追溯 Config／Run。來源全文與 Block 內 offset 不混用；一個 Chunk 可以有多筆 refs，精確語意見 15 §3。
 
@@ -156,7 +155,7 @@ rank 從 1 起；score 是相關性分數，不是機率。新 Rerank ResultSet 
 
 本節依 2026-10-15 的 Query 物件及 14:10～14:31（Asia/Taipei）ResultSet 討論整理。**三種後處理及共同排序為已確認語意；具體欄位是供審閱的 `inference-0.2-draft`，尚未核定正式 SDK／HTTP Contract。**Q-002／Q-014 仍開放；Schema／例子可檢查，不表示 Engine 已實作。下游只使用 active 選出的清單；保留來源 ResultSet 供追溯。
 
-機器可讀定義：[JSON Schema](../schemas/inference_context.schema.json)，使用 Draft 2020-12。其中 Chunk 直接引用共用 chunk/0.1-draft，不另定向量／metadata 格式；驗證時明確註冊本地 ParsedDocument／Chunk Schema，可用 [Chunk 驗證工具](../examples/chunk/contract.py) 的 local_registry，禁止由識別自動下載。既有 vectors={} 例子仍有效，舊非空向量陣列須依 15 §4 遷移。根物件 InferenceState 只承接同一次 Inference 的多個 QueryContext 與有效輸出選擇。RunContext 仍負責 System／版本／授權，ModuleResult 負責錯誤／Metrics，不把它們塞入 Chunk。
+機器可讀定義：[JSON Schema](../schemas/inference_context.schema.json)，使用 Draft 2020-12。其中 Chunk 直接引用共用 chunk/0.2-draft，不另定向量／metadata 格式；驗證時明確註冊本地 ParsedDocument／Chunk Schema，可用 [Chunk 驗證工具](../examples/chunk/contract.py) 的 local_registry，禁止由識別自動下載。既有 vectors={} 例子仍有效，舊非空向量陣列須依 15 §4 遷移。根物件 InferenceState 只承接同一次 Inference 的多個 QueryContext 與有效輸出選擇。RunContext 仍負責 System／版本／授權，ModuleResult 負責錯誤／Metrics，不把它們塞入 Chunk。
 
 #### 4.6.1 InferenceState
 
@@ -333,7 +332,7 @@ failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項�
 
 待確認的設定簡化／擴充：Query Rewrite 合併為一種啟用方法，N=1／N>1 由 count 表達，且用 count 動態產生 queries 輸出 Schema；Generation 增加預設／自訂 JSON 內容格式、自訂 Schema 與主要回答文字路徑。具體新欄位／枚舉未凍結，見 04 §5.1.2／§5.4.1。服務連線與模型共用，但各模組每次呼叫提供不同 Schema，不能在全域 LLM 設定固定一種輸出。原型舊 method／雙 Prompt 仍待明確遷移。
 
-正式枚舉建議用 snake_case，UI 可顯示自然語言。Prototype 的 chunking.split、embedding.mappings[].source、indexing.filters、transform 等短名稱不自動視為正式 Schema；需明確 migration。統一使用完整路徑 fields.text／vectors.text／metadata.department。上述拼字及預設值需 Q-002 核定，禁止同時接受未宣告別名而掩蓋錯誤。
+正式枚舉建議用 snake_case，UI 可顯示自然語言。Prototype 的 chunking.split、embedding.mappings[].source、indexing.filters、transform 等短名稱不自動視為正式 Schema；需明確 migration。Chunk 後的引用使用 fields.text／vectors.text／metadata.department；Chunking 來源用當筆 Unit 的 key，例如 text。上述拼字及預設值需 Q-002 核定，禁止同時接受未宣告別名而掩蓋錯誤。
 
 ResultSet 是一次執行的資料；處理計畫是可保存的邏輯 Config，不能把 runtime result_set_id 寫死在 Config。§7 對照設定與資料責任；v0.9 的 UI 配置 `retrieval.processing` 僅為展示草案，不表示正式 Engine Schema 已凍結。最新對照、有效配置與未完成邊界見 [10 §6](10_ui_adjustment_backlog.md#6-v09-實作細節展示預設與限制)；[09](09_inference_contract_ui_plan.md) 整理現行兩層融合與四處 Top N 的 UI 對照。
 
@@ -341,7 +340,7 @@ ResultSet 是一次執行的資料；處理計畫是可保存的邏輯 Config，
 
 | 條件 | 驗證 |
 |---|---|
-| Token Chunking | size 為正整數；overlap 為整數且 0 ≤ overlap < size；Tokenizer 可取得；Fixed-size 步長為 size−overlap，末塊不補齊；Header-aware 才需 headings 能力 |
+| Token Chunking | size 為正整數；overlap 為整數且 0 ≤ overlap < size；Tokenizer 可取得；Fixed-size 步長為 size−overlap，末塊不補齊；Header-aware 需要當筆文字的 Markdown 標題格式，不要求 heading Blocks |
 | Embedding mappings | 來源為有效文字欄位；output_name 唯一；有限值、維度與 Profile 相容 |
 | Indexing | 全部 Chunk.fields／metadata 保存；搜尋欄位與上游一致；必要識別／來源／ACL 強制保留；下游只需確認欄位存在、型別適合及已由 Chunking 保留，不再要求額外勾儲存 |
 | Retrieval | 至少一路；每路及最終 K 為正整數；僅選已建立索引；Query Profile 由向量欄位繼承 |
@@ -377,17 +376,17 @@ Indexing 宣告可過濾欄位；Retrieval 保存預設條件；Query API 可加
 | 設定位置 | 設定內容 | 驗證時點／下游結果 |
 |---|---|---|
 | Builder 上傳映射 | CSV column → document_id／source_revision／content.*／metadata.* | 每列先驗 IngestionDocument；不屬 Engine 的切分設定 |
-| Parser Component | 接受的 media_type／schema_id、content 形狀與轉換、輸出結構能力 | 共用輸入＋Component 內容驗證 → ParsedDocument Schema／語意驗證 |
-| System Document Schema | 宣告解析後 fields／metadata 的型別、來源與必填條件 | 解析後驗證；input 來源另依 Parser 映射檢查，不能把 fields 路徑直接當 API 根欄位 |
-| Chunking | 基本 text；進階有序 tasks、每任務 Component／參數、split_field／output_field／copy_fields | 先檢查來源與結構相容；完整 Chunk 輸出、追溯、序號／ID 及必要任務產出驗證 |
+| Parser Component | 接受的 media_type／schema_id、content 形狀與轉換、輸出 Unit 欄位／文字格式能力 | 共用輸入＋Component 內容驗證 → ParsedDocument Schema／語意驗證 |
+| System Document Schema | 宣告每筆 Unit 欄位及文件 metadata 的型別、來源與必填條件 | 解析後驗證；input 來源另依 Parser 映射檢查，不能把 fields 路徑直接當 API 根欄位 |
+| Chunking | 基本 text；進階有序 tasks、每任務 Component／參數、split_field／output_field／copy_fields | 逐 Unit 檢查來源欄位與文字格式相容；完整 Chunk 輸出、追溯、序號／ID 及必要任務產出驗證 |
 | Embedding | 來源欄位、向量名稱、不可變 Profile 識別 | 預設 fields.text → vectors.text；寫入 values／embedding_profile_id／source_field |
 | Indexing | 全文／向量／Filter 欄位、搜尋後端、持久化模式 | 保存全部 Chunk 內容；Binding 檢查向量來源、Profile、維度及索引能力 |
 | Inference | Query、搜尋欄位／Filter、兩層融合時機與四處 Top N、Rerank／Generation 內容欄位 | 操作 QueryContext／ResultSet；使用 Chunk 已保留的內容，不強制回查 ParsedDocument |
 | 部署設定 | DEV／FTEST／ENT 的服務 URL、Secret、集合與資源綁定 | 不改變同版 Config 的邏輯；Memory／MongoDB 模式不能在 Export 時任意覆寫 |
 
-UI／跨容器引用使用 fields.text、vectors.text、metadata.department。15 的已解析切分計畫及 DenseVector.source_field 使用 fields 容器內的鍵（例如 text），由正式 Config 編譯器做明確解析，不能暗中接受兩種拼字。
+Chunk 後的 UI／跨容器引用使用 fields.text、vectors.text、metadata.department。15 的切分計畫 split_field／copy.source_field 使用當筆 Unit 的 key；output_field 與 DenseVector.source_field 使用 Chunk.fields 的 key（例如 text）。每階段明確解析，不將舊 ParsedDocument.fields 路徑當別名。
 
-ParsedDocument.structure 的每個鍵對應來源 fields；Chunk 的來源位置搬到 metadata._rag.source_refs，切分後不另加頂層 structure。完整切分 spec 由 Config／Run 保存，Chunk 只保存 fingerprint／ordinal／task_id。
+ParsedDocument.units 每筆直接放內容欄位；Chunk 的 metadata._rag.source_refs 記 unit_index、field 與 Unit 內文字範圍，不新增 structure。完整切分 spec 由 Config／Run 保存，Chunk 只保存 fingerprint／ordinal／task_id。
 
 ## 8. Config 變更影響矩陣
 

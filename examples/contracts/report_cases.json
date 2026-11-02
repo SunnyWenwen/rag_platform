@@ -24,28 +24,29 @@
       "document_id": "report-001",
       "uri": "https://storage.example.com/report.pdf",
       "media_type": "application/pdf"
-    }
-  },
-  "base64_decoded_text": "清潔前先斷電。",
-  "custom_structure": {
-    "schema_id": "company.custom/1",
-    "payload": {
-      "section": "設備保養"
-    }
-  },
-  "structure_schemas": {
-    "company.custom/1": {
-      "type": "object",
-      "required": [
-        "section"
-      ],
-      "properties": {
-        "section": {
-          "type": "string",
-          "minLength": 1
-        }
+    },
+    "preparsed": {
+      "document_id": "manual-001",
+      "source_revision": "v1",
+      "schema_id": "example.preparsed-units/0.2-draft",
+      "content": {
+        "units": [
+          {
+            "text": "## 帳號申請\n填寫申請單，送交主管核准。",
+            "section_title": "帳號申請",
+            "page": 1
+          },
+          {
+            "text": "## 密碼重設\n使用公司信箱申請重設密碼。",
+            "section_title": "密碼重設",
+            "page": 2
+          }
+        ]
       },
-      "additionalProperties": false
+      "metadata": {
+        "filename": "manual.pdf"
+      }
     }
-  }
+  },
+  "base64_decoded_text": "清潔前先斷電。"
 }

@@ -1,0 +1,17 @@
+{
+  "document_id": "warranty",
+  "source_revision": "v1",
+  "units": [
+    {
+      "text": "產品 A 的保固為 1 年。",
+      "product": "A"
+    },
+    {
+      "text": "產品 B 的保固為 2 年。",
+      "product": "B"
+    }
+  ],
+  "metadata": {
+    "filename": "manual.pdf"
+  }
+}

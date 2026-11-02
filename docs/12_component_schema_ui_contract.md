@@ -80,7 +80,7 @@ class BaseComponent(ABC):
 
 class FixedChunkConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
-    source_field: str = Field(default="fields.text", title="主要切分欄位（進階）")
+    source_field: str = Field(default="text", title="主要切分欄位（進階）")
     tokenizer_ref: str = Field(title="Tokenizer")
     max_tokens: int = Field(default=500, ge=1, title="Chunk Token 上限")
     overlap_tokens: int = Field(default=50, ge=0, title="重疊 Token 數")
@@ -134,7 +134,7 @@ UI hints 使用平台自己的 JSON 描述，再由 Builder 映射至選定表�
 
 ## 7. 動態選項與能力 Context
 
-`option_sources` 草案每個項目使用 `target`（參數 JSON Pointer）、`kind`、`filter`。kind 先提供 document_fields、chunk_fields、chunk_vectors、llm_profiles、tokenizer_profiles、service_profiles；filter 的合法鍵由各 kind 固定，例如資料型別、使用階段、服務類別、索引能力。這些名稱是候選協定值，不凍結 Tokenizer 的演算法或共用 Config 結構。
+`option_sources` 草案每個項目使用 `target`（參數 JSON Pointer）、`kind`、`filter`。kind 先提供 unit_fields、chunk_fields、chunk_vectors、llm_profiles、tokenizer_profiles、service_profiles；filter 的合法鍵由各 kind 固定，例如資料型別、使用階段、服務類別、索引能力。這些名稱是候選協定值，不凍結 Tokenizer 的演算法或共用 Config 結構。
 
 選項 Resolver 由 Engine 提供，依輸入 Schema、前序 Module 的有效設定／產出能力、可見的服務引用與目標 Runtime 產生候選。Embedding 不能選尚未產生的欄位；Retrieval 的可搜尋欄位必須對應 Indexing 的有效索引配置。Python／API 傳同一引用也需做相同檢查。
 
@@ -231,7 +231,7 @@ Schema 的條件必填必須與 applicability 分支一致；禁止一面無條�
     "additionalProperties": false,
     "required": ["tokenizer_ref"],
     "properties": {
-      "source_field": {"type": "string", "title": "主要切分欄位（進階）", "default": "fields.text"},
+      "source_field": {"type": "string", "title": "主要切分欄位（進階）", "default": "text"},
       "tokenizer_ref": {"type": "string", "title": "Tokenizer"},
       "max_tokens": {"type": "integer", "title": "Chunk Token 上限", "default": 500, "minimum": 1},
       "overlap_tokens": {"type": "integer", "title": "重疊 Token 數", "default": 50, "minimum": 0}
@@ -246,7 +246,7 @@ Schema 的條件必填必須與 applicability 分支一致；禁止一面無條�
     }
   },
   "option_sources": {
-    "text_fields": {"target": "/source_field", "kind": "document_fields", "filter": {"type": "string", "available_at": "chunking_input"}},
+    "text_fields": {"target": "/source_field", "kind": "unit_fields", "filter": {"type": "string", "available_at": "chunking_input"}},
     "tokenizers": {"target": "/tokenizer_ref", "kind": "tokenizer_profiles", "filter": {}}
   },
   "rules": [{
@@ -265,7 +265,7 @@ Schema 的條件必填必須與 applicability 分支一致；禁止一面無條�
 }
 ```
 
-使用者選 Fixed-size 後，基本區只顯示 Tokenizer 與兩個數值欄位，預設使用 fields.text；來源欄位選擇收在進階區。實際候選需通過 System Schema／來源階段檢查。這是單一任務的設定描述示意，完整有序任務與 copy 映射見 15；Config 編譯時將 fields.text 解析為有效切分 spec 中的 text，不另訂第二種執行欄位格式。Tokenizer profile 只是穩定引用，不假設使用付費 API，也不由此範例決定 tokenizer 方法。
+使用者選 Fixed-size 後，基本區只顯示 Tokenizer 與兩個數值欄位，預設使用 units[i].text；來源欄位選擇收在進階區。實際候選需通過 System Schema／來源階段檢查。這是單一任務的設定描述示意，完整有序任務與 copy 映射見 15；source_field 使用當筆 Unit 的 key（例如 text），有效切分 spec 沿用 split_field=text，不另訂第二種執行欄位格式。Tokenizer profile 只是穩定引用，不假設使用付費 API，也不由此範例決定 tokenizer 方法。
 
 ## 10. Runtime 回傳、定位與版本
 
@@ -322,7 +322,7 @@ UI 顯示 `[Chunking] 重疊 Token 數必須小於 Chunk Token 上限。`，點�
 | SUI-04 | 已選全文 Retrieval，之後刪除其全文索引 | 保留選擇／草稿並阻止建立／套用；不得悄悄略過搜尋路徑 |
 | SUI-05 | Local MongoDB 切 Memory，再切回 MongoDB | Memory 隱藏 DB 綁定且不計入有效部署設定；切回恢復草稿並重驗證；跨環境 Memory 政策不變 |
 | SUI-06 | 刪除 Rewrite 正在引用的 LLM／欄位 | 保留失效引用與可定位原因；不選另一個 LLM 或欄位 |
-| SUI-07 | Parser 不提供所選 Chunker 所需結構 | Chunker 選項停用／已選時報錯；不得自動 fallback 丟失結構語意 |
+| SUI-07 | Unit 缺所選文字欄位，或 Header-aware 所需 Markdown 格式不符 | Chunker 選項停用／已選時報錯；不跨 Unit 尋找標題，也不靜默換欄位／方法 |
 | SUI-08 | 進階區收合但其中有效參數錯誤 | 摘要仍顯示，點擊展開定位；收合不略過驗證 |
 | SUI-09 | Component 宣告未知必要 widget／規則版本 | 明示此 Builder 不支援；不產生看似完整表單；不影響既有合法 Runtime 的服務 |
 | SUI-10 | 相同設定由 UI、AI 助手、Python、HTTP 提交 | Engine 的有效值、動態引用檢查、相依問題一致；HTTP 狀態由 07 映射 |
@@ -343,3 +343,5 @@ UI 顯示 `[Chunking] 重疊 Token 數必須小於 Chunk Token 上限。`，點�
 - 複雜圖形編輯器、任意前端 Plugin、自由腳本規則、瀏覽器 Component 程式上傳不納入首版；需要時另行擴充。
 
 參考：Pydantic 的 [JSON Schema 產生](https://docs.pydantic.dev/latest/concepts/json_schema/)、RJSF 的 [Schema 表單](https://rjsf-team.github.io/react-jsonschema-form/docs/) 與 [uiSchema](https://rjsf-team.github.io/react-jsonschema-form/docs/api-reference/uiSchema/)（2026-10-28 查閱）。參考資料支持可行性，未替本專案鎖定前端套件；本文 UI hints／rules 是本專案草案，並非 RJSF 原生格式。
+
+2026-11-02 補充：unit_fields 候選來自 Parser 輸出 Unit 的欄位 Schema／樣本；必須標示所有 Units 的欄位可用性，不能僅用第一筆推定全部符合。移除 structure 類型候選與 Chunker 結構 Router；Parser 輸入格式派送仍保留。

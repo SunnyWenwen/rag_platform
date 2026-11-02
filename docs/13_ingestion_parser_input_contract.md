@@ -82,28 +82,22 @@
 }
 ```
 
-#### 0.2.5 content：上游已經解析並保留結構
+#### 0.2.5 content：上游已整理好的 Units
 
-原文與 heading／paragraph 範圍已整理好，由相容 Adapter 驗證與組成 ParsedDocument。外層 schema_id 是「輸入內容形狀」的示意識別，須註冊對應 Adapter；內層 schema_id 是文字結構規格。API body 使用 IngestionDocument，Adapter 以 content 中的 fields／structure 組成 ParsedDocument。
+content.units 是平面的內容單位列表，由相容 Adapter 驗證後與外層 ID／版本／metadata 組成 ParsedDocument。schema_id 是需註冊的示意識別；不是任何 Parser 都自動支援。
 
 ```json
 {
   "document_id": "manual-001",
   "source_revision": "v1",
-  "schema_id": "example.preparsed-content/0.1-draft",
+  "schema_id": "example.preparsed-units/0.2-draft",
   "content": {
-    "fields": {"text": "保養規範\n清潔前先斷電。"},
-    "structure": {
-      "text": {
-        "schema_id": "text-spans/0.1-draft",
-        "blocks": [
-          {"block_id": "b1", "type": "heading", "start": 0, "end": 4, "level": 1},
-          {"block_id": "b2", "type": "paragraph", "start": 5, "end": 12, "parent_id": "b1"}
-        ]
-      }
-    }
+    "units": [
+      {"text": "## 帳號申請\n填寫申請單，送交主管核准。", "section_title": "帳號申請", "page": 1},
+      {"text": "## 密碼重設\n使用公司信箱申請重設密碼。", "section_title": "密碼重設", "page": 2}
+    ]
   },
-  "metadata": {}
+  "metadata": {"filename": "manual.pdf"}
 }
 ```
 
@@ -117,7 +111,7 @@
 |---|---|
 | RAG Builder／自行部署的呼叫端 | 提供方便的上傳／映射／檔案傳輸轉換；組成 JSON |
 | Engine 的共用入口／SDK 資源能力 | 驗證共同外層、授權取得內容、解碼及必要限制；路由到已設定的 Parser |
-| Parser／Adapter | 理解來源或轉換已解析資料，產出統一 ParsedDocument，詳見 [14 的情境與結構分類](14_parsed_document_contract.md#0-情境整理與分類總覽報告摘要) |
+| Parser／Adapter | 理解來源或轉換已解析資料，產出統一 ParsedDocument，詳見 [14 的情境與結構分類](14_parsed_document_contract.md#0-情境與分類結果報告摘要) |
 
 JSON-only、扁平輸入、三種來源、API／Parser 共用契約與多 Parser 路由方向已確認；API／SDK 尚未實作，實際格式需有相容 Component 才可執行。單筆外層 Schema 已記錄；批次、限制、版本與正式供應者支援仍依正文逐項核定。直接匯入最終 Chunk／vectors 另外討論，不混入「上游已解析」的支援承諾。
 
@@ -202,7 +196,7 @@ JSON Schema 中沒有 default 副作用；metadata={} 是平台正規化行為�
 
 ### 3.4 上游已解析資料
 
-content 可依已註冊 schema_id 傳入 fields／structure 等已解析內容。2026-10-30 已新增 [ParsedDocument 0.1 輸出草案與參考映射](14_parsed_document_contract.md)，但 API 的原生 content 格式識別與正式 Adapter 仍須核定，不能直接把 ParsedDocument Schema 當成共同 IngestionDocument；此處不提供假定已凍結的結構範例。ID、版本與 metadata 由外層提供。若 Adapter 支援接收完整的外部文件物件，必須明定重複 ID／metadata 的一致性政策，不能靜默覆寫。
+content 可由已註冊 Adapter 接收 {"units": [...]}，驗證後搭配外層 document_id、source_revision、metadata 形成 ParsedDocument。此為已解析內容的示意 Profile，正式 schema_id 名稱仍待核定；不是直接接受 Chunk 或向量。原生供應者結構也可放 content object，但須由相容 Parser 展平為 Units。ID／metadata 重複來源需明定一致性政策，不得靜默覆寫。
 
 ## 4. 是否也是 Parser 的 Input？
 
@@ -251,12 +245,12 @@ document_id、source_revision 及有效 metadata 持續傳遞；省略版本的�
 
 Parser 宣告可接受的 media_type、schema 及必要資源；多個 Parser 的啟用不代表每筆都執行全部，也不保證混合模態的聯合理解。相同格式只有一個可用實例時自動選用；有重疊時需明確預設／profile。格式副檔名僅為提示，不取代實際驗證。
 
-ParsedDocument 使用共同外層格式，但每種 Chunker 仍有內容／結構需求。Parser 與 Chunker 依 produces／requires 能力及版本配對，不依特定實作名稱綁死；標題、頁面、表格與自訂結構的具體 schema 現有 [14 的可驗證草案](14_parsed_document_contract.md)，剩餘取捨仍見 [Q-002 待討論清單](08_implementation_plan.md#parsed-document-schema-pending)。不相容時明確報錯；不默默攤平成文字。
+ParsedDocument 使用唯一的平面 units 格式；Chunker 檢查指定字串欄位、Markdown 格式與 Tokenizer 能力，不再依 text-spans／page-blocks 配對或路由。Parser 負責將結構整理成可獨立切分的 Units；不支援的來源由 Parser 明確拒絕。詳見 [14](14_parsed_document_contract.md)。
 
 ## 6. 驗證邊界與待決事項
 
 - API／Parser 先驗同一份 IngestionDocument 外層，再驗相容 Component 的 content／實際格式限制；支援 JSON object 不代表可匯入任意內容、Chunk 或向量。
-- Parser 輸出依 [14](14_parsed_document_contract.md) 的五鍵 Schema 與語意驗證；Chunker 輸出依 [15](15_chunk_contract.md) 的六鍵 Schema、來源／任務／向量規則。資料形狀符合仍須檢查 Component 能力相容。
+- Parser 輸出依 [14](14_parsed_document_contract.md) 的四鍵 Units Schema 與語意驗證；Chunker 輸出依 [15](15_chunk_contract.md) 的六鍵 Schema、來源／任務／向量規則。資料形狀符合仍須檢查 Component 能力相容。
 - Builder 將文件／CSV 轉成共同 JSON；是否提供暫存 URI、格式轉換範圍、存取與清理見 Q-016／Q-019。
 - 剩餘待決：schema_id／profile 命名與版本、路由衝突的精確政策、輸入／解碼／下載大小與逾時、批次 envelope、回應／錯誤碼、ID／版本省略政策及正式 SDK。已確認的共同外層不重開。
 - UI 遷移記 [UIB-011](10_ui_adjustment_backlog.md#uib-011-ingestion-parser-routing)；ParsedDocument／Chunk 預覽另見 UIB-012／013，本次不修改 Prototype。

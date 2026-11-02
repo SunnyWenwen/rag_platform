@@ -1,0 +1,14 @@
+{
+  "document_id": "flow",
+  "source_revision": "v1",
+  "units": [
+    {
+      "text": "員工提出申請 → 主管審核 → IT 建立帳號。",
+      "image_uri": "https://example.com/flow.png",
+      "page": 3
+    }
+  ],
+  "metadata": {
+    "filename": "manual.pdf"
+  }
+}

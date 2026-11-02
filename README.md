@@ -11,10 +11,10 @@
 | 契約 | 交接邊界 | 定義與例子 |
 |---|---|---|
 | IngestionDocument | API／Import／Parser 共用輸入；document_id＋content／base64／uri 三選一 | [13 說明](docs/13_ingestion_parser_input_contract.md) · [Schema](schemas/ingestion_document.schema.json) · [分類案例](examples/contracts/report_cases.json) |
-| ParsedDocument | Parser 輸出／Chunker 輸入；document_id、source_revision、fields、metadata、structure | [14 說明](docs/14_parsed_document_contract.md) · [Schema](schemas/parsed_document.schema.json) · [案例](examples/parsed_document/plain_text.json) |
+| ParsedDocument | Parser 輸出／Chunker 輸入；document_id、source_revision、units、metadata | [14 說明](docs/14_parsed_document_contract.md) · [Schema](schemas/parsed_document.schema.json) · [案例](examples/parsed_document/plain_text.json) |
 | Chunk | Chunking 後的下游資料；chunk_id、document_id、source_revision、fields、metadata、vectors | [15 說明](docs/15_chunk_contract.md) · [Schema](schemas/chunk.schema.json) · [案例](examples/chunk/cases.json) |
 
-JSON Schema 定義物件形狀，13～15 定義語意與相容規則，參考驗證器檢查跨欄位關係。共用格式不代表每個 Parser／Chunker 都支援所有結構。已確認方向作為開發依據；0.1-draft 的正式版本／SDK、索引提交與更新政策仍由 [08 的 Q-ID](docs/08_implementation_plan.md#q-002) 追蹤。
+JSON Schema 定義物件形狀，13～15 定義語意與相容規則，參考驗證器檢查跨欄位關係。Parser 統一輸出平面 Units；Chunker 仍需符合所選欄位／文字格式／Tokenizer 條件。已確認方向作為開發依據；各草案的正式版本／SDK、索引提交與更新政策仍由 [08 的 Q-ID](docs/08_implementation_plan.md#q-002) 追蹤。
 
 Chunk 預設切 fields.text 並寫回 text；進階多欄位任務各自切分、串接結果，2＋3 得 5 個 Chunk。每個任務預設輸出 text；完整原文只在明確 copy 時附帶，使用不衝突名稱。metadata 全部有效繼承，來源與切分追溯由 Engine 管理。Embedding 預設 fields.text → vectors.text，每個向量保存 values／embedding_profile_id／source_field。
 
@@ -27,13 +27,13 @@ Chunk 預設切 fields.text 並寫回 text；進階多欄位任務各自切分�
 | [05 資料與 Config](docs/05_data_contracts_search_design.md) | 契約總覽、Inference 物件、設定責任與變更影響 |
 | [06 UI 開發規格](docs/06_ui_development_spec.md) | Create／Edit、欄位相依、CSV、預覽及助手 |
 | [07 Backend 與 Runtime API](docs/07_backend_runtime_integration.md) | JSON API、工作狀態、儲存、服務綁定與 Export |
-| [08 開發計畫與決策](docs/08_implementation_plan.md) | M0～M7、D-01～D-48、Q-001～Q-027 與驗收 |
+| [08 開發計畫與決策](docs/08_implementation_plan.md) | M0～M7、D-01～D-49、Q-001～Q-027 與驗收 |
 | [09 Inference Contract 與 UI](docs/09_inference_contract_ui_plan.md) | ResultSet、兩層融合、四處 Top N 與連動 |
-| [10 UI Backlog](docs/10_ui_adjustment_backlog.md) | 現有原型能力及未實作 UIB-001～013 |
+| [10 UI Backlog](docs/10_ui_adjustment_backlog.md) | 現有原型能力及未實作 UIB-001～014 |
 | [11 Component 開發指南](docs/11_component_developer_guide.md) | SDK 示意、開發、契約測試、PR 與發布 |
 | [12 Component 設定描述](docs/12_component_schema_ui_contract.md) | Config Schema、UI hints、動態選項與相依規則 |
 | [13 IngestionDocument](docs/13_ingestion_parser_input_contract.md) | 輸入分類、路由、API／Parser 相同 Schema |
-| [14 ParsedDocument](docs/14_parsed_document_contract.md) | 文字／結構、位置、擴充與 Parser 相容性證據 |
+| [14 ParsedDocument](docs/14_parsed_document_contract.md) | 平面 Units、Parser／Chunker 分工與來源追溯 |
 | [15 Chunk](docs/15_chunk_contract.md) | 切分／複製、來源、向量、ID 與欄位組裝待討論 |
 
 名詞以 03 為準；資料的精確定義引用 schemas/ 與 13～15，不在各模組重寫一份。Component Developer 依序讀 11 → 04 → 對應資料契約 → 12。完整 Engine Config／SDK 尚未凍結，示例不等於可直接執行的產品介面。
@@ -52,3 +52,5 @@ Chunk 預設切 fields.text 並寫回 text；進階多欄位任務各自切分�
 可執行的契約範例與測試位於 examples/parsed_document、examples/chunk、examples/inference 及 examples/contracts，各自使用共用 Schema。供應者映射與實際解析的版本、測資及驗證限制見 14；資料驗證通過不代表正式 Engine、Tokenizer、模型或 DB 串接已完成。
 
 舊輸入格式、完整單層 YAML、可任意排列結果處理卡片及逐次更新流水帳已移除；歷史由 Git 保留。尚未確認的 concat／固定文字組裝、LLM 結構化輸出及正式發布政策保留為提案，不當成既定功能。
+
+2026-11-02：ParsedDocument／Chunk 已更新至 0.2-draft（units 與 unit_index 來源追溯）；Prototype v0.10 尚未遷移，對應改動見 UIB-014。舊 provider 0.1 報告不作新版驗收證據。

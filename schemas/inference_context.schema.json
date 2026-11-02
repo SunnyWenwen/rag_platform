@@ -32,7 +32,7 @@
   "additionalProperties": false,
   "$defs": {
     "Chunk": {
-      "$ref": "urn:rag-builder:chunk:0.1-draft"
+      "$ref": "urn:rag-builder:chunk:0.2-draft"
     },
     "SourceRef": {
       "type": "object",

@@ -19,7 +19,7 @@
 | Config Schema、UI hints、動態選項與相依規則 | [12 設定描述契約草案](12_component_schema_ui_contract.md) |
 | 開發者如何使用以上規格完成一個 Component | 本文件 |
 
-先選一個既有 Module 與具體需求，描述預期輸入／輸出、設定、必要能力及測試案例；可開始起草方法與套件結構。正式公開 SDK、可執行範本及相容測試需等相關契約核定。ParsedDocument 已有 [14 草案](14_parsed_document_contract.md)，Chunk 已有 [15 草案](15_chunk_contract.md) 與對應 JSON Schema／語意案例，仍待審閱／正式 SDK 凍結；本指南不另定 structure 或向量格式。預設 UI 不選欄位不表示 Chunker 只能硬編碼 text，進階任務需依公開欄位映射與能力宣告處理。
+先選一個既有 Module 與具體需求，描述預期輸入／輸出、設定、必要能力及測試案例；可開始起草方法與套件結構。正式公開 SDK、可執行範本及相容測試需等相關契約核定。ParsedDocument 已有 [14 草案](14_parsed_document_contract.md)，Chunk 已有 [15 草案](15_chunk_contract.md) 與對應 JSON Schema／語意案例，仍待審閱／正式 SDK 凍結；本指南引用平面 units 與共用向量格式。預設 UI 不選欄位不表示 Chunker 只能硬編碼 text，進階任務需依公開欄位映射與能力宣告處理。
 
 ## 2. 開發模式與 repo 分工
 
@@ -40,7 +40,7 @@ D1～D2 主要由 Module Developer 完成；D3～D4 涉及審查者、CI／發�
 
 D4 的標題統一為「發布並更新 RAG Engine」，指共用 Engine／Components 與完整 Runtime Image 的版本交付；實際採用新版仍更新選定的 DEV Runtime，部署邊界不變。
 
-圖中的「預設提供」指平台規劃交付的內建選項；每個 System 依 Config 選用，不是把某個 Module 的所有 Components 一起執行。自訂 Component 與內建元件走相同契約／Registry；Builder User 不需撰寫程式。特殊 Parser／Chunker 或 Indexing／Retrieval 可能需要成對擴充，仍依能力檢查，不因放入元件目錄就自動相容。
+圖中的「預設提供」指平台規劃交付的內建選項；每個 System 依 Config 選用，不是把某個 Module 的所有 Components 一起執行。自訂 Component 與內建元件走相同契約／Registry；Builder User 不需撰寫程式。Indexing／Retrieval 可能需要成對擴充；Parser／Chunker 共用 Units，但仍需文字欄位與格式能力相容，仍依能力檢查，不因放入元件目錄就自動相容。
 
 Module 圖上排完整列出 5 個 Ingestion Modules，下排列出 4 個 Inference Modules，Evaluation 另列為獨立評估能力。內建選項一個選項一個方塊，例如 Fixed-size、Recursive、Header-aware 分開呈現；None 標為略過，Import 共用 JSON 入口，content／base64／uri 由每筆資料選一種來源；驗證／內容取得為共同能力，Retrieval 後端仍依 Indexing 推導。「自訂 Parser／自訂 Chunker／自訂 Evaluator」只是元件用途的泛稱，不是規定的 Python class 或 component_id；真正的識別、版本與 class 分工見 §3；圖上全部選項仍為目標規劃，不是已交付實作。DEV test use／自行提供是相同元件的服務綁定來源，不能拿來當作兩個不同 Component 的識別。
 
@@ -53,7 +53,7 @@ Module 圖上排完整列出 5 個 Ingestion Modules，下排列出 4 個 Infere
 | rag_engine 的 Engine／Runtime API | Registry、組裝、執行、資源管理與 API | Engine Developer |
 | rag_engine 的 components 目錄 | 各 Module 的內建／客製 Component、Adapters、第三方依賴、宣告、範例與測試 | Module Developer；共用介面變更由 Engine Developer 審查 |
 
-components 目錄可依 Parsing、Chunking、Indexing、Retrieval 等 Module 組織，容納各團隊方法及成對 Parser／Chunker、Indexing／Retrieval。SDK、Engine 與 Components 可在同 repo 保留可分別安裝的 Python package，新增 Component 仍只依賴 SDK 公開介面，不複製型別或依賴 Engine 私有類別。完整整合測試使用相容 Engine；新增標準介面下的方法應不需要修改核心。
+components 目錄可依 Parsing、Chunking、Indexing、Retrieval 等 Module 組織，容納各團隊方法及Parser／Chunker 以及成對 Indexing／Retrieval。SDK、Engine 與 Components 可在同 repo 保留可分別安裝的 Python package，新增 Component 仍只依賴 SDK 公開介面，不複製型別或依賴 Engine 私有類別。完整整合測試使用相容 Engine；新增標準介面下的方法應不需要修改核心。
 
 建議範本包含下列路徑（相對於 rag_engine repo；並非已存在的檔案）：
 
@@ -83,7 +83,7 @@ components 目錄可依 Parsing、Chunking、Indexing、Retrieval 等 Module 組
 
 component_id 的名稱空間由平台管理；同一有效 Registry 不接受相同 component_id＋實作版本的不同實作。調整 max_tokens 等使用參數不需要建立新 component_id；修改實作需可追溯的新發布版本。Package 版本與 Component 版本可以不同，但不能在不更新 package 的情況下替換其發布內容。
 
-除型別外，方法應宣告所需與提供能力：例如 Chunker 需要哪個結構／Tokenizer、Retriever 需要哪種 Index artifact／版本。Schema 形狀相容不等於語意或索引相容，驗證規則見 04 §7。宣告精確欄位及版本遷移由 Q-002／Q-015／Q-022 核定。
+除型別外，方法應宣告所需與提供能力：例如 Chunker 需要哪些 Unit 文字欄位／Markdown 格式／Tokenizer、Retriever 需要哪種 Index artifact／版本。Schema 形狀相容不等於語意或索引相容，驗證規則見 04 §7。宣告精確欄位及版本遷移由 Q-002／Q-015／Q-022 核定。
 
 ## 4. Python Component 介面示意
 
@@ -172,7 +172,7 @@ Python Packaging User Guide 說明以套件 metadata／entry points 發現及載
 
 | 層級 | 驗證內容 | 例子 |
 |---|---|---|
-| Config／I/O 契約 | 型別、必填、能力宣告與錯誤定位 | 缺必要欄位、未知欄位、Parser 結構不符 |
+| Config／I/O 契約 | 型別、必填、能力宣告與錯誤定位 | 缺必要欄位、未知欄位、Unit 欄位／文字格式不符 |
 | 模組語意 | 對應 Module 的來源／ID／分數等限制 | Chunk 可對回文件；Rerank 不捏造候選；向量維度正確 |
 | 方法邏輯 | 固定小型資料與人工可檢查的預期 | Token 邊界、空輸入、Unicode、Filter 與排序 |
 | 資源與失敗 | 依 Engine 政策處理中斷、逾時與釋放 | API 拒絕／Timeout；初始化失敗後不殘留連線 |
@@ -189,7 +189,7 @@ Python Packaging User Guide 說明以套件 metadata／entry points 發現及載
 |---|---|
 | I/O Contract | 引用平台 Input／Output 型別與契約版本，列明遵守的語意及相容測試；不自行重新定義相同 Module 的必要外層結構 |
 | Config Schema | 參數型別、預設值、必填／條件必填、限制與說明，以及合法／非法設定範例 |
-| 能力與相依宣告 | 所需結構、索引能力、模型／Tokenizer、配套 Component 與相容版本；說明方法產出的能力及相關驗證 |
+| 能力與相依宣告 | 所需文字格式、索引能力、模型／Tokenizer、配套 Component 與相容版本；說明方法產出的能力及相關驗證 |
 | 執行介面 | 初始化、執行、關閉／取消行為，Batch／Async／Streaming 支援狀態及對應測試；未支援者明示 |
 | 資源需求 | API／DB 與 Secret 邏輯引用、暫存／持久化儲存、CPU／Memory 最低／建議需求及測試條件；DEV 測試服務需求、平台可用性與自行提供服務時的設定說明 |
 | 版本與變更影響 | SDK／Engine／Contract 相容範圍；實作升級與各有效參數變更時，重新 Parsing／Chunking／Embedding／Indexing 或只重測 Inference 的判定條件、連帶影響及驗證案例 |

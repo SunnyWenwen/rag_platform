@@ -14,9 +14,7 @@ from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
 ROOT = Path(__file__).resolve().parents[2]
-CHUNK_ID = 'urn:rag-builder:chunk:0.1-draft'
-TEXT_SPANS = 'text-spans/0.1-draft'
-PAGE_BLOCKS = 'page-blocks/0.1-draft'
+CHUNK_ID = 'urn:rag-builder:chunk:0.2-draft'
 
 
 def local_registry() -> Registry:
@@ -82,18 +80,20 @@ def chunk_id(document_id: str, source_revision: str, digest: str, ordinal: int) 
 
 
 def assemble_fixture_chunk(source: dict, spec: dict, task_id: str, ordinal: int,
-                           text: str, refs: list[dict]) -> dict:
+                           text: str, refs: list[dict], unit_index: int = 0) -> dict:
     """Assemble already-cut fixture text. Does not calculate slicing boundaries."""
     digest = fingerprint(spec)
     task = next(t for t in spec['tasks'] if t['task_id'] == task_id)
     fields = {task['output_field']: text}
     source_refs = deepcopy(refs)
+    for ref in source_refs:
+        ref.setdefault('unit_index', unit_index)
     for mapping in task['copy_fields']:
         src, dest = mapping['source_field'], mapping['output_field']
-        if src not in source['fields']:
+        if src not in source['units'][unit_index]:
             raise ValueError(f'missing explicitly copied field: {src}')
-        fields[dest] = deepcopy(source['fields'][src])
-        source_refs.append({'field': src, 'output_field': dest, 'role': 'copy'})
+        fields[dest] = deepcopy(source['units'][unit_index][src])
+        source_refs.append({'unit_index': unit_index, 'field': src, 'output_field': dest, 'role': 'copy'})
     metadata = deepcopy(source['metadata'])
     rag = metadata.setdefault('_rag', {})
     # source is already trusted/validated ParsedDocument; callers cannot supply
@@ -119,56 +119,23 @@ def _validate_ref(chunk: dict, ref: dict, source: dict | None) -> None:
     output = chunk['fields'][ref['output_field']]
     if 'chunk_start' in ref:
         output = _range(ref, 'chunk_', output)
-    if ref['role'] == 'copy' and any(k in ref for k in (
-        'start', 'block_start', 'chunk_start', 'block_id', 'schema_id', 'locations'
-    )):
-        raise ValueError('copy ref represents an entire field, without text/structure selectors')
+    if ref['role'] == 'copy' and any(k in ref for k in ('start', 'chunk_start')):
+        raise ValueError('copy represents a complete unit field')
+    if 'start' in ref and ref['start'] >= ref['end']:
+        raise ValueError('empty or inverted source range')
     if source is None:
-        # Shape can be validated after ParsedDocument is no longer resident.
-        for prefix in ('', 'block_'):
-            if prefix + 'start' in ref and ref[prefix + 'start'] >= ref[prefix + 'end']:
-                raise ValueError('empty or inverted source range')
         return
-    if ref['field'] not in source['fields']:
-        raise ValueError('source ref field does not exist')
-    original = source['fields'][ref['field']]
-    structure = source['structure'].get(ref['field'])
-    if 'schema_id' in ref and (not structure or ref['schema_id'] != structure['schema_id']):
-        raise ValueError('source structure identity mismatch')
-    if 'block_id' in ref:
-        schema_id = ref['schema_id']
-        if schema_id == TEXT_SPANS:
-            blocks = structure['blocks']
-        elif schema_id == PAGE_BLOCKS:
-            blocks = [b for page in structure['pages'] for b in page['blocks']]
-        else:
-            raise ValueError('custom block selectors require a registered resolver; reference helper supports builtin profiles only')
-        block = next((b for b in blocks if b['block_id'] == ref['block_id']), None)
-        if block is None:
-            raise ValueError('source block does not exist')
-        if schema_id == TEXT_SPANS:
-            if 'block_start' in ref:
-                raise ValueError('text-spans uses source-field offsets, not block-local offsets')
-            if 'start' in ref and ('start' not in block or not block['start'] <= ref['start'] < ref['end'] <= block['end']):
-                raise ValueError('field range is outside the referenced block')
-            if 'start' not in ref:
-                if 'start' not in block:
-                    raise ValueError('nontext block requires its data field or a declared custom mapping')
-                original = source['fields'][ref['field']][block['start']:block['end']]
-        else:
-            if 'start' in ref:
-                raise ValueError('page-blocks block selector uses block-local offsets')
-            if not isinstance(block.get('text'), str):
-                raise ValueError('block has no textual content')
-            original = block['text']
-    elif 'block_start' in ref:
-        raise ValueError('block-local range requires a block selector')
+    unit_index = ref['unit_index']
+    if unit_index >= len(source['units']):
+        raise ValueError('unit_index out of range')
+    unit = source['units'][unit_index]
+    if ref['field'] not in unit:
+        raise ValueError('source unit field missing')
+    original = unit[ref['field']]
     if 'start' in ref:
         original = _range(ref, '', original)
-    if 'block_start' in ref:
-        original = _range(ref, 'block_', original)
     if output != original:
-        raise ValueError('source selector does not reproduce the mapped output')
+        raise ValueError('source selector does not reproduce output')
 
 
 def validate_chunk(chunk: dict, *, source: dict | None = None,
@@ -190,6 +157,14 @@ def validate_chunk(chunk: dict, *, source: dict | None = None,
         raise ValueError('full Chunker output requires source_refs and chunking identity')
     if require_empty_vectors and chunk['vectors']:
         raise ValueError('Chunker must not generate vectors')
+    if source is not None and effective_spec is not None:
+        for unit in source['units']:
+            for task in effective_spec['tasks']:
+                value = unit.get(task['split_field'])
+                if not isinstance(value, str) or not value.strip():
+                    raise ValueError('missing/blank/nonstring split field')
+                if any(m['source_field'] not in unit for m in task['copy_fields']):
+                    raise ValueError('missing copy field')
     if source is not None:
         if (chunk['document_id'], chunk['source_revision']) != (source['document_id'], source['source_revision']):
             raise ValueError('document identity was not inherited')
@@ -199,6 +174,8 @@ def validate_chunk(chunk: dict, *, source: dict | None = None,
         for key, value in source['metadata'].get('_rag', {}).items():
             if key not in ('source_refs', 'chunking') and rag.get(key) != value:
                 raise ValueError('trusted platform metadata was dropped or changed')
+    if len({r['unit_index'] for r in rag.get('source_refs', [])}) > 1:
+        raise ValueError('a chunk cannot merge different units')
     for ref in rag.get('source_refs', []):
         _validate_ref(chunk, ref, source)
     if effective_spec is not None:
@@ -217,7 +194,7 @@ def validate_chunk(chunk: dict, *, source: dict | None = None,
         split_refs = [r for r in rag.get('source_refs', []) if r['role'] == 'split']
         if not split_refs or any(r['field'] != task['split_field'] or r['output_field'] != task['output_field'] for r in split_refs):
             raise ValueError('split provenance differs from task')
-        # This reference path supports exact slices and two-LF block assembly.
+        # This reference path supports exact slices within a single Unit.
         # A custom content transform needs its own declared semantic validator.
         output = chunk['fields'][task['output_field']]
         if not isinstance(output, str) or not output.strip():
@@ -252,7 +229,7 @@ def validate_chunk(chunk: dict, *, source: dict | None = None,
                 raise ValueError('vector profile/source/dimension differs from binding')
 
 
-def validate_sequence(chunks: list[dict], spec: dict) -> None:
+def validate_sequence(chunks: list[dict], spec: dict, source: dict | None = None) -> None:
     """One document's full Chunking output, sorted by configured task order."""
     validate_spec(spec)
     if not chunks:
@@ -266,10 +243,13 @@ def validate_sequence(chunks: list[dict], spec: dict) -> None:
         info = chunk['metadata']['_rag']['chunking']
         if info['chunk_ordinal'] != ordinal:
             raise ValueError('ordinals must be globally contiguous, starting from zero')
-        task_order.append(order[info['task_id']])
+        unit_index = chunk['metadata']['_rag']['source_refs'][0]['unit_index']
+        task_order.append((order[info['task_id']], unit_index))
     if task_order != sorted(task_order):
         raise ValueError('task output order differs from resolved spec')
-    if set(task_order) != set(order.values()):
+    if {x[0] for x in task_order} != set(order.values()):
         raise ValueError('each required task must produce at least one chunk')
+    if source is not None and set(task_order) != {(t, u) for t in order.values() for u in range(len(source['units']))}:
+        raise ValueError('every required task/unit must produce chunks')
     if len({c['chunk_id'] for c in chunks}) != len(chunks):
         raise ValueError('duplicate chunk_id')

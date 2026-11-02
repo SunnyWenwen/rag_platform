@@ -146,17 +146,15 @@ Timeout、重試預算、取消、partial 與 fallback 尚待 Q-009／Q-017／Q-
 
 ### 4.2 Parsing
 
-**目的與邊界**：原始內容由相容 Parser 解析；上游已解析內容由相容 Adapter 驗證／正規化，共同產生 ParsedDocument。不生成向量、不自動摘要；輸出五鍵共用 ParsedDocument；structure={}、text-spans、page-blocks 或已註冊擴充，詳細規則見 14。
+**目的與邊界**：相容 Parser／Adapter 解析原始內容或正規化已解析資料，產出四鍵 ParsedDocument：document_id、source_revision、units、metadata。units 是平面的 list[dict]，每筆直接放 text 與其他欄位，不包 fields、不要求 unit_id。Parser 負責文件結構、語意單位與閱讀順序；不生成向量或自動摘要。
 
-**方法與派送**：Structured JSON 為預設方向；Native text、PDF／PPTX／其他模態需各自相容 Parser。可啟用多個 Component，依 media_type／必要 schema_id 自動派送，不要求一般使用者設定 Router；相同格式衝突才選預設或進階 parsing_profile。沒有相容 Parser、歧義或內容不符時明確報錯。首批套件與能力仍待 Q-005，不能因 UI 顯示選項就宣告可用。
+**輸入與路由**：與 API 共用 IngestionDocument（content／base64／uri 三選一）；由 Component 支援的格式與 profile 派送，歧義需明確解決。Builder CSV 每列先映射 API body，Parser 再正規化，不要求重複設定相同欄位映射。
 
-**Input（D-45 已確認）**：與 API 單筆文件相同 Schema 的 IngestionDocument；可反序列化為相同 contract 的 SDK 物件，不轉成另一份 bytes-content envelope。Parser 透過 Engine 提供的共用 resolver 取得內容，Context 不是 API payload。正式 Python class、Context 屬性與執行簽名仍待 Q-002，見 [13 §4](13_ingestion_parser_input_contract.md#4-是否也是-parser-的-input)。
+**輸出與驗證**：以 [14](14_parsed_document_contract.md)／[Schema](../schemas/parsed_document.schema.json) 驗證。text-spans／page-blocks 等上游結構由 Parser 內部處理，不再作 Chunker 的輸入分類。表格整理成逐列語意文字或 Markdown；圖片需具備 OCR／描述能力。Header-aware 需要 Unit 文字保留 Markdown 標題。來源欄位可附 page／slide／sheet 等；不得捏造位置或把無內容當成功。
 
-**處理與相容**：輸出資料依 [ParsedDocument 0.1 草案](14_parsed_document_contract.md) 與 [共用 JSON Schema](../schemas/parsed_document.schema.json) 驗證；這是待核定契約，不表示本輪有正式 Parser。依 Component input schema 驗證內容，產生 fields 與 structure；Builder 將 column 映射到 IngestionDocument.content／metadata；Parser 依相容格式正規化為 fields／structure，不重複要求使用者設定同一映射。沒有結構時不可捏造頁碼／headings。一來源多文件須定義 ID 派生及來源位置。Parser 宣告輸出能力、Chunker 宣告所需結構／版本；共同 ParsedDocument 格式不保證所有 Chunker 適用，不默默丟棄結構。
+**供應者相容性**：Docling／MinerU／MarkItDown／PyMuPDF4LLM 的新版映射方向與驗證限制見 [14 §5](14_parsed_document_contract.md#5-parser-相容性與驗證範圍)。舊結構契約的通過報告不當成 units 新契約驗收；正式 Component 及解析品質需另驗證。
 
-**驗收方向**：原始與已解析輸入都能由相容 Component 處理；格式重疊／缺 Parser／缺 Chunker 結構有明確診斷；位置可追溯。損壞／加密檔案、掃描 OCR、讀取順序及空內容政策依 Q-005，不假裝可檢索成功。
 
-**供應者相容性補充（2026-10-30）**：MarkItDown 0.1.9 與 PyMuPDF4LLM／PyMuPDF 2.0 可作 Parser／Adapter 候選，已完成本地真實輸出的共同輸入／ParsedDocument 映射驗證，見 [14 §5.1](14_parsed_document_contract.md#51-markitdownpymupdf4llm實際本地解析與-contract-驗證)。Markdown 可保留全文或正規化標題等結構；逐頁輸出仍屬 ParsedDocument，平台 Chunking 另外執行。7 次解析／14 份映射不代表已註冊進 Engine；格式／套件版本、Layout 與 OCR 等能力需在正式 Component 宣告。
 
 **待決**：Q-002、Q-005、Q-006、Q-007；新格式能力同步 Registry／UI，原型變更先記 UIB-011／012。
 
@@ -164,9 +162,11 @@ Timeout、重試預算、取消、partial 與 fallback 尚待 Q-009／Q-017／Q-
 
 **Output 草案（2026-10-30，D-47）**：[15](15_chunk_contract.md) 與 [Chunk Schema](../schemas/chunk.schema.json) 是六鍵輸出的共用定義。完整 Chunker 輸出須帶 metadata._rag.source_refs／chunking 且 vectors={}；多欄位 2＋3 得 5 個 Chunk，全域序號按任務／內容順序產生，不依併行完成順序。參考測試只驗已提供的切片／資料，不代替真實 Chunker 演算法與 Tokenizer 驗收。UI 待辦 UIB-013。
 
-**資料／能力補充（2026-10-30）**：Input 引用同一份 [ParsedDocument Schema](../schemas/parsed_document.schema.json)，不另寫 Chunking 專屬的重複物件。無結構、text-spans、page-blocks 與已註冊擴充的支援由 Component 宣告；Chunking 可固定一個或依選定欄位的結構／格式／能力路由，衝突需預設策略。每個切分任務只選一個 Chunker；預設只有 text 任務；進階多任務也預設將各自切片輸出到 fields.text，完整附帶來源用明確且不衝突的名稱；進階明確設定多個欄位任務時，各自輸出後串接而非交叉配對；必要切分點不可忽略。Schema 可表示不代表演算法已實作，UI 待辦見 UIB-012。
+**資料／能力補充（2026-11-02）**：Input 引用 [ParsedDocument 0.2 Schema](../schemas/parsed_document.schema.json)。每個任務選一個 Chunker，逐一處理所有 Units，不跨 Unit 合併或 overlap；移除依 structure 類型選 Chunker 的 Router。進階多欄位任務各自輸出後串接，不交叉配對。欄位／Markdown 格式／Tokenizer 能力仍需檢查，UI 遷移見 UIB-014。
 
-**目的與方法**：Fixed-size／Recursive／Header-aware；預設直接切 fields.text 並寫回 text，不顯示欄位選單、不自動複製其他 fields。進階才設定有序任務，每個任務一個 split_field／output_field＋明確 copy 映射；同來源可切分且完整複製，但輸出名稱不能衝突。metadata 預設全部繼承，不再逐欄勾選。三種方法均以 Token 計量，沿用指定 Tokenizer／revision。2026-10-16 新增的「fix chunk」統一稱 **Fixed-size Chunking（固定 Token 視窗）**；方法已列入需求，Engine 與 Prototype 尚未因此實作。
+
+
+**目的與方法**：Fixed-size／Recursive／Header-aware；預設直接切 units[i].text 並寫回 text，不顯示欄位選單、不自動複製其他 fields。進階才設定有序任務，每個任務一個 split_field／output_field＋明確 copy 映射；同來源可切分且完整複製，但輸出名稱不能衝突。metadata 預設全部繼承，不再逐欄勾選。三種方法均以 Token 計量，沿用指定 Tokenizer／revision。2026-10-16 新增的「fix chunk」統一稱 **Fixed-size Chunking（固定 Token 視窗）**；方法已列入需求；Prototype v0.10 有設定展示，正式 Engine／Tokenizer 尚未實作。
 
 | 方法 | 切分依據 | 有效設定 |
 |---|---|---|
@@ -180,12 +180,12 @@ Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一�
 
 1. 檢查必要切分欄位存在、為非空白 string，且明確 copy 欄位可取得；缺失／型別錯誤／全空白不視為成功，必要任務零產出須明確失敗。可選複製第一版不先擴充（D-48）。
 2. 依所選方法切分：Fixed-size 使用上述固定視窗；Recursive 依 separators 優先序切分，必要時處理過長片段，size 是上限、overlap 是目標值。
-3. Header-aware 先依可靠標題層級切分，再對超長章節 Recursive；缺 headings 不能假裝成功。
-4. 計算原 fields 字串範圍及跨 block／page locations，不從帶 overlap 的文字猜測位置。
-5. 複製指定 fields；文件摘要保持文件摘要。繼承 ParsedDocument 中經 Schema 驗證的全部業務 metadata，並保留／加入可信來源、ACL、metadata._rag.source_refs；平台切分資訊放 metadata._rag.chunking，輸入不能覆蓋平台保留資訊，完整可信區協定見 Q-006。第一版不新增 metadata 排除表單，有明確需求再規劃。
-6. 依文件 ID／source_revision、有效切分計畫 fingerprint 與全域 ordinal 產生 chunk_id，初始化 vectors={}；參考 Hash 與實際計畫版本見 15 §5～6。
+3. Header-aware 先依可靠標題層級切分，再對超長章節 Recursive；標題取自當筆 Markdown；無標題時依 Component 明確策略處理，不跨 Unit 尋找。
+4. 記錄 unit_index 與原 Unit 字串範圍，不從帶 overlap 的文字猜測位置，不跨 Unit 合併。
+5. 從同一 Unit 複製指定欄位到 Chunk.fields；文件摘要保持文件摘要。繼承 ParsedDocument 中經 Schema 驗證的全部業務 metadata，並保留／加入可信來源、ACL、metadata._rag.source_refs；平台切分資訊放 metadata._rag.chunking，輸入不能覆蓋平台保留資訊，完整可信區協定見 Q-006。第一版不新增 metadata 排除表單，有明確需求再規劃。
+6. 依任務／unit_index／切片順序編全域 ordinal，再依文件 ID／source_revision、有效切分計畫 fingerprint 與全域 ordinal 產生 chunk_id，初始化 vectors={}；參考 Hash 與實際計畫版本見 15 §5～6。
 
-**驗證／例外**：size 為正整數、overlap 為整數且 `0 ≤ overlap < size`、Tokenizer 可用；涵蓋重複文字、非 BMP 字元、空段及極長無分隔文字。Fixed-size 不啟用 separators／keep_separator／header_levels，也不要求 Parser headings；未啟用的方法參數可保留草稿，但不驗證或匯出為有效參數。複製欄位未被主要內容切分，不保證其長度小於 size。
+**驗證／例外**：size 為正整數、overlap 為整數且 `0 ≤ overlap < size`、Tokenizer 可用；涵蓋重複文字、非 BMP 字元、空段及極長無分隔文字。Fixed-size 不啟用 separators／keep_separator／header_levels，也不要求 結構化 heading Blocks；未啟用的方法參數可保留草稿，但不驗證或匯出為有效參數。複製欄位未被主要內容切分，不保證其長度小於 size。
 
 **驗收**：單塊不超過約定 Token 上限；offset 可精確還原主要文字；相同輸入與切分設定得到相同 ID；Header-aware 標題能力不足會拒絕。Fixed-size 另驗證零 overlap、短文件、恰好整塊、末塊不足、Unicode、切到結尾不再輸出 overlap-only Chunk，且不因變更停用的 separators／標題層級而改變結果。切換方法、size／overlap 或有效 Tokenizer 屬 Ingestion 配置變更，需重新切分及重建受影響索引。
 
@@ -458,7 +458,7 @@ Module Developer 可針對各 Module 實作 Component；不再只把 Chunking／
 
 同一 Module 的公開 I/O 與語意由平台維護，Component 必須相容；Component 自身 Config 可以不同。可使用契約明定的擴充欄位或具名稱／版本的能力宣告，不能自行增改必要頂層 key、把字典任意形狀視為相容，或要求下游默默猜測結構。公開契約可經版本化演進，並非永遠不能改。
 
-IngestionDocument／ParsedDocument／Chunk 的現行草案分別引用 13／14／15 與 schemas/。ParsedDocument 已具體定義無結構、text-spans、page-blocks 與註冊擴充；正式版本／SDK 及細節凍結見 [Q-002](08_implementation_plan.md#parsed-document-schema-pending)。不新增直接匯入 Chunk／vectors 的入口。Inference 沿用 05 與 inference-0.2-draft，ResultItem 直接引用共用 Chunk，不另立第二套型別。
+IngestionDocument／ParsedDocument／Chunk 的現行草案分別引用 13／14／15 與 schemas/。ParsedDocument 已收斂為四鍵外層與平面 units，Chunk 以 unit_index 追溯來源；正式版本／SDK 及細節凍結見 [Q-002](08_implementation_plan.md#parsed-document-schema-pending)。不新增直接匯入 Chunk／vectors 的入口。Inference 沿用 05 與 inference-0.2-draft，ResultItem 直接引用共用 Chunk，不另立第二套型別。
 
 ### 7.2 Component 必須宣告與配合的行為
 
@@ -466,7 +466,7 @@ IngestionDocument／ParsedDocument／Chunk 的現行草案分別引用 13／14�
 |---|---|
 | 身分與設定 | component_id、實作版本、模組類型；Config Schema 列明參數型別、預設值、必填／條件必填、限制與說明；與 package／SDK 版本分開追蹤 |
 | I/O 與語意 | 宣告相容的 Module Input／Output 型別與 Contract 版本；驗證來源、ID、欄位繼承、分數方向與引用等不變條件，共用契約由平台維護 |
-| 能力相依 | 宣告 requires／provides；包含 Parser 結構、索引能力、Tokenizer、向量維度／模型及配套 Component 相依；例如 Indexing 與 Retrieval 可讀寫的 artifact 版本 |
+| 能力相依 | 宣告 requires／provides；包含 Parser 輸出 Unit 欄位／文字格式、索引能力、Tokenizer、向量維度／模型及配套 Component 相依；例如 Indexing 與 Retrieval 可讀寫的 artifact 版本 |
 | 執行生命週期 | 宣告 async／batch／streaming 支援；依 Engine 規範初始化、執行、取消與釋放；具體簽名留 Q-002／Q-017 |
 | 資源需求 | 列明外部 API／DB、Secret 邏輯引用、暫存／持久化儲存、CPU／Memory 的最低／建議需求與測量前提，以及 DEV 測試服務需求；透過受控 RunContext／服務解析介面取得資源，不把憑證寫入 Config、輸出或 Trace |
 | 版本與變更影響 | 宣告相容的 SDK／Engine／Contract 版本；逐項說明實作升級或有效參數改變後，是否須重新 Parsing、Chunking、Embedding、重建 Index 或只重測 Inference；由 Engine 依相容政策判定，不只信任作者宣告 |

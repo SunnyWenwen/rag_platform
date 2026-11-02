@@ -30,16 +30,16 @@ class ContractTests(unittest.TestCase):
                                    vector_bindings=case.get('vector_bindings'), require_provenance=True,
                                    require_empty_vectors=case['case_id'] != 'embedded')
                 if case['case_id'] != 'embedded':
-                    validate_sequence(case['chunks'], case['effective_spec'])
+                    validate_sequence(case['chunks'], case['effective_spec'], case['source'])
 
     def test_two_plus_three_and_full_copies(self):
         case = BY_ID['two_plus_three']
         self.assertEqual(len(case['chunks']), 5)
         self.assertEqual([c['metadata']['_rag']['chunking']['chunk_ordinal'] for c in case['chunks']], list(range(5)))
         for chunk in case['chunks'][:2]:
-            self.assertEqual(chunk['fields']['original_faq'], case['source']['fields']['faq'])
+            self.assertEqual(chunk['fields']['original_faq'], case['source']['units'][0]['faq'])
         for chunk in case['chunks'][2:]:
-            self.assertEqual(chunk['fields']['original_text'], case['source']['fields']['text'])
+            self.assertEqual(chunk['fields']['original_text'], case['source']['units'][0]['text'])
         self.assertEqual([c['fields']['text'] for c in case['chunks']],
                          ['甲段。', '乙段。', '問一。', '問二。', '問三。'])
 
@@ -117,11 +117,6 @@ class ContractTests(unittest.TestCase):
         reject('unconfigured field', lambda c: c['fields'].update(extra='unexpected'))
         reject('changed copy', lambda c: c['fields'].update(original_text='different'), case_id='copy_original')
         reject('copy selector is not full field', lambda c: c['metadata']['_rag']['source_refs'][1].update(start=0, end=1), case_id='copy_original')
-        reject('unknown block', lambda c: c['metadata']['_rag']['source_refs'][0].update(block_id='missing'), case_id='text_spans')
-        reject('wrong structure', lambda c: c['metadata']['_rag']['source_refs'][0].update(schema_id='custom/1'), case_id='text_spans')
-        reject('block-local offset on text spans', lambda c: c['metadata']['_rag']['source_refs'][0].update(block_start=0, block_end=1), case_id='text_spans')
-        reject('wrong output segment', lambda c: c['metadata']['_rag']['source_refs'][1].update(chunk_start=0), case_id='page_blocks')
-        reject('untraced trailing content', lambda c: c['fields'].update(text=c['fields']['text'] + '無來源內容'), case_id='page_blocks')
         reject('old vector array', lambda c: c['vectors'].update(text=[0.1]), case_id='embedded')
         reject('unknown profile', lambda c: c['vectors']['text'].update(embedding_profile_id='other'), case_id='embedded')
         reject('wrong dimension', lambda c: c['vectors']['text'].update(values=[0.1]), case_id='embedded')
@@ -129,7 +124,7 @@ class ContractTests(unittest.TestCase):
         reject('empty vector', lambda c: c['vectors']['text'].update(values=[]), case_id='embedded')
         reject('NaN vector', lambda c: c['vectors']['text'].update(values=[float('nan'), 0, 0]), case_id='embedded')
         reject('infinite metadata', lambda c: c['metadata'].update(bad=float('inf')))
-        self.assertEqual(len(negative), 33)
+        self.assertEqual(len(negative), 28)
 
     def test_invalid_sequences_and_mappings(self):
         case = BY_ID['two_plus_three']
@@ -152,6 +147,48 @@ class ContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'each required task'):
             validate_sequence(case['chunks'][:2], case['effective_spec'])
 
+
+"""Contract checks for flat units; fixtures use supplied slices, not a tokenizer."""
+from copy import deepcopy
+from jsonschema import ValidationError
+from build_examples import build_cases
+from contract import validate_chunk, validate_sequence
+cases=build_cases()
+for case in cases:
+    for chunk in case['chunks']:
+        validate_chunk(chunk, source=case['source'], effective_spec=case['effective_spec'],
+                       vector_bindings=case.get('vector_bindings'), require_provenance=True,
+                       require_empty_vectors=case['case_id'] != 'embedded')
+    if case['case_id'] != 'embedded': validate_sequence(case['chunks'],case['effective_spec'],case['source'])
+case=next(c for c in cases if c['case_id']=='independent_units')
+assert len(case['chunks'])==5
+assert [c['metadata']['_rag']['source_refs'][0]['unit_index'] for c in case['chunks']]==[0,0,1,1,1]
+checks=0
+def reject(fn):
+    global checks
+    try: fn()
+    except (ValueError,ValidationError): checks+=1
+    else: raise AssertionError('invalid example accepted')
+for change in ('missing_unit','out_of_range','wrong_unit','wrong_range','cross_unit','old_block','metadata','id'):
+    c=deepcopy(case['chunks'][0]); ref=c['metadata']['_rag']['source_refs'][0]
+    if change=='missing_unit': del ref['unit_index']
+    elif change=='out_of_range': ref['unit_index']=10
+    elif change=='wrong_unit': ref['unit_index']=1
+    elif change=='wrong_range': ref['end']=100
+    elif change=='cross_unit': c['metadata']['_rag']['source_refs'][1]['unit_index']=1
+    elif change=='old_block': ref['block_id']='b1'
+    elif change=='metadata': c['metadata']['extra']='not inherited'
+    else: c['chunk_id']='bad'
+    reject(lambda:validate_chunk(c,source=case['source'],effective_spec=case['effective_spec'],require_provenance=True))
+reject(lambda:validate_sequence(case['chunks'][:2],case['effective_spec'],case['source']))
+reject(lambda:validate_sequence(list(reversed(case['chunks'])),case['effective_spec'],case['source']))
+for change in ('blank','missing_copy','wrong_type'):
+    src=deepcopy(case['source'])
+    if change=='blank': src['units'][1]['text']=' '
+    elif change=='missing_copy': del src['units'][1]['page']
+    else: src['units'][1]['text']=1
+    reject(lambda:validate_chunk(case['chunks'][0],source=src,effective_spec=case['effective_spec']))
+print(f'Chunk: {len(cases)} cases, {checks} negative checks passed')
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

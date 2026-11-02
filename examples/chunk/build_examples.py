@@ -24,19 +24,18 @@ def spec(*tasks):
     return {'spec_version': 'chunking-spec/0.1-draft', 'tasks': list(tasks)}
 
 
-def document(document_id='manual-001', fields=None, metadata=None, structure=None):
+def document(document_id='manual-001', fields=None, metadata=None):
     return {'document_id': document_id, 'source_revision': 'v1',
-            'fields': fields if fields is not None else {'text': '保養規範\n清潔前先斷電。'},
-            'metadata': metadata if metadata is not None else {'department': 'engineering'},
-            'structure': structure if structure is not None else {}}
+            'units': [fields if fields is not None else {'text': '保養規範\n清潔前先斷電。'}],
+            'metadata': metadata if metadata is not None else {'department': 'engineering'}}
 
 
-def sliced(source, plan, task_id, ordinal, start, end, **selectors):
+def sliced(source, plan, task_id, ordinal, start, end, unit_index=0):
     t = next(t for t in plan['tasks'] if t['task_id'] == task_id)
-    text = source['fields'][t['split_field']][start:end]
-    ref = {'field': t['split_field'], 'output_field': t['output_field'],
-           'role': 'split', 'start': start, 'end': end, **selectors}
-    return assemble_fixture_chunk(source, plan, task_id, ordinal, text, [ref])
+    text = source['units'][unit_index][t['split_field']][start:end]
+    ref = {'unit_index': unit_index, 'field': t['split_field'], 'output_field': t['output_field'],
+           'role': 'split', 'start': start, 'end': end}
+    return assemble_fixture_chunk(source, plan, task_id, ordinal, text, [ref], unit_index)
 
 
 def build_cases():
@@ -59,38 +58,19 @@ def build_cases():
     cases.append({'case_id': 'two_plus_three', 'source': source, 'effective_spec': plan,
                   'chunks': chunks})
 
-    source = json.loads((HERE.parent / 'parsed_document/text_spans.json').read_text())
-    plan = spec(task())
-    cases.append({'case_id': 'text_spans', 'source': source, 'effective_spec': plan,
-                  'chunks': [sliced(source, plan, 'text', 0, 5, 12,
-                                     schema_id='text-spans/0.1-draft', block_id='b2',
-                                     locations=[{'kind': 'page', 'page_number': 1}])]})
-
-    source = json.loads((HERE.parent / 'parsed_document/page_blocks.json').read_text())
-    plan = spec(task())
-    pages = source['structure']['text']['pages']
-    refs, texts, cursor = [], [], 0
-    for page in pages:
-        for block in page['blocks']:
-            text = block['text']
-            if texts:
-                cursor += 2
-            refs.append({'field': 'text', 'output_field': 'text', 'role': 'split',
-                         'schema_id': 'page-blocks/0.1-draft', 'block_id': block['block_id'],
-                         'block_start': 0, 'block_end': len(text),
-                         'chunk_start': cursor, 'chunk_end': cursor + len(text),
-                         'locations': [{'kind': 'page', 'page_number': page['page_number']}]})
-            texts.append(text)
-            cursor += len(text)
-    cases.append({'case_id': 'page_blocks', 'source': source, 'effective_spec': plan,
-                  'chunks': [assemble_fixture_chunk(source, plan, 'text', 0, '\n\n'.join(texts), refs)]})
+    source = document('units-001')
+    source['units'] = [{'text': '甲段。乙段。', 'page': 1}, {'text': '問一。問二。問三。', 'page': 2}]
+    plan = spec(task(copies=[('page', 'page')]))
+    chunks = [sliced(source, plan, 'text', i, i*3, i*3+3, 0) for i in range(2)]
+    chunks += [sliced(source, plan, 'text', i+2, i*3, i*3+3, 1) for i in range(3)]
+    cases.append({'case_id':'independent_units', 'source':source, 'effective_spec':plan, 'chunks':chunks})
 
     source = document('table-001', {'text': '設備 A 每月保養。'}, {
         'department': 'engineering',
         'maintenance_table': {'columns': ['設備', '週期'], 'rows': [['A', '每月']]}})
     plan = spec(task())
     cases.append({'case_id': 'auxiliary_metadata', 'source': source, 'effective_spec': plan,
-                  'chunks': [sliced(source, plan, 'text', 0, 0, len(source['fields']['text']))]})
+                  'chunks': [sliced(source, plan, 'text', 0, 0, len(source['units'][0]['text']))]})
 
     embedded = deepcopy(cases[0])
     embedded['case_id'] = 'embedded'
@@ -111,7 +91,7 @@ def main():
                            vector_bindings=case.get('vector_bindings'), require_provenance=True,
                            require_empty_vectors=case['case_id'] != 'embedded')
         if case['case_id'] != 'embedded':
-            validate_sequence(case['chunks'], case['effective_spec'])
+            validate_sequence(case['chunks'], case['effective_spec'], case['source'])
     (HERE / 'cases.json').write_text(json.dumps(cases, ensure_ascii=False, indent=2) + '\n')
     print(json.dumps({'cases': len(cases), 'chunks': sum(len(c['chunks']) for c in cases)}))
 

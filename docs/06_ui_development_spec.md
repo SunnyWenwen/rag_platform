@@ -10,9 +10,9 @@
 
 **2026-10-29 輸入更新**：Engine 採 JSON-only 扁平輸入，Builder 文件／CSV 上傳轉成 content／base64／uri；Parsing 可多選並自動路由，衝突才要求預設／profile。新規格見 [13](13_ingestion_parser_input_contract.md)，原型的輸入預覽／映射遷移統一登錄 [UIB-011](10_ui_adjustment_backlog.md#uib-011-ingestion-parser-routing)，尚未實作。
 
-**2026-10-30 資料結構草案**：[14](14_parsed_document_contract.md) 新增 ParsedDocument Schema 與官方輸出對照；UI 的結構預覽、相容能力、Chunker 路由與缺失資源提示先記 [UIB-012](10_ui_adjustment_backlog.md#uib-012-parsed-document-structures)。本輪沒有改 Prototype，不能由範例推定所有結構皆可切分。
+**2026-11-02 Units 契約更新**：[14](14_parsed_document_contract.md) 統一為平面 Units；[UIB-014](10_ui_adjustment_backlog.md#uib-014-flat-units) 記錄新版預覽、欄位候選、unit_index 追溯及舊 Chunker 結構路由移除。本次僅修改文件，Prototype v0.10 仍是舊契約模擬。
 
-**2026-10-30 Chunk 更新（D-47）**：[15](15_chunk_contract.md) 定義預設只切 fields.text，基本區不顯示欄位選擇；多欄位任務、附帶欄位／原文保留才在進階設定。D-48 確認每個多欄位任務預設輸出 text，完整附帶內容用不衝突名稱；必要欄位／型別／全空白、明確 copy 欄位缺失及必要任務零產出提供定位錯誤。metadata／來源資訊自動繼承或產生，vectors 採共用新格式；對應 Prototype／AI／預覽／匯出變更先記 [UIB-013](10_ui_adjustment_backlog.md#uib-013-chunk-contract)，尚未實作。
+**2026-10-30 Chunk 更新（D-47）**：[15](15_chunk_contract.md) 定義預設只切 units[i].text，基本區不顯示欄位選擇；多欄位任務、附帶欄位／原文保留才在進階設定。D-48 確認每個多欄位任務預設輸出 text，完整附帶內容用不衝突名稱；必要欄位／型別／全空白、明確 copy 欄位缺失及必要任務零產出提供定位錯誤。metadata／來源資訊自動繼承或產生，vectors 採共用新格式；對應 Prototype／AI／預覽／匯出變更先記 [UIB-013](10_ui_adjustment_backlog.md#uib-013-chunk-contract)，尚未實作。
 
 ## 1. 目標、相依與範圍
 
@@ -53,7 +53,7 @@ Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保�
 以下涵蓋已確認的使用者要求及既有 Prototype 行為（確認決策見 08 §3）；不將明確要求重新列為是否需要的待決項目：
 
 - Parsing 初始只顯示「結構化 JSON」；其他格式及所有相關設定集中在預設關閉的「進階選項」，展開才出現。正式 Parser 能力另依 Q-005，顯示選項不等於可執行。
-- Create／Edit 前段有 Document Schema；先宣告 fields／metadata，再產生下游欄位選項。
+- Create／Edit 前段有 Document Schema；先宣告 Unit 內容欄位／文件 metadata，再產生下游欄位選項。
 - 2026-10-16 已確認：Indexing 預設保存全部 Chunk.fields／metadata，移除「儲存內容」選單，只選全文／向量索引與可過濾欄位；Chunking 預設繼承全部合法 metadata，第一版不新增排除表單。對應 UI 尚未修改，見 10 的 UIB-005／006。
 - LLM 服務集中管理；Rewrite／Multi-query／Generation 在需要時以下拉引用，同一服務不重填連線。
 - Rewrite／Multi-query 的 Prompt 可編輯，分別保留草稿；提供變數插入、驗證與預覽。
@@ -178,7 +178,7 @@ CSV 每 row 對應一份 IngestionDocument，不把每個 column 當文件。需
 | 項目 | 要求 |
 |---|---|
 | CSV 預檢 | 處理 BOM／引號／換行；欄名非空唯一；每列欄數一致；正式編碼／超限政策待決 |
-| 目標 | document_id、source_revision、Parser 接受的 content.*／外層 metadata.*；解析後的 fields 宣告用來核對內容映射 |
+| 目標 | document_id、source_revision、Parser 接受的 content.*／外層 metadata.*；解析後的 Unit 欄位宣告用來核對內容映射 |
 | 映射 | 可將同一 column 填入多個目標；未映射欄位不送出 |
 | 必填 | 無預設值的 input 必填欄位須映射 |
 | 型別 | number 有限值；boolean 規則明確；array 用 JSON 解析；正式強制轉型政策 Q-002 |

@@ -17,7 +17,7 @@
 | [11 Component 開發指南](docs/11_component_developer_guide.md) | SDK 使用、Component 實作／測試／打包與交付流程；引用 04／05 契約 | Module Developer |
 | [12 Component 設定描述](docs/12_component_schema_ui_contract.md) | Config Schema、UI hints、動態選項、相依規則與驗證回傳草案 | Module／Engine／Frontend Developer |
 | [13 IngestionDocument](docs/13_ingestion_parser_input_contract.md) | API／Import／Parser 共用輸入 Schema 與路由 | Backend／Module Developer |
-| [14 ParsedDocument](docs/14_parsed_document_contract.md) | Parser 輸出／Chunker 輸入、結構／位置與相容驗證 | Engine／Module Developer |
+| [14 ParsedDocument](docs/14_parsed_document_contract.md) | Parser 輸出平面 Units／Chunker 單筆切分、位置與相容驗證 | Engine／Module Developer |
 | [15 Chunk](docs/15_chunk_contract.md) | Chunking 下游共用資料、向量／追溯與切分語意 | Engine／Module Developer |
 
 狀態用語：**已確認**為先前明確採用的方向；**建議**為本輪技術草案；**待決**以 Q-ID 追蹤；**後續**為未納入目前實作承諾的能力。03～07 引用問題 ID，08 是決策狀態的單一追蹤位置。文件版本不等於 Config contract_version、Engine 版本或完成進度。
@@ -287,3 +287,5 @@ Local Search 的 Memory／MongoDB 持久化模式隨邏輯 Config 固定：DEV �
 | Evaluation Gate | 匯出與部署流程 | [Q-018](docs/08_implementation_plan.md#q-018) |
 
 所有問題狀態、決策負責人及階段阻擋範圍見 08。
+
+資料邊界（2026-11-02）：IngestionDocument → ParsedDocument.units → Chunk.fields；Parser 整理文件結構，Chunker 只在每個 Unit 的指定文字欄位內切分，不跨 Unit 合併／overlap。ParsedDocument 無 structure／fields 包裝，Chunk 外層與後續模組保持六鍵設計。
