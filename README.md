@@ -35,6 +35,7 @@ Chunk 預設切 fields.text 並寫回 text；進階多欄位任務各自切分�
 | [13 IngestionDocument](docs/13_ingestion_parser_input_contract.md) | 輸入分類、路由、API／Parser 相同 Schema |
 | [14 ParsedDocument](docs/14_parsed_document_contract.md) | 平面 Units、Parser／Chunker 分工與來源追溯 |
 | [15 Chunk](docs/15_chunk_contract.md) | 切分／複製、來源、向量、ID 與欄位組裝待討論 |
+| [16 Parser 開發範例](docs/16_parser_component_development_examples.md) | 共用 Pydantic、Local ABC、Remote Adapter 與 FastAPI，搭配三種交付模式圖 |
 
 名詞以 03 為準；資料的精確定義引用 schemas/ 與 13～15，不在各模組重寫一份。Component Developer 依序讀 11 → 04 → 對應資料契約 → 12。完整 Engine Config／SDK 尚未凍結，示例不等於可直接執行的產品介面。
 
@@ -56,3 +57,6 @@ Chunk 預設切 fields.text 並寫回 text；進階多欄位任務各自切分�
 2026-11-02：ParsedDocument／Chunk 已更新至 0.2-draft（units 與 unit_index 來源追溯）；Prototype v0.10 尚未遷移，對應改動見 UIB-014。舊 provider 0.1 報告不作新版驗收證據。
 
 2026-11-02 D-50：改為 Retrieval-only；不做 Generation。Library＋Config（及必要資源綁定）建立 Retrieval System，Platform 包含 Library／Runtime API／共用 Image。查詢輸出檢索清單；Rewrite／助手仍可使用 LLM。Prototype 名稱與答案功能尚未遷移，見 UIB-015。repo rag_platform、rag_engine、套件與 Schema ID／_rag 保留為既有技術識別，非產品名稱。
+
+
+Parser 開發示範：[三種交付模式圖](diagrams/04_component_delivery_modes.md) → [16 兩種開發方式與程式](docs/16_parser_component_development_examples.md)。Remote 服務不要求完整 Engine／ABC；正式 HTTP／參數協定仍待核定。

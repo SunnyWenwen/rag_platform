@@ -1,10 +1,13 @@
 # Retrieval Engine Library — Component 開發指南
 
+> **2026-11-02 新增具體教學**：[16 Parser 開發範例](16_parser_component_development_examples.md) 提供可執行的 Pydantic、Local ABC、Remote API Adapter 與選用 FastAPI 範本；搭配 [04 三種交付模式](../diagrams/04_component_delivery_modes.md) 說明。這是獨立教學程式，不是正式 SDK。本文的同 repo 提交／納入 Runtime Image 流程適用 Local Component；Remote Developer 可保留私有實作，只交付 Image＋部署描述或既有端點。Remote HTTP／參數與部署協定仍待正式核定。
+
+
 2026-10-29 D-43：原擴充單位名稱已統一為 Component；本文件改名為 `11_component_developer_guide.md`。Module Developer 角色與開發／發布流程保留，SDK／套件／識別欄位對照見 [03 §3.8](../03_architecture_proposal.md#component-terminology-migration)。
 
 > 2026-10-28 · 開發流程與 SDK 介面草案
 >
-> 讀者：Module Developer。目標是在公開契約下開發、測試及交付 Component，讓 Engine 與 Retrieval Builder 使用。**目前 repository 只有規格與 UI Prototype，尚無可安裝的正式 SDK、Engine、範本套件或測試 Runner；本文 Python API 與套件名稱均為示意，不能當作已可執行的教學。**
+> 讀者：Module Developer。目標是在公開契約下開發、測試及交付 Component，讓 Engine 與 Retrieval Builder 使用。**目前 repository 只有規格與 UI Prototype，尚無可安裝的正式 SDK、Engine、範本套件或測試 Runner；本文 Python API 與套件名稱均為示意，本文既有片段不能當作可直接執行的 SDK 教學；16 另有獨立可執行示範。**
 
 ## 1. 文件責任與目前可開始的工作
 
@@ -226,3 +229,4 @@ Python Packaging User Guide 說明以套件 metadata／entry points 發現及載
 | 實作／套件版本記錄、既有 System 升級／索引相容與部署鎖定 | 更新既有資料或正式交付前；Q-015／Q-021／Q-022 | 設計相容檢查與失敗案例，不自動升級 |
 
 這些事項不阻擋本輪文件整理；規格定案與工具實作後，再將介面示意換成經測試、可直接執行的開發教學。完整決策狀態只維護於 08，不因本指南提供建議就自動關閉 Q-ID。
+

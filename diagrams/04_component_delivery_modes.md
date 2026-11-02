@@ -20,3 +20,8 @@
 - API 指的是 Module 的遠端執行端點。Local Component 仍可依自身用途連線 DB／模型服務；圖中「無額外 Remote API」不代表完全沒有外部依賴。
 - Image 模式可在 DEV 部署測試 Image；External 模式綁定測試端點。DEV 與 FTEST／ENT 沿用相同 I/O 契約。
 - Indexing／Retrieval 等有狀態操作，仍須額外定義索引識別、版本、讀寫關係及冪等／重試政策，不能僅憑 HTTP 形狀宣稱相容。
+
+
+## 搭配開發範例介紹
+
+先用本圖說明三種交付模式，再讀 [16 Parser 開發範例](../docs/16_parser_component_development_examples.md)：同一組 IngestionDocument／ParsedDocument，對照 Local ABC 實作與 Remote API／Adapter。開發方式分兩種；Image Deployment／External Endpoint 共用 Remote API 開發契約。
