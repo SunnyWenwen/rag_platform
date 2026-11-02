@@ -100,7 +100,7 @@ Builder 管理設定與測試，Library 執行模組，Platform 交付執行框�
 
 Module／Component 是職責與選擇層次，不以 Python Class 或 Function 的實作形式區分；實作及 I/O Contract 見 [04](docs/04_module_components_io_contracts.md)。Ingestion 與 Inference 透過資料／索引綁定銜接，不要求每次提問都重新 Ingestion。純全文模式略過 Embedding、None 的 pass-through，以及 Fusion 的合併時點等執行規則見 §5／04；本節不增加通用 DAG 編輯器。
 
-各 Module 規劃提供內建 Components，Module Developer 也可加入遵循相同契約、設定描述與相依要求的 Component。內建／自訂元件經同一 Registry 管理，使用者在 Builder 選用目標 Runtime 實際包含且核可的元件；預設提供不等於全部同時執行。[Module／Component 示意圖](diagrams/03_module_component_concept.png) 完整列出上排 Ingestion 的 Import／Parsing／Chunking／Embedding／Indexing，以及下排 Inference 的 Query Transformation／Retrieval／Rerank／檢索結果消費端；Evaluation 獨立標示，不列入單次請求主線。每個內建選項各佔一個方塊，不把多個元件擠在同一框中；圖中的「自訂 Parser／自訂 Retriever」是泛稱，開發者可自行命名 class；圖示不是已交付清單。服務綁定及結果處理不因此變成新的 Pipeline Module。
+各 Module 規劃提供內建 Components，Module Developer 也可加入遵循相同契約、設定描述與相依要求的 Component。內建／自訂元件經同一 Registry 管理，使用者在 Builder 選用目標 Runtime 實際包含且核可的元件；預設提供不等於全部同時執行。[Library／Config／System 示意圖](diagrams/03_module_component_concept.png) 以三個具體 Config 展示同一份 Retrieval Engine Library 建立 Retrieval System A／B／C。各 System 展開 Ingestion Service 的 Import／Parsing／Chunking／Embedding／Indexing，以及 Retrieval Service 的 Query Transformation／Retrieval／Rerank，實例名稱附 A／B／C。Config C 的 Parsing 選 Remote API Component，Runtime 內的 Parsing C Adapter 呼叫額外 Parsing Service；URL／Secret／Image 依部署設定綁定。詳細圖說見 [03 圖說](diagrams/03_module_component_concept.md)。Evaluation 是獨立評估能力；圖中 Service 是邏輯功能邊界，不強制拆成獨立 Pod。示例不是已交付實作清單，A／B／C 也不代表必須開發三份不同 Component class。
 
 <a id="config-terms"></a>
 
@@ -294,3 +294,4 @@ Local Search 的 Memory／MongoDB 持久化模式隨邏輯 Config 固定：DEV �
 所有問題狀態、決策負責人及階段阻擋範圍見 08。
 
 資料邊界（2026-11-02）：IngestionDocument → ParsedDocument.units → Chunk.fields；Parser 整理文件結構，Chunker 只在每個 Unit 的指定文字欄位內切分，不跨 Unit 合併／overlap。ParsedDocument 無 structure／fields 包裝，Chunk 外層與後續模組保持六鍵設計。
+

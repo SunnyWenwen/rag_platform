@@ -1,92 +1,102 @@
 flowchart TB
-    %% 固定 SVG／PNG：上排 Ingestion、下排 Inference；每個內建選項獨立一格。
-    %% API／Import／Parser 共用 IngestionDocument；content／base64／uri 三選一，內容由 SDK resolver 取得。
-    %% 選項是目標規劃；None 是略過，服務來源及搜尋模式不另列 Component。
-    subgraph ENGINE["Retrieval Engine Library｜全部 Modules 的內建與擴充 Components"]
-        direction TB
-        subgraph INGESTION["Ingestion"]
-            direction LR
-            subgraph IMPORT["Import"]
-                direction TB
-                IMPORT_B2["JSON Ingestion"]
-                IMPORT_CUSTOM["自訂 Importer"]
-            end
-            subgraph PARSING["Parsing"]
-                direction TB
-                PARSING_B1["Structured JSON Parser"]
-                PARSING_CUSTOM["自訂 Parser"]
-            end
-            subgraph CHUNKING["Chunking"]
-                direction TB
-                CHUNKING_B1["Fixed-size"]
-                CHUNKING_B2["Recursive"]
-                CHUNKING_B3["Header-aware"]
-                CHUNKING_CUSTOM["自訂 Chunker"]
-            end
-            subgraph EMBEDDING["Embedding"]
-                direction TB
-                EMBEDDING_B1["Embedding API Adapter"]
-                EMBEDDING_CUSTOM["自訂 Embedder"]
-            end
-            subgraph INDEXING["Indexing"]
-                direction TB
-                INDEXING_B1["Elasticsearch"]
-                INDEXING_B2["Local Search"]
-                INDEXING_CUSTOM["自訂 Indexer"]
-            end
-            IMPORT --> PARSING
-            PARSING --> CHUNKING
-            CHUNKING --> EMBEDDING
-            EMBEDDING --> INDEXING
-        end
-        subgraph INFERENCE["Inference"]
-            direction LR
-            subgraph QUERY["Query Transformation"]
-                direction TB
-                QUERY_B1["None（略過）"]
-                QUERY_B2["Rewrite"]
-                QUERY_B3["Multi-query"]
-                QUERY_CUSTOM["自訂 Query Rewriter"]
-            end
-            subgraph RETRIEVAL["Retrieval"]
-                direction TB
-                RETRIEVAL_B1["ES 檢索元件"]
-                RETRIEVAL_B2["Local Search 檢索元件"]
-                RETRIEVAL_CUSTOM["自訂 Retriever"]
-            end
-            subgraph RERANK["Rerank"]
-                direction TB
-                RERANK_B1["None（略過）"]
-                RERANK_B2["Rerank API Adapter"]
-                RERANK_CUSTOM["自訂 Reranker"]
-            end
-            QUERY --> RETRIEVAL
-            RETRIEVAL --> RERANK
-            RERANK --> OUTPUT["檢索結果｜ResultSets / Chunks / Scores"]
-        end
-        subgraph EVALUATION["Evaluation｜獨立評估模組（不在單次 Ingestion／Inference 主線）"]
-            EVALUATION_B1["Recall@K"]
-            EVALUATION_B2["MRR"]
-            EVALUATION_B5["Latency"]
-            EVALUATION_B6["Usage"]
-            EVALUATION_B7["Error Rate"]
-            EVALUATION_CUSTOM["自訂 Evaluator"]
-        end
+    %% Fixed presentation layout is in the SVG; PNG is rendered from that SVG.
+    %% A/B/C are configured instances, not mandatory distinct classes or Pods.
+    LIB["Retrieval Engine Library"]
+    CFG_A["Config A"]
+    BUILD_A["Library ＋ Config A"]
+    subgraph SYS_A["Retrieval System A"]
+      subgraph ING_A["Ingestion Service A"]
+        IMPORT_A["Import A｜JSON Ingestion"]
+        PARSING_A["Parsing A｜Structured JSON"]
+        CHUNKING_A["Chunking A｜Fixed-size"]
+        EMBEDDING_A["Embedding A｜Embedding API"]
+        INDEXING_A["Indexing A｜Elasticsearch"]
+      end
+      subgraph RET_A["Retrieval Service A"]
+        QUERY_A["Query Transformation A｜None（略過）"]
+        SEARCH_A["Retrieval A｜Elasticsearch"]
+        RERANK_A["Rerank A｜None（略過）"]
+      end
+      OUTPUT_A["結果 A｜ResultSets／Chunks／Scores"]
     end
-
-    DEV["Module Developer｜依契約開發 Component"] --> CHECK["測試＋PR 審查｜驗證契約與設定"]
-    CHECK --> UPDATE["發布並更新 Retrieval Engine Library｜內建＋核可自訂 Components"]
-    UPDATE -->|納入目標 Runtime| ENGINE
-    ENGINE -. "Component 目錄＋Config Schema" .-> UI["Retrieval Builder User｜選 Component、填參數"]
-
-    classDef builtin fill:#e9f2ff,stroke:#6086c8,color:#143054
-    classDef custom fill:#eee9fa,stroke:#9380bf,color:#443267
-    classDef delivery fill:#fff5e5,stroke:#cf9b4a,color:#624516
-    classDef builder fill:#ecf8f2,stroke:#599d85,color:#153f32
-    class IMPORT_B2,PARSING_B1,CHUNKING_B1,CHUNKING_B2,CHUNKING_B3,EMBEDDING_B1,INDEXING_B1,INDEXING_B2,QUERY_B1,QUERY_B2,QUERY_B3,RETRIEVAL_B1,RETRIEVAL_B2,RERANK_B1,RERANK_B2,EVALUATION_B1,EVALUATION_B2,EVALUATION_B5,EVALUATION_B6,EVALUATION_B7 builtin
-    class IMPORT_CUSTOM,PARSING_CUSTOM,CHUNKING_CUSTOM,EMBEDDING_CUSTOM,INDEXING_CUSTOM,QUERY_CUSTOM,RETRIEVAL_CUSTOM,RERANK_CUSTOM,EVALUATION_CUSTOM,DEV custom
-    class CHECK,UPDATE delivery
-    class UI builder
-    style ENGINE fill:#f7faff,stroke:#9aafc9
-    style INGESTION fill:#fbfaff,stroke:#b5a4d0
-    style INFERENCE fill:#f7fcfa,stroke:#a2c1b4
+    CFG_B["Config B"]
+    BUILD_B["Library ＋ Config B"]
+    subgraph SYS_B["Retrieval System B"]
+      subgraph ING_B["Ingestion Service B"]
+        IMPORT_B["Import B｜JSON Ingestion"]
+        PARSING_B["Parsing B｜Structured JSON"]
+        CHUNKING_B["Chunking B｜Recursive"]
+        EMBEDDING_B["Embedding B｜Embedding API"]
+        INDEXING_B["Indexing B｜Local Search"]
+      end
+      subgraph RET_B["Retrieval Service B"]
+        QUERY_B["Query Transformation B｜Multi-query"]
+        SEARCH_B["Retrieval B｜Local Search"]
+        RERANK_B["Rerank B｜Rerank API"]
+      end
+      OUTPUT_B["結果 B｜ResultSets／Chunks／Scores"]
+    end
+    CFG_C["Config C"]
+    BUILD_C["Library ＋ Config C"]
+    subgraph SYS_C["Retrieval System C"]
+      subgraph ING_C["Ingestion Service C"]
+        IMPORT_C["Import C｜JSON Ingestion"]
+        PARSING_C["Parsing C｜Remote API Component（Adapter）"]
+        CHUNKING_C["Chunking C｜Header-aware"]
+        EMBEDDING_C["Embedding C｜Embedding API"]
+        INDEXING_C["Indexing C｜Elasticsearch"]
+      end
+      subgraph RET_C["Retrieval Service C"]
+        QUERY_C["Query Transformation C｜Rewrite"]
+        SEARCH_C["Retrieval C｜Elasticsearch"]
+        RERANK_C["Rerank C｜Rerank API"]
+      end
+      OUTPUT_C["結果 C｜ResultSets／Chunks／Scores"]
+    end
+    subgraph REMOTE["額外的 Parsing Service C"]
+      PRIVATE["Developer 的私有解析實作"]
+    end
+    BINDING["C 的部署設定"]
+    CFG_A --> BUILD_A
+    LIB -.-> BUILD_A
+    BUILD_A --> |"依 Config 組裝"| SYS_A
+    IMPORT_A --> PARSING_A
+    PARSING_A --> CHUNKING_A
+    CHUNKING_A --> EMBEDDING_A
+    EMBEDDING_A --> INDEXING_A
+    QUERY_A --> SEARCH_A
+    SEARCH_A --> RERANK_A
+    INDEXING_A -.-> |"索引／資料綁定"| SEARCH_A
+    RERANK_A --> OUTPUT_A
+    CFG_B --> BUILD_B
+    LIB -.-> BUILD_B
+    BUILD_B --> |"依 Config 組裝"| SYS_B
+    IMPORT_B --> PARSING_B
+    PARSING_B --> CHUNKING_B
+    CHUNKING_B --> EMBEDDING_B
+    EMBEDDING_B --> INDEXING_B
+    QUERY_B --> SEARCH_B
+    SEARCH_B --> RERANK_B
+    INDEXING_B -.-> |"索引／資料綁定"| SEARCH_B
+    RERANK_B --> OUTPUT_B
+    CFG_C --> BUILD_C
+    LIB -.-> BUILD_C
+    BUILD_C --> |"依 Config 組裝"| SYS_C
+    IMPORT_C --> PARSING_C
+    PARSING_C --> CHUNKING_C
+    CHUNKING_C --> EMBEDDING_C
+    EMBEDDING_C --> INDEXING_C
+    QUERY_C --> SEARCH_C
+    SEARCH_C --> RERANK_C
+    INDEXING_C -.-> |"索引／資料綁定"| SEARCH_C
+    RERANK_C --> OUTPUT_C
+    PARSING_C --> |"IngestionDocument"| PRIVATE
+    PRIVATE --> |"ParsedDocument 清單"| PARSING_C
+    classDef a fill:#edf8f2,stroke:#3d8c74
+    classDef b fill:#edf3fc,stroke:#537fbc
+    classDef c fill:#fff6e8,stroke:#b38039
+    classDef library fill:#f3effb,stroke:#a692c5
+    class LIB library
+    class CFG_A,BUILD_A,IMPORT_A,PARSING_A,CHUNKING_A,EMBEDDING_A,INDEXING_A,QUERY_A,SEARCH_A,RERANK_A,OUTPUT_A a
+    class CFG_B,BUILD_B,IMPORT_B,PARSING_B,CHUNKING_B,EMBEDDING_B,INDEXING_B,QUERY_B,SEARCH_B,RERANK_B,OUTPUT_B b
+    class CFG_C,BUILD_C,IMPORT_C,PARSING_C,CHUNKING_C,EMBEDDING_C,INDEXING_C,QUERY_C,SEARCH_C,RERANK_C,OUTPUT_C c

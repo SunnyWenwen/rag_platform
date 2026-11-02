@@ -43,9 +43,9 @@ D1～D2 主要由 Module Developer 完成；D3～D4 涉及審查者、CI／發�
 
 D4 的標題統一為「發布並更新 Retrieval Engine Library」，指共用 Engine／Components 與完整 Runtime Image 的版本交付；實際採用新版仍更新選定的 DEV Runtime，部署邊界不變。
 
-圖中的「預設提供」指平台規劃交付的內建選項；每個 System 依 Config 選用，不是把某個 Module 的所有 Components 一起執行。自訂 Component 與內建元件走相同契約／Registry；Builder User 不需撰寫程式。Indexing／Retrieval 可能需要成對擴充；Parser／Chunker 共用 Units，但仍需文字欄位與格式能力相容，仍依能力檢查，不因放入元件目錄就自動相容。
+內建 Components 指平台規劃交付的可選項；每個 System 依 Config 選用，不是把某個 Module 的所有 Components 一起執行。自訂 Component 與內建元件走相同契約／Registry；Builder User 不需撰寫程式。Indexing／Retrieval 可能需要成對擴充；Parser／Chunker 共用 Units，但仍需文字欄位與格式能力相容，仍依能力檢查，不因放入元件目錄就自動相容。
 
-Module 圖上排完整列出 5 個 Ingestion Modules，下排列出 3 個 Inference Modules，Evaluation 另列為獨立評估能力。內建選項一個選項一個方塊，例如 Fixed-size、Recursive、Header-aware 分開呈現；None 標為略過，Import 共用 JSON 入口，content／base64／uri 由每筆資料選一種來源；驗證／內容取得為共同能力，Retrieval 後端仍依 Indexing 推導。「自訂 Parser／自訂 Chunker／自訂 Evaluator」只是元件用途的泛稱，不是規定的 Python class 或 component_id；真正的識別、版本與 class 分工見 §3；圖上全部選項仍為目標規劃，不是已交付實作。DEV test use／自行提供是相同元件的服務綁定來源，不能拿來當作兩個不同 Component 的識別。
+[03 圖](../diagrams/03_module_component_concept.png) 改以 Library＋Config A／B／C 建立三個 System 展示組裝結果，詳見 [圖說](../diagrams/03_module_component_concept.md)。每個 System 明列 5 個 Ingestion Modules 與 3 個 Retrieval／Inference Modules，模組實例附 A／B／C；相同 class 可用不同設定重複建立。Config C 的 Parsing 選 Remote API Component，由 Retrieval Builder 提供的 Parsing C Adapter 呼叫 Developer 的獨立 Parsing Service；服務可交付 Image 或提供既有 Endpoint，沿用同一 I/O Contract。URL／Secret／Image 放部署設定，不混進文件 Input。圖中的兩個 Service 是邏輯功能邊界，不預先要求不同程序／Pod；各模組輸入、輸出與相容能力仍依 04／13～16。
 
 2026-10-28 已確認兩個 repo：`rag_platform` 管理 Builder 前後端與整合，`rag_engine` 集中 SDK、Engine、Components／Adapters 與 Runtime API。Module Developer 使用本機 IDE，在 rag_engine 的 components 目錄依 SDK／範本開發，提交 PR 後由同一 repo 的 CI 測試與交付 Runtime。這取代先前以獨立 Component repo 為預設的建議；精確內部目錄、套件名稱及發布工具仍待 Q-001／Q-022 核定。
 
@@ -229,4 +229,5 @@ Python Packaging User Guide 說明以套件 metadata／entry points 發現及載
 | 實作／套件版本記錄、既有 System 升級／索引相容與部署鎖定 | 更新既有資料或正式交付前；Q-015／Q-021／Q-022 | 設計相容檢查與失敗案例，不自動升級 |
 
 這些事項不阻擋本輪文件整理；規格定案與工具實作後，再將介面示意換成經測試、可直接執行的開發教學。完整決策狀態只維護於 08，不因本指南提供建議就自動關閉 Q-ID。
+
 
