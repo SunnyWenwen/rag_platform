@@ -125,6 +125,8 @@ metadata 全部繼承限於驗證後的業務欄位及可信平台資訊，ACL�
 
 ### 4.4 Embedding Profile 與 IndexBinding
 
+2026-11-02 補充：[17 Pydantic Contract 草案](17_pydantic_contracts_draft.md) 對照本節責任，先提出可執行 IndexBinding 欄位供討論。這些新鍵名／必填／版本／能力細節尚未核定；本節不因此凍結 Runtime 介面。
+
 | 物件 | 必要語意 |
 |---|---|
 | EmbeddingProfile | 模型／版本、維度、document/query encoding、normalization、Tokenizer／revision、向量種類；向量邏輯名稱對應來源欄位及 Profile |
@@ -437,3 +439,4 @@ CSV 映射保存、Revision 計算、canonical JSON／Hash、部署綁定是否�
 ## 10. 交付與驗收要求
 
 Q-002 核定後，開發階段需提供 Pydantic Models、可匯出的 JSON Schema、完整 Local／ES／MongoDB 範例與無效範例。相同資料在 UI／HTTP／直接 Engine 呼叫得到相容驗證結果；Unicode offset、向量維度及欄位路徑有獨立驗收資料。實作 Schema 是程式可驗證的產物，變更時同步更新本文與範例，不允許各層另創契約。
+

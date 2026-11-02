@@ -60,3 +60,8 @@ Developer 的 Local Component 沿原有 PR／測試／Runtime Image 交付；Rem
 ## 開發擴充點的呈現
 
 Library 目錄中原本的「自訂 Importer／Parser／Chunker／Embedder／Indexer／Query Rewriter／Retriever／Reranker」已統一改為虛線框，文字為「允許自行開發 XXX」。這些是允許開發的擴充方向，尚未實作，不應解讀成已有可選的實體 Component。XXX_component 仍是 B 案例的示意名稱；A／B／C 的配置與連線保持原樣。
+
+
+## 對應 Pydantic 型別
+
+圖中 Contract 物件的可執行 Pydantic 草案與完整欄位見 [17](../docs/17_pydantic_contracts_draft.md)。既有共用形狀對齊 schemas/；IndexBinding 的欄位是本次新增提案，尚待確認，不代表正式 SDK 已凍結。

@@ -1,0 +1,647 @@
+{
+  "note": "Manually assembled contract examples. Chunk ID/fingerprint/vector/scores are illustrative; no tokenizer/model/index was executed.",
+  "ingestion_document": {
+    "document_id": "manual-001",
+    "source_revision": "v1",
+    "content": {
+      "text": "=== PAGE 1 ===\n# 設備保養\n## 安全注意事項\n清潔前先斷電，並確認設備已冷卻。\n作業時請配戴防護手套。\n\n=== PAGE 2 ===\n# 設備保養\n## 清潔週期\n每月清潔散熱孔。\n若環境粉塵較多，請提高檢查頻率。",
+      "title": "設備保養手冊"
+    },
+    "metadata": {
+      "department": "manufacturing",
+      "filename": "maintenance-manual.pdf"
+    }
+  },
+  "parsed_documents": [
+    {
+      "document_id": "manual-001",
+      "source_revision": "v1",
+      "units": [
+        {
+          "text": "# 設備保養\n## 安全注意事項\n清潔前先斷電，並確認設備已冷卻。\n作業時請配戴防護手套。",
+          "title": "設備保養手冊",
+          "page": 1
+        },
+        {
+          "text": "# 設備保養\n## 清潔週期\n每月清潔散熱孔。\n若環境粉塵較多，請提高檢查頻率。",
+          "title": "設備保養手冊",
+          "page": 2
+        }
+      ],
+      "metadata": {
+        "department": "manufacturing",
+        "filename": "maintenance-manual.pdf"
+      }
+    }
+  ],
+  "chunk_after_chunking": {
+    "chunk_id": "chunk-demo-001",
+    "document_id": "manual-001",
+    "source_revision": "v1",
+    "fields": {
+      "text": "# 設備保養\n## 安全注意事項\n清潔前先斷電，並確認設備已冷卻。\n作業時請配戴防護手套。",
+      "title": "設備保養手冊",
+      "page": 1
+    },
+    "metadata": {
+      "department": "manufacturing",
+      "filename": "maintenance-manual.pdf",
+      "_rag": {
+        "source_refs": [
+          {
+            "unit_index": 0,
+            "field": "text",
+            "output_field": "text",
+            "role": "split",
+            "start": 0,
+            "end": 45
+          },
+          {
+            "unit_index": 0,
+            "field": "title",
+            "output_field": "title",
+            "role": "copy"
+          },
+          {
+            "unit_index": 0,
+            "field": "page",
+            "output_field": "page",
+            "role": "copy"
+          }
+        ],
+        "chunking": {
+          "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chunk_ordinal": 0,
+          "task_id": "text"
+        }
+      }
+    },
+    "vectors": {}
+  },
+  "chunk_after_embedding": {
+    "chunk_id": "chunk-demo-001",
+    "document_id": "manual-001",
+    "source_revision": "v1",
+    "fields": {
+      "text": "# 設備保養\n## 安全注意事項\n清潔前先斷電，並確認設備已冷卻。\n作業時請配戴防護手套。",
+      "title": "設備保養手冊",
+      "page": 1
+    },
+    "metadata": {
+      "department": "manufacturing",
+      "filename": "maintenance-manual.pdf",
+      "_rag": {
+        "source_refs": [
+          {
+            "unit_index": 0,
+            "field": "text",
+            "output_field": "text",
+            "role": "split",
+            "start": 0,
+            "end": 45
+          },
+          {
+            "unit_index": 0,
+            "field": "title",
+            "output_field": "title",
+            "role": "copy"
+          },
+          {
+            "unit_index": 0,
+            "field": "page",
+            "output_field": "page",
+            "role": "copy"
+          }
+        ],
+        "chunking": {
+          "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chunk_ordinal": 0,
+          "task_id": "text"
+        }
+      }
+    },
+    "vectors": {
+      "text": {
+        "values": [
+          0.1,
+          0.2,
+          0.3
+        ],
+        "embedding_profile_id": "embedding-demo-v1",
+        "source_field": "text"
+      }
+    }
+  },
+  "index_binding_PROPOSAL": {
+    "contract_version": "index-binding-0.1-proposal",
+    "index_ref": "idx-demo",
+    "system_id": "system-A",
+    "backend": "elasticsearch",
+    "collection": "ws-system-a",
+    "index_generation": "g1",
+    "mapping_version": "mapping-v1",
+    "document_schema_version": "unit-schema-v1",
+    "capabilities": [
+      "fulltext",
+      "dense_vector"
+    ],
+    "fulltext_fields": [
+      "fields.text"
+    ],
+    "filter_fields": [],
+    "vector_bindings": {
+      "text": {
+        "embedding_profile_id": "embedding-demo-v1",
+        "source_field": "text",
+        "dimensions": 3
+      }
+    },
+    "searchable": true
+  },
+  "query_context": {
+    "query_id": "q-original",
+    "query": "清潔前應注意什麼？",
+    "ori_query_id": "q-original",
+    "ori_query": "清潔前應注意什麼？",
+    "source_query_ids": [],
+    "result_sets": [
+      {
+        "result_set_id": "rs-retrieval",
+        "stage": "retrieval",
+        "input_result_set_ids": [],
+        "source": {
+          "route_id": "es-hybrid",
+          "index_ref": "idx-demo",
+          "field_paths": [
+            "fields.text",
+            "vectors.text"
+          ]
+        },
+        "operation": {
+          "method": "es_sum_score",
+          "parameters": {},
+          "model_ref": null,
+          "scoring_query_id": null
+        },
+        "score_kind": "es_sum_score",
+        "score_order": "higher_is_better",
+        "items": [
+          {
+            "chunk": {
+              "chunk_id": "chunk-demo-001",
+              "document_id": "manual-001",
+              "source_revision": "v1",
+              "fields": {
+                "text": "# 設備保養\n## 安全注意事項\n清潔前先斷電，並確認設備已冷卻。\n作業時請配戴防護手套。",
+                "title": "設備保養手冊",
+                "page": 1
+              },
+              "metadata": {
+                "department": "manufacturing",
+                "filename": "maintenance-manual.pdf",
+                "_rag": {
+                  "source_refs": [
+                    {
+                      "unit_index": 0,
+                      "field": "text",
+                      "output_field": "text",
+                      "role": "split",
+                      "start": 0,
+                      "end": 45
+                    },
+                    {
+                      "unit_index": 0,
+                      "field": "title",
+                      "output_field": "title",
+                      "role": "copy"
+                    },
+                    {
+                      "unit_index": 0,
+                      "field": "page",
+                      "output_field": "page",
+                      "role": "copy"
+                    }
+                  ],
+                  "chunking": {
+                    "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "chunk_ordinal": 0,
+                    "task_id": "text"
+                  }
+                }
+              },
+              "vectors": {}
+            },
+            "score": 0.83,
+            "rank": 1,
+            "source_refs": []
+          }
+        ]
+      },
+      {
+        "result_set_id": "rs-rerank",
+        "stage": "model_score",
+        "input_result_set_ids": [
+          "rs-retrieval"
+        ],
+        "source": null,
+        "operation": {
+          "method": "cross_encoder",
+          "parameters": {},
+          "model_ref": "rerank-demo-v1",
+          "scoring_query_id": "q-original"
+        },
+        "score_kind": "reranker_score",
+        "score_order": "higher_is_better",
+        "items": [
+          {
+            "chunk": {
+              "chunk_id": "chunk-demo-001",
+              "document_id": "manual-001",
+              "source_revision": "v1",
+              "fields": {
+                "text": "# 設備保養\n## 安全注意事項\n清潔前先斷電，並確認設備已冷卻。\n作業時請配戴防護手套。",
+                "title": "設備保養手冊",
+                "page": 1
+              },
+              "metadata": {
+                "department": "manufacturing",
+                "filename": "maintenance-manual.pdf",
+                "_rag": {
+                  "source_refs": [
+                    {
+                      "unit_index": 0,
+                      "field": "text",
+                      "output_field": "text",
+                      "role": "split",
+                      "start": 0,
+                      "end": 45
+                    },
+                    {
+                      "unit_index": 0,
+                      "field": "title",
+                      "output_field": "title",
+                      "role": "copy"
+                    },
+                    {
+                      "unit_index": 0,
+                      "field": "page",
+                      "output_field": "page",
+                      "role": "copy"
+                    }
+                  ],
+                  "chunking": {
+                    "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "chunk_ordinal": 0,
+                    "task_id": "text"
+                  }
+                }
+              },
+              "vectors": {}
+            },
+            "score": 0.95,
+            "rank": 1,
+            "source_refs": [
+              {
+                "result_set_id": "rs-retrieval",
+                "chunk_id": "chunk-demo-001"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "active_result_set_ids": [
+      "rs-rerank"
+    ]
+  },
+  "inference_state": {
+    "contract_version": "inference-0.2-draft",
+    "query_contexts": [
+      {
+        "query_id": "q-original",
+        "query": "清潔前應注意什麼？",
+        "ori_query_id": "q-original",
+        "ori_query": "清潔前應注意什麼？",
+        "source_query_ids": [],
+        "result_sets": [
+          {
+            "result_set_id": "rs-retrieval",
+            "stage": "retrieval",
+            "input_result_set_ids": [],
+            "source": {
+              "route_id": "es-hybrid",
+              "index_ref": "idx-demo",
+              "field_paths": [
+                "fields.text",
+                "vectors.text"
+              ]
+            },
+            "operation": {
+              "method": "es_sum_score",
+              "parameters": {},
+              "model_ref": null,
+              "scoring_query_id": null
+            },
+            "score_kind": "es_sum_score",
+            "score_order": "higher_is_better",
+            "items": [
+              {
+                "chunk": {
+                  "chunk_id": "chunk-demo-001",
+                  "document_id": "manual-001",
+                  "source_revision": "v1",
+                  "fields": {
+                    "text": "# 設備保養\n## 安全注意事項\n清潔前先斷電，並確認設備已冷卻。\n作業時請配戴防護手套。",
+                    "title": "設備保養手冊",
+                    "page": 1
+                  },
+                  "metadata": {
+                    "department": "manufacturing",
+                    "filename": "maintenance-manual.pdf",
+                    "_rag": {
+                      "source_refs": [
+                        {
+                          "unit_index": 0,
+                          "field": "text",
+                          "output_field": "text",
+                          "role": "split",
+                          "start": 0,
+                          "end": 45
+                        },
+                        {
+                          "unit_index": 0,
+                          "field": "title",
+                          "output_field": "title",
+                          "role": "copy"
+                        },
+                        {
+                          "unit_index": 0,
+                          "field": "page",
+                          "output_field": "page",
+                          "role": "copy"
+                        }
+                      ],
+                      "chunking": {
+                        "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+                        "chunk_ordinal": 0,
+                        "task_id": "text"
+                      }
+                    }
+                  },
+                  "vectors": {}
+                },
+                "score": 0.83,
+                "rank": 1,
+                "source_refs": []
+              }
+            ]
+          },
+          {
+            "result_set_id": "rs-rerank",
+            "stage": "model_score",
+            "input_result_set_ids": [
+              "rs-retrieval"
+            ],
+            "source": null,
+            "operation": {
+              "method": "cross_encoder",
+              "parameters": {},
+              "model_ref": "rerank-demo-v1",
+              "scoring_query_id": "q-original"
+            },
+            "score_kind": "reranker_score",
+            "score_order": "higher_is_better",
+            "items": [
+              {
+                "chunk": {
+                  "chunk_id": "chunk-demo-001",
+                  "document_id": "manual-001",
+                  "source_revision": "v1",
+                  "fields": {
+                    "text": "# 設備保養\n## 安全注意事項\n清潔前先斷電，並確認設備已冷卻。\n作業時請配戴防護手套。",
+                    "title": "設備保養手冊",
+                    "page": 1
+                  },
+                  "metadata": {
+                    "department": "manufacturing",
+                    "filename": "maintenance-manual.pdf",
+                    "_rag": {
+                      "source_refs": [
+                        {
+                          "unit_index": 0,
+                          "field": "text",
+                          "output_field": "text",
+                          "role": "split",
+                          "start": 0,
+                          "end": 45
+                        },
+                        {
+                          "unit_index": 0,
+                          "field": "title",
+                          "output_field": "title",
+                          "role": "copy"
+                        },
+                        {
+                          "unit_index": 0,
+                          "field": "page",
+                          "output_field": "page",
+                          "role": "copy"
+                        }
+                      ],
+                      "chunking": {
+                        "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+                        "chunk_ordinal": 0,
+                        "task_id": "text"
+                      }
+                    }
+                  },
+                  "vectors": {}
+                },
+                "score": 0.95,
+                "rank": 1,
+                "source_refs": [
+                  {
+                    "result_set_id": "rs-retrieval",
+                    "chunk_id": "chunk-demo-001"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "active_result_set_ids": [
+          "rs-rerank"
+        ]
+      }
+    ],
+    "active_query_ids": [
+      "q-original"
+    ]
+  },
+  "module_result_success": {
+    "data": {
+      "contract_version": "inference-0.2-draft",
+      "query_contexts": [
+        {
+          "query_id": "q-original",
+          "query": "清潔前應注意什麼？",
+          "ori_query_id": "q-original",
+          "ori_query": "清潔前應注意什麼？",
+          "source_query_ids": [],
+          "result_sets": [
+            {
+              "result_set_id": "rs-retrieval",
+              "stage": "retrieval",
+              "input_result_set_ids": [],
+              "source": {
+                "route_id": "es-hybrid",
+                "index_ref": "idx-demo",
+                "field_paths": [
+                  "fields.text",
+                  "vectors.text"
+                ]
+              },
+              "operation": {
+                "method": "es_sum_score",
+                "parameters": {},
+                "model_ref": null,
+                "scoring_query_id": null
+              },
+              "score_kind": "es_sum_score",
+              "score_order": "higher_is_better",
+              "items": [
+                {
+                  "chunk": {
+                    "chunk_id": "chunk-demo-001",
+                    "document_id": "manual-001",
+                    "source_revision": "v1",
+                    "fields": {
+                      "text": "# 設備保養\n## 安全注意事項\n清潔前先斷電，並確認設備已冷卻。\n作業時請配戴防護手套。",
+                      "title": "設備保養手冊",
+                      "page": 1
+                    },
+                    "metadata": {
+                      "department": "manufacturing",
+                      "filename": "maintenance-manual.pdf",
+                      "_rag": {
+                        "source_refs": [
+                          {
+                            "unit_index": 0,
+                            "field": "text",
+                            "output_field": "text",
+                            "role": "split",
+                            "start": 0,
+                            "end": 45
+                          },
+                          {
+                            "unit_index": 0,
+                            "field": "title",
+                            "output_field": "title",
+                            "role": "copy"
+                          },
+                          {
+                            "unit_index": 0,
+                            "field": "page",
+                            "output_field": "page",
+                            "role": "copy"
+                          }
+                        ],
+                        "chunking": {
+                          "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+                          "chunk_ordinal": 0,
+                          "task_id": "text"
+                        }
+                      }
+                    },
+                    "vectors": {}
+                  },
+                  "score": 0.83,
+                  "rank": 1,
+                  "source_refs": []
+                }
+              ]
+            },
+            {
+              "result_set_id": "rs-rerank",
+              "stage": "model_score",
+              "input_result_set_ids": [
+                "rs-retrieval"
+              ],
+              "source": null,
+              "operation": {
+                "method": "cross_encoder",
+                "parameters": {},
+                "model_ref": "rerank-demo-v1",
+                "scoring_query_id": "q-original"
+              },
+              "score_kind": "reranker_score",
+              "score_order": "higher_is_better",
+              "items": [
+                {
+                  "chunk": {
+                    "chunk_id": "chunk-demo-001",
+                    "document_id": "manual-001",
+                    "source_revision": "v1",
+                    "fields": {
+                      "text": "# 設備保養\n## 安全注意事項\n清潔前先斷電，並確認設備已冷卻。\n作業時請配戴防護手套。",
+                      "title": "設備保養手冊",
+                      "page": 1
+                    },
+                    "metadata": {
+                      "department": "manufacturing",
+                      "filename": "maintenance-manual.pdf",
+                      "_rag": {
+                        "source_refs": [
+                          {
+                            "unit_index": 0,
+                            "field": "text",
+                            "output_field": "text",
+                            "role": "split",
+                            "start": 0,
+                            "end": 45
+                          },
+                          {
+                            "unit_index": 0,
+                            "field": "title",
+                            "output_field": "title",
+                            "role": "copy"
+                          },
+                          {
+                            "unit_index": 0,
+                            "field": "page",
+                            "output_field": "page",
+                            "role": "copy"
+                          }
+                        ],
+                        "chunking": {
+                          "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+                          "chunk_ordinal": 0,
+                          "task_id": "text"
+                        }
+                      }
+                    },
+                    "vectors": {}
+                  },
+                  "score": 0.95,
+                  "rank": 1,
+                  "source_refs": [
+                    {
+                      "result_set_id": "rs-retrieval",
+                      "chunk_id": "chunk-demo-001"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "active_result_set_ids": [
+            "rs-rerank"
+          ]
+        }
+      ],
+      "active_query_ids": [
+        "q-original"
+      ]
+    }
+  }
+}

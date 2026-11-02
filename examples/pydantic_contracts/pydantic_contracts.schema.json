@@ -1,0 +1,774 @@
+{
+  "$defs": {
+    "Chunk": {
+      "additionalProperties": false,
+      "properties": {
+        "chunk_id": {
+          "minLength": 1,
+          "title": "Chunk Id",
+          "type": "string"
+        },
+        "document_id": {
+          "minLength": 1,
+          "title": "Document Id",
+          "type": "string"
+        },
+        "source_revision": {
+          "minLength": 1,
+          "title": "Source Revision",
+          "type": "string"
+        },
+        "fields": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "minProperties": 1,
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Fields",
+          "type": "object"
+        },
+        "metadata": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Metadata",
+          "type": "object"
+        },
+        "vectors": {
+          "additionalProperties": {
+            "$ref": "#/$defs/DenseVector"
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Vectors",
+          "type": "object"
+        }
+      },
+      "required": [
+        "chunk_id",
+        "document_id",
+        "source_revision",
+        "fields",
+        "metadata",
+        "vectors"
+      ],
+      "title": "Chunk",
+      "type": "object"
+    },
+    "ChunkSourceRef": {
+      "additionalProperties": false,
+      "description": "Chunk metadata._rag.source_refs: document/unit/text provenance.",
+      "properties": {
+        "unit_index": {
+          "minimum": 0,
+          "title": "Unit Index",
+          "type": "integer"
+        },
+        "field": {
+          "minLength": 1,
+          "title": "Field",
+          "type": "string"
+        },
+        "output_field": {
+          "minLength": 1,
+          "title": "Output Field",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "split",
+            "copy"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "start": {
+          "minimum": 0,
+          "title": "Start",
+          "type": "integer"
+        },
+        "end": {
+          "minimum": 0,
+          "title": "End",
+          "type": "integer"
+        },
+        "chunk_start": {
+          "minimum": 0,
+          "title": "Chunk Start",
+          "type": "integer"
+        },
+        "chunk_end": {
+          "minimum": 0,
+          "title": "Chunk End",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "unit_index",
+        "field",
+        "output_field",
+        "role"
+      ],
+      "title": "ChunkSourceRef",
+      "type": "object"
+    },
+    "ChunkingIdentity": {
+      "additionalProperties": false,
+      "properties": {
+        "chunking_fingerprint": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Chunking Fingerprint",
+          "type": "string"
+        },
+        "chunk_ordinal": {
+          "minimum": 0,
+          "title": "Chunk Ordinal",
+          "type": "integer"
+        },
+        "task_id": {
+          "minLength": 1,
+          "title": "Task Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "chunking_fingerprint",
+        "chunk_ordinal",
+        "task_id"
+      ],
+      "title": "ChunkingIdentity",
+      "type": "object"
+    },
+    "DenseVector": {
+      "additionalProperties": false,
+      "properties": {
+        "values": {
+          "items": {
+            "type": "number"
+          },
+          "minItems": 1,
+          "title": "Values",
+          "type": "array"
+        },
+        "embedding_profile_id": {
+          "minLength": 1,
+          "title": "Embedding Profile Id",
+          "type": "string"
+        },
+        "source_field": {
+          "minLength": 1,
+          "title": "Source Field",
+          "type": "string"
+        }
+      },
+      "required": [
+        "values",
+        "embedding_profile_id",
+        "source_field"
+      ],
+      "title": "DenseVector",
+      "type": "object"
+    },
+    "IndexBinding": {
+      "additionalProperties": false,
+      "description": "NEW PROPOSAL: field names/requiredness await review; not frozen SDK.",
+      "properties": {
+        "contract_version": {
+          "const": "index-binding-0.1-proposal",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "index_ref": {
+          "minLength": 1,
+          "title": "Index Ref",
+          "type": "string"
+        },
+        "system_id": {
+          "minLength": 1,
+          "title": "System Id",
+          "type": "string"
+        },
+        "backend": {
+          "enum": [
+            "elasticsearch",
+            "local_search"
+          ],
+          "title": "Backend",
+          "type": "string"
+        },
+        "collection": {
+          "minLength": 1,
+          "title": "Collection",
+          "type": "string"
+        },
+        "index_generation": {
+          "minLength": 1,
+          "title": "Index Generation",
+          "type": "string"
+        },
+        "mapping_version": {
+          "minLength": 1,
+          "title": "Mapping Version",
+          "type": "string"
+        },
+        "document_schema_version": {
+          "minLength": 1,
+          "title": "Document Schema Version",
+          "type": "string"
+        },
+        "capabilities": {
+          "items": {
+            "enum": [
+              "fulltext",
+              "dense_vector",
+              "filter"
+            ],
+            "type": "string"
+          },
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "fulltext_fields": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Fulltext Fields",
+          "type": "array"
+        },
+        "filter_fields": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Filter Fields",
+          "type": "array"
+        },
+        "vector_bindings": {
+          "additionalProperties": {
+            "$ref": "#/$defs/VectorIndexBinding"
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Vector Bindings",
+          "type": "object"
+        },
+        "searchable": {
+          "title": "Searchable",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "contract_version",
+        "index_ref",
+        "system_id",
+        "backend",
+        "collection",
+        "index_generation",
+        "mapping_version",
+        "document_schema_version",
+        "capabilities",
+        "fulltext_fields",
+        "filter_fields",
+        "vector_bindings",
+        "searchable"
+      ],
+      "title": "IndexBinding",
+      "type": "object"
+    },
+    "InferenceState": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "inference-0.2-draft",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "query_contexts": {
+          "items": {
+            "$ref": "#/$defs/QueryContext"
+          },
+          "minItems": 1,
+          "title": "Query Contexts",
+          "type": "array"
+        },
+        "active_query_ids": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Active Query Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "contract_version",
+        "query_contexts",
+        "active_query_ids"
+      ],
+      "title": "InferenceState",
+      "type": "object"
+    },
+    "IngestionDocument": {
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "content"
+          ]
+        },
+        {
+          "required": [
+            "base64"
+          ]
+        },
+        {
+          "required": [
+            "uri"
+          ]
+        }
+      ],
+      "properties": {
+        "document_id": {
+          "minLength": 1,
+          "title": "Document Id",
+          "type": "string"
+        },
+        "source_revision": {
+          "minLength": 1,
+          "title": "Source Revision",
+          "type": "string"
+        },
+        "content": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "minProperties": 1,
+              "type": "object"
+            }
+          ],
+          "title": "Content"
+        },
+        "base64": {
+          "minLength": 1,
+          "title": "Base64",
+          "type": "string"
+        },
+        "uri": {
+          "minLength": 1,
+          "title": "Uri",
+          "type": "string"
+        },
+        "media_type": {
+          "minLength": 1,
+          "title": "Media Type",
+          "type": "string"
+        },
+        "schema_id": {
+          "minLength": 1,
+          "title": "Schema Id",
+          "type": "string"
+        },
+        "parsing_profile": {
+          "minLength": 1,
+          "title": "Parsing Profile",
+          "type": "string"
+        },
+        "metadata": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Metadata",
+          "type": "object"
+        }
+      },
+      "required": [
+        "document_id"
+      ],
+      "title": "IngestionDocument",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "ModuleResult_InferenceState_": {
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "$ref": "#/$defs/InferenceState"
+        }
+      },
+      "required": [
+        "data"
+      ],
+      "title": "ModuleResult[InferenceState]",
+      "type": "object"
+    },
+    "Operation": {
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "minLength": 1,
+          "title": "Method",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        },
+        "model_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Model Ref"
+        },
+        "scoring_query_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Scoring Query Id"
+        }
+      },
+      "required": [
+        "method",
+        "parameters",
+        "model_ref",
+        "scoring_query_id"
+      ],
+      "title": "Operation",
+      "type": "object"
+    },
+    "ParsedDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "document_id": {
+          "minLength": 1,
+          "title": "Document Id",
+          "type": "string"
+        },
+        "source_revision": {
+          "minLength": 1,
+          "title": "Source Revision",
+          "type": "string"
+        },
+        "units": {
+          "items": {
+            "additionalProperties": {
+              "$ref": "#/$defs/JsonValue"
+            },
+            "type": "object"
+          },
+          "minItems": 1,
+          "title": "Units",
+          "type": "array"
+        },
+        "metadata": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Metadata",
+          "type": "object"
+        }
+      },
+      "required": [
+        "document_id",
+        "source_revision",
+        "units",
+        "metadata"
+      ],
+      "title": "ParsedDocument",
+      "type": "object"
+    },
+    "QueryContext": {
+      "additionalProperties": false,
+      "properties": {
+        "query_id": {
+          "minLength": 1,
+          "title": "Query Id",
+          "type": "string"
+        },
+        "query": {
+          "minLength": 1,
+          "title": "Query",
+          "type": "string"
+        },
+        "ori_query_id": {
+          "minLength": 1,
+          "title": "Ori Query Id",
+          "type": "string"
+        },
+        "ori_query": {
+          "minLength": 1,
+          "title": "Ori Query",
+          "type": "string"
+        },
+        "source_query_ids": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Source Query Ids",
+          "type": "array"
+        },
+        "result_sets": {
+          "items": {
+            "$ref": "#/$defs/ResultSet"
+          },
+          "title": "Result Sets",
+          "type": "array"
+        },
+        "active_result_set_ids": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Active Result Set Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "query_id",
+        "query",
+        "ori_query_id",
+        "ori_query",
+        "source_query_ids",
+        "result_sets",
+        "active_result_set_ids"
+      ],
+      "title": "QueryContext",
+      "type": "object"
+    },
+    "RagMetadata": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "properties": {
+        "source_refs": {
+          "items": {
+            "$ref": "#/$defs/ChunkSourceRef"
+          },
+          "minItems": 1,
+          "title": "Source Refs",
+          "type": "array"
+        },
+        "chunking": {
+          "$ref": "#/$defs/ChunkingIdentity"
+        }
+      },
+      "title": "RagMetadata",
+      "type": "object"
+    },
+    "ResultItem": {
+      "additionalProperties": false,
+      "properties": {
+        "chunk": {
+          "$ref": "#/$defs/Chunk"
+        },
+        "score": {
+          "title": "Score",
+          "type": "number"
+        },
+        "rank": {
+          "minimum": 1,
+          "title": "Rank",
+          "type": "integer"
+        },
+        "source_refs": {
+          "items": {
+            "$ref": "#/$defs/ResultSourceRef"
+          },
+          "title": "Source Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "chunk",
+        "score",
+        "rank",
+        "source_refs"
+      ],
+      "title": "ResultItem",
+      "type": "object"
+    },
+    "ResultSet": {
+      "additionalProperties": false,
+      "properties": {
+        "result_set_id": {
+          "minLength": 1,
+          "title": "Result Set Id",
+          "type": "string"
+        },
+        "stage": {
+          "enum": [
+            "retrieval",
+            "merge",
+            "top_n",
+            "model_score"
+          ],
+          "title": "Stage",
+          "type": "string"
+        },
+        "input_result_set_ids": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Input Result Set Ids",
+          "type": "array"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RetrievalSource"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "operation": {
+          "$ref": "#/$defs/Operation"
+        },
+        "score_kind": {
+          "minLength": 1,
+          "title": "Score Kind",
+          "type": "string"
+        },
+        "score_order": {
+          "enum": [
+            "higher_is_better",
+            "lower_is_better"
+          ],
+          "title": "Score Order",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ResultItem"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "result_set_id",
+        "stage",
+        "input_result_set_ids",
+        "source",
+        "operation",
+        "score_kind",
+        "score_order",
+        "items"
+      ],
+      "title": "ResultSet",
+      "type": "object"
+    },
+    "ResultSourceRef": {
+      "additionalProperties": false,
+      "description": "ResultItem.source_refs: score/candidate lineage, distinct from ChunkSourceRef.",
+      "properties": {
+        "result_set_id": {
+          "minLength": 1,
+          "title": "Result Set Id",
+          "type": "string"
+        },
+        "chunk_id": {
+          "minLength": 1,
+          "title": "Chunk Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "result_set_id",
+        "chunk_id"
+      ],
+      "title": "ResultSourceRef",
+      "type": "object"
+    },
+    "RetrievalSource": {
+      "additionalProperties": false,
+      "properties": {
+        "route_id": {
+          "minLength": 1,
+          "title": "Route Id",
+          "type": "string"
+        },
+        "index_ref": {
+          "minLength": 1,
+          "title": "Index Ref",
+          "type": "string"
+        },
+        "field_paths": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Field Paths",
+          "type": "array"
+        }
+      },
+      "required": [
+        "route_id",
+        "index_ref",
+        "field_paths"
+      ],
+      "title": "RetrievalSource",
+      "type": "object"
+    },
+    "VectorIndexBinding": {
+      "additionalProperties": false,
+      "description": "Proposed entry under IndexBinding.vector_bindings; key is vector name.",
+      "properties": {
+        "embedding_profile_id": {
+          "minLength": 1,
+          "title": "Embedding Profile Id",
+          "type": "string"
+        },
+        "source_field": {
+          "minLength": 1,
+          "title": "Source Field",
+          "type": "string"
+        },
+        "dimensions": {
+          "minimum": 1,
+          "title": "Dimensions",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "embedding_profile_id",
+        "source_field",
+        "dimensions"
+      ],
+      "title": "VectorIndexBinding",
+      "type": "object"
+    }
+  },
+  "title": "Diagram 03 — Pydantic contract draft",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Draft type catalog. IndexBinding fields are proposed. Pydantic custom semantic validators are not all represented here; existing shared schemas remain authoritative."
+}

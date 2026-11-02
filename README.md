@@ -36,6 +36,7 @@ Chunk 預設切 fields.text 並寫回 text；進階多欄位任務各自切分�
 | [14 ParsedDocument](docs/14_parsed_document_contract.md) | 平面 Units、Parser／Chunker 分工與來源追溯 |
 | [15 Chunk](docs/15_chunk_contract.md) | 切分／複製、來源、向量、ID 與欄位組裝待討論 |
 | [16 Parser 開發範例](docs/16_parser_component_development_examples.md) | 共用 Pydantic、Local ABC、Remote Adapter 與 FastAPI，搭配三種交付模式圖 |
+| [17 Pydantic Contract 草案](docs/17_pydantic_contracts_draft.md) | 03 圖中共用資料物件、推論型別、IndexBinding 提案、可執行模型與 JSON Schema 目錄 |
 
 名詞以 03 為準；資料的精確定義引用 schemas/ 與 13～15，不在各模組重寫一份。Component Developer 依序讀 11 → 04 → 對應資料契約 → 12。完整 Engine Config／SDK 尚未凍結，示例不等於可直接執行的產品介面。
 
@@ -60,3 +61,4 @@ Chunk 預設切 fields.text 並寫回 text；進階多欄位任務各自切分�
 
 
 Parser 開發示範：[三種交付模式圖](diagrams/04_component_delivery_modes.md) → [16 兩種開發方式與程式](docs/16_parser_component_development_examples.md)。Remote 服務不要求完整 Engine／ABC；正式 HTTP／參數協定仍待核定。
+

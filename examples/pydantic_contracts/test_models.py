@@ -1,0 +1,123 @@
+"""Offline checks against existing shared fixtures and canonical JSON Schemas."""
+from copy import deepcopy
+import json
+from pathlib import Path
+import unittest
+from pydantic import ValidationError
+from jsonschema import Draft202012Validator
+from referencing import Registry,Resource
+from models import *
+
+ROOT=Path(__file__).resolve().parents[2]
+CASES=json.loads((ROOT/'examples/chunk/cases.json').read_text())
+STATES=[json.loads(p.read_text()) for p in sorted((ROOT/'examples/inference').glob('*.json'))]
+
+
+def registry():
+    reg=Registry()
+    for path in (ROOT/'schemas').glob('*.json'):
+        schema=json.loads(path.read_text())
+        if '$id' in schema:reg=reg.with_resource(schema['$id'],Resource.from_contents(schema))
+    return reg
+
+
+def binding():
+    return IndexBinding(contract_version='index-binding-0.1-proposal',index_ref='idx-demo',
+        system_id='system-A',backend='elasticsearch',collection='ws-system-a',index_generation='g1',
+        mapping_version='mapping-v1',document_schema_version='unit-schema-v1',
+        capabilities=['fulltext','dense_vector'],fulltext_fields=['fields.text'],filter_fields=[],
+        vector_bindings={'text':VectorIndexBinding(embedding_profile_id='embedding-demo-v1',source_field='text',dimensions=3)},searchable=True)
+
+
+class ModelTests(unittest.TestCase):
+    def test_existing_shared_fixtures_roundtrip(self):
+        parsed=Draft202012Validator(json.loads((ROOT/'schemas/parsed_document.schema.json').read_text()))
+        chunk=Draft202012Validator(json.loads((ROOT/'schemas/chunk.schema.json').read_text()),registry=registry())
+        for case in CASES:
+            source=ParsedDocument.model_validate(case['source']).to_payload();parsed.validate(source)
+            self.assertEqual(source,case['source'])
+            for data in case['chunks']:
+                result=Chunk.model_validate(data).to_payload();chunk.validate(result);self.assertEqual(result,data)
+        infer=Draft202012Validator(json.loads((ROOT/'schemas/inference_context.schema.json').read_text()),registry=registry())
+        for state in STATES:
+            result=InferenceState.model_validate(state).to_payload();infer.validate(result);self.assertEqual(result,state)
+            for query in InferenceState.model_validate(state).query_contexts:
+                for rs in query.result_sets:validate_result_order(rs)
+
+    def test_input_sources_and_omission(self):
+        schema=Draft202012Validator(json.loads((ROOT/'schemas/ingestion_document.schema.json').read_text()))
+        for value in [{'document_id':'d','content':'text'}, {'document_id':'d','uri':'https://example.com/a'},
+                      {'document_id':'d','base64':'dGV4dA=='}]:
+            result=IngestionDocument.model_validate(value).to_payload();self.assertEqual(result,value);schema.validate(result)
+        for value in [{'document_id':'d'}, {'document_id':'d','content':'text','uri':'https://example.com'},
+                      {'document_id':'d','content':None}, {'document_id':'d','content':'text','source_revision':None},
+                      {'document_id':'d','content':'text','unexpected':1}]:
+            with self.assertRaises(ValidationError):IngestionDocument.model_validate(value)
+
+    def test_units_remain_plain_dictionaries(self):
+        value={'document_id':'d','source_revision':'v1','units':[{'text':'A','page':1},{'custom_text':'B'}],'metadata':{}}
+        doc=ParsedDocument.model_validate(value)
+        self.assertIsInstance(doc.units[0],dict)
+        for units in [[],[{}],[{'text':1}]]:
+            with self.assertRaises(ValidationError):ParsedDocument.model_validate({**value,'units':units})
+
+    def test_chunk_provenance_and_finite_vectors(self):
+        base=deepcopy(CASES[0]['chunks'][0]);ref=base['metadata']['_rag']['source_refs'][0]
+        for updates in [{'unit_index':-1},{'start':4,'end':2},{'start':None},{'block_id':'old'}]:
+            bad=deepcopy(base);bad['metadata']['_rag']['source_refs'][0].update(updates)
+            with self.assertRaises(ValidationError):Chunk.model_validate(bad)
+        for value in [float('nan'),float('inf')]:
+            with self.assertRaises(ValidationError):DenseVector(values=[value],embedding_profile_id='p',source_field='text')
+        with self.assertRaises(ValidationError):Chunk.model_validate({**base,'metadata':{'_rag':None}})
+        self.assertNotIn('start',ChunkSourceRef(unit_index=0,field='text',output_field='text',role='copy').to_payload())
+        with self.assertRaises(ValidationError):ChunkSourceRef(unit_index=0,field="text",output_field="original_text",role="copy",chunk_start=0,chunk_end=1)
+
+    def test_resultset_stage_rules_and_lineage(self):
+        first=deepcopy(STATES[0]['query_contexts'][0]['result_sets'][0])
+        for change in ('source','inputs','lineage'):
+            bad=deepcopy(first)
+            if change=='source':bad['source']=None
+            elif change=='inputs':bad['input_result_set_ids']=['rs-old']
+            else:bad['items'][0]['source_refs']=[{'result_set_id':'old','chunk_id':'c'}]
+            with self.assertRaises(ValidationError):ResultSet.model_validate(bad)
+        later=deepcopy(first);later.update(stage='top_n',source=None,input_result_set_ids=['rs-old'])
+        with self.assertRaises(ValidationError):ResultSet.model_validate(later)
+        with self.assertRaises(ValidationError):Operation(method='x',parameters={},scoring_query_id=None)
+
+    def test_active_references_and_rank(self):
+        value=deepcopy(STATES[0]);value['active_query_ids']=['missing']
+        with self.assertRaises(ValidationError):InferenceState.model_validate(value)
+        value=deepcopy(STATES[0]['query_contexts'][0]);value['active_result_set_ids']=['missing']
+        with self.assertRaises(ValidationError):QueryContext.model_validate(value)
+        rs=ResultSet.model_validate(STATES[0]['query_contexts'][0]['result_sets'][0]);rs.items[0].rank=2
+        with self.assertRaises(ValueError):validate_result_order(rs)
+
+    def test_proposed_index_binding_and_vectors(self):
+        target=binding();embedded=Chunk.model_validate(next(c for c in CASES if c['case_id']=='embedded')['chunks'][0])
+        validate_chunk_binding(embedded,target)
+        target.vector_bindings['text'].dimensions=4
+        with self.assertRaises(ValueError):validate_chunk_binding(embedded,target)
+        value=binding().to_payload();value['capabilities']=[]
+        with self.assertRaises(ValidationError):IndexBinding.model_validate(value)
+        value=binding().to_payload();value['password']='not allowed'
+        with self.assertRaises(ValidationError):IndexBinding.model_validate(value)
+
+    def test_new_examples_are_valid_wire_payloads(self):
+        examples=json.loads(Path(__file__).with_name('examples.json').read_text())
+        for name,schema_name in [('ingestion_document','ingestion_document'),('chunk_after_chunking','chunk'),('chunk_after_embedding','chunk'),('inference_state','inference_context')]:
+            schema=json.loads((ROOT/'schemas'/f'{schema_name}.schema.json').read_text())
+            Draft202012Validator(schema,registry=registry()).validate(examples[name])
+        for doc in examples['parsed_documents']:
+            ParsedDocument.model_validate(doc)
+        validate_chunk_binding(Chunk.model_validate(examples['chunk_after_embedding']),IndexBinding.model_validate(examples['index_binding_PROPOSAL']))
+
+    def test_generated_catalog_and_module_result(self):
+        from pydantic.json_schema import models_json_schema
+        _,schema=models_json_schema([(m,'validation') for m in PUBLIC_MODELS])
+        Draft202012Validator.check_schema(schema)
+        self.assertIn('IndexBinding',schema['$defs'])
+        state=InferenceState.model_validate(STATES[0]);wrapped=ModuleResult[InferenceState](data=state)
+        self.assertEqual(wrapped.to_payload()['data'],STATES[0])
+
+
+if __name__=='__main__':unittest.main(verbosity=2)
