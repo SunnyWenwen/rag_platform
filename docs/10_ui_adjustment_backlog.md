@@ -287,7 +287,7 @@ v0.10 的無結構／text-spans／page-blocks 展示僅代表舊契約。現行�
 - [x] Inference 改呈現 ResultSets／items、Chunk 內容、score／rank、來源與 Trace；移除示意答案／生成 citations。
 - [x] 移除「為 Generation 必須合併成一份」的保存 Gate，允許最終多份分組清單；不隱含新增融合或全域排序。
 - [x] Evaluation 移除 Answer Correctness／Faithfulness 與參考答案欄位；保留 Recall@K、MRR、Latency、Usage、Error Rate。
-- [x] 手動／助手／Create／Edit／匯出／API 說明一致；舊 config.generation 顯示需遷移，不靜默執行或刪除。已更新測試；真實瀏覽器截圖／版面 QA 未完成（Chromium 下載失敗）。
+- [x] 手動／助手／Create／Edit／匯出／API 說明一致；舊 config.generation 顯示需遷移，不靜默執行或刪除。已更新測試；2026-11-03 已補通過 Chromium 桌面／手機版面與操作驗證。
 - [ ] 技術命名另做明確 migration：repo／branch、Python package、URN／Schema ID、_rag、RAGBlueprint 與儲存 key。此輪只改規格與圖，不做技術識別全域取代。
 
 <a id="uib-016-remote-service-pipeline"></a>
@@ -316,5 +316,14 @@ v0.10 的無結構／text-spans／page-blocks 展示僅代表舊契約。現行�
 - 預覽每 Unit／任務只展示整段一筆，不實際計算 Token 切分／2＋3 的數量；2＋3 範例僅解釋串接規則，沒有跨 Unit overlap／合併。Header-aware 讀 Markdown text，超長章節沿用 Recursive 設定。
 - Create／Edit／取消、CSV／JSON 映射、API 說明、助手樣本、結果計畫及 Export 已同步。舊 Generation／headings Config 與舊 fields／structure 樣本回明確遷移訊息，不自動轉換。
 - 通過 tests/prototype.test.cjs（56）、schema-contract.test.cjs（5）、inference-processing.test.cjs（23）、prototype.dom.test.cjs、inference-processing.dom.test.cjs（13）及 retrieval-units.dom.test.cjs；後者涵蓋品牌／無 Generation、多清單、預解析派送、第二 Unit 缺欄位、Unicode 位置、完整複製、Edit 取消及結果／Export。
-- jsdom 26 用於 DOM 驗證；Chromium 安裝下載失敗，尚未取得新版真實瀏覽器截圖／桌面與手機視覺驗證。未執行真實 Parser／Tokenizer／模型／DB／HTTP；沒有把 Mock 當後端能力。
+- jsdom 26 用於 DOM 驗證；首次 Playwright Chromium 下載失敗，後續已改用 @sparticuz/chromium 補通過新版真實瀏覽器驗證（見下）。未執行真實 Parser／Tokenizer／模型／DB／HTTP；沒有把 Mock 當後端能力。
 - UIB-013 與 v0.11 重疊的預覽／來源／欄位任務已套用，完整 Engine 語意與真實 ID／fingerprint 等仍未完成；舊 UIB-001／005／006 的勾選狀態仍應搭配版本完成紀錄閱讀。
+
+
+### 2026-11-03 Chromium 補驗證（已完成）
+
+- 使用 @sparticuz/chromium 的 Chromium 153.0.8010.0，搭配 Playwright 執行 tests/retrieval-units.browser.test.cjs。npm 套件取得成功；自動解壓遇到 chown EINVAL，改用 Brotli 解壓及 tar --no-same-owner，在獨立暫存目錄啟動成功。這是測試環境處理，未修改產品頁面。
+- 通過 1440×1000 桌面與 390×844 手機寬度檢查，確認無整頁水平溢出；實際檢視首頁、Create、Chunking 及 Inference 截圖。測試環境另載入 Noto Sans TC 字型供中文截圖，字型未加入產品依賴。
+- 真實互動涵蓋 Create／Edit／取消、Header-aware／Units 說明、CSV 上傳映射與模擬 Ingestion、ResultSets 呈現、API 說明、最終多清單可儲存、Export 必填綁定 gate、手機 Chunking 與非法數值卡控。無頁面 JavaScript 錯誤。
+- 新測試可用已安裝的 Playwright Chromium 直接執行；指定 CHROMIUM_EXECUTABLE 時使用已準備的執行檔與 @sparticuz/chromium launch args，環境需提供相容 LD_LIBRARY_PATH。QA_OUTPUT_DIR 可指定截圖目錄，QA_FONT_CSS 可選本地 Noto Sans TC 的 CSS。
+- 瀏覽器驗證成功不代表真實 Parser／Tokenizer／模型／DB／部署完成；CSV 與事件在瀏覽器執行，檢索／評估仍為示意。未新增真實後端能力，也未重定 Contract。
