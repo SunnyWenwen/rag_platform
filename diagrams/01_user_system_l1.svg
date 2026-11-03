@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="2360" height="1370" viewBox="0 0 2360 1370" role="img" aria-labelledby="title desc">
-<title id="title">Retrieval Builder 測試、共用 Engine 與四步 Component 開發流程</title>
-<desc id="desc">上方為 Retrieval Builder User 的測試區塊，Build 產出 Config，Config 與共用 Engine 建立測試 System。框外的 YAML 部署與共用 Engine 建立 k8s System。中間為 Retrieval Engine Library，提供可選 Module／Component 的連線直接指向 Build。下方為 Retrieval Engine Developer 的開發區塊，依序下載 repo／確認開發 contract、開發 Component、測試與 PR 審查、發布並更新 Retrieval Engine Library；角色名稱標示於區塊標題。實線為操作流程與發布，虛線為設定、產出及共用能力。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="2360" height="1620" viewBox="0 0 2360 1620" role="img" aria-labelledby="title desc">
+<title id="title">Retrieval Builder 測試平台、共用 Library 與 Local／Remote 開發流程</title>
+<desc id="desc">Build 到 Deploy 六步在同一水平；1～5 在測試平台框內，6 在框外。Remote Developer 提供 Manifest 註冊能力，Library 透過 Remote API Adapter 呼叫獨立 Service；遠端實作不包進 Library。上方為 Retrieval Builder User 的測試區塊，Build 產出 Config，Config 與共用 Engine 建立測試 System。框外的 YAML 部署與共用 Engine 建立 k8s System。中間為 Retrieval Engine Library，提供可選 Module／Component 的連線直接指向 Build。下方為 Retrieval Engine Developer 的開發區塊，依序下載 repo／確認開發 contract、開發 Component、測試與 PR 審查、發布並更新 Retrieval Engine Library；角色名稱標示於區塊標題。實線為操作流程與發布，虛線為設定、產出及共用能力。</desc>
 <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 Z" fill="#66788b" /></marker></defs>
 <style>
 text{font-family:'Noto Sans CJK TC','Noto Sans TC','Microsoft JhengHei',sans-serif;font-weight:400;text-anchor:middle;dominant-baseline:central;fill:#143054}
@@ -9,10 +9,10 @@ text{font-family:'Noto Sans CJK TC','Noto Sans TC','Microsoft JhengHei',sans-ser
 .node rect{stroke-width:1.8}.edge{fill:none;stroke:#60768e;stroke-width:2;marker-end:url(#arrow)}
 .relation{stroke:#66788b;stroke-dasharray:7 7}.edge-label{fill:#485d71;stroke:white;stroke-width:11;stroke-linejoin:round;paint-order:stroke fill}
 .frame-title{font-size:26;text-anchor:start;font-weight:500}.note{font-size:18;fill:#66788b}
-</style><rect width="2360" height="1370" fill="white" />
-<g id="BUILDER" class="frame"><rect x="30" y="35" width="1700" height="700" rx="12" fill="#f7faff" stroke="#9aafc9" stroke-width="1.8" /><text class="frame-title" x="55" y="65" style="stroke:none">Retrieval Builder 測試（for Retrieval Builder User）</text></g>
-<g id="ENGINE" class="frame"><rect x="30" y="830" width="2250" height="180" rx="12" fill="#f7f4fc" stroke="#b5a4d0" stroke-width="1.8" /><text class="frame-title" x="55" y="860" style="stroke:none">Retrieval Engine Library</text></g>
-<g id="DEVELOPMENT" class="frame"><rect x="30" y="1110" width="2250" height="200" rx="12" fill="#faf8fd" stroke="#b5a4d0" stroke-width="1.8" /><text class="frame-title" x="55" y="1140" style="stroke:none">Retrieval Engine Component 開發（for Retrieval Engine Developer）</text></g>
+</style><rect width="2360" height="1620" fill="white" />
+<g id="BUILDER" class="frame"><rect x="30" y="35" width="1700" height="700" rx="12" fill="#f7faff" stroke="#9aafc9" stroke-width="1.8" /><text class="frame-title" x="55" y="65" style="stroke:none">Retrieval Builder 測試平台 (for Retrieval Builder User)</text></g>
+<g id="ENGINE" class="frame"><rect x="30" y="830" width="1700" height="180" rx="12" fill="#f7f4fc" stroke="#b5a4d0" stroke-width="1.8" /><text class="frame-title" x="55" y="860" style="stroke:none">Retrieval Engine Library</text></g>
+<g id="DEVELOPMENT" class="frame"><rect x="30" y="1110" width="2250" height="450" rx="12" fill="#faf8fd" stroke="#b5a4d0" stroke-width="1.8" /><text class="frame-title" x="55" y="1140" style="stroke:none">Retrieval Engine Component 開發（for Retrieval Engine Developer）</text></g>
 <path id="edge-B-I" data-source="B" data-target="I" data-label="" class="edge" d="M300,352 L360,352" />
 <path id="edge-I-Q" data-source="I" data-target="Q" data-label="" class="edge" d="M600,352 L660,352" />
 <path id="edge-Q-E" data-source="Q" data-target="E" data-label="" class="edge" d="M900,352 L960,352" />
@@ -28,8 +28,8 @@ text{font-family:'Noto Sans CJK TC','Noto Sans TC','Microsoft JhengHei',sans-ser
 <path id="edge-E-S" data-source="E" data-target="S" data-label="評估" class="edge relation" d="M1080,520 L860,520 L860,610" />
 <path id="edge-E-R" data-source="E" data-target="R" data-label="產出" class="edge relation" d="M1080,395 L1080,620" />
 <path id="edge-X-Y" data-source="X" data-target="Y" data-label="產出" class="edge relation" d="M1580,395 L1580,620" />
-<path id="edge-X-D" data-source="X" data-target="D" data-label="使用匯出的 YAML" class="edge" d="M1700,352 L1810,352 L1810,487 L1900,487" />
-<path id="edge-D-K" data-source="D" data-target="K" data-label="部署" class="edge relation" d="M2080,530 L2080,620" />
+<path id="edge-X-D" data-source="X" data-target="D" data-label="使用匯出的 YAML" class="edge" d="M1700,352 L1900,352" />
+<path id="edge-D-K" data-source="D" data-target="K" data-label="部署" class="edge relation" d="M2080,395 L2080,620" />
 <path id="edge-Y-K" data-source="Y" data-target="K" data-label="套用 YAML" class="edge relation" d="M1700,660 L1900,660" />
 <path id="edge-GE-S" data-source="GE" data-target="S" data-label="依 Config 建立" class="edge relation" d="M1000,865 L1000,785 L660,785 L660,710" />
 <path id="edge-GE-K" data-source="GE" data-target="K" data-label="Library 執行核心（由 Platform Image 封裝）" class="edge relation" d="M1360,865 L1360,785 L2080,785 L2080,700" />
@@ -69,9 +69,9 @@ text{font-family:'Noto Sans CJK TC','Noto Sans TC','Microsoft JhengHei',sans-ser
 <text x="1580.0" y="644.5" font-size="24" style="stroke:none">YAML 設定檔</text>
 <text x="1580.0" y="675.5" font-size="18" style="stroke:none">Config＋部署設定</text>
 </g>
-<g id="D" class="node deploy" data-label="6. Deploy YAML in FTEST/ENT"><rect x="1900" y="445" width="360" height="85" rx="10" />
-<text x="2080.0" y="472.0" font-size="24" style="stroke:none">6. Deploy YAML</text>
-<text x="2080.0" y="503.0" font-size="22" style="stroke:none">in FTEST/ENT</text>
+<g id="D" class="node deploy" data-label="6. Deploy YAML in FTEST/ENT"><rect x="1900" y="310" width="360" height="85" rx="10" />
+<text x="2080.0" y="337.0" font-size="24" style="stroke:none">6. Deploy YAML</text>
+<text x="2080.0" y="368.0" font-size="22" style="stroke:none">in FTEST/ENT</text>
 </g>
 <g id="K" class="node object" data-label="Retrieval System in k8s"><rect x="1900" y="620" width="360" height="80" rx="10" />
 <text x="2080.0" y="660.0" font-size="26" style="stroke:none">Retrieval System in k8s</text>
@@ -93,20 +93,37 @@ text{font-family:'Noto Sans CJK TC','Noto Sans TC','Microsoft JhengHei',sans-ser
 <text class="edge-label" x="950" y="520" font-size="21" style="stroke:none">評估</text>
 <text class="edge-label" x="1080" y="575" font-size="21" style="stroke:none">產出</text>
 <text class="edge-label" x="1580" y="515" font-size="21" style="stroke:none">產出</text>
-<text class="edge-label" x="1850" y="410" font-size="19" style="stroke:none">使用匯出的 YAML</text>
-<text class="edge-label" x="2080" y="575" font-size="21" style="stroke:none">部署</text>
+<text class="edge-label" x="1800" y="305" font-size="19" style="stroke:none">使用匯出的 YAML</text>
+<text class="edge-label" x="2080" y="510" font-size="21" style="stroke:none">部署</text>
 <text class="edge-label" x="1800" y="640" font-size="20" style="stroke:none">套用 YAML</text>
 <text class="edge-label" x="825" y="785" font-size="22" style="stroke:none">依 Config 建立</text>
 <text class="edge-label" x="1760" y="785" font-size="22" style="stroke:none">Library 執行核心（由 Platform Image 封裝）</text>
 <text class="edge-label" x="450" y="920" font-size="23" style="stroke:none">提供可選 Module／Component</text>
-<text class="edge-label" x="1640" y="1055" font-size="23" style="stroke:none">更新 Retrieval Engine Library</text>
+<text class="edge-label" x="1640" y="1080" font-size="23" style="stroke:none">更新 Retrieval Engine Library</text>
 
-<text class="note" x="1180" y="1345" style="stroke:none">實線：操作流程與發布　 ·　 虛線：設定、產出及共用能力</text>
+<text class="note" x="1180" y="1595" style="stroke:none">實線：操作流程與發布　 ·　 虛線：設定、產出及共用能力</text>
+<text class="note" x="80" y="1170" style="text-anchor:start;fill:#443267">Local：提供 Component 原始碼</text>
 <path id="edge-DEV1-DEV2" data-source="DEV1" data-target="DEV2" data-label="" class="edge" d="M520,1229 L650,1229" />
 <g id="DEV1" class="node engine" data-label="D1. 下載 repo / 確認開發 contract"><rect x="90" y="1185" width="430" height="88" rx="10" /><text x="305" y="1213" font-size="24" style="stroke:none">D1. 下載 repo /</text><text x="305" y="1248" font-size="22" style="stroke:none">確認開發 contract</text></g>
 <path id="edge-DEV2-DEV3" data-source="DEV2" data-target="DEV3" data-label="" class="edge" d="M1080,1229 L1210,1229" />
 <g id="DEV2" class="node engine" data-label="D2. 開發 Component"><rect x="650" y="1185" width="430" height="88" rx="10" /><text x="865" y="1213" font-size="24" style="stroke:none">D2. 開發 Component</text><text x="865" y="1248" font-size="20" style="stroke:none">邏輯＋Schema＋相依宣告</text></g>
 <path id="edge-DEV3-DEV4" data-source="DEV3" data-target="DEV4" data-label="" class="edge" d="M1640,1229 L1770,1229" />
 <g id="DEV3" class="node engine" data-label="D3. 測試與 PR 審查"><rect x="1210" y="1185" width="430" height="88" rx="10" /><text x="1425" y="1213" font-size="24" style="stroke:none">D3. 測試與 PR 審查</text><text x="1425" y="1248" font-size="20" style="stroke:none">契約／整合測試＋核可</text></g>
-<g id="DEV4" class="node engine" data-label="D4. 發布並更新 Retrieval Engine Library"><rect x="1770" y="1185" width="430" height="88" rx="10" /><text x="1985" y="1213" font-size="22.5" style="stroke:none">D4. 發布並更新 Retrieval Engine Library</text><text x="1985" y="1248" font-size="20" style="stroke:none">完整 Image＋DEV 部署</text></g>
+<g id="DEV4" class="node engine" data-label="D4. 發布並更新 Retrieval Engine Library"><rect x="1770" y="1185" width="430" height="88" rx="10" /><text x="1985" y="1213" font-size="18.5" style="stroke:none">D4. 發布並更新 Retrieval Engine Library</text><text x="1985" y="1248" font-size="20" style="stroke:none">完整 Image＋DEV 部署</text></g>
+
+<path id="edge-GE-RS" data-source="GE" data-target="RS" data-label="透過 Remote API Adapter 呼叫" class="edge relation" d="M1510,905 L1830,905" />
+<text class="edge-label" x="1670" y="880" font-size="18">Remote API Adapter 呼叫</text>
+<g id="RS" class="node deploy" data-label="Developer Service（Remote API）"><rect x="1830" y="865" width="430" height="100" rx="10"/><text x="2045" y="898" font-size="24">Developer Service</text><text x="2045" y="933" font-size="22">Remote API</text></g>
+<text class="note" x="2045" y="990">Image 部署 或 Developer 自行部署</text>
+<path id="edge-RDEV4-GE" data-source="RDEV4" data-target="GE" data-label="Manifest 核可註冊，提供可選服務" class="edge" d="M2200,1434 L2310,1434 L2310,1030 L1640,1030 L1640,945 L1510,945" />
+<text class="edge-label" x="1980" y="1032" font-size="21">Manifest 核可註冊，提供可選服務</text>
+<text class="note" x="80" y="1345" style="text-anchor:start;fill:#443267">Remote：提供服務與 Manifest，不必交付私有原始碼</text>
+<g id="RDEV1" class="node engine" data-label="R1. 確認邊界 Contract"><rect x="90" y="1390" width="430" height="88" rx="10"/><text x="305" y="1418" font-size="24">R1. 確認邊界 Contract</text><text x="305" y="1453" font-size="20">單 Module 或連續 Module Pipeline</text></g>
+<path id="edge-RDEV1-RDEV2" data-source="RDEV1" data-target="RDEV2" data-label="" class="edge" d="M520,1434 L650,1434" />
+<g id="RDEV2" class="node engine" data-label="R2. 開發 Remote API"><rect x="650" y="1390" width="430" height="88" rx="10"/><text x="865" y="1418" font-size="24">R2. 開發 Remote API</text><text x="865" y="1453" font-size="20">依輸入／輸出 Contract 實作 Service</text></g>
+<path id="edge-RDEV2-RDEV3" data-source="RDEV2" data-target="RDEV3" data-label="" class="edge" d="M1080,1434 L1210,1434" />
+<g id="RDEV3" class="node engine" data-label="R3. 測試並交付 Service"><rect x="1210" y="1390" width="430" height="88" rx="10"/><text x="1425" y="1418" font-size="24">R3. 測試並交付 Service</text><text x="1425" y="1453" font-size="20">Image 或既有 Endpoint</text></g>
+<path id="edge-RDEV3-RDEV4" data-source="RDEV3" data-target="RDEV4" data-label="" class="edge" d="M1640,1434 L1770,1434" />
+<g id="RDEV4" class="node engine" data-label="R4. 提交 Manifest／註冊"><rect x="1770" y="1390" width="430" height="88" rx="10"/><text x="1985" y="1418" font-size="24">R4. 提交 Manifest／註冊</text><text x="1985" y="1453" font-size="20">I/O、設定 Schema、連線／部署描述</text></g>
+<text class="note" x="1180" y="1525">Builder User 選擇已註冊服務；Manifest 宣告範圍與參數，遠端邏輯由 Service 執行</text>
 </svg>

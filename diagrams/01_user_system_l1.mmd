@@ -1,8 +1,9 @@
 flowchart TB
     %% 節點與關係定義；三層固定版面見同名 SVG，PNG 由 SVG 產生。
+    %% 固定 SVG／PNG：1～6 同水平，6 在平台框外。
     %% 上：Retrieval Builder 測試；中：共用 Retrieval Engine Library；下：Retrieval Engine Component 開發。
     %% Runtime API／Image 包裝見 02 Infra；本圖以 Engine 與設定建立 System 表達。
-    subgraph BUILDER["Retrieval Builder 測試（for Retrieval Builder User）"]
+    subgraph BUILDER["Retrieval Builder 測試平台 (for Retrieval Builder User)"]
         direction LR
         B["1. Build（設定 Config）"] --> I["2. Ingestion"]
         I --> Q["3. Inference"]
@@ -42,11 +43,18 @@ flowchart TB
 
     subgraph DEVELOPMENT["Retrieval Engine Component 開發（for Retrieval Engine Developer）"]
         direction LR
+        %% Local 路徑：提供原始碼
         DEV1["D1. 下載 repo / 確認開發 contract"] --> DEV2["D2. 開發 Component"]
         DEV2 --> DEV3["D3. 測試與 PR 審查"]
         DEV3 --> DEV4["D4. 發布並更新 Retrieval Engine Library"]
+        RDEV1["R1. 確認邊界 Contract（單 Module／連續 Pipeline）"] --> RDEV2["R2. 開發 Remote API"]
+        RDEV2 --> RDEV3["R3. 測試並交付 Service（Image／既有 Endpoint）"]
+        RDEV3 --> RDEV4["R4. 提交 Manifest／核可註冊（I/O、設定 Schema、連線／部署描述）"]
     end
     DEV4 -->|更新 Retrieval Engine Library| GE
+    RDEV4 -->|Manifest 核可註冊，提供可選服務| GE
+    RS["Developer Service（Remote API；Image 部署／Developer 自行部署）"]
+    GE -. 透過 Remote API Adapter 呼叫 .-> RS
 
     classDef user fill:#e9f2ff,stroke:#6086c8,color:#143054
     classDef system fill:#ecf8f2,stroke:#599d85,color:#153f32
@@ -55,7 +63,9 @@ flowchart TB
     class B,I,Q,E,X,C user
     class F,S,R,Y,K system
     class D deploy
-    class GE,DEV1,DEV2,DEV3,DEV4 engine
+    class GE,DEV1,DEV2,DEV3,DEV4,RDEV1,RDEV2,RDEV3,RDEV4 engine
+    class RS deploy
     style BUILDER fill:#f7faff,stroke:#9aafc9
     style ENGINE fill:#f7f4fc,stroke:#b5a4d0
     style DEVELOPMENT fill:#faf8fd,stroke:#b5a4d0
+
