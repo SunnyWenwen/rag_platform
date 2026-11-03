@@ -21,7 +21,7 @@
 
 可檢視的 JSON Schema 定義目錄：[pydantic_contracts.schema.json](../examples/pydantic_contracts/pydantic_contracts.schema.json)；它是 **$defs 型別目錄**，不是一個可套用全部 payload 的 root Schema。單一型別須選相應 $defs／Pydantic Model。
 
-資料範例：[examples.json](../examples/pydantic_contracts/examples.json)，保留原有資料流，另以 type_examples 收錄全部 17 個型別範例；包含多頁 Input／ParsedDocument、Embedding 前後 Chunk、IndexBinding 提案、QueryContext、InferenceState 與成功 ModuleResult。Chunk ID／fingerprint／向量／分數為示意，不代表已執行 Tokenizer、Embedding、Indexing 或 Rerank。
+資料範例：[examples.json](../examples/pydantic_contracts/examples.json)，保留原有資料流，另以 type_examples 收錄全部 17 個型別範例；包含多頁 Input／ParsedDocument、Embedding 前後 Chunk、IndexBinding 提案、QueryContext、InferenceState 與成功 ModuleResult。Chunk ID／fingerprint／向量／分數為示意，不代表已執行 Tokenizer、Embedding、Indexing 或 Rerank。本文連續案例對應 type_examples，三筆字元切分結果另見 ten_character_chunk_demo；其他快照保留完整契約測試案例。
 
 ## 2. 欄位視圖
 
@@ -64,7 +64,7 @@ ingestion_doc = IngestionDocument(
     source_revision="v1",
     content={
         "title": "設備保養手冊",
-        "text": "=== PAGE 1 ===\n清潔前先斷電。\n=== PAGE 2 ===\n每月清潔散熱孔。",
+        "text": "=== PAGE 1 ===\n清潔前先斷電。\n=== PAGE 2 ===\n每月清潔散熱孔並檢查風扇運轉。",
     },
     media_type="application/json",
     metadata={"department": "製造部", "filename": "maintenance.txt"},
@@ -94,7 +94,7 @@ parsed_doc = ParsedDocument(
     source_revision=ingestion_doc.source_revision,
     units=[
         {"text": "清潔前先斷電。", "title": "設備保養手冊", "page": 1},
-        {"text": "每月清潔散熱孔。", "title": "設備保養手冊", "page": 2},
+        {"text": "每月清潔散熱孔並檢查風扇運轉。", "title": "設備保養手冊", "page": 2},
     ],
     metadata=ingestion_doc.metadata.copy(),
 )
@@ -135,35 +135,43 @@ class Chunk(BaseModel):
 ```
 
 <!-- type-example:Chunk:start -->
-**範例 — Chunk：**第一頁產生一個 Chunk，text 為切分內容，title／page 為複製欄位；以下顯示 Embedding 完成後的同一物件。
+**範例 — Chunk：**延續上面的 ParsedDocument：第 1 頁 7 個字元，第 2 頁 15 個字元（含句號）。每 10 字元切一組、overlap=0，且不跨 Unit 合併，因此得到 1＋2＝3 筆。此處用字元方便核對，並非把正式平台的 Tokenizer 計量改成字元。
 
 ```python
-# 第 1 個 unit 內容很短，示意切成一個 Chunk，複製 title／page。
-chunk = Chunk(
-    chunk_id="chunk-demo-001",
-    document_id=parsed_doc.document_id,
-    source_revision=parsed_doc.source_revision,
-    fields=parsed_doc.units[0].copy(),
-    metadata={
-        **parsed_doc.metadata,
-        "_rag": {
-            "source_refs": [
-                {"unit_index": 0, "field": "text", "output_field": "text",
-                 "role": "split", "start": 0, "end": len(parsed_doc.units[0]["text"])},
-                {"unit_index": 0, "field": "title", "output_field": "title", "role": "copy"},
-                {"unit_index": 0, "field": "page", "output_field": "page", "role": "copy"},
-            ],
-            "chunking": {
-                "chunking_fingerprint": "0" * 64,  # 示意值，非實際設定 hash。
-                "chunk_ordinal": 0,
-                "task_id": "text",
+# 教學用「每 10 個字元」，overlap=0；正式平台仍以 Tokenizer 計量。
+# 每個 Unit 獨立切分，title／page 複製到各自的 Chunk。
+chunks = []
+for unit in parsed_doc.units:
+    text = unit["text"]
+    for start in range(0, len(text), 10):
+        chunks.append(Chunk(
+            chunk_id=f"chunk-demo-{len(chunks) + 1:03d}",
+            document_id=parsed_doc.document_id,
+            source_revision=parsed_doc.source_revision,
+            fields={
+                "text": text[start:start + 10],
+                "title": unit["title"],
+                "page": unit["page"],
             },
-        },
-    },
-    vectors={"text": vector},  # Embedding 後；Chunker 剛輸出時為 {}。
-)
+            metadata=parsed_doc.metadata.copy(),
+            vectors={},  # 尚未執行 Embedding。
+        ))
+
+# 後面的 ResultItem 等範例，以第一筆 Chunk 示範。
+chunk = chunks[0]
 ```
 <!-- type-example:Chunk:end -->
+
+切分結果如下；三筆都沿用 `document_id="manual-001"`、`source_revision="v1"`、title 與文件 metadata，`vectors={}`。
+
+| chunk_id | fields.page | fields.text | 字元數 |
+|---|---:|---|---:|
+| chunk-demo-001 | 1 | 清潔前先斷電。 | 7 |
+| chunk-demo-002 | 2 | 每月清潔散熱孔並檢查 | 10 |
+| chunk-demo-003 | 2 | 風扇運轉。 | 5 |
+
+主流程範例只呈現六個頂層 key 與易讀內容，暫不列 `_rag`。這是教學簡化，不是移除正式 Chunker 的來源追溯要求；追溯型別另外見 §3。Embedding 尚未執行，因此這三筆不附示意向量。
+
 
 Chunker 輸出 vectors={}；Embedding 將命名向量寫回 vectors，例如 vectors.text。檢索投影也可以 vectors={}，不代表刪掉索引中已保存的向量。
 
@@ -416,7 +424,7 @@ rag_metadata = RagMetadata(
     ],
     chunking=chunking_identity,
 )
-assert rag_metadata.to_payload() == chunk.metadata["_rag"]
+# 追溯型別的獨立進階範例；主流程 Chunk 範例省略 _rag 以利說明。
 ```
 <!-- type-example:RagMetadata:end -->
 
@@ -546,4 +554,5 @@ payload = document.to_payload()
 驗證覆蓋既有 ParsedDocument／Chunk／5 份推論情境的 round-trip，以及缺欄位、來源三選一、null、型別、向量、來源引用、stage、active IDs、排序與 IndexBinding 提案反例。資料驗證不等於已執行搜尋／模型／重建／部署。
 
 **相容性說明：**共用物件形狀以 schemas/ 與 13～15 為準；這份 Pydantic 集合是可執行草案，部分 validator 增加跨欄位／語意檢查。自動匯出的 JSON Schema 不會完整表達所有 custom validator，不能用生成 Schema 單獨取代語意驗證。IndexBinding／ModuleResult 的正式版本、SDK 模組路徑與封裝仍待核定；本次沒有發布新 SDK，也沒有遷移 16 的既有教學程式。
+
 

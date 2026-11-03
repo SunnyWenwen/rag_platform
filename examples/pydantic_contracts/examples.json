@@ -644,13 +644,60 @@
       ]
     }
   },
+  "ten_character_chunk_demo": [
+    {
+      "chunk_id": "chunk-demo-001",
+      "document_id": "manual-001",
+      "source_revision": "v1",
+      "fields": {
+        "text": "清潔前先斷電。",
+        "title": "設備保養手冊",
+        "page": 1
+      },
+      "metadata": {
+        "department": "製造部",
+        "filename": "maintenance.txt"
+      },
+      "vectors": {}
+    },
+    {
+      "chunk_id": "chunk-demo-002",
+      "document_id": "manual-001",
+      "source_revision": "v1",
+      "fields": {
+        "text": "每月清潔散熱孔並檢查",
+        "title": "設備保養手冊",
+        "page": 2
+      },
+      "metadata": {
+        "department": "製造部",
+        "filename": "maintenance.txt"
+      },
+      "vectors": {}
+    },
+    {
+      "chunk_id": "chunk-demo-003",
+      "document_id": "manual-001",
+      "source_revision": "v1",
+      "fields": {
+        "text": "風扇運轉。",
+        "title": "設備保養手冊",
+        "page": 2
+      },
+      "metadata": {
+        "department": "製造部",
+        "filename": "maintenance.txt"
+      },
+      "vectors": {}
+    }
+  ],
   "type_examples": {
     "IngestionDocument": {
       "document_id": "manual-001",
       "source_revision": "v1",
       "content": {
         "title": "設備保養手冊",
-        "text": "=== PAGE 1 ===\n清潔前先斷電。\n=== PAGE 2 ===\n每月清潔散熱孔。"
+        "text": "=== PAGE 1 ===\n清潔前先斷電。\n=== PAGE 2 ===\n每月清潔散熱孔並檢查風扇運轉。"
       },
       "media_type": "application/json",
       "metadata": {
@@ -668,7 +715,7 @@
           "page": 1
         },
         {
-          "text": "每月清潔散熱孔。",
+          "text": "每月清潔散熱孔並檢查風扇運轉。",
           "title": "設備保養手冊",
           "page": 2
         }
@@ -698,48 +745,9 @@
       },
       "metadata": {
         "department": "製造部",
-        "filename": "maintenance.txt",
-        "_rag": {
-          "source_refs": [
-            {
-              "unit_index": 0,
-              "field": "text",
-              "output_field": "text",
-              "role": "split",
-              "start": 0,
-              "end": 7
-            },
-            {
-              "unit_index": 0,
-              "field": "title",
-              "output_field": "title",
-              "role": "copy"
-            },
-            {
-              "unit_index": 0,
-              "field": "page",
-              "output_field": "page",
-              "role": "copy"
-            }
-          ],
-          "chunking": {
-            "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
-            "chunk_ordinal": 0,
-            "task_id": "text"
-          }
-        }
+        "filename": "maintenance.txt"
       },
-      "vectors": {
-        "text": {
-          "values": [
-            0.1,
-            0.2,
-            0.3
-          ],
-          "embedding_profile_id": "embedding-demo-v1",
-          "source_field": "text"
-        }
-      }
+      "vectors": {}
     },
     "ResultSourceRef": {
       "result_set_id": "rs-retrieval",
@@ -757,48 +765,9 @@
         },
         "metadata": {
           "department": "製造部",
-          "filename": "maintenance.txt",
-          "_rag": {
-            "source_refs": [
-              {
-                "unit_index": 0,
-                "field": "text",
-                "output_field": "text",
-                "role": "split",
-                "start": 0,
-                "end": 7
-              },
-              {
-                "unit_index": 0,
-                "field": "title",
-                "output_field": "title",
-                "role": "copy"
-              },
-              {
-                "unit_index": 0,
-                "field": "page",
-                "output_field": "page",
-                "role": "copy"
-              }
-            ],
-            "chunking": {
-              "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
-              "chunk_ordinal": 0,
-              "task_id": "text"
-            }
-          }
+          "filename": "maintenance.txt"
         },
-        "vectors": {
-          "text": {
-            "values": [
-              0.1,
-              0.2,
-              0.3
-            ],
-            "embedding_profile_id": "embedding-demo-v1",
-            "source_field": "text"
-          }
-        }
+        "vectors": {}
       },
       "score": 0.95,
       "rank": 1,
@@ -855,48 +824,9 @@
             },
             "metadata": {
               "department": "製造部",
-              "filename": "maintenance.txt",
-              "_rag": {
-                "source_refs": [
-                  {
-                    "unit_index": 0,
-                    "field": "text",
-                    "output_field": "text",
-                    "role": "split",
-                    "start": 0,
-                    "end": 7
-                  },
-                  {
-                    "unit_index": 0,
-                    "field": "title",
-                    "output_field": "title",
-                    "role": "copy"
-                  },
-                  {
-                    "unit_index": 0,
-                    "field": "page",
-                    "output_field": "page",
-                    "role": "copy"
-                  }
-                ],
-                "chunking": {
-                  "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
-                  "chunk_ordinal": 0,
-                  "task_id": "text"
-                }
-              }
+              "filename": "maintenance.txt"
             },
-            "vectors": {
-              "text": {
-                "values": [
-                  0.1,
-                  0.2,
-                  0.3
-                ],
-                "embedding_profile_id": "embedding-demo-v1",
-                "source_field": "text"
-              }
-            }
+            "vectors": {}
           },
           "score": 0.95,
           "rank": 1,
@@ -949,48 +879,9 @@
                 },
                 "metadata": {
                   "department": "製造部",
-                  "filename": "maintenance.txt",
-                  "_rag": {
-                    "source_refs": [
-                      {
-                        "unit_index": 0,
-                        "field": "text",
-                        "output_field": "text",
-                        "role": "split",
-                        "start": 0,
-                        "end": 7
-                      },
-                      {
-                        "unit_index": 0,
-                        "field": "title",
-                        "output_field": "title",
-                        "role": "copy"
-                      },
-                      {
-                        "unit_index": 0,
-                        "field": "page",
-                        "output_field": "page",
-                        "role": "copy"
-                      }
-                    ],
-                    "chunking": {
-                      "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
-                      "chunk_ordinal": 0,
-                      "task_id": "text"
-                    }
-                  }
+                  "filename": "maintenance.txt"
                 },
-                "vectors": {
-                  "text": {
-                    "values": [
-                      0.1,
-                      0.2,
-                      0.3
-                    ],
-                    "embedding_profile_id": "embedding-demo-v1",
-                    "source_field": "text"
-                  }
-                }
+                "vectors": {}
               },
               "score": 0.83,
               "rank": 1,
@@ -1028,48 +919,9 @@
                 },
                 "metadata": {
                   "department": "製造部",
-                  "filename": "maintenance.txt",
-                  "_rag": {
-                    "source_refs": [
-                      {
-                        "unit_index": 0,
-                        "field": "text",
-                        "output_field": "text",
-                        "role": "split",
-                        "start": 0,
-                        "end": 7
-                      },
-                      {
-                        "unit_index": 0,
-                        "field": "title",
-                        "output_field": "title",
-                        "role": "copy"
-                      },
-                      {
-                        "unit_index": 0,
-                        "field": "page",
-                        "output_field": "page",
-                        "role": "copy"
-                      }
-                    ],
-                    "chunking": {
-                      "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
-                      "chunk_ordinal": 0,
-                      "task_id": "text"
-                    }
-                  }
+                  "filename": "maintenance.txt"
                 },
-                "vectors": {
-                  "text": {
-                    "values": [
-                      0.1,
-                      0.2,
-                      0.3
-                    ],
-                    "embedding_profile_id": "embedding-demo-v1",
-                    "source_field": "text"
-                  }
-                }
+                "vectors": {}
               },
               "score": 0.95,
               "rank": 1,
@@ -1130,48 +982,9 @@
                     },
                     "metadata": {
                       "department": "製造部",
-                      "filename": "maintenance.txt",
-                      "_rag": {
-                        "source_refs": [
-                          {
-                            "unit_index": 0,
-                            "field": "text",
-                            "output_field": "text",
-                            "role": "split",
-                            "start": 0,
-                            "end": 7
-                          },
-                          {
-                            "unit_index": 0,
-                            "field": "title",
-                            "output_field": "title",
-                            "role": "copy"
-                          },
-                          {
-                            "unit_index": 0,
-                            "field": "page",
-                            "output_field": "page",
-                            "role": "copy"
-                          }
-                        ],
-                        "chunking": {
-                          "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
-                          "chunk_ordinal": 0,
-                          "task_id": "text"
-                        }
-                      }
+                      "filename": "maintenance.txt"
                     },
-                    "vectors": {
-                      "text": {
-                        "values": [
-                          0.1,
-                          0.2,
-                          0.3
-                        ],
-                        "embedding_profile_id": "embedding-demo-v1",
-                        "source_field": "text"
-                      }
-                    }
+                    "vectors": {}
                   },
                   "score": 0.83,
                   "rank": 1,
@@ -1209,48 +1022,9 @@
                     },
                     "metadata": {
                       "department": "製造部",
-                      "filename": "maintenance.txt",
-                      "_rag": {
-                        "source_refs": [
-                          {
-                            "unit_index": 0,
-                            "field": "text",
-                            "output_field": "text",
-                            "role": "split",
-                            "start": 0,
-                            "end": 7
-                          },
-                          {
-                            "unit_index": 0,
-                            "field": "title",
-                            "output_field": "title",
-                            "role": "copy"
-                          },
-                          {
-                            "unit_index": 0,
-                            "field": "page",
-                            "output_field": "page",
-                            "role": "copy"
-                          }
-                        ],
-                        "chunking": {
-                          "chunking_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
-                          "chunk_ordinal": 0,
-                          "task_id": "text"
-                        }
-                      }
+                      "filename": "maintenance.txt"
                     },
-                    "vectors": {
-                      "text": {
-                        "values": [
-                          0.1,
-                          0.2,
-                          0.3
-                        ],
-                        "embedding_profile_id": "embedding-demo-v1",
-                        "source_field": "text"
-                      }
-                    }
+                    "vectors": {}
                   },
                   "score": 0.95,
                   "rank": 1,
@@ -1361,7 +1135,7 @@
               "page": 1
             },
             {
-              "text": "每月清潔散熱孔。",
+              "text": "每月清潔散熱孔並檢查風扇運轉。",
               "title": "設備保養手冊",
               "page": 2
             }

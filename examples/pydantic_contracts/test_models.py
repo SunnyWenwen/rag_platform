@@ -112,7 +112,7 @@ class ModelTests(unittest.TestCase):
         validate_chunk_binding(Chunk.model_validate(examples['chunk_after_embedding']),IndexBinding.model_validate(examples['index_binding_PROPOSAL']))
 
     def test_each_public_type_has_an_executable_example(self):
-        from typed_examples import TYPE_EXAMPLES, chunk, parsed_doc, index_binding, inference_state
+        from typed_examples import TYPE_EXAMPLES, chunk, chunks, rag_metadata, parsed_doc, index_binding, inference_state
         self.assertEqual(set(TYPE_EXAMPLES), {model.__name__ for model in PUBLIC_MODELS} | {'ModuleResult'})
         snapshots=json.loads(Path(__file__).with_name('examples.json').read_text())['type_examples']
         for name, value in TYPE_EXAMPLES.items():
@@ -124,7 +124,8 @@ class ModelTests(unittest.TestCase):
                                   ('Chunk','chunk'), ('InferenceState','inference_context')]:
             schema=json.loads((ROOT/'schemas'/f'{schema_name}.schema.json').read_text())
             Draft202012Validator(schema,registry=registry()).validate(snapshots[name])
-        validate_chunk_binding(chunk,index_binding)
+        embedded=Chunk.model_validate({**chunk.to_payload(),'vectors':{'text':TYPE_EXAMPLES['DenseVector'].to_payload()}})
+        validate_chunk_binding(embedded,index_binding)
         for context in inference_state.query_contexts:
             by_id={rs.result_set_id:rs for rs in context.result_sets}
             for rs in context.result_sets:
@@ -134,10 +135,30 @@ class ModelTests(unittest.TestCase):
                     for ref in item.source_refs:
                         self.assertIn(ref.result_set_id,rs.input_result_set_ids)
                         self.assertIn(ref.chunk_id,{i.chunk.chunk_id for i in by_id[ref.result_set_id].items})
-        for ref in chunk.metadata['_rag']['source_refs']:
+        for ref in rag_metadata.to_payload()['source_refs']:
             original=parsed_doc.units[ref['unit_index']][ref['field']]
             expected=original[ref['start']:ref['end']] if ref['role']=='split' else original
             self.assertEqual(chunk.fields[ref['output_field']],expected)
+
+    def test_ten_character_demo_produces_three_chunks(self):
+        from typed_examples import chunks, parsed_doc, ingestion_doc
+        self.assertEqual(len(parsed_doc.units[1]['text']),15)
+        self.assertIn(parsed_doc.units[1]['text'], ingestion_doc.content['text'])
+        self.assertEqual([c.fields['text'] for c in chunks],['清潔前先斷電。','每月清潔散熱孔並檢查','風扇運轉。'])
+        self.assertEqual([len(c.fields['text']) for c in chunks],[7,10,5])
+        self.assertEqual([c.fields['page'] for c in chunks],[1,2,2])
+        self.assertEqual(len({c.chunk_id for c in chunks}),3)
+        for unit in parsed_doc.units:
+            self.assertEqual(''.join(c.fields['text'] for c in chunks if c.fields['page']==unit['page']),unit['text'])
+        for chunk in chunks:
+            self.assertEqual(chunk.metadata,parsed_doc.metadata)
+            self.assertNotIn('_rag',chunk.metadata)
+            self.assertEqual(chunk.vectors,{})
+            self.assertEqual(chunk.document_id,parsed_doc.document_id)
+            self.assertEqual(chunk.source_revision,parsed_doc.source_revision)
+            self.assertEqual(chunk.fields['title'],parsed_doc.units[0]['title'])
+        snapshot=json.loads(Path(__file__).with_name('examples.json').read_text())
+        self.assertEqual(snapshot['ten_character_chunk_demo'],[c.to_payload() for c in chunks])
 
     def test_generated_catalog_and_module_result(self):
         from pydantic.json_schema import models_json_schema
@@ -149,4 +170,5 @@ class ModelTests(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main(verbosity=2)
+
 

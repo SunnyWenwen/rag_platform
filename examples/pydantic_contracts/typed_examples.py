@@ -15,7 +15,7 @@ ingestion_doc = IngestionDocument(
     source_revision="v1",
     content={
         "title": "設備保養手冊",
-        "text": "=== PAGE 1 ===\n清潔前先斷電。\n=== PAGE 2 ===\n每月清潔散熱孔。",
+        "text": "=== PAGE 1 ===\n清潔前先斷電。\n=== PAGE 2 ===\n每月清潔散熱孔並檢查風扇運轉。",
     },
     media_type="application/json",
     metadata={"department": "製造部", "filename": "maintenance.txt"},
@@ -29,7 +29,7 @@ parsed_doc = ParsedDocument(
     source_revision=ingestion_doc.source_revision,
     units=[
         {"text": "清潔前先斷電。", "title": "設備保養手冊", "page": 1},
-        {"text": "每月清潔散熱孔。", "title": "設備保養手冊", "page": 2},
+        {"text": "每月清潔散熱孔並檢查風扇運轉。", "title": "設備保養手冊", "page": 2},
     ],
     metadata=ingestion_doc.metadata.copy(),
 )
@@ -44,30 +44,27 @@ vector = DenseVector(
 # example:DenseVector:end
 
 # example:Chunk:start
-# 第 1 個 unit 內容很短，示意切成一個 Chunk，複製 title／page。
-chunk = Chunk(
-    chunk_id="chunk-demo-001",
-    document_id=parsed_doc.document_id,
-    source_revision=parsed_doc.source_revision,
-    fields=parsed_doc.units[0].copy(),
-    metadata={
-        **parsed_doc.metadata,
-        "_rag": {
-            "source_refs": [
-                {"unit_index": 0, "field": "text", "output_field": "text",
-                 "role": "split", "start": 0, "end": len(parsed_doc.units[0]["text"])},
-                {"unit_index": 0, "field": "title", "output_field": "title", "role": "copy"},
-                {"unit_index": 0, "field": "page", "output_field": "page", "role": "copy"},
-            ],
-            "chunking": {
-                "chunking_fingerprint": "0" * 64,  # 示意值，非實際設定 hash。
-                "chunk_ordinal": 0,
-                "task_id": "text",
+# 教學用「每 10 個字元」，overlap=0；正式平台仍以 Tokenizer 計量。
+# 每個 Unit 獨立切分，title／page 複製到各自的 Chunk。
+chunks = []
+for unit in parsed_doc.units:
+    text = unit["text"]
+    for start in range(0, len(text), 10):
+        chunks.append(Chunk(
+            chunk_id=f"chunk-demo-{len(chunks) + 1:03d}",
+            document_id=parsed_doc.document_id,
+            source_revision=parsed_doc.source_revision,
+            fields={
+                "text": text[start:start + 10],
+                "title": unit["title"],
+                "page": unit["page"],
             },
-        },
-    },
-    vectors={"text": vector},  # Embedding 後；Chunker 剛輸出時為 {}。
-)
+            metadata=parsed_doc.metadata.copy(),
+            vectors={},  # 尚未執行 Embedding。
+        ))
+
+# 後面的 ResultItem 等範例，以第一筆 Chunk 示範。
+chunk = chunks[0]
 # example:Chunk:end
 
 # example:ResultSourceRef:start
@@ -178,7 +175,7 @@ rag_metadata = RagMetadata(
     ],
     chunking=chunking_identity,
 )
-assert rag_metadata.to_payload() == chunk.metadata["_rag"]
+# 追溯型別的獨立進階範例；主流程 Chunk 範例省略 _rag 以利說明。
 # example:RagMetadata:end
 
 # example:VectorIndexBinding:start
@@ -238,3 +235,4 @@ if __name__ == "__main__":
     import json
     print(json.dumps({name: value.to_payload() for name, value in TYPE_EXAMPLES.items()},
                      ensure_ascii=False, indent=2))
+

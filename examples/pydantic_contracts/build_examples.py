@@ -3,7 +3,7 @@ from copy import deepcopy
 import json
 from pathlib import Path
 from models import *
-from typed_examples import TYPE_EXAMPLES
+from typed_examples import TYPE_EXAMPLES, chunks
 
 ROOT=Path(__file__).resolve().parents[2]
 
@@ -36,10 +36,12 @@ def main():
         'ingestion_document':data.to_payload(),'parsed_documents':[d.to_payload() for d in documents],
         'chunk_after_chunking':raw.to_payload(),'chunk_after_embedding':embedded.to_payload(),'index_binding_PROPOSAL':binding.to_payload(),
         'query_context':query.to_payload(),'inference_state':state.to_payload(),'module_result_success':ModuleResult[InferenceState](data=state).to_payload()}
+    snapshots['ten_character_chunk_demo'] = [chunk.to_payload() for chunk in chunks]
     snapshots['type_examples'] = {name: value.to_payload() for name, value in TYPE_EXAMPLES.items()}
     Path(__file__).with_name('examples.json').write_text(json.dumps(snapshots,ensure_ascii=False,indent=2)+'\n')
     print('Wrote examples.json: shared DTOs plus a separately marked IndexBinding proposal')
 
 
 if __name__=='__main__':main()
+
 
