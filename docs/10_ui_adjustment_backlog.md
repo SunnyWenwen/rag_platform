@@ -1,10 +1,12 @@
+> 2026-11-03 Prototype v0.11：已套用 Retrieval 命名、移除 Generation、分組 ResultSets 呈現、平面 Units 與 Chunk 來源同步（UIB-014／015）。Component／Remote 動態目錄尚未實作。以下歷史版本紀錄保留作追溯，不代表現行 UI 仍使用舊契約。
+
 > 2026-11-02 D-50：本產品改為 Retrieval-only；以下 v0.9／v0.10 的 Generation 與單清單 Gate 是歷史實作紀錄，非後續需求，已由 UIB-015 取代。UIB-009 取消。本次未修改 Prototype。
 
 # UI Prototype Backlog 與完成紀錄
 
 ## 2026-11-02 契約更新狀態
 
-文件與 Schema 已遷移至平面 Units；Prototype v0.10 尚未改動。下列 v0.10 完成項目為歷史實作紀錄，不表示符合 0.2；與 UIB-012／013 衝突時，以 UIB-014 為準。
+文件與 Schema 已遷移至平面 Units；Prototype 已於 2026-11-03 更新為 v0.11（見下）。下列 v0.10 完成項目為歷史實作紀錄，不表示符合 0.2；與 UIB-012／013 衝突時，以 UIB-014 為準。
 
 
 > 文件同步：2026-10-31。§2～6 記錄 Prototype 已有的結果處理能力；§7 集中尚未實作的需求。勾選完成只代表模擬 UI／邏輯預覽，並非 Engine／API 已完成。
@@ -266,26 +268,26 @@ v0.10 的無結構／text-spans／page-blocks 展示僅代表舊契約。現行�
 - [ ] 更新 API／Chunk 預覽、測試與說明，區分 IngestionDocument 輸入、ParsedDocument、Chunk 及 ResultItem 的兩種 source_refs；不新增直接 Chunk 匯入入口。本輪只記錄待辦，待使用者明確要求改 UI 再實作。
 
 <a id="uib-014-flat-units"></a>
-### UIB-014：平面 Units 與 Parser／Chunker 分工（待修改 Prototype）
+### UIB-014：平面 Units 與 Parser／Chunker 分工（v0.11 已套用模擬 UI）
 
-- [ ] 預覽／AI／Create／Edit／CSV／API 範例對齊 ParsedDocument 0.2：document_id、source_revision、units、metadata；Unit 直接放欄位，不包 fields、不要求 unit_id。
-- [ ] API 單筆 IngestionDocument 不變；JSON record／CSV 每列由 Parser 正規化為一個 Unit；預解析 content.units 由已宣告的 Adapter 處理，不自動猜格式。
-- [ ] 移除 text-spans／page-blocks 共用輸出分類、structure 選項與 Chunker 結構 Router；Parser 依輸入格式的派送保留。
-- [ ] Fixed-size／Recursive／Header-aware 保留，Header-aware 顯示 Markdown 標題需求與超長章節 Recursive 設定；不要求 heading Blocks。
-- [ ] 每筆 Unit 獨立切分、不跨筆合併／overlap；說明過短 Unit 需由 Parser 先整理。加入兩個 Units 切成 2＋3＝5 的範例。
-- [ ] 預設 text；進階 split／copy 候選來自 Unit 欄位。驗證所有 Units 的必要欄位，缺失顯示 [Chunking]＋task_id＋unit_index＋欄位；不僅檢查第一筆。
-- [ ] Chunk 預覽保留六鍵；source_refs 改 unit_index＋field＋start/end，移除 block_id／schema_id／block offsets。來源只讀，page 等依 copy 帶入 fields。
-- [ ] 舊 config／樣本顯示明確遷移需求，不靜默變更；更新 DOM／契約測試與說明，仍清楚標示模擬／未接真實 Parser、Tokenizer、模型。
+- [x] 預覽／AI／Create／Edit／CSV／API 範例對齊 ParsedDocument 0.2：document_id、source_revision、units、metadata；Unit 直接放欄位，不包 fields、不要求 unit_id。
+- [x] API 單筆 IngestionDocument 不變；JSON record／CSV 每列由 Parser 正規化為一個 Unit；預解析 content.units 由已宣告的 Adapter 處理，不自動猜格式。
+- [x] 移除 text-spans／page-blocks 共用輸出分類、structure 選項與 Chunker 結構 Router；Parser 依輸入格式的派送保留。
+- [x] Fixed-size／Recursive／Header-aware 保留，Header-aware 顯示 Markdown 標題需求與超長章節 Recursive 設定；不要求 heading Blocks。
+- [x] 每筆 Unit 獨立切分、不跨筆合併／overlap；說明過短 Unit 需由 Parser 先整理。加入兩個 Units 切成 2＋3＝5 的範例。
+- [x] 預設 text；進階 split／copy 候選來自 Unit 欄位。驗證所有 Units 的必要欄位，缺失顯示 [Chunking]＋task_id＋unit_index＋欄位；不僅檢查第一筆。
+- [x] Chunk 預覽保留六鍵；source_refs 改 unit_index＋field＋start/end，移除 block_id／schema_id／block offsets。來源只讀，page 等依 copy 帶入 fields。
+- [x] 舊 config／樣本顯示明確遷移需求，不靜默變更；更新 DOM／契約測試與說明，仍清楚標示模擬／未接真實 Parser、Tokenizer、模型。
 
 <a id="uib-015-retrieval-only"></a>
-### UIB-015：Retrieval-only 命名與結果呈現（待修改 Prototype）
+### UIB-015：Retrieval-only 命名與結果呈現（v0.11 已套用模擬 UI）
 
-- [ ] RAG Builder／System／Runtime 的使用者標籤改為 Retrieval Builder／System／Runtime；Create Retrieval System；Library／Platform 說明引用 03。
-- [ ] 移除 Generation 卡、LLM 選取、答案 Prompt／chunk_template、Context Budget、自訂答案 Schema 與示例；共用 LLM 留給 Rewrite／Multi-query／AI 助手。
-- [ ] Inference 改呈現 ResultSets／items、Chunk 內容、score／rank、來源與 Trace；移除示意答案／生成 citations。
-- [ ] 移除「為 Generation 必須合併成一份」的保存 Gate，允許最終多份分組清單；不隱含新增融合或全域排序。
-- [ ] Evaluation 移除 Answer Correctness／Faithfulness 與參考答案欄位；保留 Recall@K、MRR、Latency、Usage、Error Rate。
-- [ ] 手動／助手／Create／Edit／匯出／API 說明一致；舊 config.generation 顯示需遷移，不靜默執行或刪除。更新測試與截圖。
+- [x] RAG Builder／System／Runtime 的使用者標籤改為 Retrieval Builder／System／Runtime；Create Retrieval System；Library／Platform 說明引用 03。
+- [x] 移除 Generation 卡、LLM 選取、答案 Prompt／chunk_template、Context Budget、自訂答案 Schema 與示例；共用 LLM 留給 Rewrite／Multi-query／AI 助手。
+- [x] Inference 改呈現 ResultSets／items、Chunk 內容、score／rank、來源與 Trace；移除示意答案／生成 citations。
+- [x] 移除「為 Generation 必須合併成一份」的保存 Gate，允許最終多份分組清單；不隱含新增融合或全域排序。
+- [x] Evaluation 移除 Answer Correctness／Faithfulness 與參考答案欄位；保留 Recall@K、MRR、Latency、Usage、Error Rate。
+- [x] 手動／助手／Create／Edit／匯出／API 說明一致；舊 config.generation 顯示需遷移，不靜默執行或刪除。已更新測試；真實瀏覽器截圖／版面 QA 未完成（Chromium 下載失敗）。
 - [ ] 技術命名另做明確 migration：repo／branch、Python package、URN／Schema ID、_rag、RAGBlueprint 與儲存 key。此輪只改規格與圖，不做技術識別全域取代。
 
 <a id="uib-016-remote-service-pipeline"></a>
@@ -302,3 +304,17 @@ v0.10 的無結構／text-spans／page-blocks 展示僅代表舊契約。現行�
 - [ ] External 顯示 Developer 管理、固定資料空間、多 System 可能共用資料；不提供 data_space_id／shared 開關。無狀態服務不顯示儲存提示。
 - [ ] Export 區分 Image 的額外 Deployment／Service YAML 與 External 的連線引用；環境綁定交給部署責任者，不展示 Secret 值。
 - [ ] 服務目錄／Adapter 不相容、未就緒、初始化失敗及版本變更對回 [Module／服務]；保留草稿，不宣稱已註冊即已可執行。
+
+
+
+## 2026-11-03 Prototype v0.11 驗證與限制
+
+- Retrieval Builder／System／Runtime 的產品文案已改名；Generation 節點、設定、模板、答案及答案評估移除。LLM 保留給 Query Transformation；AI 助手仍是規則模擬。
+- Inference 顯示分組 ResultSets／items、Chunk、示意 score／rank、來源與計畫 Trace；允許最終多份清單，不自動全域排序。固定候選／分數明示 demo，並非真正檢索或 Rerank；API 為契約投影示意，不是已凍結的完整 InferenceState。
+- ParsedDocument 為 document_id／source_revision／units／metadata。Structured JSON／CSV 每筆輸出一個 Unit；明確選 Preparsed Units Adapter 才接受 content.units。移除共用 structure 分類與 Parser headings 相依。
+- 每 Unit／任務獨立驗證必要文字與 copy 欄位；Chunk 預覽六鍵，追溯 unit_index／field／Unicode code point 半開範圍及全域 ordinal。同來源切分與 original_text 複製使用進階任務映射。page 等可複製非文字欄位；metadata 全繼承。
+- 預覽每 Unit／任務只展示整段一筆，不實際計算 Token 切分／2＋3 的數量；2＋3 範例僅解釋串接規則，沒有跨 Unit overlap／合併。Header-aware 讀 Markdown text，超長章節沿用 Recursive 設定。
+- Create／Edit／取消、CSV／JSON 映射、API 說明、助手樣本、結果計畫及 Export 已同步。舊 Generation／headings Config 與舊 fields／structure 樣本回明確遷移訊息，不自動轉換。
+- 通過 tests/prototype.test.cjs（56）、schema-contract.test.cjs（5）、inference-processing.test.cjs（23）、prototype.dom.test.cjs、inference-processing.dom.test.cjs（13）及 retrieval-units.dom.test.cjs；後者涵蓋品牌／無 Generation、多清單、預解析派送、第二 Unit 缺欄位、Unicode 位置、完整複製、Edit 取消及結果／Export。
+- jsdom 26 用於 DOM 驗證；Chromium 安裝下載失敗，尚未取得新版真實瀏覽器截圖／桌面與手機視覺驗證。未執行真實 Parser／Tokenizer／模型／DB／HTTP；沒有把 Mock 當後端能力。
+- UIB-013 與 v0.11 重疊的預覽／來源／欄位任務已套用，完整 Engine 語意與真實 ID／fingerprint 等仍未完成；舊 UIB-001／005／006 的勾選狀態仍應搭配版本完成紀錄閱讀。

@@ -47,7 +47,7 @@ Chunk 預設切 fields.text 並寫回 text；進階多欄位任務各自切分�
 
 ## 原型、圖面與驗證
 
-- [UI Prototype](01_ui_prototype.html)：瀏覽器模擬設定與操作；v0.10 已更新 JSON Ingestion、三階段預覽、Fixed-size、多任務映射及完整內容保存；能力範圍與剩餘串接見 UIB-011～013。
+- [UI Prototype](01_ui_prototype.html)：瀏覽器模擬設定與操作；v0.11 已套用 Retrieval-only、平面 Units、Chunk 追溯與分組檢索輸出，保留 JSON／CSV、Fixed-size 及多任務映射；真實目錄／服務仍未串接，驗證範圍見 10。
 - [L1 流程 PNG](diagrams/01_user_system_l1.png) · [MMD](diagrams/01_user_system_l1.mmd) · [SVG](diagrams/01_user_system_l1.svg)
 - [Infra PNG](diagrams/02_infra_architecture.png) · [MMD](diagrams/02_infra_architecture.mmd)
 - [Module／Component PNG](diagrams/03_module_component_concept.png) · [MMD](diagrams/03_module_component_concept.mmd) · [SVG](diagrams/03_module_component_concept.svg)
@@ -56,11 +56,12 @@ Chunk 預設切 fields.text 並寫回 text；進階多欄位任務各自切分�
 
 舊輸入格式、完整單層 YAML、可任意排列結果處理卡片及逐次更新流水帳已移除；歷史由 Git 保留。尚未確認的 concat／固定文字組裝、LLM 結構化輸出及正式發布政策保留為提案，不當成既定功能。
 
-2026-11-02：ParsedDocument／Chunk 已更新至 0.2-draft（units 與 unit_index 來源追溯）；Prototype v0.10 尚未遷移，對應改動見 UIB-014。舊 provider 0.1 報告不作新版驗收證據。
+2026-11-02：ParsedDocument／Chunk 已更新至 0.2-draft（units 與 unit_index 來源追溯）；Prototype v0.11 已同步平面 Units，模擬範圍與限制見 UIB-014。舊 provider 0.1 報告不作新版驗收證據。
 
-2026-11-02 D-50：改為 Retrieval-only；不做 Generation。Library＋Config（及必要資源綁定）建立 Retrieval System，Platform 包含 Library／Runtime API／共用 Image。查詢輸出檢索清單；Rewrite／助手仍可使用 LLM。Prototype 名稱與答案功能尚未遷移，見 UIB-015。repo rag_platform、rag_engine、套件與 Schema ID／_rag 保留為既有技術識別，非產品名稱。
+2026-11-02 D-50：改為 Retrieval-only；不做 Generation。Library＋Config（及必要資源綁定）建立 Retrieval System，Platform 包含 Library／Runtime API／共用 Image。查詢輸出檢索清單；Rewrite／助手仍可使用 LLM。Prototype v0.11 已遷移產品名稱並移除答案功能，見 UIB-015；底層技術識別另案遷移。repo rag_platform、rag_engine、套件與 Schema ID／_rag 保留為既有技術識別，非產品名稱。
 
 
 Parser 開發示範：[三種交付模式圖](diagrams/04_component_delivery_modes.md) → [16 兩種開發方式與程式](docs/16_parser_component_development_examples.md)。Remote 服務不要求完整 Engine／ABC；正式 HTTP／參數協定仍待核定。
 
 2026-11-02 D-51：Remote Service 改以 Manifest 註冊供 User 選用，可一次涵蓋連續多 Module；Image 由平台部署，External 固定使用服務既有資料空間，第一版不加入 data_space_id。規格見 18，UI 僅記錄 UIB-016；現有 Prototype／Schema／可執行教學不變。
+

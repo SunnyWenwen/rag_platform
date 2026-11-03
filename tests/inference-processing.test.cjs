@@ -58,11 +58,11 @@ test('Reranker fields must exist, be strings, be inherited and stored',()=>{
   run("config.document_schema.fields.find(f=>f.name==='summary').type='string';config.chunking.copy=[]");assert(run('resultErrors(config)').some(x=>x.includes('fields.summary')));
 });
 test('selected routes retain identities and stale refs fail without substitution',()=>{
-  run("config=exampleConfig();config.indexing.backend='Local Search';config.transform.method='Rewrite';config.retrieval.processing.same_query.route_scope='selected';config.retrieval.processing.same_query.routes=['fulltext:text','vector:text']");const p=plan();assert.equal(p.final.length,2);assert(p.final.some(x=>x.routes.length===2));assert(run('resultErrors(config)').some(x=>x.includes('Generation 需一份')));
+  run("config=exampleConfig();config.indexing.backend='Local Search';config.transform.method='Rewrite';config.retrieval.processing.same_query.route_scope='selected';config.retrieval.processing.same_query.routes=['fulltext:text','vector:text']");const p=plan();assert.equal(p.final.length,2);assert(p.final.some(x=>x.routes.length===2));assert.equal(run('resultErrors(config).length'),0);
   run("config.retrieval.vectors=['summary_vector']");assert(run('resultErrors(config)').some(x=>x.includes('至少兩個有效')));assert(run("config.retrieval.processing.same_query.routes.includes('vector:text')"));
 });
 test('single Query/route toggles preserve unchecked preferences',()=>{
-  run("config.retrieval.processing.same_query.enabled=false;config.retrieval.processing.cross_query.enabled=false;config.retrieval.processing.same_query.rrf_k=0;config.retrieval.processing.cross_query.rrf_k=0");assert.equal(run('validate(config).length'),0);run("config.indexing.backend='Local Search';config.transform.method='Rewrite'");assert(!run('config.retrieval.processing.same_query.enabled'));assert(!run('config.retrieval.processing.cross_query.enabled'));assert(!run('resultErrors(config)').some(x=>x.includes('RRF k')));assert(run('resultErrors(config)').some(x=>x.includes('Generation 需一份')));
+  run("config.retrieval.processing.same_query.enabled=false;config.retrieval.processing.cross_query.enabled=false;config.retrieval.processing.same_query.rrf_k=0;config.retrieval.processing.cross_query.rrf_k=0");assert.equal(run('validate(config).length'),0);run("config.indexing.backend='Local Search';config.transform.method='Rewrite'");assert(!run('config.retrieval.processing.same_query.enabled'));assert(!run('config.retrieval.processing.cross_query.enabled'));assert(!run('resultErrors(config)').some(x=>x.includes('RRF k')));assert.equal(run('resultErrors(config).length'),0);
 });
 test('RRF and Sum Score validate/export only selected parameters',()=>{
   run("config.indexing.backend='Local Search';config.retrieval.processing.same_query.method='Sum Score'");assert(run('resultErrors(config)').some(x=>x.includes('分數可比')));run("config.retrieval.processing.same_query.normalization='min_max';config.retrieval.processing.same_query.rrf_k=0");assert.equal(run('validate(config).length'),0);let x=effective().retrieval.processing.same_query;assert(!Object.hasOwn(x,'rrf_k'));assert.deepEqual(x.weights,{'fulltext:text':1,'vector:text':1});
@@ -92,3 +92,4 @@ test('all new demonstration cases have valid plans, except intended error demo',
   for(const n of [5,6,7]){run('demoCase('+n+')');assert.equal(run('validate(config).length'),0);assert.equal(plan().final.length,1);}run('demoCase(4)');assert(run('validate(config)').some(x=>x.includes('正整數')));
 });
 console.log(`${count} inference processing checks passed. UI planning only; no actual services called.`);
+
