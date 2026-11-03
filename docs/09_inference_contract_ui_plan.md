@@ -74,7 +74,7 @@ Reranker 預選合法的 fields.text；基本區選一個內容欄位，進階�
 
 Provider 的 top_n 與平台評分後保留數分開：Adapter 應取得選入候選的完整評分，再由平台截斷；服務不支援時明示能力／限制，不隱性少回結果。正式覆蓋率／錯誤政策見 Q-003／Q-014。
 
-API 回傳最終有效清單。Chunk.metadata._rag.source_refs 追溯原始 Unit／文字位置；ResultItem.source_refs 追溯分數與候選，兩種來源不能混用。
+API 回傳最終有效清單。D-52：Chunk.metadata._rag.source_refs 為選填，有提供才追溯原始 Unit／文字位置；ResultItem.source_refs 追溯分數與候選，兩種來源不能混用。
 
 ### 3.4 共同卡控
 
@@ -100,3 +100,4 @@ API 回傳最終有效清單。Chunk.metadata._rag.source_refs 追溯原始 Unit
 Prototype v0.9 已有兩層時機、四處上限、卡控與清單數預覽，見 [10 §6](10_ui_adjustment_backlog.md#6-v09-實作細節展示預設與限制)；尚無真實 Engine 搜尋／融合。三份新資料 Schema 的 UI 遷移仍記 UIB-011～013。
 
 正式驗收須涵蓋：Chunk 共用格式與可取回欄位、各 Query／來源的分數血緣、ES 已融合邊界、兩個時機與四處上限、空結果、None 與文件去重、非法相依拒絕及有效計畫與執行結果一致。Q-002／Q-003／Q-011／Q-014 保留正式 Config、Adapter、同分與分數細節；未以 UI 展示當作後端驗收。
+

@@ -1,5 +1,7 @@
 # Ingestion API／Parser 共用輸入 Contract
 
+> 2026-11-03 D-52：API／Parser Input 的根結構不變；合法 metadata 可含 Component 支援的文件層處理提示，例如 chunking_mode=passthrough。須在 System metadata Schema 宣告，由對應 Component 說明讀取與預設行為，不是全域覆寫 Config 的入口；_rag 追溯由輸出 Component 選填。見 [15 §4.1](15_chunk_contract.md)。
+
 > 2026-10-29（Asia/Taipei）· 共用輸入 Schema 與語意已確認（D-44／D-45）；尚未實作 API／SDK，批次、版本政策及執行細節另議。
 >
 > 本文記錄 JSON-only、扁平輸入、多 Parser 自動路由，以及使用者確認「Ingestion API 與 Parser Input 使用相同 Schema」。共同物件稱 IngestionDocument；不另設另一份公開 ParserInput。解析後輸出依 [14 ParsedDocument](14_parsed_document_contract.md)，切分後依 [15 Chunk](15_chunk_contract.md)；三者各有共用 Schema，不混用輸入與輸出欄位。
@@ -254,3 +256,4 @@ ParsedDocument 使用唯一的平面 units 格式；Chunker 檢查指定字串�
 - Builder 將文件／CSV 轉成共同 JSON；是否提供暫存 URI、格式轉換範圍、存取與清理見 Q-016／Q-019。
 - 剩餘待決：schema_id／profile 命名與版本、路由衝突的精確政策、輸入／解碼／下載大小與逾時、批次 envelope、回應／錯誤碼、ID／版本省略政策及正式 SDK。已確認的共同外層不重開。
 - UI 遷移記 [UIB-011](10_ui_adjustment_backlog.md#uib-011-ingestion-parser-routing)；ParsedDocument／Chunk 預覽另見 UIB-012／013，本次不修改 Prototype。
+

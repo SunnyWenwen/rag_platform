@@ -143,9 +143,13 @@ def validate_chunk(chunk: dict, *, source: dict | None = None,
                    require_provenance: bool = False, require_empty_vectors: bool = False) -> None:
     """Shape + available context. Generic transferred chunks may omit _rag.
 
-    Full Chunker output must set require_provenance=True and
-    require_empty_vectors=True; Embedding/Indexing supplies vector_bindings.
-    Source locations are producer annotations, not character-level bbox proof.
+    Chunker output uses require_empty_vectors=True. Provenance is optional;
+    require_provenance=True explicitly opts into the full reference annotation
+    checks for fixtures/components that promise them. Embedding/Indexing supplies
+    vector_bindings. No generic Engine gate requires these annotations.
+    effective_spec selects the reference helper checks for annotations that exist;
+    it never makes absent annotations mandatory. Source locations are producer
+    annotations, not character-level bbox proof.
     """
     schema = json.loads((ROOT / 'schemas/chunk.schema.json').read_text())
     Draft202012Validator(schema, registry=local_registry()).validate(chunk)
@@ -178,7 +182,7 @@ def validate_chunk(chunk: dict, *, source: dict | None = None,
         raise ValueError('a chunk cannot merge different units')
     for ref in rag.get('source_refs', []):
         _validate_ref(chunk, ref, source)
-    if effective_spec is not None:
+    if effective_spec is not None and 'chunking' in rag:
         digest = fingerprint(effective_spec)
         info = rag.get('chunking', {})
         if info.get('chunking_fingerprint') != digest:
@@ -192,7 +196,7 @@ def validate_chunk(chunk: dict, *, source: dict | None = None,
         if set(chunk['fields']) != expected_fields:
             raise ValueError('fields differ from split/copy mappings')
         split_refs = [r for r in rag.get('source_refs', []) if r['role'] == 'split']
-        if not split_refs or any(r['field'] != task['split_field'] or r['output_field'] != task['output_field'] for r in split_refs):
+        if (require_provenance and not split_refs) or any(r['field'] != task['split_field'] or r['output_field'] != task['output_field'] for r in split_refs):
             raise ValueError('split provenance differs from task')
         # This reference path supports exact slices within a single Unit.
         # A custom content transform needs its own declared semantic validator.
@@ -210,11 +214,11 @@ def validate_chunk(chunk: dict, *, source: dict | None = None,
                 cursor = ref['chunk_end']
             if cursor != len(output):
                 raise ValueError('unexplained trailing text outside source selectors')
-        elif len(split_refs) != 1:
+        elif split_refs and len(split_refs) != 1:
             raise ValueError('multiple exact slices require explicit output selectors')
         expected_copies = {(m['source_field'], m['output_field']) for m in task['copy_fields']}
         actual_copies = [(r['field'], r['output_field']) for r in rag.get('source_refs', []) if r['role'] == 'copy']
-        if len(actual_copies) != len(expected_copies) or set(actual_copies) != expected_copies:
+        if (require_provenance or actual_copies) and (len(actual_copies) != len(expected_copies) or set(actual_copies) != expected_copies):
             raise ValueError('copy provenance differs from task')
     for name, vector in chunk['vectors'].items():
         if vector['source_field'] not in chunk['fields']:
@@ -229,17 +233,31 @@ def validate_chunk(chunk: dict, *, source: dict | None = None,
                 raise ValueError('vector profile/source/dimension differs from binding')
 
 
-def validate_sequence(chunks: list[dict], spec: dict, source: dict | None = None) -> None:
-    """One document's full Chunking output, sorted by configured task order."""
+def validate_sequence(chunks: list[dict], spec: dict, source: dict | None = None,
+                      *, require_provenance: bool = False) -> None:
+    """Validate a document's output; reference trace/order checks are conditional.
+
+    Missing annotations are legal even with source/spec. A caller may opt into
+    strict reference provenance tests; this is not required by the public DTO.
+    """
     validate_spec(spec)
     if not chunks:
         raise ValueError('fixture document produced no chunks; empty-document policy is separate')
     if len({(c['document_id'], c['source_revision']) for c in chunks}) != 1:
         raise ValueError('sequence must belong to one document revision')
+    for chunk in chunks:
+        validate_chunk(chunk, source=source, effective_spec=spec,
+                       require_provenance=require_provenance, require_empty_vectors=True)
+    if len({c['chunk_id'] for c in chunks}) != len(chunks):
+        raise ValueError('duplicate chunk_id')
+    # Only complete reference annotations justify checking the reference order.
+    # Without them, do not infer missing task IDs or source positions.
+    if not all(c['metadata'].get('_rag', {}).get('source_refs') and
+               c['metadata'].get('_rag', {}).get('chunking') for c in chunks):
+        return
     order = {task['task_id']: i for i, task in enumerate(spec['tasks'])}
     task_order = []
     for ordinal, chunk in enumerate(chunks):
-        validate_chunk(chunk, effective_spec=spec, require_provenance=True, require_empty_vectors=True)
         info = chunk['metadata']['_rag']['chunking']
         if info['chunk_ordinal'] != ordinal:
             raise ValueError('ordinals must be globally contiguous, starting from zero')
@@ -251,5 +269,3 @@ def validate_sequence(chunks: list[dict], spec: dict, source: dict | None = None
         raise ValueError('each required task must produce at least one chunk')
     if source is not None and set(task_order) != {(t, u) for t in order.values() for u in range(len(source['units']))}:
         raise ValueError('every required task/unit must produce chunks')
-    if len({c['chunk_id'] for c in chunks}) != len(chunks):
-        raise ValueError('duplicate chunk_id')

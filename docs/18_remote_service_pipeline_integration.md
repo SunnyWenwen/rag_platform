@@ -25,7 +25,7 @@ Developer 可能不提供原始碼，而是交付既有 API 或 Image；既有�
 | 輸出 | 符合 15 的 Chunk[]，包含合法來源／版本、fields、metadata 及命名 vectors |
 | 平台後續 | 以相容 Indexing 接收 Chunk[] |
 
-不新增另一份文件／Chunk 型別。Remote Pipeline 的最終輸出仍需滿足其涵蓋步驟的對外語意，例如來源追溯、metadata 繼承與向量 Profile／來源／維度；不要求暴露私有中間物件。精確批次包裝、部分成功與來源識別驗證方式仍待 Contract 核定。
+不新增另一份文件／Chunk 型別。Remote Pipeline 的最終輸出仍需滿足其涵蓋步驟的對外語意，例如 metadata 繼承、必要識別與向量 Profile／來源／維度；_rag 追溯為選用，有提供才驗證；不要求暴露私有中間物件。精確批次包裝、部分成功與來源識別驗證方式仍待 Contract 核定。
 
 Engine 依核可服務宣告編譯執行計畫，驗證涵蓋範圍連續、邊界 Contract／能力相容、不與其他選擇重疊；被接管的本地 Module 不再執行。Remote 呼叫失敗時不靜默改跑本地演算法。多 Parser／路由等情境須明確宣告作用範圍，第一版不能同時啟用重疊的替換範圍。
 
@@ -62,7 +62,7 @@ Developer 提供 Manifest，平台管理者審核並註冊；Builder User 在選
 
 Developer 自行部署且已固定設定的服務，可不提供使用者可填的 Config Schema；UI 只顯示能力／固定值與限制，不出空白參數表單。既有 12 的單 Component Descriptor 若需要 config_schema，Adapter 以合法空物件 Schema 表示無可調參數，不要求重寫原服務。固定服務的模型／索引等語意應隨註冊版本記錄；不因使用者未填參數就假定跨環境相容，Endpoint 背後語意改變需重驗證並記錄變更。
 
-若 API 明確支援每次呼叫的功能參數，才由 Manifest 宣告並在 UI 展開；精確參數 Envelope／Header 協定待 Q-019 核定。不把參數塞進文件 metadata、借用 parsing_profile 或傳送整個可信 RunContext／Config／Secret。16 的無參數 Parser HTTP 範例維持原 body。
+若 API 明確支援每次呼叫的功能參數，才由 Manifest 宣告並在 UI 展開；精確參數 Envelope／Header 協定待 Q-019 核定。不把任意演算法／連線設定塞進文件 metadata、借用 parsing_profile 或傳送整個可信 RunContext／Config／Secret；D-52 允許 Component 明確支援的文件層提示（如 chunking_mode），不是任意 Config／授權覆寫。16 的無參數 Parser HTTP 範例維持原 body。
 
 ## 5. 執行實例、儲存與資料共用
 
@@ -99,3 +99,4 @@ Export 不搬移 Image 本體、真實 Secret、原始文件、Chunk／vectors �
 驗收至少包含：連續範圍／重疊卡控、相容索引讀寫配對、輸出語意、只執行一次、固定服務無參數表單、失效服務引用保留並定位、Image 實例與資料分離、External 固定資料提示、健康／失敗與清理、兩種 Export 內容差異。不得拿 Mock 當真實部署證據。Trace 預設記整段呼叫的耗時／結果；中間 Module 診斷為選配，不保證各步可單獨替換或計分。
 
 UI 尚未實作，見 [10 UIB-016](10_ui_adjustment_backlog.md#uib-016-remote-service-pipeline)。開發計畫與未決細節見 [08 D-51／Q-028](08_implementation_plan.md#q-028)，設定描述沿用 [12](12_component_schema_ui_contract.md)，部署責任見 [07](07_backend_runtime_integration.md#remote-service-deployment)。
+

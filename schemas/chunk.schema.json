@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:rag-builder:chunk:0.2-draft",
   "title": "Chunk 0.2 draft — unit provenance",
-  "description": "六個固定頂層 key；Chunking、Embedding 與 Inference 共用資料草案。形狀之外仍須驗證來源、ID、向量 Binding 與可信 metadata。",
+  "description": "六個固定頂層 key；_rag／來源追溯／fingerprint／ordinal 為 Component 選填，有提供才驗證其標準形狀。必要 ID、欄位與向量 Binding 語意仍需驗證；metadata 可含 Component 已宣告支援的文件層提示。",
   "type": "object",
   "properties": {
     "chunk_id": {

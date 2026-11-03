@@ -1,6 +1,6 @@
 # 15 — Chunk Contract
 
-更新：2026-11-02。Chunk **0.2-draft** 保持六個頂層鍵；來源追溯改用 ParsedDocument.units 的位置。舊 0.1 SourceRef 不默默相容。
+更新：2026-11-03（D-52：KISS、追溯選填及 metadata 處理提示）。Chunk **0.2-draft** 保持六個頂層鍵；來源追溯改用 ParsedDocument.units 的位置。舊 0.1 SourceRef 不默默相容。
 
 ## 0. 情境與結果摘要
 
@@ -10,14 +10,14 @@
 | 多 Unit | 各筆結果串接，2＋3＝5；不合併、不跨 Unit overlap |
 | 多欄位任務 | 每個任務遍歷 Units，結果相加，不做笛卡兒積 |
 | 保留原文／上下文 | copy 同一 Unit 的欄位；原文另名 original_text，不能覆蓋切片 |
-| 來源位置 | metadata._rag.source_refs：unit_index＋field＋start/end |
+| 來源位置（選用） | Component 可提供 metadata._rag.source_refs：unit_index＋field＋start/end；未提供不報錯、不捏造 |
 | Embedding／Indexing | 沿用命名向量物件與完整保存規則 |
 
 <!-- chunk-report-examples:start -->
 
 ### 0.2 使用同一份 Schema 的資料例子
 
-以下由共用 cases.json 產生，包含完整預設 Chunk、進階多欄位結果及來源／向量片段。Hash 是參考規則的實際結果；完整來源與設定見同一案例檔。
+以下由共用 cases.json 產生；這組參考工具選擇提供完整追溯，因此例子含 _rag。它們不是所有 Component 的最低交付要求。Hash 是選用參考規則的實際結果；不要求每個 Developer 實作同一演算法。最簡單的三筆 Chunk(...) 例子見 17。
 
 **預設：只切 text，不複製其他 fields**
 
@@ -192,10 +192,10 @@
 | chunk_id | 非空字串；參考產生規則見 §6 |
 | document_id／source_revision | 繼承 ParsedDocument |
 | fields | 單一非空 dict；切分片段與明確複製欄位 |
-| metadata | 完整繼承合法文件 metadata，加入可信 _rag.source_refs／chunking |
+| metadata | 繼承合法文件 metadata，可為 {}；Component 可選擇提供 _rag.source_refs／chunking |
 | vectors | Chunker 輸出 {}；Embedding 後為命名向量物件 |
 
-完整 Chunker 輸出必須帶 source_refs 與 chunking；一般傳遞／檢索投影可依契約不帶完整追溯。檢索可省略向量令 vectors={}，不表示刪除已儲存向量。
+正式 Chunker 輸出也不強制提供 _rag、source_refs、fingerprint 或 ordinal；由 Component 決定是否實作。提供標準追溯欄位時才檢查其格式及可取得的來源一致性，未提供不報錯。六個根鍵與文件識別、欄位／向量等既有規則維持。檢索可省略向量令 vectors={}，不表示刪除已儲存向量。
 
 ## 2. 切分與欄位映射
 
@@ -206,7 +206,9 @@
 - Markdown 標題與內文若被 Parser 分開為不同 Units，Chunker 不跨筆重組。Parser 決定語意單位；Chunker 決定筆內切片。
 - 所有輸出欄位名在任務內唯一；copy 欄位可能很長，仍需檢查後續模型輸入上限。
 
-## 3. 來源追溯
+## 3. 來源追溯（Component 選用）
+
+本節只規範「有提供」的標準欄位；不要求所有 Component 產生。SDK 可提供組裝／驗證工具，有需要才使用，不強制逐一重寫追溯邏輯。沒有追溯時仍可依 document_id／chunk_id 使用資料，但不保證頁內定位、切片還原或完整來源診斷。
 
 | SourceRef 欄位 | 規則 |
 |---|---|
@@ -220,15 +222,37 @@
 
 同一 Chunk 的來源引用必須指向同一 Unit。copy 表示完整值，不帶文字範圍。移除 schema_id／block_id／block_start／block_end／結構 Location 引用；page 等來源欄位由 Parser 提供並依 copy 設定帶入 fields，不再要求 Chunker 解讀 Block。
 
-來源字串與切片需可還原。Header-aware 若去除標題／重組同一 Unit 文字，需提供對應來源／輸出範圍及 Component 語意驗證；不能捏造連續範圍。這不是新增任意 concat 功能。
+若宣告提供精確切片追溯，來源字串與切片需可還原。Header-aware 去除標題／重組文字時，可以不提供追溯；若提供，須使用正確來源／輸出範圍及對應語意驗證，不能捏造連續範圍。這不是新增任意 concat 功能。
 
 ## 4. metadata、向量與下游
 
-文件 metadata 全繼承，平台可信欄位由 Engine 控制；unit_index／範圍／fingerprint 自動產生，不列一般 UI 設定。Unit 內可選 unit_id 只是 Parser 欄位，通用 Chunker 不依賴它。
+文件 metadata 全繼承，平台可信欄位仍由 Engine 控制，不能用業務 metadata 覆寫授權。_rag 選填；unit_index／範圍／fingerprint 有需要時由 Component 或 SDK 輔助產生，不列一般 UI 必填設定。Unit 內可選 unit_id 只是 Parser 欄位，通用 Chunker 不依賴它。
+
+### 4.1 metadata 可以攜帶 Component 的處理提示
+
+metadata 可同時保存描述資訊與 Component 解讀的處理提示，例如：
+
+```python
+metadata = {
+    "department": "製造部",          # 描述／搜尋過濾
+    "chunking_mode": "passthrough", # 本例 Chunker 的文件層處理提示
+}
+```
+
+chunking_mode 是示範 Component 約定，不是所有 Component 必須認識的全域保留 key。Developer 說明會讀取哪些 key、型別、允許值、未提供時的預設及不支援值的處理；使用者資料也須通過 System 的 metadata Schema（例如 unknown_fields=reject 時要宣告此 string 欄位）。Parser 保留／產生合法提示，Chunker 讀取它，不新增三份共用物件的根欄位。
+
+支援本約定的 Chunker 可直接 `document.metadata.get("chunking_mode", "split")`：缺省正常切分；passthrough 時每 Unit／文字任務完整轉成一筆 Chunk，仍建立 chunk_id、依設定 copy 欄位、繼承 metadata、初始化 vectors={}。不跨 Unit 合併，三個 Units 的單一任務得到三筆，不是整份文件一筆；有多任務仍依任務規則串接。提示不支援時依該 Component 的已宣告行為處理，不能讓平台憑空保證所有 Chunker 都會遵守。
+
+第一版不另建通用條件規則引擎，也不要求 UI 多填一份判斷式；這不是 Config 的任意覆寫入口。固定模型／演算法參數、連線、Secret 仍放 Config／環境綁定，不藏進 metadata。passthrough 不跳過文字／欄位、必要產出及 Embedding 長度檢查；超長仍報錯，不默默截斷。文件提示改變切分結果時需重新 Ingestion，ID／更新處理由選用 Component 的既定策略處理，不要求為此輸出 fingerprint。
+
+
+### 4.2 向量與下游
 
 vectors[name] 仍為 `{values: [...], embedding_profile_id: "...", source_field: "text"}`，有限數值、維度／Profile／來源需符合 Binding。Indexing 預設保留完整 fields／metadata／vectors；Rerank／檢索結果消費端 所需內容在 Chunk 自備，不強制回查 ParsedDocument。
 
-## 5. 有效切分設定與 fingerprint
+## 5. 有效切分設定與 fingerprint（選用參考工具）
+
+以下是平台提供的參考 helper 規劃及完整追溯範例所採做法，不是每個 Component 的必要實作；不使用本演算法或不輸出 fingerprint 仍可符合共用 Chunk Contract。
 
 chunking_spec 是 Engine 解析後的**有效切分執行設定**，不是每個 Chunker class 的固定值，也不是多一份由使用者手填的資料。參考格式名稱為 chunking-spec/0.1-draft；完整 Pipeline Config 的 Schema 仍由 Q-002／Q-004／Q-025 核定。
 
@@ -241,13 +265,15 @@ chunking_spec 是 Engine 解析後的**有效切分執行設定**，不是每個
 
 未啟用的方法參數、UI 收合狀態、HTTP 連線、Secret、Run ID、Embedding／Retrieval／Rerank 設定不納入。預設值須先補齊；每個任務記錄選用的 Component／版本與有效設定。本文範例 tokenizer 是示意識別，沒有下載或驗證真實 Tokenizer。
 
-同一份解析後設定處理不同文件，fingerprint 相同；同一個 Recursive Component 改欄位、長度或版本，fingerprint 不同。本輪採**整份有效任務計畫的一個 fingerprint**；改其中一個任務會影響這份文件所有 Chunk ID，換取簡單一致的重建語意，暫不承諾逐任務局部保留 ID。
+同一份解析後設定處理不同文件，fingerprint 相同；同一個 Recursive Component 改欄位、長度或版本，fingerprint 不同。本參考工具採**整份有效任務計畫的一個 fingerprint**；改其中一個任務會影響這份文件所有 Chunk ID，換取簡單一致的重建語意，暫不承諾逐任務局部保留 ID。
 
 參考計算：json.dumps(sort_keys=True, ensure_ascii=False, separators=(",", ":"), allow_nan=False) → UTF-8 → SHA-256。保留字串原樣，不偷偷做 Unicode normalization。這是 Python 草案規範；跨語言的數字正規化與正式 canonicalization 仍在 Q-007，不能用 Python 內建 hash()。
 
 ## 6. Chunk ID、序號與重建
 
-metadata._rag.chunking 記錄 chunking_fingerprint、chunk_ordinal、task_id。實際 spec 存在可追溯 Config／Run，不在每個 Chunk 重複。
+chunk_id 仍為必要非空識別，輸出清單內不可重複。可由 Component 或 SDK helper 產生，不強制它必須由 fingerprint／ordinal 計算；穩定性、冪等與更新範圍須依選用實作及 Q-007／Q-008 說明。以下 fingerprint／ordinal／SHA-256 規則只適用採用本參考工具的 Component，不是缺少 _rag 就拒收的理由。
+
+若選擇提供 metadata._rag.chunking，記錄 chunking_fingerprint、chunk_ordinal、task_id，三者遵守該標準區塊格式。實際 spec 存在可追溯 Config／Run，不在每個 Chunk 重複。
 
 - chunk_ordinal 是同一文件本次輸出的**全域** 0-based 序號，依設定任務順序，再依 unit_index，最後依 Unit 內穩定切片順序編排；不是每個欄位各從 0 開始。
 - 任務併行時先按上述順序整併，再產生 ID；不能使用完成先後順序。相同輸入的 Component 若不具決定性，須明確宣告並提供可重現策略，不能承諾穩定 ID。
@@ -259,7 +285,7 @@ metadata._rag.chunking 記錄 chunking_fingerprint、chunk_ordinal、task_id。�
 
 ## 7. UI 與 Component 開發配套
 
-基本畫面不顯示 split/copy 欄位選擇，直接使用 text。進階才顯示新增任務、來源／輸出映射、附帶欄位與完整原文保留。metadata 繼承、source_refs、fingerprint、ordinal 不提供一般設定選項；預覽／結果詳情可唯讀顯示。
+基本畫面不顯示 split/copy 欄位選擇，直接使用 text。進階才顯示新增任務、來源／輸出映射、附帶欄位與完整原文保留。metadata 繼承保留；source_refs、fingerprint、ordinal 不提供一般必填選項，只在 Component 有提供時唯讀顯示，缺少不當錯誤。Component 支援的 metadata 提示需說明用途／預設，無須新增通用規則表單。
 
 錯誤標示 `[Chunking]` 與具體任務／unit_index／欄位；映射重名、來源不存在、型別／文字格式不合、欄位變更造成失效，皆保留選擇並阻止套用。僅展開進階不改有效設定；手動／AI／Edit／匯出使用相同有效計畫。對應事項集中於 [UIB-013](10_ui_adjustment_backlog.md#uib-013-chunk-contract)，本輪不修改 UI。
 
@@ -276,7 +302,7 @@ python examples/chunk/render_report.py
 python examples/chunk/test_contract.py
 ```
 
-案例涵蓋單筆、多 Unit 不合併、同筆多任務 2＋3、copy、metadata 及命名向量；負例涵蓋來源越界、跨 Unit、舊結構參照、缺欄位與零產出。測試不呼叫外部服務，也不代替真實切分演算法驗收。
+案例涵蓋單筆、多 Unit 不合併、同筆多任務 2＋3、copy、metadata 及命名向量；負例涵蓋有提供追溯時的來源越界、跨 Unit、舊結構參照、缺欄位與零產出；另有不帶 _rag 的合法 Chunk／序列案例。嚴格完整追溯檢查只能由測試明確選用，不能成為所有 Component 的驗收門檻。測試不呼叫外部服務，也不代替真實切分演算法驗收。
 
 已確認的是六鍵外層、text 預設、進階多任務／複製、來源追溯位置、向量資訊分層及穩定 ID 方向。精確鍵名／nullable／自訂型別與遷移仍以本稿供 M0 審閱；Q-002／Q-003／Q-004／Q-006／Q-007 及索引提交政策不因草案產出而全部結案。
 
@@ -287,3 +313,4 @@ python examples/chunk/test_contract.py
 - 重新 Ingestion 與 ID 是否納入解析後輸入內容摘要是不同問題；目前 Hash 規則尚未修改。原始文件版本不變但 Parser 輸出改變時的 ID／index_generation 識別仍在 Q-007／Q-015。
 - **待討論，未核定**：切分後 concat 多個欄位、加入固定文字，可候選作為 Chunking 後的共用欄位組裝、在 Embedding 前執行；先不新增 Pipeline Module、不修改 Schema／程式或凍結模板拼字。
 - 待確認範圍：是否寫入獨立衍生欄位、來源／衍生血緣與 Token 檢查；與 Embedding Profile 的 encoding prefix的分工；模板改動需重跑哪些步驟。不能先把欄位組裝當成已交付能力。
+

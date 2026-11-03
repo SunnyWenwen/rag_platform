@@ -1,5 +1,7 @@
 # Retrieval Engine Library — Component 開發指南
 
+> 2026-11-03 D-52（KISS）：_rag／來源位置／fingerprint／ordinal 改為 Component 選填；有提供的標準欄位才驗證，不再把完整追溯當所有 Developer 的必要交付。SDK helper 選用。metadata 可傳遞 Component 支援的文件層處理提示；宣告鍵名、型別、允許值、預設與未知值行為即可，不另要求通用規則引擎。六鍵 Chunk 與必要 ID／內容／向量規則維持，見 [15 §3～6](15_chunk_contract.md)。
+
 > 2026-11-02 D-51：Remote Developer 交付核可的 Service Manifest＋Image 部署描述或外部 Endpoint 綁定；可一次承接連續多個 Module，不要求提供私有原始碼、逐 Module ABC 或重建 Runtime Image。Local 的同 repo 流程維持不變。註冊／參數／部署分工見 [18](18_remote_service_pipeline_integration.md)。
 
 > **2026-11-02 新增具體教學**：[16 Parser 開發範例](16_parser_component_development_examples.md) 提供可執行的 Pydantic、Local ABC、Remote API Adapter 與選用 FastAPI 範本；搭配 [04 三種交付模式](../diagrams/04_component_delivery_modes.md) 說明。這是獨立教學程式，不是正式 SDK。本文的同 repo 提交／納入 Runtime Image 流程適用 Local Component；Remote Developer 可保留私有實作，只交付 Image＋部署描述或既有端點。Remote HTTP／參數與部署協定仍待正式核定。
@@ -240,6 +242,7 @@ Python Packaging User Guide 說明以套件 metadata／entry points 發現及載
 | 實作／套件版本記錄、既有 System 升級／索引相容與部署鎖定 | 更新既有資料或正式交付前；Q-015／Q-021／Q-022 | 設計相容檢查與失敗案例，不自動升級 |
 
 這些事項不阻擋本輪文件整理；規格定案與工具實作後，再將介面示意換成經測試、可直接執行的開發教學。完整決策狀態只維護於 08，不因本指南提供建議就自動關閉 Q-ID。
+
 
 
 

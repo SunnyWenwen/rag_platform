@@ -261,7 +261,7 @@ v0.10 的無結構／text-spans／page-blocks 展示僅代表舊契約。現行�
 - [ ] D-48：每個多欄位任務的切分片段預設輸出 fields.text；完整來源有需要時才 copy 到 original_text／original_faq 等不衝突名稱，進階仍可明確改名。
 - [ ] D-48：必要切分欄位缺失／型別錯誤／全空白、明確 copy 欄位缺失或必要任務零產出皆顯示 `[Chunking]`＋task_id／欄位，不顯示為成功匯入；第一版不新增可選複製開關。
 - [ ] 多欄位輸出為結果串接，示範 2＋3＝5，完整附帶另一欄位需明確選擇；顯示每個任務輸出欄位與下游可用內容，提示完整複製／Embedding 的重複與長度影響。
-- [ ] metadata 全繼承、不新增排除選單；source_refs／fingerprint／ordinal 由平台自動產生，一般設定不列選項。預覽／結果詳情可唯讀看unit_index、來源欄位／範圍、已複製頁碼、全域序號；未知位置不捏造。
+- [ ] metadata 全繼承、不新增排除選單；D-52：source_refs／fingerprint／ordinal 為 Component 選填，可用 SDK helper；一般設定不列必填選項，缺少不報錯。預覽／結果詳情可唯讀看unit_index、來源欄位／範圍、已複製頁碼、全域序號；未知位置不捏造。
 - [ ] 向量預設 fields.text → vectors.text；顯示／序列化 values＋embedding_profile_id＋source_field，模型設定共用 Profile，不重填。舊非空向量陣列與原 Prototype text_vector 名稱依明確 Binding／遷移規則處理，不靠名稱猜模型或來源。
 - [ ] 下游 Picker 依 Chunk 實際輸出 Schema／任務產生選項，處理多任務不同欄位與缺欄位，不默默略過；純文字路徑仍可不經額外設定使用。
 - [ ] 手動／AI／Create／Edit／CSV 預覽／匯出用同一有效設定；僅展開進階不變更 Config，取消保留舊設定；欄位失效保留並報錯，不靜默覆蓋。指紋不含 UI 狀態／停用參數／Secret。
@@ -327,3 +327,14 @@ v0.10 的無結構／text-spans／page-blocks 展示僅代表舊契約。現行�
 - 真實互動涵蓋 Create／Edit／取消、Header-aware／Units 說明、CSV 上傳映射與模擬 Ingestion、ResultSets 呈現、API 說明、最終多清單可儲存、Export 必填綁定 gate、手機 Chunking 與非法數值卡控。無頁面 JavaScript 錯誤。
 - 新測試可用已安裝的 Playwright Chromium 直接執行；指定 CHROMIUM_EXECUTABLE 時使用已準備的執行檔與 @sparticuz/chromium launch args，環境需提供相容 LD_LIBRARY_PATH。QA_OUTPUT_DIR 可指定截圖目錄，QA_FONT_CSS 可選本地 Noto Sans TC 的 CSS。
 - 瀏覽器驗證成功不代表真實 Parser／Tokenizer／模型／DB／部署完成；CSV 與事件在瀏覽器執行，檢索／評估仍為示意。未新增真實後端能力，也未重定 Contract。
+
+
+
+<a id="uib-017-optional-provenance"></a>
+### UIB-017：KISS 選填追溯與 metadata 處理提示（D-52，尚未改 UI）
+
+- [ ] 真實 Component／Runtime 串接時，不以缺少 _rag／source_refs／fingerprint／ordinal 阻止儲存或執行；原型已選擇提供示意追溯仍可保留，但不宣稱所有 Component 都有。
+- [ ] 來源詳情只顯示實際提供的欄位；未提供時說明「Component 未提供」，不捏造頁內位置或保證可還原。
+- [ ] Component 說明它解讀的 metadata key、型別、允許值、缺省／未知值處理；沿用 metadata Schema／CSV 映射，不新增全域規則引擎或任意 Config 覆寫入口。
+- [ ] 支援的 Chunker 可讀 chunking_mode=passthrough，逐 Unit／任務完整轉 Chunk，仍驗證欄位／模型上限；其他 Component 不假裝支援。
+- [ ] Chunk 位置追溯選填不影響 ResultItem.source_refs 的 Inference 分數／候選血緣規則。

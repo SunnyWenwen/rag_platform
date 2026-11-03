@@ -89,7 +89,7 @@ Remote External 不由 Builder 啟動／重啟；Developer／管理者登錄 End
 
 Backend 儲存前以有效設定比較，依 05 判定影響；UI 與 AI 都不能繞過。Edit 使用獨立草稿，取消不生效。
 
-2026-10-30 Chunk 草案：Embedding／Indexing／Inference 共用 [15](15_chunk_contract.md) 與 [Chunk Schema](../schemas/chunk.schema.json)；來源位置在 metadata._rag.source_refs，向量為具 Profile 識別的物件。該資料不改 API／Parser 的 IngestionDocument 輸入，也不核可直接匯入 Chunk／vectors。索引提交及原子替換仍依 Q-008～Q-010／Q-015 核定，不能由 Hash 就宣稱已支援。
+2026-10-30 Chunk 草案：Embedding／Indexing／Inference 共用 [15](15_chunk_contract.md) 與 [Chunk Schema](../schemas/chunk.schema.json)；來源位置若有提供則在 metadata._rag.source_refs（D-52：追溯選填），向量仍為具 Profile 識別的物件。該資料不改 API／Parser 的 IngestionDocument 輸入，也不核可直接匯入 Chunk／vectors。索引提交及原子替換仍依 Q-008～Q-010／Q-015 核定，不能由 Hash 就宣稱已支援。
 
 2026-10-16 的內容保存簡化：Indexing 保存全部 Chunk.fields／metadata，Chunking 預設繼承全部有效業務 metadata；只選全文／向量／Filter 能力。原型的 indexing.stored／chunking.metadata 是待遷移的舊保存／繼承投影，不能直接套用為新規則。Metadata 全繼承仍保留可信 ACL／來源及 Schema 驗證，Memory／MongoDB 的持久化模式不變；保存內容也不等於全部內容回傳給 API，回傳與授權投影另外處理。
 
@@ -337,7 +337,7 @@ Local Search 的持久化模式沿用同版 Config：DEV 為 Memory，FTEST／EN
 
 Developer 提供 Manifest 描述服務識別／版本、操作範圍、Contract、可選設定描述與 Image 部署需求；管理者審核並綁定各環境連線／Secret，User 不自行輸入 Developer Service 的 API。Metadata／Contract 版本檢查與健康／連線檢查分開，目錄查詢不得觸發任意部署。
 
-DEV 自動部署與 Export 共用部署描述的語意；FTEST／ENT 補齊目標環境資源，維持相同邏輯參數與相容服務版本。固定服務不要求參數表單，支援 per-call 參數時另定傳遞協定；不把設定藏入文件 metadata 或改寫 Parser 輸入。Manifest 與部署描述的正式 Schema 及管理 API 仍為 Q-028／Q-019／Q-021，完整責任與驗收見 [18](18_remote_service_pipeline_integration.md)。
+DEV 自動部署與 Export 共用部署描述的語意；FTEST／ENT 補齊目標環境資源，維持相同邏輯參數與相容服務版本。固定服務不要求參數表單，支援 per-call 參數時另定傳遞協定；不把任意 Config／連線設定藏入文件 metadata 或改寫 Parser 輸入；Component 已宣告支援的文件層 metadata 提示依 D-52 保留。Manifest 與部署描述的正式 Schema 及管理 API 仍為 Q-028／Q-019／Q-021，完整責任與驗收見 [18](18_remote_service_pipeline_integration.md)。
 
 ### 9.2 驗證與部署
 
@@ -388,4 +388,5 @@ tSSO 是 Builder 的登入方向，實際 Token／Gateway／Backend 驗證見 Q-
 ## 12. 完成條件
 
 直接 SDK 與 HTTP 入口在相同配置／資料上得到相容結果；UI 呼叫真實 API；獨立 Runtime 不需要 Builder 啟動；Config／Run／Index 版本可追蹤。建立、重送、錯誤、重啟、併發與部署驗收按 08 分階段完成，不用示意 YAML／固定回應取代整合證據。
+
 

@@ -83,6 +83,29 @@ class ContractTests(unittest.TestCase):
         state['query_contexts'][0]['result_sets'][0]['items'][0]['chunk'] = BY_ID['embedded']['chunks'][0]
         validator.validate(state)
 
+    def test_kiss_optional_provenance_and_metadata_hints(self):
+        case = deepcopy(BY_ID['default_text'])
+        source = case['source']
+        source['metadata']['chunking_mode'] = 'passthrough'
+        chunks = case['chunks']
+        for chunk in chunks:
+            chunk['metadata'].pop('_rag', None)
+            chunk['metadata']['chunking_mode'] = 'passthrough'
+            validate_chunk(chunk, source=source, effective_spec=case['effective_spec'],
+                           require_empty_vectors=True)
+        validate_sequence(chunks, case['effective_spec'], source)
+        self.assertEqual(chunks[0]['metadata']['chunking_mode'], 'passthrough')
+        # Merely carrying the hint does not implement passthrough in this helper.
+        with self.assertRaisesRegex(ValueError, 'requires source_refs'):
+            validate_sequence(chunks, case['effective_spec'], source, require_provenance=True)
+        bad = deepcopy(chunks)
+        bad[0]['metadata']['_rag'] = {'source_refs': [{'unit_index': -1}]}
+        with self.assertRaises(Exception):
+            validate_sequence(bad, case['effective_spec'], source)
+        empty_metadata = deepcopy(chunks[0])
+        empty_metadata['metadata'] = {}
+        validate_chunk(empty_metadata, require_empty_vectors=True)
+
     def test_invalid_chunks(self):
         negative = []
 
@@ -99,7 +122,7 @@ class ContractTests(unittest.TestCase):
         reject('unknown root key', lambda c: c.update(structure={}))
         reject('missing key', lambda c: c.pop('vectors'))
         reject('empty fields', lambda c: c.update(fields={}))
-        reject('missing provenance', lambda c: c.update(metadata={'department': 'engineering'}))
+        reject('missing explicitly requested reference provenance', lambda c: c.update(metadata={'department': 'engineering'}))
         reject('wrong document', lambda c: c.update(document_id='another'))
         reject('wrong revision', lambda c: c.update(source_revision='v2'))
         reject('business metadata removed', lambda c: c['metadata'].pop('department'))
@@ -192,3 +215,4 @@ print(f'Chunk: {len(cases)} cases, {checks} negative checks passed')
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
+

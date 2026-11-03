@@ -130,11 +130,15 @@
 
 Header-aware 讀取 Unit 中的 Markdown #／##，不要求 heading Block。Parser 要保留標題與其內文於同一 Unit，或把上下文複製到各 Unit。標題與內文分成不同 Units 後，Chunker 不跨筆恢復關係。超長章節可再用 Recursive；其參數及無標題時的明確策略由 Component 宣告，不能無聲換方法。
 
+### 2.1 metadata 的描述與處理提示（D-52）
+
+ParsedDocument.metadata 可攜帶合法附帶資訊，或由下游 Component 明確支援的文件層提示，例如 chunking_mode=passthrough；Parser 依自身規則保存／產生，Chunker 按約定讀取。Unit 仍是平面內容物件，不新增根層 processing／options。metadata 的型別與允許鍵仍受 System Schema 驗證；模型、連線及 Secret 不因而搬進 metadata。詳細缺省與 passthrough 語意見 [15 §4.1](15_chunk_contract.md)。
+
 ## 3. 來源追溯與欄位傳遞
 
 Chunk.fields 保持單一 dict：`ParsedDocument.units[i][split_field] → Chunk.fields[output_field]`。選定 copy 欄位取自同一 Unit，完整原文需要時明確映射 original_text，不能覆蓋切片。
 
-Chunk 的 metadata._rag.source_refs 使用 unit_index（0-based）、field、output_field、role 及文字 start／end。位置以該版本 Unit 的來源字串為基準，Unicode code point、半開範圍 [start,end)，不是整份文件 offset，也不是 Token／UTF-16／PDF glyph offset。unit_index 由 Engine／Chunker 記錄，不要求 Parser 提供。
+Component 選擇提供 Chunk.metadata._rag.source_refs 時，使用 unit_index（0-based）、field、output_field、role 及文字 start／end。位置以該版本 Unit 的來源字串為基準，Unicode code point、半開範圍 [start,end)，不是整份文件 offset，也不是 Token／UTF-16／PDF glyph offset。unit_index 可由 Component／SDK helper 記錄，不要求 Parser 提供，也不要求所有 Chunker 輸出來源引用。
 
 page、slide、sheet、section_title、image_uri 等自訂來源欄位不會因存在就自動複製；要供下游使用需納入 copy。文件 metadata 仍全繼承；可信 metadata 保留區政策見 Q-006。原生解析樹不再是共用契約，必要時由 Parser 保存於追溯 metadata／外部 artifact，不讓 Chunker 重新解讀。
 
@@ -144,7 +148,7 @@ page、slide、sheet、section_title、image_uri 等自訂來源欄位不會因�
 - 表格整體轉 Markdown 後，按長度切分可能破壞列或丟掉表頭；Parser 可採逐列文字以避免。特殊保護策略尚未因此核定或實作。
 - 圖片沒有 OCR／描述時，不應填空 text 並宣稱可檢索；缺資源及不支援格式需明確回報。
 - Header-aware、Recursive、Fixed-size 都只在 Unit 內運作；實際 Tokenizer／演算法實作驗收與資料形狀測試分開。
-- 測試需包含多 Unit、特殊字元、缺欄位、空內容、copy 衝突、不跨 Unit、全域 ordinal 與來源可還原。
+- 測試需包含多 Unit、特殊字元、缺欄位、空內容、copy 衝突及不跨 Unit；ordinal／來源還原只驗收有宣告提供的追溯能力，不因缺少 _rag 拒收。
 
 ## 5. Parser 相容性與驗證範圍
 
@@ -166,3 +170,4 @@ page、slide、sheet、section_title、image_uri 等自訂來源欄位不會因�
 Parser／展平策略改動可能改變 Unit 順序、切片及索引，需重新 Ingestion。相同 source_revision 下 Parser 版本變化的 identity／發布政策仍在 Q-007／Q-008，不以 unit_index 解決版本衝突。
 
 UI 預覽、欄位候選、Header-aware 條件與舊結構路由移除列入 [UIB-014](10_ui_adjustment_backlog.md#uib-014-flat-units)，本次不改 Prototype。
+

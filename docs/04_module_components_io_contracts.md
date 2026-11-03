@@ -108,6 +108,10 @@ Remote Pipeline 宣告同一 Pipeline 中連續範圍、邊界 Contract 與 requ
 
 API 只傳可序列化且已核定的業務資料及明確支援的參數，不傳完整 RunContext；第一版不傳 data_space_id。計畫驗證、呼叫錯誤／版本與整段 Trace 由 Engine／Adapter 處理，部署則由 07 管理。詳細邊界、固定服務及驗收見 [18](18_remote_service_pipeline_integration.md)。
 
+### 2.6 KISS：選填追溯與 metadata 提示（D-52）
+
+Component 只需滿足共用 I/O 及自身功能語意，不強制實作 _rag；有提供標準追溯時才驗證。metadata 可攜帶 Component 明確支援的文件層提示；例如 Chunker 讀 chunking_mode 決定 split／passthrough，缺省 split，不需另設通用規則引擎。不支援提示的 Component 不會自動獲得該邏輯。Config、業務提示及可信 Context 仍分開，授權／Secret 不由 metadata 控制。詳見 [15 §4.1](15_chunk_contract.md)。
+
 ## 3. 共用執行政策
 
 ### 3.1 I/O 接線
@@ -167,7 +171,7 @@ Timeout、重試預算、取消、partial 與 fallback 尚待 Q-009／Q-017／Q-
 
 ### 4.3 Chunking
 
-**Output 草案（2026-10-30，D-47）**：[15](15_chunk_contract.md) 與 [Chunk Schema](../schemas/chunk.schema.json) 是六鍵輸出的共用定義。完整 Chunker 輸出須帶 metadata._rag.source_refs／chunking 且 vectors={}；多欄位 2＋3 得 5 個 Chunk，全域序號按任務／內容順序產生，不依併行完成順序。參考測試只驗已提供的切片／資料，不代替真實 Chunker 演算法與 Tokenizer 驗收。UI 待辦 UIB-013。
+**Output 草案（2026-10-30，D-47）**：[15](15_chunk_contract.md) 與 [Chunk Schema](../schemas/chunk.schema.json) 是六鍵輸出的共用定義。Chunker 輸出六鍵，vectors={}；_rag／source_refs／fingerprint／ordinal 由 Component 選擇是否提供，不能因缺少追溯拒收。多欄位 2＋3 得 5 個 Chunk；選用參考 ID／序號 helper 時才依其穩定順序規則驗證。參考測試只驗已提供的切片／資料，不代替真實 Chunker 演算法與 Tokenizer 驗收。UI 待辦 UIB-013。
 
 **資料／能力補充（2026-11-02）**：Input 引用 [ParsedDocument 0.2 Schema](../schemas/parsed_document.schema.json)。每個任務選一個 Chunker，逐一處理所有 Units，不跨 Unit 合併或 overlap；移除依 structure 類型選 Chunker 的 Router。進階多欄位任務各自輸出後串接，不交叉配對。欄位／Markdown 格式／Tokenizer 能力仍需檢查，UI 遷移見 UIB-014。
 
@@ -187,8 +191,8 @@ Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一�
 2. 依所選方法切分：Fixed-size 使用上述固定視窗；Recursive 依 separators 優先序切分，必要時處理過長片段，size 是上限、overlap 是目標值。
 3. Header-aware 先依可靠標題層級切分，再對超長章節 Recursive；標題取自當筆 Markdown；無標題時依 Component 明確策略處理，不跨 Unit 尋找。
 4. 記錄 unit_index 與原 Unit 字串範圍，不從帶 overlap 的文字猜測位置，不跨 Unit 合併。
-5. 從同一 Unit 複製指定欄位到 Chunk.fields；文件摘要保持文件摘要。繼承 ParsedDocument 中經 Schema 驗證的全部業務 metadata，並保留／加入可信來源、ACL、metadata._rag.source_refs；平台切分資訊放 metadata._rag.chunking，輸入不能覆蓋平台保留資訊，完整可信區協定見 Q-006。第一版不新增 metadata 排除表單，有明確需求再規劃。
-6. 依任務／unit_index／切片順序編全域 ordinal，再依文件 ID／source_revision、有效切分計畫 fingerprint 與全域 ordinal 產生 chunk_id，初始化 vectors={}；參考 Hash 與實際計畫版本見 15 §5～6。
+5. 從同一 Unit 複製指定欄位到 Chunk.fields；文件摘要保持文件摘要。繼承 ParsedDocument 中經 Schema 驗證的全部業務 metadata，並保留必要可信來源／ACL；Component 可選擇提供 metadata._rag.source_refs／chunking，輸入不能覆蓋平台保留資訊，完整可信區協定見 Q-006。第一版不新增 metadata 排除表單，有明確需求再規劃。
+6. 由 Component 或 SDK helper 產生必要且唯一的 chunk_id，初始化 vectors={}。fingerprint／ordinal 的 Hash 規則僅為選用參考工具，不強制所有 Component 實作或輸出，見 15 §5～6。
 
 **驗證／例外**：size 為正整數、overlap 為整數且 `0 ≤ overlap < size`、Tokenizer 可用；涵蓋重複文字、非 BMP 字元、空段及極長無分隔文字。Fixed-size 不啟用 separators／keep_separator／header_levels，也不要求 結構化 heading Blocks；未啟用的方法參數可保留草稿，但不驗證或匯出為有效參數。複製欄位未被主要內容切分，不保證其長度小於 size。
 
@@ -486,4 +490,5 @@ DEV 與 FTEST／ENT 維持相同方法選擇／解析版本與邏輯 Config，�
 - 尚未核定能力回報不支援，不以 Mock 或靜默 fallback 代表完成。
 
 開發階段與驗收資料見 [08](08_implementation_plan.md)。
+
 

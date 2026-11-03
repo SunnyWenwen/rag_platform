@@ -192,12 +192,12 @@ chunk = chunks[0]
 | chunk-demo-002 | 2 | 每月清潔散熱孔並檢查 | 10 |
 | chunk-demo-003 | 2 | 風扇運轉。 | 5 |
 
-主流程範例只呈現六個頂層 key 與易讀內容，暫不列 `_rag`。這是教學簡化，不是移除正式 Chunker 的來源追溯要求；追溯型別另外見 §3。Embedding 尚未執行，因此這三筆不附示意向量。
+主流程範例只呈現六個頂層 key 與易讀內容，暫不列 `_rag`。依 D-52，正式 Chunker 也可不提供 _rag，選填追溯型別另外見 §3。Embedding 尚未執行，因此這三筆不附示意向量。
 
 
 Chunker 輸出 vectors={}；Embedding 將命名向量寫回 vectors，例如 vectors.text。檢索投影也可以 vectors={}，不代表刪掉索引中已保存的向量。
 
-Chunk.metadata 仍是 dict；若有 _rag，額外由 RagMetadata 驗證 source_refs／chunking。這是保留既有六鍵形狀，不新增頂層資料。純文字／向量欄位的使用條件、Tokenizer、追溯還原、ID／fingerprint 與可信 metadata 授權，仍需 Component／Engine 驗證。
+Chunk.metadata 仍是 dict；若有 _rag，額外由 RagMetadata 驗證 source_refs／chunking。這是保留既有六鍵形狀，不新增頂層資料。純文字／向量欄位、Tokenizer、必要 ID 與可信授權仍依 Component／Engine 驗證；追溯還原／fingerprint 只在有提供或宣告該能力時檢查。metadata 也可帶 Component 支援的處理提示，詳見 15 §4.1。
 
 ### 2.4 QueryContext／ResultSet／ResultItem 與外框
 
@@ -450,7 +450,7 @@ rag_metadata = RagMetadata(
 ```
 <!-- type-example:RagMetadata:end -->
 
-SourceRef 的 start/end、chunk_start/chunk_end 成對提供，以 Unicode code point、0-based 半開區間表示；未提供不序列化成 null。完整 Chunker 輸出必須依 15 帶追溯／chunking、vectors={}；一般傳遞 DTO／檢索投影的要求較少，不能只通過 Chunk Model 就宣稱完成整個 Chunker 驗收。
+SourceRef 的 start/end、chunk_start/chunk_end 成對提供，以 Unicode code point、0-based 半開區間表示；未提供不序列化成 null。依 D-52，正式 Chunker 輸出 vectors={}，但 _rag／source_refs／chunking 選填；有提供才驗證，不要求所有 Component 實作。Pydantic 形狀通過仍不能代替欄位／切分／模型能力等功能驗收。
 
 ## 4. IndexBinding：這版新增的欄位提案
 
@@ -576,6 +576,7 @@ payload = document.to_payload()
 驗證覆蓋既有 ParsedDocument／Chunk／5 份推論情境的 round-trip，以及缺欄位、來源三選一、null、型別、向量、來源引用、stage、active IDs、排序與 IndexBinding 提案反例。資料驗證不等於已執行搜尋／模型／重建／部署。
 
 **相容性說明：**共用物件形狀以 schemas/ 與 13～15 為準；這份 Pydantic 集合是可執行草案，部分 validator 增加跨欄位／語意檢查。自動匯出的 JSON Schema 不會完整表達所有 custom validator，不能用生成 Schema 單獨取代語意驗證。IndexBinding／ModuleResult 的正式版本、SDK 模組路徑與封裝仍待核定；本次沒有發布新 SDK，也沒有遷移 16 的既有教學程式。
+
 
 
 

@@ -107,15 +107,15 @@ Parser 整理來源結構為 Units；Chunker 僅在每筆文字內切分，不�
 
 | Key | 責任 |
 |---|---|
-| chunk_id | Chunking 產生；文件版本＋有效切分計畫 fingerprint＋全域 ordinal |
+| chunk_id | 必要非空識別，由 Component／SDK helper 產生；fingerprint＋ordinal 僅為參考策略 |
 | document_id、source_revision | 繼承文件；只改切分設定不改來源內容版本 |
 | fields | 預設只切 text 並寫回 text；需要時進階選切分／輸出／完整複製欄位 |
 | vectors | Chunking 為 {}；Embedding 寫入 values＋embedding_profile_id＋source_field 的命名物件 |
-| metadata | 預設繼承全部有效業務 metadata；可信來源與切分資訊放 _rag |
+| metadata | 繼承合法文件 metadata，可含 Component 支援的處理提示；_rag 追溯選填 |
 
 基本 UI 不顯示欄位選擇，直接切 units[i].text 並輸出 fields.text；不自動複製其他 Unit 欄位。保留切分前完整原文時，才進階設定 text → original_text 或其他不衝突名稱。D-48 確認每個多欄位任務預設將片段輸出到 fields.text；有需要才複製完整來源到 original_text／original_faq 等不衝突名稱。第一版必要切分欄位缺失／型別錯誤／全空白、必要任務零產出或明確 copy 欄位缺失均報錯；可選複製暫不擴充。同一 Unit 兩個欄位各切 2／3 段時，結果串接為 5 個 Chunk，不做交叉配對；互相附帶完整原文另需明確 copy 映射。
 
-metadata._rag.source_refs 保存來源欄位、對應輸出欄位、原文範圍／Block 及可取得的位置；用於引用、定位與追溯，不讓使用者逐項設定。metadata._rag.chunking 保存 fingerprint／全域序號／task_id，完整 spec 保存於可追溯 Config／Run。來源全文與 Block 內 offset 不混用；一個 Chunk 可以有多筆 refs，精確語意見 15 §3。
+metadata._rag 選填，由 Component 決定是否提供；有 source_refs 時使用 unit_index／field／output_field／文字範圍，有 chunking 時記錄 fingerprint／ordinal／task_id。缺少不報錯、不保證位置還原。ResultItem.source_refs 是 Inference 的候選／分數血緣，並不因 Chunk 追溯選填而一併取消。詳見 15 §3～6。
 
 Chunk 須自帶 Rerank／檢索結果消費端 需要的內容，不強制回查 ParsedDocument。Indexing 預設保存全部 fields／metadata；完整向量保存在索引／Chunk Store，檢索傳遞可令 vectors={}，不能因此刪除已保存內容。追溯用輔助結構可在 metadata；供下游內容選單使用則建議放 fields，不新增頂層 structure。
 
@@ -308,6 +308,10 @@ D-51 的有效 Config 以整段引用保存服務識別／版本、連續範圍�
 
 服務 Manifest 與各環境 Endpoint／Secret／儲存綁定分開。演算法參數即使由啟動設定檔載入仍屬邏輯 Config；External 的固定模型／索引語意記入服務版本與相容資料，不把無參數表單當成無版本要求。第一版不加入 data_space_id 或 shared 開關，不修改 13～15／Inference Schema。External 固定資料空間由 Developer 管理，可能多 System 共用；平台管理的 Image 實例以啟動綁定分配獨立儲存範圍。詳見 [18](18_remote_service_pipeline_integration.md)。
 
+### 6.1.2 文件 metadata 處理提示（D-52）
+
+metadata 不只供描述／過濾，也可傳遞 Component 明確約定的文件層提示，例如 chunking_mode=passthrough。遵守 metadata Schema，並由 Component 說明鍵名、型別、允許值、缺省／未知值處理；不是任意參數都自動生效。固定演算法／模型／服務設定仍在 Config／環境綁定，不放 Secret 或授權指令。第一版不新增全域控制欄位／規則引擎；ParsedDocument 與 Chunk 根結構不變。見 [15 §4.1](15_chunk_contract.md)。
+
 ### 6.2 草稿、有效 Config 與部署綁定
 
 - UI Draft 保存基本／進階欄位及未啟用方法的草稿；不是所有欄位都參與執行。
@@ -382,7 +386,7 @@ Indexing 宣告可過濾欄位；Retrieval 保存預設條件；Query API 可加
 | Builder 上傳映射 | CSV column → document_id／source_revision／content.*／metadata.* | 每列先驗 IngestionDocument；不屬 Engine 的切分設定 |
 | Parser Component | 接受的 media_type／schema_id、content 形狀與轉換、輸出 Unit 欄位／文字格式能力 | 共用輸入＋Component 內容驗證 → ParsedDocument Schema／語意驗證 |
 | System Document Schema | 宣告每筆 Unit 欄位及文件 metadata 的型別、來源與必填條件 | 解析後驗證；input 來源另依 Parser 映射檢查，不能把 fields 路徑直接當 API 根欄位 |
-| Chunking | 基本 text；進階有序 tasks、每任務 Component／參數、split_field／output_field／copy_fields | 逐 Unit 檢查來源欄位與文字格式相容；完整 Chunk 輸出、追溯、序號／ID 及必要任務產出驗證 |
+| Chunking | 基本 text；進階有序 tasks、每任務 Component／參數、split_field／output_field／copy_fields | 逐 Unit 檢查來源欄位與文字格式相容；六鍵輸出、必要 ID／任務產出及有提供時的追溯驗證 |
 | Embedding | 來源欄位、向量名稱、不可變 Profile 識別 | 預設 fields.text → vectors.text；寫入 values／embedding_profile_id／source_field |
 | Indexing | 全文／向量／Filter 欄位、搜尋後端、持久化模式 | 保存全部 Chunk 內容；Binding 檢查向量來源、Profile、維度及索引能力 |
 | Inference | Query、搜尋欄位／Filter、兩層融合時機與四處 Top N、Rerank／檢索結果消費端 內容欄位 | 操作 QueryContext／ResultSet；使用 Chunk 已保留的內容，不強制回查 ParsedDocument |
@@ -390,7 +394,7 @@ Indexing 宣告可過濾欄位；Retrieval 保存預設條件；Query API 可加
 
 Chunk 後的 UI／跨容器引用使用 fields.text、vectors.text、metadata.department。15 的切分計畫 split_field／copy.source_field 使用當筆 Unit 的 key；output_field 與 DenseVector.source_field 使用 Chunk.fields 的 key（例如 text）。每階段明確解析，不將舊 ParsedDocument.fields 路徑當別名。
 
-ParsedDocument.units 每筆直接放內容欄位；Chunk 的 metadata._rag.source_refs 記 unit_index、field 與 Unit 內文字範圍，不新增 structure。完整切分 spec 由 Config／Run 保存，Chunk 只保存 fingerprint／ordinal／task_id。
+ParsedDocument.units 每筆直接放內容欄位；Chunk 的 metadata._rag.source_refs 記 unit_index、field 與 Unit 內文字範圍，不新增 structure。完整切分 spec 由 Config／Run 保存，Chunk 可選擇保存 fingerprint／ordinal／task_id，沒有也合法。
 
 ## 8. Config 變更影響矩陣
 
@@ -443,5 +447,6 @@ CSV 映射保存、Revision 計算、canonical JSON／Hash、部署綁定是否�
 ## 10. 交付與驗收要求
 
 Q-002 核定後，開發階段需提供 Pydantic Models、可匯出的 JSON Schema、完整 Local／ES／MongoDB 範例與無效範例。相同資料在 UI／HTTP／直接 Engine 呼叫得到相容驗證結果；Unicode offset、向量維度及欄位路徑有獨立驗收資料。實作 Schema 是程式可驗證的產物，變更時同步更新本文與範例，不允許各層另創契約。
+
 
 

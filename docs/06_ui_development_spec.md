@@ -1,5 +1,7 @@
 # Retrieval Builder — 使用流程與 UI 開發規格
 
+> 2026-11-03 D-52：Chunk 的 _rag 追溯選填，未提供時不顯示位置／fingerprint，不作儲存或執行 Gate；有提供才唯讀顯示／驗證。metadata 可帶 Component 支援的文件層提示，第一版不加通用條件規則表單。此輪不改 Prototype，對應待辦見 UIB-017。
+
 > 文件同步：2026-10-31 · 開發規格草案（正式 SDK／Config 尚未凍結）
 >
 > 本文定義 UI 目標互動。現有 HTML Prototype 的搜尋、模型、評估及 API 為模擬。Parsing 的預設收合、LLM／Prompt／範例按鈕等已確認要求如下；其他基本／進階分組、正式框架、範本與試跑優先級仍待決。
@@ -288,4 +290,5 @@ UI Mock、Schema 驗證、HTTP integration、實際端對端驗收分開記錄�
 | [Q-018](08_implementation_plan.md#q-018) | Evaluation 介面指標、比較與 Gate |
 
 決策狀態與實作階段見 [08](08_implementation_plan.md)。
+
 

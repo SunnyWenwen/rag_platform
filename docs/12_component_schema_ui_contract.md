@@ -102,6 +102,10 @@ Manifest 引用既有 Config Schema／UI hints／rules 的支援子集，並補�
 
 服務目錄由核可 Manifest 與目標 Runtime Adapter 能力共同決定；服務識別／版本、授權範圍與目錄版本需納入候選／驗證關聯，不能把「已註冊」視為「連線就緒」。環境 URL／Secret 不放入功能 Config Schema。UI 編譯整段時，涵蓋 Modules 的獨立設定不進有效計畫；前端鎖定之外 Engine 也需驗證重疊與 Indexing／Retrieval 配對。正式 Manifest Meta-schema／目錄包裝仍未定，不改現行 component-ui-0.1-draft。
 
+### 4.2 Component 解讀 metadata（D-52）
+
+metadata 的文件層提示不是 Config Schema 的隱藏替身。Component 應說明接受的 metadata key／型別／允許值、缺省與未知值行為，並對齊 System metadata Schema。第一版可用說明與範例交付，不新增強制 Descriptor 欄位／通用條件引擎。例：某 Chunker 支援 chunking_mode=passthrough，缺省 split；其他 Chunker 不因共享資料型別就自動支援。_rag 追溯能力為選用，有宣告才列入對應驗收，沒有不因型別或 UI 而強制補齊。
+
 ## 5. Config Schema 的第一版支援範圍
 
 規劃使用 JSON Schema Draft 2020-12，前後端 Validator 必須測試同一子集，不以各套件的預設 dialect 猜測。Pydantic 與前端表單套件的版本、轉換層及限制於 M0／M1 鎖定。
@@ -353,4 +357,5 @@ UI 顯示 `[Chunking] 重疊 Token 數必須小於 Chunk Token 上限。`，點�
 參考：Pydantic 的 [JSON Schema 產生](https://docs.pydantic.dev/latest/concepts/json_schema/)、RJSF 的 [Schema 表單](https://rjsf-team.github.io/react-jsonschema-form/docs/) 與 [uiSchema](https://rjsf-team.github.io/react-jsonschema-form/docs/api-reference/uiSchema/)（2026-10-28 查閱）。參考資料支持可行性，未替本專案鎖定前端套件；本文 UI hints／rules 是本專案草案，並非 RJSF 原生格式。
 
 2026-11-02 補充：unit_fields 候選來自 Parser 輸出 Unit 的欄位 Schema／樣本；必須標示所有 Units 的欄位可用性，不能僅用第一筆推定全部符合。移除 structure 類型候選與 Chunker 結構 Router；Parser 輸入格式派送仍保留。
+
 

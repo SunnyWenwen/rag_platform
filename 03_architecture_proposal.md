@@ -1,5 +1,7 @@
 # Retrieval Builder — 系統概覽與架構
 
+> 2026-11-03 D-52：KISS 調整：Chunk 六鍵不變，_rag 追溯由 Component 選填，有提供才驗證；SDK helper 不強制使用。metadata 可攜帶 Component 支援的文件層提示，不是任意 Config／授權覆寫，不另建通用規則引擎。見 [15 §3～6](docs/15_chunk_contract.md)，UI 待辦 UIB-017。本輪不改圖面／Prototype。
+
 > 2026-11-02 D-51：支援單 Module Remote Component 與連續多 Module Remote Pipeline；由 Developer 提供 Service Manifest 註冊，Builder User 選服務。三種交付模式與資料責任見 [18](docs/18_remote_service_pipeline_integration.md)；UI 待辦見 UIB-016，本次不改圖面／Prototype。
 
 > 文件同步：2026-10-31 · 開發規格草案（正式 SDK／Config 尚未凍結）
@@ -302,5 +304,6 @@ Local Search 的 Memory／MongoDB 持久化模式隨邏輯 Config 固定：DEV �
 所有問題狀態、決策負責人及階段阻擋範圍見 08。
 
 資料邊界（2026-11-02）：IngestionDocument → ParsedDocument.units → Chunk.fields；Parser 整理文件結構，Chunker 只在每個 Unit 的指定文字欄位內切分，不跨 Unit 合併／overlap。ParsedDocument 無 structure／fields 包裝，Chunk 外層與後續模組保持六鍵設計。
+
 
 

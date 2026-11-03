@@ -224,7 +224,11 @@ API Input／Output 不轉成另一套文件物件；HTTP 序列化／還原由 A
 | FastAPI 服務與部署範本 | 不需要 | 選用；Image／Endpoint 的 API 相同 |
 | 完整 Engine | 整合測試使用 | 非遠端服務依賴；需與 Adapter 做相容測試 |
 
-本例沒有演算法參數，所以不新增 Remote request envelope，body 保持原 Input。未來有 per-System 演算法參數時，要另定參數／初始化協定，不能塞入文件 metadata、偷偷借用 parsing_profile，或直接把整個 Config／Secret 傳出去。設定描述與 UI hints 仍需由 Developer 提供並登錄；Pydantic I/O 相同，不代表 UI 參數或語意必然相容。
+本例沒有演算法參數，所以不新增 Remote request envelope，body 保持原 Input。未來有 per-System 演算法參數時，要另定參數／初始化協定，不能把任意 Config／連線設定塞入文件 metadata、偷偷借用 parsing_profile，或直接把整個 Config／Secret 傳出去。設定描述與 UI hints 仍需由 Developer 提供並登錄；Pydantic I/O 相同，不代表 UI 參數或語意必然相容。
+
+### 5.1 metadata 處理提示與選填追溯（D-52）
+
+上述禁止任意 Config 傳輸，不禁止 Component 明確支援的文件層 metadata 提示。Parser 可保存合法提示，後續 Component 依自身宣告讀取；例如支援 chunking_mode 的 Chunker 可保留整個 Unit，缺省正常切分，不需通用規則引擎。_rag 追溯由輸出 Component 選擇是否提供；本 Parser 教學與 HTTP body 不因此改寫，見 [15 §4.1](15_chunk_contract.md)。
 
 ## 6. 如何重現
 
@@ -247,4 +251,5 @@ python -m venv .venv-demo
 ## 延伸：03 圖全部 Contract 的 Pydantic 草案
 
 本篇的 Parser 教學維持原樣；需要一起檢視 Chunk／IndexBinding／QueryContext／ResultSet／InferenceState 時，見 [17 Pydantic Contract 草案](17_pydantic_contracts_draft.md)。該集合是獨立可執行草案，尚未合併成正式 SDK；IndexBinding 欄位另外標為待確認提案。
+
 

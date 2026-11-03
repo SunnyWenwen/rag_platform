@@ -16,7 +16,7 @@
 
 JSON Schema 定義物件形狀，13～15 定義語意與相容規則，參考驗證器檢查跨欄位關係。Parser 統一輸出平面 Units；Chunker 仍需符合所選欄位／文字格式／Tokenizer 條件。已確認方向作為開發依據；各草案的正式版本／SDK、索引提交與更新政策仍由 [08 的 Q-ID](docs/08_implementation_plan.md#q-002) 追蹤。
 
-Chunk 預設切 fields.text 並寫回 text；進階多欄位任務各自切分、串接結果，2＋3 得 5 個 Chunk。每個任務預設輸出 text；完整原文只在明確 copy 時附帶，使用不衝突名稱。metadata 全部有效繼承，來源與切分追溯由 Engine 管理。Embedding 預設 fields.text → vectors.text，每個向量保存 values／embedding_profile_id／source_field。
+Chunk 預設逐 Unit 切 units[i].text 並寫入 fields.text；進階多欄位任務各自切分、串接結果，2＋3 得 5 個 Chunk。每個任務預設輸出 text；完整原文只在明確 copy 時附帶，使用不衝突名稱。metadata 全部有效繼承；D-52 下 _rag／來源位置／fingerprint／ordinal 為 Component 選填，有提供才驗證。metadata 也可傳遞 Component 支援的處理提示，例如 chunking_mode=passthrough，不新增全域規則引擎。Embedding 預設 fields.text → vectors.text，每個向量保存 values／embedding_profile_id／source_field。
 
 ## 文件導覽
 
@@ -27,9 +27,9 @@ Chunk 預設切 fields.text 並寫回 text；進階多欄位任務各自切分�
 | [05 資料與 Config](docs/05_data_contracts_search_design.md) | 契約總覽、Inference 物件、設定責任與變更影響 |
 | [06 UI 開發規格](docs/06_ui_development_spec.md) | Create／Edit、欄位相依、CSV、預覽及助手 |
 | [07 Backend 與 Runtime API](docs/07_backend_runtime_integration.md) | JSON API、工作狀態、儲存、服務綁定與 Export |
-| [08 開發計畫與決策](docs/08_implementation_plan.md) | M0～M7、D-01～D-51、Q-001～Q-028 與驗收 |
+| [08 開發計畫與決策](docs/08_implementation_plan.md) | M0～M7、D-01～D-52、Q-001～Q-028 與驗收 |
 | [09 Inference Contract 與 UI](docs/09_inference_contract_ui_plan.md) | ResultSet、兩層融合、四處 Top N 與連動 |
-| [10 UI Backlog](docs/10_ui_adjustment_backlog.md) | 現有原型能力及未實作 UIB-001～016 |
+| [10 UI Backlog](docs/10_ui_adjustment_backlog.md) | 現有原型能力及未實作 UIB-001～017 |
 | [11 Component 開發指南](docs/11_component_developer_guide.md) | SDK 示意、開發、契約測試、PR 與發布 |
 | [12 Component 設定描述](docs/12_component_schema_ui_contract.md) | Config Schema、UI hints、動態選項與相依規則 |
 | [13 IngestionDocument](docs/13_ingestion_parser_input_contract.md) | 輸入分類、路由、API／Parser 相同 Schema |
@@ -64,4 +64,5 @@ Chunk 預設切 fields.text 並寫回 text；進階多欄位任務各自切分�
 Parser 開發示範：[三種交付模式圖](diagrams/04_component_delivery_modes.md) → [16 兩種開發方式與程式](docs/16_parser_component_development_examples.md)。Remote 服務不要求完整 Engine／ABC；正式 HTTP／參數協定仍待核定。
 
 2026-11-02 D-51：Remote Service 改以 Manifest 註冊供 User 選用，可一次涵蓋連續多 Module；Image 由平台部署，External 固定使用服務既有資料空間，第一版不加入 data_space_id。規格見 18，UI 僅記錄 UIB-016；現有 Prototype／Schema／可執行教學不變。
+
 
