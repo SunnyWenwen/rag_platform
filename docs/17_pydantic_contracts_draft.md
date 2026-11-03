@@ -1,5 +1,7 @@
 # 17 — 03 圖中的 Pydantic Contract 草案
 
+> 2026-11-03 Inference 簡化討論另記於 [05 §4.6.9](05_data_contracts_search_design.md#inference-kiss-discussion)：簡化版 QueryContext 已要求加入選填 metadata，預設 {}。該版仍待整體確認；本篇現有 InferenceState／歷史 ResultSet Model 尚未替換，不把討論欄位混入舊可執行 Contract。
+
 2026-11-02｜可執行型別草案，尚非正式 SDK；本次不修改既有共用 JSON Schema、UI 或 Engine。
 
 ## 1. 先看物件與責任
@@ -576,6 +578,7 @@ payload = document.to_payload()
 驗證覆蓋既有 ParsedDocument／Chunk／5 份推論情境的 round-trip，以及缺欄位、來源三選一、null、型別、向量、來源引用、stage、active IDs、排序與 IndexBinding 提案反例。資料驗證不等於已執行搜尋／模型／重建／部署。
 
 **相容性說明：**共用物件形狀以 schemas/ 與 13～15 為準；這份 Pydantic 集合是可執行草案，部分 validator 增加跨欄位／語意檢查。自動匯出的 JSON Schema 不會完整表達所有 custom validator，不能用生成 Schema 單獨取代語意驗證。IndexBinding／ModuleResult 的正式版本、SDK 模組路徑與封裝仍待核定；本次沒有發布新 SDK，也沒有遷移 16 的既有教學程式。
+
 
 
 

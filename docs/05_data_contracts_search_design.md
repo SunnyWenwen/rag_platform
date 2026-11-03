@@ -272,6 +272,35 @@ ES 內部已 Sum Score 的回傳為一份 Retrieval ResultSet，score_kind 記 w
 
 v0.2 草案將單一 field_path 改為 field_paths、stage 改為 retrieval／merge／top_n／model_score，例 02 改為 Top N；具體拼字與遷移仍待 Q-002。rank 保持 integer，前一輪暫提 rank=None 的方案未採用。UI 不直接編輯 runtime ID、score_kind 或 score_order；設定整合與待確認事項見 [09](09_inference_contract_ui_plan.md)。
 
+<a id="inference-kiss-discussion"></a>
+#### 4.6.9 Inference KISS 討論草案與 QueryContext.metadata（2026-11-03）
+
+以下保存最新討論，**尚未整版核定／替換前面 inference-0.2-draft、JSON Schema 或 17 的可執行 Model**。使用者已要求在簡化版 QueryContext 加入選填 metadata，預設 {}；不預先限定內部業務 key，內容維持合法 JSON。
+
+| 簡化討論型別 | 欄位／用途 |
+|---|---|
+| list[QueryContext] | 模組間直接傳遞目前有效的 Query 清單，移除只有一個清單 property 的 InferenceState 包裝 |
+| QueryContext | ori_query、query、filters、result_sets、metadata |
+| ResultSet | key、items；key 識別路徑／結果群組 |
+| ResultItem | chunk、選填 score；items 順序作排名，RRF 讀取每份清單順序 |
+
+QueryContext 的欄位視圖（參照同一討論版的 FilterCondition／ResultSet，不是既有 SDK import）：
+
+```python
+from pydantic import BaseModel, Field, JsonValue
+
+class QueryContext(BaseModel):
+    ori_query: str
+    query: str
+    filters: list[FilterCondition] = Field(default_factory=list)
+    result_sets: list[ResultSet] = Field(default_factory=list)
+    metadata: dict[str, JsonValue] = Field(default_factory=dict)
+```
+
+metadata 例：{"language": "zh-TW", "source": "builder"}。用來附帶本次 Query 的資訊；改寫時帶給各衍生 Query。filters 仍是獨立的搜尋條件，不藏在 metadata，可信授權／服務資源仍由執行 Context 提供。跨 Query 合併遇到 metadata 衝突時的保留規則待後續確認，不先默默覆寫。
+
+其餘討論方向：只保留當前資料，舊清單／分數／operation 歷史先用 Log；Config 決定融合與 Top N。System 預設 filters 與 API filters 以 AND 帶進 QueryContext；改寫繼承、不由 LLM 修改，跨 Query 合併第一版要求 filters 相同。是否整體採用、完整模組簽名與正式回應，仍待整版確認；本輪只記錄，不同步改寫既有 Schema／測試資料或 UI。
+
 ## 5. 共用執行與錯誤物件
 
 下列延續舊 04 的設計方向，正式欄位必填與狀態仍由 Q-002／Q-017 核定：
@@ -396,11 +425,19 @@ Chunk 後的 UI／跨容器引用使用 fields.text、vectors.text、metadata.de
 
 ParsedDocument.units 每筆直接放內容欄位；Chunk 的 metadata._rag.source_refs 記 unit_index、field 與 Unit 內文字範圍，不新增 structure。完整切分 spec 由 Config／Run 保存，Chunk 可選擇保存 fingerprint／ordinal／task_id，沒有也合法。
 
+### 7.1 D-53：兩項已確認、尚未實作的預設 Component 能力
+
+- 預設 Embedding Component 可選模板組合固定文字與 fields，預設關閉；輸出獨立 fields.embedding_text，沿用來源／向量映射並保存衍生文字，向量 source_field 指向衍生來源。欄位衝突／缺失與模型長度檢查須涵蓋最終內容。
+- 預設 Chunker 可獨立勾選「額外保留原文 Chunk」，預設關閉；以每 Unit／任務的完整來源為準，若已有相同切片不重複產生，不跨 Unit 合併。與既有 copy 原文欄位不同。
+- 兩者屬邏輯 Config，不因環境綁定而改變；不要求所有自訂 Component 實作，不新增共用資料根鍵／Pipeline Module。具體 Config 拼字尚未凍結；完整語意見 [15 §9](15_chunk_contract.md#embedding-field-composition)，UI 待辦 UIB-018／019。
+
 ## 8. Config 變更影響矩陣
 
 | 有效變更 | 影響 |
 |---|---|
 | Document Schema、Import／Parsing／Chunking／Embedding／Indexing 的邏輯配置 | 新 Config Revision，標記需重新 Ingestion；中間產物重用另決 |
+| D-53 模板／衍生欄位／映射 | 需重新組合、Embedding／Indexing；Chunk 重用依來源保留與版本政策，不保證自動局部重跑 |
+| D-53 額外原文 Chunk 開關 | Chunk 集合改變，需重新 Ingestion；沿用既有資料替換／發布政策 |
 | 部署設定的 DB／實體索引目標 | Config Revision 不因此改變；更新部署綁定，目標需有相容資料或重新 Ingestion |
 | 同 Profile 的模型服務 URL／Secret | 邏輯 Config 不變；驗證連線與實際模型相容性，不能把不相容模型當成純換 URL |
 | Query Transformation、Retrieval、Rerank、被引用的 LLM | 不需重建；需重新測試／評估 |
@@ -447,6 +484,7 @@ CSV 映射保存、Revision 計算、canonical JSON／Hash、部署綁定是否�
 ## 10. 交付與驗收要求
 
 Q-002 核定後，開發階段需提供 Pydantic Models、可匯出的 JSON Schema、完整 Local／ES／MongoDB 範例與無效範例。相同資料在 UI／HTTP／直接 Engine 呼叫得到相容驗證結果；Unicode offset、向量維度及欄位路徑有獨立驗收資料。實作 Schema 是程式可驗證的產物，變更時同步更新本文與範例，不允許各層另創契約。
+
 
 
 

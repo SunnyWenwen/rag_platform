@@ -200,13 +200,15 @@ Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一�
 
 **待決**：Q-004、Q-005、Q-007；Token 精確計數、切分 fallback 與 overlap 邊界需測試材料。
 
+D-53 功能待實作：預設 Chunker 可選擇另留每 Unit／任務的完整原文 Chunk，預設關閉；已有相同完整切片則不重複新增。它與 copy 原文欄位獨立，不跨 Unit 合併，新增結果仍走 Embedding／Indexing 與模型上限檢查。行為與例子見 [15 §9.2](15_chunk_contract.md#include-original-chunk)。
+
 ### 4.4 Embedding
 
 **目的**：選 fields 內容，依 mappings 將 Dense 向量寫入 vectors。多個 output_name 與來源明確對應；與 Indexing 分離。
 
 **處理**：
 
-1. 解析 Profile／服務／Tokenizer，依 document encoding 建立每筆輸入。
+1. 預設 Embedding Component 可選擇先以模板組合 fields 與固定文字，寫入獨立衍生欄位（預設 embedding_text），再依映射解析 Profile／服務／Tokenizer 與 document encoding；來源欄位記入向量 source_field。不啟用時沿用原路徑，詳見 15 §9.1。
 2. 對實際來源內容檢查 Token 極限，含前綴及特殊 Token；不能只驗 Chunk Size。
 3. 按 Batch Size 呼叫 Embedding Adapter；現有 Prototype 的格式基線為 OpenAI-compatible embeddings。正式首組服務、相容範圍及模型契約仍待 Q-003，不把原型格式當作所有 Embedding API 的通用標準。
 4. 驗證回應 index 對應、數量、維度與有限值；不能因回傳順序錯誤把向量寫給其他 Chunk。
@@ -490,5 +492,6 @@ DEV 與 FTEST／ENT 維持相同方法選擇／解析版本與邏輯 Config，�
 - 尚未核定能力回報不支援，不以 Mock 或靜默 fallback 代表完成。
 
 開發階段與驗收資料見 [08](08_implementation_plan.md)。
+
 
 

@@ -95,8 +95,7 @@
 | D-50 | Retrieval-only；產品名統一 Retrieval；Library＋Config 建立 System，Platform 包含 Library／API／Image；取消 Generation 及答案評估 | 2026-11-02 使用者確認 | 03～15／架構圖；UIB-015 |
 | D-51 | Remote Pipeline 可承接連續多 Module；Developer 以 Manifest 註冊服務，User 選用；Local 共用 Runtime、Image 每 System 獨立部署、External 自行部署／固定資料空間；第一版不加 data_space_id | 2026-11-02 使用者確認 1～5、Indexing 配對及簡化資料空間後授權更新文件 | 18／03～07／10～12／16；UIB-016；Q-002／Q-019～Q-022／Q-028 |
 | D-52 | KISS：正式 Chunker 也可不提供 _rag／source_refs／fingerprint／ordinal，有提供才驗證；metadata 可攜帶 Component 支援的文件層提示，不另建通用規則引擎 | 2026-11-03 使用者確認兩點並要求同步文件；放寬 D-47／D-49 中追溯強制性，必要六鍵／ID／內容／向量規則不變 | 04～08／10～18／Schema 說明與參考驗證；UIB-017 |
-
-
+| D-53 | 預設 Embedding Component 提供選用欄位模板組合，預設獨立 embedding_text；預設 Chunker 可選擇額外保留每 Unit／任務原文 Chunk，相同不重複新增；兩者預設關閉 | 2026-11-03 使用者接受建議並要求記錄；僅需求文件，不修改 UI／Engine，正式設定 Schema 待核定 | 04／05／15 §9；UIB-018／019；Q-002／Q-003／Q-004／Q-015 |
 
 兩層合併預設勾選且在 Retrieval 後已確認，Prototype 的設定／預覽狀態見 10；不能把展示能力當作 Engine 已實作。Q-014 仍負責正式支援路徑、stage 命名及執行契約等剩餘細節。
 
@@ -242,7 +241,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 - 正式鍵名／nullable／自訂轉換、異質任務下游欄位適用條件、舊向量陣列遷移、跨語言 canonicalization 與 SDK 仍需審閱。身份 Hash 不解決索引原子提交；Q-007～Q-010／Q-015 保持有待決細節。
 - UI 僅記 [UIB-013](10_ui_adjustment_backlog.md#uib-013-chunk-contract)，未實作；來源範例與資料測試不等於 Tokenizer／Chunker／DB 驗收。
 
-- 2026-10-30 後續 D-48：多任務預設輸出 text；必要切分欄位缺失／型別錯誤／全空白、必要任務零產出及明確 copy 欄位缺失報錯。concat／固定文字組裝仍待討論，沒有新增 Module 或修改執行 Schema。
+- 2026-10-30 後續 D-48：多任務預設輸出 text；必要切分欄位缺失／型別錯誤／全空白、必要任務零產出及明確 copy 欄位缺失報錯。D-53 已確認由預設 Embedding Component 提供選用模板組合，不新增 Module；正式設定 Schema 未凍結、尚未實作，見 15 §9。
 
 <a id="q-003"></a>
 ### Q-003 模型服務與 Adapter 契約
@@ -544,7 +543,7 @@ Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract�
 - 資料驗證：examples/parsed_document、examples/chunk 與 examples/inference；完整限制與執行方式見 14／15。
 - Parser 對照：Docling／MinerU 固定官方輸出映射，以及 MarkItDown／PyMuPDF4LLM 的已記錄本地解析證據，見 14 §5／§5.1。範例通過不表示已交付 Engine Component。
 - Prototype：結果處理既有能力見 10 §1～6；後續 UIB-001～013 尚未實作，三份新 Schema 的 UI 遷移集中於 UIB-011～013。
-- 優先決策：正式共用契約／SDK、模型與 Tokenizer、ID／更新／發布政策，再按 M0～M7 推進。Chunk 後 concat／固定文字組裝保持待討論，見 15 §9。
+- 優先決策：正式共用契約／SDK、模型與 Tokenizer、ID／更新／發布政策，再按 M0～M7 推進。D-53 的 Chunk 後模板組合與額外原文 Chunk 已確認需求，尚待實作及凍結具體設定格式，見 15 §9。
 
 已被取代的格式、臨時交接核對及逐輪交付流水帳不再佔用現行規格；歷史可由 Git 查閱。D-01～D-48 保留決策依據，Q-001～Q-027 保留剩餘取捨與階段 Gate，不能把文件整理視為功能驗收完成。
 
@@ -555,5 +554,6 @@ ParsedDocument 採 units 列表，Unit 直接放內容欄位；無 fields 包裝
 ## D-50：Retrieval-only 與 Library／Platform（2026-11-02）
 
 Generation 不在開發或驗收範圍；Inference 輸出檢索結果。Rewrite／Multi-query、助手的 LLM 仍保留。03 §3 統一定義 Library、Platform、Runtime、System；Library 配 Config 並綁定必要資源才成為可執行 System。舊 D-14／D-24 中答案相關部分撤銷，UIB-009 取消。實際 repo／package／URN／保留欄位暫不更名，另列遷移；不修改現有 Prototype。
+
 
 

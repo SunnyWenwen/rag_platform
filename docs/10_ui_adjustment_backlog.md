@@ -338,3 +338,27 @@ v0.10 的無結構／text-spans／page-blocks 展示僅代表舊契約。現行�
 - [ ] Component 說明它解讀的 metadata key、型別、允許值、缺省／未知值處理；沿用 metadata Schema／CSV 映射，不新增全域規則引擎或任意 Config 覆寫入口。
 - [ ] 支援的 Chunker 可讀 chunking_mode=passthrough，逐 Unit／任務完整轉 Chunk，仍驗證欄位／模型上限；其他 Component 不假裝支援。
 - [ ] Chunk 位置追溯選填不影響 ResultItem.source_refs 的 Inference 分數／候選血緣規則。
+
+
+
+<a id="uib-018-embedding-composition"></a>
+### UIB-018：Embedding 前的欄位模板組合（D-53，需求已確認／尚未改 UI）
+
+依據：[15 §9.1](15_chunk_contract.md#embedding-field-composition)。預設 Embedding Component 的選用前處理，不新增 Module，不強制自訂 Component 支援。
+
+- [ ] 提供預設關閉、收合的「內容組合」；啟用後填模板與輸出欄位（預設 embedding_text），固定文字＋fields.* 變數替換，不執行程式或 LLM。
+- [ ] 顯示套用前／後內容預覽；衍生欄位納入來源／下游欄位選單，沿用 Embedding mappings，例如 fields.embedding_text → vectors.text，source_field 記 embedding_text。
+- [ ] 缺欄位、型別／語法不符、輸出重名不默默改值或覆寫 text；驗證最終模型輸入上限，包含 Profile 前綴與特殊 Token。
+- [ ] Create／Edit／AI 建議／驗證／匯出使用同一有效設定；關閉時保留草稿但不執行／不觸發有效變更。有效模板／輸出／映射改動提示重新組合與 Embedding／Indexing。
+- [ ] 未串接 Engine 時明示模擬；模板不能讓 Provider 前綴重複套用，也不自動改變 Query Encoding。
+
+<a id="uib-019-original-chunk"></a>
+### UIB-019：額外保留原文 Chunk（D-53，需求已確認／尚未改 UI）
+
+依據：[15 §9.2](15_chunk_contract.md#include-original-chunk)。預設 Chunker 選用能力，不是原文欄位 copy 的別名。
+
+- [ ] 在 Chunking 增加獨立選項「額外保留原文 Chunk」，預設關閉；既有「保留原文欄位」維持獨立設定。
+- [ ] 說明原文指每 Unit／任務完整 split_field，不跨 Unit 合併。若已有完整相同切片直接沿用，不重複新增；passthrough 同理，不對不同文件／Units 任意去重。
+- [ ] 提供兩頁示例：7 字＋15 字、每 10 字無 overlap，關閉 3 筆、開啟 4 筆。例子僅解釋規則，不用字元假裝實際 Tokenizer 計數。
+- [ ] 新原文 Chunk 的 copy／metadata／vectors 與一般輸出規則一致，仍走模板組合／Embedding／Indexing；完整原文超模型上限要顯示錯誤，不默默截斷／跳過。
+- [ ] Create／Edit／AI／匯出與變更影響同步；有效開關改變需重新 Ingestion，舊 Chunk 清除與發布交給既有政策。未有真實 Engine 時不得宣稱已產生實際 Chunk／向量。

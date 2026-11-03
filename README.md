@@ -27,9 +27,9 @@ Chunk 預設逐 Unit 切 units[i].text 並寫入 fields.text；進階多欄位�
 | [05 資料與 Config](docs/05_data_contracts_search_design.md) | 契約總覽、Inference 物件、設定責任與變更影響 |
 | [06 UI 開發規格](docs/06_ui_development_spec.md) | Create／Edit、欄位相依、CSV、預覽及助手 |
 | [07 Backend 與 Runtime API](docs/07_backend_runtime_integration.md) | JSON API、工作狀態、儲存、服務綁定與 Export |
-| [08 開發計畫與決策](docs/08_implementation_plan.md) | M0～M7、D-01～D-52、Q-001～Q-028 與驗收 |
+| [08 開發計畫與決策](docs/08_implementation_plan.md) | M0～M7、D-01～D-53、Q-001～Q-028 與驗收 |
 | [09 Inference Contract 與 UI](docs/09_inference_contract_ui_plan.md) | ResultSet、兩層融合、四處 Top N 與連動 |
-| [10 UI Backlog](docs/10_ui_adjustment_backlog.md) | 現有原型能力及未實作 UIB-001～017 |
+| [10 UI Backlog](docs/10_ui_adjustment_backlog.md) | 現有原型能力及未實作 UIB-001～019 |
 | [11 Component 開發指南](docs/11_component_developer_guide.md) | SDK 示意、開發、契約測試、PR 與發布 |
 | [12 Component 設定描述](docs/12_component_schema_ui_contract.md) | Config Schema、UI hints、動態選項與相依規則 |
 | [13 IngestionDocument](docs/13_ingestion_parser_input_contract.md) | 輸入分類、路由、API／Parser 相同 Schema |
@@ -54,7 +54,7 @@ Chunk 預設逐 Unit 切 units[i].text 並寫入 fields.text；進階多欄位�
 
 可執行的契約範例與測試位於 examples/parsed_document、examples/chunk、examples/inference 及 examples/contracts，各自使用共用 Schema。供應者映射與實際解析的版本、測資及驗證限制見 14；資料驗證通過不代表正式 Engine、Tokenizer、模型或 DB 串接已完成。
 
-舊輸入格式、完整單層 YAML、可任意排列結果處理卡片及逐次更新流水帳已移除；歷史由 Git 保留。尚未確認的 concat／固定文字組裝、LLM 結構化輸出及正式發布政策保留為提案，不當成既定功能。
+舊輸入格式、完整單層 YAML、可任意排列結果處理卡片及逐次更新流水帳已移除；歷史由 Git 保留。D-53 已確認預設 Embedding Component 的模板組合與 Chunker 額外原文 Chunk 需求，尚未實作，見 15 §9 與 UIB-018／019。LLM 結構化輸出及正式發布政策仍保留為提案，不當成既定功能。
 
 2026-11-02：ParsedDocument／Chunk 已更新至 0.2-draft（units 與 unit_index 來源追溯）；Prototype v0.11 已同步平面 Units，模擬範圍與限制見 UIB-014。舊 provider 0.1 報告不作新版驗收證據。
 
@@ -64,5 +64,6 @@ Chunk 預設逐 Unit 切 units[i].text 並寫入 fields.text；進階多欄位�
 Parser 開發示範：[三種交付模式圖](diagrams/04_component_delivery_modes.md) → [16 兩種開發方式與程式](docs/16_parser_component_development_examples.md)。Remote 服務不要求完整 Engine／ABC；正式 HTTP／參數協定仍待核定。
 
 2026-11-02 D-51：Remote Service 改以 Manifest 註冊供 User 選用，可一次涵蓋連續多 Module；Image 由平台部署，External 固定使用服務既有資料空間，第一版不加入 data_space_id。規格見 18，UI 僅記錄 UIB-016；現有 Prototype／Schema／可執行教學不變。
+
 
 

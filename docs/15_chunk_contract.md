@@ -306,11 +306,67 @@ python examples/chunk/test_contract.py
 
 已確認的是六鍵外層、text 預設、進階多任務／複製、來源追溯位置、向量資訊分層及穩定 ID 方向。精確鍵名／nullable／自訂型別與遷移仍以本稿供 M0 審閱；Q-002／Q-003／Q-004／Q-006／Q-007 及索引提交政策不因草案產出而全部結案。
 
-## 9. 後續確認與欄位組裝待討論（2026-10-30）
+## 9. 後續確認與欄位組裝（D-53，2026-11-03 已確認功能方向）
 
 - D-48 已確認：多任務預設將切分片段寫 fields.text；完整原文複製採不衝突名稱，進階仍可自訂。第一版必要切分欄位缺失／型別錯誤／全空白、明確 copy 欄位缺失或必要任務零產出均明確失敗；可選複製不先擴充。
 - Parser 改變需重新處理受影響文件：Parsing → Chunking → Embedding（有配置時）→ Indexing；原始資料可取得時不代表一定要重新上傳。多 Parser 路由的重跑範圍、原始資料保留、重新發布仍須依有效相依與儲存政策決定。這是執行影響說明，沒有新增已實作的重跑／快取能力。
 - 重新 Ingestion 與 ID 是否納入解析後輸入內容摘要是不同問題；目前 Hash 規則尚未修改。原始文件版本不變但 Parser 輸出改變時的 ID／index_generation 識別仍在 Q-007／Q-015。
-- **待討論，未核定**：切分後 concat 多個欄位、加入固定文字，可候選作為 Chunking 後的共用欄位組裝、在 Embedding 前執行；先不新增 Pipeline Module、不修改 Schema／程式或凍結模板拼字。
-- 待確認範圍：是否寫入獨立衍生欄位、來源／衍生血緣與 Token 檢查；與 Embedding Profile 的 encoding prefix的分工；模板改動需重跑哪些步驟。不能先把欄位組裝當成已交付能力。
+- D-53 已確認：預設 Embedding Component 提供選用模板組合；預設 Chunker 提供選用原文 Chunk。以下記錄需求，尚未修改 UI、Engine、資料 Schema 或教學切分程式；不是所有自訂 Component 的必要能力。
 
+<a id="embedding-field-composition"></a>
+### 9.1 Embedding 前的欄位模板組合
+
+- 位置：Chunking 後、Embedding 呼叫前，由預設 Embedding Component 前處理，不新增 Pipeline Module。
+- UI：提供預設關閉／收合的「內容組合」，啟用後填模板與輸出欄位名稱；預設輸出 fields.embedding_text，既有 Embedding 來源／向量名稱映射仍可設定。
+- 支援欄位替換與固定文字，不執行 Python／任意程式，也不呼叫 LLM。第一版以明確的 fields.* 文字欄位為主；缺欄位、型別不符、語法錯誤或輸出命名衝突要報錯，不默默換值或覆寫原 text。
+- 先寫入衍生欄位，再走原有映射與模型輸入檢查；新欄位隨 Chunk 一起保存，讓使用者可檢查實際組合的內容。
+
+範例模板（語意已確認；正式設定 Schema／解析器細節待核定）：
+
+```text
+標題：{{fields.title}}
+內容：{{fields.text}}
+```
+
+套用後的 fields：
+
+```python
+fields = {
+    "title": "設備保養",
+    "text": "清潔前先斷電。",
+    "embedding_text": "標題：設備保養\n內容：清潔前先斷電。",
+}
+```
+
+映射可設為 fields.embedding_text → vectors.text；向量 source_field 記 embedding_text，向量名稱不必同名。模型 Profile／document encoding prefix 的規則維持，不能將同一前綴重複加兩次；本模板只用於文件 Chunk，不隱含套用到 Query Encoding。
+
+對最終模型輸入檢查 Token 上限，包含組合內容、Profile 前綴與特殊 Token。模板／輸出欄位／映射等有效變更屬 Ingestion 邏輯變更，需重新組合、Embedding 與 Indexing；是否可重用既有 Chunk 依來源保留能力與 Q-015，不承諾自動局部重跑。一般自訂 Component 只有明確宣告支援時才提供此功能。
+
+<a id="include-original-chunk"></a>
+### 9.2 Chunker 額外保留完整原文 Chunk
+
+| 選項 | 行為 |
+|---|---|
+| 複製原文欄位（既有） | 每筆切片附帶 original_text 等完整欄位，使用不衝突名稱 |
+| 額外保留原文 Chunk（新增） | 除切片外，額外輸出一筆完整來源文字的 Chunk；預設關閉 |
+
+「原文」是當前 Unit／切分任務的完整 split_field，不跨 Units 拼成整份文件。額外 Chunk 的主要內容放該任務 output_field（預設 text），title／page 等依相同 copy 規則，繼承合法文件 metadata，建立必要 chunk_id，vectors={}；_rag 仍依 D-52 選填，不新增必要根欄位或 chunk_kind。
+
+若本 Unit／任務已有與完整原文相同的切片，直接沿用，不重複新增。此判斷只在同一 Unit／任務內進行，不對不同文件／Units 任意去重。判斷與輸出順序須穩定；具體 Config 欄位及 ID/helper 的編排細節待核定。
+
+延續 17 的字元教學例（不改正式 Tokenizer 計量）：
+
+| 頁碼 | 一般切片 | 開啟後額外原文 Chunk |
+|---|---|---|
+| 1：7 字 | 清潔前先斷電。 | 不新增，已有完整相同內容 |
+| 2：15 字 | 每月清潔散熱孔並檢查／風扇運轉。 | 每月清潔散熱孔並檢查風扇運轉。 |
+
+因此關閉時 3 筆，開啟時 4 筆。passthrough 已完整轉出原文時，同樣不額外重複新增。多任務仍依各任務處理，不做跨任務／跨 Unit 合併。
+
+新增的原文 Chunk 照常通過 9.1 的內容組合、Embedding 與 Indexing。完整原文可能超過模型輸入上限，須報錯／依既定失敗政策處理，不默默截斷或自動跳過。開關變更會改變 Chunk 集合，需重新 Ingestion；舊資料清除與發布沿用 Q-008～Q-010／Q-015。
+
+### 9.3 待實作與驗收
+
+- UIB-018 記錄模板表單、衍生欄位 Picker／預覽／映射與驗證；UIB-019 記錄原文欄位／原文 Chunk 的獨立選項、去重說明與數量示例。
+- 未實作：模板渲染、原文 Chunk 產生、UI 控制項及真實模型串接。本輪不修改 17 的既有三筆教學資料、不把四筆結果寫成已執行證據。
+- 驗收需涵蓋預設關閉、Create／Edit／AI／匯出一致、缺欄位／輸出衝突、衍生來源向量綁定、完整原文重複判斷、單／多 Unit 與多任務、Token 超長及設定變更重跑影響。正式 Schema／模板細節留 Q-002／Q-003／Q-004／Q-015。
