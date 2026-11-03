@@ -138,24 +138,46 @@ class Chunk(BaseModel):
 **範例 — Chunk：**延續上面的 ParsedDocument：第 1 頁 7 個字元，第 2 頁 15 個字元（含句號）。每 10 字元切一組、overlap=0，且不跨 Unit 合併，因此得到 1＋2＝3 筆。此處用字元方便核對，並非把正式平台的 Tokenizer 計量改成字元。
 
 ```python
-# 教學用「每 10 個字元」，overlap=0；正式平台仍以 Tokenizer 計量。
-# 每個 Unit 獨立切分，title／page 複製到各自的 Chunk。
-chunks = []
-for unit in parsed_doc.units:
-    text = unit["text"]
-    for start in range(0, len(text), 10):
-        chunks.append(Chunk(
-            chunk_id=f"chunk-demo-{len(chunks) + 1:03d}",
-            document_id=parsed_doc.document_id,
-            source_revision=parsed_doc.source_revision,
-            fields={
-                "text": text[start:start + 10],
-                "title": unit["title"],
-                "page": unit["page"],
-            },
-            metadata=parsed_doc.metadata.copy(),
-            vectors={},  # 尚未執行 Embedding。
-        ))
+# 將上一個 ParsedDocument 逐 Unit、每 10 字元切分，overlap=0。
+# 以下直接列出三筆結果；尚未執行 Embedding，主範例省略 _rag。
+chunks = [
+    Chunk(
+        chunk_id="chunk-demo-001",
+        document_id="manual-001",
+        source_revision="v1",
+        fields={
+            "text": "清潔前先斷電。",
+            "title": "設備保養手冊",
+            "page": 1,
+        },
+        metadata={"department": "製造部", "filename": "maintenance.txt"},
+        vectors={},
+    ),
+    Chunk(
+        chunk_id="chunk-demo-002",
+        document_id="manual-001",
+        source_revision="v1",
+        fields={
+            "text": "每月清潔散熱孔並檢查",
+            "title": "設備保養手冊",
+            "page": 2,
+        },
+        metadata={"department": "製造部", "filename": "maintenance.txt"},
+        vectors={},
+    ),
+    Chunk(
+        chunk_id="chunk-demo-003",
+        document_id="manual-001",
+        source_revision="v1",
+        fields={
+            "text": "風扇運轉。",
+            "title": "設備保養手冊",
+            "page": 2,
+        },
+        metadata={"department": "製造部", "filename": "maintenance.txt"},
+        vectors={},
+    ),
+]
 
 # 後面的 ResultItem 等範例，以第一筆 Chunk 示範。
 chunk = chunks[0]
@@ -554,5 +576,6 @@ payload = document.to_payload()
 驗證覆蓋既有 ParsedDocument／Chunk／5 份推論情境的 round-trip，以及缺欄位、來源三選一、null、型別、向量、來源引用、stage、active IDs、排序與 IndexBinding 提案反例。資料驗證不等於已執行搜尋／模型／重建／部署。
 
 **相容性說明：**共用物件形狀以 schemas/ 與 13～15 為準；這份 Pydantic 集合是可執行草案，部分 validator 增加跨欄位／語意檢查。自動匯出的 JSON Schema 不會完整表達所有 custom validator，不能用生成 Schema 單獨取代語意驗證。IndexBinding／ModuleResult 的正式版本、SDK 模組路徑與封裝仍待核定；本次沒有發布新 SDK，也沒有遷移 16 的既有教學程式。
+
 
 

@@ -44,24 +44,46 @@ vector = DenseVector(
 # example:DenseVector:end
 
 # example:Chunk:start
-# 教學用「每 10 個字元」，overlap=0；正式平台仍以 Tokenizer 計量。
-# 每個 Unit 獨立切分，title／page 複製到各自的 Chunk。
-chunks = []
-for unit in parsed_doc.units:
-    text = unit["text"]
-    for start in range(0, len(text), 10):
-        chunks.append(Chunk(
-            chunk_id=f"chunk-demo-{len(chunks) + 1:03d}",
-            document_id=parsed_doc.document_id,
-            source_revision=parsed_doc.source_revision,
-            fields={
-                "text": text[start:start + 10],
-                "title": unit["title"],
-                "page": unit["page"],
-            },
-            metadata=parsed_doc.metadata.copy(),
-            vectors={},  # 尚未執行 Embedding。
-        ))
+# 將上一個 ParsedDocument 逐 Unit、每 10 字元切分，overlap=0。
+# 以下直接列出三筆結果；尚未執行 Embedding，主範例省略 _rag。
+chunks = [
+    Chunk(
+        chunk_id="chunk-demo-001",
+        document_id="manual-001",
+        source_revision="v1",
+        fields={
+            "text": "清潔前先斷電。",
+            "title": "設備保養手冊",
+            "page": 1,
+        },
+        metadata={"department": "製造部", "filename": "maintenance.txt"},
+        vectors={},
+    ),
+    Chunk(
+        chunk_id="chunk-demo-002",
+        document_id="manual-001",
+        source_revision="v1",
+        fields={
+            "text": "每月清潔散熱孔並檢查",
+            "title": "設備保養手冊",
+            "page": 2,
+        },
+        metadata={"department": "製造部", "filename": "maintenance.txt"},
+        vectors={},
+    ),
+    Chunk(
+        chunk_id="chunk-demo-003",
+        document_id="manual-001",
+        source_revision="v1",
+        fields={
+            "text": "風扇運轉。",
+            "title": "設備保養手冊",
+            "page": 2,
+        },
+        metadata={"department": "製造部", "filename": "maintenance.txt"},
+        vectors={},
+    ),
+]
 
 # 後面的 ResultItem 等範例，以第一筆 Chunk 示範。
 chunk = chunks[0]
@@ -235,4 +257,5 @@ if __name__ == "__main__":
     import json
     print(json.dumps({name: value.to_payload() for name, value in TYPE_EXAMPLES.items()},
                      ensure_ascii=False, indent=2))
+
 
