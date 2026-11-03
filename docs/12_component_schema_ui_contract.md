@@ -359,3 +359,10 @@ UI 顯示 `[Chunking] 重疊 Token 數必須小於 Chunk Token 上限。`，點�
 2026-11-02 補充：unit_fields 候選來自 Parser 輸出 Unit 的欄位 Schema／樣本；必須標示所有 Units 的欄位可用性，不能僅用第一筆推定全部符合。移除 structure 類型候選與 Chunker 結構 Router；Parser 輸入格式派送仍保留。
 
 
+
+
+## Prototype v0.12 與正式協定的界線
+
+原型使用程式內 mock Descriptor／Manifest，支援基本 string／integer／boolean／enum、default／required／範圍、advanced 分組，以及 Component／版本選取、停用原因、Remote 覆蓋鎖定。這不是完整 Descriptor Meta-schema 的實作；未知必要 widget／required_ui_features、動態選項 API／版本回應與全部 SUI 驗收仍由正式階段交付，不可把任意 Manifest 直接貼入原型執行。
+
+Inference 的資料 contract_ref 同步 query-context-list/0.3-draft；Query Transformation／Retrieval／Rerank 邊界都是 QueryContext[]。ResultSet.key 作路徑／群組對應，filters／metadata 為資料；Config 與可信授權依原責任分開。Remote 舊 wrapper 不能以相同版本冒用新契約。

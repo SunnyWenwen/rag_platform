@@ -215,7 +215,7 @@ Repo 是程式維護單位，Image 是交付產物，服務是部署單位；一
 
 這是術語及草案介面的一致性更新，沒有改變模組分工、I/O、相依規則或兩個 repo 的部署流程。`module_type`、`implementation_version`、`config_type`、`node_ref` 仍各有用途；不因改名重產生 Component 識別值或自動升級 System。
 
-Python 的 method／`@classmethod`／abstract method、HTTP method，以及既有 Inference ResultSet 中表示演算法／操作紀錄的 `method` 保留原義。Prototype 仍使用部分 `method` 選擇欄位，屬明確標示的待遷移草案；不是新 Component Registry 的 component_id。正式 Config 遷移由 Q-002／Q-015 處理，需按格式版本明確映射與檢查衝突，不能全域替換所有 method 或宣稱 Runtime 已接受舊別名。
+Python 的 method／`@classmethod`／abstract method、HTTP method，以及融合 Config 中表示演算法的 `method` 保留原義。Prototype 仍使用部分 `method` 選擇欄位，屬明確標示的待遷移草案；不是新 Component Registry 的 component_id。正式 Config 遷移由 Q-002／Q-015 處理，需按格式版本明確映射與檢查衝突，不能全域替換所有 method 或宣稱 Runtime 已接受舊別名。
 
 04／11／12 檔名同步使用 components／component，所有文件內引用更新；歷史敘述中的擴充單位採現行術語，原決策日期與功能狀態保留。L1 的 MMD／SVG／PNG 同步改標籤並保持既有版面與連線；Prototype 的實際介面及內部欄位留待 UIB-010 遷移。
 
@@ -307,3 +307,8 @@ Local Search 的 Memory／MongoDB 持久化模式隨邏輯 Config 固定：DEV �
 
 
 
+
+
+### 2026-11-03 資料與原型同步
+
+推論接線依 D-54 統一 QueryContext[]，Context 內含目前 result_sets、filters 與 metadata；沒有歷史外框。Library 管 Config／資源／授權，資料物件只傳業務內容。Prototype v0.12 已有 Component／Remote Pipeline、模板／原文 Chunk 的模擬配置；真實 Runtime／服務管理尚未交付，詳細見 10／17／18。

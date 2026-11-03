@@ -96,6 +96,7 @@
 | D-51 | Remote Pipeline 可承接連續多 Module；Developer 以 Manifest 註冊服務，User 選用；Local 共用 Runtime、Image 每 System 獨立部署、External 自行部署／固定資料空間；第一版不加 data_space_id | 2026-11-02 使用者確認 1～5、Indexing 配對及簡化資料空間後授權更新文件 | 18／03～07／10～12／16；UIB-016；Q-002／Q-019～Q-022／Q-028 |
 | D-52 | KISS：正式 Chunker 也可不提供 _rag／source_refs／fingerprint／ordinal，有提供才驗證；metadata 可攜帶 Component 支援的文件層提示，不另建通用規則引擎 | 2026-11-03 使用者確認兩點並要求同步文件；放寬 D-47／D-49 中追溯強制性，必要六鍵／ID／內容／向量規則不變 | 04～08／10～18／Schema 說明與參考驗證；UIB-017 |
 | D-53 | 預設 Embedding Component 提供選用欄位模板組合，預設獨立 embedding_text；預設 Chunker 可選擇額外保留每 Unit／任務原文 Chunk，相同不重複新增；兩者預設關閉 | 2026-11-03 使用者接受建議並要求記錄；僅需求文件，不修改 UI／Engine，正式設定 Schema 待核定 | 04／05／15 §9；UIB-018／019；Q-002／Q-003／Q-004／Q-015 |
+| D-54 | 簡化推論直接傳 QueryContext[]：ori_query／query／filters／result_sets／metadata；ResultSet=key/items、ResultItem=chunk/選填score；陣列順序為名次、歷史寫 Logs；RRF 用位置，Sum 仍須可比分數 | 2026-11-03 使用者確認此版本並要求所有文件與累積 UI 同步 | 04～09／17～18／Schema／Python／03 圖；Prototype v0.12；UIB-020 |
 
 兩層合併預設勾選且在 Retrieval 後已確認，Prototype 的設定／預覽狀態見 10；不能把展示能力當作 Engine 已實作。Q-014 仍負責正式支援路徑、stage 命名及執行契約等剩餘細節。
 
@@ -217,7 +218,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 <a id="q-002"></a>
 ### Q-002 共用 Schema、Config、SDK 與版本凍結
 
-- 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System；Local Search 持久化模式隨 Config 跨環境固定（D-33）；全部 Chunk.fields／metadata 保存與合法 metadata 全繼承（D-39）。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile、InferenceState／QueryContext／ResultSet 草案，以及舊保存／繼承投影、原型短名稱／匯出標籤 migration。
+- 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System；Local Search 持久化模式隨 Config 跨環境固定（D-33）；全部 Chunk.fields／metadata 保存與合法 metadata 全繼承（D-39）。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile；QueryContext[]／ResultSet 業務欄位已依 D-54 確認。仍待核定的是舊保存／繼承投影、原型短名稱／匯出標籤 migration。
 - 2026-10-28 補充：Component SDK 的 Module-specific I/O 包裝、run／初始化／釋放簽名、RunContext、Registry／Factory 與 Config Schema 介面待凍結；Registry 草案改稱 component_id，不直接改寫既有 Config。精確方法／版本引用、舊 module_id 別名與遷移須一致驗證；11 的 Python 程式只作介面示意。
 - 建議：先核定最小完整 Config＋單一公開 Engine interface；Pydantic 匯出 JSON Schema，UI 使用相同來源。用完整欄位路徑；未知別名拒絕。
 - 替代：直接沿用 Prototype 全部短名稱；需補齊其缺少型別與執行語意。
@@ -353,7 +354,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 - 已有需求：使用者要求可配置融合策略及「在哪一步合併」，並提出逐 Query Score Sum→跨 Query RRF 情境；D-23 已記錄，不能只當可做可不做的助理建議。2026-10-15 再次明確可自行決定融合位置，且應先釐清 Inference 物件如何記錄多 Query／多 Index／多階段分數。
 - 已補確認：後處理三類（D-34）與共同排序（D-35）；不再把是否需要這些語意列為未決。餘下不清楚的是支援的合法路徑、scope／stage 精確 Schema、預設、每階段 K／N、Rerank Query、同分、文件代表、分數語意與 UI 整合。
 - 情境例：同 Query 融合→跨 Query 融合→Rerank、同 Query 融合→逐 Query Rerank→跨 Query 融合、ES 已內部融合。Config 需能選擇合法融合位置，不能只接受固定 Plan A／B；正式 Config 拼字及 Adapter 能力仍待核定；兩層預設勾選且在 Retrieval 後已確認，不再列為未定。
-- 最新草案：05 §4.6 的 inference-0.2-draft 與五份例子同步三類操作、有效整數 rank、多欄位來源及 ES 已融合情境；具體欄位仍未凍結。[09](09_inference_contract_ui_plan.md) 提供順序卡片、來源選取及 UI-01～03 討論選項，尚未取得使用者對版面／預設的核定。
+- 目前基準：D-54 已確認 QueryContext[]、filters／metadata、key／items 及選填 score，取代舊歷史狀態。09 的兩層合併、四處 Top N 已有 Prototype；正式 Config、同分、正規化與真實 Adapter 支援仍待核定。
 - 建議：先定可驗證的有限計畫及共同 route 型別，保留 query／route identity；Rerank=None 及非法組合須顯式驗證。文件分組另定，不與 chunk_id 去重混同。
 - 負責角色：產品＋Engine＋Frontend；阻擋目標時點配置的契約／驗收，可先維持舊基線做迭代但不宣稱需求完成。
 - 決策：配置能力的需求已確認；具體計畫／預設／Schema 未定。同步更新 03～07 與範例。
@@ -402,7 +403,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 - 不清楚：完整 CRUD／助手／管理 API、OpenAPI、錯誤碼／狀態、上傳限制、manifest、冪等鍵、DEV 路由、認證及暴露 Trace。
 - D-41 補充：Builder 與 Runtime 透過 API／Component 目錄合作；需核定目標 Runtime 版本識別、Config Schema／能力目錄、完整 Config 驗證、快取失效與接口相容政策。能力範圍見 07 §5.8，精確端點與 Envelope 仍 OPEN。
 - D-42 已按建議規劃描述／Context／選項及驗證關聯值，候選格式見 12；精確路徑、認證、版本識別與公開 Meta-schema 仍 OPEN，不影響既有 Ingest／Query 範例。
-- Query API 回傳最終 ResultSets／ResultItems，保留分數、排名、來源與版本；精確 HTTP Schema 及診斷投影待核定。
+- Query API 成功 body 直接回傳 QueryContext[]，只保留目前 key／items／score；排名以陣列順序表示。request／版本進 Headers／Logs；精確 HTTP 版本協商及錯誤待核定。
 - 建議：沿用 07 的 Endpoint 草案，先凍結 Ingestion／Status／Query，補齊 Backend API；HTTP 與領域錯誤分層。
 - 替代：沿用既有企業 API 規範並明確映射。
 - 負責角色：Backend＋Runtime＋Frontend／身分團隊；阻擋 M3 Runtime／M4 助手 API／M5 Builder 真實串接。
@@ -553,7 +554,12 @@ ParsedDocument 採 units 列表，Unit 直接放內容欄位；無 fields 包裝
 
 ## D-50：Retrieval-only 與 Library／Platform（2026-11-02）
 
-Generation 不在開發或驗收範圍；Inference 輸出檢索結果。Rewrite／Multi-query、助手的 LLM 仍保留。03 §3 統一定義 Library、Platform、Runtime、System；Library 配 Config 並綁定必要資源才成為可執行 System。舊 D-14／D-24 中答案相關部分撤銷，UIB-009 取消。實際 repo／package／URN／保留欄位暫不更名，另列遷移；不修改現有 Prototype。
+Generation 不在開發或驗收範圍；Inference 輸出檢索結果。Rewrite／Multi-query、助手的 LLM 仍保留。03 §3 統一定義 Library、Platform、Runtime、System；Library 配 Config 並綁定必要資源才成為可執行 System。舊 D-14／D-24 中答案相關部分撤銷，UIB-009 取消。實際 repo／package／URN／保留欄位暫不更名，另列遷移；Prototype 已於 v0.12 同步模擬需求，真實功能另依里程碑驗收。
 
 
 
+
+
+### 2026-11-03 D-54／Prototype v0.12 同步
+
+QueryContext 業務欄位已確認；正式 SDK 發布、HTTP 版本／錯誤、IndexBinding、分數正規化／同分政策仍依各 Q-ID。UIB-010／016～020 已有模擬互動與驗證；完整 Schema Renderer、Registry、真實服務／部署與模型能力尚待實作。D-53 已由單純記錄推進到 UI 配置與示例，不表示 Engine 完成。UIB-007／008 仍為未核定提案。完整狀態以 10 為準。

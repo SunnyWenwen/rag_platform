@@ -186,54 +186,70 @@ processed_documents／total_documents 在此回應草案指解析後的邏輯文
 ### 5.6 Query
 
 ```json
-{"query":"設備多久需要清潔？","filters":[{"field":"metadata.department","operator":"eq","value":"manufacturing"}]}
+{"query":"設備多久需要清潔？","filters":[{"field":"metadata.department","operator":"eq","value":"manufacturing"}],"metadata":{"language":"zh-TW"}}
 ```
+
+query 必填；filters／metadata 選填，預設 []／{}。Runtime 先驗證 Filter 能力，與 System 預設全部 AND，建立一筆初始 QueryContext，再將 QueryContext[] 交給 Library。可信 ACL 由 Context 注入，額外限制候選；不能用 metadata／filters 放寬授權。Rewrite 複製 filters／metadata，不讓 LLM 改寫它們。
+
+200 成功 body 直接是 QueryContext[]，以下為完整形狀示例（資料與分數為手動示意）：
 
 ```json
-{
-  "request_id": "req-001",
-  "config_revision": "C1-example",
-  "query": "設備多久需要清潔？",
-  "result_sets": [
-    {
-      "result_set_id": "final-1",
-      "query_ids": [
-        "q-original"
-      ],
-      "items": [
-        {
-          "chunk": {
-            "chunk_id": "chunk-example",
-            "document_id": "manual-001",
-            "source_revision": "v1",
-            "fields": {
-              "text": "每月清潔散熱孔。"
+[
+  {
+    "ori_query": "設備多久需要清潔？",
+    "query": "設備多久需要清潔？",
+    "filters": [],
+    "result_sets": [
+      {
+        "key": "es-hybrid",
+        "items": [
+          {
+            "chunk": {
+              "chunk_id": "c1",
+              "document_id": "manual-001",
+              "source_revision": "v1",
+              "fields": {
+                "text": "設備每月需清潔散熱孔。",
+                "title": "每月保養"
+              },
+              "vectors": {},
+              "metadata": {
+                "department": "manufacturing"
+              }
             },
-            "metadata": {
-              "department": "manufacturing"
-            },
-            "vectors": {}
+            "score": 5.84
           },
-          "score": 0.92,
-          "rank": 1,
-          "source_refs": [
-            {
-              "result_set_id": "rerank-1",
-              "chunk_id": "chunk-example"
-            }
-          ]
-        }
-      ]
+          {
+            "chunk": {
+              "chunk_id": "c2",
+              "document_id": "manual-002",
+              "source_revision": "v1",
+              "fields": {
+                "text": "每週清潔濾網並記錄保養結果。",
+                "title": "每週保養"
+              },
+              "vectors": {},
+              "metadata": {
+                "department": "manufacturing"
+              }
+            },
+            "score": 4.47
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "language": "zh-TW"
     }
-  ]
-}
+  }
+]
 ```
 
-以上為 HTTP 回應示意切片，非已凍結 OpenAPI；result_sets 列出最終有效清單，完整 ResultSet 的 operation／source／score_kind 等診斷欄位依 05／Q-019 選擇回傳層級。items 沿用共用 ResultItem／Chunk，score／rank 是實際檢索或 Rerank 結果，不是生成模型信心。跨 Query 未合併時可回多個清單，不為了 API 回應再任意融合。空命中應回空 items，失敗使用錯誤 Envelope，不能混成生成式拒答。
+Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root array），沒有 InferenceState 外框。QueryContext 固定 ori_query、query，並提供預設空值的 filters、result_sets、metadata。ResultSet 只有 key／items；ResultItem 只有 chunk／選填 score。只傳目前有效資料，處理後替換；歷史與診斷寫 Logs。items 順序就是排名，RRF 使用陣列位置。數值 score 經 Adapter 統一為越大越好，Sum Score 仍需驗證完整分數及可比性。
 
-HTTP Query 映射原始問題；filters 與預設／ACL AND。Backend 保存 Fusion Plan 並交 Library 執行，不自行新增融合。生成 answer／citations、答案 Streaming／History 不在範圍內。最終結果選擇、Usage／Trace、分頁及精確公開回應 Schema 仍由 Q-014／Q-019 核定。
+request_id／Config Revision 放回應 Headers／Logs 的提案位置；精確 Header 名稱與 HTTP 版本協商由 Q-019 定案，不為了記錄再造成功 Envelope。錯誤仍用 §5.7 的獨立 Envelope。跨 Query 未合併時回多筆 contexts／result_sets；空命中回空 items，不在 API 層額外融合或全域排序。原始問題保留在 ori_query。
 
-2026-10-15 的結果操作已收斂為去重合併／Top N／模型算分，各輸出共用排序與 rank 更新（05 §4.6）。Backend 保存的是經核定的邏輯處理計畫；步驟引用與本次執行的 ResultSet ID 分開，不能以回傳 operation 指揮下一步，也不能在 API 層多融合一次。ES 內部已融合時只包裝實際取得的 Hybrid 結果。UI 計畫見 [09](09_inference_contract_ui_plan.md)，仍屬待核定設定形狀。
+ES 內部融合只回真正取得的 Hybrid 清單；平台不捏造分項排名。邏輯 Config／授權／資源由 Library 的可信 Context 取得，與業務 JSON 分開。這版為已確認開發 Contract，尚無可呼叫的 Prototype 後端；部署 URL、錯誤及發布細節仍見 Q-019。
 
 ### 5.7 標準錯誤
 
@@ -388,5 +404,6 @@ tSSO 是 Builder 的登入方向，實際 Token／Gateway／Backend 驗證見 Q-
 ## 12. 完成條件
 
 直接 SDK 與 HTTP 入口在相同配置／資料上得到相容結果；UI 呼叫真實 API；獨立 Runtime 不需要 Builder 啟動；Config／Run／Index 版本可追蹤。建立、重送、錯誤、重啟、併發與部署驗收按 08 分階段完成，不用示意 YAML／固定回應取代整合證據。
+
 
 

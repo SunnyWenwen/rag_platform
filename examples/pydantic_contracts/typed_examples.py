@@ -2,12 +2,7 @@
 
 Read in document 17 order. No parser, tokenizer, model or search backend runs here.
 """
-from models import (
-    IngestionDocument, ParsedDocument, DenseVector, Chunk, ResultSourceRef,
-    ResultItem, RetrievalSource, Operation, ResultSet, QueryContext,
-    InferenceState, ChunkSourceRef, ChunkingIdentity, RagMetadata,
-    VectorIndexBinding, IndexBinding, ModuleResult,
-)
+from models import *
 
 # example:IngestionDocument:start
 ingestion_doc = IngestionDocument(
@@ -89,85 +84,37 @@ chunks = [
 chunk = chunks[0]
 # example:Chunk:end
 
-# example:ResultSourceRef:start
-result_source_ref = ResultSourceRef(
-    result_set_id="rs-retrieval",
-    chunk_id=chunk.chunk_id,
+# example:FilterCondition:start
+filter_condition = FilterCondition(
+    field="metadata.department", operator="eq", value="製造部",
 )
-# example:ResultSourceRef:end
+# example:FilterCondition:end
 
 # example:ResultItem:start
-result_item = ResultItem(
-    chunk=chunk,
-    score=0.95,  # 示意 Reranker 分數，並非機率。
-    rank=1,
-    source_refs=[result_source_ref],
-)
+result_item = ResultItem(chunk=chunk, score=0.95)
+# 沒有數值分數的後端也合法：ResultItem(chunk=chunk)。RRF 讀取陣列位置。
 # example:ResultItem:end
 
-# example:RetrievalSource:start
-retrieval_source = RetrievalSource(
-    route_id="es-hybrid",
-    index_ref="idx-demo",
-    field_paths=["fields.text", "vectors.text"],
-)
-# example:RetrievalSource:end
-
-# example:Operation:start
-operation = Operation(
-    method="cross_encoder",
-    parameters={"field": "fields.text"},  # 本例 Component 的示意參數。
-    model_ref="rerank-demo-v1",
-    scoring_query_id="q-original",
-)
-# example:Operation:end
-
 # example:ResultSet:start
-result_set = ResultSet(
-    result_set_id="rs-rerank",
-    stage="model_score",
-    input_result_set_ids=["rs-retrieval"],
-    source=None,  # 非首次檢索，來源由上游 ResultSet 引用表示。
-    operation=operation,
-    score_kind="reranker_score",
-    score_order="higher_is_better",
-    items=[result_item],
-)
+result_set = ResultSet(key="merged", items=[result_item])
+# key 是 Config 可引用的搜尋路徑／群組；items 順序就是排名。
 # example:ResultSet:end
 
 # example:QueryContext:start
-# 同時保留檢索分數與 Rerank 分數，各自放在不同 ResultSet。
-retrieval_set = ResultSet(
-    result_set_id="rs-retrieval",
-    stage="retrieval",
-    input_result_set_ids=[],
-    source=retrieval_source,
-    operation=Operation(
-        method="es_sum_score", parameters={},
-        model_ref=None, scoring_query_id=None,
-    ),
-    score_kind="es_sum_score",
-    score_order="higher_is_better",
-    items=[ResultItem(chunk=chunk, score=0.83, rank=1, source_refs=[])],
-)
 query_context = QueryContext(
-    query_id="q-original",
-    query="清潔前應注意什麼？",
-    ori_query_id="q-original",
     ori_query="清潔前應注意什麼？",
-    source_query_ids=[],
-    result_sets=[retrieval_set, result_set],
-    active_result_set_ids=["rs-rerank"],
+    query="清潔前應注意什麼？",
+    filters=[filter_condition],
+    result_sets=[result_set],
+    metadata={"language": "zh-TW", "session_tag": "demo"},
 )
 # example:QueryContext:end
 
-# example:InferenceState:start
-inference_state = InferenceState(
-    contract_version="inference-0.2-draft",
-    query_contexts=[query_context],
-    active_query_ids=["q-original"],
-)
-# example:InferenceState:end
+# example:QueryContextList:start
+query_contexts: list[QueryContext] = [query_context]
+# Query Transformation／Retrieval／Rerank 的 Input、Output 都是這個 list。
+# HTTP body 也是 array；沒有 InferenceState 或 data 外框。
+# example:QueryContextList:end
 
 # example:ChunkSourceRef:start
 chunk_source_ref = ChunkSourceRef(
@@ -238,13 +185,10 @@ TYPE_EXAMPLES = {
     "ParsedDocument": parsed_doc,
     "DenseVector": vector,
     "Chunk": chunk,
-    "ResultSourceRef": result_source_ref,
+    "FilterCondition": filter_condition,
     "ResultItem": result_item,
-    "RetrievalSource": retrieval_source,
-    "Operation": operation,
     "ResultSet": result_set,
     "QueryContext": query_context,
-    "InferenceState": inference_state,
     "ChunkSourceRef": chunk_source_ref,
     "ChunkingIdentity": chunking_identity,
     "RagMetadata": rag_metadata,
@@ -257,5 +201,6 @@ if __name__ == "__main__":
     import json
     print(json.dumps({name: value.to_payload() for name, value in TYPE_EXAMPLES.items()},
                      ensure_ascii=False, indent=2))
+
 
 

@@ -2,7 +2,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const html=fs.readFileSync(process.argv[2]||require('node:path').join(__dirname,'../01_ui_prototype.html'),'utf8');
 const elements=new Map(),errors=[];
-function el(id){if(!elements.has(id))elements.set(id,{id,value:'',textContent:'',innerHTML:'',disabled:false,hidden:false,files:[],style:{},listeners:{},classList:{toggle(){}},addEventListener(type,fn){this.listeners[type]=fn;},showModal(){this.open=true;},close(){this.open=false;},focus(){},click(){}});return elements.get(id);}
+function el(id){if(!elements.has(id))elements.set(id,{id,value:'',textContent:'',innerHTML:'',insertAdjacentHTML(position,html){this.innerHTML=position==='afterbegin'?html+this.innerHTML:this.innerHTML+html;},disabled:false,hidden:false,files:[],style:{},listeners:{},classList:{toggle(){}},addEventListener(type,fn){this.listeners[type]=fn;},showModal(){this.open=true;},close(){this.open=false;},focus(){},click(){}});return elements.get(id);}
 const context={document:{getElementById:el,createElement:()=>({click(){}})},crypto:require('node:crypto').webcrypto,URL,Blob,structuredClone,console,setTimeout,clearTimeout,window:{}};
 vm.createContext(context);vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],context);
 const run=s=>vm.runInContext(s,context),copy=x=>JSON.parse(JSON.stringify(x));let count=0;
@@ -70,6 +70,7 @@ test('fusion edits affect inference only and export selected configuration',()=>
 
 async function asyncTests(){fresh();el('helperSample').files=[{name:'input.json',size:100,text:async()=>JSON.stringify([{content:'原文',abstract:'摘要'}])}];await run('readSample()');assert.deepEqual(copy(run('sample.keys')),['content','abstract']);count++;el('helperSample').files=[{name:'document.json',size:100,text:async()=>JSON.stringify({records:[{document_id:'doc-1',source_revision:'v1',content:{content:'原文',abstract:'摘要'},metadata:{department:'manufacturing'}}]})}];await run('readSample()');assert.deepEqual(copy(run('sample.keys')),['content','abstract']);count++;el('helperSample').files=[{name:'input.pdf',size:100,text:async()=>''}];await run('readSample()');assert.equal(run('sample'),null);assert(el('helperChat').textContent.includes('尚未解析'));count++;}
 asyncTests().then(()=>{if(errors.length){console.error(errors.join('\n'));process.exitCode=1;}console.log(`${count} checks passed; ${errors.length} failed. DOM stub only; browser layout unverified.`);}).catch(e=>{console.error(e);process.exitCode=1;});
+
 
 
 

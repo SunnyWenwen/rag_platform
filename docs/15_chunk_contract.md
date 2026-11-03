@@ -287,7 +287,7 @@ chunk_id 仍為必要非空識別，輸出清單內不可重複。可由 Compone
 
 基本畫面不顯示 split/copy 欄位選擇，直接使用 text。進階才顯示新增任務、來源／輸出映射、附帶欄位與完整原文保留。metadata 繼承保留；source_refs、fingerprint、ordinal 不提供一般必填選項，只在 Component 有提供時唯讀顯示，缺少不當錯誤。Component 支援的 metadata 提示需說明用途／預設，無須新增通用規則表單。
 
-錯誤標示 `[Chunking]` 與具體任務／unit_index／欄位；映射重名、來源不存在、型別／文字格式不合、欄位變更造成失效，皆保留選擇並阻止套用。僅展開進階不改有效設定；手動／AI／Edit／匯出使用相同有效計畫。對應事項集中於 [UIB-013](10_ui_adjustment_backlog.md#uib-013-chunk-contract)，本輪不修改 UI。
+錯誤標示 `[Chunking]` 與具體任務／unit_index／欄位；映射重名、來源不存在、型別／文字格式不合、欄位變更造成失效，皆保留選擇並阻止套用。僅展開進階不改有效設定；手動／AI／Edit／匯出使用相同有效計畫。對應事項集中於 [UIB-013](10_ui_adjustment_backlog.md#uib-013-chunk-contract)，v0.12 已有模擬 UI；真實 Tokenizer／Chunker 待 Engine。
 
 Component Developer 仍由 [11](11_component_developer_guide.md) 的流程開發，遵守 ParsedDocument → Chunk 清單的公開邊界；宣告文字格式與 Unit 欄位能力，不能因一般 UI 隱藏欄位就只接受硬編碼 text。Config Schema／UI hints 見 [12](12_component_schema_ui_contract.md)。Runtime 的權限、Context、Batch／Async 與正式類別簽名不由本資料草案代替。
 
@@ -311,7 +311,7 @@ python examples/chunk/test_contract.py
 - D-48 已確認：多任務預設將切分片段寫 fields.text；完整原文複製採不衝突名稱，進階仍可自訂。第一版必要切分欄位缺失／型別錯誤／全空白、明確 copy 欄位缺失或必要任務零產出均明確失敗；可選複製不先擴充。
 - Parser 改變需重新處理受影響文件：Parsing → Chunking → Embedding（有配置時）→ Indexing；原始資料可取得時不代表一定要重新上傳。多 Parser 路由的重跑範圍、原始資料保留、重新發布仍須依有效相依與儲存政策決定。這是執行影響說明，沒有新增已實作的重跑／快取能力。
 - 重新 Ingestion 與 ID 是否納入解析後輸入內容摘要是不同問題；目前 Hash 規則尚未修改。原始文件版本不變但 Parser 輸出改變時的 ID／index_generation 識別仍在 Q-007／Q-015。
-- D-53 已確認：預設 Embedding Component 提供選用模板組合；預設 Chunker 提供選用原文 Chunk。以下記錄需求，尚未修改 UI、Engine、資料 Schema 或教學切分程式；不是所有自訂 Component 的必要能力。
+- D-53 已確認：預設 Embedding Component 提供選用模板組合；預設 Chunker 提供選用原文 Chunk。v0.12 已加入 UI 設定／字串預覽及字元教學案例；Engine 與三份 Ingestion 資料 Schema 維持原狀；不是所有自訂 Component 的必要能力。
 
 <a id="embedding-field-composition"></a>
 ### 9.1 Embedding 前的欄位模板組合
@@ -370,3 +370,4 @@ fields = {
 - UIB-018 記錄模板表單、衍生欄位 Picker／預覽／映射與驗證；UIB-019 記錄原文欄位／原文 Chunk 的獨立選項、去重說明與數量示例。
 - 未實作：模板渲染、原文 Chunk 產生、UI 控制項及真實模型串接。本輪不修改 17 的既有三筆教學資料、不把四筆結果寫成已執行證據。
 - 驗收需涵蓋預設關閉、Create／Edit／AI／匯出一致、缺欄位／輸出衝突、衍生來源向量綁定、完整原文重複判斷、單／多 Unit 與多任務、Token 超長及設定變更重跑影響。正式 Schema／模板細節留 Q-002／Q-003／Q-004／Q-015。
+

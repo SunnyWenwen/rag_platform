@@ -1,20 +1,8 @@
 # Retrieval Builder — 使用流程與 UI 開發規格
 
-> 2026-11-03 D-52：Chunk 的 _rag 追溯選填，未提供時不顯示位置／fingerprint，不作儲存或執行 Gate；有提供才唯讀顯示／驗證。metadata 可帶 Component 支援的文件層提示，第一版不加通用條件規則表單。此輪不改 Prototype，對應待辦見 UIB-017。
+2026-11-03｜目標互動規格；現有 Prototype v0.12 同步平面 Units、簡化 QueryContext[]、選填追溯、欄位模板／原文 Chunk 與模擬 Component／Remote Pipeline 目錄。正式 SDK／Config、Registry、真實 Parser／Tokenizer／模型／部署尚未串接。詳細完成狀態與待辦以 [10](10_ui_adjustment_backlog.md#ui-backlog-pending) 為準。
 
-> 文件同步：2026-10-31 · 開發規格草案（正式 SDK／Config 尚未凍結）
->
-> 本文定義 UI 目標互動。現有 HTML Prototype 的搜尋、模型、評估及 API 為模擬。Parsing 的預設收合、LLM／Prompt／範例按鈕等已確認要求如下；其他基本／進階分組、正式框架、範本與試跑優先級仍待決。
-
-2026-10-16 起，先更新規格，Prototype 對應調整集中至 [10 §7 UI Backlog](10_ui_adjustment_backlog.md#ui-backlog-pending)，待使用者要求修改 UI 再實作。本文新增的 Fixed-size 與助手整合為目標規格，現有原型仍 v0.9；歷史完成項目與新待辦分開記錄。
-
-2026-10-28 D-41 確認：Builder Frontend／Backend 位於 rag_platform，SDK／Engine／Components／Runtime API 位於 rag_engine。UI 經 Backend 使用目標 Runtime 的 Component 目錄、Schema 與驗證能力，見 [07 §5.8](07_backend_runtime_integration.md#runtime-capability-contract)；Prototype 對應變更仍記於 UIB-010，未因此實作。
-
-**2026-10-29 輸入更新**：Engine 採 JSON-only 扁平輸入，Builder 文件／CSV 上傳轉成 content／base64／uri；Parsing 可多選並自動路由，衝突才要求預設／profile。新規格見 [13](13_ingestion_parser_input_contract.md)，原型的輸入預覽／映射遷移統一登錄 [UIB-011](10_ui_adjustment_backlog.md#uib-011-ingestion-parser-routing)，尚未實作。
-
-**2026-11-02 Units 契約更新**：[14](14_parsed_document_contract.md) 統一為平面 Units；[UIB-014](10_ui_adjustment_backlog.md#uib-014-flat-units) 記錄新版預覽、欄位候選、unit_index 追溯及舊 Chunker 結構路由移除。本次僅修改文件，Prototype v0.10 仍是舊契約模擬。
-
-**2026-10-30 Chunk 更新（D-47）**：[15](15_chunk_contract.md) 定義預設只切 units[i].text，基本區不顯示欄位選擇；多欄位任務、附帶欄位／原文保留才在進階設定。D-48 確認每個多欄位任務預設輸出 text，完整附帶內容用不衝突名稱；必要欄位／型別／全空白、明確 copy 欄位缺失及必要任務零產出提供定位錯誤。metadata／來源資訊自動繼承或產生，vectors 採共用新格式；對應 Prototype／AI／預覽／匯出變更先記 [UIB-013](10_ui_adjustment_backlog.md#uib-013-chunk-contract)，尚未實作。
+Builder Frontend／Backend 位於 rag_platform；SDK／Engine／Components／Runtime API 位於 rag_engine。UI 目標使用 Runtime 的目錄、Schema 與驗證，現在以固定 mock 目錄示範。多 Parser 派送與正式 Schema Renderer 仍需後端。未定案的 Rewrite 測試／結構化輸出保留提案，不因本輪修改就成為既定需求。
 
 ## 1. 目標、相依與範圍
 
@@ -128,7 +116,7 @@ Remote Image 顯示平台管理的部署就緒／失敗狀態；External 顯示�
 
 2026-10-28 D-42 將動態 Component 表單列為已確認規劃方向，描述／規則草案與案例集中於 [12](12_component_schema_ui_contract.md)。Create／Edit 保持固定介面，Component 參數才依 Schema 產生；無關分支欄位隱藏，進階預設收合，不相容選項顯示且停用。上游變更使已選值失效時保留並標錯，可以繼續編輯，但正式儲存／建立／套用需通過 Engine 驗證；草稿持久化仍依 Q-016／Q-025。
 
-動態候選使用目前有效欄位／服務／索引能力，前端不自行指定可信 Context。多個相同 Module 的錯誤以 node_ref＋欄位路徑定位。未知必要 UI feature 明示不支援且不能套用不完整設定；不自動改為任意 JSON 編輯器。實作與 SUI-01～14 互動驗收記在 10 UIB-010，尚未修改 Prototype。
+動態候選使用目前有效欄位／服務／索引能力，前端不自行指定可信 Context。多個相同 Module 的錯誤以 node_ref＋欄位路徑定位。未知必要 UI feature 明示不支援且不能套用不完整設定；不自動改為任意 JSON 編輯器。實作與 SUI-01～14 互動驗收記在 10 UIB-010；v0.12 僅完成簡單模擬表單，正式協定驗收仍待整合。
 
 ### 3.3.1 討論提案：Query Rewrite 單模組測試
 
@@ -148,19 +136,19 @@ UIB-007 試跑如採用，也改用這組相同草稿與 Schema。Edit／AI／�
 
 ### 3.4 Inference 結果處理的整合提案
 
-三種操作「去重＆合併／取 Top N／新模型算分」與共同排序規則已確認，見 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft)。2026-10-15 15:53 的清單經使用者 18:55 要求開始實作，原型 v0.9 已完成 [10 §1～6](10_ui_adjustment_backlog.md) 的歷史結果處理 UI：保留單一 Create／Edit，基本／進階共用設定；進階預設收合，兩種合併預設勾選且在 Retrieval 後，Top N 附在四個動作位置，不新增獨立 Top N 卡片。10 §7 為後續待辦，不屬於 v0.9 已完成範圍。
+三種操作「去重＆合併／取 Top N／新模型算分」與共同排序規則已確認，見 [05 §4.6](05_data_contracts_search_design.md#query-context-contract)。Prototype v0.12 保留單一 Create／Edit，基本／進階共用設定；進階預設收合，兩種合併預設勾選且在 Retrieval 後，Top N 附在四個動作位置，不新增獨立卡片。完成範圍及真實整合待辦以 10 為準。
 
-基本表單讓使用者選可讀的上游步驟、每個 Query 內／跨 Query 範圍、方法及參數；runtime IDs 與 operation／source 由執行時產生。排序及 rank 更新固定執行，不提供排序開關；score_kind／score_order 由方法決定。ES 內部 Hybrid 已回傳一份清單時，預覽不得假裝仍有獨立全文／向量排名。
+基本表單選每個 Query 內／跨 Query 範圍、方法及參數；ResultSet.key 對應路徑／群組。推論直接傳 QueryContext[]；只留目前結果，排序後以陣列位置表示名次，不另帶 rank 或歷史 operation／source。ES 內部 Hybrid 已回傳一份清單時，預覽不得假裝仍有獨立全文／向量排名。
 
 現行 Contract／控制項對照及案例見 [09 UI 整合規格](09_inference_contract_ui_plan.md)，原型完成狀態與後續待辦見 10。v0.9 只推導清單身分、數量上限與有效設定，不實際計算搜尋／模型分數。正式 Config、遷移、模型覆蓋率及 Adapter 能力仍由 Q-002／Q-003／Q-014／Q-025 核定。
 
 同 Query 合併以 Query 身分分組，跨 Query 合併以相同搜尋路徑群組分組，兩層可各自移到 Reranker 後。ES 預設內部融合時，不再套同 Query 的跨路融合。跨 Query 已合併時，Reranker 有效提問固定原始問題，但保留各自 Query 選擇的草稿。Rerank=None 不會取消後置處理。
 
-文件模式先完成 chunk_id 融合，再於選定時點按 document_id 選最高分代表 Chunk，最後 Top N；文件去重不得早於最後一次跨清單合併。Retrieval-only 可以回多份分組 ResultSets；舊原型為 Generation 強制單一清單的保存 Gate 需移除，見 UIB-015。
+文件模式先完成 chunk_id 融合，再於選定時點按 document_id 選最高分代表 Chunk，最後 Top N；文件去重不得早於最後一次跨清單合併。Retrieval-only 可以回多份分組 ResultSets；舊 Generation 強制單一清單的保存 Gate 已移除，見 UIB-015。
 
 ### 3.5 檢索結果呈現（取代舊答案輸出設定）
 
-Inference 顯示最終 ResultSets／ResultItems、排名、分數、內容、來源與可展開 Trace。跨 Query 未合併時分組呈現，不捏造單一答案／生成引用。不提供 Generation Module、答案模板、Context Budget 或答案 JSON Schema 編輯器；Prototype 遷移見 UIB-015。
+Inference 顯示 QueryContext[] 中的目前 ResultSets／ResultItems、依序名次、選填分數及 Chunk 內容。metadata／filters 隨 context 保留；診斷與計畫在資料外顯示，來源只顯示 Component 實際提供的內容。跨 Query 未合併時分組呈現，不捏造單一答案／生成引用。不提供 Generation Module、答案模板、Context Budget 或答案 JSON Schema 編輯器；Prototype 遷移見 UIB-015。
 
 
 ## 4. 從 CSV 開始
@@ -292,3 +280,10 @@ UI Mock、Schema 驗證、HTTP integration、實際端對端驗收分開記錄�
 決策狀態與實作階段見 [08](08_implementation_plan.md)。
 
 
+
+
+## Prototype v0.12 對應（2026-11-03）
+
+本輪同步 D-54 的 QueryContext[] API／預覽；選填 Query metadata 以 JSON object 編輯，與 filters 各自驗證。計畫／模擬標示在資料物件外，輸出只有目前有效 context／key／items；不建立歷史或 rank 欄位。
+
+新增 D-52／D-53 及 Remote 的配置互動，具體控制項／草案拼字／完成範圍見 [10](10_ui_adjustment_backlog.md)。模板產生的新欄位可作後續索引／Filter／Rerank 來源；原文 Chunk 與原文欄位 copy 獨立。Developer Local／Image／External 用模擬目錄選取，整段鎖定涵蓋模組；不要求 User 填 Developer Service API 連線。正式 12 Renderer／能力目錄、模型 Token 上限、服務生命週期仍需後端整合。

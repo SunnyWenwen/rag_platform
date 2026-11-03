@@ -2,7 +2,7 @@
 
 以 Config 建立、測試及交付 Retrieval System。Builder 提供設定、資料上傳轉換、檢索查詢與評估介面；獨立部署的 Runtime 提供 API，使用相同 Engine 與邏輯 Config。
 
-目前為開發規格、契約驗證範例與模擬 UI，尚未完成可部署的 Engine／Runtime。文件同步日期：2026-10-31。需求先更新文件，UI 差異記入 [Backlog](docs/10_ui_adjustment_backlog.md#ui-backlog-pending)，收到改 UI 指示後才實作。
+目前為開發規格、契約驗證範例與模擬 UI，尚未完成可部署的 Engine／Runtime。文件同步日期：2026-11-03。需求先更新文件，UI 差異記入 [Backlog](docs/10_ui_adjustment_backlog.md#ui-backlog-pending)，收到改 UI 指示後才實作。
 
 ## 三份共用資料契約
 
@@ -18,6 +18,12 @@ JSON Schema 定義物件形狀，13～15 定義語意與相容規則，參考驗
 
 Chunk 預設逐 Unit 切 units[i].text 並寫入 fields.text；進階多欄位任務各自切分、串接結果，2＋3 得 5 個 Chunk。每個任務預設輸出 text；完整原文只在明確 copy 時附帶，使用不衝突名稱。metadata 全部有效繼承；D-52 下 _rag／來源位置／fingerprint／ordinal 為 Component 選填，有提供才驗證。metadata 也可傳遞 Component 支援的處理提示，例如 chunking_mode=passthrough，不新增全域規則引擎。Embedding 預設 fields.text → vectors.text，每個向量保存 values／embedding_profile_id／source_field。
 
+## 推論 Contract 與本輪 UI
+
+推論直接傳 **QueryContext[]**：ori_query、query、filters、result_sets、metadata；ResultSet=key/items，ResultItem=chunk/選填score。只保留目前有效資料，名次由 items 順序表示；RRF 用位置，Sum Score 仍需完整可比分數。舊 InferenceState wrapper 明確停用。定義與例子見 [05](docs/05_data_contracts_search_design.md#query-context-contract)、[17](docs/17_pydantic_contracts_draft.md)、[Inference Schema](schemas/inference_context.schema.json)。
+
+Prototype v0.12 同步 Query metadata、選填追溯、Embedding 文字模板／衍生欄位選取、獨立原文 Chunk，以及 Developer Local／Remote Image／External 的模擬目錄、動態表單、整段鎖定與匯出差異。真實 Runtime／Registry／AI／模型／部署尚未串接；完成範圍及未核定提案見 [10](docs/10_ui_adjustment_backlog.md)。
+
 ## 文件導覽
 
 | 文件 | 責任 |
@@ -27,9 +33,9 @@ Chunk 預設逐 Unit 切 units[i].text 並寫入 fields.text；進階多欄位�
 | [05 資料與 Config](docs/05_data_contracts_search_design.md) | 契約總覽、Inference 物件、設定責任與變更影響 |
 | [06 UI 開發規格](docs/06_ui_development_spec.md) | Create／Edit、欄位相依、CSV、預覽及助手 |
 | [07 Backend 與 Runtime API](docs/07_backend_runtime_integration.md) | JSON API、工作狀態、儲存、服務綁定與 Export |
-| [08 開發計畫與決策](docs/08_implementation_plan.md) | M0～M7、D-01～D-53、Q-001～Q-028 與驗收 |
+| [08 開發計畫與決策](docs/08_implementation_plan.md) | M0～M7、D-01～D-54、Q-001～Q-028 與驗收 |
 | [09 Inference Contract 與 UI](docs/09_inference_contract_ui_plan.md) | ResultSet、兩層融合、四處 Top N 與連動 |
-| [10 UI Backlog](docs/10_ui_adjustment_backlog.md) | 現有原型能力及未實作 UIB-001～019 |
+| [10 UI Backlog](docs/10_ui_adjustment_backlog.md) | 現有原型能力及UIB-001～020 的原型／正式整合狀態 |
 | [11 Component 開發指南](docs/11_component_developer_guide.md) | SDK 示意、開發、契約測試、PR 與發布 |
 | [12 Component 設定描述](docs/12_component_schema_ui_contract.md) | Config Schema、UI hints、動態選項與相依規則 |
 | [13 IngestionDocument](docs/13_ingestion_parser_input_contract.md) | 輸入分類、路由、API／Parser 相同 Schema |
@@ -47,23 +53,24 @@ Chunk 預設逐 Unit 切 units[i].text 並寫入 fields.text；進階多欄位�
 
 ## 原型、圖面與驗證
 
-- [UI Prototype](01_ui_prototype.html)：瀏覽器模擬設定與操作；v0.11 已套用 Retrieval-only、平面 Units、Chunk 追溯與分組檢索輸出，保留 JSON／CSV、Fixed-size 及多任務映射；真實目錄／服務仍未串接，驗證範圍見 10。
+- [UI Prototype](01_ui_prototype.html)：瀏覽器模擬設定與操作；v0.12 已套用 Retrieval-only、平面 Units、Chunk 追溯與分組檢索輸出，保留 JSON／CSV、Fixed-size 及多任務映射；真實目錄／服務仍未串接，驗證範圍見 10。
 - [L1 流程 PNG](diagrams/01_user_system_l1.png) · [MMD](diagrams/01_user_system_l1.mmd) · [SVG](diagrams/01_user_system_l1.svg)
 - [Infra PNG](diagrams/02_infra_architecture.png) · [MMD](diagrams/02_infra_architecture.mmd)
 - [Module／Component PNG](diagrams/03_module_component_concept.png) · [MMD](diagrams/03_module_component_concept.mmd) · [SVG](diagrams/03_module_component_concept.svg)
 
 可執行的契約範例與測試位於 examples/parsed_document、examples/chunk、examples/inference 及 examples/contracts，各自使用共用 Schema。供應者映射與實際解析的版本、測資及驗證限制見 14；資料驗證通過不代表正式 Engine、Tokenizer、模型或 DB 串接已完成。
 
-舊輸入格式、完整單層 YAML、可任意排列結果處理卡片及逐次更新流水帳已移除；歷史由 Git 保留。D-53 已確認預設 Embedding Component 的模板組合與 Chunker 額外原文 Chunk 需求，尚未實作，見 15 §9 與 UIB-018／019。LLM 結構化輸出及正式發布政策仍保留為提案，不當成既定功能。
+舊輸入格式、完整單層 YAML、可任意排列結果處理卡片及逐次更新流水帳已移除；歷史由 Git 保留。D-53 已確認預設 Embedding Component 的模板組合與 Chunker 額外原文 Chunk 需求，v0.12 已有配置／模擬預覽，真實 Engine 尚未實作，見 15 §9 與 UIB-018／019。LLM 結構化輸出及正式發布政策仍保留為提案，不當成既定功能。
 
-2026-11-02：ParsedDocument／Chunk 已更新至 0.2-draft（units 與 unit_index 來源追溯）；Prototype v0.11 已同步平面 Units，模擬範圍與限制見 UIB-014。舊 provider 0.1 報告不作新版驗收證據。
+2026-11-02：ParsedDocument／Chunk 已更新至 0.2-draft（units 與 unit_index 來源追溯）；Prototype v0.12 已同步平面 Units，模擬範圍與限制見 UIB-014。舊 provider 0.1 報告不作新版驗收證據。
 
-2026-11-02 D-50：改為 Retrieval-only；不做 Generation。Library＋Config（及必要資源綁定）建立 Retrieval System，Platform 包含 Library／Runtime API／共用 Image。查詢輸出檢索清單；Rewrite／助手仍可使用 LLM。Prototype v0.11 已遷移產品名稱並移除答案功能，見 UIB-015；底層技術識別另案遷移。repo rag_platform、rag_engine、套件與 Schema ID／_rag 保留為既有技術識別，非產品名稱。
+2026-11-02 D-50：改為 Retrieval-only；不做 Generation。Library＋Config（及必要資源綁定）建立 Retrieval System，Platform 包含 Library／Runtime API／共用 Image。查詢輸出檢索清單；Rewrite／助手仍可使用 LLM。Prototype v0.12 已遷移產品名稱並移除答案功能，見 UIB-015；底層技術識別另案遷移。repo rag_platform、rag_engine、套件與 Schema ID／_rag 保留為既有技術識別，非產品名稱。
 
 
 Parser 開發示範：[三種交付模式圖](diagrams/04_component_delivery_modes.md) → [16 兩種開發方式與程式](docs/16_parser_component_development_examples.md)。Remote 服務不要求完整 Engine／ABC；正式 HTTP／參數協定仍待核定。
 
-2026-11-02 D-51：Remote Service 改以 Manifest 註冊供 User 選用，可一次涵蓋連續多 Module；Image 由平台部署，External 固定使用服務既有資料空間，第一版不加入 data_space_id。規格見 18，UI 僅記錄 UIB-016；現有 Prototype／Schema／可執行教學不變。
+2026-11-02 D-51：Remote Service 改以 Manifest 註冊供 User 選用，可一次涵蓋連續多 Module；Image 由平台部署，External 固定使用服務既有資料空間，第一版不加入 data_space_id。規格見 18；v0.12 已有 UIB-016 的模擬選取／鎖定／匯出，正式服務管理仍待實作。
+
 
 
 

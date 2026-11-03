@@ -1,6 +1,6 @@
 # 18 — Remote Service／Pipeline 註冊與部署
 
-2026-11-02｜已確認的產品方向與整合規劃。Manifest 正式 Schema、HTTP 傳參、SDK／部署控制介面尚待核定；本文件不代表相關功能已實作。未修改 Prototype、既有共用資料 Schema 或 QueryContext／Rerank Contract。
+2026-11-02｜已確認的產品方向與整合規劃。Manifest 正式 Schema、HTTP 傳參、SDK／部署控制介面尚待核定；本文件不代表相關後端功能已實作。2026-11-03 Prototype v0.12 已加入模擬目錄／表單／鎖定／Export；Inference 邊界同步 D-54 的 QueryContext[]。
 
 ## 1. 要解決的情境
 
@@ -29,7 +29,7 @@ Developer 可能不提供原始碼，而是交付既有 API 或 Image；既有�
 
 Engine 依核可服務宣告編譯執行計畫，驗證涵蓋範圍連續、邊界 Contract／能力相容、不與其他選擇重疊；被接管的本地 Module 不再執行。Remote 呼叫失敗時不靜默改跑本地演算法。多 Parser／路由等情境須明確宣告作用範圍，第一版不能同時啟用重疊的替換範圍。
 
-若涵蓋 Indexing，必須宣告索引的存取方式、Profile／版本能力與相容 Retrieval，Builder／Engine 共同卡控；不能只看回應 JSON 相同就接任意 Retriever。完整外部系統可在同一 Service 註冊 Ingestion 與 Retrieval 兩段能力，綁定一致的服務／資料設定。具體索引回應、成對綁定及 HTTP 格式仍待 Q-002／Q-015／Q-019；本次不凍結 17 的 IndexBinding 提案或重定 Rerank Input。
+若涵蓋 Indexing，必須宣告索引的存取方式、Profile／版本能力與相容 Retrieval，Builder／Engine 共同卡控；不能只看回應 JSON 相同就接任意 Retriever。完整外部系統可在同一 Service 註冊 Ingestion 與 Retrieval 兩段能力，綁定一致的服務／資料設定。具體索引回應、成對綁定及 HTTP 格式仍待 Q-002／Q-015／Q-019；本次不凍結 17 的 IndexBinding 提案；Rerank Input／Output 統一使用 D-54 QueryContext[]。
 
 ## 3. Service Manifest 與註冊流程
 
@@ -98,5 +98,12 @@ Export 不搬移 Image 本體、真實 Secret、原始文件、Chunk／vectors �
 
 驗收至少包含：連續範圍／重疊卡控、相容索引讀寫配對、輸出語意、只執行一次、固定服務無參數表單、失效服務引用保留並定位、Image 實例與資料分離、External 固定資料提示、健康／失敗與清理、兩種 Export 內容差異。不得拿 Mock 當真實部署證據。Trace 預設記整段呼叫的耗時／結果；中間 Module 診斷為選配，不保證各步可單獨替換或計分。
 
-UI 尚未實作，見 [10 UIB-016](10_ui_adjustment_backlog.md#uib-016-remote-service-pipeline)。開發計畫與未決細節見 [08 D-51／Q-028](08_implementation_plan.md#q-028)，設定描述沿用 [12](12_component_schema_ui_contract.md)，部署責任見 [07](07_backend_runtime_integration.md#remote-service-deployment)。
+UI 模擬流程已實作，真實服務管理尚未實作，見 [10 UIB-016](10_ui_adjustment_backlog.md#uib-016-remote-service-pipeline)。開發計畫與未決細節見 [08 D-51／Q-028](08_implementation_plan.md#q-028)，設定描述沿用 [12](12_component_schema_ui_contract.md)，部署責任見 [07](07_backend_runtime_integration.md#remote-service-deployment)。
 
+
+
+## 8. 推論整段邊界與原型限制（D-54）
+
+同一推論 Pipeline 內的 Remote 單 Module／整段都接收、回傳 QueryContext[]，沿用 filters／metadata 與目前有效結果。Config／Secret／可信 ACL 不放在這個 body。ResultSet.key 為穩定路徑／群組；多個 context 可以保留，不為了 HTTP 再融合。HTTP 版本／參數 Envelope 仍待 Q-019；舊 InferenceState body 須明確升級，不靜默混用。
+
+v0.12 的 Service Manifest／健康狀態／Image／Endpoint／資料綁定僅為固定示例，沒有真實 Pod／服務／獨立儲存。Export 的兩種差異可展示，尚不是可直接部署的交付物。詳細完成／待辦分界見 10。

@@ -1,364 +1,113 @@
-> 2026-11-03 Prototype v0.11：已套用 Retrieval 命名、移除 Generation、分組 ResultSets 呈現、平面 Units 與 Chunk 來源同步（UIB-014／015）。Component／Remote 動態目錄尚未實作。以下歷史版本紀錄保留作追溯，不代表現行 UI 仍使用舊契約。
+# 10 — UI Prototype 狀態與調整 Backlog
 
-> 2026-11-02 D-50：本產品改為 Retrieval-only；以下 v0.9／v0.10 的 Generation 與單清單 Gate 是歷史實作紀錄，非後續需求，已由 UIB-015 取代。UIB-009 取消。本次未修改 Prototype。
+2026-11-03｜Prototype v0.12。這份清單以目前程式及測試為準，取代舊 Generation／歷史推論物件的 UI 待辦。主檔：[01_ui_prototype.html](../01_ui_prototype.html)。
 
-# UI Prototype Backlog 與完成紀錄
+## 1. 已完成的原型能力
 
-## 2026-11-02 契約更新狀態
+單一 Workspace／Group 主畫面，Create／Edit 共用設定介面，提供 Ingest、Inference、檢索 Evaluation、Export。全部為瀏覽器記憶體內操作，重新整理重設；沒有真實 Engine、模型、DB、Registry、服務健康探測或部署控制器。
 
-文件與 Schema 已遷移至平面 Units；Prototype 已於 2026-11-03 更新為 v0.11（見下）。下列 v0.10 完成項目為歷史實作紀錄，不表示符合 0.2；與 UIB-012／013 衝突時，以 UIB-014 為準。
+- Document Schema、CSV column 映射、單筆 IngestionDocument API 範例與平面 ParsedDocument.units。
+- Fixed-size／Recursive／Header-aware 的配置、Tokenizer 連動、預設 text／進階多欄位任務，metadata 繼承。
+- 全部 Chunk 內容預設保存；全文、向量、Filter 能力分開，失效欄位保留並報錯。
+- 推論 QueryContext[]／filters／metadata、兩層融合與四處 Top N；可以回多份分組清單。
+- 選填 _rag；Embedding 欄位模板；複製原文欄位與額外原文 Chunk 的獨立設定。
+- 內建、Developer Local、已註冊 Remote 的模擬目錄；依描述產生簡單參數表單，連續 Remote Pipeline 鎖定涵蓋模組。
+- AI 助手依本機規則產生 Diff，套用前驗證／過期草稿檢查；沒有 LLM 呼叫。
 
+<a id="6-v09-實作細節展示預設與限制"></a>
+## 2. 結果處理與有效設定
 
-> 文件同步：2026-10-31。§2～6 記錄 Prototype 已有的結果處理能力；§7 集中尚未實作的需求。勾選完成只代表模擬 UI／邏輯預覽，並非 Engine／API 已完成。
+Retrieval 進階設定預設收合；同 Query 多路、跨 Query 合併預設勾選，時機預設 Retrieval 後，各自可改為 Reranker 後。ES 已內部融合時停用重複融合；單 Query／單路保留草稿意圖。預設平台 RRF，ES 內部預設 Sum Score。權重／RRF k 僅對有效策略驗證。
 
+| 位置 | 作用範圍 |
+|---|---|
+| Retrieval 搜尋 Top K | 每 Query／每路；ES Hybrid 為每 Query 的一份輸出 |
+| Retrieval 後合併 Top N | 該時點處理後的每份清單 |
+| Reranker Top N | 每份模型評分清單，預設 3 |
+| Reranker 後合併 Top N | 後置處理後的每份清單；None 不取消必要合併 |
 
-## 2026-10-31 Prototype v0.10 更新
+ResultSet.key 對應 Config 路徑／群組；items 位置即名次。RRF 可用無 score 的有序結果；Sum Score 需完整且可比分數。Prototype 的推導器只計算流程與候選上限；mockRetrieval 用固定示意候選，不真的搜尋、融合或評分。畫面說明與計畫獨立於 QueryContext JSON，不新增外框或歷史記錄。
 
-本輪依使用者要求實作資料契約相關 UI，以下取代較早「未改 Prototype」的狀態描述；其他待辦仍依各項範圍追蹤。
-
-- 已完成：單筆 IngestionDocument JSON／CSV 每列轉換與預覽；拒絕舊根層 fields、多來源及不合法 metadata。API 說明提供 content／URI／Base64，移除 multipart。
-- 已完成：ParsedDocument 五鍵及無結構／text-spans／page-blocks 範例說明；Chunk 六鍵、metadata._rag 追溯與命名向量物件預覽。ID／fingerprint／向量明示為展示資料。
-- 已完成：預設 text，切分／copy 收進階；多任務 JSON 編輯器支援各任務輸出名稱、原文複製與重名／來源驗證。預覽每任務展示一個 Chunk，未實際執行 Tokenizer，不宣稱模擬出真實切分數量。
-- 已完成：Fixed-size 選項及不適用參數排除；Indexing 全部內容保存、metadata 全繼承，移除兩種保存勾選。
-- 仍待串接：相容 Parser／Chunker 目錄、資源 resolver、真實結構解析、完整共用語意驗證、真實 fingerprint／ID／Embedding。URI／Base64 在原型明確拒絕執行，不把解析未支援當作成功。
-- 進階多任務先提供 JSON 設定，逐列圖形化任務編輯器仍可後續改善；未核定的 concat／固定文字未實作。
-
-驗證：既有設定／結果處理回歸與 jsdom 事件流程，以及新增資料契約檢查；未連線外部模型或 DB。
-
-## 1. 範圍與最新依據
-
-現行設計見 [09](09_inference_contract_ui_plan.md)，資料定義見 [05](05_data_contracts_search_design.md#inference-state-draft) 及 [13](13_ingestion_parser_input_contract.md)／[14](14_parsed_document_contract.md)／[15](15_chunk_contract.md)。後續需求先更新文件，對應 Prototype 調整記入 [§7](#ui-backlog-pending)，使用者明確要求改 UI 後才實作。
-
-本次文件同步未改 Prototype。UIB-011～013 應一併使用三份 Schema：CSV 每列 → IngestionDocument.content／metadata → ParsedDocument.units → Chunk.fields／metadata／vectors；不得繼續產生舊 API 根層 fields。來源資訊唯讀顯示，必要欄位與結構相容由 Engine 驗證。
-
-## 2. 預設狀態
-
-| 項目 | 新建時的預設意圖 | 有效執行規則 |
-|---|---|---|
-| 進階結果處理設定 | 收合 | 展開不改 Config，基本／進階共用同一份設定 |
-| 同 Query 多路合併 | 勾選，時機為 Retrieval 後 | 後端已融合或只有一路時直接沿用，不重算同一融合 |
-| 跨 Query 合併 | 勾選，時機為 Retrieval 後 | 只有一個有效 Query 時無須跨 Query 合併 |
-| 預設有效流程 | Retrieval 後完成適用的合併，輸出一份 ResultSet | 再進 Reranker／Generation；實際略過的處理須有摘要 |
-| merge_key | chunk_id | 可改 document_id；文件模式保留最高分 Chunk 作代表，需分數可比 |
-| Reranker 評分內容 | 預選一個合法的 fields.* 文字欄位，通常為 fields.text | 必須存在且可由索引取回；不憑空建立欄位 |
-| Reranker 使用的提問 | 原始問題 | 與評分內容欄位分開；合法的逐 Query 情境才可用各自改寫問題 |
-| Reranker 評分後 Top N | 3 | 啟用模型評分時作用於其輸出，實際不足三筆就回可用數量 |
-
-新建才套用預設；Edit 沿用已保存的選擇，不能因展開進階區或切換上游設定而重設使用者配置。合併策略保留 Sum Score／RRF，四個位置的其他 K／N 及精確 Config 拼字不在本輪另訂數值或型別。
-
-「Reranker 評分問題選 fields 變數」在本清單依前文情境解讀為 **Chunk 的評分內容欄位**，UI 使用此名稱。真正的 Query 問題來自 QueryContext，不是把 Chunk.fields 當作提問；兩者在畫面上分開標示。
-
-## 3. 畫面與控制項（UI 已完成）
-
-- [x] **保留單一 Create／Edit 介面**：基本區顯示常用設定，進階結果處理預設收合，兩者修改同一份 Config；不新增通用 DAG 畫布。
-- [x] **Retrieval 基本區**：保留已索引搜尋欄位、搜尋候選 Top K、既有 Filter；搜尋後端仍由 Indexing 繼承，不重新選 Implementation。
-- [x] **基本流程摘要**：顯示合併時機、範圍、模型輸入清單數與最後 Top N。預設呈現 Retrieval 後合併為一份 → Reranker → Top 3 → Generation。
-- [x] **進階的兩個合併控制項**：同 Query 多路合併、跨 Query 合併預設勾選；各自可設定 Retrieval 後／Reranker 後的合法時機，不能只留下策略下拉而固定執行位置。
-- [x] **Query／搜尋路徑範圍**：區分每個 Query 內／同原始問題跨 Query，以及各路分開／合併選取路徑。用可讀名稱顯示來源，不要求填 runtime IDs。
-- [x] **合併方法**：提供 Sum Score／RRF；Sum Score 才顯示權重／已支援的轉換設定，RRF 才顯示 k。切換保留草稿，只有有效參數參與驗證及匯出。
-- [x] **候選去重**：merge_key 僅 chunk_id／document_id；後者顯示「同文件保留最高分 Chunk」規則與分數可比要求，原 chunk_id 與引用仍保留。
-- [x] **固定四處 Top N 欄位**：依下表附在對應動作上，不要求新增獨立 Top N 卡片；排序沒有另外的開關。
-- [x] **Reranker 表單**：保留 None／DEV test use／Rerank API 及條件服務設定，直接選評分內容欄位與評分後 Top N。預設只選一個 fields.* 欄位；既有多欄位能力如保留，置於進階設定。
-- [x] **分開內容與提問**：顯示「評分內容欄位」與「使用的提問」。預設內容欄位為合法 fields.*；預設提問為原始問題，跨 Query 合併後顯示實際使用的原始問題。
-- [x] **Generation 摘要**：顯示使用的最終清單與候選上限，保留現有 LLM／模板設定及 Token Budget；不以 Top N 取代 Context 長度限制。
-- [x] **保存與版本行為**：Create／Edit／AI 套用／匯出使用一致設定；取消不修改既有系統。僅 Inference 設定改變時重測，不重建相容的索引。
-
-### 四個固定的保留數位置
-
-| 位置 | UI 欄位 | 作用範圍 |
-|---|---|---|
-| Retrieval | 搜尋後保留 Top K | 每 Query、每路搜尋輸出；後端內部融合則為 Hybrid 輸出 |
-| Retrieval 後合併 | 合併後保留 Top N | 此時點適用的合併完成後，每個合併群組 |
-| Reranker | 評分後保留 Top N | 每份模型評分結果；預設單一 ResultSet，Top 3 |
-| Reranker 後合併 | 合併後保留 Top N | 此時點適用的合併完成後，每個合併群組 |
-
-每次動作共同遵守：執行動作 → 依 score_order 排序 → 取 Top N → 更新連續 rank → 輸出 ResultSet。Retrieval 的後端候選取得仍受 Adapter 能力約束；這個 UI 收尾規則不表示能取回先前未取得或已截掉的候選。
-
-## 4. 連動與卡控（UI 已完成）
-
-- [x] **ES 已融合**：同 Query 多路合併顯示「後端已融合」，相關設定唯讀／停用；保留預設意圖及原因，不重做融合，也不造出不存在的分項清單／排名。
-- [x] **單 Query／單一路徑**：保留原草稿意圖並顯示不適用原因；有效配置略過不必要的跨清單合併。切回多 Query／多路時恢復使用者先前選擇，Edit 不強制改回勾選。
-- [x] **單份結果的文件去重**：即使只有一份 ResultSet，仍允許按 document_id 去重，不與多清單融合的適用條件混同。
-- [x] **合併時機改動**：同步更新進階控制、基本摘要、四處 Top N 的作用範圍與 Reranker 輸入；不同 Query／路徑的清單身分保留到真正合併時。
-- [x] **對應動作未啟用**：Top N 顯示但停用，保留草稿，不參與有效配置。Rerank=None 不得連同必要的後置合併一起被略過，需顯示實際等價路徑。
-- [x] **欄位與服務失效**：不符合輸入型別／未儲存的欄位顯示且停用；已選欄位或服務被移除時保留失效引用、定位錯誤並阻止儲存，不靜默換值。
-- [x] **模型提問相依**：跨 Query 合併後不假裝仍有唯一的改寫問題；使用原始問題並說明。逐 Query 評分時才開放合法的各自 Query 選項。
-- [x] **K／N 驗證**：正整數、候選不足回可用數量；不能一律要求四個數字遞減，因跨清單合併後候選可能變多。各數值清楚標示 per Query／per ResultSet／per group。
-- [x] **文件數／Chunk 數**：以文件為目標時先依文件規則去重再取 Top N；提示不同階段截斷的影響，不承諾每次都滿 N 份文件。
-- [x] **方法能力**：不支援的後端輸出／融合方式顯示且停用，附原因；不靜默更換策略。Rerank API 的內部 top_n 與候選覆蓋率需有明確 Adapter 對應。
-- [x] **錯誤定位**：沿用 `[模組／設定] 原因`，進階區收合時摘要仍顯示錯誤並可展開定位。
-
-## 5. 原型設定／預覽的驗收清單
-
-- [x] 新建時兩個合併勾選、時機都在 Retrieval 後，進階區預設收合。
-- [x] 單 Query＋ES Hybrid：沿用一份搜尋結果，不重做同 Query 融合；Reranker 顯示單份輸入與預選內容欄位。
-- [x] 多 Query＋ES Hybrid：只做需要的跨 Query 合併，預設在 Retrieval 後產生一份輸入供 Reranker。
-- [x] 多 Query＋多路獨立輸出：範圍、方法與時機設定能正確表達來源及候選上限，預設合併後為一份。
-- [x] 將任一合併移到 Reranker 後，摘要與卡控同步，逐 Query 評分與後置合併的語意明確。
-- [x] 四處 K／N 各自保存；無對應動作時停用；Reranker 後 Top 3、候選不足及 Rerank=None 路徑均正確。
-- [x] document_id 去重保留原代表 Chunk；未儲存欄位、失效服務、非法數值與不支援能力均有可定位錯誤。
-- [x] Edit 保留原勾選／欄位／參數；取消不改系統；AI 套用與手動設定一致；DEV／自行部署維持同一份邏輯 Config。
-- [x] 原型若仍為模擬，預覽與執行詳情明示模擬，不冒充 ES／模型的真實計算。
-
-UI 實作狀態已更新；正式執行與 Config 的剩餘細節仍由 Q-002／Q-003／Q-014／Q-025 追蹤。
-
-## 6. v0.9 實作細節、展示預設與限制
-
-### 6.1 原型設定的對應
-
-| UI 設定 | 原型 Config 路徑 | 行為 |
-|---|---|---|
-| 搜尋 Top K | `retrieval.per_route_k` | 每 Query／每獨立路徑；ES 內部 Hybrid 則為其單份輸出 |
-| ES 輸出粒度 | `retrieval.output_mode` | backend_fused／independent；Local 強制獨立輸出，保留 ES 草稿 |
-| 同 Query 合併 | `retrieval.processing.same_query` | enabled／at／method；可選所有或指定路徑 |
-| 跨 Query 合併 | `retrieval.processing.cross_query` | enabled／at／method；依相同路徑群組跨 Query 合併 |
-| 去重單位／文件時機 | `retrieval.processing.merge_key`／`document_at` | Chunk 融合完成後，可在選定時點按文件取最高分代表 Chunk |
-| Retrieval 後保留數 | `retrieval.processing.after_retrieval_top_n` | 本時點所有合併與文件去重完成後的每組輸出上限 |
-| 模型評分與提問 | `rerank.content`／`query_source` | 主欄位預選 text；original／current；跨 Query 已合併時有效值原始問題 |
-| 模型評分後保留數 | `rerank.top_n` | 每份評分結果預設 3 |
-| Reranker 後合併保留數 | `retrieval.processing.after_rerank_top_n` | 無模型仍可執行後置合併／文件去重 |
-
-這些拼字標示 `ui-0.9-draft`，不是已凍結的公共 Config Schema。以同一個純函式計畫推導器供摘要、驗證、影響判定與有效匯出使用；原始草稿保存停用／失效選擇，只有有效項目進入匯出。這版原型沒有舊 Config 檔案匯入或跨刷新持久化，因此未實作正式版本遷移。
-
-基本／進階僅是顯示層級；跨模組切換保留展開狀態，重新開 Create／Edit 預設收合。取消不動已存系統；Inference 設定改變只清除舊示意回答／評估，不要求重建相容索引。
-
-### 6.2 明確的原型邊界
-
-- ES 原有內部 Sum Score／RRF 獨立保留，預設 Sum Score。平台合併設定預設 RRF，避免把不同來源分數直接相加；使用者仍可選 Sum Score。搜尋 Top K=10、Retrieval 後 Top N=5、Reranker 後合併 Top N=3 為展示初值，並非新增產品決策。
-- 平台 Sum Score 提供各來源權重，以及不轉換／逐清單 Min–max。未轉換時需明確勾選分數可比；先依 score_order 統一方向。同分清單轉換為 1、未命中來源為 0 是原型規則草案，真實方法與 Adapter 仍待核定。
-- 為使單份 ResultSet 也能設定文件去重，新增「文件去重時機」。先在該時點融合相同 chunk_id，再按 document_id 取最高分代表 Chunk，最後 Top N；禁止在最後一次跨清單合併之前完成最終文件去重，以免後續再出現同文件多 Chunk。
-- 最終仍有多份 ResultSet 時阻止保存，明示 Generation 需要一份；使用者可觀察關閉／部分路徑合併的中間計畫，但需完成合併才能儲存。這版不增加多份清單的 Generation 消費策略，也不隱含跨清單排序。
-- 服務欄位與 API 說明沿用原型契約。Rerank API 要求對全部 documents 評分：服務請求的 top_n 等於輸入筆數，平台再依 UI Top N 截斷；完整覆蓋的真實回應驗證仍需 Engine／Adapter 實作。
-- 多 Query 靜態預覽最多 32 個改寫問題；超過時有明確錯誤。不表示未來 Runtime 的正式限制。
-- 摘要只計算設定上限，不執行候選命中、Chunk 去重、模型評分、融合分數或 rank 生成。實際候選不足／同一 Chunk 多路命中均可能降低結果數量；不宣稱固定得到 N 份文件。
-- DEV 與部署匯出使用相同結果處理設定；部署頁僅補服務連線，Memory／MongoDB 模式不因部署切換。原型尚未檢查 ES 版本／授權或遠端模型能力，仍顯示「未驗證」。
-
-### 6.3 既有 Prototype 驗證紀錄（2026-10-15）
-
-- `tests/prototype.test.cjs`：56 項既有規則通過；更新兩個已被需求取代的預期（跨 Query 融合不等於 ES 內部融合；Top N 不需遞減）。
-- `tests/inference-processing.test.cjs`：23 項新增規則通過，包含 ES 獨立／Local 各自的四種合併時點組合、兩層分組、四處上限、None、文件模式、有效草稿分離、Edit／AI／匯出。
-- `tests/prototype.dom.test.cjs`：既有 DOM 事件回歸通過。
-- `tests/inference-processing.dom.test.cjs`：13 組 DOM 事件流程通過，涵蓋預設收合／勾選、控制項停用、跨 Query 提問卡控、欄位失效、錯誤定位、保存／取消及有效匯出；沒有頁面腳本錯誤。
-- 本輪未進行真實瀏覽器視覺／手機版面 QA，也沒有呼叫真實 ES、模型或 Runtime；上述 jsdom 檢查不代替這些驗證。
-
-尚待後端階段：
-
-- [ ] 真實 Adapter 能力探測、ES 版本／授權卡控與 Rerank 全候選回應驗證。
-- [ ] Engine 融合／去重／Top N／score_order／rank 的實際計算、引用鏈及正式 Config 遷移。
-- [ ] 真實瀏覽器桌面／手機版面與端對端服務整合驗證。
+原始 Draft 保留停用參數；effectiveConfig 排除它們。Create／Edit／AI 套用／匯出使用同一驗證入口。取消不改已存 System；純 Inference 改動只使舊示意結果失效，Ingestion 模組有效改動提示重跑 Ingestion。
 
 <a id="ui-backlog-pending"></a>
-
-## 7. 新增 UI Backlog（2026-10-16，尚未實作）
-
-已確認需求與討論提案分開標示，所有待辦均未因本次文件同步而實作。Component 動態表單見 12，三份新資料契約的介面遷移集中在 UIB-011～013。
-
-
-### UIB-001：Fixed-size 控制項與設定連動
-
-- [ ] 方法選單加入 Fixed-size，保留 Recursive／Header-aware；不自行改現有預設。顯示名稱統一，正式 Config 枚舉仍依 Q-002。
-- [ ] 三種方法共用 Token Size／Overlap／Tokenizer、主要切分欄位、複製欄位；metadata 改為預設全部繼承，見 UIB-006。Size 正整數、Overlap 整數且 0 ≤ overlap < size；模型輸入上限的檢查繼續保留。
-- [ ] Fixed-size 不使用分隔符、keep_separator、標題層級，也不要求 Parsing headings。相應控制項不作有效設定；保留其他方法的草稿，切回時恢復，停用參數不驗證／匯出或觸發重建。
-- [ ] 手動選擇、Edit 保存、AI 建議及匯出使用相同 Schema／能力與有效設定。變更方法或有效 size／overlap／Tokenizer 正確提示重新 Ingestion，不靜默換方法。
-
-### UIB-002：Fixed-size 說明與操作案例
-
-- [ ] 說明 Fixed-size 是固定 Token 視窗，步長 size−overlap；末塊不足保留、不補齊，不依句子或標題找邊界。來源文字／Unicode 邊界遵循 Engine 的核定規則。
-- [ ] 更新 Chunking 節點摘要、設定說明與 AI 建議可用方法；示範 size=4、overlap=1 的視窗、短文件及恰好整塊，不產生 overlap-only 末塊。
-- [ ] 未接 Engine 的原型預覽明示模擬，不將字元切分冒充實際 Tokenizer；能力未實作時清楚標示，不因選單顯示就宣告可執行。
-
-### UIB-003：Builder 的 AI 助手整合
-
-- [ ] M5 Builder 前後端呼叫 M4 已交付的同一核心／API，不另寫一套產生 Config 的規則。沿用既有助手入口，不另建 Retrieval 主畫面。
-- [ ] 以當前 Draft、Schema、映射、選用服務、明確允許的樣本與需求產生建議；涵蓋從 CSV 開始、已有 Config 的局部修改及新建。UI 包裝狀態與 Effective Config 分開。
-- [ ] 建議可對回模組與控制項，使用同一 Schema／Registry／Validator；缺連線／服務、未支援方法、失效欄位及需要重新 Ingestion 的影響可定位。M4 的獨立 Config 成功不能代替這項 UI 驗收。
-- [ ] M5 驗收真實助手串接；若只改原型互動，繼續明示模擬，不冒充已完成 M4／M5 真實能力。助手模型／服務契約的具體 UI 依 Q-003／Q-024 核定。
-
-### UIB-004：草稿狀態、Diff 與套用
-
-- [ ] 建議帶草稿基準版本／Hash，顯示 before／after、理由、缺少資訊及驗證結果；不直接改 active Config。
-- [ ] 只有使用者套用才改 Draft，Create／Save 前不修改已存 System。取消建議保留原 Draft；取消 Create／Edit 保留已存配置；不自動 Ingestion。
-- [ ] 等待回應期間人工修改、切換 System／關閉視窗或較新建議先回來時，過期回應不得覆蓋新草稿；提供重新產生或核定的合併流程。選擇性套用／撤銷細節仍依 Q-024。
-- [ ] 同一意圖以手寫／Python 助手產生及 Builder 套用時，其有效 Config 語意一致；可做固定 fixtures 與真實服務兩層驗收。執行成功與品質評估分開，品質由 M6 驗收。
-
-後續每次變更先填對應條目與主責規格；只有實際修改、驗證後才更新完成狀態及證據。M0～M7 的階段名稱以 08 §4 為準，歷史 §1～6 不用新待辦覆寫。
-
-### UIB-005：Indexing 自動保存全部內容（已確認）
-
-- [ ] 移除「儲存內容」勾選，只顯示全部 Chunk.fields／metadata 自動保存的摘要；使用者繼續選全文／向量／可過濾欄位，不增加第一版保存排除表單。
-- [ ] Rerank／檢索結果消費端／引用的內容選項依 Chunk 可取得欄位及型別產生，不再綁 indexing.stored。未建立全文索引的 title／summary 仍可用；未存在／未複製進 Chunk 的欄位仍保留失效引用並阻止保存。
-- [ ] 手動、AI、Edit、驗證、預覽及匯出採相同規則；遷移舊 indexing.stored 不宣稱能補回已遺失資料，必要時提示重新 Ingestion。未選搜尋／Filter 的欄位仍保留內容，且不自動取得對應搜尋能力。
-
-### UIB-006：metadata 預設全部繼承（已確認）
-
-- [ ] 移除 Chunking 的逐欄「繼承 metadata」勾選，預設保留 Schema 驗證後的全部業務 metadata，提供唯讀摘要；新增合法 metadata 不需再手動勾選。
-- [ ] 不放寬 Schema／unknown_fields；可信 ACL／來源／locations 依 Engine 規則保留／產生，輸入不能覆蓋。第一版不新增 metadata 排除設定，有明確需求再規劃。
-- [ ] metadata 保存與可過濾宣告分開。Indexing 只讓使用者選支援的 Filter 欄位；未宣告者仍保留內容、不可作 Filter。處理舊 chunking.metadata、AI 建議及範例映射／匯出的遷移，原型若未接 Engine 繼續明示模擬。
-
-### UIB-007：Query Rewrite 單模組測試（提案待確認）
-
-- [ ] 若採用，在 Query Transformation 提供問題輸入及「測試 Rewrite／Multi-query」，使用當前 Prompt／LLM／count 草稿，不先 Ingestion／保存 System，不執行 Retrieval／Rerank／檢索結果消費端。
-- [ ] 使用正式 Engine 的相同模組／Adapter／驗證；只檢查本模組必要設定。顯示生成 Prompt、要求筆數、解析後 Queries、保留原始問題的效果及格式／數量／非空／重複錯誤；原始回應可收合，Token／耗時僅顯示真實可取得數值。
-- [ ] 平台提供輸出 Schema，使用者主要編輯改寫內容 Prompt。服務能力不支援時明確說明；失敗／修正重試／拒答／截斷依核定政策呈現。None 不呼叫 LLM，Mock 不冒充真實試跑。
-- [ ] 測試輸入或 Prompt／LLM／count／原始問題選擇變更後，舊結果標示過期；舊非同步回應不覆蓋新測試。不自動保存 Config／Ingestion，也不把試跑列為儲存必要 Gate。
-
-### UIB-008：統一 Query Rewrite 設定（提案待確認）
-
-- [ ] 若採用，改成啟用／停用、Query 數量 N、一份有效 Prompt、LLM 及 include_original。N=1 為單筆改寫，N>1 為多個檢索表述；N 不含原始問題，停用不呼叫 LLM。
-- [ ] count 自動帶入輸出 Schema 的陣列長度約束及後端驗證；說明 Prompt 決定內容，平台契約決定格式／數量。提供固定格式要求預覽，保留自由編輯；改 N 不自動覆寫人工 Prompt，多樣性另需檢查。
-- [ ] 將試跑、流程摘要、Query／跨 Query 合併卡控、AI 建議與匯出對齊同一計畫；驗證 1／N、原始問題選項與未支援的模型能力。此項不等於 UIB-007 試跑已被核可。
-- [ ] Edit 遷移原 Rewrite 為 N=1、Multi-query 保留原 N 與當時有效 Prompt。另一份舊 Prompt 草稿的保存／恢復政策先核定，取消不改已存配置，不靜默丟棄手寫內容。
-
-### UIB-009：舊答案 JSON 格式設定（取消）
-
-Generation 已由 D-50 移除，不實作答案模板／自訂答案 Schema／主要回答文字路徑。現有 Prototype 的答案功能移除及檢索呈現改依 UIB-015。
-
 <a id="uib-010-component-catalog"></a>
-### UIB-010：Module Developer 方法選用與設定
-
-- [ ] 配合 D-41 的兩個 repo 邊界，rag_platform 的 UI／Backend 經公開 API 取得 rag_engine Runtime 的 Component 目錄／Schema／驗證結果；Builder 不內嵌全部 Components。相容的新方法在更新目標 Runtime 後可供既有表單選用，不要求每次都重新部署 Builder。
-- [ ] 目錄／Schema 快取與驗證結果對回目標 Runtime 版本；處理版本切換、過期回應、目錄不可用與未知控制項。保留既有草稿與失效引用，不把「新 Image 已發布」顯示成「目前 Runtime 已更新」，特殊 UI／不相容 API 明示需對應版本。
-- [ ] Create／Edit 沿用既有單一 Builder 介面，方法選項來自目標 Engine／Runtime 核可目錄；依權限顯示方法用途、維護者、實作版本、相容能力與可用狀態。發布套件不代表當前 Runtime 已安裝，不顯示虛假的可執行狀態。
-- [ ] 基本參數依方法 Config Schema／顯示資訊呈現，保留必要與進階層級。component_id 與 Python class／package 名稱分開；通常只需清楚顯示方法名稱，詳細識別與版本可在說明中查看。複雜元件／自訂版面需另定支援範圍，不承諾任意 Schema 自動生成完整 UI。
-- [ ] 依同一 Engine Validator 執行 Parser／Chunker、Indexing／Retrieval、欄位／模型等相依卡控；不相容選項仍可見且不能選，提供原因。缺套件、版本不符及能力不足標示 `[MODULE NAME]` 並定位，不靜默改成其他 Component。
-- [ ] Edit 保留既有方法／解析版本與草稿；方法撤回／目標 Runtime 不再支援時保留失效引用及原因。更新方法時提示必要的重測／重新 Ingestion 影響，依正式版本策略處理，不因目錄更新而自動升級 System。
-- [ ] AI 助手與手動設定使用相同 Component 目錄、Schema、相依規則及草稿基準；套用、取消、失效引用與匯出走同一有效 Config。助手不推薦未知／未支援的方法或自行安裝 package。
-- [ ] 匯出檢查目標 Runtime Image 是否包含所需方法／版本；缺失時顯示對應模組與待補條件，與外部 API／DB 連線缺項區分。DEV 與 FTEST／ENT 的方法／邏輯 Config 一致，環境服務綁定分開。
-- [ ] 以 rag_engine components 新增 Chunker、成對 Indexing／Retrieval、不相容 Parser 結構、缺套件／錯版及取消 Edit 作為未來驗收案例；只做 Prototype 示範時明示目錄／執行為模擬。本輪不修改 UI，也不新增 Web IDE／任意程式上傳／套件安裝按鈕。
-
-D-42 的具體補充（格式以 [12](12_component_schema_ui_contract.md) 為準）：
-
-- [ ] D-43：UI 中表示可擴充實作的名稱統一為 Component／元件；使用者操作仍可顯示「切分方式」等清楚標籤。內部目錄、component_id、Descriptor 與問題定位依新契約整合；舊 Prototype method 選擇需明確版本映射，不能直接全域改名。Python／HTTP method 與融合演算法欄位保留原義，對照見 [03 §3.8](../03_architecture_proposal.md#component-terminology-migration)。本項待使用者要求改 UI，尚未實作。
-
-- [ ] 固定 Create／Edit 流程內依 Descriptor 產生 Component 參數表單；基本型別使用共用控制項，order／groups／advanced／UI hints 由平台映射，不載入 Component 提供的前端程式。
-- [ ] field_picker／service_picker 使用當前 Engine 解析的候選，涵蓋欄位來源階段、型別、索引能力及可見 LLM／Tokenizer／服務；相關不相容選項保留停用，不洩漏不可見服務。
-- [ ] 區分不適用分支與已選設定不合法：Memory 隱藏 DB 綁定並保留草稿；刪除全文索引後已選的全文 Retrieval 保留報錯，不能直接從有效流程略過。
-- [ ] 進階預設收合；錯誤摘要使用 Module＋node_ref＋field_path 定位具體實例，能展開對應欄位。無效草稿可繼續編輯，正式儲存／建立／套用仍需驗證。
-- [ ] 未知必要 widget／描述版本／required_ui_features 明示不支援，不偷偷改為一般文字框或任意 JSON 編輯；既有合法 Runtime 不因 Builder 不支援就停止服務。
-- [ ] 顯示由 Engine 推導的固定值與原因，例如 Retrieval 後端；顯式衝突要報錯。UI 不自行補出能力、默默修值或執行 set_value 規則。
-- [ ] 驗證結果對回 Runtime／catalog／draft／context 版本；舊回應、目錄錯誤、未知候選保留草稿並標為待驗證，不能以舊成功結果套用新版。
-- [ ] 依 [12 SUI-01～14](12_component_schema_ui_contract.md#acceptance-cases) 建立互動與跨入口一致性驗收。後端／UI 未實作前保持未完成；Prototype 模擬與真實 Runtime 驗收分開。
-
 <a id="uib-011-ingestion-parser-routing"></a>
-### UIB-011：JSON-only Ingestion 與 Parser 自動路由（方向已確認，尚未實作）
-
-- [ ] D-45：API 預覽與 Parser Input 說明引用同一份 IngestionDocument Schema，不再顯示另轉 bytes／source_info 的輸入契約；Context 與共用 resolver 是 Engine／SDK 執行資源，不要求使用者填寫。
-- [ ] 對齊 [13 輸入契約](13_ingestion_parser_input_contract.md) 及 JSON Schema：基本文字只需 document_id／content；Base64／URI 與必要格式識別在進階顯示，不新增 source／mode 必填層。
-- [ ] Builder 保留文件／CSV 上傳，映射／轉換後預覽實際 JSON，content 與 metadata 只映射一次；區分 API body 與 Parsing 後的 ParsedDocument。現有 records[].fields 及範例遷移需明示，不能假裝已支援相容別名。
-- [ ] Parsing 可啟用多個 Component，依宣告能力自動派送；無衝突不要求 Router 設定，有重疊才要求預設策略／進階 profile。格式不支援、歧義及Unit 欄位／文字格式不相容顯示模組與原因，不靜默換 Parser。
-- [ ] 更新 API 說明、CSV／AI 樣本處理及匯出預覽，說明獨立 Runtime 接收 JSON，文件傳輸轉換由呼叫端負責。沿用進階預設收合；本輪不變更 Prototype，實際格式／Parser 能力不可由模擬選項冒充。
-
-<a id="uib-012-parsed-document-structures"></a>
-### UIB-012：舊 ParsedDocument 結構預覽（由 UIB-014 取代）
-
-v0.10 的無結構／text-spans／page-blocks 展示僅代表舊契約。現行設計不再需要結構類型／版本選單或 Chunker 結構 Router；後續實作改依 UIB-014，不執行舊待辦。
-
 <a id="uib-013-chunk-contract"></a>
-### UIB-013：Chunk Contract、預設 text 與進階欄位任務（方向已確認，尚未實作）
-
-- [ ] 引用 [15](15_chunk_contract.md) 與共用 Chunk Schema；基本區直接切 units[i].text 並寫回 text，不顯示 split/copy 欄位選單；text 缺失／型別不合回 `[Chunking]`，不自動換欄位。
-- [ ] 進階才顯示新增有序任務、split／output／copy 映射與保留完整原文；預設 copy_fields=[]。同來源可切分又完整複製到 original_text 等不同名稱，重名阻止保存。
-- [ ] D-48：每個多欄位任務的切分片段預設輸出 fields.text；完整來源有需要時才 copy 到 original_text／original_faq 等不衝突名稱，進階仍可明確改名。
-- [ ] D-48：必要切分欄位缺失／型別錯誤／全空白、明確 copy 欄位缺失或必要任務零產出皆顯示 `[Chunking]`＋task_id／欄位，不顯示為成功匯入；第一版不新增可選複製開關。
-- [ ] 多欄位輸出為結果串接，示範 2＋3＝5，完整附帶另一欄位需明確選擇；顯示每個任務輸出欄位與下游可用內容，提示完整複製／Embedding 的重複與長度影響。
-- [ ] metadata 全繼承、不新增排除選單；D-52：source_refs／fingerprint／ordinal 為 Component 選填，可用 SDK helper；一般設定不列必填選項，缺少不報錯。預覽／結果詳情可唯讀看unit_index、來源欄位／範圍、已複製頁碼、全域序號；未知位置不捏造。
-- [ ] 向量預設 fields.text → vectors.text；顯示／序列化 values＋embedding_profile_id＋source_field，模型設定共用 Profile，不重填。舊非空向量陣列與原 Prototype text_vector 名稱依明確 Binding／遷移規則處理，不靠名稱猜模型或來源。
-- [ ] 下游 Picker 依 Chunk 實際輸出 Schema／任務產生選項，處理多任務不同欄位與缺欄位，不默默略過；純文字路徑仍可不經額外設定使用。
-- [ ] 手動／AI／Create／Edit／CSV 預覽／匯出用同一有效設定；僅展開進階不變更 Config，取消保留舊設定；欄位失效保留並報錯，不靜默覆蓋。指紋不含 UI 狀態／停用參數／Secret。
-- [ ] 更新 API／Chunk 預覽、測試與說明，區分 IngestionDocument 輸入、ParsedDocument、Chunk 及 ResultItem 的兩種 source_refs；不新增直接 Chunk 匯入入口。本輪只記錄待辦，待使用者明確要求改 UI 再實作。
-
 <a id="uib-014-flat-units"></a>
-### UIB-014：平面 Units 與 Parser／Chunker 分工（v0.11 已套用模擬 UI）
+## 3. 累積需求處理狀態
 
-- [x] 預覽／AI／Create／Edit／CSV／API 範例對齊 ParsedDocument 0.2：document_id、source_revision、units、metadata；Unit 直接放欄位，不包 fields、不要求 unit_id。
-- [x] API 單筆 IngestionDocument 不變；JSON record／CSV 每列由 Parser 正規化為一個 Unit；預解析 content.units 由已宣告的 Adapter 處理，不自動猜格式。
-- [x] 移除 text-spans／page-blocks 共用輸出分類、structure 選項與 Chunker 結構 Router；Parser 依輸入格式的派送保留。
-- [x] Fixed-size／Recursive／Header-aware 保留，Header-aware 顯示 Markdown 標題需求與超長章節 Recursive 設定；不要求 heading Blocks。
-- [x] 每筆 Unit 獨立切分、不跨筆合併／overlap；說明過短 Unit 需由 Parser 先整理。加入兩個 Units 切成 2＋3＝5 的範例。
-- [x] 預設 text；進階 split／copy 候選來自 Unit 欄位。驗證所有 Units 的必要欄位，缺失顯示 [Chunking]＋task_id＋unit_index＋欄位；不僅檢查第一筆。
-- [x] Chunk 預覽保留六鍵；source_refs 改 unit_index＋field＋start/end，移除 block_id／schema_id／block offsets。來源只讀，page 等依 copy 帶入 fields。
-- [x] 舊 config／樣本顯示明確遷移需求，不靜默變更；更新 DOM／契約測試與說明，仍清楚標示模擬／未接真實 Parser、Tokenizer、模型。
+「原型完成」只代表配置／互動／模擬預覽，不代替真實功能驗收。
 
-<a id="uib-015-retrieval-only"></a>
-### UIB-015：Retrieval-only 命名與結果呈現（v0.11 已套用模擬 UI）
+| 編號 | 需求 | v0.12 狀態 |
+|---|---|---|
+| UIB-001／002 | Fixed-size 及 Tokens 說明 | 原型已完成；真實 Tokenizer／切分待 Engine |
+| UIB-003 | AI 助手串接 M4 核心／API | 待後端整合；目前明示本機規則 |
+| UIB-004 | Diff、驗證、套用、取消與過期回應 | 本機模擬完成；真實非同步 API／版本一致性待整合 |
+| UIB-005／006 | 全 Chunk 保存、metadata 全繼承 | 原型已完成；儲存 Adapter 待實作 |
+| UIB-007／008 | Rewrite 統一生成設定／真實測試與結構化輸出 | **討論提案，尚未核定；未藉本輪實作為既定需求** |
+| UIB-009 | Generation 自訂輸出 | D-50 取消 Generation，關閉此待辦 |
+| UIB-010 | Component Descriptor 動態表單 | 模擬目錄及基本 Schema／UI hints 表單已完成；完整 12 協定／版本回應及真實 Registry 待整合 |
+| UIB-011 | JSON API／多 Parser 自動派送 | 三來源 API 說明、CSV／JSON／明確 Units Adapter 已有；二進位 resolver、能力派送及衝突政策待真實 Parser |
+| UIB-012 | text-spans／page-blocks 舊分類 UI | 已由 UIB-014 取代，刪除舊工作項 |
+| UIB-013／014 | Chunk 任務及平面 Units | 原型已完成；實際切片／來源追溯仍依 Component |
+| UIB-015 | Retrieval 命名與結果呈現 | 已完成；取消 Generation 與強制單清單 Gate |
+| UIB-016 | Remote Service／連續 Pipeline | 原型配置／鎖定／部署計畫完成；真實服務管理待後端 |
+| UIB-017 | KISS 選填追溯／metadata 提示 | 原型完成；不捏造 _rag；真實 Component 自行支援 |
+| UIB-018 | Embedding 前欄位模板 | 字串替換／驗證／Picker／預覽／有效匯出完成；模型 Token 上限仍待真實 Tokenizer |
+| UIB-019 | 額外原文 Chunk | 控制、獨立 copy、每 Unit/task 去重示例及變更影響完成；真實切分待 Engine |
+| UIB-020 | 簡化推論 Contract | D-54 本輪完成：root QueryContext[]，含 filters／metadata；無歷史物件 |
 
-- [x] RAG Builder／System／Runtime 的使用者標籤改為 Retrieval Builder／System／Runtime；Create Retrieval System；Library／Platform 說明引用 03。
-- [x] 移除 Generation 卡、LLM 選取、答案 Prompt／chunk_template、Context Budget、自訂答案 Schema 與示例；共用 LLM 留給 Rewrite／Multi-query／AI 助手。
-- [x] Inference 改呈現 ResultSets／items、Chunk 內容、score／rank、來源與 Trace；移除示意答案／生成 citations。
-- [x] 移除「為 Generation 必須合併成一份」的保存 Gate，允許最終多份分組清單；不隱含新增融合或全域排序。
-- [x] Evaluation 移除 Answer Correctness／Faithfulness 與參考答案欄位；保留 Recall@K、MRR、Latency、Usage、Error Rate。
-- [x] 手動／助手／Create／Edit／匯出／API 說明一致；舊 config.generation 顯示需遷移，不靜默執行或刪除。已更新測試；2026-11-03 已補通過 Chromium 桌面／手機版面與操作驗證。
-- [ ] 技術命名另做明確 migration：repo／branch、Python package、URN／Schema ID、_rag、RAGBlueprint 與儲存 key。此輪只改規格與圖，不做技術識別全域取代。
+<a id="uib-010-component-selection"></a>
+## 4. Component 與 Remote 的原型範圍
+
+模擬目錄包含內建 Component、Developer Paragraph Chunker、Remote 單模組、Parsing→Chunking→Embedding Image Pipeline、Query Transformation→Retrieval→Rerank External Pipeline，以及不可用服務／缺少相容 Retrieval 的 Indexing 案例。可選服務由程式內固定的 Descriptor／Manifest 示意提供，**不是已核定的 Manifest Meta-schema**。
+
+表單支援 string／integer／boolean／enum、預設值、基本限制與 advanced 分組；不執行 Developer 前端腳本。版本失效保留引用並報錯。完整 field_picker／service_picker、多版本回應、required_ui_features 及 12 的全部驗收案例仍待正式 Registry／Engine，不宣稱本機目錄等同完整 Renderer。
 
 <a id="uib-016-remote-service-pipeline"></a>
-### UIB-016：已註冊 Remote Service／連續 Pipeline（D-51，待修改 Prototype）
+整段從第一個 Module 選；被管理模組保持可見且鎖定，本地設定不進有效計畫。重疊選擇報錯，切回內建恢復原草稿。缺少相容 Retrieval 的 Remote Indexing 以停用原因顯示，不只因 JSON 同形就放行。一般 User 不填 Developer Service URL／Path／Header；既有模型／ES／MongoDB BYO 資源表單照常保留。
 
-依據：[18](18_remote_service_pipeline_integration.md)。本次只記錄規格，尚未修改 UI／部署服務。
-
-- [ ] 顯示核可服務名稱／版本、涵蓋 Module、邊界 Contract 與相容性；一般 User 不填 Developer Service 的 URL／API Path／Header／Image。
-- [ ] 在連續範圍第一個 Module 選 Remote Pipeline，其他涵蓋 Module 保持可見、標「由 XXX Pipeline 管理」並鎖定；不讓使用者任意更改範圍。
-- [ ] 底層整段綁定只編譯一次；阻止重疊範圍，切回本地時還原草稿但重新驗證，不把隱藏設定納入有效計畫。
-- [ ] 有開放 Config Schema 才展開參數；固定服務只顯示能力／限制。既有 BYO LLM／Embedding／ES 設定不因此移除。
-- [ ] 包含 Indexing 時檢查相容 Retrieval／索引能力；顯示失效選擇與原因，不靜默替換。
-- [ ] Local 多 System 共用 Runtime；Remote Image 顯示每 System 獨立實例的部署／健康／錯誤狀態及自動 Endpoint 綁定結果。
-- [ ] External 顯示 Developer 管理、固定資料空間、多 System 可能共用資料；不提供 data_space_id／shared 開關。無狀態服務不顯示儲存提示。
-- [ ] Export 區分 Image 的額外 Deployment／Service YAML 與 External 的連線引用；環境綁定交給部署責任者，不展示 Secret 值。
-- [ ] 服務目錄／Adapter 不相容、未就緒、初始化失敗及版本變更對回 [Module／服務]；保留草稿，不宣稱已註冊即已可執行。
-
-
-
-## 2026-11-03 Prototype v0.11 驗證與限制
-
-- Retrieval Builder／System／Runtime 的產品文案已改名；Generation 節點、設定、模板、答案及答案評估移除。LLM 保留給 Query Transformation；AI 助手仍是規則模擬。
-- Inference 顯示分組 ResultSets／items、Chunk、示意 score／rank、來源與計畫 Trace；允許最終多份清單，不自動全域排序。固定候選／分數明示 demo，並非真正檢索或 Rerank；API 為契約投影示意，不是已凍結的完整 InferenceState。
-- ParsedDocument 為 document_id／source_revision／units／metadata。Structured JSON／CSV 每筆輸出一個 Unit；明確選 Preparsed Units Adapter 才接受 content.units。移除共用 structure 分類與 Parser headings 相依。
-- 每 Unit／任務獨立驗證必要文字與 copy 欄位；Chunk 預覽六鍵，追溯 unit_index／field／Unicode code point 半開範圍及全域 ordinal。同來源切分與 original_text 複製使用進階任務映射。page 等可複製非文字欄位；metadata 全繼承。
-- 預覽每 Unit／任務只展示整段一筆，不實際計算 Token 切分／2＋3 的數量；2＋3 範例僅解釋串接規則，沒有跨 Unit overlap／合併。Header-aware 讀 Markdown text，超長章節沿用 Recursive 設定。
-- Create／Edit／取消、CSV／JSON 映射、API 說明、助手樣本、結果計畫及 Export 已同步。舊 Generation／headings Config 與舊 fields／structure 樣本回明確遷移訊息，不自動轉換。
-- 通過 tests/prototype.test.cjs（56）、schema-contract.test.cjs（5）、inference-processing.test.cjs（23）、prototype.dom.test.cjs、inference-processing.dom.test.cjs（13）及 retrieval-units.dom.test.cjs；後者涵蓋品牌／無 Generation、多清單、預解析派送、第二 Unit 缺欄位、Unicode 位置、完整複製、Edit 取消及結果／Export。
-- jsdom 26 用於 DOM 驗證；首次 Playwright Chromium 下載失敗，後續已改用 @sparticuz/chromium 補通過新版真實瀏覽器驗證（見下）。未執行真實 Parser／Tokenizer／模型／DB／HTTP；沒有把 Mock 當後端能力。
-- UIB-013 與 v0.11 重疊的預覽／來源／欄位任務已套用，完整 Engine 語意與真實 ID／fingerprint 等仍未完成；舊 UIB-001／005／006 的勾選狀態仍應搭配版本完成紀錄閱讀。
-
-
-### 2026-11-03 Chromium 補驗證（已完成）
-
-- 使用 @sparticuz/chromium 的 Chromium 153.0.8010.0，搭配 Playwright 執行 tests/retrieval-units.browser.test.cjs。npm 套件取得成功；自動解壓遇到 chown EINVAL，改用 Brotli 解壓及 tar --no-same-owner，在獨立暫存目錄啟動成功。這是測試環境處理，未修改產品頁面。
-- 通過 1440×1000 桌面與 390×844 手機寬度檢查，確認無整頁水平溢出；實際檢視首頁、Create、Chunking 及 Inference 截圖。測試環境另載入 Noto Sans TC 字型供中文截圖，字型未加入產品依賴。
-- 真實互動涵蓋 Create／Edit／取消、Header-aware／Units 說明、CSV 上傳映射與模擬 Ingestion、ResultSets 呈現、API 說明、最終多清單可儲存、Export 必填綁定 gate、手機 Chunking 與非法數值卡控。無頁面 JavaScript 錯誤。
-- 新測試可用已安裝的 Playwright Chromium 直接執行；指定 CHROMIUM_EXECUTABLE 時使用已準備的執行檔與 @sparticuz/chromium launch args，環境需提供相容 LD_LIBRARY_PATH。QA_OUTPUT_DIR 可指定截圖目錄，QA_FONT_CSS 可選本地 Noto Sans TC 的 CSS。
-- 瀏覽器驗證成功不代表真實 Parser／Tokenizer／模型／DB／部署完成；CSV 與事件在瀏覽器執行，檢索／評估仍為示意。未新增真實後端能力，也未重定 Contract。
-
-
+Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／健康檢查與資料綁定引用；External 只有管理者提供的目標環境 endpoint_ref，不輸出該服務的 Deployment。Image、Endpoint、資料綁定都是 placeholder，沒有建立 Pod／Volume 或隔離真實資料。服務狀態一律標示模擬；外部服務可共用其既有資料，第一版不新增 data_space_id 或 shared 開關。
 
 <a id="uib-017-optional-provenance"></a>
-### UIB-017：KISS 選填追溯與 metadata 處理提示（D-52，尚未改 UI）
+## 5. 選填追溯與文件提示
 
-- [ ] 真實 Component／Runtime 串接時，不以缺少 _rag／source_refs／fingerprint／ordinal 阻止儲存或執行；原型已選擇提供示意追溯仍可保留，但不宣稱所有 Component 都有。
-- [ ] 來源詳情只顯示實際提供的欄位；未提供時說明「Component 未提供」，不捏造頁內位置或保證可還原。
-- [ ] Component 說明它解讀的 metadata key、型別、允許值、缺省／未知值處理；沿用 metadata Schema／CSV 映射，不新增全域規則引擎或任意 Config 覆寫入口。
-- [ ] 支援的 Chunker 可讀 chunking_mode=passthrough，逐 Unit／任務完整轉 Chunk，仍驗證欄位／模型上限；其他 Component 不假裝支援。
-- [ ] Chunk 位置追溯選填不影響 ResultItem.source_refs 的 Inference 分數／候選血緣規則。
+內建預覽預設沒有 _rag，不以缺少 source_refs／fingerprint／ordinal 阻擋儲存或執行。Component 未提供來源就不捏造。Chunk.metadata._rag 保留為選填擴充；ResultItem 不另帶分數血緣，流程診斷交 Logs。
 
-
+內建 Chunker 的示例可讀 metadata.chunking_mode="passthrough"，逐 Unit／task 完整轉 Chunk；預設無提示時正常切分。請在 Document Schema 宣告此字串，CSV 映射到 metadata。這不是任意 Config／ACL 覆寫；其他 Component 的支援由其宣告決定。
 
 <a id="uib-018-embedding-composition"></a>
-### UIB-018：Embedding 前的欄位模板組合（D-53，需求已確認／尚未改 UI）
+## 6. 欄位組合與原文 Chunk
 
-依據：[15 §9.1](15_chunk_contract.md#embedding-field-composition)。預設 Embedding Component 的選用前處理，不新增 Module，不強制自訂 Component 支援。
+| 功能 | Prototype 草案設定 | 行為 |
+|---|---|---|
+| 模板組合 | embedding.composition.enabled／template／output_field | 預設關閉；產生獨立 fields.embedding_text；固定文字＋fields.* 字串變數 |
+| 向量來源 | embedding.mappings | 明確選 embedding_text→vectors.text，source_field 記 embedding_text |
+| 原文欄位 | chunking.preserve_original | 預設單任務複製到 original_text；進階任務自行 copy，避免重名 |
+| 原文 Chunk | chunking.include_original_chunk | 每 Unit／task 額外一筆完整來源；相同完整片段已存在就不新增 |
 
-- [ ] 提供預設關閉、收合的「內容組合」；啟用後填模板與輸出欄位（預設 embedding_text），固定文字＋fields.* 變數替換，不執行程式或 LLM。
-- [ ] 顯示套用前／後內容預覽；衍生欄位納入來源／下游欄位選單，沿用 Embedding mappings，例如 fields.embedding_text → vectors.text，source_field 記 embedding_text。
-- [ ] 缺欄位、型別／語法不符、輸出重名不默默改值或覆寫 text；驗證最終模型輸入上限，包含 Profile 前綴與特殊 Token。
-- [ ] Create／Edit／AI 建議／驗證／匯出使用同一有效設定；關閉時保留草稿但不執行／不觸發有效變更。有效模板／輸出／映射改動提示重新組合與 Embedding／Indexing。
-- [ ] 未串接 Engine 時明示模擬；模板不能讓 Provider 前綴重複套用，也不自動改變 Query Encoding。
+欄位組合在預設 Embedding 的前處理，不新增 Module。模板缺變數、來源非字串、缺欄位、語法錯誤或輸出撞名時阻止保存／樣本預覽；不執行 Python／LLM。衍生欄位出現在 Embedding／全文 Indexing／Filter／Rerank Picker。關閉保留草稿但不進有效設定；有效改動需重新 Ingestion。
 
 <a id="uib-019-original-chunk"></a>
-### UIB-019：額外保留原文 Chunk（D-53，需求已確認／尚未改 UI）
+兩頁示例為 7／15 字元，每 10 字元、overlap=0：關閉 3 筆、開啟 4 筆，短頁不重複。不同 Unit／task 不互相去重，也不跨 Unit 合併。完整原文走同樣的模板、Embedding、Indexing；真實 Component 必須驗證最終模型輸入長度，包含 Profile 前綴／特殊 Token。**原型只做字元教學示例，不計算真實 Token，也不宣稱零向量有效。**
 
-依據：[15 §9.2](15_chunk_contract.md#include-original-chunk)。預設 Chunker 選用能力，不是原文欄位 copy 的別名。
+## 7. 驗證與剩餘整合
 
-- [ ] 在 Chunking 增加獨立選項「額外保留原文 Chunk」，預設關閉；既有「保留原文欄位」維持獨立設定。
-- [ ] 說明原文指每 Unit／任務完整 split_field，不跨 Unit 合併。若已有完整相同切片直接沿用，不重複新增；passthrough 同理，不對不同文件／Units 任意去重。
-- [ ] 提供兩頁示例：7 字＋15 字、每 10 字無 overlap，關閉 3 筆、開啟 4 筆。例子僅解釋規則，不用字元假裝實際 Tokenizer 計數。
-- [ ] 新原文 Chunk 的 copy／metadata／vectors 與一般輸出規則一致，仍走模板組合／Embedding／Indexing；完整原文超模型上限要顯示錯誤，不默默截斷／跳過。
-- [ ] Create／Edit／AI／匯出與變更影響同步；有效開關改變需重新 Ingestion，舊 Chunk 清除與發布交給既有政策。未有真實 Engine 時不得宣稱已產生實際 Chunk／向量。
+回歸測試涵蓋既有設定／DOM、QueryContext 新 JSON、模板／重名、原文 3／4 筆、passthrough、Component 參數／失效版本、Remote 覆蓋／重疊／Export 差異、Save／Cancel／AI Draft。Chromium 153.0.8010.0 已通過 1440×1000 桌面及 390×844 手機互動／水平溢出檢查，無頁面 JavaScript 錯誤；已實際檢視桌面模板、Remote 鎖定及手機畫面。
+
+- [ ] 真實 SDK／Config Schema／Registry 與 12 的完整動態 UI 協定。
+- [ ] 真實 Tokenizer、Parser／Resolver、多 Parser 路由、Embedding／ES／Rerank API 與品質驗收。
+- [ ] 真實 Image 啟停／健康狀態／失敗清理、Secret／儲存隔離、正式 FTEST／ENT Export。
+- [ ] 真實 AI 助手 API、目錄／Draft 版本一致性；UIB-007／008 先決策再實作。
+
+這些未完成工作不阻止展示已確認的 UI 設定流程，但不可當作 Engine／部署里程碑完成證據。後續需求先記文件；使用者要求改 UI 時再更新原型。
+
+### 2026-11-03 驗證紀錄
+
+- Pydantic 12 項、Chunk 10 項通過；ParsedDocument 6 個正例／12 個反例通過；五份 Inference JSON 通過新版共用 Schema。RRF 以陣列名次驗算，舊 wrapper 明確拒絕。
+- 既有 56 項 Prototype、23 項結果處理、5 項 Schema UI 檢查通過；DOM 回歸及新增 12 組 v0.12 流程通過。
+- Chromium 真實互動涵蓋 Create／Edit／取消、CSV 映射、QueryContext 呈現、API 說明、Export、欄位模板、原文 3／4 筆示例、Remote 鎖定／External 固定設定，以及手機版面。Source SVG／MMD／PNG 已同步 QueryContext[]，保留 03 原版型。
+- 瀏覽器套件下載曾緩慢，補齊下載後以本地 Chromium 成功驗證；使用 Noto Sans TC 作中文畫面及圖檔輸出。測試可用既有 Playwright Chromium，或設定 CHROMIUM_EXECUTABLE 與選填 CHROMIUM_ARGS_JSON；外部套件未加入產品頁依賴。
+
+以上為契約、瀏覽器配置與模擬操作驗證，沒有呼叫真實模型／DB／Remote API，也沒有建立 Pod 或發布服務。

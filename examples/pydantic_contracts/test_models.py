@@ -3,7 +3,7 @@ from copy import deepcopy
 import json
 from pathlib import Path
 import unittest
-from pydantic import ValidationError
+from pydantic import ValidationError, TypeAdapter
 from jsonschema import Draft202012Validator
 from referencing import Registry,Resource
 from models import *
@@ -40,8 +40,8 @@ class ModelTests(unittest.TestCase):
                 result=Chunk.model_validate(data).to_payload();chunk.validate(result);self.assertEqual(result,data)
         infer=Draft202012Validator(json.loads((ROOT/'schemas/inference_context.schema.json').read_text()),registry=registry())
         for state in STATES:
-            result=InferenceState.model_validate(state).to_payload();infer.validate(result);self.assertEqual(result,state)
-            for query in InferenceState.model_validate(state).query_contexts:
+            result=[q.to_payload() for q in TypeAdapter(list[QueryContext]).validate_python(state)];infer.validate(result);self.assertEqual(result,state)
+            for query in TypeAdapter(list[QueryContext]).validate_python(state):
                 for rs in query.result_sets:validate_result_order(rs)
 
     def test_input_sources_and_omission(self):
@@ -72,25 +72,30 @@ class ModelTests(unittest.TestCase):
         self.assertNotIn('start',ChunkSourceRef(unit_index=0,field='text',output_field='text',role='copy').to_payload())
         with self.assertRaises(ValidationError):ChunkSourceRef(unit_index=0,field="text",output_field="original_text",role="copy",chunk_start=0,chunk_end=1)
 
-    def test_resultset_stage_rules_and_lineage(self):
-        first=deepcopy(STATES[0]['query_contexts'][0]['result_sets'][0])
-        for change in ('source','inputs','lineage'):
-            bad=deepcopy(first)
-            if change=='source':bad['source']=None
-            elif change=='inputs':bad['input_result_set_ids']=['rs-old']
-            else:bad['items'][0]['source_refs']=[{'result_set_id':'old','chunk_id':'c'}]
-            with self.assertRaises(ValidationError):ResultSet.model_validate(bad)
-        later=deepcopy(first);later.update(stage='top_n',source=None,input_result_set_ids=['rs-old'])
-        with self.assertRaises(ValidationError):ResultSet.model_validate(later)
-        with self.assertRaises(ValidationError):Operation(method='x',parameters={},scoring_query_id=None)
+    def test_current_result_contract(self):
+        rs=ResultSet.model_validate(STATES[0][0]['result_sets'][0])
+        rank_only=ResultSet(key='rank_only',items=[ResultItem(chunk=rs.items[0].chunk)])
+        validate_result_order(rank_only)
+        with self.assertRaises(ValueError):require_sum_scores([rank_only])
+        require_sum_scores([rs])
+        with self.assertRaises(ValidationError):ResultItem(chunk=rs.items[0].chunk,score=float('nan'))
+        for stale in ('rank','source_refs'):
+            with self.assertRaises(ValidationError):ResultItem.model_validate({**rs.items[0].to_payload(),stale:1})
+        with self.assertRaises(ValidationError):ResultSet.model_validate({**rs.to_payload(),'stage':'retrieval'})
+        with self.assertRaises(ValidationError):QueryContext(ori_query='q',query='q',result_sets=[rs,rs])
+        with self.assertRaises(ValidationError):TypeAdapter(list[QueryContext]).validate_python({'query_contexts':STATES[0]})
+        self.assertEqual(TypeAdapter(list[QueryContext]).validate_python([]),[])
 
-    def test_active_references_and_rank(self):
-        value=deepcopy(STATES[0]);value['active_query_ids']=['missing']
-        with self.assertRaises(ValidationError):InferenceState.model_validate(value)
-        value=deepcopy(STATES[0]['query_contexts'][0]);value['active_result_set_ids']=['missing']
-        with self.assertRaises(ValidationError):QueryContext.model_validate(value)
-        rs=ResultSet.model_validate(STATES[0]['query_contexts'][0]['result_sets'][0]);rs.items[0].rank=2
-        with self.assertRaises(ValueError):validate_result_order(rs)
+    def test_filters_and_metadata(self):
+        for op,value in [('eq','製造部'),('in',['製造部','研發'])]:
+            condition=FilterCondition(field='metadata.department',operator=op,value=value)
+            q=QueryContext(ori_query='q',query='q',filters=[condition],metadata={'language':'zh-TW','nested':{'a':1}})
+            self.assertEqual(q.filters[0].value,value)
+        for op,value in [('eq',[]),('in','x'),('in',[]),('gt','1')]:
+            with self.assertRaises(ValidationError):FilterCondition(field='x',operator=op,value=value)
+        with self.assertRaises(ValueError):QueryContext(ori_query='q',query='q',metadata={'x':float('inf')})
+        q=QueryContext(ori_query='q',query='q')
+        self.assertEqual((q.filters,q.result_sets,q.metadata),([],[],{}))
 
     def test_proposed_index_binding_and_vectors(self):
         target=binding();embedded=Chunk.model_validate(next(c for c in CASES if c['case_id']=='embedded')['chunks'][0])
@@ -104,7 +109,7 @@ class ModelTests(unittest.TestCase):
 
     def test_new_examples_are_valid_wire_payloads(self):
         examples=json.loads(Path(__file__).with_name('examples.json').read_text())
-        for name,schema_name in [('ingestion_document','ingestion_document'),('chunk_after_chunking','chunk'),('chunk_after_embedding','chunk'),('inference_state','inference_context')]:
+        for name,schema_name in [('ingestion_document','ingestion_document'),('chunk_after_chunking','chunk'),('chunk_after_embedding','chunk'),('query_contexts','inference_context')]:
             schema=json.loads((ROOT/'schemas'/f'{schema_name}.schema.json').read_text())
             Draft202012Validator(schema,registry=registry()).validate(examples[name])
         for doc in examples['parsed_documents']:
@@ -112,7 +117,7 @@ class ModelTests(unittest.TestCase):
         validate_chunk_binding(Chunk.model_validate(examples['chunk_after_embedding']),IndexBinding.model_validate(examples['index_binding_PROPOSAL']))
 
     def test_each_public_type_has_an_executable_example(self):
-        from typed_examples import TYPE_EXAMPLES, chunk, chunks, rag_metadata, parsed_doc, index_binding, inference_state
+        from typed_examples import TYPE_EXAMPLES, chunk, chunks, rag_metadata, parsed_doc, index_binding, query_contexts
         self.assertEqual(set(TYPE_EXAMPLES), {model.__name__ for model in PUBLIC_MODELS} | {'ModuleResult'})
         snapshots=json.loads(Path(__file__).with_name('examples.json').read_text())['type_examples']
         for name, value in TYPE_EXAMPLES.items():
@@ -121,20 +126,13 @@ class ModelTests(unittest.TestCase):
                 self.assertEqual(type(value).model_validate_json(json.dumps(payload)).to_payload(), payload)
                 self.assertEqual(snapshots[name],payload)
         for name, schema_name in [('IngestionDocument','ingestion_document'), ('ParsedDocument','parsed_document'),
-                                  ('Chunk','chunk'), ('InferenceState','inference_context')]:
+                                  ('Chunk','chunk')]:
             schema=json.loads((ROOT/'schemas'/f'{schema_name}.schema.json').read_text())
             Draft202012Validator(schema,registry=registry()).validate(snapshots[name])
         embedded=Chunk.model_validate({**chunk.to_payload(),'vectors':{'text':TYPE_EXAMPLES['DenseVector'].to_payload()}})
         validate_chunk_binding(embedded,index_binding)
-        for context in inference_state.query_contexts:
-            by_id={rs.result_set_id:rs for rs in context.result_sets}
-            for rs in context.result_sets:
-                validate_result_order(rs)
-                for parent_id in rs.input_result_set_ids:self.assertIn(parent_id,by_id)
-                for item in rs.items:
-                    for ref in item.source_refs:
-                        self.assertIn(ref.result_set_id,rs.input_result_set_ids)
-                        self.assertIn(ref.chunk_id,{i.chunk.chunk_id for i in by_id[ref.result_set_id].items})
+        for context in query_contexts:
+            for rs in context.result_sets:validate_result_order(rs)
         for ref in rag_metadata.to_payload()['source_refs']:
             original=parsed_doc.units[ref['unit_index']][ref['field']]
             expected=original[ref['start']:ref['end']] if ref['role']=='split' else original
@@ -165,10 +163,30 @@ class ModelTests(unittest.TestCase):
         _,schema=models_json_schema([(m,'validation') for m in PUBLIC_MODELS])
         Draft202012Validator.check_schema(schema)
         self.assertIn('IndexBinding',schema['$defs'])
-        state=InferenceState.model_validate(STATES[0]);wrapped=ModuleResult[InferenceState](data=state)
-        self.assertEqual(wrapped.to_payload()['data'],STATES[0])
+        from typed_examples import parsed_doc
+        wrapped=ModuleResult[list[ParsedDocument]](data=[parsed_doc])
+        self.assertEqual(wrapped.to_payload()['data'],[parsed_doc.to_payload()])
+
+    def test_reference_operations_use_positions_and_current_data(self):
+        import runpy
+        ops=runpy.run_path(str(ROOT/'examples/inference/python_example.py'))
+        q=deepcopy(STATES[0][0]);rs=q['result_sets'][0]
+        for item in rs['items']:item.pop('score',None)
+        fused=ops['rrf']([rs])
+        self.assertAlmostEqual(fused['items'][0]['score'],1/61)
+        self.assertEqual(set(fused),{'key','items'})
+        same=ops['same_query_merge'](q,1)
+        self.assertEqual(len(same['result_sets']),1)
+        self.assertEqual(len(same['result_sets'][0]['items']),1)
+        rewritten=deepcopy(same);rewritten['query']='改寫'
+        combined=ops['cross_query_merge']([same,rewritten],3)
+        self.assertEqual(combined[0]['query'],q['ori_query'])
+        rewritten['metadata']={'language':'en'}
+        with self.assertRaises(ValueError):ops['cross_query_merge']([same,rewritten],3)
+
 
 
 if __name__=='__main__':unittest.main(verbosity=2)
+
 
 

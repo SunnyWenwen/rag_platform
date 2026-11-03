@@ -24,18 +24,13 @@ def main():
         capabilities=['fulltext','dense_vector'],fulltext_fields=['fields.text'],filter_fields=[],
         vector_bindings={'text':VectorIndexBinding(embedding_profile_id='embedding-demo-v1',source_field='text',dimensions=3)},searchable=True)
     validate_chunk_binding(embedded,binding)
-    r1=ResultSet(result_set_id='rs-retrieval',stage='retrieval',input_result_set_ids=[],source=RetrievalSource(route_id='es-hybrid',index_ref='idx-demo',field_paths=['fields.text','vectors.text']),
-        operation=Operation(method='es_sum_score',parameters={},model_ref=None,scoring_query_id=None),score_kind='es_sum_score',score_order='higher_is_better',
-        items=[ResultItem(chunk=raw,score=0.83,rank=1,source_refs=[])])
-    r2=ResultSet(result_set_id='rs-rerank',stage='model_score',input_result_set_ids=['rs-retrieval'],source=None,
-        operation=Operation(method='cross_encoder',parameters={},model_ref='rerank-demo-v1',scoring_query_id='q-original'),score_kind='reranker_score',score_order='higher_is_better',
-        items=[ResultItem(chunk=raw,score=0.95,rank=1,source_refs=[ResultSourceRef(result_set_id='rs-retrieval',chunk_id=raw.chunk_id)])])
-    query=QueryContext(query_id='q-original',query='清潔前應注意什麼？',ori_query_id='q-original',ori_query='清潔前應注意什麼？',source_query_ids=[],result_sets=[r1,r2],active_result_set_ids=['rs-rerank'])
-    state=InferenceState(contract_version='inference-0.2-draft',query_contexts=[query],active_query_ids=['q-original'])
+    query=QueryContext(ori_query='清潔前應注意什麼？',query='清潔前應注意什麼？',
+        filters=[FilterCondition(field='metadata.department',operator='eq',value='製造部')],
+        result_sets=[ResultSet(key='merged',items=[ResultItem(chunk=raw,score=0.95)])],metadata={'language':'zh-TW'})
     snapshots={'note':'Manually assembled contract examples. Chunk ID/fingerprint/vector/scores are illustrative; no tokenizer/model/index was executed.',
         'ingestion_document':data.to_payload(),'parsed_documents':[d.to_payload() for d in documents],
         'chunk_after_chunking':raw.to_payload(),'chunk_after_embedding':embedded.to_payload(),'index_binding_PROPOSAL':binding.to_payload(),
-        'query_context':query.to_payload(),'inference_state':state.to_payload(),'module_result_success':ModuleResult[InferenceState](data=state).to_payload()}
+        'query_context':query.to_payload(),'query_contexts':[query.to_payload()],'module_result_success':ModuleResult[list[ParsedDocument]](data=documents).to_payload()}
     snapshots['ten_character_chunk_demo'] = [chunk.to_payload() for chunk in chunks]
     snapshots['type_examples'] = {name: value.to_payload() for name, value in TYPE_EXAMPLES.items()}
     Path(__file__).with_name('examples.json').write_text(json.dumps(snapshots,ensure_ascii=False,indent=2)+'\n')
@@ -43,5 +38,6 @@ def main():
 
 
 if __name__=='__main__':main()
+
 
 

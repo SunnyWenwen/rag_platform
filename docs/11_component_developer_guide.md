@@ -246,3 +246,8 @@ Python Packaging User Guide 說明以套件 metadata／entry points 發現及載
 
 
 
+
+
+## 2026-11-03 推論 Component Contract 更新
+
+Query Transformation、Retrieval、Rerank 的業務輸入輸出均為 list[QueryContext]，Remote HTTP body 也是 array。每筆包含 ori_query、query，以及預設空 filters／result_sets／metadata；ResultSet 只有 key／items，ResultItem 為 chunk／選填 score。只留目前結果；名次使用 items 順序，RRF 不要求 score；Sum Score 仍需完整可比分數。舊 InferenceState／active IDs／rank／分數血緣已退出本版 Contract；不要照舊 payload 實作新服務。完整 Model／範例見 17；本地 Parser 的成功 ModuleResult 教學不因此套在推論 HTTP body 外。

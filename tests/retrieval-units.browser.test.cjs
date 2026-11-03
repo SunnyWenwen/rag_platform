@@ -3,7 +3,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {pathToFileURL}=require('node:url');const {chromium}=require('playwright');
 (async()=>{
- const args=process.env.CHROMIUM_EXECUTABLE?(await import(require.resolve('@sparticuz/chromium'))).default.args:[];
+ const args=process.env.CHROMIUM_ARGS_JSON?JSON.parse(process.env.CHROMIUM_ARGS_JSON):process.env.CHROMIUM_EXECUTABLE?(await import(require.resolve('@sparticuz/chromium'))).default.args:[];
  const browser=await chromium.launch({headless:true,args,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE}:{})});
  try {
  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -28,8 +28,16 @@ const {pathToFileURL}=require('node:url');const {chromium}=require('playwright')
  await run(`openEdit('${id}');config.indexing.backend='Local Search';config.transform.method='Multi-query';config.retrieval.processing.same_query.enabled=false;config.retrieval.processing.cross_query.enabled=false;selectMod('retrieval')`);assert(await run('resultPlan(config).final.length')>1);assert(!await page.locator('#createButton').isDisabled());
  await page.locator('#createDialog .close').click();await run(`exportSystem('${id}')`);assert(await page.locator('#exportReady').isDisabled());
  for(const el of await page.locator('[data-export$=".url"]').all()){await el.fill('https://service.example/v1');await el.blur();}assert(!await page.locator('#exportReady').isDisabled());assert(!await run('Object.hasOwn(blueprint(active.config,true).pipelines.inference,"generation")'));await page.locator('#exportDialog .close').click();
+ // v0.12: actual browser interactions for the new controls (services still mocked).
+ await run("openCreate();demoCase(8)");await page.locator('#compositionAdvanced > summary').click();assert(await page.locator('[data-path="embedding.composition.enabled"]').isChecked());await page.locator('[data-path="embedding.composition.template"]').fill('標題：{{fields.title}}\n內容：{{fields.text}}');await page.locator('[data-path="embedding.composition.template"]').blur();assert(!await page.locator('#createButton').isDisabled());await fits();await screenshot('desktop-composition');
+ await run("selectMod('indexing')");assert(await page.locator('[data-pick="indexing.fulltext"][value="embedding_text"]').count());
+ await run("demoCase(10);selectMod('chunking')");assert(await page.locator('#dynamicfields input').isDisabled());await fits();await screenshot('desktop-remote-locked');await page.locator('[data-owner="parsing"]').click();assert((await page.locator('#dynamicfields').textContent()).includes('ready_mock'));
+ await page.locator('#componentPicker').selectOption('remote.fixed_parser@2.0.0');assert.equal(await page.locator('#dynamicfields input').count(),0);await screenshot('desktop-external');
+ await run("demoCase(9);showChunkExample()");const demo=JSON.parse(await page.locator('#helpBody pre').textContent());assert.equal(demo.length,4);await page.locator('#helpDialog .close').click();await page.locator('#createDialog .close').click();
  await page.setViewportSize({width:390,height:844});await fits();await screenshot('mobile-home');
  await page.getByRole('button',{name:'＋ Create Retrieval System'}).click();await fits();await screenshot('mobile-create');await run("selectMod('chunking')");await page.locator('#modtitle').scrollIntoViewIfNeeded();await fits();await screenshot('mobile-chunking');await page.locator('[data-path="chunking.size"]').fill('0');await page.locator('[data-path="chunking.size"]').blur();assert(await page.locator('#createButton').isDisabled());
- assert.deepEqual(errors,[]);console.log('PASS Chromium '+await browser.version()+': desktop/mobile, create/edit/cancel, CSV ingest, flat Units, Header-aware, grouped results, API help, export and no page errors.');
+ await run("demoCase(8)");await page.locator('#modtitle').scrollIntoViewIfNeeded();await fits();await screenshot('mobile-composition');await run("demoCase(10);selectMod('chunking')");await page.locator('#modtitle').scrollIntoViewIfNeeded();await fits();await screenshot('mobile-remote');
+ assert.deepEqual(errors,[]);console.log('PASS Chromium '+await browser.version()+': desktop/mobile, create/edit/cancel, CSV ingest, flat Units, Header-aware, QueryContext array, API help, export, composition, original Chunk, Remote controls and no page errors.');
  } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});
+

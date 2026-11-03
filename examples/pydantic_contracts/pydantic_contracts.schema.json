@@ -172,6 +172,45 @@
       "title": "DenseVector",
       "type": "object"
     },
+    "FilterCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "minLength": 1,
+          "title": "Field",
+          "type": "string"
+        },
+        "operator": {
+          "enum": [
+            "eq",
+            "in"
+          ],
+          "title": "Operator",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": [
+        "field",
+        "operator",
+        "value"
+      ],
+      "title": "FilterCondition",
+      "type": "object"
+    },
     "IndexBinding": {
       "additionalProperties": false,
       "description": "NEW PROPOSAL: field names/requiredness await review; not frozen SDK.",
@@ -280,39 +319,6 @@
       "title": "IndexBinding",
       "type": "object"
     },
-    "InferenceState": {
-      "additionalProperties": false,
-      "properties": {
-        "contract_version": {
-          "const": "inference-0.2-draft",
-          "title": "Contract Version",
-          "type": "string"
-        },
-        "query_contexts": {
-          "items": {
-            "$ref": "#/$defs/QueryContext"
-          },
-          "minItems": 1,
-          "title": "Query Contexts",
-          "type": "array"
-        },
-        "active_query_ids": {
-          "items": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "title": "Active Query Ids",
-          "type": "array"
-        }
-      },
-      "required": [
-        "contract_version",
-        "query_contexts",
-        "active_query_ids"
-      ],
-      "title": "InferenceState",
-      "type": "object"
-    },
     "IngestionDocument": {
       "additionalProperties": false,
       "oneOf": [
@@ -399,66 +405,21 @@
       "type": "object"
     },
     "JsonValue": {},
-    "ModuleResult_InferenceState_": {
+    "ModuleResult_list_ParsedDocument__": {
       "additionalProperties": false,
       "properties": {
         "data": {
-          "$ref": "#/$defs/InferenceState"
+          "items": {
+            "$ref": "#/$defs/ParsedDocument"
+          },
+          "title": "Data",
+          "type": "array"
         }
       },
       "required": [
         "data"
       ],
-      "title": "ModuleResult[InferenceState]",
-      "type": "object"
-    },
-    "Operation": {
-      "additionalProperties": false,
-      "properties": {
-        "method": {
-          "minLength": 1,
-          "title": "Method",
-          "type": "string"
-        },
-        "parameters": {
-          "additionalProperties": {
-            "$ref": "#/$defs/JsonValue"
-          },
-          "title": "Parameters",
-          "type": "object"
-        },
-        "model_ref": {
-          "anyOf": [
-            {
-              "minLength": 1,
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "title": "Model Ref"
-        },
-        "scoring_query_id": {
-          "anyOf": [
-            {
-              "minLength": 1,
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "title": "Scoring Query Id"
-        }
-      },
-      "required": [
-        "method",
-        "parameters",
-        "model_ref",
-        "scoring_query_id"
-      ],
-      "title": "Operation",
+      "title": "ModuleResult[list[ParsedDocument]]",
       "type": "object"
     },
     "ParsedDocument": {
@@ -505,9 +466,9 @@
     "QueryContext": {
       "additionalProperties": false,
       "properties": {
-        "query_id": {
+        "ori_query": {
           "minLength": 1,
-          "title": "Query Id",
+          "title": "Ori Query",
           "type": "string"
         },
         "query": {
@@ -515,22 +476,11 @@
           "title": "Query",
           "type": "string"
         },
-        "ori_query_id": {
-          "minLength": 1,
-          "title": "Ori Query Id",
-          "type": "string"
-        },
-        "ori_query": {
-          "minLength": 1,
-          "title": "Ori Query",
-          "type": "string"
-        },
-        "source_query_ids": {
+        "filters": {
           "items": {
-            "minLength": 1,
-            "type": "string"
+            "$ref": "#/$defs/FilterCondition"
           },
-          "title": "Source Query Ids",
+          "title": "Filters",
           "type": "array"
         },
         "result_sets": {
@@ -540,23 +490,17 @@
           "title": "Result Sets",
           "type": "array"
         },
-        "active_result_set_ids": {
-          "items": {
-            "minLength": 1,
-            "type": "string"
+        "metadata": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
           },
-          "title": "Active Result Set Ids",
-          "type": "array"
+          "title": "Metadata",
+          "type": "object"
         }
       },
       "required": [
-        "query_id",
-        "query",
-        "ori_query_id",
         "ori_query",
-        "source_query_ids",
-        "result_sets",
-        "active_result_set_ids"
+        "query"
       ],
       "title": "QueryContext",
       "type": "object"
@@ -588,27 +532,20 @@
           "$ref": "#/$defs/Chunk"
         },
         "score": {
-          "title": "Score",
-          "type": "number"
-        },
-        "rank": {
-          "minimum": 1,
-          "title": "Rank",
-          "type": "integer"
-        },
-        "source_refs": {
-          "items": {
-            "$ref": "#/$defs/ResultSourceRef"
-          },
-          "title": "Source Refs",
-          "type": "array"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Score"
         }
       },
       "required": [
-        "chunk",
-        "score",
-        "rank",
-        "source_refs"
+        "chunk"
       ],
       "title": "ResultItem",
       "type": "object"
@@ -616,53 +553,9 @@
     "ResultSet": {
       "additionalProperties": false,
       "properties": {
-        "result_set_id": {
+        "key": {
           "minLength": 1,
-          "title": "Result Set Id",
-          "type": "string"
-        },
-        "stage": {
-          "enum": [
-            "retrieval",
-            "merge",
-            "top_n",
-            "model_score"
-          ],
-          "title": "Stage",
-          "type": "string"
-        },
-        "input_result_set_ids": {
-          "items": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "title": "Input Result Set Ids",
-          "type": "array"
-        },
-        "source": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/RetrievalSource"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "operation": {
-          "$ref": "#/$defs/Operation"
-        },
-        "score_kind": {
-          "minLength": 1,
-          "title": "Score Kind",
-          "type": "string"
-        },
-        "score_order": {
-          "enum": [
-            "higher_is_better",
-            "lower_is_better"
-          ],
-          "title": "Score Order",
+          "title": "Key",
           "type": "string"
         },
         "items": {
@@ -674,69 +567,9 @@
         }
       },
       "required": [
-        "result_set_id",
-        "stage",
-        "input_result_set_ids",
-        "source",
-        "operation",
-        "score_kind",
-        "score_order",
-        "items"
+        "key"
       ],
       "title": "ResultSet",
-      "type": "object"
-    },
-    "ResultSourceRef": {
-      "additionalProperties": false,
-      "description": "ResultItem.source_refs: score/candidate lineage, distinct from ChunkSourceRef.",
-      "properties": {
-        "result_set_id": {
-          "minLength": 1,
-          "title": "Result Set Id",
-          "type": "string"
-        },
-        "chunk_id": {
-          "minLength": 1,
-          "title": "Chunk Id",
-          "type": "string"
-        }
-      },
-      "required": [
-        "result_set_id",
-        "chunk_id"
-      ],
-      "title": "ResultSourceRef",
-      "type": "object"
-    },
-    "RetrievalSource": {
-      "additionalProperties": false,
-      "properties": {
-        "route_id": {
-          "minLength": 1,
-          "title": "Route Id",
-          "type": "string"
-        },
-        "index_ref": {
-          "minLength": 1,
-          "title": "Index Ref",
-          "type": "string"
-        },
-        "field_paths": {
-          "items": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "minItems": 1,
-          "title": "Field Paths",
-          "type": "array"
-        }
-      },
-      "required": [
-        "route_id",
-        "index_ref",
-        "field_paths"
-      ],
-      "title": "RetrievalSource",
       "type": "object"
     },
     "VectorIndexBinding": {

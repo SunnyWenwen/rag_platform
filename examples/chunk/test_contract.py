@@ -74,13 +74,13 @@ class ContractTests(unittest.TestCase):
         for path in paths:
             state = json.loads(path.read_text())
             validator.validate(state)
-            for query in state['query_contexts']:
+            for query in state:
                 for result in query['result_sets']:
                     for item in result['items']:
                         validate_chunk(item['chunk'])
         # A nonempty modern vector reaches Inference through the same ref.
         state = json.loads(paths[0].read_text())
-        state['query_contexts'][0]['result_sets'][0]['items'][0]['chunk'] = BY_ID['embedded']['chunks'][0]
+        state[0]['result_sets'][0]['items'][0]['chunk'] = BY_ID['embedded']['chunks'][0]
         validator.validate(state)
 
     def test_kiss_optional_provenance_and_metadata_hints(self):
@@ -215,4 +215,5 @@ print(f'Chunk: {len(cases)} cases, {checks} negative checks passed')
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
+
 

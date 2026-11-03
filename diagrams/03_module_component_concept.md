@@ -1,6 +1,6 @@
 # 完整 Library 目錄與三種 Retrieval System 配置
 
-> 2026-11-02 D-51 補充：圖中 Remote API Component 是單 Module 範例；新確認的 Remote Pipeline 也可承接連續多 Module，透過 Manifest 註冊供 User 選用。組裝、部署與資料責任見 [18](../docs/18_remote_service_pipeline_integration.md)。本次只同步圖說，不變更圖面或 QueryContext／Rerank 接線。
+> 2026-11-02 D-51 補充：圖中 Remote API Component 是單 Module 範例；新確認的 Remote Pipeline 也可承接連續多 Module，透過 Manifest 註冊供 User 選用。組裝、部署與資料責任見 [18](../docs/18_remote_service_pipeline_integration.md)。2026-11-03 D-54：推論接線已同步 QueryContext[]，原有完整 Component 目錄與 A／B／C 版面保留。
 
 2026-11-02｜目標設計示例，非已交付能力。
 
@@ -50,19 +50,8 @@ Developer 的 Local Component 沿原有 PR／測試／Runtime Image 交付；Rem
 | Chunking → Embedding | Chunk[] (vectors={}) | Chunker 輸出初始化為空向量 |
 | Embedding → Indexing | Chunk[] (Embedding 後) | 向量寫回原 Chunk.vectors，不另傳 VectorSet；略過 Embedding 時仍可為 {} |
 | Indexing ⇢ Retrieval | IndexBinding | 索引／資料目標、版本與可用狀態的綁定，不是每次 Query 重跑 Ingestion |
-| Query Transformation → Retrieval | QueryContext[] | 原始／改寫 Query 與有效選擇，仍由 InferenceState 保留執行外框 |
-| Retrieval → Rerank | ResultSet[] | 各 Query／路徑的有序結果，保留 QueryContext、分數與來源追溯 |
-| Rerank → 檢索結果 | ResultSet[] | 評分／排序後的有效清單；None 不虛構新分數，最終有效選擇依配置 |
+| Query Transformation → Retrieval | QueryContext[] | 原始／改寫問題、filters／metadata 及目前 result_sets，沒有外框 |
+| Retrieval → Rerank | QueryContext[] | context 內保存目前各路 key／items 與選填 score |
+| Rerank → 檢索結果 | QueryContext[] | 替換目前分數／順序後回傳；None 沿用 |
 
-本地 Module 呼叫仍遵守 `run(input, context) -> ModuleResult[T]`，下游讀取 `result.data`。QueryContext／ResultSet 是巢狀在既有 InferenceState 的主要資料；標示清單不表示把原始 Query 或 Trace 外框丟掉。A／B／C 與 Remote Parsing 的示例維持原樣。
-
-
-## 開發擴充點的呈現
-
-Library 目錄中原本的「自訂 Importer／Parser／Chunker／Embedder／Indexer／Query Rewriter／Retriever／Reranker」已統一改為虛線框，文字為「允許自行開發 XXX」。這些是允許開發的擴充方向，尚未實作，不應解讀成已有可選的實體 Component。XXX_component 仍是 B 案例的示意名稱；A／B／C 的配置與連線保持原樣。
-
-
-## 對應 Pydantic 型別
-
-圖中 Contract 物件的可執行 Pydantic 草案與完整欄位見 [17](../docs/17_pydantic_contracts_draft.md)。既有共用形狀對齊 schemas/；IndexBinding 的欄位是本次新增提案，尚待確認，不代表正式 SDK 已凍結。
-
+推論三模組業務輸入輸出直接使用 list[QueryContext]；result_sets 巢狀在 context 內，不另外傳獨立 ResultSet[]。目前結果被替換，歷史與診斷寫 Logs；Chunk._rag 選填追溯不受影響。本地 Parser 教學可用 ModuleResult，但不加在推論 HTTP body 外。A／B／C 與 Remote Parsing 範例版面保留。

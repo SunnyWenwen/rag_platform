@@ -1,177 +1,117 @@
-"""Inference Schema 與資料操作範例，使用 Python 3.10+ 標準函式庫。
+"""Offline reference operations for QueryContext[]; no Engine/model/API calls.
 
-執行：python examples/inference/python_example.py
-TypedDict 提供型別提示，不會自動執行 JSON Schema 或引用／分數驗證。
-Rerank 的分數讀自示例 JSON，沒有呼叫真實模型。
+items order is rank. Each operation replaces the current effective results.
+History belongs in logs. Same-query fusion uses chunk_id; document grouping
+selects a representative afterwards, never adds scores of sibling chunks.
 """
-
 from copy import deepcopy
 import json
 from pathlib import Path
-from typing import Any, Literal, TypedDict, cast
+from typing import Any, TypedDict, NotRequired
 
 
-class DenseVector(TypedDict):
-    values: list[float]
-    embedding_profile_id: str
-    source_field: str
-
-
-# Shape follows schemas/chunk.schema.json; TypedDict is illustrative only.
-class Chunk(TypedDict):
-    chunk_id: str
-    document_id: str
-    source_revision: str
-    fields: dict[str, Any]
-    vectors: dict[str, DenseVector]
-    metadata: dict[str, Any]
-
-
-class SourceRef(TypedDict):
-    result_set_id: str
-    chunk_id: str
-
-
-class RetrievalSource(TypedDict):
-    route_id: str
-    index_ref: str
-    field_paths: list[str]
-
-
-class Operation(TypedDict):
-    method: str
-    parameters: dict[str, Any]
-    model_ref: str | None
-    scoring_query_id: str | None
+class FilterCondition(TypedDict):
+    field: str
+    operator: str
+    value: str | list[str]
 
 
 class ResultItem(TypedDict):
-    chunk: Chunk
-    score: float
-    rank: int
-    source_refs: list[SourceRef]
+    chunk: dict[str, Any]  # canonical Chunk schema
+    score: NotRequired[float | None]
 
 
 class ResultSet(TypedDict):
-    result_set_id: str
-    stage: Literal["retrieval", "merge", "top_n", "model_score"]
-    input_result_set_ids: list[str]
-    source: RetrievalSource | None
-    operation: Operation
-    score_kind: str
-    score_order: Literal["higher_is_better", "lower_is_better"]
+    key: str
     items: list[ResultItem]
 
 
 class QueryContext(TypedDict):
-    query_id: str
-    query: str
-    ori_query_id: str
     ori_query: str
-    source_query_ids: list[str]
+    query: str
+    filters: list[FilterCondition]
     result_sets: list[ResultSet]
-    active_result_set_ids: list[str]
+    metadata: dict[str, Any]
 
 
-class InferenceState(TypedDict):
-    contract_version: Literal["inference-0.2-draft"]
-    query_contexts: list[QueryContext]
-    active_query_ids: list[str]
+def load_example(filename: str) -> list[QueryContext]:
+    return json.loads(Path(__file__).with_name(filename).read_text())
 
 
-def load_example(filename: str) -> InferenceState:
-    """讀取同目錄內已驗證的 JSON；cast 不會進行執行期驗證。"""
-    path = Path(__file__).parent / filename
-    return cast(InferenceState, json.loads(path.read_text(encoding="utf-8")))
+def top_n(result: ResultSet, n: int) -> ResultSet:
+    if not isinstance(n, int) or isinstance(n, bool) or n < 1:
+        raise ValueError('Top N must be a positive integer')
+    # Input adapter/scoring/fusion already established the effective order.
+    return {'key': result['key'], 'items': deepcopy(result['items'][:n])}
 
 
-def active_results(state: InferenceState) -> list[ResultSet]:
-    """依 active IDs 的順序取出下一步使用的結果。"""
-    queries = {q["query_id"]: q for q in state["query_contexts"]}
-    selected = []
-    for query_id in state["active_query_ids"]:
-        query = queries[query_id]
-        results = {r["result_set_id"]: r for r in query["result_sets"]}
-        selected.extend(results[rid] for rid in query["active_result_set_ids"])
-    return selected
+def rrf(results: list[ResultSet], key: str = 'merged', k: int = 60) -> ResultSet:
+    if not isinstance(k, int) or isinstance(k, bool) or k < 1:
+        raise ValueError('RRF k must be a positive integer')
+    scores: dict[str, float] = {}; chunks = {}
+    for result in results:
+        seen = set()
+        for rank, item in enumerate(result['items'], start=1):
+            cid = item['chunk']['chunk_id']
+            if cid in seen:
+                raise ValueError('duplicate chunk_id within one input list')
+            seen.add(cid)
+            if cid in chunks and chunks[cid] != item['chunk']:
+                raise ValueError('same chunk_id has inconsistent content')
+            chunks[cid] = deepcopy(item['chunk'])
+            scores[cid] = scores.get(cid, 0.0) + 1.0 / (k + rank)
+    # Stable deterministic tie break without storing a redundant rank field.
+    ordered = sorted(scores, key=lambda cid: (-scores[cid], cid))
+    return {'key': key, 'items': [{'chunk': chunks[cid], 'score': scores[cid]} for cid in ordered]}
 
 
-def sort_and_rank(result: ResultSet) -> ResultSet:
-    """對新結果排序；複製資料，保留來源結果不變。"""
-    output = deepcopy(result)
-    descending = output["score_order"] == "higher_is_better"
-    output["items"].sort(key=lambda item: item["score"], reverse=descending)
-    for rank, item in enumerate(output["items"], start=1):
-        item["rank"] = rank
+def same_query_merge(context: QueryContext, n: int) -> QueryContext:
+    output = deepcopy(context)
+    output['result_sets'] = [top_n(rrf(context['result_sets']), n)]
     return output
 
 
-def top_n_example() -> InferenceState:
-    """從已排序的 r1 取 Top 1，保留三份來源並新增第四份結果。"""
-    state = deepcopy(load_example("01_retrieval.json"))
-    query = state["query_contexts"][0]
-    source = next(r for r in query["result_sets"] if r["result_set_id"] == "r1")
-    n = 1
-    result: ResultSet = {
-        "result_set_id": "r4-top-n",
-        "stage": "top_n",
-        "input_result_set_ids": ["r1"],
-        "source": None,
-        "operation": {
-            "method": "top_n",
-            "parameters": {"n": n},
-            "model_ref": None,
-            "scoring_query_id": None,
-        },
-        "score_kind": source["score_kind"],
-        "score_order": source["score_order"],
-        "items": [
-            {
-                "chunk": deepcopy(item["chunk"]),
-                "score": item["score"],
-                "rank": rank,
-                "source_refs": [
-                    {"result_set_id": "r1", "chunk_id": item["chunk"]["chunk_id"]}
-                ],
-            }
-            for rank, item in enumerate(source["items"][:n], start=1)
-        ],
-    }
-    query["result_sets"].append(sort_and_rank(result))
-    query["active_result_set_ids"] = ["r4-top-n"]
-    return state
+def cross_query_merge(contexts: list[QueryContext], n: int) -> list[QueryContext]:
+    if not contexts:
+        return []
+    first = contexts[0]
+    # Current prototype keeps metadata only when identical; no silent conflict.
+    for other in contexts[1:]:
+        if any(other[name] != first[name] for name in ('ori_query', 'filters', 'metadata')):
+            raise ValueError('cross-query merge requires same request, filters and metadata')
+    groups: dict[str, list[ResultSet]] = {}
+    for context in contexts:
+        for result in context['result_sets']:
+            groups.setdefault(result['key'], []).append(result)
+    output = deepcopy(first)
+    output['query'] = output['ori_query']
+    output['result_sets'] = [top_n(rrf(group, key), n) for key, group in groups.items()]
+    return [output]
 
 
-def print_results(state: InferenceState) -> None:
-    for result in active_results(state):
-        items = [
-            (item["chunk"]["chunk_id"], item["score"], item["rank"])
-            for item in result["items"]
-        ]
-        print(result["result_set_id"], items)
+def rerank(contexts: list[QueryContext], scores: dict[str, float], n: int) -> list[QueryContext]:
+    """Scores supplied by caller for demonstration, not a model implementation."""
+    from math import isfinite
+    output = deepcopy(contexts)
+    for context in output:
+        for result in context['result_sets']:
+            for item in result['items']:
+                score = scores[item['chunk']['chunk_id']]
+                if not isfinite(score):
+                    raise ValueError('non-finite model score')
+                item['score'] = score  # overwrite prior score, no history
+            result['items'].sort(key=lambda item: (-item['score'], item['chunk']['chunk_id']))
+            result['items'] = top_n(result, n)['items']
+    return output
 
 
-def main() -> None:
-    print("例一：三路 Retrieval；每組 tuple 為 (chunk_id, score, rank)")
-    print_results(load_example("01_retrieval.json"))
-
-    print("\n例二：取 Top 1 後共四份結果，下游只使用 r4-top-n")
-    selected = top_n_example()
-    assert selected == load_example("02_top_n.json")
-    print("result_sets 數量：", len(selected["query_contexts"][0]["result_sets"]))
-    print_results(selected)
-
-    print("\n例三：Rerank 的示例分數；原始 r1 仍保留")
-    print_results(load_example("03_rerank.json"))
-
-    print("\n例四：跨 Query RRF；q0／q1／q2 保留，下一步只讀 q-merged")
-    merged = load_example("04_cross_query_fusion.json")
-    print("active_query_ids：", merged["active_query_ids"])
-    print_results(merged)
-
-    print("\n例五：ES 內部 Sum Score，只回傳一份 Hybrid ResultSet")
-    print_results(load_example("05_es_hybrid.json"))
+def print_results(contexts: list[QueryContext]) -> None:
+    for context in contexts:
+        for result in context['result_sets']:
+            for rank, item in enumerate(result['items'], start=1):
+                print(context['query'], result['key'], rank, item.get('score'), item['chunk']['chunk_id'])
 
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    original = load_example('01_retrieval.json')
+    print_results([same_query_merge(context, 3) for context in original])

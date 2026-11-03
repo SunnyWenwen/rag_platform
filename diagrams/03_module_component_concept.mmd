@@ -70,8 +70,8 @@ flowchart TB
                 RERANK_REMOTE["Remote API Component"]
             end
             QUERY -->|"QueryContext[]"| RETRIEVAL
-            RETRIEVAL -->|"ResultSet[]"| RERANK
-            RERANK -->|"ResultSet[]"| OUTPUT["檢索結果｜ResultSets / Chunks / Scores"]
+            RETRIEVAL -->|"QueryContext[]"| RERANK
+            RERANK -->|"QueryContext[]"| OUTPUT["檢索結果｜ResultSets / Chunks / Scores"]
         end
     end
 
@@ -202,7 +202,7 @@ flowchart TB
 
     %% Contract binding: Ingestion prepares the index; queries reuse it.
     INDEXING -.->|"IndexBinding"| RETRIEVAL
-    %% [] means a collection. Labels show primary business data; keep InferenceState/QueryContext wrappers.
+    %% [] means a collection. Labels show primary business data; Inference modules pass QueryContext[] directly; current result_sets are nested.
 
     style IMPORT_CUSTOM stroke-dasharray:8 6
     style PARSING_CUSTOM stroke-dasharray:8 6
@@ -213,3 +213,4 @@ flowchart TB
     style RETRIEVAL_CUSTOM stroke-dasharray:8 6
     style RERANK_CUSTOM stroke-dasharray:8 6
     %% Dashed extension placeholders are development possibilities, not implemented Components.
+

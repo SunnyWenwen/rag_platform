@@ -2,7 +2,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const html=fs.readFileSync(process.argv[2]||require('node:path').join(__dirname,'../01_ui_prototype.html'),'utf8');
 const elements=new Map();
-function el(id){if(!elements.has(id))elements.set(id,{id,value:'',textContent:'',innerHTML:'',files:[],style:{},listeners:{},classList:{toggle(){}},addEventListener(t,f){this.listeners[t]=f;},showModal(){this.open=true;},close(){this.open=false;},focus(){},click(){}});return elements.get(id);}
+function el(id){if(!elements.has(id))elements.set(id,{id,value:'',textContent:'',innerHTML:'',insertAdjacentHTML(position,html){this.innerHTML=position==='afterbegin'?html+this.innerHTML:this.innerHTML+html;},files:[],style:{},listeners:{},classList:{toggle(){}},addEventListener(t,f){this.listeners[t]=f;},showModal(){this.open=true;},close(){this.open=false;},focus(){},click(){}});return elements.get(id);}
 const context={document:{getElementById:el,createElement:()=>({click(){}})},crypto:require('node:crypto').webcrypto,URL,Blob,structuredClone,console,setTimeout,clearTimeout,window:{}};
 vm.createContext(context);vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],context);
 const run=s=>vm.runInContext(s,context),copy=v=>JSON.parse(JSON.stringify(v));let count=0;
@@ -92,4 +92,5 @@ test('all new demonstration cases have valid plans, except intended error demo',
   for(const n of [5,6,7]){run('demoCase('+n+')');assert.equal(run('validate(config).length'),0);assert.equal(plan().final.length,1);}run('demoCase(4)');assert(run('validate(config)').some(x=>x.includes('正整數')));
 });
 console.log(`${count} inference processing checks passed. UI planning only; no actual services called.`);
+
 

@@ -8,7 +8,7 @@
 
 - 名詞意義與元件關係以 [03 §3](../03_architecture_proposal.md#terminology) 為準；本文負責資料結構、欄位、版本規則及範例，不另定同名概念。
 - 模組如何執行見 [04](04_module_components_io_contracts.md)，UI 見 [06](06_ui_development_spec.md)，HTTP 包裝／儲存見 [07](07_backend_runtime_integration.md)。
-- 本文引用 IngestionDocument／ParsedDocument／Chunk，並統一 InferenceState、Config 及 ModuleResult 的責任，避免各模組重複定義。
+- 本文引用 IngestionDocument／ParsedDocument／Chunk，並統一 QueryContext[]、Config 及執行包裝的責任，避免各模組重複定義。
 - 物件形狀、Contract 版本與細節待 [Q-002](08_implementation_plan.md#q-002) 核定；已確認的五／六個頂層 key 不因此退回舊版。
 - `?` 表示可省略，不自動表示可為 null；`JSON` 必須可序列化，數值不可為 NaN／Infinity。正式 required／nullable／additionalProperties 須由 Schema 定義。
 
@@ -115,7 +115,7 @@ Parser 整理來源結構為 Units；Chunker 僅在每筆文字內切分，不�
 
 基本 UI 不顯示欄位選擇，直接切 units[i].text 並輸出 fields.text；不自動複製其他 Unit 欄位。保留切分前完整原文時，才進階設定 text → original_text 或其他不衝突名稱。D-48 確認每個多欄位任務預設將片段輸出到 fields.text；有需要才複製完整來源到 original_text／original_faq 等不衝突名稱。第一版必要切分欄位缺失／型別錯誤／全空白、必要任務零產出或明確 copy 欄位缺失均報錯；可選複製暫不擴充。同一 Unit 兩個欄位各切 2／3 段時，結果串接為 5 個 Chunk，不做交叉配對；互相附帶完整原文另需明確 copy 映射。
 
-metadata._rag 選填，由 Component 決定是否提供；有 source_refs 時使用 unit_index／field／output_field／文字範圍，有 chunking 時記錄 fingerprint／ordinal／task_id。缺少不報錯、不保證位置還原。ResultItem.source_refs 是 Inference 的候選／分數血緣，並不因 Chunk 追溯選填而一併取消。詳見 15 §3～6。
+metadata._rag 選填，由 Component 決定是否提供；有 source_refs 時使用 unit_index／field／output_field／文字範圍，有 chunking 時記錄 fingerprint／ordinal／task_id。缺少不報錯、不保證位置還原。D-54 下 ResultItem 不保存分數血緣，過程寫 Logs；不影響 Chunk 的選填文件追溯。詳見 15 §3～6。
 
 Chunk 須自帶 Rerank／檢索結果消費端 需要的內容，不強制回查 ParsedDocument。Indexing 預設保存全部 fields／metadata；完整向量保存在索引／Chunk Store，檢索傳遞可令 vectors={}，不能因此刪除已保存內容。追溯用輔助結構可在 metadata；供下游內容選單使用則建議放 fields，不新增頂層 structure。
 
@@ -134,160 +134,42 @@ Profile 是 Query／Document 配對契約；不能只比較維度或模型顯示
 
 ### 4.5 Inference 與檢索輸出邊界
 
-Inference 使用 InferenceState → QueryContext → ResultSet → ResultItem，詳細定義見 §4.6。ResultItem.chunk 引用與 Ingestion 下游相同的 Chunk Schema；不另維護扁平 SearchHit 或獨立向量物件。
+2026-11-03 使用者確認簡化版（D-54）；以下取代舊 inference-0.2-draft。這是開發依據，尚非已發布 SDK／已上線 API。
 
-| 物件 | 用途 |
-|---|---|
-| InferenceState | 同次推論的 QueryContext 與有效 Query 選擇 |
-| QueryContext | 當前／原始問題、來源 Query 與多份 ResultSet |
-| ResultSet | 一次 Retrieval／合併／Top N／模型評分的有序輸出，保留分數方向及來源 |
-| ResultItem | Chunk、當前 score／rank、來源結果引用 |
-| QueryResult（API 草案） | request／版本資訊、原始 Query、最終 result_sets；ResultItem 包含 Chunk、score、rank、lineage |
+Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root array），沒有 InferenceState 外框。QueryContext 固定 ori_query、query，並提供預設空值的 filters、result_sets、metadata。ResultSet 只有 key／items；ResultItem 只有 chunk／選填 score。只傳目前有效資料，處理後替換；歷史與診斷寫 Logs。items 順序就是排名，RRF 使用陣列位置。數值 score 經 Adapter 統一為越大越好，Sum Score 仍需驗證完整分數及可比性。
 
-QueryResult 回傳檢索資料，不包含生成答案、生成引用、finish_reason 或 abstained。最終 ResultSet 選擇、空命中與 API 包裝由 Q-014／Q-019 核定；07 提供示意，不另建第二套 Chunk。
+| 交接 | Input | Output |
+|---|---|---|
+| Query Transformation | QueryContext[]，通常一筆原始問題 | 原始／衍生 QueryContext[]，複製 filters／metadata |
+| Retrieval | QueryContext[]；IndexBinding／資源由 Context 注入 | 同型別，填入每 Query 的 result_sets |
+| 合併／Top N／Rerank | QueryContext[] | 同型別，替換目前清單／score／順序 |
+| Query API | query＋選填 filters／metadata | 直接回傳 QueryContext[] |
 
-rank 從 1 起；score 是相關性分數，不是機率。新 Rerank ResultSet 不覆寫原 Retrieval ResultSet。ResultItem.source_refs 追溯候選／分數來源；Chunk.metadata._rag.source_refs 追溯文件位置，兩者分工不同。
+空命中為 items=[]；可有多筆 QueryContext／ResultSet，不隱含全域融合。執行錯誤使用獨立錯誤 Envelope；request_id、Config Revision 與計時使用 Headers／Logs，不加入成功資料 body。Chunk 沿用 15 的六鍵定義，_rag 追溯為選填。
 
 <a id="inference-state-draft"></a>
-
-### 4.6 QueryContext／ResultSet／ResultItem：具體 Schema 草案
-
-本節依 2026-10-15 的 Query 物件及 14:10～14:31（Asia/Taipei）ResultSet 討論整理。**三種後處理及共同排序為已確認語意；具體欄位是供審閱的 `inference-0.2-draft`，尚未核定正式 SDK／HTTP Contract。**Q-002／Q-014 仍開放；Schema／例子可檢查，不表示 Engine 已實作。下游只使用 active 選出的清單；保留來源 ResultSet 供追溯。
-
-機器可讀定義：[JSON Schema](../schemas/inference_context.schema.json)，使用 Draft 2020-12。其中 Chunk 直接引用共用 chunk/0.2-draft，不另定向量／metadata 格式；驗證時明確註冊本地 ParsedDocument／Chunk Schema，可用 [Chunk 驗證工具](../examples/chunk/contract.py) 的 local_registry，禁止由識別自動下載。既有 vectors={} 例子仍有效，舊非空向量陣列須依 15 §4 遷移。根物件 InferenceState 只承接同一次 Inference 的多個 QueryContext 與有效輸出選擇。RunContext 仍負責 System／版本／授權，ModuleResult 負責錯誤／Metrics，不把它們塞入 Chunk。
-
-#### 4.6.1 InferenceState
-
-| 欄位 | 型別 | 規則 |
-|---|---|---|
-| contract_version | string | 本草案固定 `inference-0.2-draft`，與邏輯 Config／文件集版本分開 |
-| query_contexts | QueryContext[] | 含原始、衍生及合併後 Query；本次示例快照保留來源物件 |
-| active_query_ids | string[] | 下一步要處理哪些 QueryContext；其餘保留作追溯 |
-
-單 Query 也使用相同外框；多 Query 不需要改傳遞型別。這是 Engine 內部快照，不要求 Query API 對使用者回傳整包。
-
-#### 4.6.2 QueryContext
-
-| 欄位 | 型別 | 規則 |
-|---|---|---|
-| query_id | string | 此 Query 物件的唯一 ID；同文字也不靠文字判定身分 |
-| query | string | 當前搜尋／處理的問題 |
-| ori_query_id | string | 原始 QueryContext 的 ID；原始物件也保留在本次快照 |
-| ori_query | string | 原始問題，流程中不可改寫；原始物件的 query 與它相同 |
-| source_query_ids | string[] | 產生此物件的來源 Query；原始為 []，Rewrite／合併列來源 ID |
-| result_sets | ResultSet[] | 此物件歷次檢索／處理的結果，跨全部 Query 的 result_set_id 唯一 |
-| active_result_set_ids | string[] | 下游使用此 Query 的哪些結果；ID 須屬於此物件 |
-
-Rewrite 可從一份物件產生多份；各有 query_id，共用 ori_query_id／ori_query。保留原始 Query 供追溯不代表它也參與搜尋，仍由 include_original 決定有效搜尋清單。
-
-本版跨 Query 合併例子建立新的 `q-merged`，其 query 回到 ori_query，source_query_ids 保留參與者；原始／衍生物件仍可追溯。它代表合併後處理群組，不宣稱又產生了一個新的搜尋問題。
-
-#### 4.6.3 ResultSet
-
-| 欄位 | 型別 | 規則 |
-|---|---|---|
-| result_set_id | string | 本次結果的唯一識別 |
-| stage | string | 本草案列 retrieval／merge／top_n／model_score；精確拼字待核定 |
-| input_result_set_ids | string[] | 本次處理的直接輸入；Retrieval 為 []，後處理至少一份 |
-| source | RetrievalSource 或 null | Retrieval 記 route_id／index_ref／field_paths；field_paths 為非空且不重複的完整路徑陣列，可表達 ES Hybrid；衍生結果為 null |
-| operation | Operation | 記錄已執行的方法、參數、模型引用及評分問題；不作為下一步指令 |
-| score_kind | string | 如 bm25／cosine_similarity／weighted_sum／rerank_score／rrf；供分數解讀與策略驗證，不是機率或全域可比分數 |
-| score_order | string | higher_is_better／lower_is_better；共用排序會使用，非單純追溯 |
-| items | ResultItem[] | 有序候選，可為空；各份清單獨立從 rank=1 起算 |
-
-stage 表達結果如何產生；Retrieval 是產生端，其餘對應三類操作。排序為共同處理，不新增 sort 操作或 UI 開關。source 的 index_ref 是可信 IndexBinding 的邏輯引用；source 通常供追溯，按來源加權時也可供 Engine／Adapter 對應策略。可用方法／欄位仍由 Registry、Config 與權限驗證，不因 Schema 枚舉就宣稱 Engine 已支援。
-
-Operation 的四個欄位：
-
-| 欄位 | 型別 | 規則 |
-|---|---|---|
-| method | string | 實際使用的方法，例如 bm25、top_n、rerank_api、rrf、es_hybrid |
-| parameters | object | 本次真正使用的參數；逐 Component 參數 Schema 仍待核定 |
-| model_ref | string 或 null | 模型／Profile 邏輯引用；無模型時為 null，不放 URL／Secret |
-| scoring_query_id | string 或 null | 實際評分所用問題的 ID，可指向原始或衍生 Query；純候選後處理為 null |
-
-範例 Rerank 明確使用 q0；之後要用當前 query 或 ori_query，由核定配置決定。Fusion 不偽造單一搜尋來源或評分問題。
-
-#### 4.6.4 ResultItem 與分數追溯
-
-| 欄位 | 型別 | 規則 |
-|---|---|---|
-| chunk | Chunk | 沿用固定六個 key，包含下游需要的 fields／metadata；vectors 可為 {} |
-| score | number | 本次 ResultSet 的分數，必須有限 |
-| rank | integer | 每份輸出已排序；rank=1 最好，從 1 連續編號，不為 null；歷史排名從來源查回 |
-| source_refs | SourceRef[] | 原始 Retrieval 為 []；衍生候選列出來源 result_set_id＋chunk_id |
-
-同一 Chunk 在不同 ResultSet 可有不同 score／rank。Top N 沿用來源分數；合併依方法計分，模型算分產生新分數。三類操作各自產生新 ResultSet 並共用排序／更新 rank，不覆寫來源。轉換距離或正規化也應留下原值／轉換關係，具體參數仍待 Q-011／Q-014。
-
-chunk、ResultItem、ResultSet、QueryContext 與外框不接受額外欄位；Chunk 的 fields／metadata、vectors 的具名向量，以及 Operation.parameters 保持對應的動態容器。分數不加入 Chunk 的第七個 key。
-
-ResultItem 直接帶 Chunk，符合後續無需回查 ParsedDocument 的方向；同一程序內可共用內容物件。範例 JSON 為自包含快照，重複帶內容方便審閱，不要求實作複製多份內容或永久保存全部 Trace。外置 Trace／保留期限仍見 Q-016。
-
-#### 4.6.5 排序、融合與引用規則
-
-- `active_query_ids` 先選 Query，再使用其 `active_result_set_ids`。歷史清單不自動重新參與處理；操作記錄 input_result_set_ids，來源 items 用 source_refs 精確追溯。
-- group_by 對**選入的結果**分組：query_id 表示逐 Query；ori_query_id 表示同原始問題跨 Query。merge_key 決定候選身分，例子使用 chunk_id；如何計分由 method 決定。
-- 不同 score_kind 的 Sum Score 權重／轉換需要另外核定；RRF 依輸入清單各自的 rank 計算。不能直接取不同分數尺度的最大值代表融合。
-- document_id 是文件分組；代表 Chunk／每篇保留 N 個的策略另訂，保留原 chunk_id／引用，不把多個片段偽造成同一 Chunk。
-- None Rerank 原樣傳遞 active 清單，不新增虛構分數。API 使用哪份最終有效 ResultSet 仍需明確配置。
-- JSON Schema 檢查形狀；ID 唯一與引用存在、來源不成環、原始問題不變、同 Chunk 身分一致、rank／score 語意、授權及方法能力仍需 Engine 語意驗證。
-
-#### 4.6.6 五個完整例子
-
-| 檔案 | 輸入／輸出重點 |
-|---|---|
-| [01_retrieval.json](../examples/inference/01_retrieval.json) | 一個 q0，全文／向量／標題三路得到 r1／r2／r3；同 Chunk 有多筆 score |
-| [02_top_n.json](../examples/inference/02_top_n.json) | 從例 01 選 r1 取 Top 1，新增 r4-top-n；結果數 3→4，active 只指新結果 |
-| [03_rerank.json](../examples/inference/03_rerank.json) | 另從例 01 的 r1 做 Rerank；原始 c1／c2 排序變成 c2／c1，保留兩次評分 |
-| [04_cross_query_fusion.json](../examples/inference/04_cross_query_fusion.json) | q1／q2 各自搜尋，跨 Query 以 chunk_id 做 RRF，輸出 q-merged／m1；原始清單仍可追溯 |
-| [05_es_hybrid.json](../examples/inference/05_es_hybrid.json) | ES 內部以 0.7×BM25＋0.3×kNN 分數合併，只回傳一份 Hybrid 清單；平台不補造分項 ResultSet |
-
-例 02、03 是例 01 的兩個獨立分支。例 02 已從候選分數 Filter 改為三類操作中的 Top N；業務 Filter／ACL 仍在 Retrieval 的 Top-K 前執行，不因刪除展示中的 filter stage 而消失。
-
-Python 版本見 [python_example.py](../examples/inference/python_example.py)：使用標準函式庫 TypedDict 列出同一份物件型別，示範選取 active 結果、從三份清單新增第四份 Top N 結果，透過共用 sort_and_rank 保持輸出有序，並讀取五份 JSON 展示分數與排序。需 Python 3.10+，在專案根目錄執行 `python examples/inference/python_example.py`。TypedDict 僅提供型別提示，執行期驗證仍依 JSON Schema 與 Engine 語意檢查；Rerank 使用例 03 的示例分數，沒有呼叫真實模型。
-
-例 04 的兩份輸入排名為 q1：c1、c2、c3；q2：c2、c3、c1。用 k=60、`sum(1/(60+rank))` 得：
-
-| 合併後 Chunk | 新 score | 新 rank |
-|---|---|---|
-| c2 | 0.03252247488101534 | 1 |
-| c1 | 0.032266458495966696 | 2 |
-| c3 | 0.03200204813108039 | 3 |
-
-原始 q0 沒有搜尋結果，仍在快照中作原始問題引用；最後 active_query_ids 只含 q-merged，該物件的 active_result_set_ids 只含 m1。融合位置與預設方法仍由 Q-014 討論；這是分數可驗算的例子，不是選定所有場景的預設。
-
-#### 4.6.7 三種後處理與共同排序（已確認語意）
-
-| 操作 | 分數／候選行為 | 排序與來源 |
-|---|---|---|
-| 去重＆合併 | 選入一份或多份清單，依 group_by／merge_key 及方法合併；Sum Score／RRF 是策略 | 新結果按 score_order 排序、更新 rank，保留逐項來源 |
-| 取 Top N | 對每份已排序輸入取前 N；分數不變，實際少於 N 時取可用數量 | 截取仍有序、rank 連續；跨多清單的全域 Top N 需先明確合併 |
-| 新模型算分 | 以明確 Query／模型／欄位對候選產生新分數 | 經共用排序／rank 更新後才對外輸出；Top N 是獨立操作 |
-
-共同契約為 items 永遠已排序、rank 為正整數且 1 最好。排序函式是實作共用能力，不是第四類設定；內部暫存不屬於跨步驟輸出的 ResultSet。RRF 使用有效的輸入 rank；同分與模型缺項等細節仍待 Q-011／Q-014／Q-003。邏輯 Config 選擇操作順序及來源，operation 記錄歷史而非驅動下一步。
-
-#### 4.6.8 ES 內部融合與版本調整
-
-ES 內部已 Sum Score 的回傳為一份 Retrieval ResultSet，score_kind 記 weighted_sum，source 記多個 field_paths，operation.parameters 記方法／權重／執行位置。沒有獨立清單時 input_result_set_ids 與 source_refs 為空；後續可逐 Query 再 Rerank 或跨 Query RRF，但無法只由總分還原完整分項清單與排名。例 05 為 mock，5.84／4.47 是假設分項分數的示意計算，沒有連線 ES。
-
-v0.2 草案將單一 field_path 改為 field_paths、stage 改為 retrieval／merge／top_n／model_score，例 02 改為 Top N；具體拼字與遷移仍待 Q-002。rank 保持 integer，前一輪暫提 rank=None 的方案未採用。UI 不直接編輯 runtime ID、score_kind 或 score_order；設定整合與待確認事項見 [09](09_inference_contract_ui_plan.md)。
-
+<a id="query-context-contract"></a>
 <a id="inference-kiss-discussion"></a>
-#### 4.6.9 Inference KISS 討論草案與 QueryContext.metadata（2026-11-03）
 
-以下保存最新討論，**尚未整版核定／替換前面 inference-0.2-draft、JSON Schema 或 17 的可執行 Model**。使用者已要求在簡化版 QueryContext 加入選填 metadata，預設 {}；不預先限定內部業務 key，內容維持合法 JSON。
+### 4.6 QueryContext／ResultSet／ResultItem：已確認的簡化 Contract
 
-| 簡化討論型別 | 欄位／用途 |
-|---|---|
-| list[QueryContext] | 模組間直接傳遞目前有效的 Query 清單，移除只有一個清單 property 的 InferenceState 包裝 |
-| QueryContext | ori_query、query、filters、result_sets、metadata |
-| ResultSet | key、items；key 識別路徑／結果群組 |
-| ResultItem | chunk、選填 score；items 順序作排名，RRF 讀取每份清單順序 |
+機器定義：[inference_context.schema.json](../schemas/inference_context.schema.json)；新的 $id 為 query-context-list-0.3-draft。檔名保留供既有連結使用，root 已明確改成 array。驗證時註冊共用 Chunk Schema，不由 Schema ID 自動下載。Pydantic 與連續範例見 [17](17_pydantic_contracts_draft.md)。
 
-QueryContext 的欄位視圖（參照同一討論版的 FilterCondition／ResultSet，不是既有 SDK import）：
+#### 4.6.1 欄位
 
 ```python
-from pydantic import BaseModel, Field, JsonValue
+class FilterCondition(BaseModel):
+    field: str
+    operator: Literal["eq", "in"]
+    value: str | list[str]  # eq 為字串；in 為非空字串陣列
+
+class ResultItem(BaseModel):
+    chunk: Chunk
+    score: FiniteFloat | None = None
+
+class ResultSet(BaseModel):
+    key: str
+    items: list[ResultItem] = Field(default_factory=list)
 
 class QueryContext(BaseModel):
     ori_query: str
@@ -295,11 +177,54 @@ class QueryContext(BaseModel):
     filters: list[FilterCondition] = Field(default_factory=list)
     result_sets: list[ResultSet] = Field(default_factory=list)
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
+
+contexts: list[QueryContext] = [QueryContext(ori_query="設備多久保養？", query="設備多久保養？")]
 ```
 
-metadata 例：{"language": "zh-TW", "source": "builder"}。用來附帶本次 Query 的資訊；改寫時帶給各衍生 Query。filters 仍是獨立的搜尋條件，不藏在 metadata，可信授權／服務資源仍由執行 Context 提供。跨 Query 合併遇到 metadata 衝突時的保留規則待後續確認，不先默默覆寫。
+識別字／問題非空；score 只接受有限數值或缺省／null。filters、result_sets、metadata 可省略，載入時預設 []／[]／{}。公開 Model 拒絕未知頂層欄位。具體型別與跨欄位驗證以可執行 Model 為準。
 
-其餘討論方向：只保留當前資料，舊清單／分數／operation 歷史先用 Log；Config 決定融合與 Top N。System 預設 filters 與 API filters 以 AND 帶進 QueryContext；改寫繼承、不由 LLM 修改，跨 Query 合併第一版要求 filters 相同。是否整體採用、完整模組簽名與正式回應，仍待整版確認；本輪只記錄，不同步改寫既有 Schema／測試資料或 UI。
+#### 4.6.2 key、Filter 與 metadata
+
+- ResultSet.key 是穩定的 Config 路徑／群組名稱，如 text_bm25、text_vector、merged；可用於選取與來源權重，不是 log-only。每個 QueryContext 內須唯一；不同 Query 可沿用相同 key。
+- API 的 filters 與 System 預設條件全部 AND，放入初始 QueryContext.filters。Rewrite 複製它，不讓 LLM 產生或改寫。只允許已建索引的過濾欄位及 eq／in；範圍語意不在此擴充。
+- metadata 預設 {}，承載 language、session_tag 等 JSON；不是 Config、Secret 或授權來源。Rewrite 複製，Rerank／Top N 保留。
+- 同一次請求的跨 Query 合併才合法；filters 必須相同。本版參考實作要求 metadata 相同，衝突明確報錯，不任意選最後一筆。真正 request／ACL 身分由可信執行 Context 管理，不能只比較 ori_query 就當成同次請求。
+
+#### 4.6.3 分數與共同排序
+
+| 操作 | 當前有效輸出 |
+|---|---|
+| Retrieval | 有序 items；Adapter 將距離等數值轉為越大越好，無數值可省 score |
+| RRF | 用每份清單 1-based 陣列位置：sum(1/(k+position))；結果寫入 score |
+| Sum Score | 所有分數存在，且 Config 明確確認可比或提供支援的正規化；否則拒絕 |
+| Rerank | 新模型分數覆寫 score，再排序及 Top N，不保留舊分數欄位 |
+| Top N | 保留已排序清單前 N；不夠不補，空清單合法 |
+
+不能把 score 寫成名次再當相關分數加總；排名已由 items 位置提供。較低距離較好的後端由 Adapter 轉換，不新增 score_order。不同來源即使都越大越好，尺度也不一定可比。同分決勝正式政策仍見 Q-011／Q-014；參考程式以 chunk_id 穩定決勝，不因此凍結所有 Component。
+
+#### 4.6.4 合併與當前狀態
+
+同 Query 多路合併替換該 context 的 result_sets。跨 Query 依相同 key／路徑群組處理；完成後可輸出一筆 context（query 回到 ori_query），保留未合併的其他分組。merge_key 僅 chunk_id／document_id：前者對齊同一 Chunk，後者在融合後以最高分 Chunk 代表同文件，不把同文件不同 Chunk 分數盲目加總。rank-only 的文件代表以既有排序位置選取；需跨清單比較時先建立可比較順序／融合分數。
+
+若 ES 已內部 Sum Score／RRF，只回傳一份 key=es_hybrid 的清單與最終 score；不捏造 BM25／Vector 的分項清單、分項分數或排名。需要分路結果時 Adapter 必須真的取得各路輸出。
+
+#### 4.6.5 五個完整例子與 Python
+
+| 案例 | 檔案 | 讀法 |
+|---|---|---|
+| 多路檢索 | [01_retrieval.json](../examples/inference/01_retrieval.json) | 每 Query 多個 key／items |
+| Top N 後 | [02_top_n.json](../examples/inference/02_top_n.json) | 只留當前有效候選 |
+| Rerank 後 | [03_rerank.json](../examples/inference/03_rerank.json) | 目前分數與順序，沒有歷史清單 |
+| 跨 Query 融合 | [04_cross_query_fusion.json](../examples/inference/04_cross_query_fusion.json) | 合併後 context，metadata 保留 |
+| ES Hybrid | [05_es_hybrid.json](../examples/inference/05_es_hybrid.json) | 一份後端融合輸出 |
+
+[python_example.py](../examples/inference/python_example.py) 示範 RRF、Top N、同／跨 Query 合併與替換評分；不呼叫模型或資料庫。完整 DTO 例子見 17。UI 仍是固定示意候選，不以計畫預覽冒充真實執行。
+
+#### 4.6.6 明確遷移
+
+舊 InferenceState、query_id／ori_query_id、active_*、result_set_id、stage、operation、source、score_kind／score_order、ResultItem.rank／source_refs 不再是這版業務物件欄位。舊 wrapper 不靜默接受；呼叫端及 Remote Service 須同步升級 Contract。Chunk.metadata._rag 未被刪除，仍是不同責任的選填文件追溯。
+
+Config、資源與可信授權由 Runtime 注入，不因移除記錄欄位而失去控制；正式 HTTP 版本協商、錯誤及 SDK 發布仍依 Q-002／Q-019。兩層合併與四處 Top N 見 [09](09_inference_contract_ui_plan.md)。
 
 ## 5. 共用執行與錯誤物件
 
@@ -371,7 +296,7 @@ Query Rewrite／Multi-query 的 1／N、Structured Output 與共用 LLM Adapter 
 
 正式枚舉建議用 snake_case，UI 可顯示自然語言。Prototype 的 chunking.split、embedding.mappings[].source、indexing.filters、transform 等短名稱不自動視為正式 Schema；需明確 migration。Chunk 後的引用使用 fields.text／vectors.text／metadata.department；Chunking 來源用當筆 Unit 的 key，例如 text。上述拼字及預設值需 Q-002 核定，禁止同時接受未宣告別名而掩蓋錯誤。
 
-ResultSet 是一次執行的資料；處理計畫是可保存的邏輯 Config，不能把 runtime result_set_id 寫死在 Config。§7 對照設定與資料責任；v0.9 的 UI 配置 `retrieval.processing` 僅為展示草案，不表示正式 Engine Schema 已凍結。最新對照、有效配置與未完成邊界見 [10 §6](10_ui_adjustment_backlog.md#6-v09-實作細節展示預設與限制)；[09](09_inference_contract_ui_plan.md) 整理現行兩層融合與四處 Top N 的 UI 對照。
+ResultSet 是一次執行的資料；處理計畫是可保存的邏輯 Config，ResultSet.key 依 Config 路徑／群組解析，不再使用 runtime result_set_id。§7 對照設定與資料責任；v0.9 的 UI 配置 `retrieval.processing` 僅為展示草案，不表示正式 Engine Schema 已凍結。最新對照、有效配置與未完成邊界見 [10 §6](10_ui_adjustment_backlog.md#6-v09-實作細節展示預設與限制)；[09](09_inference_contract_ui_plan.md) 整理現行兩層融合與四處 Top N 的 UI 對照。
 
 ### 6.4 參數與相依規則
 
@@ -425,7 +350,7 @@ Chunk 後的 UI／跨容器引用使用 fields.text、vectors.text、metadata.de
 
 ParsedDocument.units 每筆直接放內容欄位；Chunk 的 metadata._rag.source_refs 記 unit_index、field 與 Unit 內文字範圍，不新增 structure。完整切分 spec 由 Config／Run 保存，Chunk 可選擇保存 fingerprint／ordinal／task_id，沒有也合法。
 
-### 7.1 D-53：兩項已確認、尚未實作的預設 Component 能力
+### 7.1 D-53：兩項已確認的預設 Component 能力（v0.12 有 UI 模擬）
 
 - 預設 Embedding Component 可選模板組合固定文字與 fields，預設關閉；輸出獨立 fields.embedding_text，沿用來源／向量映射並保存衍生文字，向量 source_field 指向衍生來源。欄位衝突／缺失與模型長度檢查須涵蓋最終內容。
 - 預設 Chunker 可獨立勾選「額外保留原文 Chunk」，預設關閉；以每 Unit／任務的完整來源為準，若已有相同切片不重複產生，不跨 Unit 合併。與既有 copy 原文欄位不同。
@@ -484,6 +409,7 @@ CSV 映射保存、Revision 計算、canonical JSON／Hash、部署綁定是否�
 ## 10. 交付與驗收要求
 
 Q-002 核定後，開發階段需提供 Pydantic Models、可匯出的 JSON Schema、完整 Local／ES／MongoDB 範例與無效範例。相同資料在 UI／HTTP／直接 Engine 呼叫得到相容驗證結果；Unicode offset、向量維度及欄位路徑有獨立驗收資料。實作 Schema 是程式可驗證的產物，變更時同步更新本文與範例，不允許各層另創契約。
+
 
 
 

@@ -13,8 +13,7 @@ run("config=defaults();config.parsing.routes.records='Preparsed Units Adapter';c
 w.fixture={document_id:'manual',source_revision:'v1',content:{units:[{text:'😀清潔前先斷電。',page:1},{text:'每月保養。',page:2}]},metadata:{}};
 let state=json('validateRecords(config,[fixture])');assert.deepEqual(state.errors,[]);
 w.parsed=state.parsed[0];const chunks=json('previewChunks(config,parsed)');assert.equal(chunks.length,2);
-assert.equal(chunks[0].metadata._rag.source_refs[0].unit_index,0);assert.equal(chunks[1].metadata._rag.source_refs[0].unit_index,1);
-assert.equal(chunks[0].metadata._rag.source_refs[0].end,Array.from(w.fixture.content.units[0].text).length);
+assert(!Object.hasOwn(chunks[0].metadata,'_rag'));assert(!Object.hasOwn(chunks[1].metadata,'_rag'));
 assert.equal(chunks[1].fields.page,2);assert.equal(chunks[0].fields.original_text,w.fixture.content.units[0].text);
 assert.deepEqual(Object.keys(chunks[0]),['chunk_id','document_id','source_revision','fields','metadata','vectors']);
 run('delete fixture.content.units[1].text');assert(json('validateRecords(config,[fixture]).errors').some(e=>e.includes('unit_index=1')&&e.startsWith('[Chunking]')));
@@ -23,8 +22,9 @@ run('config=defaults();config.parsing.headings=true');assert(json('validate(conf
 run("openCreate();config.chunking.method='Header-aware';selectMod('chunking')");assert(!d.querySelector('#createButton').disabled);assert(d.querySelector('#dynamicfields').textContent.includes('Markdown'));
 run("$('systemName').value='Units Retrieval';createSystem();openEdit(systems.at(-1).id)");assert.equal(run('config.chunking.method'),'Header-aware');run("config.chunking.size=128;$('createDialog').close();openEdit(systems.at(-1).id)");assert.equal(run('config.chunking.size'),512);
 run("$('createDialog').close();openOperation(systems[0].id,'inference')");d.querySelector('#question').value='設備保養？';d.querySelector('#inferenceRun').click();
-assert(d.querySelector('#opResult').textContent.includes('result_sets'));assert(d.querySelector('#opResult').textContent.includes('demo_score'));assert(!d.querySelector('#opResult').textContent.includes('示意回答'));
+assert(d.querySelector('#opResult').textContent.includes('result_sets'));assert(d.querySelector('#opResult').textContent.includes('ori_query'));assert(!d.querySelector('#opResult').textContent.includes('示意回答'));
 run("showOperationApi('inference')");assert(d.querySelector('#helpBody').textContent.includes('ResultSets'));assert(!d.querySelector('#helpBody').textContent.includes('citations'));
 run("$('helpDialog').close();openOperation(systems[0].id,'evaluation')");assert(!d.querySelector('#operationBody').textContent.includes('expected_answer'));
 run('exportSystem(systems[0].id)');const exported=json('blueprint(active.config,true)');assert(!exported.pipelines.inference.generation);assert(!JSON.stringify(exported).includes('chunk_template'));
 assert.deepEqual(failures,[]);dom.window.close();console.log('Retrieval-only / flat Units DOM scenarios passed (no real services).');
+

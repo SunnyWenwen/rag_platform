@@ -199,100 +199,40 @@ class Chunk(WireModel):
         return self
 
 
-class ResultSourceRef(WireModel):
-    """ResultItem.source_refs: score/candidate lineage, distinct from ChunkSourceRef."""
-    result_set_id: NonEmptyText
-    chunk_id: NonEmptyText
+class FilterCondition(WireModel):
+    field: NonEmptyText
+    operator: Literal["eq", "in"]
+    value: str | list[str]
 
-
-class RetrievalSource(WireModel):
-    route_id: NonEmptyText
-    index_ref: NonEmptyText
-    field_paths: Annotated[list[NonEmptyText], Field(min_length=1)]
-
-    @field_validator("field_paths")
-    @classmethod
-    def unique_paths(cls, values):
-        unique(values,"field_paths"); return values
-
-
-class Operation(WireModel):
-    method: NonEmptyText
-    parameters: dict[str, JsonValue]
-    # Required but nullable, matching the existing inference contract.
-    model_ref: NonEmptyText | None
-    scoring_query_id: NonEmptyText | None
+    @model_validator(mode="after")
+    def operator_value(self):
+        if self.operator == "eq" and not isinstance(self.value, str):
+            raise ValueError("eq requires a string")
+        if self.operator == "in" and (not isinstance(self.value, list) or not self.value):
+            raise ValueError("in requires a nonempty string list")
+        return self
 
 
 class ResultItem(WireModel):
     chunk: Chunk
-    score: FiniteFloat
-    rank: PositiveInt
-    source_refs: list[ResultSourceRef]
-
-    @field_validator("source_refs")
-    @classmethod
-    def unique_refs(cls, refs):
-        unique([r.to_payload() for r in refs],"source_refs"); return refs
+    score: FiniteFloat | None = None
 
 
 class ResultSet(WireModel):
-    result_set_id: NonEmptyText
-    stage: Literal["retrieval", "merge", "top_n", "model_score"]
-    input_result_set_ids: list[NonEmptyText]
-    source: RetrievalSource | None
-    operation: Operation
-    score_kind: NonEmptyText
-    score_order: Literal["higher_is_better", "lower_is_better"]
-    items: list[ResultItem]
-
-    @model_validator(mode="after")
-    def stage_provenance(self):
-        unique(self.input_result_set_ids,"input_result_set_ids")
-        if self.stage == "retrieval":
-            if self.source is None or self.input_result_set_ids:
-                raise ValueError("retrieval requires source and no input result sets")
-            if any(item.source_refs for item in self.items):
-                raise ValueError("initial retrieval has no earlier item lineage")
-        else:
-            if self.source is not None or not self.input_result_set_ids:
-                raise ValueError("processing requires input result sets and source=null")
-            if any(not item.source_refs for item in self.items):
-                raise ValueError("processed items require source lineage")
-        return self
+    key: NonEmptyText
+    items: list[ResultItem] = Field(default_factory=list)
 
 
 class QueryContext(WireModel):
-    query_id: NonEmptyText
-    query: NonEmptyText
-    ori_query_id: NonEmptyText
     ori_query: NonEmptyText
-    source_query_ids: list[NonEmptyText]
-    result_sets: list[ResultSet]
-    active_result_set_ids: list[NonEmptyText]
+    query: NonEmptyText
+    filters: list[FilterCondition] = Field(default_factory=list)
+    result_sets: list[ResultSet] = Field(default_factory=list)
+    metadata: dict[str, JsonValue] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def local_references(self):
-        unique(self.source_query_ids,"source_query_ids")
-        unique(self.active_result_set_ids,"active_result_set_ids")
-        ids=[r.result_set_id for r in self.result_sets]
-        unique(ids,"result_set_id")
-        if not set(self.active_result_set_ids) <= set(ids):
-            raise ValueError("active_result_set_ids refers to an absent result set")
-        return self
-
-
-class InferenceState(WireModel):
-    contract_version: Literal["inference-0.2-draft"]
-    query_contexts: Annotated[list[QueryContext], Field(min_length=1)]
-    active_query_ids: list[NonEmptyText]
-
-    @model_validator(mode="after")
-    def active_queries_exist(self):
-        ids=[q.query_id for q in self.query_contexts]
-        unique(ids,"query_id"); unique(self.active_query_ids,"active_query_ids")
-        if not set(self.active_query_ids) <= set(ids):
-            raise ValueError("active_query_ids refers to an absent QueryContext")
+    def unique_keys(self):
+        unique([r.key for r in self.result_sets], "ResultSet.key within QueryContext")
         return self
 
 
@@ -340,12 +280,19 @@ class ModuleResult(WireModel, Generic[T]):
 
 
 def validate_result_order(result: ResultSet) -> None:
-    """Additional operation-output check, separate from basic DTO shape."""
-    if [item.rank for item in result.items] != list(range(1,len(result.items)+1)):
-        raise ValueError("rank must be contiguous in output order")
-    scores=[item.score for item in result.items]
-    if scores != sorted(scores, reverse=result.score_order == "higher_is_better"):
-        raise ValueError("items are not sorted according to score_order")
+    """Positions are ranks. If every score exists, require higher scores first.
+
+    Rank-only results preserve the adapter's order; RRF uses positions directly.
+    """
+    scores = [item.score for item in result.items]
+    if all(score is not None for score in scores) and scores != sorted(scores, reverse=True):
+        raise ValueError("numeric scores must be ordered higher first")
+
+
+def require_sum_scores(results: list[ResultSet]) -> None:
+    """Presence check only; comparability/normalization is separate Config."""
+    if any(item.score is None for result in results for item in result.items):
+        raise ValueError("Sum Score requires every score; use RRF for rank-only output")
 
 
 def validate_chunk_binding(chunk: Chunk, binding: IndexBinding) -> None:
@@ -364,6 +311,5 @@ def validate_chunk_binding(chunk: Chunk, binding: IndexBinding) -> None:
 
 
 PUBLIC_MODELS = [IngestionDocument, ParsedDocument, ChunkSourceRef, ChunkingIdentity,
-                 RagMetadata, DenseVector, Chunk, ResultSourceRef, RetrievalSource,
-                 Operation, ResultItem, ResultSet, QueryContext, InferenceState,
-                 VectorIndexBinding, IndexBinding]
+                 RagMetadata, DenseVector, Chunk, FilterCondition, ResultItem,
+                 ResultSet, QueryContext, VectorIndexBinding, IndexBinding]
