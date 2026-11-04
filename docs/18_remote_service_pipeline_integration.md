@@ -1,5 +1,7 @@
 # 18 — Remote Service／Pipeline 註冊與部署
 
+> 2026-11-04 盤點定位：本文對應 [20 的 C：Remote Service 定義](20_contract_inventory_responsibility_matrix.md)，環境實際綁定歸 E。Remote 目錄資訊以 Manifest 為來源推導／適配成 B，避免 Developer 重複手寫宣告；精確格式仍待定。本文 DEV 指 Builder DEV（平台提供的開發／測試環境），FTEST／ENT 是使用單位的目標部署環境；不是 Developer 本機環境。
+
 2026-11-02｜已確認的產品方向與整合規劃。Manifest 正式 Schema、HTTP 傳參、SDK／部署控制介面尚待核定；本文件不代表相關後端功能已實作。2026-11-03 Prototype v0.12 已加入模擬目錄／表單／鎖定／Export；Inference 邊界同步 D-54 的 QueryContext[]。
 
 ## 1. 要解決的情境

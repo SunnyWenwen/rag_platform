@@ -1,5 +1,7 @@
 # Retrieval Engine Library — Component 開發指南
 
+> 2026-11-04：先讀 [20 契約與責任總盤點](20_contract_inventory_responsibility_matrix.md)，依 Local／Remote 路線確認「需要讀什麼、交付什麼」。Builder DEV 指平台測試環境，與 Developer 本機開發、FTEST／ENT 目標部署分開。Local 跨 Module 需求納入盤點，正式區段介面仍待定；不把本文單 Module ABC 當成任意 Pipeline 介面。
+
 > 2026-11-03 D-52（KISS）：_rag／來源位置／fingerprint／ordinal 改為 Component 選填；有提供的標準欄位才驗證，不再把完整追溯當所有 Developer 的必要交付。SDK helper 選用。metadata 可傳遞 Component 支援的文件層處理提示；宣告鍵名、型別、允許值、預設與未知值行為即可，不另要求通用規則引擎。六鍵 Chunk 與必要 ID／內容／向量規則維持，見 [15 §3～6](15_chunk_contract.md)。
 
 > 2026-11-02 D-51：Remote Developer 交付核可的 Service Manifest＋Image 部署描述或外部 Endpoint 綁定；可一次承接連續多個 Module，不要求提供私有原始碼、逐 Module ABC 或重建 Runtime Image。Local 的同 repo 流程維持不變。註冊／參數／部署分工見 [18](18_remote_service_pipeline_integration.md)。

@@ -1,5 +1,7 @@
 # Component 設定 Schema、動態表單與相依規則
 
+> 2026-11-04 盤點定位：本文對應 [20 的 B：Component 定義](20_contract_inventory_responsibility_matrix.md)；Config Schema 屬 B，User 填入的參數值屬 D。動態 UI Schema／Meta-schema 暫緩討論；本文的 UI hints、option_sources、rules 與單 module_type 範例仍為候選草案，不視為本輪已定案的格式。Local／Remote 共同涵蓋範圍、Registry 接線與由 Manifest 推導 Descriptor 的具體格式待後續整合。
+
 > 2026-11-02 D-51：本文的單 Component Descriptor 維持不變；新增 Service Manifest 的整合責任見 [18](18_remote_service_pipeline_integration.md)。整段 Remote Pipeline 的涵蓋範圍與部署需求不能只靠單一 module_type 描述，正式擴充格式仍待 Q-028。
 
 日期：2026-10-28。狀態：**D-42 已確認規劃方向與操作行為；`component-ui-0.1-draft` 為待 M0 核定的介面草案，尚未實作。**
