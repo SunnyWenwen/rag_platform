@@ -251,3 +251,9 @@ Python Packaging User Guide 說明以套件 metadata／entry points 發現及載
 ## 2026-11-03 推論 Component Contract 更新
 
 Query Transformation、Retrieval、Rerank 的業務輸入輸出均為 list[QueryContext]，Remote HTTP body 也是 array。每筆包含 ori_query、query，以及預設空 filters／result_sets／metadata；ResultSet 只有 key／items，ResultItem 為 chunk／選填 score。只留目前結果；名次使用 items 順序，RRF 不要求 score；Sum Score 仍需完整可比分數。舊 InferenceState／active IDs／rank／分數血緣已退出本版 Contract；不要照舊 payload 實作新服務。完整 Model／範例見 17；本地 Parser 的成功 ModuleResult 教學不因此套在推論 HTTP body 外。
+
+## 2026-11-04 D-55：Indexing／Retrieval 交接
+
+每 System 一組邏輯索引，IndexBinding 只有 artifact_type／target／fulltext_fields／filter_fields／vector_bindings，省略 index_ref。Indexing 提供，Engine 驗證與管理；Retrieval 須宣告支援格式／版本，並只搜尋 Binding 宣告且相容的能力。target 依受控註冊的格式 Schema 驗證；Developer 還需共同儲存／讀取規格與 SDK／範例才能開發。完整定義見 [19 IndexBinding 與索引格式契約](19_index_binding_artifact_contract.md)。
+
+Component Config 是處理參數；RunContext 是 Engine 準備的必要資源／Binding 引用，實際 Client／索引物件不放業務 JSON。searchable 不在 Binding，Runtime 管就緒；格式版本與 Component 版本、資料發布版本分開。內建 ES target 有 collection，Local target 可空並使用 System 唯一資源。首版不新增多組選擇；UI 差異只記 backlog。正式 SDK、後端讀寫布局、Remote 協定及更新／發布政策仍需後續核定／實作。

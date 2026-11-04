@@ -97,6 +97,7 @@
 | D-52 | KISS：正式 Chunker 也可不提供 _rag／source_refs／fingerprint／ordinal，有提供才驗證；metadata 可攜帶 Component 支援的文件層提示，不另建通用規則引擎 | 2026-11-03 使用者確認兩點並要求同步文件；放寬 D-47／D-49 中追溯強制性，必要六鍵／ID／內容／向量規則不變 | 04～08／10～18／Schema 說明與參考驗證；UIB-017 |
 | D-53 | 預設 Embedding Component 提供選用欄位模板組合，預設獨立 embedding_text；預設 Chunker 可選擇額外保留每 Unit／任務原文 Chunk，相同不重複新增；兩者預設關閉 | 2026-11-03 使用者接受建議並要求記錄；僅需求文件，不修改 UI／Engine，正式設定 Schema 待核定 | 04／05／15 §9；UIB-018／019；Q-002／Q-003／Q-004／Q-015 |
 | D-54 | 簡化推論直接傳 QueryContext[]：ori_query／query／filters／result_sets／metadata；ResultSet=key/items、ResultItem=chunk/選填score；陣列順序為名次、歷史寫 Logs；RRF 用位置，Sum 仍須可比分數 | 2026-11-03 使用者確認此版本並要求所有文件與累積 UI 同步 | 04～09／17～18／Schema／Python／03 圖；Prototype v0.12；UIB-020 |
+| D-55 | 每 System 一組邏輯索引；IndexBinding 五鍵，省略 index_ref／searchable；Indexing 提供、Engine 驗證管理、Retrieval 宣告格式相容及可搜尋能力；格式定義含 target Schema 與讀寫規格，Context／狀態／資源獨立 | 2026-11-04 使用者確認六項並授權更新文件 | 19／04～08／10～12／16～18／Schema／範例；UIB-021 |
 
 兩層合併預設勾選且在 Retrieval 後已確認，Prototype 的設定／預覽狀態見 10；不能把展示能力當作 Engine 已實作。Q-014 仍負責正式支援路徑、stage 命名及執行契約等剩餘細節。
 
@@ -562,4 +563,10 @@ Generation 不在開發或驗收範圍；Inference 輸出檢索結果。Rewrite�
 
 ### 2026-11-03 D-54／Prototype v0.12 同步
 
-QueryContext 業務欄位已確認；正式 SDK 發布、HTTP 版本／錯誤、IndexBinding、分數正規化／同分政策仍依各 Q-ID。UIB-010／016～020 已有模擬互動與驗證；完整 Schema Renderer、Registry、真實服務／部署與模型能力尚待實作。D-53 已由單純記錄推進到 UI 配置與示例，不表示 Engine 完成。UIB-007／008 仍為未核定提案。完整狀態以 10 為準。
+QueryContext 業務欄位已確認；正式 SDK 發布、HTTP 版本／錯誤、IndexBinding（已由 D-55 更新）、分數正規化／同分政策仍依各 Q-ID。UIB-010／016～020 已有模擬互動與驗證；完整 Schema Renderer、Registry、真實服務／部署與模型能力尚待實作。D-53 已由單純記錄推進到 UI 配置與示例，不表示 Engine 完成。UIB-007／008 仍為未核定提案。完整狀態以 10 為準。
+
+## 2026-11-04 D-55 決策追蹤更新
+
+Q-002 的 IndexBinding 業務欄位與單組範圍、Q-014 的能力宣告、Q-028 的索引格式配對方向已收斂，細節以 19 為準。其餘完整 Config／SDK、後端資料布局、Descriptor／Manifest 精確格式、Profile／Filter 實作與資料版本／發布仍 OPEN；不把整個 Q-ID 關閉。舊 IndexBinding 提案以本次五鍵 Schema 取代，Runtime 就緒與 API 狀態投影分開。
+
+Prototype 仍為 v0.12，D-55 的必要調整記入 UIB-021；本輪未修改 UI 或宣稱已建立 Engine Registry／真實索引。實作範例只驗證 DTO、target Schema 及註冊／相容性規則。

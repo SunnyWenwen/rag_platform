@@ -111,3 +111,14 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 - 瀏覽器套件下載曾緩慢，補齊下載後以本地 Chromium 成功驗證；使用 Noto Sans TC 作中文畫面及圖檔輸出。測試可用既有 Playwright Chromium，或設定 CHROMIUM_EXECUTABLE 與選填 CHROMIUM_ARGS_JSON；外部套件未加入產品頁依賴。
 
 以上為契約、瀏覽器配置與模擬操作驗證，沒有呼叫真實模型／DB／Remote API，也沒有建立 Pod 或發布服務。
+
+<a id="uib-021-index-binding"></a>
+## UIB-021：D-55 單組 IndexBinding／索引格式配對（已確認，待改 UI）
+
+- [ ] 保持每 System 一組索引，不增加 index_ref、多組選擇或資源引用填寫表單。
+- [ ] 讀取 Runtime 已驗證的 artifact_type／target／全文／Filter／向量能力；展示可用欄位，失效引用保留並報錯。
+- [ ] Retrieval 候選依支援的索引格式／版本停用不相容項，顯示原因；僅有相同 JSON 外層不足以接線。
+- [ ] Binding 與 target 為唯讀交接資訊，不把 RunContext、Client、Secret 或 Runtime searchable 狀態當使用者參數。
+- [ ] 正式串接後 Create／Edit／AI／匯出共用驗證，SDK／HTTP 拒絕未宣告能力；目前 mock 不算真實後端驗收。
+
+本輪只同步文件／契約範例；Prototype v0.12 不變。規格見 19，Registry／動態 UI／真實服務整合仍在既有待辦。

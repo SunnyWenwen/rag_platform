@@ -29,7 +29,7 @@ Developer 可能不提供原始碼，而是交付既有 API 或 Image；既有�
 
 Engine 依核可服務宣告編譯執行計畫，驗證涵蓋範圍連續、邊界 Contract／能力相容、不與其他選擇重疊；被接管的本地 Module 不再執行。Remote 呼叫失敗時不靜默改跑本地演算法。多 Parser／路由等情境須明確宣告作用範圍，第一版不能同時啟用重疊的替換範圍。
 
-若涵蓋 Indexing，必須宣告索引的存取方式、Profile／版本能力與相容 Retrieval，Builder／Engine 共同卡控；不能只看回應 JSON 相同就接任意 Retriever。完整外部系統可在同一 Service 註冊 Ingestion 與 Retrieval 兩段能力，綁定一致的服務／資料設定。具體索引回應、成對綁定及 HTTP 格式仍待 Q-002／Q-015／Q-019；本次不凍結 17 的 IndexBinding 提案；Rerank Input／Output 統一使用 D-54 QueryContext[]。
+若涵蓋 Indexing，必須宣告索引的存取方式、Profile／版本能力與相容 Retrieval，Builder／Engine 共同卡控；不能只看回應 JSON 相同就接任意 Retriever。完整外部系統可在同一 Service 註冊 Ingestion 與 Retrieval 兩段能力，綁定一致的服務／資料設定。具體索引回應、成對綁定及 HTTP 格式仍待 Q-002／Q-015／Q-019；D-55 已確認 19 的輕量 IndexBinding；完整 Remote HTTP 協定仍待定；Rerank Input／Output 統一使用 D-54 QueryContext[]。
 
 ## 3. Service Manifest 與註冊流程
 
@@ -107,3 +107,9 @@ UI 模擬流程已實作，真實服務管理尚未實作，見 [10 UIB-016](10_
 同一推論 Pipeline 內的 Remote 單 Module／整段都接收、回傳 QueryContext[]，沿用 filters／metadata 與目前有效結果。Config／Secret／可信 ACL 不放在這個 body。ResultSet.key 為穩定路徑／群組；多個 context 可以保留，不為了 HTTP 再融合。HTTP 版本／參數 Envelope 仍待 Q-019；舊 InferenceState body 須明確升級，不靜默混用。
 
 v0.12 的 Service Manifest／健康狀態／Image／Endpoint／資料綁定僅為固定示例，沒有真實 Pod／服務／獨立儲存。Export 的兩種差異可展示，尚不是可直接部署的交付物。詳細完成／待辦分界見 10。
+
+## 2026-11-04 D-55：Indexing／Retrieval 交接
+
+每 System 一組邏輯索引，IndexBinding 只有 artifact_type／target／fulltext_fields／filter_fields／vector_bindings，省略 index_ref。Indexing 提供，Engine 驗證與管理；Retrieval 須宣告支援格式／版本，並只搜尋 Binding 宣告且相容的能力。target 依受控註冊的格式 Schema 驗證；Developer 還需共同儲存／讀取規格與 SDK／範例才能開發。完整定義見 [19 IndexBinding 與索引格式契約](19_index_binding_artifact_contract.md)。
+
+Component Config 是處理參數；RunContext 是 Engine 準備的必要資源／Binding 引用，實際 Client／索引物件不放業務 JSON。searchable 不在 Binding，Runtime 管就緒；格式版本與 Component 版本、資料發布版本分開。內建 ES target 有 collection，Local target 可空並使用 System 唯一資源。首版不新增多組選擇；UI 差異只記 backlog。正式 SDK、後端讀寫布局、Remote 協定及更新／發布政策仍需後續核定／實作。

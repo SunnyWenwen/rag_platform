@@ -123,14 +123,14 @@ metadata 全部繼承限於驗證後的業務欄位及可信平台資訊，ACL�
 
 ### 4.4 Embedding Profile 與 IndexBinding
 
-2026-11-02 補充：[17 Pydantic Contract 草案](17_pydantic_contracts_draft.md) 對照本節責任，先提出可執行 IndexBinding 欄位供討論。這些新鍵名／必填／版本／能力細節尚未核定；本節不因此凍結 Runtime 介面。
+2026-11-04 D-55：IndexBinding 已確認為每 System 一組、五鍵的輕量交接描述，無 index_ref／searchable。完整定義與邊界見 [19 IndexBinding 與索引格式契約](19_index_binding_artifact_contract.md)。
 
 | 物件 | 必要語意 |
 |---|---|
-| EmbeddingProfile | 模型／版本、維度、document/query encoding、normalization、Tokenizer／revision、向量種類；向量邏輯名稱對應來源欄位及 Profile |
-| IndexBinding | System 範圍、後端／集合、資料版本、Mapping／Schema 版本、capabilities、每個向量的 Profile 綁定及可搜尋狀態 |
+| EmbeddingProfile | 模型／版本、維度、document/query encoding、normalization、Tokenizer／revision；用 Profile 配對 Document／Query 向量 |
+| IndexBinding | artifact_type、target、fulltext_fields、filter_fields、vector_bindings；由 Indexing 提供，Engine 驗證管理，Retrieval 透過 Context 使用 |
 
-Profile 是 Query／Document 配對契約；不能只比較維度或模型顯示名稱。Profile／Binding 的完整設定不在每筆 Chunk 重複；每個向量項目保存 Profile 識別與來源欄位，精確格式見 15 §4。第一版多個命名 Dense 向量已確認；不同 Profile／模型同時配置的優先級見 Q-002／Q-003。
+Component Config 定義如何處理；RunContext 提供 Engine 依 Config、部署設定及實際初始化準備的資源，兩者不同。Runtime 就緒／資料版本獨立管理，不由 Binding 存在推定。僅宣告且相容的索引能力才能搜尋；Chunk 中存在／保存某欄位不代表它已建立搜尋索引。完整儲存格式／SDK／版本政策仍依相關 Q-ID。
 
 ### 4.5 Inference 與檢索輸出邊界
 

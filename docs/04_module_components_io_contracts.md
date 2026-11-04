@@ -124,7 +124,7 @@ Ingestion 本地教學可用 ModuleResult[T] 包裝成功資料；推論三模�
 | Parsing | 與 API 共用 Schema 的 IngestionDocument | ParsedDocument 清單 | SDK resolver／可信 Context、依能力自動路由、必要 profile |
 | Chunking | ParsedDocument 清單 | Chunk 清單，vectors={} | Tokenizer、必須繼承資訊 |
 | Embedding | Chunk 清單 | 相同成功 Chunk＋vectors | Profile、逐項錯誤；不回獨立 VectorSet |
-| Indexing | 帶向量或純文字的 Chunk 清單 | IndexBinding、逐項結果、可搜尋狀態 | 授權目標／刪除事件；提交政策待決 |
+| Indexing | 帶向量或純文字的 Chunk 清單 | IndexBinding、逐項結果；就緒狀態獨立由 Runtime 管理 | 授權目標／刪除事件；提交政策待決 |
 | Query Transformation | QueryContext[] | 原始／衍生 QueryContext[]；保留 ori_query、複製 filters／metadata | llm_ref、Prompt；共同 Schema 見 05 §4.6 |
 | Retrieval | QueryContext[] | QueryContext[]，填入各 context 的 key／items 清單 | IndexBinding、Query Encoding、可信 ACL 由 Context 提供；按 Config 融合 |
 | Rerank | QueryContext[] | 同型別；覆寫目前 score、排序／Top N；None 沿用 | 模型服務、Query 來源與 Chunk.fields；不保留歷史清單 |
@@ -492,3 +492,9 @@ DEV 與 FTEST／ENT 維持相同方法選擇／解析版本與邏輯 Config，�
 
 
 
+
+## 2026-11-04 D-55：Indexing／Retrieval 交接
+
+每 System 一組邏輯索引，IndexBinding 只有 artifact_type／target／fulltext_fields／filter_fields／vector_bindings，省略 index_ref。Indexing 提供，Engine 驗證與管理；Retrieval 須宣告支援格式／版本，並只搜尋 Binding 宣告且相容的能力。target 依受控註冊的格式 Schema 驗證；Developer 還需共同儲存／讀取規格與 SDK／範例才能開發。完整定義見 [19 IndexBinding 與索引格式契約](19_index_binding_artifact_contract.md)。
+
+Component Config 是處理參數；RunContext 是 Engine 準備的必要資源／Binding 引用，實際 Client／索引物件不放業務 JSON。searchable 不在 Binding，Runtime 管就緒；格式版本與 Component 版本、資料發布版本分開。內建 ES target 有 collection，Local target 可空並使用 System 唯一資源。首版不新增多組選擇；UI 差異只記 backlog。正式 SDK、後端讀寫布局、Remote 協定及更新／發布政策仍需後續核定／實作。

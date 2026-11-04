@@ -1,7 +1,7 @@
 """Pydantic draft for the contract objects named in diagram 03.
 
 Not a released SDK. The canonical schemas and docs 13/14 remain authoritative.
-No FastAPI or Engine dependency. IndexBinding is a NEW field-level proposal.
+No FastAPI or Engine dependency. IndexBinding follows the approved single-index contract (D-55).
 Use validators in addition to generated JSON Schema; schema generation cannot
 encode every cross-field/semantic check below.
 """
@@ -237,38 +237,67 @@ class QueryContext(WireModel):
 
 
 class VectorIndexBinding(WireModel):
-    """Proposed entry under IndexBinding.vector_bindings; key is vector name."""
+    """D-55 entry under IndexBinding.vector_bindings; key is vector name."""
     embedding_profile_id: NonEmptyText
     source_field: NonEmptyText
     dimensions: PositiveInt
 
 
 class IndexBinding(WireModel):
-    """NEW PROPOSAL: field names/requiredness await review; not frozen SDK."""
-    contract_version: Literal["index-binding-0.1-proposal"]
-    index_ref: NonEmptyText
-    system_id: NonEmptyText
-    backend: Literal["elasticsearch", "local_search"]
-    collection: NonEmptyText
-    index_generation: NonEmptyText
-    mapping_version: NonEmptyText
-    document_schema_version: NonEmptyText
-    capabilities: list[Literal["fulltext", "dense_vector", "filter"]]
-    fulltext_fields: list[NonEmptyText]
-    filter_fields: list[NonEmptyText]
-    vector_bindings: dict[NonEmptyText, VectorIndexBinding]
-    searchable: bool
+    """D-55: one logical index per System; resources/readiness live in Runtime."""
+    artifact_type: NonEmptyText
+    target: dict[str, JsonValue] = Field(default_factory=dict)
+    fulltext_fields: list[NonEmptyText] = Field(default_factory=list)
+    filter_fields: list[NonEmptyText] = Field(default_factory=list)
+    vector_bindings: dict[NonEmptyText, VectorIndexBinding] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def capability_consistency(self):
-        for name in ("capabilities","fulltext_fields","filter_fields"):
-            unique(getattr(self,name),name)
-        for cap, configured in (("fulltext",self.fulltext_fields),
-                                ("filter",self.filter_fields),
-                                ("dense_vector",self.vector_bindings)):
-            if bool(configured) != (cap in self.capabilities):
-                raise ValueError(f"{cap} capability differs from configured fields")
+    def unique_fields(self):
+        unique(self.fulltext_fields, "fulltext_fields")
+        unique(self.filter_fields, "filter_fields")
         return self
+
+
+class ElasticsearchTarget(WireModel):
+    collection: NonEmptyText
+
+
+class LocalSearchTarget(WireModel):
+    pass
+
+
+BUILTIN_TARGET_MODELS = {
+    "builtin.elasticsearch/v1": ElasticsearchTarget,
+    "builtin.local_search/v1": LocalSearchTarget,
+}
+
+
+def validate_binding_format(binding: IndexBinding, supported_artifact_types: list[str],
+                            target_models=None) -> None:
+    """Reference registration/pairing check, not an implemented Engine Registry.
+
+    Shape validation alone does not establish backend existence, readiness,
+    authorization, storage layout compatibility or Filter implementation.
+    """
+    models = BUILTIN_TARGET_MODELS if target_models is None else target_models
+    if binding.artifact_type not in models:
+        raise ValueError("unregistered artifact_type: " + binding.artifact_type)
+    if binding.artifact_type not in supported_artifact_types:
+        raise ValueError("Retrieval does not support: " + binding.artifact_type)
+    models[binding.artifact_type].model_validate(binding.target)
+
+
+def validate_retrieval_fields(binding: IndexBinding, *, fulltext_fields=None,
+                              vector_names=None, filter_fields=None) -> None:
+    """Offline declared-capability check, separate from ACL and backend probing."""
+    for requested, available, kind in (
+        (fulltext_fields or [], binding.fulltext_fields, 'fulltext'),
+        (vector_names or [], binding.vector_bindings, 'vector'),
+        (filter_fields or [], binding.filter_fields, 'filter'),
+    ):
+        missing = set(requested) - set(available)
+        if missing:
+            raise ValueError(f'undeclared {kind} fields: {sorted(missing)}')
 
 
 T = TypeVar("T")

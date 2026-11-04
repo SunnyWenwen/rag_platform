@@ -1,6 +1,6 @@
 # 17 — Pydantic Contract 與連續範例
 
-2026-11-03｜D-54：簡化 QueryContext 已確認；同日同步 JSON Schema、Model、例子及 Prototype v0.12。這是可執行開發草案，尚非已發布 SDK。IndexBinding 仍為獨立提案。
+2026-11-03｜D-54：簡化 QueryContext 已確認；同日同步 JSON Schema、Model、例子及 Prototype v0.12。這是可執行開發草案，尚非已發布 SDK。2026-11-04 D-55：IndexBinding 已確認為輕量單組描述，見 19；正式 SDK 仍未發布。
 
 ## 1. 資料方向與狀態
 
@@ -10,7 +10,7 @@
 | Parsing → Chunking | list[ParsedDocument] | 14：平面 units，每筆直接放欄位 |
 | Chunking → Embedding → Indexing | list[Chunk] | 15：同一個六鍵物件逐步補 vectors |
 | Query Transformation → Retrieval → Rerank → API | list[QueryContext] | 本版確認；result_sets 放在 context 內，沒有另外的外框 |
-| Indexing → Retrieval 資源綁定 | IndexBinding | 欄位提案，尚未凍結 |
+| Indexing → Retrieval 資源綁定 | IndexBinding | D-55 單組五鍵 Contract；狀態／資源由 Runtime 管理 |
 
 [models.py](../examples/pydantic_contracts/models.py) 為完整可執行定義；下方是易讀欄位視圖，省略驗證函式。Model 嚴格拒絕未知 key，JSON 值須有限。共用 JSON Schema 及 13～15 定義 Ingestion 語意；Inference 見 [05 §4.6](05_data_contracts_search_design.md#query-context-contract)。
 
@@ -337,44 +337,31 @@ vector_binding = VectorIndexBinding(
 
 ### 2.13 IndexBinding
 
-仍為 index-binding-0.1-proposal；本次不把提案變成已確認規格。
+D-55 已確認。每 System 一組，無 index_ref／searchable；target 按 artifact_type 對應 Schema 驗證，Retrieval 須宣告相容格式，且只可搜尋宣告能力。完整語意與 ES／Local／客製配套見 [19 IndexBinding 與索引格式契約](19_index_binding_artifact_contract.md)。
 
 ```python
 class IndexBinding(BaseModel):
-    contract_version: Literal["index-binding-0.1-proposal"]
-    index_ref: NonEmptyText
-    system_id: NonEmptyText
-    backend: Literal["elasticsearch", "local_search"]
-    collection: NonEmptyText
-    index_generation: NonEmptyText
-    mapping_version: NonEmptyText
-    document_schema_version: NonEmptyText
-    capabilities: list[Literal["fulltext", "dense_vector", "filter"]]
-    fulltext_fields: list[NonEmptyText]
-    filter_fields: list[NonEmptyText]
-    vector_bindings: dict[NonEmptyText, VectorIndexBinding]
-    searchable: bool
+    artifact_type: NonEmptyText
+    target: dict[str, JsonValue] = Field(default_factory=dict)
+    fulltext_fields: list[NonEmptyText] = Field(default_factory=list)
+    filter_fields: list[NonEmptyText] = Field(default_factory=list)
+    vector_bindings: dict[NonEmptyText, VectorIndexBinding] = Field(default_factory=dict)
 ```
 
 <!-- type-example:IndexBinding:start -->
 ```python
 index_binding = IndexBinding(
-    contract_version="index-binding-0.1-proposal",
-    index_ref="idx-demo",
-    system_id="system-A",
-    backend="elasticsearch",
-    collection="workspace-demo-system-a",
-    index_generation="g1",
-    mapping_version="mapping-v1",
-    document_schema_version="unit-schema-v1",
-    capabilities=["fulltext", "dense_vector", "filter"],
+    artifact_type="builtin.elasticsearch/v1",
+    target={"collection": "workspace-demo-system-a"},
     fulltext_fields=["fields.text"],
     filter_fields=["metadata.department"],
     vector_bindings={"text": vector_binding},
-    searchable=True,
 )
+validate_binding_format(index_binding, ["builtin.elasticsearch/v1"])
 ```
 <!-- type-example:IndexBinding:end -->
+
+target Schema 與相容性驗證參考見 models.py／artifact_definitions.json；共用外層見 schemas/index_binding.schema.json。Schema 通過不是後端存在／可查詢的證據。舊 index-binding-0.1-proposal payload 需明確遷移，不靜默接受已刪鍵。
 
 ### 2.14 ModuleResult
 

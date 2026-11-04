@@ -250,7 +250,7 @@ python -m venv .venv-demo
 
 ## 延伸：03 圖全部 Contract 的 Pydantic 草案
 
-本篇的 Parser 教學維持原樣；需要一起檢視 Chunk／IndexBinding／QueryContext／ResultSet 時，見 [17 Pydantic Contract 草案](17_pydantic_contracts_draft.md)。該集合是獨立可執行草案，尚未合併成正式 SDK；IndexBinding 欄位另外標為待確認提案。
+本篇的 Parser 教學維持原樣；需要一起檢視 Chunk／IndexBinding／QueryContext／ResultSet 時，見 [17 Pydantic Contract 草案](17_pydantic_contracts_draft.md)。該集合是獨立可執行草案，尚未合併成正式 SDK；IndexBinding 已依 D-55／19 確認輕量交接，正式 SDK／實體索引布局仍需完成。
 
 
 

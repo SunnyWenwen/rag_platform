@@ -312,3 +312,5 @@ Local Search 的 Memory／MongoDB 持久化模式隨邏輯 Config 固定：DEV �
 ### 2026-11-03 資料與原型同步
 
 推論接線依 D-54 統一 QueryContext[]，Context 內含目前 result_sets、filters 與 metadata；沒有歷史外框。Library 管 Config／資源／授權，資料物件只傳業務內容。Prototype v0.12 已有 Component／Remote Pipeline、模板／原文 Chunk 的模擬配置；真實 Runtime／服務管理尚未交付，詳細見 10／17／18。
+
+2026-11-04 D-55：Indexing／Retrieval 以每 System 一組的五鍵 IndexBinding 交接；格式 Schema／相容性宣告由 Engine 驗證。資源與就緒狀態由 Runtime 管理，Context 與 Component Config 分開。詳見 [19](docs/19_index_binding_artifact_contract.md)。

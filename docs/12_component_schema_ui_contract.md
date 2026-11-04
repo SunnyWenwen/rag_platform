@@ -366,3 +366,9 @@ UI 顯示 `[Chunking] 重疊 Token 數必須小於 Chunk Token 上限。`，點�
 原型使用程式內 mock Descriptor／Manifest，支援基本 string／integer／boolean／enum、default／required／範圍、advanced 分組，以及 Component／版本選取、停用原因、Remote 覆蓋鎖定。這不是完整 Descriptor Meta-schema 的實作；未知必要 widget／required_ui_features、動態選項 API／版本回應與全部 SUI 驗收仍由正式階段交付，不可把任意 Manifest 直接貼入原型執行。
 
 Inference 的資料 contract_ref 同步 query-context-list/0.3-draft；Query Transformation／Retrieval／Rerank 邊界都是 QueryContext[]。ResultSet.key 作路徑／群組對應，filters／metadata 為資料；Config 與可信授權依原責任分開。Remote 舊 wrapper 不能以相同版本冒用新契約。
+
+## 2026-11-04 D-55：Indexing／Retrieval 交接
+
+每 System 一組邏輯索引，IndexBinding 只有 artifact_type／target／fulltext_fields／filter_fields／vector_bindings，省略 index_ref。Indexing 提供，Engine 驗證與管理；Retrieval 須宣告支援格式／版本，並只搜尋 Binding 宣告且相容的能力。target 依受控註冊的格式 Schema 驗證；Developer 還需共同儲存／讀取規格與 SDK／範例才能開發。完整定義見 [19 IndexBinding 與索引格式契約](19_index_binding_artifact_contract.md)。
+
+Component Config 是處理參數；RunContext 是 Engine 準備的必要資源／Binding 引用，實際 Client／索引物件不放業務 JSON。searchable 不在 Binding，Runtime 管就緒；格式版本與 Component 版本、資料發布版本分開。內建 ES target 有 collection，Local target 可空並使用 System 唯一資源。首版不新增多組選擇；UI 差異只記 backlog。正式 SDK、後端讀寫布局、Remote 協定及更新／發布政策仍需後續核定／實作。

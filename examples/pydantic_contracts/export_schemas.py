@@ -3,16 +3,27 @@ import json
 from pathlib import Path
 from pydantic.json_schema import models_json_schema
 from pydantic import TypeAdapter
-from models import PUBLIC_MODELS, ModuleResult, ParsedDocument, QueryContext
+from models import PUBLIC_MODELS, ModuleResult, ParsedDocument, QueryContext, IndexBinding, BUILTIN_TARGET_MODELS
 
 
 def main():
     models=PUBLIC_MODELS+[ModuleResult[list[ParsedDocument]]]
     _, schema=models_json_schema([(m,'validation') for m in models],title='Diagram 03 — Pydantic contract draft')
     schema['$schema']='https://json-schema.org/draft/2020-12/schema'
-    schema['description']='Draft type catalog. IndexBinding fields are proposed. Pydantic custom semantic validators are not all represented here; existing shared schemas remain authoritative.'
+    schema['description']='Draft type catalog. IndexBinding follows approved D-55; released SDK and execution policies remain pending. Pydantic custom semantic validators are not all represented here; existing shared schemas remain authoritative.'
     path=Path(__file__).with_name('pydantic_contracts.schema.json')
     path.write_text(json.dumps(schema,ensure_ascii=False,indent=2)+'\n')
+    binding = IndexBinding.model_json_schema()
+    binding.update({'$schema':'https://json-schema.org/draft/2020-12/schema',
+                    '$id':'urn:retrieval-builder:index-binding:0.2-draft',
+                    'description':'D-55 single logical index contract. Validate registered artifact target and Retrieval compatibility separately; this shape is not a readiness check.'})
+    for field in ('fulltext_fields','filter_fields'):
+        binding['properties'][field]['uniqueItems'] = True
+    root_path = Path(__file__).resolve().parents[2]
+    (root_path/'schemas/index_binding.schema.json').write_text(json.dumps(binding,ensure_ascii=False,indent=2)+'\n')
+    artifacts=[{'artifact_type':key,'target_schema':model.model_json_schema(),
+                'spec_ref':'docs/19_index_binding_artifact_contract.md'} for key,model in BUILTIN_TARGET_MODELS.items()]
+    (Path(__file__).with_name('artifact_definitions.json')).write_text(json.dumps(artifacts,ensure_ascii=False,indent=2)+'\n')
     root = TypeAdapter(list[QueryContext]).json_schema()
     root.update({'$schema':'https://json-schema.org/draft/2020-12/schema',
                  '$id':'https://rag-builder.example.invalid/schemas/query-context-list-0.3-draft.schema.json',

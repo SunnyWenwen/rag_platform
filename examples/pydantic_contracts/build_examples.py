@@ -19,22 +19,22 @@ def main():
     raw=Chunk(chunk_id='chunk-demo-001',document_id=document.document_id,source_revision=document.source_revision,
               fields=deepcopy(unit),metadata=metadata,vectors={})
     embedded=Chunk.model_validate({**raw.to_payload(),'vectors':{'text':{'values':[0.1,0.2,0.3],'embedding_profile_id':'embedding-demo-v1','source_field':'text'}}})
-    binding=IndexBinding(contract_version='index-binding-0.1-proposal',index_ref='idx-demo',system_id='system-A',backend='elasticsearch',
-        collection='ws-system-a',index_generation='g1',mapping_version='mapping-v1',document_schema_version='unit-schema-v1',
-        capabilities=['fulltext','dense_vector'],fulltext_fields=['fields.text'],filter_fields=[],
-        vector_bindings={'text':VectorIndexBinding(embedding_profile_id='embedding-demo-v1',source_field='text',dimensions=3)},searchable=True)
+    binding=IndexBinding(artifact_type='builtin.elasticsearch/v1',target={'collection':'ws-system-a'},
+        fulltext_fields=['fields.text'],filter_fields=[],
+        vector_bindings={'text':VectorIndexBinding(embedding_profile_id='embedding-demo-v1',source_field='text',dimensions=3)})
+    validate_binding_format(binding,['builtin.elasticsearch/v1'])
     validate_chunk_binding(embedded,binding)
     query=QueryContext(ori_query='清潔前應注意什麼？',query='清潔前應注意什麼？',
         filters=[FilterCondition(field='metadata.department',operator='eq',value='製造部')],
         result_sets=[ResultSet(key='merged',items=[ResultItem(chunk=raw,score=0.95)])],metadata={'language':'zh-TW'})
     snapshots={'note':'Manually assembled contract examples. Chunk ID/fingerprint/vector/scores are illustrative; no tokenizer/model/index was executed.',
         'ingestion_document':data.to_payload(),'parsed_documents':[d.to_payload() for d in documents],
-        'chunk_after_chunking':raw.to_payload(),'chunk_after_embedding':embedded.to_payload(),'index_binding_PROPOSAL':binding.to_payload(),
+        'chunk_after_chunking':raw.to_payload(),'chunk_after_embedding':embedded.to_payload(),'index_binding':binding.to_payload(),
         'query_context':query.to_payload(),'query_contexts':[query.to_payload()],'module_result_success':ModuleResult[list[ParsedDocument]](data=documents).to_payload()}
     snapshots['ten_character_chunk_demo'] = [chunk.to_payload() for chunk in chunks]
     snapshots['type_examples'] = {name: value.to_payload() for name, value in TYPE_EXAMPLES.items()}
     Path(__file__).with_name('examples.json').write_text(json.dumps(snapshots,ensure_ascii=False,indent=2)+'\n')
-    print('Wrote examples.json: shared DTOs plus a separately marked IndexBinding proposal')
+    print('Wrote examples.json: shared DTOs including the approved lightweight IndexBinding')
 
 
 if __name__=='__main__':main()

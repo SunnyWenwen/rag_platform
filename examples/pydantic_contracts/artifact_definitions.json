@@ -1,0 +1,31 @@
+[
+  {
+    "artifact_type": "builtin.elasticsearch/v1",
+    "target_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "collection": {
+          "minLength": 1,
+          "title": "Collection",
+          "type": "string"
+        }
+      },
+      "required": [
+        "collection"
+      ],
+      "title": "ElasticsearchTarget",
+      "type": "object"
+    },
+    "spec_ref": "docs/19_index_binding_artifact_contract.md"
+  },
+  {
+    "artifact_type": "builtin.local_search/v1",
+    "target_schema": {
+      "additionalProperties": false,
+      "properties": {},
+      "title": "LocalSearchTarget",
+      "type": "object"
+    },
+    "spec_ref": "docs/19_index_binding_artifact_contract.md"
+  }
+]

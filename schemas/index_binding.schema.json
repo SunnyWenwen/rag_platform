@@ -1,0 +1,84 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "VectorIndexBinding": {
+      "additionalProperties": false,
+      "description": "D-55 entry under IndexBinding.vector_bindings; key is vector name.",
+      "properties": {
+        "embedding_profile_id": {
+          "minLength": 1,
+          "title": "Embedding Profile Id",
+          "type": "string"
+        },
+        "source_field": {
+          "minLength": 1,
+          "title": "Source Field",
+          "type": "string"
+        },
+        "dimensions": {
+          "minimum": 1,
+          "title": "Dimensions",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "embedding_profile_id",
+        "source_field",
+        "dimensions"
+      ],
+      "title": "VectorIndexBinding",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "D-55 single logical index contract. Validate registered artifact target and Retrieval compatibility separately; this shape is not a readiness check.",
+  "properties": {
+    "artifact_type": {
+      "minLength": 1,
+      "title": "Artifact Type",
+      "type": "string"
+    },
+    "target": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Target",
+      "type": "object"
+    },
+    "fulltext_fields": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Fulltext Fields",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "filter_fields": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Filter Fields",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "vector_bindings": {
+      "additionalProperties": {
+        "$ref": "#/$defs/VectorIndexBinding"
+      },
+      "propertyNames": {
+        "minLength": 1
+      },
+      "title": "Vector Bindings",
+      "type": "object"
+    }
+  },
+  "required": [
+    "artifact_type"
+  ],
+  "title": "IndexBinding",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:retrieval-builder:index-binding:0.2-draft"
+}

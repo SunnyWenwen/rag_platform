@@ -42,7 +42,7 @@ Prototype v0.12 同步 Query metadata、選填追溯、Embedding 文字模板／
 | [14 ParsedDocument](docs/14_parsed_document_contract.md) | 平面 Units、Parser／Chunker 分工與來源追溯 |
 | [15 Chunk](docs/15_chunk_contract.md) | 切分／複製、來源、向量、ID 與欄位組裝待討論 |
 | [16 Parser 開發範例](docs/16_parser_component_development_examples.md) | 共用 Pydantic、Local ABC、Remote Adapter 與 FastAPI，搭配三種交付模式圖 |
-| [17 Pydantic Contract 草案](docs/17_pydantic_contracts_draft.md) | 03 圖中共用資料物件、推論型別、IndexBinding 提案、可執行模型與 JSON Schema 目錄 |
+| [17 Pydantic Contract 草案](docs/17_pydantic_contracts_draft.md) | 03 圖中共用資料物件、推論型別、已確認的輕量 IndexBinding、可執行模型與 JSON Schema 目錄 |
 | [18 Remote Service／Pipeline 整合](docs/18_remote_service_pipeline_integration.md) | Manifest 註冊、連續 Module 替換、三種部署、固定服務與 Export／UI 卡控 |
 
 名詞以 03 為準；資料的精確定義引用 schemas/ 與 13～15，不在各模組重寫一份。Component Developer 依序讀 11 → 04 → 對應資料契約 → 12。完整 Engine Config／SDK 尚未凍結，示例不等於可直接執行的產品介面。
@@ -74,3 +74,5 @@ Parser 開發示範：[三種交付模式圖](diagrams/04_component_delivery_mod
 
 
 
+
+2026-11-04 D-55：每 System 一組邏輯索引，IndexBinding 五鍵，省略 index_ref／searchable。索引格式定義、target Schema、Developer 配套及狀態責任見 [19](docs/19_index_binding_artifact_contract.md)；共用 [Schema](schemas/index_binding.schema.json)、[格式 target 範例](examples/pydantic_contracts/artifact_definitions.json)。UI 待調整記 UIB-021，未改 Prototype。

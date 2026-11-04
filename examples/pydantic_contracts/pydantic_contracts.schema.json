@@ -213,62 +213,19 @@
     },
     "IndexBinding": {
       "additionalProperties": false,
-      "description": "NEW PROPOSAL: field names/requiredness await review; not frozen SDK.",
+      "description": "D-55: one logical index per System; resources/readiness live in Runtime.",
       "properties": {
-        "contract_version": {
-          "const": "index-binding-0.1-proposal",
-          "title": "Contract Version",
-          "type": "string"
-        },
-        "index_ref": {
+        "artifact_type": {
           "minLength": 1,
-          "title": "Index Ref",
+          "title": "Artifact Type",
           "type": "string"
         },
-        "system_id": {
-          "minLength": 1,
-          "title": "System Id",
-          "type": "string"
-        },
-        "backend": {
-          "enum": [
-            "elasticsearch",
-            "local_search"
-          ],
-          "title": "Backend",
-          "type": "string"
-        },
-        "collection": {
-          "minLength": 1,
-          "title": "Collection",
-          "type": "string"
-        },
-        "index_generation": {
-          "minLength": 1,
-          "title": "Index Generation",
-          "type": "string"
-        },
-        "mapping_version": {
-          "minLength": 1,
-          "title": "Mapping Version",
-          "type": "string"
-        },
-        "document_schema_version": {
-          "minLength": 1,
-          "title": "Document Schema Version",
-          "type": "string"
-        },
-        "capabilities": {
-          "items": {
-            "enum": [
-              "fulltext",
-              "dense_vector",
-              "filter"
-            ],
-            "type": "string"
+        "target": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
           },
-          "title": "Capabilities",
-          "type": "array"
+          "title": "Target",
+          "type": "object"
         },
         "fulltext_fields": {
           "items": {
@@ -295,26 +252,10 @@
           },
           "title": "Vector Bindings",
           "type": "object"
-        },
-        "searchable": {
-          "title": "Searchable",
-          "type": "boolean"
         }
       },
       "required": [
-        "contract_version",
-        "index_ref",
-        "system_id",
-        "backend",
-        "collection",
-        "index_generation",
-        "mapping_version",
-        "document_schema_version",
-        "capabilities",
-        "fulltext_fields",
-        "filter_fields",
-        "vector_bindings",
-        "searchable"
+        "artifact_type"
       ],
       "title": "IndexBinding",
       "type": "object"
@@ -574,7 +515,7 @@
     },
     "VectorIndexBinding": {
       "additionalProperties": false,
-      "description": "Proposed entry under IndexBinding.vector_bindings; key is vector name.",
+      "description": "D-55 entry under IndexBinding.vector_bindings; key is vector name.",
       "properties": {
         "embedding_profile_id": {
           "minLength": 1,
@@ -603,5 +544,5 @@
   },
   "title": "Diagram 03 — Pydantic contract draft",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "Draft type catalog. IndexBinding fields are proposed. Pydantic custom semantic validators are not all represented here; existing shared schemas remain authoritative."
+  "description": "Draft type catalog. IndexBinding follows approved D-55; released SDK and execution policies remain pending. Pydantic custom semantic validators are not all represented here; existing shared schemas remain authoritative."
 }

@@ -287,3 +287,9 @@ UI Mock、Schema 驗證、HTTP integration、實際端對端驗收分開記錄�
 本輪同步 D-54 的 QueryContext[] API／預覽；選填 Query metadata 以 JSON object 編輯，與 filters 各自驗證。計畫／模擬標示在資料物件外，輸出只有目前有效 context／key／items；不建立歷史或 rank 欄位。
 
 新增 D-52／D-53 及 Remote 的配置互動，具體控制項／草案拼字／完成範圍見 [10](10_ui_adjustment_backlog.md)。模板產生的新欄位可作後續索引／Filter／Rerank 來源；原文 Chunk 與原文欄位 copy 獨立。Developer Local／Image／External 用模擬目錄選取，整段鎖定涵蓋模組；不要求 User 填 Developer Service API 連線。正式 12 Renderer／能力目錄、模型 Token 上限、服務生命週期仍需後端整合。
+
+## 2026-11-04 D-55：Indexing／Retrieval 交接
+
+每 System 一組邏輯索引，IndexBinding 只有 artifact_type／target／fulltext_fields／filter_fields／vector_bindings，省略 index_ref。Indexing 提供，Engine 驗證與管理；Retrieval 須宣告支援格式／版本，並只搜尋 Binding 宣告且相容的能力。target 依受控註冊的格式 Schema 驗證；Developer 還需共同儲存／讀取規格與 SDK／範例才能開發。完整定義見 [19 IndexBinding 與索引格式契約](19_index_binding_artifact_contract.md)。
+
+Component Config 是處理參數；RunContext 是 Engine 準備的必要資源／Binding 引用，實際 Client／索引物件不放業務 JSON。searchable 不在 Binding，Runtime 管就緒；格式版本與 Component 版本、資料發布版本分開。內建 ES target 有 collection，Local target 可空並使用 System 唯一資源。首版不新增多組選擇；UI 差異只記 backlog。正式 SDK、後端讀寫布局、Remote 協定及更新／發布政策仍需後續核定／實作。

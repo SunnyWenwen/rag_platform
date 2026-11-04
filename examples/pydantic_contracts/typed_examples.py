@@ -157,20 +157,13 @@ vector_binding = VectorIndexBinding(
 
 # example:IndexBinding:start
 index_binding = IndexBinding(
-    contract_version="index-binding-0.1-proposal",
-    index_ref="idx-demo",
-    system_id="system-A",
-    backend="elasticsearch",
-    collection="workspace-demo-system-a",
-    index_generation="g1",
-    mapping_version="mapping-v1",
-    document_schema_version="unit-schema-v1",
-    capabilities=["fulltext", "dense_vector", "filter"],
+    artifact_type="builtin.elasticsearch/v1",
+    target={"collection": "workspace-demo-system-a"},
     fulltext_fields=["fields.text"],
     filter_fields=["metadata.department"],
     vector_bindings={"text": vector_binding},
-    searchable=True,
 )
+validate_binding_format(index_binding, ["builtin.elasticsearch/v1"])
 # example:IndexBinding:end
 
 # example:ModuleResult:start

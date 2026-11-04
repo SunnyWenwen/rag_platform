@@ -5,6 +5,7 @@ from pathlib import Path
 import unittest
 from pydantic import ValidationError, TypeAdapter
 from jsonschema import Draft202012Validator
+from jsonschema.exceptions import ValidationError as SchemaValidationError
 from referencing import Registry,Resource
 from models import *
 
@@ -22,11 +23,10 @@ def registry():
 
 
 def binding():
-    return IndexBinding(contract_version='index-binding-0.1-proposal',index_ref='idx-demo',
-        system_id='system-A',backend='elasticsearch',collection='ws-system-a',index_generation='g1',
-        mapping_version='mapping-v1',document_schema_version='unit-schema-v1',
-        capabilities=['fulltext','dense_vector'],fulltext_fields=['fields.text'],filter_fields=[],
-        vector_bindings={'text':VectorIndexBinding(embedding_profile_id='embedding-demo-v1',source_field='text',dimensions=3)},searchable=True)
+    return IndexBinding(artifact_type='builtin.elasticsearch/v1',target={'collection':'ws-system-a'},
+        fulltext_fields=['fields.text'],filter_fields=[],
+        vector_bindings={'text':VectorIndexBinding(embedding_profile_id='embedding-demo-v1',source_field='text',dimensions=3)})
+
 
 
 class ModelTests(unittest.TestCase):
@@ -97,12 +97,12 @@ class ModelTests(unittest.TestCase):
         q=QueryContext(ori_query='q',query='q')
         self.assertEqual((q.filters,q.result_sets,q.metadata),([],[],{}))
 
-    def test_proposed_index_binding_and_vectors(self):
+    def test_index_binding_and_vectors(self):
         target=binding();embedded=Chunk.model_validate(next(c for c in CASES if c['case_id']=='embedded')['chunks'][0])
         validate_chunk_binding(embedded,target)
         target.vector_bindings['text'].dimensions=4
         with self.assertRaises(ValueError):validate_chunk_binding(embedded,target)
-        value=binding().to_payload();value['capabilities']=[]
+        value=binding().to_payload();value['index_ref']='removed'
         with self.assertRaises(ValidationError):IndexBinding.model_validate(value)
         value=binding().to_payload();value['password']='not allowed'
         with self.assertRaises(ValidationError):IndexBinding.model_validate(value)
@@ -114,7 +114,7 @@ class ModelTests(unittest.TestCase):
             Draft202012Validator(schema,registry=registry()).validate(examples[name])
         for doc in examples['parsed_documents']:
             ParsedDocument.model_validate(doc)
-        validate_chunk_binding(Chunk.model_validate(examples['chunk_after_embedding']),IndexBinding.model_validate(examples['index_binding_PROPOSAL']))
+        validate_chunk_binding(Chunk.model_validate(examples['chunk_after_embedding']),IndexBinding.model_validate(examples['index_binding']))
 
     def test_each_public_type_has_an_executable_example(self):
         from typed_examples import TYPE_EXAMPLES, chunk, chunks, rag_metadata, parsed_doc, index_binding, query_contexts
@@ -157,6 +157,44 @@ class ModelTests(unittest.TestCase):
             self.assertEqual(chunk.fields['title'],parsed_doc.units[0]['title'])
         snapshot=json.loads(Path(__file__).with_name('examples.json').read_text())
         self.assertEqual(snapshot['ten_character_chunk_demo'],[c.to_payload() for c in chunks])
+
+    def test_binding_registration_target_and_retrieval_pairing(self):
+        es=binding();validate_binding_format(es,['builtin.elasticsearch/v1'])
+        with self.assertRaises(ValueError):validate_binding_format(es,['builtin.local_search/v1'])
+        es.target={}
+        with self.assertRaises(ValidationError):validate_binding_format(es,['builtin.elasticsearch/v1'])
+        local=IndexBinding(artifact_type='builtin.local_search/v1')
+        validate_binding_format(local,['builtin.local_search/v1'])
+        local.target={'es_client':'not a location'}
+        with self.assertRaises(ValidationError):validate_binding_format(local,['builtin.local_search/v1'])
+        from pydantic import Field
+        class CustomTarget(WireModel):
+            dataset: NonEmptyText
+        custom=IndexBinding(artifact_type='developer.custom/v1',target={'dataset':'docs'})
+        with self.assertRaises(ValueError):validate_binding_format(custom,['developer.custom/v1'])
+        validate_binding_format(custom,['developer.custom/v1'],{'developer.custom/v1':CustomTarget})
+        with self.assertRaises(ValidationError):IndexBinding.model_validate({**binding().to_payload(),'searchable':True})
+        self.assertEqual(IndexBinding(artifact_type='builtin.local_search/v1').target,{})
+
+    def test_retrieval_requires_declared_fields(self):
+        target=binding()
+        validate_retrieval_fields(target,fulltext_fields=['fields.text'],vector_names=['text'])
+        for arguments in ({'fulltext_fields':['fields.summary']},
+                          {'vector_names':['summary']}, {'filter_fields':['metadata.department']}):
+            with self.assertRaises(ValueError):validate_retrieval_fields(target,**arguments)
+
+    def test_standalone_binding_schema_and_artifact_definitions(self):
+        from typed_examples import index_binding
+        schema=json.loads((ROOT/'schemas/index_binding.schema.json').read_text())
+        validator=Draft202012Validator(schema)
+        validator.validate(index_binding.to_payload())
+        for removed in ('index_ref','searchable','capabilities'):
+            with self.assertRaises(SchemaValidationError):validator.validate({**index_binding.to_payload(),removed:'old'})
+        definitions=json.loads(Path(__file__).with_name('artifact_definitions.json').read_text())
+        by_type={d['artifact_type']:d['target_schema'] for d in definitions}
+        Draft202012Validator(by_type[index_binding.artifact_type]).validate(index_binding.target)
+        Draft202012Validator(by_type['builtin.local_search/v1']).validate({})
+        with self.assertRaises(SchemaValidationError):Draft202012Validator(by_type['builtin.elasticsearch/v1']).validate({})
 
     def test_generated_catalog_and_module_result(self):
         from pydantic.json_schema import models_json_schema
