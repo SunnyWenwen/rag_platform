@@ -273,6 +273,12 @@ Python 的 method／`@classmethod`／abstract method、HTTP method，以及融�
 | 評估 | 平台 Runner、Dataset、報告 | 外部工具可呼叫 Query API，不預設附評估 UI |
 | 依賴 | 平台保存管理資料 | 啟動與日常執行不依賴 Builder |
 
+### 4.4 圖面與現行執行模式的解讀（D-62～D-66）
+
+圖中的 Library＋Config→System A／B／C 表示不同邏輯檢索系統，並非每份 Config 各有 API service、Pod 或專屬 Flow。Builder 由共用 Flow／Executor 依固定快照選 Component，實例／索引資源按作用範圍管理。Infra 圖的 Config Store→System 虛線表示配置來源；實際由 Builder Backend 經可信管理下發，Library 不直連 Builder DB。tSSO 是既有目標入口示意，登入方式仍依 D-60 延後，不代表已選定實作。Evaluation 保留 M6 規劃，不重新加入 Generation。
+
+本輪保留既有圖檔版面；上述解釋與 07／21 的服務／路由規格共同閱讀。整合設定初版與跨文件校對證據見 [23](docs/23_system_config_schema_draft.md)／[24](docs/24_spec_alignment_review.md)。
+
 ## 5. Pipeline 與搜尋架構
 
 | 流程 | 執行順序 |

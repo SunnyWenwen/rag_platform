@@ -55,3 +55,6 @@ Developer 的 Local Component 沿原有 PR／測試／Runtime Image 交付；Rem
 | Rerank → 檢索結果 | QueryContext[] | 替換目前分數／順序後回傳；None 沿用 |
 
 推論三模組業務輸入輸出直接使用 list[QueryContext]；result_sets 巢狀在 context 內，不另外傳獨立 ResultSet[]。目前結果被替換，歷史與診斷寫 Logs；Chunk._rag 選填追溯不受影響。本地 Parser 教學可用 ModuleResult，但不加在推論 HTTP body 外。A／B／C 與 Remote Parsing 範例版面保留。
+
+
+D-62／D-66 解讀：圖中的 System／Component 實例是邏輯配置與資料作用範圍，不要求逐 Config 建立專屬 Flow、API service 或 Pod。Builder 的實際模式採共用 Executor／固定 Config 快照，Remote Image 的額外服務仍依 18 部署。配置格式與圖說校對見 [23](../docs/23_system_config_schema_draft.md)／[24](../docs/24_spec_alignment_review.md)，不把示意圖當成已完成執行架構。

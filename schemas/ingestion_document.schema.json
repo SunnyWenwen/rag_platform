@@ -56,7 +56,7 @@
     "parsing_profile": {
       "type": "string",
       "minLength": 1,
-      "description": "此 RAG System 已設定的解析策略名稱"
+      "description": "此 Retrieval System 已設定的解析策略名稱"
     },
     "metadata": {
       "type": "object",

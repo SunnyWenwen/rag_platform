@@ -28,3 +28,6 @@
 
 先用本圖說明三種交付模式，再讀 [16 Parser 開發範例](../docs/16_parser_component_development_examples.md)：同一組 IngestionDocument／ParsedDocument，對照 Local ABC 實作與 Remote API／Adapter。開發方式分兩種；Image Deployment／External Endpoint 共用 Remote API 開發契約。
 
+
+
+D-62／D-66 解讀：圖中的 System／Component 實例是邏輯配置與資料作用範圍，不要求逐 Config 建立專屬 Flow、API service 或 Pod。Builder 的實際模式採共用 Executor／固定 Config 快照，Remote Image 的額外服務仍依 18 部署。配置格式與圖說校對見 [23](../docs/23_system_config_schema_draft.md)／[24](../docs/24_spec_alignment_review.md)，不把示意圖當成已完成執行架構。

@@ -2,7 +2,7 @@
 
 > 2026-11-05 D-56：文件級完整覆寫、非同步工作／記憶體狀態、Runtime Queue／Inference 流量控制已確認，詳細 API 盤點見 [21](21_runtime_ingestion_inference_api_inventory.md)。工作狀態是 Runtime 管理資料，不改 IngestionDocument／ParsedDocument／Chunk／QueryContext；完整 Config／發布實作仍有待決。
 
-> 文件同步：2026-10-31 · 開發規格草案（正式 SDK／Config 尚未凍結）
+> 文件同步：2026-11-05 · 開發規格草案（正式 SDK／Config 尚未凍結）
 >
 > 本文統整資料流、設定與版本規則；三份資料的精確形狀由 schemas/ 與 13～15 單一維護。已確認語意作為開發基準，完整 Config／SDK 仍待 Q-002 凍結，目前沒有 Engine 可直接執行。
 
@@ -11,7 +11,7 @@
 - 名詞意義與元件關係以 [03 §3](../03_architecture_proposal.md#terminology) 為準；本文負責資料結構、欄位、版本規則及範例，不另定同名概念。
 - 模組如何執行見 [04](04_module_components_io_contracts.md)，UI 見 [06](06_ui_development_spec.md)，HTTP 包裝／儲存見 [07](07_backend_runtime_integration.md)。
 - 本文引用 IngestionDocument／ParsedDocument／Chunk，並統一 QueryContext[]、Config 及執行包裝的責任，避免各模組重複定義。
-- 物件形狀、Contract 版本與細節待 [Q-002](08_implementation_plan.md#q-002) 核定；已確認的五／六個頂層 key 不因此退回舊版。
+- 物件形狀、Contract 版本與細節待 [Q-002](08_implementation_plan.md#q-002) 核定；ParsedDocument 四鍵／Chunk 六鍵依 D-49／D-52 保持一致。
 - `?` 表示可省略，不自動表示可為 null；`JSON` 必須可序列化，數值不可為 NaN／Infinity。正式 required／nullable／additionalProperties 須由 Schema 定義。
 
 <a id="identity-versions"></a>
@@ -25,7 +25,7 @@
 | workspace_id／system_id | Workspace → System；System 的邏輯識別跨環境不因部署設定不同而另改 Config，授權由可信 Context 決定 | 階層／邏輯方向已確認；格式與部署識別待決 |
 | document_id | 同一 System 中邏輯文件的穩定識別，不能用 Chunk ID 取代 | 已確認；產生演算法 Q-007 |
 | source_revision | 文件內容版本，與 Config Revision 不同 | 已確認；省略時的生成／比較 Q-007 |
-| chunk_id | 由文件、來源版本、切分有效設定與位置／序號產生 | 已確認方向；規範化／Hash Q-007 |
+| chunk_id | Component 產生必要非空識別；fingerprint／ordinal 的可重現衍生 ID 是選用參考工具 | D-52 不強制共同 Hash 演算法；穩定／更新語意 Q-007 |
 | config_revision | 平台保存的設定版本 | 已確認；草稿／生效語意 Q-015 |
 | index_generation | 可追蹤的索引資料版本，不能把可變 alias 當 immutable snapshot | 已確認方向；切換 Q-010／Q-015 |
 | contract_version | 資料／Config 契約版本 | 建議；遷移 Q-002 |
@@ -234,7 +234,7 @@ Config、資源與可信授權由 Runtime 注入，不因移除記錄欄位而�
 
 | 物件 | 建議欄位 |
 |---|---|
-| ModuleConfig | module_type、component_id、implementation_version、contract_version、parameters、服務引用；具體實例引用與完整巢狀結構待 Q-002 |
+| ModuleConfig／ComponentSelection | 23 的共同選擇草案為 component_id、implementation_version、parameters；module_type 由 slot／Descriptor 推導，I/O 版本由 Registry／SDK 核對，服務邏輯引用依所選參數 Schema；完整包裝待 SC-01／02 |
 | RunContext | workspace_id、system_id、config_revision、run_id／request_id、trace_id、deadline、attempt、可信 auth_scope；環境／部署綁定另明確記錄 |
 | ModuleResult[T] | status: succeeded／partial／failed，data、errors、warnings、metrics |
 | ModuleError | SDK 內部錯誤草案：code、module、message、retryable、item_id?、details?；對外 HTTP／狀態 error 核心依 21 的 code／message／module，輸入驗證另附 path，不直接透出內部包裝 |
@@ -242,7 +242,7 @@ Config、資源與可信授權由 Runtime 注入，不因移除記錄欄位而�
 
 failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項目，不能默默少資料。哪些模組允許 partial 及如何提交資料仍受 Q-009 限制。HTTP 任務狀態不是 ModuleResult.status，見 07。
 
-2026-10-29 D-43：上表以 component_id 選擇具體 Component，module_type 表示所屬 Module；它們與 Component Instance 的 node_ref 分開。§4.6 的 ResultSet.method 仍是演算法／操作紀錄，不能直接改成 component_id。舊 Config／Prototype 的選擇欄位需按版本遷移，詳見 [03 名詞對照](../03_architecture_proposal.md#component-terminology-migration)。
+2026-10-29 D-43：上表以 component_id 選擇具體 Component，module_type 表示所屬 Module；它們與 Component Instance 的 node_ref 分開。D-54 之後 ResultSet 只有 key／items，已無 method／operation 等紀錄欄位；方法選擇留在 Config，過程寫 Logs。舊 Config／Prototype 的選擇欄位需按版本遷移，詳見 [03 名詞對照](../03_architecture_proposal.md#component-terminology-migration)。
 
 未知 Token Usage 為 null／省略，不填 0。Secret 與敏感原文不進錯誤／追蹤。使用者無權設定可信租戶／ACL Context。
 
@@ -278,7 +278,7 @@ metadata 不只供描述／過濾，也可傳遞 Component 明確約定的文件
 - 更換 Embedding 語意 Profile 不能當作純環境覆寫，必須重新 Embedding／Indexing。
 - 使用相同服務的兩個模組引用同一 llm_ref；匯出只包含實際引用的服務。
 
-邏輯 Config 根結構仍為**建議**：contract_version、document_schema、llms、pipelines.ingestion、pipelines.inference、execution。llms／Embedding 等只保留模型語意與穩定服務引用；URL／認證／資料目標由部署設定解析。System／Revision／IndexBinding 由 Context／可信綁定提供，HTTP／匯出包裝見 07。
+整合初版集中見 [23 System Config Schema 草案](23_system_config_schema_draft.md)：候選根結構為 contract_version、document_schema、llms、pipelines.ingestion／inference。先前 execution 名稱沒有凍結，不再作為同時包含流程與 Runtime 限制的模糊容器；結果處理計畫放 inference，Queue／Rate／Deadline 等依 D-64 歸 E／22。Component 引用用 component_id＋implementation_version，由 Registry 取得 Descriptor.config_schema 驗證 parameters；不把完整 Descriptor／Manifest 複製進 D。System ID／Revision／IndexBinding 由可信管理與 Context 提供，完整型別／Profile／部署包裝仍待 SC 決策。
 
 ### 6.3 模組設定詞彙
 
@@ -290,10 +290,10 @@ metadata 不只供描述／過濾，也可傳遞 Component 明確約定的文件
 | Parsing | Structured JSON 預設；相容 Parser／Adapter 自動路由 | 已啟用 Component／profile、media_type／schema_id 能力、內容映射 |
 | Chunking | Fixed-size／Recursive／Header-aware；預設 text、不選欄位；進階多任務／複製；metadata 全繼承 | split_field／output_field／copy 映射與有序 tasks 草案見 15；size／overlap／tokenizer 及有效方法參數，無 metadata_fields |
 | Embedding | 預設 fields.text → vectors.text；命名向量包含 Profile 識別與來源欄位 | profile、mappings（source_field、output_name）；命名可設定，預設向量名稱 text |
-| Indexing | 全部 fields／metadata 保存，搜尋與過濾另外選；持久化模式跨環境固定 | backend、fulltext_fields、vector_fields、filter_fields、persistence、metric；移除使用者 stored_fields，persistence 屬邏輯 Config，collection 在部署 Binding |
-| Query Transformation | None／Rewrite／Multi-query | method、llm_ref、prompt、count、include_original |
+| Indexing | 全部 fields／metadata 保存，搜尋與過濾另外選；持久化模式跨環境固定 | Component 選擇決定後端；parameters 保存 fulltext_fields、vector_fields、filter_fields、persistence／metric 等所支援參數；無 stored_fields，collection 在 E／Binding |
+| Query Transformation | None／Rewrite／Multi-query | 共同 Component 引用＋自身 parameters，例如 llm_ref／prompt／count／include_original；1／N 統一表示仍是提案 |
 | Retrieval／Fusion Plan | 選已索引欄位、推導模式；可配置策略及合併時點 | fulltext_fields、vector_fields、per_route_k、top_k、filters、fusion；stages／scope／placement 具體 Schema 待 Q-014 |
-| Rerank | 新模型算分的方法；服務為 None／DEV／Rerank API | method、service、content_fields；UI 將 top_n 作評分後收尾參數，見 10 |
+| Rerank | 新模型算分的方法；服務為 None／DEV／Rerank API | 共同 Component 引用＋所支援的 service_ref／內容欄位／提問來源；模型評分後保留數在結果處理，位置候選見 23，不與 Provider 的 top_n 混用 |
 | ResultSet 後處理 | 去重＆合併／取 Top N／新模型算分；共同排序 | 分組、方法與參數的正式 Config Schema 仍待 Q-002／Q-014；最新 UI 原型配置見 10 |
 
 Query Rewrite／Multi-query 的 1／N、Structured Output 與共用 LLM Adapter 提案保留，見 04 §5.1；取消答案生成及自訂答案 JSON 設定。
@@ -319,7 +319,7 @@ ResultSet 是一次執行的資料；處理計畫是可保存的邏輯 Config，
 
 純 BM25 可跳過 Embedding，但 Chunking 仍需 Tokenizer。複製欄位長度可能大於 Chunk Size，Embedding 必須逐項檢查實際輸入。Tokenizer、模型極限及溢位政策見 Q-004。
 
-Fixed-size 的 separators／keep_separator／header_levels 保留在 UI Draft 時不參與 Effective Config、驗證或變更影響。方法名稱、size／overlap、有效 Tokenizer 及內容欄位屬執行語意；改變後需按 Ingestion 變更處理。視窗與來源位置規則見 [04 §4.3](04_module_components_io_contracts.md#43-chunking)。正式 method 枚舉拼字仍待 Q-002，`fixed_size` 可作候選，不新增必須支援的別名。ParsedDocument／Chunk 的五／六個外層 key 不變。
+Fixed-size 的 separators／keep_separator／header_levels 保留在 UI Draft 時不參與 Effective Config、驗證或變更影響。方法名稱、size／overlap、有效 Tokenizer 及內容欄位屬執行語意；改變後需按 Ingestion 變更處理。視窗與來源位置規則見 [04 §4.3](04_module_components_io_contracts.md#43-chunking)。正式 method 枚舉拼字仍待 Q-002，`fixed_size` 可作候選，不新增必須支援的別名。ParsedDocument 四鍵／Chunk 六鍵不變。
 
 「全部保存／繼承」取代舊的使用者 stored_fields／metadata_fields 投影；原型短名稱 indexing.stored／chunking.metadata 仍待正式遷移，不直接作為新的有效配置語意。舊索引未保存或舊 Chunk 未繼承的內容不會憑空補回，必要時須重新 Ingestion／重建，不能只刪 Config 欄位就宣稱資料齊全。精確遷移與 Hash／Revision 細節留 Q-002／Q-015。
 

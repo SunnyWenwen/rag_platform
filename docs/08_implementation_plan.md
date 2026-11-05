@@ -47,7 +47,7 @@
 | D-02 | 同一系統支援新手與熟悉 Retrieval 者；AI 設定、CSV 起始、進階收合 | 2026-10-15 使用者提出／已確認 | 03／06 |
 | D-03 | 手寫 Config 可直接執行 Engine；UI 產生 Config，不另生成一套 Engine 程式 | 2026-10-15 對話／已確認 | 04／05 |
 | D-04 | 固定 Ingestion／Inference；Builder 與獨立 API Runtime 使用同一 Engine | 舊 03 v0.8／既有基線 | 03／04／07 |
-| D-05 | ParsedDocument 五個、Chunk 六個頂層 key；vectors 位於 Chunk | 既有五／六鍵方向；D-46／47 具體化 | 13～15／schemas/ |
+| D-05 | 歷史五／六鍵方向；ParsedDocument 已由 D-49 改為四鍵 units，Chunk 保持六鍵、vectors 位於 Chunk | 由 D-49／D-52 細化，現行引用 13～15 | 13～15／schemas/ |
 | D-06 | fields／metadata 宣告 Schema；CSV 每列映射一次為 IngestionDocument（D-44／45 明確輸入格式） | 舊 05 §15～16／既有基線 | 05／06 |
 | D-07 | Recursive／Header-aware、Token 計量；Fixed-size 見 D-36；預設 text 與進階多任務／copy 依 D-47／48 | 舊 05 §13.1／既有基線，新增 Component 不取消原方法 | 04 |
 | D-08 | Embedding fields→vectors；摘要先由輸入提供；文字 Dense 優先 | 舊 05 §6／既有基線 | 04／05 |
@@ -77,11 +77,11 @@
 | D-32 | 名詞定義集中在 03 §3，05 統整資料／版本規則，三份資料細節見 13～15，08 保留決策紀錄；其餘引用主責文件 | 2026-10-15 10:22～10:24 建議後由使用者確認撰寫／已確認 | 03 §3、04～08／README |
 | D-33 | Memory／MongoDB 模式隨 Config 跨環境固定；DEV 用 Memory，FTEST／ENT 也用 Memory，不能只以部署覆寫切換 | 2026-10-15 11:03 使用者確認／已確認 | 03／05／06／07 |
 | D-34 | ResultSet 後處理只有去重＆合併、取 Top N、新模型算分三類；Fusion 為合併策略 | 2026-10-15 14:24 使用者提出、14:28 延續／已確認方向 | 04／05；討論記錄 09 |
-| D-35 | 排序與 rank 更新抽成共同處理，三類操作輸出皆有序；rank=1 最好且連續 | 2026-10-15 14:28 使用者要求、14:31 要求記錄／已確認方向 | 04／05；UI 提案 09 |
+| D-35 | 三類操作輸出皆有序；D-54 明確名次由 items 陣列位置表示，無獨立 rank 欄位 | 2026-10-15 14:28 使用者要求、14:31 要求記錄／已確認方向 | 04／05；UI 提案 09 |
 | D-36 | Chunking 新增 Fixed-size，沿用 Token 計量；保留 Recursive／Header-aware | 2026-10-16 09:42 使用者要求／方法已確認，精確 Token 邊界 Q-004 | 04／05／06；UI 待辦 10 |
 | D-37 | 階段重排 M0～M7；M4 獨立 AI 設定助手，M5 Builder 前後端與助手 UI 整合，M6 評估，M7 獨立交付 | 2026-10-16 09:31～09:45 討論及使用者修正／已確認方向 | 03／06／07／08 |
 | D-38 | 後續需求先更新文件；Prototype 調整記入 backlog，使用者要求改 UI 時才實作 | 2026-10-16 09:42／09:45 使用者要求／已確認 | README／03／06／08／10 |
-| D-39 | Indexing 保存全部 Chunk.fields／metadata，移除「儲存內容」；只選全文／向量／過濾索引；Chunking 預設繼承全部有效 metadata，排除功能有需求再規劃 | 2026-10-16 10:05 使用者確認前述三點／已確認，UI 尚未改 | 03／04／05／06；UIB-005／006 |
+| D-39 | Indexing 保存全部 Chunk.fields／metadata，移除「儲存內容」；只選全文／向量／過濾索引；Chunking 預設繼承全部有效 metadata，排除功能有需求再規劃 | 2026-10-16 使用者確認；Prototype v0.12 已完成配置互動，真實儲存未交付 | 03／04／05／06；UIB-005／006 |
 | D-40 | 新增 Module Developer，依公開 Module 契約開發 Component，讓 Builder User 選用；04 維護 Engine 擴充規格，11 維護開發指南 | 2026-10-28 使用者提出角色／修改 L1，並要求依前述討論調整文件／需求方向；具體介面、套件與發布政策仍待決 | 03／04／11；Q-001／Q-002／Q-022；UIB-010 |
 | D-41 | 固定兩個 repo：rag_platform 放 Builder 前後端與管理整合；rag_engine 放 SDK、Engine、Components／Adapters 與 Runtime API。Module Developer 在同 repo 提交 Component，整合測試後交付完整 Runtime Image；接口相容時 Builder／Runtime 可各自升級 | 2026-10-28 使用者確認 Builder 與 Engine＋擴充實作分為兩個 repo，並要求調整文件／已確認；精確套件／接口／CI 細節仍待決 | 03 §3.7／04／07／11；Q-001／Q-019／Q-021／Q-022；UIB-010 |
 | D-42 | 採 Schema 驅動 Component 設定表單：共用 Schema 輸出、UI hints、動態選項與 Engine 相依驗證；不相容選項可見且停用、無關欄位隱藏、進階收合、失效選擇保留報錯、未知必要控制項明示不支援 | 2026-10-28 使用者回覆「好，按照你的建議規劃」／方向與操作行為已確認；component-ui-0.1-draft 的鍵名、Meta-schema、工具與 API 仍待 M0 起分階段核定 | 04 §7.6／06／07 §5.8／11／12；Q-001／Q-002／Q-019／Q-022／Q-025；UIB-010 |
@@ -222,6 +222,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 - 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System；Local Search 持久化模式隨 Config 跨環境固定（D-33）；全部 Chunk.fields／metadata 保存與合法 metadata 全繼承（D-39）。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile；QueryContext[]／ResultSet 業務欄位已依 D-54 確認。仍待核定的是舊保存／繼承投影、原型短名稱／匯出標籤 migration。
 - D-62 已確認 B：共用 Flow／Executor，依固定 Config 快照在各 Module 選 Component，並傳入 input／本次 config／Context；不強制所有實例共用。精確 SDK 簽名及 Resolver／資源作用域仍待凍結。
 - 2026-10-28 補充：Component SDK 的 Module-specific I/O 包裝、run／初始化／釋放簽名、RunContext、Registry／Factory 與 Config Schema 介面待凍結；Registry 草案改稱 component_id，不直接改寫既有 Config。精確方法／版本引用、舊 module_id 別名與遷移須一致驗證；11 的 Python 程式只作介面示意。
+- 本輪交叉校對後新增 [23 System Config Schema 初版](23_system_config_schema_draft.md)，附可驗證的結構 Schema／五個案例與 SC-01～SC-10 建議；這些具體名稱與包裝仍待使用者討論，不因寫入文件就視為核定。已確認語意／修正證據見 [24](24_spec_alignment_review.md)。
 - 建議：先核定最小完整 Config＋單一公開 Engine interface；Pydantic 匯出 JSON Schema，UI 使用相同來源。用完整欄位路徑；未知別名拒絕。
 - 替代：直接沿用 Prototype 全部短名稱；需補齊其缺少型別與執行語意。
 - 負責角色：Engine＋Backend＋Frontend；阻擋 M0 契約凍結。
@@ -242,7 +243,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 - 已確認 D-47：六鍵外層、預設 text 免選欄位、進階多任務／copy、2＋3 結果串接、metadata 追溯與向量 Profile／來源資訊；精確資料見 [15](15_chunk_contract.md) 與 [JSON Schema](../schemas/chunk.schema.json)。
 - D-52：source_refs／chunking、fingerprint／全域序號為選用；保留其標準形狀與參考 ID helper，不當所有 Component 的必填驗收。DenseVector 規則不變；既有 Inference 改引用同一份 Chunk，不重寫向量定義。
 - 正式鍵名／nullable／自訂轉換、異質任務下游欄位適用條件、舊向量陣列遷移、跨語言 canonicalization 與 SDK 仍需審閱。身份 Hash 不解決索引原子提交；Q-007～Q-010／Q-015 保持有待決細節。
-- UI 僅記 [UIB-013](10_ui_adjustment_backlog.md#uib-013-chunk-contract)，未實作；來源範例與資料測試不等於 Tokenizer／Chunker／DB 驗收。
+- Prototype v0.12 已有 [UIB-013／014](10_ui_adjustment_backlog.md#uib-013-chunk-contract) 的任務／平面 Units 配置與預覽；真實 Tokenizer／Chunker／DB 未交付，資料測試不代替其驗收。
 
 - 2026-10-30 後續 D-48：多任務預設輸出 text；必要切分欄位缺失／型別錯誤／全空白、必要任務零產出及明確 copy 欄位缺失報錯。D-53 已確認由預設 Embedding Component 提供選用模板組合，不新增 Module；正式設定 Schema 未凍結、尚未實作，見 15 §9。
 
@@ -506,7 +507,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 ### Q-027 效能、容量、成本與觀測目標
 
 - 不清楚：資料量、平均長度、並發、回應時間、重建啟動時間、模型成本、Trace 內容與監控工具。
-- 建議：先建立可重現基準再定門檻；保留 request／run／module Trace，避免過早加入 HPA／Queue。
+- 建議：先建立可重現基準再定門檻，保留 request／run／module Trace。D-56 已確認首期記憶體 Queue，D-64 有初始限制；分散式持久 Queue／HPA 與生產容量承諾另行評估。
 - 替代：先採既有企業 SLA，需驗證 Local Memory／模型資源是否能滿足。
 - 負責角色：產品＋平台／Engine／QA；阻擋生產容量承諾與 M7 運維驗收。
 - 決策：未定；更新 03／04／07／08。
@@ -567,7 +568,7 @@ Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract�
 
 - 資料驗證：examples/parsed_document、examples/chunk 與 examples/inference；完整限制與執行方式見 14／15。
 - Parser 對照：Docling／MinerU 固定官方輸出映射，以及 MarkItDown／PyMuPDF4LLM 的已記錄本地解析證據，見 14 §5／§5.1。範例通過不表示已交付 Engine Component。
-- Prototype：結果處理既有能力見 10 §1～6；後續 UIB-001～013 尚未實作，三份新 Schema 的 UI 遷移集中於 UIB-011～013。
+- Prototype v0.12：現行原型完成／提案／後端待辦以 10 §1～7 為準。不可再把 UIB-001～013 全列未實作；多項已完成模擬，UIB-007／008 仍未核定，UIB-021～023 等累積項仍待改 UI／正式整合。
 - 優先決策：正式共用契約／SDK、模型與 Tokenizer、ID／更新／發布政策，再按 M0～M7 推進。D-53 的 Chunk 後模板組合與額外原文 Chunk 已確認需求，尚待實作及凍結具體設定格式，見 15 §9。
 
 已被取代的格式、臨時交接核對及逐輪交付流水帳不再佔用現行規格；歷史可由 Git 查閱。D-01～D-48 保留決策依據，Q-001～Q-027 保留剩餘取捨與階段 Gate，不能把文件整理視為功能驗收完成。
@@ -713,3 +714,12 @@ API 維持 7 支業務＋2 支 Health。B 的分頁只分批取得唯一 documen
 分頁仍是每頁列若干份文件摘要，next_cursor=null 為結束；每頁 100／上限 1,000、排序與 cursor 有效期等先沿用 22 的候選規格，沒有在本輪另行核定所有技術細節。未新增 source_revision 的大小／時間比較、最終成功版本判斷或版本回復政策。
 
 目前 Runtime API 業務範圍可先據此往下規劃，完整 OpenAPI 與實體索引／Remote 管理操作後續落實。§7 更新建議優先順序，先從最小完整 System Config 檢查 Developer 交付與 SDK 介面，再收斂模型／搜尋／更新及驗收；這是下一輪議程，不把未討論格式當成已定。本輪只改 Markdown／Backlog，未修改 UI、Runtime、可執行範例或共用機器 Schema。
+
+
+## 2026-11-05 D-66：規格交叉校對與 System Config 初版提案
+
+使用者授權先比對已討論結果與文件，拉齊漏更新／不一致，再提出 System Config Schema 初版、待討論與建議。已修正的既有語意以 D-49～D-65 為依據，詳見 24；不將新草案選項當成已確認決策。
+
+23 為整合初版，examples/system_config 提供共用骨架 Schema、fixture Config Schema、五種邏輯設定與 E 綁定示例。三層驗證為共同結構 → 所選 Component 參數 → 跨模組語意，E 綁定／真實資源就緒另驗；離線案例不是 Engine、正式 Descriptor／Manifest Meta-schema、模型／DB 或部署驗收。
+
+SC-01～SC-10 保留具體格式、Profile、Remote 範圍／操作、參數正規化與遷移等待議點。Runtime 限制仍歸 E／22，System ID／Config Revision 由可信管理提供；沒有 Generation、任意 DAG、data_space_id、多邏輯索引或工作取消的新需求。UI 只更新 Backlog，程式與圖面呈現不變；圖說補明邏輯關係不代表 Library 直連 Builder DB 或逐 Config 新建 API service。

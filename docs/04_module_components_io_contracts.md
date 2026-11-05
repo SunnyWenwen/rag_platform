@@ -82,10 +82,10 @@ Schema 格式檢查、真實連線檢查、Profile 相容檢查、索引可查�
 
 Flow 只保留既定 Module 骨架與已核可的分支／合併規則。Config 儲存或啟用時先驗證 I/O、版本、相依及 Remote 覆蓋範圍，可快取解析後步驟；不要求每次請求重做完整 Schema 驗證，也不新增任意 DAG。
 
-以下為執行概念，不凍結 SDK 方法、Config 格式或 ModuleResult 包裝：
+以下以本地 Ingestion 的 ModuleResult.data 為例，不凍結 SDK 方法、Config 格式或包裝。Inference 直接傳 QueryContext[]，不套用此處的 data 解包：
 
 ```python
-async def execute(data, snapshot, context):
+async def execute_ingestion(data, snapshot, context):
     # snapshot.steps 是內部解析結果，不是新增公開 Config／資料欄位。
     for step in snapshot.steps:
         component = await component_resolver.resolve(step, context)
@@ -149,7 +149,7 @@ Component 只需滿足共用 I/O 及自身功能語意，不強制實作 _rag；
 
 ### 3.1 I/O 接線
 
-Ingestion 本地教學可用 ModuleResult[T] 包裝成功資料；推論三模組的業務接線統一 list[QueryContext] → list[QueryContext]，沒有 InferenceState／data 外框。Config、資源與可信授權由 context 注入；正式生命週期與錯誤介面仍待 SDK 核定。
+Ingestion 本地教學可用 ModuleResult[T] 包裝成功資料；推論三模組的業務接線統一 list[QueryContext] → list[QueryContext]，沒有 InferenceState／data 外框。D-62：本次 Component Config 以獨立參數傳入，資源與可信授權由 context 提供；兩者不混同。正式生命週期與錯誤介面仍待 SDK 核定。
 
 | 模組 | 業務 Input | 業務 Output | 另行注入／保留 |
 |---|---|---|---|
@@ -172,7 +172,7 @@ Ingestion 本地教學可用 ModuleResult[T] 包裝成功資料；推論三模�
 - 結果必須能對應輸入的成功／失敗／skipped 項目。空檢索為成功，索引或 Provider 故障為失敗。
 - D-56 已確認以 document_id 完整替換、逐文件成功／失敗；未完整成功不得標 completed，失敗清理／保留舊版由 backend 落實。D-60 不加平台 Query 讀寫鎖，允許更新中讀到暫時新舊混合，不保證原子可見性。Run partial 彙總方向已確認，精確 Envelope 及實體提交機制仍待整理，見 [21](21_runtime_ingestion_inference_api_inventory.md)。
 - 重試由共用政策管理；HTTP 重送與內部重試不能形成無界倍增。僅在可安全重試且暫時性錯誤時啟用。
-- Indexing／資產提交具副作用，需冪等與版本檢查。讀取 checkpoint 不等於提交 checkpoint。
+- Indexing／資產提交具副作用，未知寫入不自動重試；具體冪等／版本控制待 Q-008／Q-017。第一版不保存續跑 checkpoint，不以讀取成功宣稱提交已完成。
 - 每個本地模組／單 Module 遠端呼叫記錄 System／Config／Run／Trace、耗時、數量及標準錯誤；Remote Pipeline 預設以整段呼叫記錄，內部各步診斷為選配。不記錄真實 Secret，未知用量不填 0。
 - Provider failure 不偽裝成沒有相關資料；fallback 需明示 warnings 及實際方法。
 
@@ -233,7 +233,7 @@ Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一�
 
 **待決**：Q-004、Q-005、Q-007；Token 精確計數、切分 fallback 與 overlap 邊界需測試材料。
 
-D-53 功能待實作：預設 Chunker 可選擇另留每 Unit／任務的完整原文 Chunk，預設關閉；已有相同完整切片則不重複新增。它與 copy 原文欄位獨立，不跨 Unit 合併，新增結果仍走 Embedding／Indexing 與模型上限檢查。行為與例子見 [15 §9.2](15_chunk_contract.md#include-original-chunk)。
+D-53 真實 Engine 功能待實作，Prototype v0.12 已有控制與教學預覽：預設 Chunker 可選擇另留每 Unit／任務的完整原文 Chunk，預設關閉；已有相同完整切片則不重複新增。它與 copy 原文欄位獨立，不跨 Unit 合併，新增結果仍走 Embedding／Indexing 與模型上限檢查。行為與例子見 [15 §9.2](15_chunk_contract.md#include-original-chunk)。
 
 ### 4.4 Embedding
 
@@ -410,7 +410,7 @@ Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root ar
 
 **驗收**：不生成新 chunk_id；重新 rank；保留原 Retrieval Trace。串接 Timeout／錯誤時不假裝 Rerank=None。
 
-**與最新結果操作的對齊**：Rerank 是「新模型算分」的一種方法；模型輸出經共用排序、Top N 及 rank 更新。Top N 保留為可獨立描述的操作能力，但最新 UI 不要求獨立卡片，而是動作的收尾參數；v0.9 的 Reranker 輸出 Top N 預設 3，見 [10](10_ui_adjustment_backlog.md)。原型 API 說明要求 top_n 等於輸入 documents 數、回應完整評分，再由平台依 UI 上限截斷；正式 Adapter 的完整覆蓋驗證與服務上限仍待 Q-003／Q-014，不能默默依服務預設值少回候選。
+**與最新結果操作的對齊**：Rerank 是「新模型算分」的一種方法；模型輸出經共用排序與 Top N，名次由 items 陣列位置表示，不新增 rank 欄位。Top N 保留為可獨立描述的操作能力，但最新 UI 不要求獨立卡片，而是動作的收尾參數；v0.9 的 Reranker 輸出 Top N 預設 3，見 [10](10_ui_adjustment_backlog.md)。原型 API 說明要求 top_n 等於輸入 documents 數、回應完整評分，再由平台依 UI 上限截斷；正式 Adapter 的完整覆蓋驗證與服務上限仍待 Q-003／Q-014，不能默默依服務預設值少回候選。
 
 **待決**：Q-003、Q-014、Q-017、Q-023；內容欄位分隔、輸入極限、全候選評分與服務回傳缺項政策需核定。
 
@@ -454,7 +454,7 @@ IngestionDocument／ParsedDocument／Chunk 的現行草案分別引用 13／14�
 | 身分與設定 | component_id、實作版本、模組類型；Config Schema 列明參數型別、預設值、必填／條件必填、限制與說明；與 package／SDK 版本分開追蹤 |
 | I/O 與語意 | 宣告相容的 Module Input／Output 型別與 Contract 版本；驗證來源、ID、欄位繼承、分數方向與引用等不變條件，共用契約由平台維護 |
 | 能力相依 | 宣告 requires／provides；包含 Parser 輸出 Unit 欄位／文字格式、索引能力、Tokenizer、向量維度／模型及配套 Component 相依；例如 Indexing 與 Retrieval 可讀寫的 artifact 版本 |
-| 執行生命週期 | 宣告 async／batch／streaming 支援；依 Engine 規範初始化、執行、取消與釋放；具體簽名留 Q-002／Q-017 |
+| 執行生命週期 | 宣告 async／batch／streaming 支援；依 Engine 規範初始化、執行與釋放；可中斷能力須明示，首期不提供文件工作取消 API；具體簽名留 Q-002／Q-017 |
 | 資源需求 | 列明外部 API／DB、Secret 邏輯引用、暫存／持久化儲存、CPU／Memory 的最低／建議需求與測量前提，以及 DEV 測試服務需求；透過受控 RunContext／服務解析介面取得資源，不把憑證寫入 Config、輸出或 Trace |
 | 版本與變更影響 | 宣告相容的 SDK／Engine／Contract 版本；逐項說明實作升級或有效參數改變後，是否須重新 Parsing、Chunking、Embedding、重建 Index 或只重測 Inference；由 Engine 依相容政策判定，不只信任作者宣告 |
 | 維護與驗收 | 提供維護者、用途／限制、範例 Config、輸入／預期輸出、固定測資、契約／語意測試、錯誤案例及相容版本測試 |
@@ -531,3 +531,6 @@ DEV 與 FTEST／ENT 維持相同方法選擇／解析版本與邏輯 Config，�
 每 System 一組邏輯索引，IndexBinding 只有 artifact_type／target／fulltext_fields／filter_fields／vector_bindings，省略 index_ref。Indexing 提供，Engine 驗證與管理；Retrieval 須宣告支援格式／版本，並只搜尋 Binding 宣告且相容的能力。target 依受控註冊的格式 Schema 驗證；Developer 還需共同儲存／讀取規格與 SDK／範例才能開發。完整定義見 [19 IndexBinding 與索引格式契約](19_index_binding_artifact_contract.md)。
 
 Component Config 是處理參數；RunContext 是 Engine 準備的必要資源／Binding 引用，實際 Client／索引物件不放業務 JSON。searchable 不在 Binding，Runtime 管就緒；格式版本與 Component 版本、資料發布版本分開。內建 ES target 有 collection，Local target 可空並使用 System 唯一資源。首版不新增多組選擇；UI 差異只記 backlog。正式 SDK、後端讀寫布局、Remote 協定及更新／發布政策仍需後續核定／實作。
+
+
+整合設定的候選形狀與五個離線案例見 [23](23_system_config_schema_draft.md)；它不凍結 Descriptor／Manifest／SDK，也不等同已交付 Engine。Component 識別與參數、計畫及 E 的資源／限制需分層驗證；審閱差異見 [24](24_spec_alignment_review.md)。

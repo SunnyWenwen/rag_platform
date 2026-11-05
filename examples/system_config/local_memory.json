@@ -1,0 +1,146 @@
+{
+  "contract_version": "system-config/0.1-draft",
+  "document_schema": {
+    "unit_schema": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": true
+    },
+    "metadata_schema": {
+      "type": "object",
+      "properties": {
+        "department": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "llms": {},
+  "pipelines": {
+    "ingestion": {
+      "parsing": {
+        "profiles": {
+          "records": {
+            "component_id": "example.parsing.structured_json",
+            "implementation_version": "1.0.0-fixture",
+            "parameters": {}
+          }
+        }
+      },
+      "chunking": {
+        "tasks": [
+          {
+            "task_id": "text",
+            "component": {
+              "component_id": "example.chunking.recursive",
+              "implementation_version": "1.0.0-fixture",
+              "parameters": {
+                "split_field": "text",
+                "output_field": "text",
+                "copy_fields": [],
+                "max_tokens": 500,
+                "overlap_tokens": 50,
+                "tokenizer_profile_id": "example.tokenizer/v1",
+                "separators": [
+                  "\n\n",
+                  "\n",
+                  " ",
+                  ""
+                ],
+                "include_original_chunk": false
+              }
+            }
+          }
+        ]
+      },
+      "embedding": {
+        "component_id": "example.embedding.api",
+        "implementation_version": "1.0.0-fixture",
+        "parameters": {
+          "profile_id": "example.embedding/v1",
+          "service_ref": "embedding.main",
+          "mappings": [
+            {
+              "source_field": "text",
+              "output_name": "text"
+            }
+          ]
+        }
+      },
+      "indexing": {
+        "component_id": "example.indexing.local_search",
+        "implementation_version": "1.0.0-fixture",
+        "parameters": {
+          "persistence": "memory",
+          "fulltext_fields": [
+            "fields.text"
+          ],
+          "vector_fields": [
+            "vectors.text"
+          ],
+          "filter_fields": [
+            "metadata.department"
+          ]
+        }
+      }
+    },
+    "inference": {
+      "retrieval": {
+        "component_id": "example.retrieval.local_search",
+        "implementation_version": "1.0.0-fixture",
+        "parameters": {
+          "routes": [
+            {
+              "key": "text_bm25",
+              "kind": "fulltext",
+              "field": "fields.text",
+              "top_k": 20
+            },
+            {
+              "key": "text_vector",
+              "kind": "vector",
+              "field": "vectors.text",
+              "top_k": 20
+            }
+          ],
+          "filters": []
+        }
+      },
+      "processing": {
+        "same_query": {
+          "enabled": true,
+          "after": "retrieval",
+          "fusion": {
+            "method": "rrf",
+            "parameters": {
+              "k": 60
+            }
+          }
+        },
+        "cross_query": {
+          "enabled": true,
+          "after": "retrieval",
+          "fusion": {
+            "method": "rrf",
+            "parameters": {
+              "k": 60
+            }
+          }
+        },
+        "merge_key": "chunk_id",
+        "top_n": {
+          "after_retrieval_merge": 20
+        }
+      }
+    }
+  }
+}

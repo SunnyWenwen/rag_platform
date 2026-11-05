@@ -1,0 +1,293 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/retrieval/system-config/0.1-draft",
+  "title": "System Config 0.1 discussion draft — structural validation only",
+  "description": "Draft D logical config. Registry parameters, capability compatibility and E bindings require separate validation. Not a released SDK.",
+  "type": "object",
+  "properties": {
+    "contract_version": {
+      "const": "system-config/0.1-draft"
+    },
+    "document_schema": {
+      "type": "object",
+      "properties": {
+        "unit_schema": {
+          "type": "object"
+        },
+        "metadata_schema": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "unit_schema",
+        "metadata_schema"
+      ],
+      "additionalProperties": false
+    },
+    "llms": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "profile_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "service_ref": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "profile_id",
+          "service_ref"
+        ],
+        "additionalProperties": false
+      },
+      "default": {}
+    },
+    "pipelines": {
+      "type": "object",
+      "properties": {
+        "ingestion": {
+          "$ref": "#/$defs/Ingestion"
+        },
+        "inference": {
+          "$ref": "#/$defs/Inference"
+        }
+      },
+      "required": [
+        "ingestion",
+        "inference"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "contract_version",
+    "document_schema",
+    "pipelines"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "ComponentSelection": {
+      "type": "object",
+      "properties": {
+        "component_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "implementation_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parameters": {
+          "type": "object",
+          "default": {}
+        }
+      },
+      "required": [
+        "component_id",
+        "implementation_version"
+      ],
+      "additionalProperties": false
+    },
+    "Fusion": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "enum": [
+            "rrf",
+            "sum_score"
+          ]
+        },
+        "parameters": {
+          "type": "object",
+          "default": {}
+        }
+      },
+      "required": [
+        "method"
+      ],
+      "additionalProperties": false
+    },
+    "MergeLayer": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "after": {
+          "enum": [
+            "retrieval",
+            "rerank"
+          ]
+        },
+        "fusion": {
+          "$ref": "#/$defs/Fusion"
+        }
+      },
+      "required": [
+        "enabled",
+        "after",
+        "fusion"
+      ],
+      "additionalProperties": false
+    },
+    "Processing": {
+      "type": "object",
+      "properties": {
+        "same_query": {
+          "$ref": "#/$defs/MergeLayer"
+        },
+        "cross_query": {
+          "$ref": "#/$defs/MergeLayer"
+        },
+        "merge_key": {
+          "enum": [
+            "chunk_id",
+            "document_id"
+          ]
+        },
+        "top_n": {
+          "type": "object",
+          "properties": {
+            "after_retrieval_merge": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "after_rerank": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "after_rerank_merge": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "same_query",
+        "cross_query",
+        "merge_key"
+      ],
+      "additionalProperties": false
+    },
+    "ParserSlot": {
+      "type": "object",
+      "properties": {
+        "profiles": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/ComponentSelection"
+          }
+        },
+        "default_profile": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "profiles"
+      ],
+      "additionalProperties": false
+    },
+    "ChunkTask": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "component": {
+          "$ref": "#/$defs/ComponentSelection"
+        }
+      },
+      "required": [
+        "task_id",
+        "component"
+      ],
+      "additionalProperties": false
+    },
+    "Ingestion": {
+      "type": "object",
+      "properties": {
+        "import": {
+          "$ref": "#/$defs/ComponentSelection"
+        },
+        "parsing": {
+          "$ref": "#/$defs/ParserSlot"
+        },
+        "chunking": {
+          "type": "object",
+          "properties": {
+            "tasks": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/ChunkTask"
+              }
+            }
+          },
+          "required": [
+            "tasks"
+          ],
+          "additionalProperties": false
+        },
+        "embedding": {
+          "$ref": "#/$defs/ComponentSelection"
+        },
+        "indexing": {
+          "$ref": "#/$defs/ComponentSelection"
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ComponentSelection"
+          },
+          "default": []
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "Inference": {
+      "type": "object",
+      "properties": {
+        "query_transformation": {
+          "$ref": "#/$defs/ComponentSelection"
+        },
+        "retrieval": {
+          "$ref": "#/$defs/ComponentSelection"
+        },
+        "rerank": {
+          "$ref": "#/$defs/ComponentSelection"
+        },
+        "processing": {
+          "$ref": "#/$defs/Processing"
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ComponentSelection"
+          },
+          "default": []
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  }
+}

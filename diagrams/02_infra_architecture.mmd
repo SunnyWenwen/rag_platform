@@ -9,6 +9,9 @@ flowchart TB
   %% Same System/Config Revision keeps the same logical Config across DEV/FTEST/ENT.
   %% Deployment Settings bind environment URLs, Secrets, data/index targets and resources.
   %% Code/Image reuse and Config-loading edges are dashed; business requests are solid.
+  %% Config Store edge denotes provenance; Backend delivers validated Config through trusted management.
+  %% Library does not connect to Builder DB. DEV System nodes are logical scopes on a shared Executor.
+  %% Existing tSSO node is a target sketch; Builder login implementation remains deferred.
   %% tSSO edges show login/authentication, not a proxy for every business request.
   %% Backend starts/configures Runtime; Runtime internally initializes the System instance.
   %% Shared/dedicated Runtime allocation and instance multiplicity remain undecided.

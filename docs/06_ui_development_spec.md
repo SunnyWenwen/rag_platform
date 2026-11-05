@@ -44,7 +44,7 @@ Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保�
 
 - Parsing 初始只顯示「結構化 JSON」；其他格式及所有相關設定集中在預設關閉的「進階選項」，展開才出現。正式 Parser 能力另依 Q-005，顯示選項不等於可執行。
 - Create／Edit 前段有 Document Schema；先宣告 Unit 內容欄位／文件 metadata，再產生下游欄位選項。
-- 2026-10-16 已確認：Indexing 預設保存全部 Chunk.fields／metadata，移除「儲存內容」選單，只選全文／向量索引與可過濾欄位；Chunking 預設繼承全部合法 metadata，第一版不新增排除表單。對應 UI 尚未修改，見 10 的 UIB-005／006。
+- 2026-10-16 已確認：Indexing 預設保存全部 Chunk.fields／metadata，移除「儲存內容」選單，只選全文／向量索引與可過濾欄位；Chunking 預設繼承全部合法 metadata，第一版不新增排除表單。Prototype v0.12 已有上述保存／繼承互動，見 10 的 UIB-005／006；真實儲存 Adapter 尚待實作。
 - LLM 服務集中管理；Rewrite／Multi-query 在需要時以下拉引用，同一服務不重填連線。
 - Rewrite／Multi-query 的 Prompt 可編輯，分別保留草稿；提供變數插入、驗證與預覽。
 - Rerank 可查看固定平台 Request／Response 範例及 index／score 對應說明；不宣稱是所有模型的統一標準。

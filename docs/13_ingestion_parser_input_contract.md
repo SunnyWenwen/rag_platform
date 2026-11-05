@@ -4,7 +4,7 @@
 
 > 2026-11-03 D-52：API／Parser Input 的根結構不變；合法 metadata 可含 Component 支援的文件層處理提示，例如 chunking_mode=passthrough。須在 System metadata Schema 宣告，由對應 Component 說明讀取與預設行為，不是全域覆寫 Config 的入口；_rag 追溯由輸出 Component 選填。見 [15 §4.1](15_chunk_contract.md)。
 
-> 2026-10-29（Asia/Taipei）· 共用輸入 Schema 與語意已確認（D-44／D-45）；尚未實作 API／SDK，批次、版本政策及執行細節另議。
+> 2026-10-29（Asia/Taipei）· 共用輸入 Schema 與語意已確認（D-44／D-45）；尚未實作 API／SDK；批次容器已由 D-58 確認非空 List，版本生成與執行細節另議。
 >
 > 本文記錄 JSON-only、扁平輸入、多 Parser 自動路由，以及使用者確認「Ingestion API 與 Parser Input 使用相同 Schema」。共同物件稱 IngestionDocument；不另設另一份公開 ParserInput。解析後輸出依 [14 ParsedDocument](14_parsed_document_contract.md)，切分後依 [15 Chunk](15_chunk_contract.md)；三者各有共用 Schema，不混用輸入與輸出欄位。
 
@@ -117,7 +117,7 @@ content.units 是平面的內容單位列表，由相容 Adapter 驗證後與外
 | Engine 的共用入口／SDK 資源能力 | 驗證共同外層、授權取得內容、解碼及必要限制；路由到已設定的 Parser |
 | Parser／Adapter | 理解來源或轉換已解析資料，產出統一 ParsedDocument，詳見 [14 的情境與結構分類](14_parsed_document_contract.md#0-情境與分類結果報告摘要) |
 
-JSON-only、扁平輸入、三種來源、API／Parser 共用契約與多 Parser 路由方向已確認；API／SDK 尚未實作，實際格式需有相容 Component 才可執行。單筆外層 Schema 與 D-58 的 List 接收格式已確認；數值限制、版本與正式供應者支援仍依正文逐項核定。直接匯入最終 Chunk／vectors 另外討論，不混入「上游已解析」的支援承諾。
+JSON-only、扁平輸入、三種來源、API／Parser 共用契約與多 Parser 路由方向已確認；API／SDK 尚未實作，實際格式需有相容 Component 才可執行。單筆外層 Schema 與 D-58 的 List 接收格式已確認；D-64 的 Runtime 初始大小／文件數限制已集中在 22；來源版本生成、逐 Provider／Client 限制與正式供應者支援仍依正文核定。直接匯入最終 Chunk／vectors 另外討論，不混入「上游已解析」的支援承諾。
 
 ## 1. 已確認方向與責任
 
@@ -174,7 +174,7 @@ D-58 已確認一支 POST /v1/ingestions，body 為非空 IngestionDocument[]，
 }
 ```
 
-預設 Structured JSON Parser 可依既定設定把 content 的鍵轉入 fields；正式預設／必要欄位與未知欄位政策仍由 Q-002 決定。Builder CSV 映射只做一次；若已映射成目標鍵，Parser 不重複映射。metadata 使用外層欄位，不從任意 content 欄位自動猜測。
+預設 Structured JSON Parser 可依既定設定把 content 的鍵轉為 ParsedDocument.units 中每筆 dict 的直接欄位；正式預設／必要欄位與未知欄位政策仍由 Q-002 決定。Builder CSV 映射只做一次；若已映射成目標鍵，Parser 不重複映射。metadata 使用外層欄位，不從任意 content 欄位自動猜測。
 
 ### 3.2 PDF 資源引用
 

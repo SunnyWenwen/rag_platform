@@ -1,0 +1,46 @@
+{
+  "note": "Illustrative E only; no E schema is frozen. Connections and secrets are placeholders. Not deployable.",
+  "service_bindings": {
+    "embedding.main": {
+      "base_url": "https://embedding.example.invalid/v1",
+      "secret_ref": "embedding-api-key"
+    },
+    "llm.main": {
+      "base_url": "https://llm.example.invalid/v1",
+      "secret_ref": "llm-api-key"
+    },
+    "rerank.main": {
+      "base_url": "https://rerank.example.invalid",
+      "secret_ref": "rerank-api-key"
+    },
+    "elasticsearch.main": {
+      "base_url": "https://elasticsearch.example.invalid",
+      "secret_ref": "elasticsearch-credentials",
+      "target": {
+        "collection": "workspace-system-example"
+      }
+    }
+  },
+  "remote_bindings": {
+    "example.remote.page_parser@1.0.0-fixture": {
+      "mode": "external",
+      "base_url": "https://parser.example.invalid",
+      "secret_ref": "parser-api-key"
+    },
+    "example.remote.document_preparation@1.0.0-fixture": {
+      "mode": "external",
+      "base_url": "https://preparation.example.invalid",
+      "secret_ref": "preparation-api-key"
+    }
+  },
+  "runtime_settings": {
+    "ingestion": {
+      "max_concurrency_per_system": 1,
+      "max_concurrency_total": 2
+    },
+    "inference": {
+      "max_concurrency_per_system": 2,
+      "max_concurrency_total": 8
+    }
+  }
+}

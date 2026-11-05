@@ -1,0 +1,245 @@
+{
+  "contract_version": "system-config/0.1-draft",
+  "document_schema": {
+    "unit_schema": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "faq": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "text",
+        "title",
+        "summary",
+        "faq"
+      ],
+      "additionalProperties": true
+    },
+    "metadata_schema": {
+      "type": "object",
+      "properties": {
+        "department": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "llms": {
+    "rewrite": {
+      "profile_id": "example.llm/v1",
+      "service_ref": "llm.main"
+    }
+  },
+  "pipelines": {
+    "ingestion": {
+      "parsing": {
+        "profiles": {
+          "records": {
+            "component_id": "example.parsing.structured_json",
+            "implementation_version": "1.0.0-fixture",
+            "parameters": {}
+          }
+        }
+      },
+      "chunking": {
+        "tasks": [
+          {
+            "task_id": "text",
+            "component": {
+              "component_id": "example.chunking.recursive",
+              "implementation_version": "1.0.0-fixture",
+              "parameters": {
+                "split_field": "text",
+                "output_field": "text",
+                "copy_fields": [
+                  {
+                    "source_field": "title",
+                    "output_field": "title"
+                  },
+                  {
+                    "source_field": "summary",
+                    "output_field": "summary"
+                  }
+                ],
+                "max_tokens": 500,
+                "overlap_tokens": 50,
+                "tokenizer_profile_id": "example.tokenizer/v1",
+                "separators": [
+                  "\n\n",
+                  "\n",
+                  " ",
+                  ""
+                ],
+                "include_original_chunk": true
+              }
+            }
+          },
+          {
+            "task_id": "faq",
+            "component": {
+              "component_id": "example.chunking.recursive",
+              "implementation_version": "1.0.0-fixture",
+              "parameters": {
+                "split_field": "faq",
+                "output_field": "text",
+                "copy_fields": [
+                  {
+                    "source_field": "title",
+                    "output_field": "title"
+                  },
+                  {
+                    "source_field": "summary",
+                    "output_field": "summary"
+                  }
+                ],
+                "max_tokens": 300,
+                "overlap_tokens": 50,
+                "tokenizer_profile_id": "example.tokenizer/v1",
+                "separators": [
+                  "\n\n",
+                  "\n",
+                  " ",
+                  ""
+                ],
+                "include_original_chunk": true
+              }
+            }
+          }
+        ]
+      },
+      "embedding": {
+        "component_id": "example.embedding.api",
+        "implementation_version": "1.0.0-fixture",
+        "parameters": {
+          "profile_id": "example.embedding/v1",
+          "service_ref": "embedding.main",
+          "mappings": [
+            {
+              "source_field": "embedding_text",
+              "output_name": "text"
+            },
+            {
+              "source_field": "summary",
+              "output_name": "summary"
+            }
+          ],
+          "field_templates": [
+            {
+              "output_field": "embedding_text",
+              "template": "標題：{{fields.title}}\n內容：{{fields.text}}"
+            }
+          ]
+        }
+      },
+      "indexing": {
+        "component_id": "example.indexing.local_search",
+        "implementation_version": "1.0.0-fixture",
+        "parameters": {
+          "persistence": "memory",
+          "fulltext_fields": [
+            "fields.text",
+            "fields.embedding_text",
+            "fields.summary"
+          ],
+          "vector_fields": [
+            "vectors.text",
+            "vectors.summary"
+          ],
+          "filter_fields": [
+            "metadata.department"
+          ]
+        }
+      }
+    },
+    "inference": {
+      "retrieval": {
+        "component_id": "example.retrieval.local_search",
+        "implementation_version": "1.0.0-fixture",
+        "parameters": {
+          "routes": [
+            {
+              "key": "text_bm25",
+              "kind": "fulltext",
+              "field": "fields.text",
+              "top_k": 20
+            },
+            {
+              "key": "text_vector",
+              "kind": "vector",
+              "field": "vectors.text",
+              "top_k": 20
+            },
+            {
+              "key": "summary_vector",
+              "kind": "vector",
+              "field": "vectors.summary",
+              "top_k": 20
+            }
+          ],
+          "filters": []
+        }
+      },
+      "processing": {
+        "same_query": {
+          "enabled": true,
+          "after": "retrieval",
+          "fusion": {
+            "method": "rrf",
+            "parameters": {
+              "k": 60
+            }
+          }
+        },
+        "cross_query": {
+          "enabled": true,
+          "after": "retrieval",
+          "fusion": {
+            "method": "rrf",
+            "parameters": {
+              "k": 60
+            }
+          }
+        },
+        "merge_key": "document_id",
+        "top_n": {
+          "after_retrieval_merge": 20,
+          "after_rerank": 3
+        }
+      },
+      "query_transformation": {
+        "component_id": "example.query.rewrite",
+        "implementation_version": "1.0.0-fixture",
+        "parameters": {
+          "llm_ref": "rewrite",
+          "count": 2,
+          "include_original": true,
+          "prompt": "請產生不同搜尋表述：{{query}}"
+        }
+      },
+      "rerank": {
+        "component_id": "example.rerank.api",
+        "implementation_version": "1.0.0-fixture",
+        "parameters": {
+          "service_ref": "rerank.main",
+          "content_field": "fields.text",
+          "query_source": "ori_query"
+        }
+      }
+    }
+  }
+}

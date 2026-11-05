@@ -119,9 +119,12 @@ Component Config 是處理參數；RunContext 是 Engine 準備的必要資源�
 
 ## 2026-11-05 D-58：文件管理能力配套
 
-Runtime 新增查 document_id 存在、列出所有 ID 與 retire 直接刪除能力，見 [21 §9](21_runtime_ingestion_inference_api_inventory.md)。資料由平台直接管理時走相容 storage／index adapter；若包含 Indexing／Retrieval 的私有 Remote Service 管理資料，需宣告可完成上述操作的 operation 或受控存取方式，不能假設只有 ingest/query 就能管理文件。
+Runtime 提供文件存在、文件摘要清單與 retire 直接刪除能力；D-65 清單回 documents[]／next_cursor，每筆 document_id／source_revisions[]，從實際儲存去重彙整，不推定最新成功版本，見 [21 §9](21_runtime_ingestion_inference_api_inventory.md)。資料由平台直接管理時走相容 storage／index adapter；若包含 Indexing／Retrieval 的私有 Remote Service 管理資料，需宣告可完成上述操作的 operation 或受控存取方式，不能假設只有 ingest/query 就能管理文件。
 
 無狀態 Parser／Embedding／Rerank 服務不因此多交付資料管理端點。Manifest／Artifact／SDK 的具體欄位與操作規格仍待定，沒有加入新 Pipeline Module、IndexBinding 根鍵、data_space_id 或取消功能。不支援管理操作時明確回報／卡控，不回空清單、false 或成功刪除冒充支援。
 
 
 D-61：FTEST／ENT 的一 Pod＋一 API service＋一份 Config 指主 Runtime 的初期基準。選用 Remote Image 仍另外部署必要遠端服務；External 仍由 Developer 維運，沒有取消 D-51 的三種模式。Builder 共用 API service 數不隨 UI Config 數量線性增加；D-62 採共用 Flow，Component／索引資源與 Remote 服務需求仍按其狀態及模式管理；Remote 接管步驟只呼叫一次，本地逐次 Config 不會自動變成遠端 HTTP payload，正式傳參協定仍待 Q-028。
+
+
+System Config 的 segments 候選表示見 [23](23_system_config_schema_draft.md)，覆蓋範圍由核可 Descriptor／Manifest 推導，避免在每份 User Config 重複手寫整份服務宣告。這是待議的具體包裝，不凍結 Manifest／operation／啟動與 per-call 參數協定；傳輸仍不附完整 Context／Config／Secret。

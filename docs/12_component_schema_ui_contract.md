@@ -28,7 +28,7 @@ Module Developer 宣告 Component 的參數、顯示需求及相依能力；Engi
 
 | 描述 | 定義內容 | 權威來源 |
 |---|---|---|
-| Module I/O Contract | 執行資料的型別與語意，例如 IngestionDocument、ParsedDocument、Chunk、ResultSet | 04 的接線、13～15／schemas/ 的資料定義、05 的 Inference；Component 必須符合 |
+| Module I/O Contract | 執行資料的型別與語意，例如 IngestionDocument、ParsedDocument、Chunk、QueryContext[]（內含 ResultSet） | 04 的接線、13～15／schemas/ 的資料定義、05 的 Inference；Component 必須符合 |
 | Component Config Schema | 特定方法的參數、型別、必填、預設值與限制 | Component 的 `config_type`；Engine 驗證 |
 | UI hints | 同一參數如何呈現、順序、進階區與控制項需求 | Component 宣告；Builder 轉換成前端控制項 |
 
@@ -374,3 +374,6 @@ Inference 的資料 contract_ref 同步 query-context-list/0.3-draft；Query Tra
 每 System 一組邏輯索引，IndexBinding 只有 artifact_type／target／fulltext_fields／filter_fields／vector_bindings，省略 index_ref。Indexing 提供，Engine 驗證與管理；Retrieval 須宣告支援格式／版本，並只搜尋 Binding 宣告且相容的能力。target 依受控註冊的格式 Schema 驗證；Developer 還需共同儲存／讀取規格與 SDK／範例才能開發。完整定義見 [19 IndexBinding 與索引格式契約](19_index_binding_artifact_contract.md)。
 
 Component Config 是處理參數；RunContext 是 Engine 準備的必要資源／Binding 引用，實際 Client／索引物件不放業務 JSON。searchable 不在 Binding，Runtime 管就緒；格式版本與 Component 版本、資料發布版本分開。內建 ES target 有 collection，Local target 可空並使用 System 唯一資源。首版不新增多組選擇；UI 差異只記 backlog。正式 SDK、後端讀寫布局、Remote 協定及更新／發布政策仍需後續核定／實作。
+
+
+整合設定初版見 [23](23_system_config_schema_draft.md)。Config 保存 component_id／implementation_version／parameters；Registry 取得本文件所述的 Descriptor.config_schema，再驗證所選參數。examples/system_config/catalog.fixture.json 是離線測試資料，並非已核定 Descriptor／Manifest Meta-schema；動態 UI hints／option_sources／rules 的具體格式仍照本文件頂端狀態另行討論。

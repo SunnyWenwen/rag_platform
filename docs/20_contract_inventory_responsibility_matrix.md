@@ -103,6 +103,8 @@ Parser 的具體教學入口是 [16](16_parser_component_development_examples.md
 
 ## 6. 既有規格位置與待定事項
 
+2026-11-05 整合討論稿：[23 System Config Schema 初版](23_system_config_schema_draft.md)提供 D 的共同骨架與五案例，B／C 仍以核可目錄提供參數／能力，E 仍提供環境實值與 Runtime 限制。具體 SC 選項尚未定案；交叉校對修正見 [24](24_spec_alignment_review.md)。
+
 ### 6.1 精確定義的閱讀入口
 
 - **A**：[04 Module I/O](04_module_components_io_contracts.md)、[13 IngestionDocument](13_ingestion_parser_input_contract.md)、[14 ParsedDocument](14_parsed_document_contract.md)、[15 Chunk](15_chunk_contract.md)、[17 Pydantic 範例](17_pydantic_contracts_draft.md)、[19 IndexBinding／Artifact](19_index_binding_artifact_contract.md)。Inference 沿用 QueryContext[]，不恢復 InferenceState wrapper。

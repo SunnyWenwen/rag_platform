@@ -1,0 +1,491 @@
+{
+  "note": "Test fixtures only. Not the final Descriptor/Manifest meta-schema, installed components or live services.",
+  "components": [
+    {
+      "component_id": "example.parsing.structured_json",
+      "implementation_version": "1.0.0-fixture",
+      "pipeline": "ingestion",
+      "modules": [
+        "parsing"
+      ],
+      "config_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "component_id": "example.chunking.recursive",
+      "implementation_version": "1.0.0-fixture",
+      "pipeline": "ingestion",
+      "modules": [
+        "chunking"
+      ],
+      "config_schema": {
+        "type": "object",
+        "properties": {
+          "split_field": {
+            "type": "string",
+            "minLength": 1
+          },
+          "output_field": {
+            "type": "string",
+            "minLength": 1
+          },
+          "copy_fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source_field": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "output_field": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "source_field",
+                "output_field"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "max_tokens": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "overlap_tokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "tokenizer_profile_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "separators": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "include_original_chunk": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "split_field",
+          "output_field",
+          "max_tokens",
+          "overlap_tokens",
+          "tokenizer_profile_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "component_id": "example.embedding.api",
+      "implementation_version": "1.0.0-fixture",
+      "pipeline": "ingestion",
+      "modules": [
+        "embedding"
+      ],
+      "config_schema": {
+        "type": "object",
+        "properties": {
+          "profile_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "service_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mappings": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "source_field": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "output_name": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "source_field",
+                "output_name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "field_templates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "output_field": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "template": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "output_field",
+                "template"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "profile_id",
+          "service_ref",
+          "mappings"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "component_id": "example.indexing.local_search",
+      "implementation_version": "1.0.0-fixture",
+      "pipeline": "ingestion",
+      "modules": [
+        "indexing"
+      ],
+      "config_schema": {
+        "type": "object",
+        "properties": {
+          "persistence": {
+            "enum": [
+              "memory",
+              "mongodb"
+            ]
+          },
+          "fulltext_fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "vector_fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "filter_fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "persistence",
+          "fulltext_fields",
+          "vector_fields",
+          "filter_fields"
+        ],
+        "additionalProperties": false
+      },
+      "artifact_type": "builtin.local_search/v1"
+    },
+    {
+      "component_id": "example.retrieval.local_search",
+      "implementation_version": "1.0.0-fixture",
+      "pipeline": "inference",
+      "modules": [
+        "retrieval"
+      ],
+      "config_schema": {
+        "type": "object",
+        "properties": {
+          "routes": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "kind": {
+                  "enum": [
+                    "fulltext",
+                    "vector"
+                  ]
+                },
+                "field": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "top_k": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "key",
+                "kind",
+                "field",
+                "top_k"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "filters": {
+            "type": "array"
+          }
+        },
+        "required": [
+          "routes",
+          "filters"
+        ],
+        "additionalProperties": false
+      },
+      "supports_artifacts": [
+        "builtin.local_search/v1"
+      ]
+    },
+    {
+      "component_id": "example.query.rewrite",
+      "implementation_version": "1.0.0-fixture",
+      "pipeline": "inference",
+      "modules": [
+        "query_transformation"
+      ],
+      "config_schema": {
+        "type": "object",
+        "properties": {
+          "llm_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "include_original": {
+            "type": "boolean"
+          },
+          "prompt": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "llm_ref",
+          "count",
+          "include_original",
+          "prompt"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "component_id": "example.rerank.api",
+      "implementation_version": "1.0.0-fixture",
+      "pipeline": "inference",
+      "modules": [
+        "rerank"
+      ],
+      "config_schema": {
+        "type": "object",
+        "properties": {
+          "service_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content_field": {
+            "type": "string",
+            "minLength": 1
+          },
+          "query_source": {
+            "enum": [
+              "ori_query",
+              "query"
+            ]
+          }
+        },
+        "required": [
+          "service_ref",
+          "content_field",
+          "query_source"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "component_id": "example.remote.page_parser",
+      "implementation_version": "1.0.0-fixture",
+      "pipeline": "ingestion",
+      "modules": [
+        "parsing"
+      ],
+      "config_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "remote": true
+    },
+    {
+      "component_id": "example.remote.document_preparation",
+      "implementation_version": "1.0.0-fixture",
+      "pipeline": "ingestion",
+      "modules": [
+        "parsing",
+        "chunking",
+        "embedding"
+      ],
+      "config_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "remote": true,
+      "output_fields": [
+        "text"
+      ],
+      "vector_outputs": {
+        "text": "example.embedding/v1"
+      }
+    },
+    {
+      "component_id": "example.indexing.elasticsearch",
+      "implementation_version": "1.0.0-fixture",
+      "pipeline": "ingestion",
+      "modules": [
+        "indexing"
+      ],
+      "artifact_type": "builtin.elasticsearch/v1",
+      "config_schema": {
+        "type": "object",
+        "properties": {
+          "service_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "fulltext_fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "vector_fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "filter_fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "service_ref",
+          "fulltext_fields",
+          "vector_fields",
+          "filter_fields"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "component_id": "example.retrieval.elasticsearch",
+      "implementation_version": "1.0.0-fixture",
+      "pipeline": "inference",
+      "modules": [
+        "retrieval"
+      ],
+      "supports_artifacts": [
+        "builtin.elasticsearch/v1"
+      ],
+      "config_schema": {
+        "type": "object",
+        "properties": {
+          "fulltext_fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "vector_fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "top_k": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "hybrid_method": {
+            "enum": [
+              "sum_score",
+              "rrf"
+            ]
+          },
+          "filters": {
+            "type": "array"
+          }
+        },
+        "required": [
+          "fulltext_fields",
+          "vector_fields",
+          "top_k",
+          "hybrid_method",
+          "filters"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "profiles": {
+    "example.tokenizer/v1": {
+      "kind": "tokenizer"
+    },
+    "example.embedding/v1": {
+      "kind": "embedding",
+      "model": "example-model",
+      "dimensions": 3
+    },
+    "example.llm/v1": {
+      "kind": "llm"
+    }
+  }
+}

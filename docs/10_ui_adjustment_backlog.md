@@ -174,3 +174,12 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 - [ ] 來源版本取實際儲存；多版可代表更新中／失敗後混合，不將其標為成功歷史或自行挑選最新。最近工作結果仍使用 ingestion-status。
 
 沿用 UIB-023，不新增文件內容、版本回復或清理按鈕。分頁參數與實際面板位置後續整理；本輪未修改 Prototype。
+
+
+### D-66：System Config 整合草案（先記錄，待討論／改 UI）
+
+- [ ] 正式 Config 定稿後，將目前 Prototype 短名稱映射到核定的 Component 引用、profiles／tasks 與結果處理位置；不直接將 mock Descriptor／Manifest 當成最終規格。
+- [ ] UI Draft 保留停用選擇；Engine 編譯出有效參數／引用並做共同驗證，錯誤仍以 Module／欄位定位。具體正規化與 Hash 依 23 的 SC-08 討論。
+- [ ] Runtime 限制、URL／Secret／實體目標在 E 的資源／部署區處理，模型語意與演算法參數留 D；不增加每次 Request 任意覆寫或一般 User 的 Admin 控制頁。
+
+本次只修正文案狀態與記錄候選格式。Prototype v0.12、Renderer／動態 UI Meta-schema 與圖檔均未修改；23 的 Schema／範例是討論材料。
