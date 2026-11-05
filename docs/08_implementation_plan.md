@@ -298,25 +298,25 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 <a id="q-008"></a>
 ### Q-008 重送、更新與刪除
 
-- 不清楚：相同 ID／revision 是否 no-op；較舊版本、同 ID 不同內容、批內重複、刪除 API／保留期限。
-- 建議：版本明確檢查、相同重送冪等；更新與刪除分開定義，文件替換需配合 Q-009。
-- 替代：第一期純新增且重複拒絕；限制需對外明示。
-- 負責角色：產品＋Engine＋Backend；阻擋更新／安全重試，不阻擋受限純新增。
-- 決策：未定；更新 04／05／07。
+- D-56 已確認：同 (System, document_id) 完整覆寫，不存在則新增；成功後清除舊文件不再產出的 Chunk，不做欄位 merge。同文件 queued／running 時拒絕重複提交，終態後可重新提交；Runtime 重啟不恢復工作。
+- 仍待：source_revision 衝突／較舊來源、相同內容是否可 no-op、Idempotency-Key／遠端未知結果、刪除 API、實體索引替換／舊版清除及保留政策。批內重複 ID／批次接收前全拒或部分接受列 21 API-D01，不能自行當作已定案。
+- 建議：先不承諾 exactly-once 或未知寫入自動重試，按文件發布與相容機制實作；文件刪除另外定義。
+- 負責角色：產品＋Engine＋Backend；阻擋安全重試／正式更新實作。
+- 決策狀態：覆寫單位與忙碌拒絕方向已確認，以上其餘細節 OPEN；更新 04／05／07／21。
 
 <a id="q-009"></a>
 ### Q-009 部分失敗與提交原子性
 
-- 不清楚：批次／文件／Chunk 哪一層可 partial；部分 Embedding 成功、舊 Chunk 清除點、partial 終態。
-- 建議：文件級成功再發布，失敗文件保留可用舊版；逐文件結果可追蹤。需衡量記憶體／ES／MongoDB 實作成本。
-- 替代：全批失敗回滾，或允許明示 partial 文件；要定義資料可見性。
-- 負責角色：Engine＋Backend；阻擋 M2 更新與 M3 終態契約。
-- 決策：未定；更新 04／05／07。
+- D-56 已確認：以 document_id 為更新與成功／失敗單位；Batch 逐文件獨立結果，不要求全 Batch 回滾；成功才發布，失敗保留最後成功版本，不接受半份文件為成功。
+- 仍待：ES／Local／MongoDB／Remote 的 staging／提交與搜尋可見性、崩潰清理；Run partial／counts 及批次預檢接收政策見 21 API-D01／02。單次 Bulk／Hash 不代表已具有文件原子替換。
+- 負責角色：Engine＋Backend；阻擋 M2 更新與 M3 終態／提交驗收。
+- 決策狀態：文件級原則已確認，實作與精確 Envelope OPEN；更新 04／05／07／21。
 
 <a id="q-010"></a>
 ### Q-010 Ingestion／Query 併發與發布
 
-- 不清楚：重建期間 Query 使用舊版、阻擋或可見半批；同 System 多 Ingestion 的順序。
+- D-56 已確認：每 System 文件併發可配置、預設 1；不同文件可依上限並行，同 document_id queued／running 時拒絕重複提交。文件成功後完整替換、失敗不發布半份新版。
+- 仍待：Config／整體索引重建期間 Query 使用舊版或阻擋；文件發布／refresh 與共享索引鎖、活躍工作期間 Config 變更、不同文件間的查詢快照一致性。已成功文件可先可見不等於整批交易；細節見 21 API-D05。
 - 建議：第一期選明確簡化策略，例如重建期間阻擋新版 Query；若要舊版服務需穩定 Binding／切換。
 - 替代：原子世代切換以維持舊版服務，增加雙份資源／一致性成本。
 - 負責角色：Engine＋Backend；阻擋 M2／M3 併發正式行為。
@@ -382,11 +382,11 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 <a id="q-017"></a>
 ### Q-017 Timeout、重試、取消與工作恢復
 
-- 不清楚：總 Deadline、模組 Timeout、重試上限／可重試錯誤、Client 中斷、取消與崩潰後 Run 處理。
-- 建議：Engine 統一執行預算，副作用需冪等；初期可先不自動重試，明示失敗及未知結果。
-- 替代：從一開始提供持久 Queue／Worker／恢復，需同時解決 Local Memory 程序綁定。
+- D-56 已確認：Runtime 共用有上限 Queue；工作／文件狀態放記憶體，重啟不保留／恢復，不保存斷點續跑。查不到紀錄為 unknown，不等於文件未寫入；終態紀錄可以限量／限時清理，活躍紀錄不提前清除。
+- 仍待：Deadline、模組 Timeout、有限重試／可重試錯誤、Client 中斷、取消與未知遠端結果的副作用處理；具體保留值及 HTTP 查詢 Envelope 見 21 API-D02／04／05。
+- 建議：Engine 統一執行預算；不自動重試未確認的寫入，重試完整文件且需冪等支援。持久 Queue／自動恢復不屬第一版已確認需求。
 - 負責角色：Engine＋Runtime；阻擋 M1 錯誤政策及 M3 工作語意。
-- 決策：未定；更新 04／05／07。
+- 決策狀態：無恢復與記憶體狀態方向已確認，其餘 OPEN；更新 04／05／07／21。
 
 <a id="q-018"></a>
 ### Q-018 Evaluation 範圍與 Gate
@@ -400,6 +400,8 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 
 <a id="q-019"></a>
 ### Q-019 API／HTTP Envelope 與呼叫認證
+
+- 2026-11-05：[21](21_runtime_ingestion_inference_api_inventory.md) 盤點建議最小 5 支業務＋2 支 Health API，既有單筆／Query 契約不變。Batch 路徑／接收政策、Run partial、未知狀態 HTTP、認證與錯誤 Envelope 為 API-D01～06 提案；不將整個 API 格式視為定案。
 
 - 不清楚：完整 CRUD／助手／管理 API、OpenAPI、錯誤碼／狀態、上傳限制、manifest、冪等鍵、DEV 路由、認證及暴露 Trace。
 - D-41 補充：Builder 與 Runtime 透過 API／Component 目錄合作；需核定目標 Runtime 版本識別、Config Schema／能力目錄、完整 Config 驗證、快取失效與接口相容政策。能力範圍見 07 §5.8，精確端點與 Envelope 仍 OPEN。
@@ -415,7 +417,8 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 
 - D-51 已確認 Local 可同程序／Pod 建多 System；Remote Image 第一版每 System 獨立服務及儲存綁定；External 由 Developer 管理固定資料空間，無 data_space_id。下列快取／配額／清理細節仍 OPEN。
 
-- 不清楚：每 System 實例快取、Tenant／System 路由、同時工作、記憶體配額、回收、是否獨立程序。
+- D-56 已確認：Builder DEV／獨立 Runtime 共用 System Queue／併發與 Inference Rate／併發／Deadline；Runtime 控制總量，Builder 另管理 User／Workspace 配額。上限與 Queue／資源配置屬 E。Worker 是排程概念，不要求每 System 新 Pod。
+- 仍待：每 System 實例快取、可信路由、公平排程、上限具體值、記憶體配額／清理、未來多 replica 控制與程序安全性。
 - 建議：先有受限共享 Runtime 與明確隔離 Binding；Local Search 每 System 的 Ingest／Query 必須同程序。
 - 替代：每 System 獨立 Runtime，增加部署／資源管理成本。
 - 負責角色：平台＋Backend／Runtime；阻擋 M5 多 System 服務。
@@ -443,7 +446,8 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 - 已確認開發位置（D-41）：使用本機 IDE／SDK，在 rag_engine components 目錄開發並提交 PR；與同 repo 的 Engine／Runtime API 整合測試後交付完整 Runtime Image。公開套件／契約邊界保留，以乾淨環境安裝驗證替代「必須另建 Component repo」的驗收要求。
 - D-42 補充：Component 的設定描述與規則是受限 JSON 資料；共用 Schema 輸出與 Registry 驗證，不以瀏覽器腳本或任意 import 擴充 UI。具體能力／控制項名稱登錄、支援子集與契約測試待核定，見 12。
 - 建議起步：受控 Registry、核可 Component packages，先明確註冊再評估 entry points；不先建 Web IDE／任意程式上傳，也不要求以跨 repo Image 相依交付每次方法更新。
-- 尚待決：核可／發布角色與可信程式範圍、依賴建置／選配套件倉庫、Factory／entry point 解析、SDK 相容矩陣、package／Component 版本對照與撤回／升級。跨 System 多版本／依賴衝突、目標 Runtime 方法可用性與索引相容另連動 Q-015／Q-020／Q-021。
+- 已確認補充：Admin 手動審核登錄／發布 Descriptor／Manifest，第一版不要求新增 Admin 管理 UI；Component 有 implementation_version，既有 System 固定選用版本、不自動升級。Local 仍需目標 Runtime 包含程式，Remote 需支援 Adapter／邊界，只有 Schema 不代表可執行。
+- 尚待決：核可權限細分與可信程式範圍、依賴建置／選配套件倉庫、Factory／entry point 解析、SDK 相容矩陣、package／Component 版本對照與精確撤回／升級格式。跨 System 多版本／依賴衝突、目標 Runtime 方法可用性與索引相容另連動 Q-015／Q-020／Q-021。
 - 若擴大為不受信任開發者或 UI 上傳：需另核定執行隔離、Secret／網路／資源限制與管理權限；Schema／RunContext 不能代替 Sandbox。未完成該方案前保留共享 Runtime 不任意執行使用者 Python 的限制。
 - 負責角色：產品＋Platform／Engine Developer＋Module Developer；M0／M1 核定最小公開介面與載入，進共享 DEV 前核定發布／信任政策；不阻擋本文整理及既定內建路徑的受限開發。
 - 決策狀態：角色／擴充需求與兩個 repo 分工已確認，具體技術與發布政策 **OPEN**；更新 03／04／06／07／11，UI 先記 10 UIB-010。本輪不以 repo 決策代替其餘細節核定。
@@ -570,3 +574,14 @@ QueryContext 業務欄位已確認；正式 SDK 發布、HTTP 版本／錯誤、
 Q-002 的 IndexBinding 業務欄位與單組範圍、Q-014 的能力宣告、Q-028 的索引格式配對方向已收斂，細節以 19 為準。其餘完整 Config／SDK、後端資料布局、Descriptor／Manifest 精確格式、Profile／Filter 實作與資料版本／發布仍 OPEN；不把整個 Q-ID 關閉。舊 IndexBinding 提案以本次五鍵 Schema 取代，Runtime 就緒與 API 狀態投影分開。
 
 Prototype 仍為 v0.12，D-55 的必要調整記入 UIB-021；本輪未修改 UI 或宣稱已建立 Engine Registry／真實索引。實作範例只驗證 DTO、target Schema 及註冊／相容性規則。
+
+
+## 2026-11-05 D-56：文件級更新、Runtime 排程與狀態
+
+同 System／document_id 完整覆寫，文件是更新與成功／失敗單位，Batch 逐文件結果；成功才發布、失敗保留最後成功版本，不做半份續跑。文件 queued／running 時拒絕重複提交；System 文件併發預設 1 且可配置，提高前驗證並行能力。
+
+Builder DEV 與 FTEST／ENT 共用 Runtime Queue／Inference 流量控制，環境上限放 E；Runtime 有總量控制，Builder 可另設平台配額。不新增每 System Pod 要求。202 接受後查 Run／文件狀態；Queue／Run／文件紀錄留記憶體，Runtime 重啟不保留／恢復；無紀錄或結果未確認為 unknown，不能由舊索引反推最近一次成功，也不保證 Remote 副作用回滾。
+
+最小 API 盤點與可討論子項集中 [21](21_runtime_ingestion_inference_api_inventory.md)；新增 Batch 包裝、路徑、Run partial、HTTP／錯誤／保留值仍是提案。Q-008～010／Q-017／Q-019／Q-020 只收斂以上方向，索引提交／崩潰一致性、Config／資料版本、未知重試、認證及精確格式仍 OPEN。
+
+UI 待辦記 UIB-022；Prototype v0.12、共用資料 Schema 與示例程式均未修改，未宣稱真實 Runtime／Queue／限流已完成。

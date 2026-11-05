@@ -1,6 +1,8 @@
 # Retrieval Builder — Backend、Runtime API 與整體串接規格
 
-> 文件同步：2026-10-31 · 開發規格草案（正式 SDK／Config 尚未凍結）
+> 文件同步：2026-11-05 · 開發規格草案（正式 SDK／Config 尚未凍結）
+>
+> D-56 已確認文件級覆寫、統一 Queue／Inference 流量控制、記憶體狀態與重啟不恢復。API 詳細盤點、回應範例及未決子項集中於 [21](21_runtime_ingestion_inference_api_inventory.md)；新增路徑／Envelope 仍是提案，Prototype 未改。
 >
 > 本文包裝 04 的 Engine，負責管理、HTTP、任務、持久化與交付。Endpoint 大方向沿用既有提案；精確 Envelope、認證、狀態與儲存細節為建議，依 Q-ID 核定後實作。
 
@@ -59,13 +61,14 @@ M4 助手核心的建議位置在 rag_engine，以便使用相同 Registry／Val
 | 部署紀錄（建議形狀） | 對應同一 system_id／config_revision，另記環境、連線／Secret 引用、資料目標及 Runtime 資源；欄位與部署 ID 待 Q-015／Q-021 |
 | IndexBinding | 單 System 唯一索引的格式、target、欄位／向量能力；資料版本／就緒狀態另由 Runtime 管理 |
 | ServiceReference | DEV 或使用者服務設定與 Secret 引用；System 的 llms 有明確作用域 |
-| IngestionRun／EvaluationRun | 綁定 Config／資料版本、狀態、數量、錯誤、Trace、時間 |
+| Runtime IngestionRun／文件工作狀態 | D-56：Runtime 記憶體內的提交／逐文件狀態、計數、Module、時間與錯誤；重啟不保留；不要求平台 DB |
+| EvaluationRun | 評估的 Config／資料版本、狀態、數量、錯誤與報告引用，依 M6／Q-018 處理 |
 | Dataset／EvaluationReport | 版本化 Dataset、逐題結果、指標、Judge／Rubric、Target |
 | ExportArtifact | Config／Image／環境覆寫、驗證狀態、產出版本 |
 
 正式管理階層只有 Workspace → System；同一 System 在 DEV／FTEST／ENT 沿用相同邏輯 Config Revision，部署綁定分環境保存。部署識別／儲存形狀待定，不額外建 Group 或 Blueprint。Config Store 與 Artifact／Run Store 不等於搜尋選配 MongoDB；Memory 模式仍可能保存平台管理資料；獨立 Runtime 不強制連回平台儲存。
 
-原始檔、ParsedDocument、Prompt／Context Trace、Job 跨重啟、報告保留期限與刪除規則見 Q-016。歷史報告不因新 Config 失效就自動刪除。
+原始檔、ParsedDocument、Prompt／Context Trace、評估報告保留與刪除規則仍見 Q-016。Ingestion Queue／Run／文件狀態的跨重啟方向已由 D-56 確認不保留；Builder 若另存歷史摘要，不能拿來覆蓋 Runtime 的 unknown 或宣稱工作已恢復。歷史評估報告不因新 Config 失效就自動刪除。
 
 ## 4. System／Revision 與 Engine 生命週期
 
@@ -89,7 +92,7 @@ Remote External 不由 Builder 啟動／重啟；Developer／管理者登錄 End
 
 Backend 儲存前以有效設定比較，依 05 判定影響；UI 與 AI 都不能繞過。Edit 使用獨立草稿，取消不生效。
 
-2026-10-30 Chunk 草案：Embedding／Indexing／Inference 共用 [15](15_chunk_contract.md) 與 [Chunk Schema](../schemas/chunk.schema.json)；來源位置若有提供則在 metadata._rag.source_refs（D-52：追溯選填），向量仍為具 Profile 識別的物件。該資料不改 API／Parser 的 IngestionDocument 輸入，也不核可直接匯入 Chunk／vectors。索引提交及原子替換仍依 Q-008～Q-010／Q-015 核定，不能由 Hash 就宣稱已支援。
+2026-10-30 Chunk 草案：Embedding／Indexing／Inference 共用 [15](15_chunk_contract.md) 與 [Chunk Schema](../schemas/chunk.schema.json)；來源位置若有提供則在 metadata._rag.source_refs（D-52：追溯選填），向量仍為具 Profile 識別的物件。該資料不改 API／Parser 的 IngestionDocument 輸入，也不核可直接匯入 Chunk／vectors。D-56 已確認文件級成功替換／失敗不發布半份新版；具體索引提交、崩潰可見性與 Config／索引版本切換仍依 Q-008～Q-010／Q-015 落實，不能由 Hash 就宣稱已實作。
 
 2026-10-16 的內容保存簡化：Indexing 保存全部 Chunk.fields／metadata，Chunking 預設繼承全部有效業務 metadata；只選全文／向量／Filter 能力。原型的 indexing.stored／chunking.metadata 是待遷移的舊保存／繼承投影，不能直接套用為新規則。Metadata 全繼承仍保留可信 ACL／來源及 Schema 驗證，Memory／MongoDB 的持久化模式不變；保存內容也不等於全部內容回傳給 API，回傳與授權投影另外處理。
 
@@ -120,19 +123,25 @@ System 列表／讀取、Workspace／Dataset CRUD、AI suggestion／連線檢查
 
 ### 5.2 Runtime API
 
-| HTTP method | Path | 行為 |
-|---|---|---|
-| POST | /v1/ingestions | JSON-only：扁平文件輸入草案見 13；批次包裝待定；202 回 run_id、status、config_revision |
-| GET | /v1/ingestions/{run_id} | 工作狀態、進度、逐項錯誤及就緒資訊 |
-| POST | /v1/queries | 問題、本次 filters；檢索清單、分數／來源與版本 |
-| GET | /health/live | 程序是否存活 |
-| GET | /health/ready | Config／必要資源是否初始化；不等同已有可查索引 |
+建議第一版 5 支業務 API＋2 支 Health API；詳細契約與待討論項見 [21](21_runtime_ingestion_inference_api_inventory.md)。Batch、文件級查詢的精確路徑與回應包裝為本輪草案。
 
-獨立 Runtime 的業務請求不另帶 System ID；配置已綁定。DEV 的可信路由選定 System，不能直接信任使用者提供的 tenant／system header。Bearer Token 僅為認證示意，實際 Gateway／Token 政策見 Q-006／Q-019。
+| HTTP method | Path 草案 | 行為 |
+|---|---|---|
+| POST | /v1/ingestions | 單筆 IngestionDocument；成功接受回 202＋run_id／Location |
+| POST | /v1/ingestions:batch | documents[]，每筆仍為 IngestionDocument；逐文件處理，批次預檢／接收政策待 API-D01 |
+| GET | /v1/ingestions/{run_id} | 一次提交的狀態、計數及逐文件結果；Run partial 彙總格式待 API-D02 |
+| GET | /v1/documents/{document_id}/ingestion-status | 該 System 文件最近一次工作狀態；無可用紀錄為 unknown，不等於文件不存在 |
+| POST | /v1/queries | query／filters／metadata；200 直接回 QueryContext[]；同步限流／併發／Deadline |
+| GET | /health/live | 程序是否存活 |
+| GET | /health/ready | Runtime／必要資源是否初始化；不等同已有可查索引 |
+
+獨立 Runtime 的業務請求不另帶 System ID；配置已綁定。Builder DEV 的可信路由先選 System，不能直接信任使用者提供的 tenant／system header；Run／文件狀態查詢也需驗證相同 System 權限。Bearer Token 僅為認證示意，實際 Gateway／Token 政策見 Q-006／Q-019。
+
+文件刪除、工作取消、文件／Chunk 列表、索引診斷與單步 Module 測試未加入最小 API 集合，是否首期需要見 21 §7。
 
 ### 5.3 JSON Ingestion
 
-2026-10-29 更新：Runtime 只提供 JSON Ingestion。單筆文件以 document_id＋content／base64／uri 三選一表示，欄位與解析責任見 [13](13_ingestion_parser_input_contract.md)，機器可讀 [JSON Schema](../schemas/ingestion_document.schema.json)。以下為單筆 request body 草案；批次容器、上限及 partial 政策待 Q-019，每筆文件驗證同一份 IngestionDocument；批次不能另定不同的文件形狀。
+2026-10-29 更新：Runtime 只提供 JSON Ingestion。單筆文件以 document_id＋content／base64／uri 三選一表示，欄位與解析責任見 [13](13_ingestion_parser_input_contract.md)，機器可讀 [JSON Schema](../schemas/ingestion_document.schema.json)。以下為單筆 request body 草案；Batch 以 documents[] 包裝的提案見 21，每筆文件驗證同一份 IngestionDocument；Parser 不收到 Batch 容器。執行以文件為更新／成功失敗單位已確認，批次入列前的拒絕政策及數值上限仍待核定。
 
 ```json
 {
@@ -155,13 +164,13 @@ Runtime 驗證分層，不以 API 外層通過就宣稱資料可搜尋：
 | Embedding → Indexing | 同一 Chunk，命名向量 values／Profile／來源／維度與 Binding 一致；純全文可略過 Embedding |
 | 索引發布 → Retrieval | 完整 Chunk 的保存與可查詢版本狀態；回傳投影可 vectors={}，不能丟失下游所需內容或可信引用 |
 
-錯誤須含模組、文件及可定位欄位／task_id。Partial、索引提交原子性與 HTTP 錯誤包裝仍待 Q-009／Q-019，不以參考資料驗證器取代正式執行政策。
+錯誤須含模組、文件及可定位欄位／task_id。D-56 已確認不同文件獨立結果、文件級成功發布；Batch Run partial 的彙總 Envelope、實體索引提交與 HTTP 錯誤映射仍待 Q-009／Q-019，不以參考資料驗證器取代正式執行實作。
 
 ```json
 {"run_id":"ing-001","status":"queued","config_revision":"C1-example"}
 ```
 
-以上 202 只表示接受；回應前須完成授權、外層與必要同步預檢。正式預檢深度、下載／Parser 驗證所在階段、錯誤碼與拒絕後是否留 Run 見 Q-017／Q-019，不宣稱取得 run_id 就代表解析或索引成功。
+以上 202 只表示接受；回應前須完成授權、外層與必要同步預檢、容量／文件忙碌檢查，確保入列與記憶體紀錄一致。文件已 queued／running 時拒絕重複提交；完成／失敗後才可覆寫。Run／逐文件 receipt、Location 與 Batch 範例見 21；下載／昂貴處理延後至 Worker 的預檢界線為提案。Runtime 重啟後不恢復工作，202 不保證跨重啟完成；取得 run_id 不代表解析或索引成功。
 
 ### 5.4 Builder 上傳與自行部署
 
@@ -171,17 +180,20 @@ Builder 上傳管理端點、暫存儲存與下載授權／生命週期尚待 Q-
 
 ### 5.5 工作查詢
 
-建議結果草案：
+D-56 採兩種查詢：run_id 追蹤一次提交；document_id 查文件最近一次狀態。Runtime 記憶體保存 Run／逐文件紀錄及最新對照，不把工作狀態寫入 Chunk／metadata，不從已儲存資料反推最近一次更新是否完成。
+
+文件狀態為 queued／running／completed／failed；無可用紀錄或結果未確認為 unknown，後者須有可辨識原因。completed 代表該文件完整發布；Batch 不得用 completed 掩蓋部分失敗。Run partial、counts 與未知狀態 HTTP 200 等詳細回應仍為 [21 §4](21_runtime_ingestion_inference_api_inventory.md) 的提案。
 
 ```json
 {
-  "run_id":"ing-001","status":"completed","config_revision":"C1-example",
-  "processed_documents":1,"total_documents":1,
-  "searchable":true,"errors":[]
+  "document_id": "manual-001", "run_id": "ing-001", "status": "running",
+  "module": "Embedding", "updated_at": "2026-11-05T08:30:00+08:00", "error": null
 }
 ```
 
-processed_documents／total_documents 在此回應草案指解析後的邏輯文件數，不是 Chunk 數；可另有模組層 Chunk 計數。檔案尚未解析完時 total 可能未知，不能偽造固定百分比。正式未知計數表示、partial 狀態與 searchable 是否在本回應返回見 Q-002／Q-009／Q-019。
+Batch 計數提案以收到的 IngestionDocument 為單位，不混入 Unit／Chunk 數；各計數拼字／彙總終態待 API-D02。舊 processed_documents／total_documents 示例不作正式欄位依據。
+
+只清理可回收的終態紀錄；queued／running 不提前清除。保留時間／數量上限尚待設定。重啟後無紀錄回 unknown，不憑 ES／MongoDB 中有舊資料就宣稱最後那次工作成功。此政策不等於所有索引也清空，更不保證遠端寫入自動回滾。
 
 ### 5.6 Query
 
@@ -288,21 +300,23 @@ D-42 的 Descriptor、動態選項／能力 Context、規則與驗證回傳草�
 
 ## 6. 非同步工作與一致性
 
-已選 Local Search 第一版同程序／單副本。Runtime 可用同一服務程序接收 Ingestion 並背景執行；不能用執行完就退出的獨立 Job 保存唯一記憶體索引。CPU 工作／執行緒與並發控制需測試，不能 fork 多個 worker 期待共享 Python 記憶體。
+D-56 已確認：Builder DEV 與 FTEST／ENT 共用 Runtime 工作控制，Library 執行流程；Builder 上傳與直接呼叫 API 走同一 Queue，不再重複排一次。每 System 文件執行併發可配置、預設 1；Runtime 再設總量，Inference 有頻率／併發／Deadline。限制與 Queue 配置屬環境控制 E，不由每次文件／Query 覆寫。
 
-基本狀態方向 queued → running → completed／failed；partial 的終態與取消／恢復尚未定案。不得以 completed 掩蓋部分項目失敗，或只靠前端計時器顯示進度。
+Batch 逐文件處理；併發 1 時依序，併發 2 時不同文件可同時處理。相同 (System, document_id) 已 queued／running 時拒絕再次提交。支援提高併發仍需驗證 Component／Client／共享索引的安全性，必要提交階段加鎖，不承諾任意 backend 可無限制並行。
 
-Q-008～Q-010／Q-017 需決定：
+每份文件完整替換舊資料、成功才發布、失敗保留最後成功版本。不保留續跑 checkpoint；Runtime 重啟丟棄 Queue／工作／記憶體狀態，查詢為 unknown。索引持久化恢復與工作恢復不同；Remote timeout／崩潰後可能已有副作用，不能當作一定未寫入或自動安全重試。
 
-- 相同文件、相同版本與同一 Idempotency-Key 重送語意。
-- 跨批／跨程序 key 的持久性及有效期。
-- 文件級／批次級原子性；部分向量成功如何處理。
-- 先寫新 Chunk 再刪舊版的切換點；搜尋 refresh 與確認。
-- Ingestion 同時 Query、同 System 多個 Ingestion 的順序／鎖。
-- Timeout／取消的副作用清理；Client 中斷是否取消工作。
-- 程序崩潰後 Run／索引狀態如何辨識、重試與恢復。
+Local Search 第一版仍同程序／單副本。背景執行不能把唯一 Memory 索引放在會退出的獨立 Job，也不能 fork 多個 worker 期待共享 Python 記憶體。這裡的 Worker 是執行排程概念，不要求新增 Pod；精確執行模型需測試。
 
-階段一可先限定不支援的併發操作並回明確錯誤；不能默默採最後寫入勝出。
+尚待 Q-008～Q-010／Q-015／Q-017／Q-019：
+
+- 21 的 Batch 接收預檢、Run partial／counts、HTTP／錯誤 Envelope。
+- 文件級索引 staging／舊 Chunk 清除／發布點、搜尋可見性及崩潰一致性；不以單次 Bulk／Hash 宣稱原子替換已完成。
+- 工作固定 config_revision 的方式；活躍工作與 Config／索引格式變更的互斥，以及 Query 使用何版／何時阻擋。
+- 具有副作用的遠端呼叫結果未確認、Idempotency-Key 的必要性／範圍、重試／取消及清理。
+- Queue／並行／Rate／Deadline／紀錄保留的具體值，與未來多 replica 下的一致控制。
+
+方向已確認不表示提交機制已實作；詳細盤點與待決子項見 [21](21_runtime_ingestion_inference_api_inventory.md)。
 
 ## 7. Local Search 恢復與儲存
 

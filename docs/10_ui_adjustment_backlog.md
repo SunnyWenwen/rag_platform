@@ -122,3 +122,16 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 - [ ] 正式串接後 Create／Edit／AI／匯出共用驗證，SDK／HTTP 拒絕未宣告能力；目前 mock 不算真實後端驗收。
 
 本輪只同步文件／契約範例；Prototype v0.12 不變。規格見 19，Registry／動態 UI／真實服務整合仍在既有待辦。
+
+
+<a id="uib-022-runtime-ingestion-status"></a>
+## UIB-022：D-56 非同步 Ingestion／文件狀態與 Runtime 控制（已確認，待改 UI）
+
+- [ ] API 說明呈現 202 僅代表接收，顯示 run_id 及可用的狀態查詢入口；精確 Batch 路徑／Envelope 待 21 核定。
+- [ ] 依文件顯示 queued／running／completed／failed／unknown 與可知 Module／錯誤；Batch 顯示逐文件結果，不以固定計時器假造進度。
+- [ ] 同文件 queued／running 時顯示忙碌原因，不重複提交；完成／失敗後才可重新覆寫。
+- [ ] Runtime 重啟／紀錄消失時顯示 unknown 並結束無止境輪詢，不憑舊索引或 Builder 舊畫面宣稱本次已成功。
+- [ ] Ingestion Queue 額滿、Inference Rate／併發／Timeout 有可理解提示；不在每次文件／Query 表單加入環境上限設定。
+- [ ] 區分文件工作狀態、索引是否可查與 Runtime Health；Local／Remote 的未知結果不冒充可安全重試。
+
+本輪只更新文件／Backlog，Prototype v0.12 不變。工作狀態的精確欄位、Run partial 與 API-D01～06 尚待核定；不先增加取消／刪除、管理 UI 或動態 UI Meta-schema。

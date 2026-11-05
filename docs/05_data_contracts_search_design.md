@@ -1,5 +1,7 @@
 # Retrieval Builder — 共用資料模型與 Config 規格
 
+> 2026-11-05 D-56：文件級完整覆寫、非同步工作／記憶體狀態、Runtime Queue／Inference 流量控制已確認，詳細 API 盤點見 [21](21_runtime_ingestion_inference_api_inventory.md)。工作狀態是 Runtime 管理資料，不改 IngestionDocument／ParsedDocument／Chunk／QueryContext；完整 Config／發布實作仍有待決。
+
 > 文件同步：2026-10-31 · 開發規格草案（正式 SDK／Config 尚未凍結）
 >
 > 本文統整資料流、設定與版本規則；三份資料的精確形狀由 schemas/ 與 13～15 單一維護。已確認語意作為開發基準，完整 Config／SDK 仍待 Q-002 凍結，目前沒有 Engine 可直接執行。

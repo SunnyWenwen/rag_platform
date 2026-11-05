@@ -137,13 +137,13 @@ Ingestion 本地教學可用 ModuleResult[T] 包裝成功資料；推論三模�
 ### 3.2 錯誤、重試與觀測
 
 - 結果必須能對應輸入的成功／失敗／skipped 項目。空檢索為成功，索引或 Provider 故障為失敗。
-- `partial` 的提交方式未定前，不能自行接受半文件索引並刪舊文件。
+- D-56 已確認以 document_id 完整替換、逐文件成功／失敗；失敗不發布半份新版或刪掉最後成功版本。Batch Run 的 partial 彙總及實體提交機制仍待核定，見 [21](21_runtime_ingestion_inference_api_inventory.md)。
 - 重試由共用政策管理；HTTP 重送與內部重試不能形成無界倍增。僅在可安全重試且暫時性錯誤時啟用。
 - Indexing／資產提交具副作用，需冪等與版本檢查。讀取 checkpoint 不等於提交 checkpoint。
 - 每個本地模組／單 Module 遠端呼叫記錄 System／Config／Run／Trace、耗時、數量及標準錯誤；Remote Pipeline 預設以整段呼叫記錄，內部各步診斷為選配。不記錄真實 Secret，未知用量不填 0。
 - Provider failure 不偽裝成沒有相關資料；fallback 需明示 warnings 及實際方法。
 
-Timeout、重試預算、取消、partial 與 fallback 尚待 Q-009／Q-017／Q-023 定案；開發可先以明確錯誤與不自動重試完成骨架。
+D-56 已確認不做斷點續跑、Runtime 重啟不恢復工作／記憶體狀態，並由 Runtime 統一 Queue／Inference 流量控制；不將工作狀態塞進共用 I/O。Timeout、重試預算、取消、索引發布實作與 fallback 仍待 Q-009／Q-017／Q-023；Remote 寫入結果不明不能當作無副作用。
 
 ## 4. Ingestion 模組
 
@@ -233,7 +233,7 @@ D-53 功能待實作：預設 Chunker 可選擇另留每 Unit／任務的完整�
 2. 比較目標 Schema／Profile，拒絕不相容寫入，避免不同模型混在同一向量欄位。
 3. 依版本／冪等策略寫入 Chunk，維護 chunk_id 對照及 Binding。
 4. 按後端 refresh／發布規則回報 searchable；write_acknowledged 不等於 searchable。
-5. 更新／刪除與舊版本清除依 Q-008／Q-009；尚未核定不能自行宣告文件原子替換。
+5. D-56：同 System／document_id 成功後整份替換並清除不再產出的舊 Chunk，失敗保留最後成功版本；實體提交與崩潰可見性需 Q-008／Q-009 驗證，文件刪除 API 仍待決。
 
 | Adapter | 內部責任 |
 |---|---|
