@@ -98,7 +98,7 @@ Binding 存在不代表可以查詢。searchable 已移出 Binding；初始化�
 
 依恢復需要保存或重建可序列化描述，不保存 Client／FAISS Python 物件。Memory 重啟需重新 Ingestion；MongoDB 保存完整 Chunk／vectors，重建本地搜尋資源，完成後才能依發布政策就緒。保存描述不能代替原始資料、Profile、版本及完整性驗證；精確 MongoDB Manifest 與恢復流程仍在 Q-012／Q-015。
 
-本次定案為單組邏輯索引、輕量 Binding、格式專屬 Schema、能力宣告、相容 Retrieval 及狀態分離。完整 Config／SDK、API／Remote 協定、資料更新／原子發布、同分／Filter 語意及版本遷移仍依 08 的 Q-ID，不因本次拍板一併關閉。
+本次定案為單組邏輯索引、輕量 Binding、格式專屬 Schema、能力宣告、相容 Retrieval 及狀態分離。完整 Config／SDK、API／Remote 協定、資料更新／失敗清理／最終可見性、同分／Filter 語意及版本遷移仍依 08 的 Q-ID，不因本次拍板一併關閉。
 
 
 ## 6. D-58：文件存在／清單與直接刪除
@@ -108,3 +108,6 @@ Document 管理使用同一 System 的儲存／索引範圍，不新增第二組
 預設保存的是 Chunk，document_id 不是 chunk_id／ES _id 的別名；不能只刪掉單一同名 Chunk 就宣稱文件已退役。Runtime 的工作狀態不是文件目錄；清單／存在查詢讀取實際後端，失敗需回錯誤。
 
 新格式／相容 Adapter／私有 Remote 需說明三種管理操作的支援方式與測試，精確介面／能力宣告待 SDK／Manifest 核定；不增加 IndexBinding 根鍵或一般 User 要填的管理參數。API 與語意見 [21 §9](21_runtime_ingestion_inference_api_inventory.md)。
+
+
+D-60：平台不加「寫入時阻擋 Query」的讀寫鎖／全索引快照，接受更新中查到暫時新舊混合。此規則也適用文件存在／ID 清單的當前可見資料；工作成功／失敗與資料存在分開。retire 完成後新的讀取應反映刪除，但已取候選的在途 Query 可仍回舊資料。實體 backend 可見性／錯誤清理需驗證，不新增 Binding 狀態鍵。

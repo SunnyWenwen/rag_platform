@@ -86,7 +86,7 @@ Query Rewrite／Multi-query 的 1／N 統一設定提案仍保留；舊回答生
 
 核心關係是 **Retrieval Engine Library ＋ Config → Retrieval System**；實際執行還需解析必要的資源／服務綁定。Python 使用者可直接載入 Library 建立 System，不需要 HTTP 或 Builder。Platform 將 Library 與 Runtime API 打包為共用 Image，部署時再載入 Config／環境設定，無須每份 Config 重新建 Image。
 
-Builder 管理設定與測試，Library 執行模組，Platform 交付執行框架，Runtime 承載 API，System 是依 Config 建立的具體應用。System 不等於 Pod／程序；Local 模式同一程序／Pod 可建立多個 System，各自保有設定與資料作用範圍，資源限制與生命週期細節仍見 Q-017／Q-020。Remote Image 第一版每 System 獨立服務實例；External Endpoint 由 Developer 自行部署。
+Builder 管理設定與測試，Library 執行模組，Platform 交付執行框架，Runtime 承載 API，System 是依 Config 建立的具體應用。System 不等於 Pod／程序；Builder Local 共用 Runtime 指同一 API service／程序內建立多個 System，不只是共用 Pod，各自保有設定與資料作用範圍，資源限制與生命週期細節仍見 Q-017／Q-020。Remote Image 第一版每 System 獨立服務實例；External Endpoint 由 Developer 自行部署。 重啟 API service 程序即使不重建 Pod，仍影響該程序內所有 System 的 Memory 資料／工作；只重建單一 System 實例是另一種管理操作，機制待定。
 
 **範圍：Retrieval-only，不提供 Generation。** Inference 回傳排序後的檢索結果、分數與來源／追溯資訊，由呼叫端決定如何消費。Query Rewrite／Multi-query 與 AI 設定助手仍可使用 LLM；取消 Generation 不等於移除所有 LLM。
 

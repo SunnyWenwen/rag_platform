@@ -137,7 +137,7 @@ Ingestion 本地教學可用 ModuleResult[T] 包裝成功資料；推論三模�
 ### 3.2 錯誤、重試與觀測
 
 - 結果必須能對應輸入的成功／失敗／skipped 項目。空檢索為成功，索引或 Provider 故障為失敗。
-- D-56 已確認以 document_id 完整替換、逐文件成功／失敗；失敗不發布半份新版或刪掉最後成功版本。Batch Run 的 partial 彙總及實體提交機制仍待核定，見 [21](21_runtime_ingestion_inference_api_inventory.md)。
+- D-56 已確認以 document_id 完整替換、逐文件成功／失敗；未完整成功不得標 completed，失敗清理／保留舊版由 backend 落實。D-60 不加平台 Query 讀寫鎖，允許更新中讀到暫時新舊混合，不保證原子可見性。Run partial 彙總方向已確認，精確 Envelope 及實體提交機制仍待整理，見 [21](21_runtime_ingestion_inference_api_inventory.md)。
 - 重試由共用政策管理；HTTP 重送與內部重試不能形成無界倍增。僅在可安全重試且暫時性錯誤時啟用。
 - Indexing／資產提交具副作用，需冪等與版本檢查。讀取 checkpoint 不等於提交 checkpoint。
 - 每個本地模組／單 Module 遠端呼叫記錄 System／Config／Run／Trace、耗時、數量及標準錯誤；Remote Pipeline 預設以整段呼叫記錄，內部各步診斷為選配。不記錄真實 Secret，未知用量不填 0。

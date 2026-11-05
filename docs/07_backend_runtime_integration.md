@@ -22,7 +22,7 @@ Engine 可直接由 Python Config 使用，不能反向 import Builder Web App �
 
 助手核心也不得反向依賴 Builder UI／DB；獨立呼叫接受需求、明確允許的樣本及可選的既有 Config／基準識別，不以 Builder System ID 為必要條件。Builder Backend 負責把可信 Workspace／System 資訊與 UI Draft 轉成相同助手輸入，再將建議對回草稿。這是邏輯責任拆分，不要求獨立部署成多個微服務。
 
-兩種環境：共享 DEV Runtime 由 Builder 的可信路由選 System；獨立 Runtime 啟動時綁定一個 System／Config。相同 API 語意不代表相同 Base URL、權限或資料。確切多 System 路由／內部管理接口見 Q-019／Q-020。
+兩種環境：共享 Builder DEV Runtime 是同一 API service／程序承載多個 System，由可信路由選擇；獨立 Runtime 啟動時綁定一個 System／Config。共用不只指 Pod，API service 程序重啟即使 Pod 還在，仍失去程序內 Memory 資料與工作。相同 API 語意不代表相同 Base URL、權限或資料。確切多 System 路由／內部管理接口見 Q-019／Q-020。
 
 <a id="repository-build-boundaries"></a>
 
@@ -94,17 +94,17 @@ Remote External 不由 Builder 啟動／重啟；Developer／管理者登錄 End
 
 Backend 儲存前以有效設定比較，依 05 判定影響；UI 與 AI 都不能繞過。Edit 使用獨立草稿，取消不生效。
 
-2026-10-30 Chunk 草案：Embedding／Indexing／Inference 共用 [15](15_chunk_contract.md) 與 [Chunk Schema](../schemas/chunk.schema.json)；來源位置若有提供則在 metadata._rag.source_refs（D-52：追溯選填），向量仍為具 Profile 識別的物件。該資料不改 API／Parser 的 IngestionDocument 輸入，也不核可直接匯入 Chunk／vectors。D-56 已確認文件級成功替換／失敗不發布半份新版；具體索引提交、崩潰可見性與 Config／索引版本切換仍依 Q-008～Q-010／Q-015 落實，不能由 Hash 就宣稱已實作。
+2026-10-30 Chunk 草案：Embedding／Indexing／Inference 共用 [15](15_chunk_contract.md) 與 [Chunk Schema](../schemas/chunk.schema.json)；來源位置若有提供則在 metadata._rag.source_refs（D-52：追溯選填），向量仍為具 Profile 識別的物件。該資料不改 API／Parser 的 IngestionDocument 輸入，也不核可直接匯入 Chunk／vectors。D-56／D-60 採文件級完整替換及成功／失敗結果，不阻擋並行 Query、不保證更新中原子可見性；失敗清理、具體提交與 Config／索引版本仍依 Q-008～Q-010／Q-015 落實，不能由 Hash 就宣稱已實作。
 
 2026-10-16 的內容保存簡化：Indexing 保存全部 Chunk.fields／metadata，Chunking 預設繼承全部有效業務 metadata；只選全文／向量／Filter 能力。原型的 indexing.stored／chunking.metadata 是待遷移的舊保存／繼承投影，不能直接套用為新規則。Metadata 全繼承仍保留可信 ACL／來源及 Schema 驗證，Memory／MongoDB 的持久化模式不變；保存內容也不等於全部內容回傳給 API，回傳與授權投影另外處理。
 
-**待決的發布模型**：
+**D-60 的讀寫範圍與仍待決的版本機制**：
 
-- 建議分開 saved_revision、active_revision、index_generation，查詢綁定可用的相容版本。
-- 可選第一期簡化為新版 Ingestion 改動後阻止查詢，重建完成才啟用。
-- 或允許舊 Revision 繼續服務，待新版完整成功後切換。
+- Ingestion／retire 與 Query 各自進行，不因寫入阻擋查詢，不加共享 Query 讀寫鎖／全索引快照；使用者接受更新期間的短暫新舊混合。
+- 同 document_id 重複 Ingestion 的忙碌拒絕保留；文件未完整成功不得標 completed。失敗清理、崩潰處理及最終資料正確性仍需 backend 實作，不代表讀取有原子保證。
+- Config 以重啟／實例重建生效，索引格式／Profile 相容與版本識別仍依 Q-010／Q-015。因資源／索引不相容而無法查詢，與因寫入而主動鎖住查詢不同。
 
-兩者對 UI、併發及儲存差異很大，Q-010／Q-015 未核定前不能自行承諾原子切換／零停機。僅修改 Prompt／Retrieval 等 Inference 設定不重建，但仍記錄新版本並重新評估。
+純 Inference 設定不必重做 Ingestion，但仍需新設定版本與相容性驗證；初期不新增熱切／零停機承諾。
 
 ## 5. API 契約
 
@@ -139,7 +139,7 @@ D-58 更新為 7 支業務＋2 支 Health：統一 List 提交、文件存在／
 | GET | /health/live | 程序是否存活 |
 | GET | /health/ready | Runtime／必要資源是否初始化；不等同已有可查索引 |
 
-獨立 Runtime 的業務請求不另帶 System ID；配置已綁定。Builder DEV 的可信路由先選 System，不能直接信任使用者提供的 tenant／system header；Run／文件狀態查詢也需驗證相同 System 權限。Retrieval API 暫按使用者的 basic oath 理解為 HTTP Basic Auth（帳密），採 HTTPS／TLS 與環境 Secret 引用；若原意為 OAuth 需再對齊。Basic 的檢查位置／帳號作用域尚待細化；Authorization／共享 System 路由仍見 Q-006／Q-019，Builder 登入方式延後。
+獨立 Runtime 的業務請求不另帶 System ID；配置已綁定。Builder DEV 的可信路由先選 System，不能直接信任使用者提供的 tenant／system header；Run／文件狀態查詢也需驗證相同 System 權限。D-60：Runtime API 暫用一組 HTTP Basic 帳密操作該服務全部對外 API，首期不做角色／逐 API 授權；採 HTTPS／TLS 與環境 Secret 引用。共享 System 路由、檢查位置與部署 Probe 接法仍待細化，Builder 登入方式延後。
 
 Retire 納入首期能力；排隊／執行中文件取消確認首期不做。文件 ID 清單與存在查詢已納入；整份文件／Chunk 內容、索引診斷與單步測試仍未納入，見 21 §7／§9。
 
@@ -310,9 +310,9 @@ D-42 的 Descriptor、動態選項／能力 Context、規則與驗證回傳草�
 
 D-56 已確認：Builder DEV 與 FTEST／ENT 共用 Runtime 工作控制，Library 執行流程；Builder 上傳與直接呼叫 API 走同一 Queue，不再重複排一次。每 System 文件執行併發可配置、預設 1；Runtime 再設總量，Inference 有頻率／併發／Deadline。限制可配置已確認；放 E 是先前建議，管理者／存放位置／Schema 本輪暫緩定案；不由每次文件／Query 任意覆寫。
 
-Batch 逐文件處理；併發 1 時依序，併發 2 時不同文件可同時處理。相同 (System, document_id) 已 queued／running 時拒絕再次提交。支援提高併發仍需驗證 Component／Client／共享索引的安全性，必要提交階段加鎖，不承諾任意 backend 可無限制並行。
+Batch 逐文件處理；併發 1 時依序，併發 2 時不同文件可同時處理。相同 (System, document_id) 已 queued／running 時拒絕再次提交。支援提高併發仍需驗證 Component／Client／共享索引的安全性，必要的同文件寫入互斥與資源安全由執行實作處理，但不加阻擋 Query 的共享讀寫鎖；不承諾任意 backend 可無限制並行。
 
-每份文件完整替換舊資料、成功才發布、失敗保留最後成功版本。不保留續跑 checkpoint；Runtime 重啟丟棄 Queue／工作／記憶體狀態，查詢為 unknown。索引持久化恢復與工作恢復不同；Remote timeout／崩潰後可能已有副作用，不能當作一定未寫入或自動安全重試。
+每份文件完整替換，只有完整執行成功才標 completed；D-60 不鎖 Query，允許更新中讀到短暫新舊混合，失敗資料清理／保留舊版仍是 backend 的處理目標，不承諾原子讀取。不保留續跑 checkpoint；Runtime 重啟丟棄 Queue／工作／記憶體狀態，查詢為 unknown。索引持久化恢復與工作恢復不同；Remote timeout／崩潰後可能已有副作用，不能當作一定未寫入或自動安全重試。
 
 Local Search 第一版仍同程序／單副本。背景執行不能把唯一 Memory 索引放在會退出的獨立 Job，也不能 fork 多個 worker 期待共享 Python 記憶體。這裡的 Worker 是執行排程概念，不要求新增 Pod；精確執行模型需測試。
 
@@ -320,7 +320,7 @@ Local Search 第一版仍同程序／單副本。背景執行不能把唯一 Mem
 
 - 21 的 counts／錯誤 Envelope 與文件管理細節；統一 List、整批預檢、Run partial 與 retire 直接刪除方向已確認。
 - 文件級索引 staging／舊 Chunk 清除／發布點、搜尋可見性及崩潰一致性；不以單次 Bulk／Hash 宣稱原子替換已完成。
-- 每個存活實例固定 Config、重啟／重建生效的生命週期；Builder 共用實例更新範圍、持久索引相容性，以及 Query 讀寫鎖或允許短暫混合的取捨見 21 §8。
+- 每個存活實例固定 Config、重啟／重建生效的生命週期；Builder 共用實例更新範圍、持久索引相容性，讀寫不互斥／接受短暫混合已由 D-60 確認，詳見 21 §8。
 - 未知遠端寫入已確認不自動重試；具體結果查核、同文件隔離、Idempotency-Key／版本控制及清理仍待定，首期不做取消。
 - Queue／並行／Rate／Deadline／紀錄保留的具體值，與未來多 replica 下的一致控制。
 

@@ -124,7 +124,7 @@ Parser 的具體教學入口是 [16](16_parser_component_development_examples.md
 
 ## 7. 2026-11-05 已確認補充：版本、登錄與 Runtime 控制
 
-- **A**：同 System／document_id 完整覆寫，文件級成功／失敗；成功發布新版、失敗保留最後成功版本，不續跑半份資料。具體提交／Remote 崩潰一致性仍須實作驗證。
+- **A**：同 System／document_id 完整覆寫，文件級成功／失敗；文件完整成功才記 completed，失敗清理／保留舊版仍需實作，不續跑半份資料；D-60 不鎖 Query，更新期間允許暫時新舊混合。具體提交／Remote 崩潰一致性仍須實作驗證。
 - **B／C**：Component 有實作版本，System 固定選用、不自動升級；Admin 手動審核登錄／發布。Local 須在目標 Runtime 有程式／依賴；Remote 須有相容 Adapter／操作邊界與可用服務。動態 UI Meta-schema 仍暫緩，不因確認管理方式而凍結 Descriptor／Manifest。
 - **D／E**：D 保存流程／參數／版本選用；Queue／併發／Rate／Deadline 等上限需可設定；先前建議歸 E，管理者、存放位置與格式依 D-57 暫緩定案。Builder DEV 與獨立 Runtime 共用控制實作，Builder 可另設 User／Workspace 平台配額。
 - **Runtime 管理資料**：有上限 Queue，文件執行併發預設 1 可調；同文件 queued／running 拒絕重複提交。202 後提供 run_id／document_id 查詢，文件最新狀態另存記憶體，不改共用業務 DTO。
@@ -136,4 +136,6 @@ Parser 的具體教學入口是 [16](16_parser_component_development_examples.md
 D-58 補充：**Runtime 工作狀態**與**文件資料管理**分開。前者重啟為 unknown；後者讀取實際儲存的文件存在／ID 清單，retire 真正刪除資料。屬 A 的 storage／index 管理能力與 C 的 Remote 配套；HTTP 經 Runtime 提供，Builder UI 另行規劃，不新增 Module 或強制保存 ParsedDocument。
 
 
-D-59 補充：Remote 未確認寫入不自動重試；獨立 Runtime 以重啟／重建採用 Config，Builder 共用程序的範圍及 Query 讀一致性取捨仍待界定。Builder 登入延後，Runtime API 暫按 basic oath 理解為 HTTP Basic Auth 規劃；Basic 名詞／帳號作用域、Authorization 與可信路由未整體定案，見 21 §8。文件 ID 直接從 ES／Local 等資料儲存去重分頁，與工作紀錄分開。
+D-59 補充：Remote 未確認寫入不自動重試，Builder 登入延後；本節原先的讀寫鎖與 Basic 名詞待決項已由後續 D-60 收斂，現行見 21 §8。文件 ID 直接從 ES／Local 等資料儲存去重分頁，與工作紀錄分開。
+
+D-60 補充：共用 Runtime 明確為同一 API service／程序內多 System，不只是 Pod 共置；程序重啟影響其全部 Memory 資料／工作。平台不加 Query 讀寫鎖，接受更新期間短暫讀不一致，同文件重複 Ingestion 拒絕保留。Runtime API 暫用一組 Basic 帳密操作全部對外 API，首期不做角色／逐 API 權限；Builder 登入延後。相關解釋以 03／21 §8 為準，不改 A～E 分類或業務 DTO。

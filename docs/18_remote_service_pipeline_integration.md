@@ -72,7 +72,7 @@ System 是 Library＋Config 建立的邏輯實例，不等於 Pod。Service 是�
 
 | 模式 | DEV 第一版 | 資料責任 |
 |---|---|---|
-| Local | 同一程序／Pod 可載入多份 Config 建立多個 System；不強制每 System 起 Pod | 每 System 設定、執行狀態及索引作用範圍分開；資源共用與限制由 Engine 管理 |
+| Local | 共用同一 API service／程序，載入多份 Config 建立多個 System；不只是共用 Pod，不強制每 System 起 Pod | 每 System 設定、執行狀態及索引作用範圍分開；資源共用與限制由 Engine 管理 |
 | Remote Image | 每 System 啟動獨立 Service 實例；整段 Pipeline 共用該實例，不逐 Module 起 Pod | 需要儲存時，以啟動綁定配置獨立 Collection／Index／Volume 等範圍；不開放跨 System 共用設定 |
 | Remote External Endpoint | Developer 自行部署維運，平台不建立／重啟該服務 | 固定使用服務既有資料空間；多 System 選同一服務可能共用資料，平台不承諾自動隔離 |
 

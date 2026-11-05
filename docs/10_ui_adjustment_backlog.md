@@ -146,3 +146,12 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 - [ ] 需由 Runtime／backend 實際查詢及刪除，不用前端記憶體列表或 Ingestion 成功紀錄假裝資料來源。
 
 目前只更新文件，Prototype v0.12 不變；使用者要求改 UI 時才修改原型。Retire 執行模式與分頁仍待核定，不將新的草案能力描述為已完成。
+
+
+### D-60：讀寫並行與暫定驗證方式補充
+
+- [ ] 不因有 Ingestion／retire 寫入就禁用 Inference 或顯示等待讀寫鎖；索引實際未就緒／限流／錯誤仍按 Runtime 回應呈現。
+- [ ] API 說明暫採單一 Basic 帳密操作全部 Runtime API，憑證不寫進業務 payload；不因此新增 Builder 登入或角色權限 UI。
+- [ ] 更新期間 Query 可反映不同時點的資料，不在 UI 宣稱原子快照；同文件 queued／running 重複提交仍保留忙碌提示。
+
+只更新既有 UIB-022／023 對應規格，Prototype v0.12 不變；未實作認證或讀寫控制。

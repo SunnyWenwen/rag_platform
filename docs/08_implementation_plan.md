@@ -279,7 +279,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 <a id="q-006"></a>
 ### Q-006 metadata 保留區、租戶與授權
 
-- D-59：Builder 登入方式延後；Runtime API 暫按 basic oath 理解為 HTTP Basic Auth（帳密），部署採 HTTPS／Secret 引用，名詞如為 OAuth 需再對齊。Basic 不代替 System 操作授權／可信路由，保留區與帳號作用域仍 OPEN。
+- D-60：Builder 登入方式延後；Runtime API 暫採一組 HTTP Basic 帳密操作該服務全部 API，首期不做多角色／逐 API 授權，部署採 HTTPS／Secret 引用。可信路由／Secret 注入細節與 metadata 保留區仍 OPEN。
 
 - 不清楚：保留欄位名稱、ACL 來源、System／Workspace 權限、tSSO／Gateway 驗證、獨立 Runtime 認證。
 - 建議：可信 Context 注入租戶與 ACL，保留 metadata 顯式命名且不可覆寫；初期最小權限模型先核定。
@@ -309,7 +309,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 <a id="q-009"></a>
 ### Q-009 部分失敗與提交原子性
 
-- D-56 已確認：以 document_id 為更新與成功／失敗單位；Batch 逐文件獨立結果，不要求全 Batch 回滾；成功才發布，失敗保留最後成功版本，不接受半份文件為成功。
+- D-56 已確認：以 document_id 為更新與成功／失敗單位；Batch 逐文件獨立結果，不要求全 Batch 回滾；文件完整執行成功才標 completed，不接受半份文件為成功；D-60 不加 Query 讀寫鎖，允許更新期間短暫讀不一致，失敗清理／保留舊版機制仍需 backend 落實。
 - 仍待：ES／Local／MongoDB／Remote 的 staging／提交與搜尋可見性、崩潰清理；整批預檢與 Run partial／文件無 partial 已確認，counts／精確 Envelope 見 21 API-D01／02。單次 Bulk／Hash 不代表已具有文件原子替換。
 - 負責角色：Engine＋Backend；阻擋 M2 更新與 M3 終態／提交驗收。
 - 決策狀態：文件級原則已確認，實作與精確 Envelope OPEN；更新 04／05／07／21。
@@ -317,10 +317,10 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 <a id="q-010"></a>
 ### Q-010 Ingestion／Query 併發與發布
 
-- D-56 已確認：每 System 文件併發可配置、預設 1；不同文件可依上限並行，同 document_id queued／running 時拒絕重複提交。文件成功後完整替換、失敗不發布半份新版。
-- 仍待：Config／整體索引重建期間 Query 使用舊版或阻擋；文件發布／refresh 與共享索引鎖、活躍工作期間 Config 變更、不同文件間的查詢快照一致性。已成功文件可先可見不等於整批交易；細節見 21 API-D05。
-- 建議：第一期選明確簡化策略，例如重建期間阻擋新版 Query；若要舊版服務需穩定 Binding／切換。
-- 替代：原子世代切換以維持舊版服務，增加雙份資源／一致性成本。
+- D-56 已確認：每 System 文件併發可配置、預設 1；不同文件可依上限並行，同 document_id queued／running 時拒絕重複提交。文件完成後完整替換，失敗不得冒充成功；D-60 放寬更新中的讀原子性，不加平台 Query 讀寫鎖。
+- D-60 已確認讀寫各自進行，不因寫入阻擋 Query、不加共享讀寫鎖或原子快照；同文件重複提交忙碌拒絕保留。
+- 仍待：API service 程序／System 實例的重建範圍、Config／資料 Profile 相容、實體 backend 可見性與失敗清理。整體 Query Ready 條件與寫入鎖不同，不因本輪放寬讀一致性就忽略實際錯誤。
+- 第一版採已確認的無 Query 讀寫鎖策略；版本快照／零停機世代切換不是首期新增需求。
 - 負責角色：Engine＋Backend；阻擋 M2／M3 併發正式行為。
 - 決策：未定；更新 04／05／06／07。
 
@@ -403,7 +403,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 <a id="q-019"></a>
 ### Q-019 API／HTTP Envelope 與呼叫認證
 
-- D-59：Runtime API 暫按 HTTP Basic Auth 規劃（由 basic oath 理解，非已選 OAuth）；Builder 登入延後。既有 Bearer／Token 是舊示意，正式 OpenAPI Security Scheme、驗證位置、帳密引用、Health 與 System 授權仍待細化。
+- D-60：Runtime API 暫採 HTTP Basic Auth，一組帳密可操作該 service 全部對外 API（含對外 Health），不做首期角色／逐 API 授權；Builder 登入延後。OpenAPI Security Scheme、驗證位置、Secret／Probe 配置及可信 System 路由仍待細化，不另加匿名 API 例外。
 
 - 2026-11-05：[21](21_runtime_ingestion_inference_api_inventory.md) 盤點更新為 7 支業務＋2 支 Health：D-58 確認統一 List、文件存在／ID 清單與 retire 直接刪除；每筆 IngestionDocument／Query 契約不變。D-57 的整批預檢、Run partial／未知紀錄 HTTP 200 延續；精確文件管理 Path／Envelope／分頁／刪除執行、認證與錯誤仍待整理。
 
@@ -613,6 +613,8 @@ UI 待辦記 UIB-023（UI 呈現尚待規劃）；本輪只同步文件，Protot
 
 ## 2026-11-05 D-59：生命週期／讀寫邊界與暫定 API 驗證
 
+> 此節保留前次討論脈絡；Query 讀寫鎖與 Basic 名詞／帳號範圍已由後續 D-60 收斂，現行以 D-60 與 21 §8 為準。
+
 Remote 寫入結果不明沿用 unknown，不自動重試；後續查核／互斥與服務冪等協定仍待定。使用者以 Config 更新時重啟 Runtime 避免熱切混用，符合獨立部署方向；Builder 共用 Runtime 重建哪個範圍、在途工作與持久索引相容性仍需界定，不能把一個 System 改 Config 默認成重啟全部共享 System。
 
 已確認同文件寫入互斥延續。如何鎖 Query／提交可用同 System 共用鎖示意，使用者偏向 KISS；是否接受更新期間暫時新舊混合仍待明確取捨，不把這個問題當成已放棄成功發布／失敗保留舊版。沒有新增分散式鎖／快照需求。
@@ -620,3 +622,14 @@ Remote 寫入結果不明沿用 unknown，不自動重試；後續查核／互�
 Builder 登入方式之後討論；Runtime API 的 basic oath 先按 HTTP Basic Auth（帳號／密碼）理解為暫定，若原意為 OAuth 需再對齊。採 HTTPS／環境 Secret 引用；授權與多 System 路由、驗證位置仍 OPEN。沒有更改實際登入程式或暴露憑證。
 
 文件 ID 清單直接查 ES／Local 實際資料並去重；ES 要分頁取完整去重集合，不能只對首批 Chunk 去重。Local 由 Chunk store／一致對照提供，不另強制中央 DB。實作選項與標準來源見 21 §8～9。
+
+
+## 2026-11-05 D-60：共用 API service、無 Query 讀寫鎖、單一帳號
+
+使用者的重啟指 API service／程序重啟，不是 Pod 重建。現行 Builder 共用 Runtime 指同一 API service／程序內多個 System，不只是共用 Pod；即使 Pod 仍在，重啟該程序也會清掉其中全部 System 的 Memory 資料與工作。重建單一 System 實例與重啟整個 API service 是不同管理操作，前者機制仍待定；本輪沒有改成每 System 一個 service／Pod。
+
+不加寫入期間阻擋 Query 的平台讀寫鎖；讀寫各自執行，接受更新期間短暫新舊混合，不要求原子讀取／全索引快照。保留同 document_id 重複 Ingestion 的忙碌拒絕，工作未完整成功不得標 completed；失敗清理／崩潰恢復仍待後端落實。在 retire 前已取得候選的 Query 可於刪除完成後回舊資料；新的讀取應反映完成後資料狀態。
+
+Runtime API 暫採 HTTP Basic Auth，預設一組帳密可操作該 API service 提供的全部 API，不做首期角色／逐 API 權限；不同部署不硬編碼共用同一密碼，憑證用環境 Secret 引用並採 HTTPS。對外 Health 沿用同一認證，內部 Probe 接法為部署細節。Builder 登入仍延後，Remote Service／DB 的連線憑證不預設共用此帳密。
+
+文件／UI 規格待辦同步，沒有改 Runtime、UI、共用資料 Schema 或實際登入程式。API 數量維持 7 支業務＋2 支 Health；Q-006／Q-010／Q-019／Q-020 只收斂上述方向，其餘精確實作仍 OPEN。

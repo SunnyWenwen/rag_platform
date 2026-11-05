@@ -392,7 +392,7 @@ CSV 映射保存、Revision 計算、canonical JSON／Hash、部署綁定是否�
 | Local Memory 程序重啟 | 記憶體 Chunk／vectors／搜尋結構已遺失，需重新 Ingestion 才可 Query |
 | Local MongoDB 程序重啟 | 以已保存 Chunk／vectors 恢復 FAISS／BM25／Chunk Store；相容時不需重新 Parsing／Embedding，屬索引恢復 |
 
-是否阻擋 Query、允許舊版本持續服務，以及新增／單文件更新／整批重建是否採不同策略，仍待 Q-008～Q-010／Q-015；本節只是範圍釐清，不把所有情境定為相同鎖定或發布流程。
+D-60 已確認不因寫入阻擋 Query、不加平台讀寫鎖，接受更新期間的新舊混合；同文件重複 Ingestion 拒絕仍維持。實體提交／失敗清理、版本相容與重建策略仍待 Q-008～Q-010／Q-015，不以此承諾原子快照。
 
 ## 9. 待討論與決策
 
