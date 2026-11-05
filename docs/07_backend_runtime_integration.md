@@ -16,7 +16,7 @@ Engine／Runtime／System、Config／部署設定及版本概念以 [03 §3](../
 | AI 設定助手核心（M4） | 不依賴 Builder 的需求／樣本＋Config 建議能力；引用共用 Schema／Registry／Validator，提供 Python／API 入口 |
 | Builder Backend（M5） | System／Revision／Workspace、授權、服務目錄、Dataset、助手呼叫／UI 草稿基準、Evaluation Job、Export |
 | Runtime API | 將 HTTP 請求轉成 05 型別，呼叫相同 Engine 與核定 Fusion Plan，包裝 Job／Query／Health |
-| Runtime 內部管理 | 可信地綁定 System／Revision、建立或更新 Engine 實例；不開放任意外部使用者換租戶 |
+| Runtime 內部管理 | 可信地綁定 System／Revision、管理 Config 快照及必要資源，交給共用 Executor；不開放任意外部使用者換租戶 |
 
 Engine 可直接由 Python Config 使用，不能反向 import Builder Web App 或存取 Builder DB。UI、Runtime API、外部 Evaluation 使用同一核心流程，不複製一套模擬／真實 Pipeline。
 
@@ -24,7 +24,7 @@ Engine 可直接由 Python Config 使用，不能反向 import Builder Web App �
 
 D-61：Builder DEV 以一組或少數幾組 API service 承載多個 UI System／Config；每組提供 Ingestion＋Inference，啟動只載入 Library／Registry 與服務基礎設定，不綁死單份 System Config。FTEST／ENT 的主 Runtime 第一版為一 Pod＋一組 API service＋一份 System Config，啟動時綁定。兩者共用 Engine／API 實作，Builder 以可信路由選 System，獨立 Runtime 不需外部傳 System ID。
 
-共用 API service 程序真的重啟時，該程序內所有 Memory 資料／工作仍會遺失；但 Builder 修改一份 Config，應重建受影響 System 的 Engine 實例，通常不重啟共用 API service。Namespace／資源池等少數服務分組、精確內部管理接口與回收機制見 Q-019／Q-020；不因保存多份 Config 就部署多個服務。
+共用 API service 程序真的重啟時，該程序內所有 Memory 資料／工作仍會遺失；但 D-62 下 Builder 修改一份 Config，先準備新版快照與必要資源，由共用 Executor 供後續請求使用，通常不重啟共用 API service；不要求重建該 System 的專屬 Flow。Namespace／資源池等少數服務分組、精確內部管理接口與回收機制見 Q-019／Q-020；不因保存多份 Config 就部署多個服務。
 
 <a id="repository-build-boundaries"></a>
 
@@ -79,10 +79,10 @@ M4 助手核心的建議位置在 rag_engine，以便使用相同 Registry／Val
 1. Backend 驗證身分與 Workspace 權限，建立 system_id，依 05 的既定自動命名方向建立穩定 collection；不要求 UI 使用者手填。
 2. 收到 Draft，以目標 Runtime 的共用 Config 編譯／Validator 檢查有效設定，回傳錯誤與變更影響；本地格式預檢不取代完整驗證，接口依 §5.8 核定。
 3. 保存 Config Revision；由 Backend 經可信管理呼叫註冊該 System 的 Config／目標共用 Runtime 對應，不逐份 Config 啟動新的 API service。
-4. Runtime manager 依需求建立／取得該 System 的 Engine 實例並呼叫 04 初始化；預載／快取策略待 Q-020。服務解析、Profile 與資料就緒分開回報。
+4. Runtime 驗證／解析 Config 快照並準備必要資源；共用 Flow／Executor 在各步依快照取得 Component 並傳入參數／Context，不要求每份 Config 組裝專屬 Flow。預載／快取策略待 Q-020，服務解析、Profile 與資料就緒分開回報。
 5. UI 可執行 Ingest／Query；沒有索引時 Query 回明確不就緒。
 
-共享 Runtime 不代表每建立 System 就新建 API service 或 Pod。各 System 仍有自己的 Config／Binding／索引／Queue 與限制；共用的是 API／執行承載，不是把資料混在一起。實例快取、資源配額、LRU／釋放、租戶隔離與同時工作限制見 Q-020。
+共享 Runtime 不代表每建立 System 就新建 API service 或 Pod。各 System 仍有自己的 Config／Binding／索引／Queue 與限制；共用的是 API 及 Flow 骨架，不是把資料混在一起。D-62 下 Component 實例與模型／Client 等資源可另依狀態及作用範圍重用或隔離；配置解析快取、資源配額、LRU／釋放與同時工作限制見 Q-020。
 
 ### 4.1.1 Remote Image／External 的生命週期
 
@@ -92,7 +92,7 @@ Remote External 不由 Builder 啟動／重啟；Developer／管理者登錄 End
 
 ### 4.2 Config 更新
 
-獨立 Runtime 初期透過重啟／重部署套用 Config，不做執行中熱切，見 21 §8.1；這可避免單一存活實例混讀不同 Config，但持久索引相容性與 Remote 在途寫入仍需處理。D-61 已明確 Builder 更新對應 System 實例，通常不重啟整個共用 API service；何時切換／是否等待工作完成、舊實例與資料資源如何回收仍待細化，不承諾熱切／無損恢復。
+獨立 Runtime 初期透過重啟／重部署套用 Config，見 21 §8.1。D-62 採共用 Flow／Executor，每次請求與已接受的文件工作固定已驗證 Config 快照；Builder 新版 Config 需先驗證／解析及準備必要資源，通常不重啟共用 API service，也不要求重建專屬 Flow。何時啟用新版、是否等待既有工作完成、舊資源如何回收仍待 API-D05；持久索引相容性與 Remote 在途寫入不能只靠固定快照解決，不承諾熱切／無損恢復。
 
 Backend 儲存前以有效設定比較，依 05 判定影響；UI 與 AI 都不能繞過。Edit 使用獨立草稿，取消不生效。
 
@@ -104,7 +104,7 @@ Backend 儲存前以有效設定比較，依 05 判定影響；UI 與 AI 都不�
 
 - Ingestion／retire 與 Query 各自進行，不因寫入阻擋查詢，不加共享 Query 讀寫鎖／全索引快照；使用者接受更新期間的短暫新舊混合。
 - 同 document_id 重複 Ingestion 的忙碌拒絕保留；文件未完整成功不得標 completed。失敗清理、崩潰處理及最終資料正確性仍需 backend 實作，不代表讀取有原子保證。
-- Config 以重啟／實例重建生效，索引格式／Profile 相容與版本識別仍依 Q-010／Q-015。因資源／索引不相容而無法查詢，與因寫入而主動鎖住查詢不同。
+- Builder Config 以驗證後的新快照供後續請求執行，啟用／工作交接細節待決；獨立 Runtime 初期仍重啟套用。索引格式／Profile 相容與版本識別仍依 Q-010／Q-015。因資源／索引不相容而無法查詢，與因寫入而主動鎖住查詢不同。
 
 純 Inference 設定不必重做 Ingestion，但仍需新設定版本與相容性驗證；初期不新增熱切／零停機承諾。
 
@@ -324,7 +324,7 @@ Local Search 第一版仍同程序／單副本。背景執行不能把唯一 Mem
 
 - 21 的 counts／錯誤 Envelope 與文件管理細節；統一 List、整批預檢、Run partial 與 retire 直接刪除方向已確認。
 - 文件級索引 staging／舊 Chunk 清除／發布點、搜尋可見性及崩潰一致性；不以單次 Bulk／Hash 宣稱原子替換已完成。
-- 每個存活實例固定 Config、重啟／重建生效的生命週期；Builder 共用實例更新範圍、持久索引相容性，讀寫不互斥／接受短暫混合已由 D-60 確認，詳見 21 §8。
+- D-62 已定共用 Flow、逐請求／文件固定 Config 快照；新版啟用時點、既有排隊／在途工作與資源交接、持久索引相容性仍待決。讀寫不互斥／接受短暫混合已由 D-60 確認，詳見 21 §8。
 - 未知遠端寫入已確認不自動重試；具體結果查核、同文件隔離、Idempotency-Key／版本控制及清理仍待定，首期不做取消。
 - Queue／並行／Rate／Deadline／紀錄保留的具體值，與未來多 replica 下的一致控制。
 
@@ -391,7 +391,7 @@ Secret Vault 位於 Runtime 外，以環境支援的解析／注入方式提供�
 
 ### 9.3 獨立啟動
 
-建議步驟：讀選定 Config Revision＋該環境部署設定 → 解析服務／資料綁定與 Secret → 04 驗證／初始化建立 System 執行實例 → 驗證資料／恢復索引 → 啟動 HTTP。Live／Ready 與 IndexReady 分開；無資料可以接受 Ingestion，Query 回不就緒。部署後 Config 更新可先經重新部署，熱更新／零停機另案。
+建議步驟：讀選定 Config Revision＋該環境部署設定 → 解析服務／資料綁定與 Secret → 04 驗證 Config 快照／準備 Component 及資源 → 驗證資料／恢復索引 → 啟動 HTTP，以共用 Executor 執行該配置。Live／Ready 與 IndexReady 分開；無資料可以接受 Ingestion，Query 回不就緒。部署後 Config 更新可先經重新部署，熱更新／零停機另案。
 
 <a id="release-deployment-boundaries"></a>
 

@@ -132,7 +132,7 @@ metadata 全部繼承限於驗證後的業務欄位及可信平台資訊，ACL�
 | EmbeddingProfile | 模型／版本、維度、document/query encoding、normalization、Tokenizer／revision；用 Profile 配對 Document／Query 向量 |
 | IndexBinding | artifact_type、target、fulltext_fields、filter_fields、vector_bindings；由 Indexing 提供，Engine 驗證管理，Retrieval 透過 Context 使用 |
 
-Component Config 定義如何處理；RunContext 提供 Engine 依 Config、部署設定及實際初始化準備的資源，兩者不同。Runtime 就緒／資料版本獨立管理，不由 Binding 存在推定。僅宣告且相容的索引能力才能搜尋；Chunk 中存在／保存某欄位不代表它已建立搜尋索引。完整儲存格式／SDK／版本政策仍依相關 Q-ID。
+Component Config 定義如何處理；D-62 採共用 Flow，每次執行傳入本次參數。RunContext 提供 Engine 依已固定 Config 快照、部署設定及初始化結果準備的正確 System 資源，兩者不同；不把整份 System Config 加入公開文件／Query body。Runtime 就緒／資料版本獨立管理，不由 Binding 存在推定。僅宣告且相容的索引能力才能搜尋；Chunk 中存在／保存某欄位不代表它已建立搜尋索引。完整儲存格式／SDK／版本政策仍依相關 Q-ID。
 
 ### 4.5 Inference 與檢索輸出邊界
 

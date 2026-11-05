@@ -93,4 +93,4 @@ Parser 開發示範：[三種交付模式圖](diagrams/04_component_delivery_mod
 2026-11-05 D-60：Builder 共用 Runtime 是同一 API service／程序承載多個 System，service 程序重啟與 Pod 重建分開看。平台不加寫入阻擋 Query 的讀寫鎖，接受更新中讀不一致；同文件重複 Ingestion 拒絕保留。Runtime API 暫採一組 Basic 帳密操作全部 API，Builder 登入延後；未改 UI／Runtime／共用 Schema。
 
 
-2026-11-05 D-61：Builder 多份 UI Config 共用一組或少數 Ingestion＋Inference API service，啟動不綁單份 Config，改配置通常重建對應 System 實例。FTEST／ENT 主 Runtime 初期一 Pod＋一組 API service＋一份 Config；Remote Image 服務仍依需要另外部署。模式對照見 [03](03_architecture_proposal.md#runtime-deployment-modes)／21 §8.1；精確分組／管理介面／回收待決，未改 UI／圖面／程式。
+2026-11-05 D-61／D-62：Builder 多份 UI Config 共用一組或少數 Ingestion＋Inference API service，並採 B：共用 Flow／Executor，每次請求固定 Config 快照，各 Module 依設定解析 Component 與逐次參數；不要求每份 Config 建立專屬 Flow。Component 實例與模型／Client／索引資源依狀態及隔離需求分開管理。FTEST／ENT 主 Runtime 初期一 Pod＋一組 API service＋一份 Config，使用相同 Executor；Remote Image 服務仍依需要另外部署。模式見 [03](03_architecture_proposal.md#runtime-deployment-modes)，執行介面草案見 [04](docs/04_module_components_io_contracts.md#shared-flow-execution)，API 範圍與剩餘決策見 [21](docs/21_runtime_ingestion_inference_api_inventory.md)；未改 UI／圖面／Runtime 程式。

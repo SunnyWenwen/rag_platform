@@ -85,20 +85,20 @@ Query Rewrite／Multi-query 的 1／N 統一設定提案仍保留；舊回答生
 
 核心關係是 **Retrieval Engine Library ＋ Config → Retrieval System**；實際執行還需解析必要的資源／服務綁定。Python 使用者可直接載入 Library 建立 System，不需要 HTTP 或 Builder。Platform 將 Library 與 Runtime API 打包為共用 Image，部署時再載入 Config／環境設定，無須每份 Config 重新建 Image。
 
-Builder 管理設定與測試，Library 執行模組，Platform 交付執行框架，Runtime 承載 API，System 是依 Config 建立的具體應用。System 不等於 Pod／程序；Builder Local 共用 Runtime 指同一 API service／程序內建立多個 System，不只是共用 Pod，各自保有設定與資料作用範圍，資源限制與生命週期細節仍見 Q-017／Q-020。Remote Image 第一版每 System 獨立服務實例；External Endpoint 由 Developer 自行部署。 重啟 API service 程序即使不重建 Pod，仍影響該程序內所有 System 的 Memory 資料／工作；Builder Config 更新採重建受影響 System 實例，不必逐 Config 重啟共用 API service；舊工作與回收機制待定，模式對照見下一節。
+Builder 管理設定與測試，Library 執行模組，Platform 交付執行框架，Runtime 承載 API，System 是依 Config 建立的具體應用。System 不等於 Pod／程序；Builder Local 共用 Runtime 指同一 API service／程序內建立多個 System，不只是共用 Pod，各自保有設定與資料作用範圍，資源限制與生命週期細節仍見 Q-017／Q-020。Remote Image 第一版每 System 獨立服務實例；External Endpoint 由 Developer 自行部署。 重啟 API service 程序即使不重建 Pod，仍影響該程序內所有 System 的 Memory 資料／工作；D-62 採共用 Flow／Executor，Builder Config 更新以新版配置快照及必要資源準備生效，不要求重建每份 Config 的專屬 Flow，也不必逐 Config 重啟共用 API service；舊工作與回收機制待定，模式對照見下一節。
 
 <a id="runtime-deployment-modes"></a>
 
-#### 3.1.1 Builder 共用與 FTEST／ENT 獨立模式（D-61）
+#### 3.1.1 Builder 共用與 FTEST／ENT 獨立模式（D-61／D-62）
 
 | 環境 | Config 與 API service 的對應 | API service 啟動時 | Config 更新 |
 |---|---|---|---|
-| Builder DEV | UI 保存多份 System Config，共用一組或少數幾組 API service；每組均提供 Ingestion＋Inference，不逐張卡建立服務 | 載入 Library／Registry、服務／資源基礎設定，不被單一 System Config 定型；透過可信管理取得各 System Config | 重建／切換受影響 System 的 Engine 實例，通常不重啟整個共用 API service；舊工作／資源回收機制仍待細化 |
+| Builder DEV | UI 保存多份 System Config，共用一組或少數幾組 API service；每組均提供 Ingestion＋Inference，不逐張卡建立服務 | 載入 Library／Registry、服務／資源基礎設定，不被單一 System Config 定型；透過可信管理取得各 System Config | 驗證新版 Config 快照及相依資源，後續請求由共用 Executor 選 Component；不要求重建專屬 Flow，舊工作／資源切換仍待細化 |
 | FTEST／ENT | 主 Runtime 第一版基準為一個 Pod＋一組 API service＋一份 System Config | 綁定該 Config 與環境資源，建立該 System 實例，業務請求不另選 System | 以重啟／重新部署該 API service 採用新 Config；資料／索引相容與需否重新 Ingestion 仍需驗證 |
 
-Builder Backend 下發／註冊 Config 與目標 Runtime 的對應，Runtime manager 依可信 System 識別選 Engine 實例；Library 不直接讀 Builder DB。服務啟動不綁單份 Config，不代表 Engine／已安裝 Component 版本可任意熱替換；新增 Local 程式仍按原 Image／版本交付流程。
+Builder Backend 下發／註冊 Config 與目標 Runtime 的對應，Runtime 依可信 System 識別取得已驗證 Config 快照，由共用 Flow／Executor 執行；各 Module 解析所選 Component 並傳入該次 Config／Context，Library 不直接讀 Builder DB。服務啟動不綁單份 Config，不代表 Engine／已安裝 Component 版本可任意熱替換；新增 Local 程式仍按原 Image／版本交付流程。
 
-少數共用服務可以依 Namespace／資源池等方式分組，但分組單位、數量與管理機制待決；不將 Namespace 與 Workspace／System 當成同一概念，也不新增 User 必填分組設定。System 實例可按使用需求建立／快取，精確預載、LRU／回收與配額依 Q-020；保存多份 Config 不等於同時初始化所有模型／索引。
+少數共用服務可以依 Namespace／資源池等方式分組，但分組單位、數量與管理機制待決；不將 Namespace 與 Workspace／System 當成同一概念，也不新增 User 必填分組設定。Config 解析結果、Component 實例與資源可按需求快取；精確預載、LRU／回收與配額依 Q-020。共用 Flow 不要求共用所有 Component 實例，保存多份 Config 也不等於同時初始化所有模型／索引。每次請求／已接收文件固定使用同一 Config 快照，不在執行到各步時重新讀取最新版；Config 更新時既有工作如何交接仍待核定。
 
 FTEST／ENT 的一 Pod 基準指主 Runtime。若 Config 選 Remote Image，仍依 D-51 部署必要的遠端 Component service；External 由 Developer 維運，不因此承諾整套系統永遠只用一個 Pod。Ingestion／Inference 是同組 Runtime 的 API 能力，不強制各自一個 Pod／程序。
 
@@ -112,7 +112,7 @@ FTEST／ENT 的一 Pod 基準指主 Runtime。若 Config 選 Remote Image，仍�
 |---|---|
 | Module（模組） | Pipeline 中的功能分類與契約，定義職責、Input／Output 及語意，例如 Parsing、Chunking、Retrieval、Rerank |
 | Component（元件） | 遵守某個 Module 契約、可註冊及選用的具體實作，例如 Chunking 的 FixedSizeChunker／RecursiveChunker；包含參數描述、相依能力與執行邏輯 |
-| Component Instance（元件實例） | 選定 Component 並套用 Config／資源綁定後的執行實例；同一 Component 可用不同參數建立多個實例 |
+| Component Instance（元件實例） | Component 的執行物件；每次執行接收本次參數及 Context。無狀態且可安全併行者可共用，有狀態或綁定特定資源者可依 System／資源分開，不要求每份 Config 各有一份實例 |
 | Pipeline（處理流程） | Module 及其執行規則組成的流程；本產品採固定骨架，依 Config 選擇 Component、參數及核定的組合策略 |
 | Ingestion | 將輸入資料經 Import、Parsing、Chunking、Embedding、Indexing 處理，準備可供查詢的資料／索引 |
 | Inference | 接收問題，執行 Query Transformation、Retrieval、依配置進行 Fusion／Rerank，回傳最終排序的檢索結果 |
@@ -167,7 +167,7 @@ Config 與部署設定的欄位、有效設定規則及範例見 [05 §6～8](do
 
 ### 3.5 元件關係與實作責任
 
-**04＋05 應足以讓開發者手寫 Config 直接執行 Engine，建立 Retrieval System；不要求 API 才能成立。**06 產生設定，07 保存設定並管理 Runtime 請求。UI 產生 Config，由同一套 Engine 建立對應 Pipeline 實例。
+**04＋05 應足以讓開發者手寫 Config 直接執行 Engine，建立 Retrieval System；不要求 API 才能成立。**06 產生設定，07 保存設定並管理 Runtime 請求。UI 產生 Config，由同一套 Engine 的共用 Flow／Executor 依已驗證快照執行；System 代表設定及資料作用範圍，不要求各自持有一份專屬 Flow 物件。
 
 | 元件 | 責任 | 邊界 |
 |---|---|---|

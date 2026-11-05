@@ -129,6 +129,8 @@ Parser Input 仍是 IngestionDocument；text 是 **一個 str**，不是預先�
 
 ## 3. Local Developer：實作 Parser ABC
 
+D-62 已確認正式執行方向為共用 Flow，Component 每次接收 input／本次 config／Context，見 [04 §2.2.1](04_module_components_io_contracts.md#shared-flow-execution)。本文件及可執行教學檔暫保留無演算法參數的 run(data, context) 介面，用來驗證 Parser 邏輯與 HTTP I/O，不是新 SDK 的最終簽名；後續 SDK 整合時再同步更新。Remote 服務不因本地傳入 config 就自動新增 HTTP 欄位。
+
 [local_component.py](../examples/component_development/local_component.py) 定義下面的教學介面：
 
 ```python

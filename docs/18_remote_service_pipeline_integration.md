@@ -72,7 +72,7 @@ System 是 Library＋Config 建立的邏輯實例，不等於 Pod。Service 是�
 
 | 模式 | DEV 第一版 | 資料責任 |
 |---|---|---|
-| Local | Builder 用一組或少數共用 API service，啟動不綁單份 Config，依管理／路由載入多個 System 實例；不逐 Config 起服務／Pod | 每 System 設定、執行狀態及索引作用範圍分開；資源共用與限制由 Engine 管理 |
+| Local | Builder 用一組或少數共用 API service，啟動不綁單份 Config，依可信路由選 Config 快照，由共用 Flow／Executor 在各步選 Component；不逐 Config 建專屬 Flow／服務／Pod | 每 System 設定、執行狀態及索引作用範圍分開；資源共用與限制由 Engine 管理 |
 | Remote Image | 每 System 啟動獨立 Service 實例；整段 Pipeline 共用該實例，不逐 Module 起 Pod | 需要儲存時，以啟動綁定配置獨立 Collection／Index／Volume 等範圍；不開放跨 System 共用設定 |
 | Remote External Endpoint | Developer 自行部署維運，平台不建立／重啟該服務 | 固定使用服務既有資料空間；多 System 選同一服務可能共用資料，平台不承諾自動隔離 |
 
@@ -124,4 +124,4 @@ Runtime 新增查 document_id 存在、列出所有 ID 與 retire 直接刪除�
 無狀態 Parser／Embedding／Rerank 服務不因此多交付資料管理端點。Manifest／Artifact／SDK 的具體欄位與操作規格仍待定，沒有加入新 Pipeline Module、IndexBinding 根鍵、data_space_id 或取消功能。不支援管理操作時明確回報／卡控，不回空清單、false 或成功刪除冒充支援。
 
 
-D-61：FTEST／ENT 的一 Pod＋一 API service＋一份 Config 指主 Runtime 的初期基準。選用 Remote Image 仍另外部署必要遠端服務；External 仍由 Developer 維運，沒有取消 D-51 的三種模式。Builder 共用 API service 數不隨 UI Config 數量線性增加；每份 Config 的實例／索引資源與 Remote 服務需求仍按其模式管理。
+D-61：FTEST／ENT 的一 Pod＋一 API service＋一份 Config 指主 Runtime 的初期基準。選用 Remote Image 仍另外部署必要遠端服務；External 仍由 Developer 維運，沒有取消 D-51 的三種模式。Builder 共用 API service 數不隨 UI Config 數量線性增加；D-62 採共用 Flow，Component／索引資源與 Remote 服務需求仍按其狀態及模式管理；Remote 接管步驟只呼叫一次，本地逐次 Config 不會自動變成遠端 HTTP payload，正式傳參協定仍待 Q-028。

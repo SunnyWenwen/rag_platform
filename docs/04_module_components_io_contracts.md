@@ -40,26 +40,31 @@ SDK 的「獨立」是可安裝、可依賴的公開邊界；不表示 Component
 
 ```python
 # 目標用法示意；目前尚未存在這些類別，命名待 Q-002 核定。
-config = load_config("retrieval.yaml")
-system = RetrievalEngineLibrary.from_config(
-    config,
-    service_resolver=services,
-    state_store=stores,
+engine = RetrievalEngineLibrary(
     registry=registry,
+    component_resolver=components,
+    resource_manager=resources,
 )
-await system.start()
+snapshot = await engine.prepare(
+    load_config("retrieval.yaml"),
+    deployment_settings=deployment_settings,
+)
 try:
-    result = await system.ingest(ingestion_input, context=trusted_context)
-    retrieval_result = await system.query(query_input, context=trusted_context)
+    result = await engine.ingest(
+        ingestion_input, config=snapshot, context=trusted_context
+    )
+    retrieval_result = await engine.query(
+        query_input, config=snapshot, context=trusted_context
+    )
 finally:
     await engine.aclose()
 ```
 
-服務解析與 Store 使用可替換接口；Memory 模式不要求遠端 DB。Config 是模組／Pipeline 邏輯，service_resolver／Store／Binding 由部署設定解析；同一 Config 可套用不同環境綁定而保持處理語意一致。start／query 的非同步選擇、生命週期、公開回應型別、Evaluation Target 介面須核定。直接 SDK 可建立 System，不回 HTTP code；07 將領域錯誤映射為 HTTP／Job 回應。
+D-62 已確認 B：共用 Flow／Executor，每次執行傳入已驗證 Config 快照，並依 Module 解析 Component。上述 prepare／Resolver／ResourceManager 命名及簽名仍是草案，不是新增已發布 SDK。Memory 模式不要求遠端 DB；Config 定義邏輯，Context 提供正確 System 的資源／Binding。同一 Config 可搭配不同環境綁定。此例為獨立 Python 程式，結束時才關閉 Engine；共用 API service 不在每次請求後關閉共用資源。直接 SDK 不回 HTTP code，07 將領域錯誤映射為 HTTP／Job 回應。
 
 ### 2.2 編譯與初始化流程
 
-D-61：下列流程以一個 Retrieval System／Config 實例為單位，不要求每個 API service 啟動時就綁定一份 Config。Builder 的共用 Runtime manager 可在同一 API service 管理多個如此組裝的實例；FTEST／ENT 則啟動時綁定一個，見 [03 模式對照](../03_architecture_proposal.md#runtime-deployment-modes)。
+D-61／D-62：下列流程準備一份 System Config 的有效快照及必要資源，不要求為其建立專屬 Flow。Builder 共用 API service／Executor，請求開始時由可信路由選定配置；FTEST／ENT 啟動載入單份配置，執行仍使用同一 Executor，見 [03 模式對照](../03_architecture_proposal.md#runtime-deployment-modes)。
 
 1. 讀取 YAML／JSON，驗證 Contract 版本及未知欄位；安全解析，不執行設定內的程式碼。
 2. 將 UI Draft 編譯成 Effective Config，排除未啟用方法／服務草稿。
@@ -67,15 +72,41 @@ D-61：下列流程以一個 Retrieval System／Config 實例為單位，不要�
 4. 依部署設定解析 Config 中的服務邏輯引用與 Secret；以受授權的 Workspace／System／集合建立 Binding，不把環境 URL 或目標集合混成模組邏輯。
 5. 初始化被使用的 Client／Tokenizer／Parser／Index Adapter；不載入未使用服務。
 6. 若有既存資料／Manifest，檢查相容性；MongoDB 模式按相容版本重建 Local Search。
-7. 回報初始化結果及索引就緒狀態；失敗釋放已開啟資源，不留下半個可查詢實例。
+7. 回報配置／資源準備結果及索引就緒狀態；失敗釋放本次新建且未被其他工作持有的資源，不誤關其他 System 正在共用的資源，也不宣稱失敗配置已可查詢。
 
 Schema 格式檢查、真實連線檢查、Profile 相容檢查、索引可查詢是不同狀態。Runtime 可啟動且接受 Ingestion，不代表 Query 已可用。
+
+<a id="shared-flow-execution"></a>
+
+### 2.2.1 共用 Flow 與逐次設定（D-62 已確認方向）
+
+Flow 只保留既定 Module 骨架與已核可的分支／合併規則。Config 儲存或啟用時先驗證 I/O、版本、相依及 Remote 覆蓋範圍，可快取解析後步驟；不要求每次請求重做完整 Schema 驗證，也不新增任意 DAG。
+
+以下為執行概念，不凍結 SDK 方法、Config 格式或 ModuleResult 包裝：
+
+```python
+async def execute(data, snapshot, context):
+    # snapshot.steps 是內部解析結果，不是新增公開 Config／資料欄位。
+    for step in snapshot.steps:
+        component = await component_resolver.resolve(step, context)
+        result = await component.run(
+            data, config=step.config, context=context
+        )
+        data = result.data
+    return data
+```
+
+- 每次請求與已接受的 Ingestion 文件固定 Config 快照，不在 Module 邊界重新選最新版本；Config 更新時舊工作如何交接仍待 Q-017／API-D05。
+- 共用 Flow、Component 實例及模型／Client／索引資源是不同層次。無狀態且可安全併行的實例可共用；有狀態或特定資源綁定的實例可分開管理，確切快取／回收介面待 Q-002／Q-020。
+- 可共用實例不得把本次 input／config／output 放進跨請求可變 self；必要工作資料放區域變數，資源由正確的可信 Context／Resolver 取得。不得將 System A 的 IndexBinding 或資料誤用於 B。
+- Remote 整段接管在解析計畫中只保留一次呼叫，跳過已涵蓋 Modules；B 不要求遠端服務也使用同一套本地 run 簽名，不將整份 System Config／Context／Secret 自動轉送。
+- 純參數變更與模型／索引語意變更分開；B 不免除資源重新準備、索引相容檢查或重新 Ingestion，也不承諾零停機。
 
 ### 2.3 Registry／Factory
 
 建議每個註冊 Component 提供 module_type、component_id、implementation_version、input_schema、output_schema、config_schema、requires、provides、supports 及 factory。由 Engine 編譯器串接，不由 Builder 寫另一套組裝流程。
 
-依 [D-43 命名對照](../03_architecture_proposal.md#component-terminology-migration)，擴充單位統一使用 Component／component_id。早期 Registry 草案曾以 module_id、後以 method_id 表示具體實作；目前 module_type 表示職責，例如 chunking，component_id 表示具體元件，例如 team_a.chunking.custom，Python class 名稱只是實作符號。同一 Component 可以用不同參數建立多個 Component Instance，不需要因此新增 component_id；node_ref 另辨識配置中的實例。正式 Config 結構、舊別名與遷移仍由 Q-002 核定，本輪沒有修改 Prototype／公開 I/O Schema。
+依 [D-43 命名對照](../03_architecture_proposal.md#component-terminology-migration)，擴充單位統一使用 Component／component_id。早期 Registry 草案曾以 module_id、後以 method_id 表示具體實作；目前 module_type 表示職責，例如 chunking，component_id 表示具體元件，例如 team_a.chunking.custom，Python class 名稱只是實作符號。同一 Component 可在執行時接收不同參數，不需要因此新增 component_id 或必然建立新實例；有狀態／特定資源需求時仍可建立多個 Component Instance，node_ref 另辨識配置位置。正式 Config 結構、舊別名與遷移仍由 Q-002 核定，本輪沒有修改 Prototype／公開 I/O Schema。
 
 ```yaml
 component_id: company.chunking.recursive

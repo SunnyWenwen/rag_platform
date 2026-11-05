@@ -132,15 +132,18 @@ class TeamChunker(ChunkingComponent):
     async def run(
         self,
         data: ChunkingInput,
+        config: TeamChunkerConfig,
         context: RunContext,
     ) -> ModuleResult[ChunkingOutput]:
-        # Engine 先驗證 Config／Input，再注入本次必要資源。
+        # Engine 固定並驗證本次 Config，再注入正確 System 的資源。
         # 實作切分、來源對照與合法 metadata 繼承後，
         # 回傳公開 ChunkingOutput，由 Engine 再驗證輸出語意。
         raise NotImplementedError("待 Chunking 契約核定後實作")
 ```
 
 `ModuleResult` 的邏輯用法沿用 04：業務輸出位於 data，metrics／errors 不混進下游業務物件。ChunkingInput 的業務內容引用 14 的 ParsedDocument，ChunkingOutput 引用 15 的 Chunk 清單；不得重新宣告另一份欄位形狀。Module-specific Input／Output 包裝與實際方法簽名由 Q-002 決定。完整方法宣告另需 Config Schema、相依能力、相容版本與維護資訊，範例 class 不代表宣告已齊全。
+
+D-62 已確認共用 Flow／Executor，每次呼叫傳入本次 Component Config；上述簽名仍是 SDK 草案。無狀態且可安全併行的實例可共用，有狀態或特定資源需求者由 Resolver 分開；共用實例不得把本次 input／config／output 保存到跨請求可變 self。資源生命週期與精確 Resolver 介面見 [04 §2.2.1](04_module_components_io_contracts.md#shared-flow-execution)。
 
 Component 不自己重建 Engine 的重試、排程與授權流程。必要 Client／Tokenizer 等經受控資源介面取得，初始化與清理配合 Engine；禁止在輸入文字、Config 或自訂輸出中夾帶可執行指令交給 Engine 動態執行。Schema／RunContext 不等於程序隔離，核可與隔離邊界見 04 §7.4。
 

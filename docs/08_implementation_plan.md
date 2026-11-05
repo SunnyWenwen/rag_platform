@@ -1,6 +1,6 @@
 # Retrieval Builder — 開發計畫、驗收與決策追蹤
 
-> 文件同步：2026-10-31 · 開發規格草案（正式 SDK／Config 尚未凍結）
+> 文件同步：2026-11-05 · 開發規格草案（正式 SDK／Config 尚未凍結）
 >
 > 目的：讓 coding agent 依同一套規格分階段開發，並持續記錄尚不清楚的問題。本文是決策／待決狀態的權威位置；它不把技術建議自動轉成使用者已核可決策。
 
@@ -220,6 +220,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 ### Q-002 共用 Schema、Config、SDK 與版本凍結
 
 - 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System；Local Search 持久化模式隨 Config 跨環境固定（D-33）；全部 Chunk.fields／metadata 保存與合法 metadata 全繼承（D-39）。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile；QueryContext[]／ResultSet 業務欄位已依 D-54 確認。仍待核定的是舊保存／繼承投影、原型短名稱／匯出標籤 migration。
+- D-62 已確認 B：共用 Flow／Executor，依固定 Config 快照在各 Module 選 Component，並傳入 input／本次 config／Context；不強制所有實例共用。精確 SDK 簽名及 Resolver／資源作用域仍待凍結。
 - 2026-10-28 補充：Component SDK 的 Module-specific I/O 包裝、run／初始化／釋放簽名、RunContext、Registry／Factory 與 Config Schema 介面待凍結；Registry 草案改稱 component_id，不直接改寫既有 Config。精確方法／版本引用、舊 module_id 別名與遷移須一致驗證；11 的 Python 程式只作介面示意。
 - 建議：先核定最小完整 Config＋單一公開 Engine interface；Pydantic 匯出 JSON Schema，UI 使用相同來源。用完整欄位路徑；未知別名拒絕。
 - 替代：直接沿用 Prototype 全部短名稱；需補齊其缺少型別與執行語意。
@@ -319,9 +320,9 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 
 - D-56 已確認：每 System 文件併發可配置、預設 1；不同文件可依上限並行，同 document_id queued／running 時拒絕重複提交。文件完成後完整替換，失敗不得冒充成功；D-60 放寬更新中的讀原子性，不加平台 Query 讀寫鎖。
 - D-60 已確認讀寫各自進行，不因寫入阻擋 Query、不加共享讀寫鎖或原子快照；同文件重複提交忙碌拒絕保留。
-- D-61 已確認 Builder 用一組或少數共用 API service，啟動不綁單份 Config；Config 更新通常重建受影響 System 實例。FTEST／ENT 主 Runtime 一 Pod＋一組 service＋一份 Config。
-- 仍待：System 實例切換／舊工作與資源回收時機、Config／資料 Profile 相容、實體 backend 可見性與失敗清理。整體 Query Ready 條件與寫入鎖不同，不因本輪放寬讀一致性就忽略實際錯誤。
-- 第一版採已確認的無 Query 讀寫鎖策略；版本快照／零停機世代切換不是首期新增需求。
+- D-61／D-62 已確認 Builder 用一組或少數共用 API service／Flow，啟動不綁單份 Config；各請求固定 Config 快照，更新先驗證／解析及準備必要資源，不要求重建專屬 Flow。新版啟用與既有工作交接仍待決。FTEST／ENT 主 Runtime 一 Pod＋一組 service＋一份 Config。
+- 仍待：Config 新版啟用／舊工作與 Component／資源交接時機、Config／資料 Profile 相容、實體 backend 可見性與失敗清理。整體 Query Ready 條件與寫入鎖不同，不因本輪放寬讀一致性就忽略實際錯誤。
+- 第一版採已確認的無 Query 讀寫鎖策略；索引版本快照／零停機世代切換不是首期新增需求。
 - 負責角色：Engine＋Backend；阻擋 M2／M3 併發正式行為。
 - 決策：未定；更新 04／05／06／07。
 
@@ -424,7 +425,8 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 
 - D-56 已確認：Builder DEV／獨立 Runtime 共用 System Queue／併發與 Inference Rate／併發／Deadline；Runtime 控制總量，Builder 另管理 User／Workspace 配額。上限可配置已確認；放 E 為先前建議，D-57 暫緩管理者／存放位置／Schema 的定案。Worker 是排程概念，不要求每 System 新 Pod。
 - D-61：共用 API service 啟動只綁服務／Registry 基礎設定，後續管理多份 System Config，不因每份 UI 設定新增服務；可依 Namespace／資源池分成少數共用服務，精確分組策略尚未選定。
-- 仍待：每 System 實例預載／快取／回收、可信路由與管理 API、服務池分組、公平排程、上限具體值、記憶體配額／清理、未來多 replica 控制與程序安全性。
+- D-62 已選 B：共用 Flow／Executor，逐請求／已接受文件固定 Config 快照，Module 依設定解析 Component；不要求每份 Config 建立專屬 Flow。Component 實例／資源是否共用依狀態與隔離需求決定。
+- 仍待：配置解析快取、Component／資源預載與回收、可信路由與管理 API、新版啟用與舊工作交接、服務池分組、公平排程、上限具體值、記憶體配額／清理、未來多 replica 控制與程序安全性。
 - 建議：先有受限共享 Runtime 與明確隔離 Binding；Local Search 每 System 的 Ingest／Query 必須同程序。
 - 替代：每 System 獨立 Runtime，增加部署／資源管理成本。
 - 負責角色：平台＋Backend／Runtime；阻擋 M5 多 System 服務。
@@ -639,6 +641,8 @@ Runtime API 暫採 HTTP Basic Auth，預設一組帳密可操作該 API service 
 
 ## 2026-11-05 D-61：共用 API manager 與單 System 獨立部署
 
+本節保留當時決策；其中逐 System Engine 實例／重建的描述已由後續 D-62 細化為共用 Flow 與 Config 快照，不代表必須各建專屬 Flow。
+
 Builder UI 可以保存多份 Retrieval System Config，後台共用一組或少數幾組 Ingestion＋Inference API service，避免逐份設定建立 API service。共用服務啟動載入 Library／Registry／基礎資源，不被單份 System Config 定型；Backend 經可信管理註冊／下發配置，Runtime manager 為各 System 建立／管理 Engine 實例，Library 不直接讀 Builder DB。
 
 Builder 改一份 Config 通常重建受影響的 System 實例，不必重啟整個 API service。實例的建立／快取／回收與舊工作切換、Namespace／服務池分組仍待 Q-017／Q-019／Q-020；不因確認模式而宣稱已實作熱更新／無損切換。真正重啟共用 API 程序仍會清除其中全部 Memory 資料與工作，與單實例重建分開。
@@ -646,3 +650,16 @@ Builder 改一份 Config 通常重建受影響的 System 實例，不必重啟�
 FTEST／ENT 主 Runtime 初期基準一 Pod＋一組 Ingestion／Inference API service＋一份 System Config，啟動綁定並可透過重啟採用新版。必要 ES／MongoDB 及 Remote Image Component service 仍是既有外部依賴／額外部署，不承諾整套系統只用一 Pod。Remote External 仍由 Developer 維運。
 
 D-60 的無 Query 讀寫鎖、單一 Basic 帳號全 API 與文件 ID 去重方式維持。API 業務 Payload 不因共用模式加任意 system_id／tenant；共享路由與管理精確介面後續核定。此次只更新文件，UI／Runtime 程式、共用資料 Schema 與圖面未修改。
+
+
+## 2026-11-05 D-62：採 B，共用 Flow／Executor 與逐次 Config
+
+使用者比較 A（每份 System Config 預先組裝專屬 Flow）與 B（共用 Flow、執行時依 Config 選 Component）後，確認採 B。這細化 D-61 的共用服務方向，取代「每份 Config 必須建立／重建專屬 Engine Flow」的解讀；System 仍是 Library＋Config＋必要綁定所形成的邏輯檢索系統。
+
+Builder 經可信路由選定已驗證配置；每次請求與已接受的 Ingestion 文件固定同一 Config 快照，各 Module 解析所選 Component，傳入 input、本次 Component Config 與可信 Context。Config 可預先驗證並快取解析結果，不要求逐次完整驗證；Remote 多 Module 接管在有效步驟中只呼叫一次。公開 IngestionDocument[]／Query body 不加入整份 System Config，Library 不讀 Builder DB。
+
+共用 Flow 不強制共用 Component 實例；無狀態且可安全併行者可共用，有狀態／專屬資源者可分開。模型、Client、IndexBinding 及索引資料按正確作用範圍管理，不能把逐次 input／config／output 存在共用可變 self。精確 Resolver／ResourceManager、快取／釋放與 SDK 方法簽名仍待 Q-002／Q-020。
+
+Builder 純參數變更可準備新快照，無須逐 Config 重建整套 Flow；模型／索引語意變更仍可能重新初始化或 Ingestion。新版啟用時點、排隊／在途工作交接與失敗清理仍待 API-D05／Q-017，不承諾零停機。FTEST／ENT 仍以一主 Pod＋一組 API service＋一份 Config 啟動，使用同一 Executor，初期更新可重啟；Remote Image／External 原政策維持。
+
+Runtime API 範圍維持 7 支業務＋2 支 Health。API-D01～07 的未決格式與邊界見 21 §7.2；B 不等於 OpenAPI、retire HTTP、失敗清理或部署／Builder 管理接口全部凍結。本輪只同步 Markdown，未修改 UI、Runtime、可執行教學程式、公開資料 Schema 或圖面。
