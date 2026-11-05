@@ -1,0 +1,258 @@
+{
+  "descriptor_version": "component-descriptor/0.1-draft",
+  "component_id": "example.chunking.fixed",
+  "implementation_version": "1.0.0-fixture",
+  "title": "Fixed-size 文字切分",
+  "description": "離線討論範例；不是已安裝 Component 或正式 Descriptor 協定。",
+  "scope": {
+    "pipeline": "ingestion",
+    "modules": [
+      "chunking"
+    ]
+  },
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "split_field": {
+        "type": "string",
+        "minLength": 1
+      },
+      "output_field": {
+        "type": "string",
+        "minLength": 1
+      },
+      "copy_fields": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "source_field": {
+              "type": "string",
+              "minLength": 1
+            },
+            "output_field": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "source_field",
+            "output_field"
+          ],
+          "additionalProperties": false
+        },
+        "minItems": 0
+      },
+      "max_tokens": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "overlap_tokens": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "tokenizer_profile_id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "preserve_original": {
+        "type": "boolean"
+      },
+      "original_field": {
+        "type": "string",
+        "minLength": 1
+      },
+      "include_original_chunk": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "split_field",
+      "output_field",
+      "copy_fields",
+      "max_tokens",
+      "overlap_tokens",
+      "tokenizer_profile_id",
+      "preserve_original",
+      "original_field",
+      "include_original_chunk"
+    ],
+    "additionalProperties": false
+  },
+  "io": {
+    "input": {
+      "contract_ref": "urn:rag-builder:parsed-document:0.2-draft",
+      "shape": "list"
+    },
+    "output": {
+      "contract_ref": "urn:rag-builder:chunk:0.2-draft",
+      "shape": "list",
+      "inherit": [
+        "/metadata"
+      ]
+    }
+  },
+  "data_rules": [
+    {
+      "id": "split-input",
+      "action": "declare",
+      "side": "input",
+      "target": "/units/*",
+      "name": {
+        "scope": "config",
+        "path": "/split_field"
+      },
+      "schema": {
+        "type": "string",
+        "minLength": 1
+      },
+      "required": true
+    },
+    {
+      "id": "split-output",
+      "action": "declare",
+      "side": "output",
+      "target": "/fields",
+      "name": {
+        "scope": "config",
+        "path": "/output_field"
+      },
+      "schema": {
+        "type": "string",
+        "minLength": 1
+      },
+      "required": true
+    },
+    {
+      "id": "copy-fields",
+      "action": "copy",
+      "side": "output",
+      "target": "/fields",
+      "name": {
+        "scope": "item",
+        "path": "/output_field"
+      },
+      "source": {
+        "side": "input",
+        "container": "/units/*",
+        "name": {
+          "scope": "item",
+          "path": "/source_field"
+        }
+      },
+      "required": true,
+      "for_each": "/copy_fields"
+    },
+    {
+      "id": "original",
+      "action": "copy",
+      "side": "output",
+      "target": "/fields",
+      "name": {
+        "scope": "config",
+        "path": "/original_field"
+      },
+      "source": {
+        "side": "input",
+        "container": "/units/*",
+        "name": {
+          "scope": "config",
+          "path": "/split_field"
+        }
+      },
+      "required": true,
+      "when": {
+        "op": "eq",
+        "left": {
+          "scope": "config",
+          "path": "/preserve_original"
+        },
+        "right": {
+          "value": true
+        }
+      }
+    }
+  ],
+  "option_sources": [
+    {
+      "id": "unit-text",
+      "target": "/split_field",
+      "kind": "fields",
+      "source": {
+        "side": "input",
+        "path": "/units/*"
+      },
+      "filter": {
+        "types": [
+          "string"
+        ],
+        "required": true
+      }
+    },
+    {
+      "id": "unit-copy",
+      "target": "/copy_fields/*/source_field",
+      "kind": "fields",
+      "source": {
+        "side": "input",
+        "path": "/units/*"
+      },
+      "filter": {
+        "required": true
+      }
+    }
+  ],
+  "ui_hints": {
+    "fields": {
+      "/split_field": {
+        "widget": "field_picker",
+        "option_source": "unit-text"
+      },
+      "/copy_fields": {
+        "widget": "array",
+        "item_layout": "inline",
+        "separator": "→"
+      },
+      "/copy_fields/*/source_field": {
+        "widget": "field_picker",
+        "option_source": "unit-copy"
+      },
+      "/copy_fields/*/output_field": {
+        "widget": "text"
+      }
+    }
+  },
+  "rules": [
+    {
+      "id": "overlap",
+      "kind": "constraint",
+      "target": "/overlap_tokens",
+      "assert": {
+        "op": "lt",
+        "left": {
+          "scope": "config",
+          "path": "/overlap_tokens"
+        },
+        "right": {
+          "scope": "config",
+          "path": "/max_tokens"
+        }
+      },
+      "code": "OVERLAP_TOO_LARGE",
+      "message": "重疊 Token 數必須小於切分上限。"
+    },
+    {
+      "id": "unique-copy",
+      "kind": "unique_by",
+      "target": "/copy_fields",
+      "item_path": "/output_field",
+      "code": "DUPLICATE_COPY",
+      "message": "複製輸出名稱不可重複。"
+    }
+  ],
+  "maintainers": [
+    {
+      "name": "Example Developer"
+    }
+  ]
+}

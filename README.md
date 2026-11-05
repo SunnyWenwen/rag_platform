@@ -54,6 +54,7 @@ Prototype v0.12 同步 Query metadata、選填追溯、Embedding 文字模板／
 | [22 Runtime 可調參數](docs/22_runtime_settings_catalog.md) | 已確認的 Runtime 限制預設、作用範圍與管理者；文件摘要／分頁參數分開記錄 |
 | [23 System Config 初版](docs/23_system_config_schema_draft.md) | D-67 後共同骨架與 SC-01～SC-10；原五案例／機器稿保留歷史對照 |
 | [24 Component I/O 細化](docs/24_component_io_schema_refinement.md) | B 的資料規格、六類純宣告、逐層選項／相依及驗收；取消獨立 document_schema |
+| [25 Descriptor Schema 初版](docs/25_component_descriptor_schema_draft.md) | 具體包裝／規則、五組對照範例與 DS-01～DS-13 決策建議；格式未核定 |
 | [歷史資料夾](docs/history/README.md) | 過時規格、決策演變、更新流水帳、校對及驗證紀錄 |
 
 名詞以 03 為準；資料的精確定義引用 schemas/ 與 13～15，不在各模組重寫一份。Component Developer 先由 20 選擇 Local／Remote 閱讀路線，再依 11 → 04 → 對應資料契約 → 12／18 準備交付。完整 Engine Config／SDK 尚未凍結，示例不等於可直接執行的產品介面。

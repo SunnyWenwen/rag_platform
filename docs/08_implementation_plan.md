@@ -68,7 +68,7 @@
 | Runtime 控制 | 接收大小、Queue／併發、Rate／Deadline、終態狀態保存由 Admin／部署者在 E 設定；14 項初始值集中維護 | D-64；22 |
 | UI／工作方式 | 單一 Create／Edit、CSV 測試、進階收合與相依卡控；需求先更新文件，UI 只在使用者要求時修改，差異記入 Backlog | D-02／22／26／38／42；06、10 |
 | 部署／開發順序 | M0～M7；M4 獨立 AI 助手、M5 Builder 整合、M6 Evaluation、M7 Export；FTEST／ENT 自行部署，Runtime 不依賴 Builder，Export 不搬資料／真實 Secret | D-18／19／37／41／51；03、07、§4 |
-| System Config 狀態 | 23 為現行討論稿；D-67 移除頂層 document_schema，舊五案例／機器稿歸檔。其他 SC 表示與正式 Meta-schema／SDK 仍待定 | D-66／67；23、24、Q-002／Q-028 |
+| System Config 狀態 | 23 為現行討論稿；D-67 移除頂層 document_schema，舊五案例／機器稿歸檔。先審閱 25 的 B Descriptor／DS 候選，再完成 D；新鍵名／Meta-schema／SDK 均未定案 | D-66／67；23～25、Q-002／Q-028 |
 
 ## 4. 開發階段與驗收
 
@@ -187,6 +187,8 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 
 <a id="q-002"></a>
 ### Q-002 共用 Schema、Config、SDK 與版本凍結
+
+- 2026-11-05 Descriptor 格式候選：[25](25_component_descriptor_schema_draft.md)／examples/component_descriptor 提供機器 Schema、五組 Descriptor＋Config＋預期 I/O Schema／資料與 DS-01～DS-13。使用者授權提出初版，尚未核定具體鍵名／規則；先審 B 核心再完成 D，不以離線結構／樣本驗證取代完整細化解析器、UI 或 Runtime。
 
 - 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System；Local Search 持久化模式隨 Config 跨環境固定（D-33）；全部 Chunk.fields／metadata 保存與合法 metadata 全繼承（D-39）。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile；QueryContext[]／ResultSet 業務欄位已依 D-54 確認。仍待核定的是舊保存／繼承投影、原型短名稱／匯出標籤 migration。
 - D-62 已確認 B：共用 Flow／Executor，依固定 Config 快照在各 Module 選 Component，並傳入 input／本次 config／Context；不強制所有實例共用。精確 SDK 簽名及 Resolver／資源作用域仍待凍結。

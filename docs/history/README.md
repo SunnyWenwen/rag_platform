@@ -6,7 +6,7 @@
 
 | 分類 | 內容 | 檔案 |
 |---|---|---|
-| decisions | 原始 D-01～D-67 決策表／逐輪討論，包含當時未決或已被取代的說法 | [歷史決策來源](decisions/decision_history.md) |
+| decisions | 原始 D-01～D-68 決策表／逐輪討論，包含當時未決或已被取代的說法 | [歷史決策來源](decisions/decision_history.md) |
 | changes | 原 README 文件更新流水帳 | [文件更新紀錄](changes/documentation_changelog.md) |
 | changes | 從 UI Backlog 移出的逐輪整理說明 | [UI 整理紀錄](changes/ui_backlog_notes.md) |
 | reviews | 過程性校對報告，原 docs/24_spec_alignment_review.md | [2026-11-05 規格交叉校對](reviews/2026-11-05_spec_alignment_review.md) |

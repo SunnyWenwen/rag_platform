@@ -1,0 +1,32 @@
+{
+  "allOf": [
+    {
+      "$ref": "urn:retrieval-builder:fixture:ingestion-document:2026-11-05"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "object",
+          "properties": {
+            "body": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "page": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "body",
+            "title",
+            "page"
+          ]
+        }
+      }
+    }
+  ]
+}

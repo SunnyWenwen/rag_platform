@@ -1,0 +1,38 @@
+{
+  "type": "array",
+  "items": {
+    "allOf": [
+      {
+        "$ref": "urn:rag-builder:parsed-document:0.2-draft"
+      },
+      {
+        "type": "object",
+        "properties": {
+          "units": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "page": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "text",
+                "title",
+                "page"
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+}

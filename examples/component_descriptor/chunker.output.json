@@ -1,0 +1,16 @@
+[
+  {
+    "chunk_id": "manual-001-c1",
+    "document_id": "manual-001",
+    "source_revision": "v1",
+    "fields": {
+      "text": "設備保養",
+      "title": "操作手冊",
+      "original_text": "設備保養"
+    },
+    "metadata": {
+      "department": "manufacturing"
+    },
+    "vectors": {}
+  }
+]

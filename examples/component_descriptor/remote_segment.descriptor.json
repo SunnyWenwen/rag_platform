@@ -1,0 +1,68 @@
+{
+  "descriptor_version": "component-descriptor/0.1-draft",
+  "component_id": "example.remote.preparation",
+  "implementation_version": "1.0.0-fixture",
+  "title": "已註冊文件處理服務",
+  "description": "由 C Manifest 的一個 operation 推導；接管連續三個 Module，不公開內部中間資料；無使用者參數。",
+  "scope": {
+    "pipeline": "ingestion",
+    "modules": [
+      "parsing",
+      "chunking",
+      "embedding"
+    ]
+  },
+  "config_schema": {
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "additionalProperties": false
+  },
+  "io": {
+    "input": {
+      "contract_ref": "urn:retrieval-builder:fixture:ingestion-document:2026-11-05",
+      "shape": "direct"
+    },
+    "output": {
+      "contract_ref": "urn:rag-builder:chunk:0.2-draft",
+      "shape": "list"
+    }
+  },
+  "data_rules": [
+    {
+      "id": "remote-text",
+      "action": "declare",
+      "side": "output",
+      "target": "/fields",
+      "name": {
+        "value": "text"
+      },
+      "schema": {
+        "type": "string",
+        "minLength": 1
+      },
+      "required": true
+    },
+    {
+      "id": "remote-vector",
+      "action": "declare",
+      "side": "output",
+      "target": "/vectors",
+      "name": {
+        "value": "text"
+      },
+      "schema": {
+        "$ref": "urn:rag-builder:chunk:0.2-draft#/$defs/DenseVector"
+      },
+      "required": true
+    }
+  ],
+  "option_sources": [],
+  "ui_hints": {},
+  "rules": [],
+  "maintainers": [
+    {
+      "name": "Example Developer"
+    }
+  ]
+}

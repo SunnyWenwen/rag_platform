@@ -1,0 +1,25 @@
+{
+  "note": "離線測資；Contract／Profile 解析結果不是可寫入業務請求的可信宣告。",
+  "contracts": {
+    "urn:retrieval-builder:fixture:ingestion-document:2026-11-05": {
+      "file": "../../schemas/ingestion_document.schema.json",
+      "note": "僅此離線 fixture 的固定別名；來源共用檔沒有 $id，未更改 A 或發布新版本。"
+    },
+    "urn:rag-builder:parsed-document:0.2-draft": {
+      "file": "../../schemas/parsed_document.schema.json"
+    },
+    "urn:rag-builder:chunk:0.2-draft": {
+      "file": "../../schemas/chunk.schema.json"
+    }
+  },
+  "facts": {
+    "resources": {
+      "embedding": {
+        "profile": {
+          "id": "example.embedding/v1",
+          "dimension": 3
+        }
+      }
+    }
+  }
+}

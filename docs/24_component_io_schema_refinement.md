@@ -140,6 +140,8 @@ Developer 需交付：共用 Contract／版本引用、Config Schema、固定或
 
 ## 10. 仍待核定的格式細節
 
+具體初版已整理為 [25 Descriptor Schema 討論稿](25_component_descriptor_schema_draft.md)，包含五組對照、機器結構稿及 DS-01～DS-13。以下細節已有候選表示，仍需 review，不視為已核定。
+
 - Descriptor／Manifest 的固定 I/O、共用 Contract 引用、變動規則與 option_sources 的正式鍵名／Meta-schema；沿用版本及未知必要語意拒絕政策。
 - 六類規則的精確語法、型別／required／default／nullable／額外欄位政策，以及與既有 12 rules 的整合；不能把「支援方向」當作所有 JSON Schema keyword 都可自動呈現。
 - Engine 解析結果與來源／版本的回傳格式、錯誤定位、快取／失效及 Runtime API；不先凍結 resolve_io_schema 簽名或新增 Remote 端點。

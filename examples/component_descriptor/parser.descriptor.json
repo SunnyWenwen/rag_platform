@@ -1,0 +1,227 @@
+{
+  "descriptor_version": "component-descriptor/0.1-draft",
+  "component_id": "example.parsing.records",
+  "implementation_version": "1.0.0-fixture",
+  "title": "Structured JSON 欄位映射",
+  "description": "離線討論範例；不是已安裝 Component 或正式 Descriptor 協定。",
+  "scope": {
+    "pipeline": "ingestion",
+    "modules": [
+      "parsing"
+    ]
+  },
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "mappings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "source_field": {
+              "type": "string",
+              "minLength": 1
+            },
+            "output_field": {
+              "type": "string",
+              "minLength": 1
+            },
+            "value_type": {
+              "enum": [
+                "string",
+                "integer",
+                "number",
+                "boolean",
+                "array",
+                "object"
+              ]
+            }
+          },
+          "required": [
+            "source_field",
+            "output_field",
+            "value_type"
+          ],
+          "additionalProperties": false
+        },
+        "minItems": 1
+      },
+      "include_page": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "required": [
+      "mappings",
+      "include_page"
+    ],
+    "additionalProperties": false
+  },
+  "io": {
+    "input": {
+      "contract_ref": "urn:retrieval-builder:fixture:ingestion-document:2026-11-05",
+      "shape": "direct",
+      "constraints": {
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "output": {
+      "contract_ref": "urn:rag-builder:parsed-document:0.2-draft",
+      "shape": "list",
+      "inherit": [
+        "/metadata"
+      ]
+    }
+  },
+  "data_rules": [
+    {
+      "id": "input-mapped",
+      "action": "declare",
+      "side": "input",
+      "target": "/content",
+      "name": {
+        "scope": "item",
+        "path": "/source_field"
+      },
+      "schema": {
+        "type": "string"
+      },
+      "required": true,
+      "for_each": "/mappings",
+      "schema_bindings": [
+        {
+          "path": "/type",
+          "value": {
+            "scope": "item",
+            "path": "/value_type"
+          }
+        }
+      ]
+    },
+    {
+      "id": "output-mapped",
+      "action": "declare",
+      "side": "output",
+      "target": "/units/*",
+      "name": {
+        "scope": "item",
+        "path": "/output_field"
+      },
+      "schema": {
+        "type": "string"
+      },
+      "required": true,
+      "for_each": "/mappings",
+      "schema_bindings": [
+        {
+          "path": "/type",
+          "value": {
+            "scope": "item",
+            "path": "/value_type"
+          }
+        }
+      ]
+    },
+    {
+      "id": "input-page",
+      "action": "declare",
+      "side": "input",
+      "target": "/content",
+      "name": {
+        "value": "page"
+      },
+      "schema": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "required": true,
+      "when": {
+        "op": "eq",
+        "left": {
+          "scope": "config",
+          "path": "/include_page"
+        },
+        "right": {
+          "value": true
+        }
+      }
+    },
+    {
+      "id": "output-page",
+      "action": "declare",
+      "side": "output",
+      "target": "/units/*",
+      "name": {
+        "value": "page"
+      },
+      "schema": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "required": true,
+      "when": {
+        "op": "eq",
+        "left": {
+          "scope": "config",
+          "path": "/include_page"
+        },
+        "right": {
+          "value": true
+        }
+      }
+    }
+  ],
+  "option_sources": [],
+  "ui_hints": {
+    "order": [
+      "/mappings",
+      "/include_page"
+    ],
+    "fields": {
+      "/mappings": {
+        "widget": "array",
+        "item_layout": "inline",
+        "separator": "→"
+      },
+      "/mappings/*/source_field": {
+        "widget": "text"
+      },
+      "/mappings/*/output_field": {
+        "widget": "text"
+      },
+      "/mappings/*/value_type": {
+        "widget": "select"
+      },
+      "/include_page": {
+        "widget": "checkbox"
+      }
+    }
+  },
+  "rules": [
+    {
+      "id": "unique-output",
+      "kind": "unique_by",
+      "target": "/mappings",
+      "item_path": "/output_field",
+      "code": "DUPLICATE_OUTPUT",
+      "message": "輸出 Unit 欄位名稱不可重複。"
+    }
+  ],
+  "maintainers": [
+    {
+      "name": "Example Developer"
+    }
+  ],
+  "required_ui_features": [
+    "array_rows.v1",
+    "inline_mapping.v1"
+  ]
+}

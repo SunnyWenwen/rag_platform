@@ -1,0 +1,83 @@
+{
+  "type": "array",
+  "items": {
+    "allOf": [
+      {
+        "$ref": "urn:rag-builder:chunk:0.2-draft"
+      },
+      {
+        "type": "object",
+        "properties": {
+          "vectors": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "$ref": "urn:rag-builder:chunk:0.2-draft#/$defs/DenseVector",
+                "properties": {
+                  "source_field": {
+                    "const": "text"
+                  },
+                  "embedding_profile_id": {
+                    "const": "example.embedding/v1"
+                  },
+                  "values": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 3,
+                    "maxItems": 3
+                  }
+                }
+              },
+              "summary_vector": {
+                "$ref": "urn:rag-builder:chunk:0.2-draft#/$defs/DenseVector",
+                "properties": {
+                  "source_field": {
+                    "const": "summary"
+                  },
+                  "embedding_profile_id": {
+                    "const": "example.embedding/v1"
+                  },
+                  "values": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 3,
+                    "maxItems": 3
+                  }
+                }
+              }
+            },
+            "required": [
+              "text",
+              "summary_vector"
+            ]
+          },
+          "fields": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "minLength": 1
+              },
+              "title": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "text",
+              "title",
+              "summary"
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

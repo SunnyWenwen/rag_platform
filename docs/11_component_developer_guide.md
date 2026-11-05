@@ -149,6 +149,8 @@ Component 不自己重建 Engine 的重試、排程與授權流程。必要 Clie
 
 ### 4.1 讓 Component 可由 Builder 設定
 
+具體候選格式與 Parser／Chunker／Embedding／Remote 對照見 [25](25_component_descriptor_schema_draft.md)及 [examples/component_descriptor](../examples/component_descriptor/README.md)。這些是待決格式／離線預期結果，不是已發布 SDK；實作交付仍需待核定介面與真實契約測試。
+
 D-67 補充：Developer 另提供共用 I/O Contract 引用、固定或依 Config 細化的資料規格，以及上游選項／相依條件。首版六類純宣告由 Engine 通用解析器處理，不要求每個 Component 自寫 resolve_io_schema；Local／Remote 等價交付，完整內容見 [24](24_component_io_schema_refinement.md)。不再以 User 手填的頂層 document_schema 取代 Parser 輸出宣告；正式語法／SDK 尚未凍結。
 
 依 D-42 與 [12](12_component_schema_ui_contract.md)，開發者先宣告 `config_type`；共用父類別輸出 Config Schema，Registry 檢查，不必重寫同一份 Schema 產生函式。需要特殊顯示時提供 UI hints；動態欄位／LLM 選單另宣告 option_sources，參數相依另列 rules／capabilities，不能只把限制寫在 UI。

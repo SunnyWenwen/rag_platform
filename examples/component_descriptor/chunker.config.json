@@ -1,0 +1,16 @@
+{
+  "split_field": "text",
+  "output_field": "text",
+  "copy_fields": [
+    {
+      "source_field": "title",
+      "output_field": "title"
+    }
+  ],
+  "max_tokens": 10,
+  "overlap_tokens": 0,
+  "tokenizer_profile_id": "example.tokenizer/v1",
+  "preserve_original": true,
+  "original_field": "original_text",
+  "include_original_chunk": false
+}

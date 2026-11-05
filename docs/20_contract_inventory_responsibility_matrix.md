@@ -108,7 +108,7 @@ Parser 的具體教學入口是 [16](16_parser_component_development_examples.md
 ### 6.1 精確定義的閱讀入口
 
 - **A**：[04 Module I/O](04_module_components_io_contracts.md)、[13 IngestionDocument](13_ingestion_parser_input_contract.md)、[14 ParsedDocument](14_parsed_document_contract.md)、[15 Chunk](15_chunk_contract.md)、[17 Pydantic 範例](17_pydantic_contracts_draft.md)、[19 IndexBinding／Artifact](19_index_binding_artifact_contract.md)。Inference 沿用 QueryContext[]，不恢復 InferenceState wrapper。
-- **B**：[11 開發指南](11_component_developer_guide.md)、[12 設定描述草案](12_component_schema_ui_contract.md)、[24 I/O 細化與相依驗證](24_component_io_schema_refinement.md)。
+- **B**：[11 開發指南](11_component_developer_guide.md)、[12 設定描述草案](12_component_schema_ui_contract.md)、[24 I/O 細化與相依驗證](24_component_io_schema_refinement.md)、[25 Descriptor Schema 初版／DS 決策](25_component_descriptor_schema_draft.md)。
 - **C**：[18 Remote Service／Pipeline](18_remote_service_pipeline_integration.md)、[16 Parser 開發範例](16_parser_component_development_examples.md)。
 - **D**：[05 資料／Config](05_data_contracts_search_design.md)、[06 UI 規格](06_ui_development_spec.md)。
 - **E**：[03 正式名詞與環境邊界](../03_architecture_proposal.md)、[07 Backend／Runtime／Export](07_backend_runtime_integration.md)、[18 Remote 部署](18_remote_service_pipeline_integration.md)。

@@ -169,7 +169,7 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 <a id="uib-021-io-schema-refinement"></a>
 ## UIB-021：Descriptor 驅動 I/O 規格與逐層相依（D-67）
 
-2026-11-05｜**待實作，本輪不改 Prototype。**責任與六類宣告能力以 [24](24_component_io_schema_refinement.md) 為準，正式 Meta-schema／API 未定案。
+2026-11-05｜**待實作，本輪不改 Prototype。**責任與六類宣告能力以 [24](24_component_io_schema_refinement.md) 為準；[25](25_component_descriptor_schema_draft.md) 提供可重複 A→B 表單／路徑等具體候選，尚未核定 Meta-schema／API，不以離線範例當正式 Renderer。
 
 - [ ] Create／Edit 取消要求先填獨立全域 Document Schema；在 Parser 設定顯示當前輸入／輸出欄位摘要。
 - [ ] 僅在 Parser 開放此能力時顯示資料欄位定義／映射與 metadata 限制；固定輸出不重複填寫。

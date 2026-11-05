@@ -256,3 +256,10 @@ SC-01～SC-10 保留具體格式、Profile、Remote 範圍／操作、參數正�
 - Descriptor／Manifest Meta-schema、規則語法、解析結果／SDK／API、其餘 System Config SC 選項未定案。本輪不選定獨立 processing 層或新的 Remote endpoint。
 
 D-66 含 document_schema 的舊 Schema／五案例／Fixture／驗證器移至 [歷史快照](../superseded/system_config_d66/README.md)。來源 commit 為 e89d5ddcdd72b79e3cde651ab0411c883919467c；舊驗證結果只代表當時候選格式。
+
+<a id="d-68"></a>
+## 2026-11-05 D-68：先提出 Descriptor Schema 候選再整合 System Config
+
+來源：使用者要求依目前功能先提出 Descriptor Schema 初版、列出待決項目並給範例。交付 [25 初版](../../25_component_descriptor_schema_draft.md)及 [離線範例](../../../examples/component_descriptor/README.md)，以 Parser／Chunker／Embedding／模板／Remote 區段對照 Descriptor、Config、資料及人工明列的預期 I/O Schema。
+
+本次授權的是草案／範例整理；DS-01～DS-13 的包裝、語法、版本與解析介面未核定，不覆寫 D-67 上位行為。離線結構、部分路徑／約束與樣本檢查不代表 data_rules 編譯、Registry、UI、服務或部署已實作。UI 仍追蹤 UIB-021；D 的其他 SC 決策仍 OPEN。

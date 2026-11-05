@@ -1,0 +1,15 @@
+{
+  "profile_id": "example.embedding/v1",
+  "service_ref": "embedding.main",
+  "mappings": [
+    {
+      "source_field": "embedding_text",
+      "output_name": "text"
+    }
+  ],
+  "composition": {
+    "enabled": true,
+    "output_field": "embedding_text",
+    "template": "標題：{{fields.title}}\n內容：{{fields.text}}"
+  }
+}

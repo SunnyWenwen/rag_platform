@@ -1,5 +1,7 @@
 # Component 設定 Schema、動態表單與相依規則
 
+> 2026-11-05：具體 Descriptor Schema／六類規則的整合候選改由 [25](25_component_descriptor_schema_draft.md) 討論，附機器 Schema、五組範例與 DS 決策。本文件保留已確認互動行為與舊語法背景；舊 component-ui-0.1-draft／單 module_type 片段不能與新候選混用，尚未發布遷移器。
+
 > 2026-11-05 D-67：B 新增 Component I/O 資料細節、依 Config 細化的六類宣告能力，以及沿 Pipeline 的相依驗證，完整結論見 [24](24_component_io_schema_refinement.md)。既有 UI hints／option_sources／rules 的具體語法與單 module_type 範例仍是候選，不因行為確認就視為 Meta-schema 已凍結。Remote 連續區段由 Manifest 推導 Descriptor，單 Module 範例不取代其公開邊界。
 
 日期：2026-10-28。狀態：**D-42 已確認規劃方向與操作行為；`component-ui-0.1-draft` 為待 M0 核定的介面草案，尚未實作。**

@@ -1,0 +1,15 @@
+{
+  "mappings": [
+    {
+      "source_field": "body",
+      "output_field": "text",
+      "value_type": "string"
+    },
+    {
+      "source_field": "title",
+      "output_field": "title",
+      "value_type": "string"
+    }
+  ],
+  "include_page": true
+}

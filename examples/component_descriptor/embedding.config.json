@@ -1,0 +1,14 @@
+{
+  "profile_id": "example.embedding/v1",
+  "service_ref": "embedding.main",
+  "mappings": [
+    {
+      "source_field": "text",
+      "output_name": "text"
+    },
+    {
+      "source_field": "summary",
+      "output_name": "summary_vector"
+    }
+  ]
+}

@@ -118,6 +118,8 @@ D-66 舊版離線 [validate_examples.py](history/superseded/system_config_d66/va
 
 ## 5. 需要討論的選擇與建議
 
+討論順序調整：先審閱 [25 B Descriptor Schema 初版](25_component_descriptor_schema_draft.md) 的設定／I/O／選項規則，再回來完成 D 的 SC 決策；不必先實作全部 Component。System 選用仍以 ID／版本／parameters 為骨架，不把整份 Descriptor 內嵌 D。
+
 以下除 SC-03 的 D-67 已確認方向外，具體表示仍待核定；共同既有語意沿用已確認決策。SC-07 的獨立 processing 層亦未定案，須與 Component 實作／參數責任一起審閱。
 
 | ID | 要決定的表示／取捨 | 建議做法與理由 | 另一種選擇／影響 |

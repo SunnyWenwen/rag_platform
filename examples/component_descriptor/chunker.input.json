@@ -1,0 +1,16 @@
+[
+  {
+    "document_id": "manual-001",
+    "source_revision": "v1",
+    "units": [
+      {
+        "text": "設備保養",
+        "title": "操作手冊",
+        "page": 1
+      }
+    ],
+    "metadata": {
+      "department": "manufacturing"
+    }
+  }
+]

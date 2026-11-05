@@ -1,0 +1,35 @@
+[
+  {
+    "chunk_id": "manual-001-c1",
+    "document_id": "manual-001",
+    "source_revision": "v1",
+    "fields": {
+      "text": "設備保養",
+      "title": "操作手冊",
+      "summary": "每月清潔"
+    },
+    "metadata": {
+      "department": "manufacturing"
+    },
+    "vectors": {
+      "text": {
+        "values": [
+          0.1,
+          0.2,
+          0.3
+        ],
+        "embedding_profile_id": "example.embedding/v1",
+        "source_field": "text"
+      },
+      "summary_vector": {
+        "values": [
+          0.1,
+          0.2,
+          0.3
+        ],
+        "embedding_profile_id": "example.embedding/v1",
+        "source_field": "summary"
+      }
+    }
+  }
+]

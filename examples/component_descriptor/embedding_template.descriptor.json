@@ -1,0 +1,321 @@
+{
+  "descriptor_version": "component-descriptor/0.1-draft",
+  "component_id": "example.embedding.template_api",
+  "implementation_version": "1.0.0-fixture",
+  "title": "Embedding API＋選用文字模板",
+  "description": "離線討論範例；不是已安裝 Component 或正式 Descriptor 協定。",
+  "scope": {
+    "pipeline": "ingestion",
+    "modules": [
+      "embedding"
+    ]
+  },
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "profile_id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "service_ref": {
+        "type": "string",
+        "minLength": 1
+      },
+      "mappings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "source_field": {
+              "type": "string",
+              "minLength": 1,
+              "title": "來源欄位"
+            },
+            "output_name": {
+              "type": "string",
+              "minLength": 1,
+              "title": "向量名稱"
+            }
+          },
+          "required": [
+            "source_field",
+            "output_name"
+          ],
+          "additionalProperties": false
+        },
+        "minItems": 1
+      },
+      "composition": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "output_field": {
+            "type": "string",
+            "minLength": 1
+          },
+          "template": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "enabled",
+          "output_field",
+          "template"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "profile_id",
+      "service_ref",
+      "mappings",
+      "composition"
+    ],
+    "additionalProperties": false
+  },
+  "io": {
+    "input": {
+      "contract_ref": "urn:rag-builder:chunk:0.2-draft",
+      "shape": "list"
+    },
+    "output": {
+      "contract_ref": "urn:rag-builder:chunk:0.2-draft",
+      "shape": "list",
+      "inherit": [
+        "/fields",
+        "/metadata",
+        "/vectors"
+      ]
+    }
+  },
+  "data_rules": [
+    {
+      "id": "composed-text",
+      "action": "declare",
+      "side": "output",
+      "target": "/fields",
+      "name": {
+        "scope": "config",
+        "path": "/composition/output_field"
+      },
+      "schema": {
+        "type": "string",
+        "minLength": 1
+      },
+      "required": true,
+      "when": {
+        "op": "eq",
+        "left": {
+          "scope": "config",
+          "path": "/composition/enabled"
+        },
+        "right": {
+          "value": true
+        }
+      }
+    },
+    {
+      "id": "embedding-source",
+      "action": "declare",
+      "side": "input",
+      "target": "/fields",
+      "name": {
+        "scope": "item",
+        "path": "/source_field"
+      },
+      "schema": {
+        "type": "string",
+        "minLength": 1
+      },
+      "required": true,
+      "for_each": "/mappings",
+      "when": {
+        "not": {
+          "all": [
+            {
+              "op": "eq",
+              "left": {
+                "scope": "config",
+                "path": "/composition/enabled"
+              },
+              "right": {
+                "value": true
+              }
+            },
+            {
+              "op": "eq",
+              "left": {
+                "scope": "item",
+                "path": "/source_field"
+              },
+              "right": {
+                "scope": "config",
+                "path": "/composition/output_field"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "embedding-vector",
+      "action": "declare",
+      "side": "output",
+      "target": "/vectors",
+      "name": {
+        "scope": "item",
+        "path": "/output_name"
+      },
+      "schema": {
+        "$ref": "urn:rag-builder:chunk:0.2-draft#/$defs/DenseVector",
+        "properties": {
+          "source_field": {
+            "type": "string"
+          },
+          "embedding_profile_id": {
+            "type": "string"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        }
+      },
+      "required": true,
+      "for_each": "/mappings",
+      "schema_bindings": [
+        {
+          "path": "/properties/source_field/const",
+          "value": {
+            "scope": "item",
+            "path": "/source_field"
+          }
+        },
+        {
+          "path": "/properties/embedding_profile_id/const",
+          "value": {
+            "scope": "config",
+            "path": "/profile_id"
+          }
+        },
+        {
+          "path": "/properties/values/minItems",
+          "value": {
+            "scope": "context",
+            "path": "/resources/embedding/profile/dimension"
+          }
+        },
+        {
+          "path": "/properties/values/maxItems",
+          "value": {
+            "scope": "context",
+            "path": "/resources/embedding/profile/dimension"
+          }
+        }
+      ]
+    }
+  ],
+  "option_sources": [
+    {
+      "id": "embedding-fields",
+      "target": "/mappings/*/source_field",
+      "kind": "fields",
+      "source": {
+        "side": "output",
+        "path": "/fields"
+      },
+      "filter": {
+        "types": [
+          "string"
+        ],
+        "required": true
+      }
+    }
+  ],
+  "ui_hints": {
+    "order": [
+      "/profile_id",
+      "/service_ref",
+      "/mappings"
+    ],
+    "fields": {
+      "/mappings": {
+        "widget": "array",
+        "item_layout": "inline",
+        "separator": "→"
+      },
+      "/mappings/*/source_field": {
+        "widget": "field_picker",
+        "option_source": "embedding-fields"
+      },
+      "/mappings/*/output_name": {
+        "widget": "text"
+      },
+      "/composition/template": {
+        "widget": "textarea",
+        "help": "只允許核定的 {{fields.name}} 變數與固定文字；模板來源另由 Engine 語意驗證。"
+      }
+    }
+  },
+  "rules": [
+    {
+      "id": "unique-vectors",
+      "kind": "unique_by",
+      "target": "/mappings",
+      "item_path": "/output_name",
+      "code": "DUPLICATE_VECTOR_NAME",
+      "message": "向量名稱不可重複。"
+    }
+  ],
+  "maintainers": [
+    {
+      "name": "Example Developer"
+    }
+  ],
+  "resources": [
+    {
+      "id": "embedding",
+      "kind": "embedding_api",
+      "service_parameter": "/service_ref",
+      "profile_parameter": "/profile_id",
+      "required": true
+    }
+  ],
+  "required_ui_features": [
+    "array_rows.v1",
+    "inline_mapping.v1",
+    "field_picker.v1",
+    "field_template.v1"
+  ],
+  "execution_capabilities": {
+    "async": true,
+    "batch": true,
+    "streaming": false
+  },
+  "change_impact": [
+    {
+      "parameters": [
+        "/profile_id",
+        "/mappings"
+      ],
+      "effects": [
+        "reembed",
+        "reindex"
+      ],
+      "description": "依來源保留政策重處理，不自動保證可局部續跑。"
+    }
+  ],
+  "capabilities": {
+    "requires": [
+      {
+        "name": "field_template",
+        "version": "1"
+      }
+    ]
+  }
+}
