@@ -2,7 +2,7 @@
 
 更新日期：2026-11-05。適用 A～E 中的執行契約、System 組裝與環境控制；總盤點見 [20](20_contract_inventory_responsibility_matrix.md)。
 
-**文件分成「已確認行為」與「本次建議 API／回應格式」。**本次盤點不代表 OpenAPI、所有 HTTP code／欄位或新增功能已核定，也沒有實作 Runtime、修改共用資料 Schema 或 UI。決策由 [08 的 D-56～D-64／相關 Q-ID](08_implementation_plan.md) 追蹤。
+**文件分成「已確認行為」與「本次建議 API／回應格式」。**本次盤點不代表 OpenAPI、所有 HTTP code／欄位或新增功能已核定，也沒有實作 Runtime、修改共用資料 Schema 或 UI。決策由 [08 的 D-56～D-65／相關 Q-ID](08_implementation_plan.md) 追蹤。
 
 ## 1. 範圍與已確認基準
 
@@ -34,6 +34,8 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 
 - D-64：確認接收／文件與 Run 狀態核心欄位及錯誤格式；覆寫失敗留 Runtime 記憶體可查，不代表資料回復舊版。初始限制見 22；可信內部 System 路由見 §8.5。文件 ID 每頁數量／排序／cursor 的細節仍待確認。
 
+- D-65：文件清單回 documents[]＋next_cursor，每筆 document_id／source_revisions[]，彙整實際儲存版本；不提供最新成功版或版本歷史推定。精確分頁參數／cursor 後續整理。
+
 ## 2. API 清單：7 支業務 API＋2 支 Health API
 
 **能力、Ingestion List、狀態／錯誤核心欄位及 retire 同步結果已確認；完整 OpenAPI、存在／清單精確格式與分頁細節仍待整理。**查詢以目標 System 為作用範圍，不直接開放任意 DB／Collection 管理。
@@ -44,7 +46,7 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 | P0 | GET /v1/ingestions/{run_id} | 查一次提交及逐文件結果 | run_id | 200：Run 狀態／計數／逐文件結果 | 資料來自 Runtime 記憶體工作紀錄；Run 可 partial |
 | P0 | GET /v1/documents/{document_id}/ingestion-status | 查文件最近一次工作 | document_id | 200：run_id、status、Module、時間／錯誤；無紀錄為 unknown | 工作狀態，不用成功儲存的文件反推 |
 | P0 能力；格式草案 | GET /v1/documents/{document_id}/exists | 查目前文件資料是否存在 | document_id | 200：document_id／exists | 從實際文件儲存／索引讀取；不是工作紀錄是否存在；backend 無法確認時回錯誤 |
-| P0 能力；格式草案 | GET /v1/documents?limit=...&cursor=... | 列出目前全部 document_id | 分頁參數 | 200：document_ids／next_cursor | 去重且分頁讀完整清單；不是列 Chunk ID／工作紀錄 |
+| P0 核心已確認 | GET /v1/documents?limit=...&cursor=... | 列出目前文件摘要 | 分頁參數 | 200：documents[]／next_cursor；每筆 document_id／source_revisions[] | 從實際 Chunk 去重彙整文件與版本；不當作工作歷史／最新成功版本 |
 | P0 | POST /v1/documents/{document_id}:retire | 直接刪除文件資料 | document_id | 200：document_id／result=deleted 或 not_found；同文件忙碌 409 | 清除對應 Chunk／向量、持久儲存與本地搜尋副本，避免重啟重建復活；不取消 Ingestion 工作 |
 | P0 | POST /v1/queries | 完整 Inference | {query, filters?, metadata?} | 200：根層 QueryContext[] | 同步完成；Runtime 控制 Rate／併發／Deadline |
 | P0 支援 | GET /health/live | 程序存活 | — | 200：存活 | 不依是否有資料判斷 |
@@ -272,9 +274,9 @@ Retire 已確認為直接刪除，不做 soft delete／restore API；再次使�
 | API-D04 | D-64 確認 22 的初始預設與管理方式：E 的 Runtime 環境設定，由 Admin／部署管理者提供；Query 額滿直接拒絕 | 候選參數路徑、正式機器 Schema／載入方式、排程／計數算法與實際容量驗證；不新增單次請求覆寫 | Q-017／Q-020／Q-027 |
 | API-D05 | 共用 API／Flow、逐請求與已接收文件固定 Config 快照；該 System Ingestion 結束後才允許新版設定生效；獨立 Runtime 啟動綁定；無續跑／無 Query 讀寫鎖／未知寫入不自動重試 | 舊 Query／資源回收、管理端點的忙碌回應、Remote 在途操作與失敗清理仍待細化；不增加全域讀寫互斥／索引快照 | Q-008～010／Q-015／Q-017／Q-028 |
 | API-D06 | Builder 登入延後；Runtime API 暫用一組 HTTP Basic 帳密操作全部 API；首期不做角色／逐 API 授權 | D-64 已選 §8.5 的受保護內部 System 路由；HTTPS／Secret 注入／網路保護與檢查位置待細化；對外 Health 同一帳密，Probe 接法為部署細節 | Q-006／Q-019／Q-020 |
-| API-D07 | 查 document_id 是否存在、列出當前全部 ID；讀取實際儲存而非工作表 | 建議 exists 布林值、ID 清單去重分頁；路徑／欄位、排序／cursor／分頁一致性、Remote 讀取能力待整理 | Q-019／Q-028 |
+| API-D07 | 查 document_id 是否存在；D-65 文件清單回 documents[]＋next_cursor，每筆 document_id／source_revisions[]，讀取實際 Chunk 而非工作表 | exists 精確格式、分頁參數／排序／cursor、Remote 讀取操作及完整 OpenAPI 後續整理；不任選最新版本 | Q-019／Q-028 |
 
-API-D01～07 沿用既有 Q-ID，不另凍結完整 OpenAPI。單一 List、接收／Run 彙總、取消暫緩、文件 ID 管理與 retire 直接刪除方向不再重問；D-64 已收斂刪除結果／錯誤核心及 Runtime 參數，存在／清單的精確格式與 B 的分頁細節仍待確認；不因此關閉所有 Q-ID。
+API-D01～07 沿用既有 Q-ID，不另凍結完整 OpenAPI。單一 List、接收／Run 彙總、取消暫緩、文件 ID 管理與 retire 直接刪除方向不再重問；D-64 已收斂刪除結果／錯誤核心及 Runtime 參數，D-65 進一步確認文件摘要核心，存在查詢的精確格式、分頁參數／cursor 與完整 OpenAPI 仍待整理；不因此關閉所有 Q-ID。
 
 
 
@@ -368,19 +370,27 @@ GET /v1/documents/manual-001/exists
 
 不存在時建議仍為 200 並回 exists=false。後端無法連線、尚未初始化或不支援操作時，應回可辨識錯誤，不回 false 偽裝不存在。這支 API 不回原始內容／Chunk／向量，也不表示最近一次工作成功。
 
-### 9.3 ID 清單提案
+### 9.3 文件摘要清單（D-65 已確認核心）
 
 GET /v1/documents?limit=100&cursor=...
 
 ```json
-{"document_ids": ["manual-001", "manual-002"], "next_cursor": null}
+{
+  "documents": [
+    {"document_id": "manual-001", "source_revisions": ["v2"]},
+    {"document_id": "manual-002", "source_revisions": ["v1", "v2"]}
+  ],
+  "next_cursor": null
+}
 ```
 
-完整清單直接查該 System 的實際 ES／Local 資料，對 document_id 去重並分頁；一份文件有多個 Chunk 仍只回一個 ID，不無限制一次塞入全部結果。使用者本輪詢問分頁含義，尚未核定 B：每頁預設 100／上限 1,000、document_id 升冪、System 綁定 cursor 與不加快照，均為前輪建議，另列 22 §4；不能與已確認 C 的 Runtime 預設混為一談。頁面排序、cursor 有效期與同時寫入一致性見 API-D07。初版不要求計算全量 total 或提供內容投影。
+D-65 採 documents[]＋next_cursor，取代早期 document_ids[]；每筆為 document_id＋source_revisions[]。直接查該 System 實際保存的 Chunk／ES／Local 資料，以 document_id 去重並分頁，一份文件不論多少 Chunk 都只列一筆。每筆 source_revisions 為實際 Chunk.source_revision 的去重集合：正常通常一版，更新中／部分寫入失敗可能多版。這不是最新成功版本或持久歷史，不依 Run／文件工作紀錄推定，不將單一 Chunk 的 source_revision 改成陣列。
 
-分頁只代表清單分批傳回。例如 250 份不同文件，每頁取 100 個 ID，可依 next_cursor 取得第 1 批 100、第 2 批 100、第 3 批 50；最後 next_cursor=null。它不切文件、不改 Chunk，也不是 Retrieval 的 Top N；Client 可讀完所有頁取得當時可遍歷的清單。
+每頁預設 100／上限 1,000、document_id 升冪、System 綁定 cursor 與不加快照先留為 22 §4 的候選規格；精確值、頁面排序、cursor 有效期與同時寫入一致性後續於 API-D07／OpenAPI 整理，不把它們當成本輪新核定。初版不要求全量 total、文件／Chunk 原文、metadata 投影或任意版本回復。
 
-後端實作可依布局選擇：ES 以可精確聚合的 document_id 欄位作去重，候選是 composite aggregation，使用回傳 after_key 接續頁面；不能只取前 N 個 Chunk hits 去重，就當作已列出所有文件。Local 可由 Chunk store 的 document_id 去重集合或一致維護的文件對照取得，MongoDB 模式使用實際保存的文件資料；不查 Runtime 工作表，也不需要為這個 API 再建中央目錄 DB。
+分頁只代表清單分批傳回。例如 250 份不同文件，每頁取 100 個 ID，可依 next_cursor 取得第 1 批 100、第 2 批 100、第 3 批 50；最後 next_cursor=null。每個分頁項目是一份文件摘要，包含該文件目前可見的來源版本；不是每個版本各占一筆，也不以 Chunk 數計算 limit。Client 可讀完所有頁取得當時可遍歷的清單。
+
+後端實作可依布局選擇：ES 以可精確聚合的 document_id 欄位作去重，候選是 composite aggregation，使用回傳 after_key 接續頁面；不能只取前 N 個 Chunk hits 去重，就當作已列出所有文件；source_revisions 也不能只取任意首筆或被截斷的版本子聚合。Local 可由 Chunk store 的 document_id／source_revision 去重集合或一致維護的文件對照取得，MongoDB 模式使用實際保存的文件資料；不查 Runtime 工作表，也不需要為這個 API 再建中央目錄 DB。
 
 ES 分頁聚合依據：[Composite aggregation](https://www.elastic.co/docs/reference/aggregations/search-aggregations-bucket-composite-aggregation)。具體 Mapping、排序、資料更新中的頁面一致性與效能仍由 Artifact／backend 驗證，不把方案寫成已實作。
 

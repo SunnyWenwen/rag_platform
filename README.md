@@ -37,7 +37,7 @@ Prototype v0.12 同步 Query metadata、選填追溯、Embedding 文字模板／
 | [05 資料與 Config](docs/05_data_contracts_search_design.md) | 契約總覽、Inference 物件、設定責任與變更影響 |
 | [06 UI 開發規格](docs/06_ui_development_spec.md) | Create／Edit、欄位相依、CSV、預覽及助手 |
 | [07 Backend 與 Runtime API](docs/07_backend_runtime_integration.md) | JSON API、工作狀態、儲存、服務綁定與 Export |
-| [08 開發計畫與決策](docs/08_implementation_plan.md) | M0～M7、D-01～D-64、Q-001～Q-028 與驗收 |
+| [08 開發計畫與決策](docs/08_implementation_plan.md) | M0～M7、D-01～D-65、Q-001～Q-028 與驗收 |
 | [09 Inference Contract 與 UI](docs/09_inference_contract_ui_plan.md) | ResultSet、兩層融合、四處 Top N 與連動 |
 | [10 UI Backlog](docs/10_ui_adjustment_backlog.md) | 現有原型能力及UIB-001～023 的原型／正式整合狀態 |
 | [11 Component 開發指南](docs/11_component_developer_guide.md) | SDK 示意、開發、契約測試、PR 與發布 |
@@ -51,7 +51,7 @@ Prototype v0.12 同步 Query metadata、選填追溯、Embedding 文字模板／
 | [19 IndexBinding／Artifact 契約](docs/19_index_binding_artifact_contract.md) | 單組邏輯索引、Binding 五鍵、索引格式定義與相容性 |
 | [20 契約與責任總盤點](docs/20_contract_inventory_responsibility_matrix.md) | A～E 詳細總表、角色／系統分工、Developer 交付、Builder DEV 與 FTEST／ENT 邊界 |
 | [21 Runtime API 盤點](docs/21_runtime_ingestion_inference_api_inventory.md) | Ingestion／Inference、文件存在／ID 清單／retire、202／工作狀態、錯誤格式與可信 System 路由 |
-| [22 Runtime 可調參數](docs/22_runtime_settings_catalog.md) | 已確認的大小／Queue／並行／Rate／Deadline／狀態保存預設、作用範圍與管理者；文件 ID 分頁另列待確認 |
+| [22 Runtime 可調參數](docs/22_runtime_settings_catalog.md) | 已確認的 Runtime 限制預設、作用範圍與管理者；文件摘要／分頁參數分開記錄 |
 
 名詞以 03 為準；資料的精確定義引用 schemas/ 與 13～15，不在各模組重寫一份。Component Developer 先由 20 選擇 Local／Remote 閱讀路線，再依 11 → 04 → 對應資料契約 → 12／18 準備交付。完整 Engine Config／SDK 尚未凍結，示例不等於可直接執行的產品介面。
 
@@ -98,3 +98,6 @@ Parser 開發示範：[三種交付模式圖](diagrams/04_component_delivery_mod
 
 
 2026-11-05 D-63／D-64：該 System Ingestion 結束後才允許新版 Config 生效；retire 同步回 200，以 deleted／not_found 區分結果，忙碌文件 409。工作失敗留 Runtime 記憶體可查，重啟／到期 unknown；API 成功／錯誤核心欄位已確認。共用 Runtime 透過可信內部 System 路由選配置，S1 代表 system_id。可調參數集中在 [22](docs/22_runtime_settings_catalog.md)，每頁 100／上限 1,000 等文件 ID 分頁細節仍待確認；未改 UI、Runtime 程式或共用資料 Schema。
+
+
+2026-11-05 D-65：文件清單改回 documents[]＋next_cursor，每筆為 document_id＋source_revisions[]，從實際儲存 Chunk 去重彙整目前版本；正常單版、更新途中／失敗可能多版，不標示為最新成功版本，也不變更 Chunk.source_revision。定義見 [21 §9.3](docs/21_runtime_ingestion_inference_api_inventory.md)，分頁參數與 Runtime 控制仍集中在 22；下一輪建議從完整 System Config、Developer 交付與 SDK 介面收斂，詳見 [08 §7](docs/08_implementation_plan.md)。

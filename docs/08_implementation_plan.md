@@ -293,6 +293,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 
 - 2026-11-03 D-52：必要 chunk_id 仍須有效／清單內唯一，但不強制由 fingerprint／ordinal 計算，也不強制將計算資訊寫入 _rag。SDK helper 可選用；穩定／更新語意按實作及此 Q-ID 核定。
 - 2026-10-30 D-47：已同意可重現 ID 方向；15 §5～6 提供有效切分計畫 fingerprint＋文件內全域 ordinal 的 Python 參考演算法。仍不清楚：省略 revision 的生成、檔案拆多文件、CSV 無主鍵、同 revision 不同內容的衝突政策、跨語言 canonicalization 與正式遷移；不能再將穩定 ID 方向全部列為未決。
+- D-65 確認文件摘要清單回 document_id＋source_revisions[]，彙整實際儲存 Chunk 的版本；這不凍結省略 revision 的生成規則、衝突政策或版本時序，也不等於持久工作歷史。
 - 建議：跨批更新要求穩定 document_id，內容版本與 Config 分開；採明確可重現的衍生 ID 規則。
 - 替代：每批當新文件；需接受無法自然更新與重複資料後果。
 - 負責角色：Engine＋資料／產品；阻擋 M1 正式 ID 規範及 M2 更新。
@@ -413,7 +414,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 - D-41 補充：Builder 與 Runtime 透過 API／Component 目錄合作；需核定目標 Runtime 版本識別、Config Schema／能力目錄、完整 Config 驗證、快取失效與接口相容政策。能力範圍見 07 §5.8，精確端點與 Envelope 仍 OPEN。
 - D-42 已按建議規劃描述／Context／選項及驗證關聯值，候選格式見 12；精確路徑、認證、版本識別與公開 Meta-schema 仍 OPEN，不影響既有 Ingest／Query 範例。
 - Query API 成功 body 直接回傳 QueryContext[]，只保留目前 key／items／score；排名以陣列順序表示。request／版本進 Headers／Logs；精確 HTTP 版本協商及錯誤待核定。
-- D-64 已確認 retire 同步 200＋deleted／not_found、忙碌 409，狀態／錯誤核心欄位與可信內部 System 路由；文件 ID 分頁細節仍待說明／確認。完整 OpenAPI、Backend 管理 API 與部署保護仍 OPEN；HTTP 與領域錯誤分層。
+- D-64 已確認 retire 同步 200＋deleted／not_found、忙碌 409，狀態／錯誤核心欄位與可信內部 System 路由；後續 D-65 已確認 documents[]＋next_cursor 的摘要形式及 source_revisions[]；精確分頁參數／cursor、完整 OpenAPI、Backend 管理 API 與部署保護仍 OPEN；HTTP 與領域錯誤分層。
 - 替代：沿用既有企業 API 規範並明確映射。
 - 負責角色：Backend＋Runtime＋Frontend／身分團隊；阻擋 M3 Runtime／M4 助手 API／M5 Builder 真實串接。
 - 決策：未定；更新 05／06／07、OpenAPI／cURL 範例。
@@ -523,7 +524,17 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 
 ## 7. 優先討論順序
 
-第一輪先討論 Q-001／Q-002（技術與契約）、Q-003／Q-004／Q-011（可跑的模型／搜尋基線）、Q-007～Q-010（資料更新及可見性）。第二輪處理 API／儲存／Runtime，再依 M4 獨立 AI 助手、M5 Builder 與助手 UI、M6 評估、M7 交付的順序決策。
+2026-11-05 更新：Ingestion／Query 的業務資料、共用 Flow、Runtime API 主線與限制已經收斂；完整 OpenAPI 仍須整理，但不再把已確認的單一 List、記憶體狀態、Basic、無 Query 讀寫鎖等重新列為待選。以下為建議討論順序，不是新增已定案的技術選擇或變更 M0～M7：
+
+| 建議順序 | 主題／Q-ID | 這輪需要收斂什麼 | 建議產出 |
+|---|---|---|---|
+| 1 | 最小完整 System Config 與環境綁定／Q-002、Q-015 | component_id／版本／parameters／服務引用如何放在 D，E 如何提供連線及 Runtime 設定；不把完整 Descriptor 複製進 Config | 一份可人工閱讀的 Local Memory Config，及切換 Remote Parser 的對照；機器 Schema 再按核定內容產出 |
+| 2 | Developer 交付 Descriptor／Service Manifest／Q-022、Q-028 | Local／Remote Image／External 必填資訊、連續多 Module 涵蓋範圍、可調參數及部署宣告 | 最小 Descriptor／Manifest 格式與各模式交付清單；動態 UI Meta-schema 另案，不視為已凍結 |
+| 3 | Component SDK／Context 與資源生命週期／Q-002、Q-017、Q-020 | B 的 run(input, config, context)、初始化／關閉、Resolver 取得正確 System Client／IndexBinding、有狀態實例的作用範圍 | 一組 Local Parser／Remote Adapter 的 SDK 示意與契約驗收；不為每個 System 組裝專屬 Flow |
+| 4 | 資料更新／索引讀寫與恢復／Q-007～Q-015 | revision 生成／衝突、失敗清理與 Remote unknown、ES／Local 格式、MongoDB 恢復、Filter／融合的可驗算規則 | backend 更新／清理與管理操作的具體約定；沿用完整覆寫、不續跑、無查詢讀寫鎖等已確認方向 |
+| 5 | 最小可執行技術與驗收基線／Q-001、Q-003、Q-004、Q-011、Q-026 | 具體框架／套件版本、可實測模型 API、Tokenizer／搜尋實作與測資；既有 M1 範圍不重新擴張 | Structured JSON／Recursive／Dense／Local Memory 的真實 ingest→query，以及成功、失敗與多 System 隔離驗收 |
+
+優先用第 1 項完整 Config 驗證第 2～3 項是否足夠串接，再依 M1／M2 所需的第 4～5 項收斂。Builder 管理 API／動態 UI、AI 助手與 Export／部署仍依既有 M4～M7 階段補齊；Builder 登入繼續延後。技術與驗收基線可平行準備，不要求等整張待決清單全部關閉才開始受限的 M1 開發。
 
 不需要一次解完所有問題。每次討論完成，更新相應 Q-ID、權威規格、範例與驗收。暫不做的選項標為後續，不能讓同一問題長期以多種互斥建議存在。
 
@@ -680,6 +691,8 @@ Config 及索引／Profile 相容檢查仍要執行，更新語意可能要求�
 
 ## 2026-11-05 D-64：刪除結果、錯誤格式、Runtime 參數與 System 路由
 
+本節保留當時狀態；文件清單的摘要回應後續已由 D-65 確認，精確分頁參數／cursor 仍留規格定稿階段整理。
+
 使用者確認前輪 2、3、A、C、D，並要求有固定位置整理可調參數；B 本輪是詢問 document_id 分頁的意思，不視為已接受每頁 100／上限 1,000／排序／cursor 等細節。
 
 - Retire 同步確認刪除完成回 HTTP 200，body 為 document_id＋result，實際刪除為 deleted、確認原本不存在為 not_found。同文件 queued／running 回 409，不取消工作；後端失敗、部分刪除或結果不明不得回成功或 not_found。取代早期 204 提案，詳細後端／Remote 清理協定仍待 API-D03／05。
@@ -689,3 +702,14 @@ Config 及索引／Profile 相容檢查仍要執行，更新語意可能要求�
 - D 採可信 Backend → Runtime 的受保護內部 System 路由。S1 表示穩定 system_id，不是顯示名稱、Config Revision、document_id 或索引名稱。Builder 業務路由前綴 /api/systems/{system_id}，Runtime 內部前綴 /internal/systems/{system_id}/v1，Runtime 依已註冊 System 取得有效快照；FTEST／ENT 單 System 仍用 /v1。Health 屬 service 級不逐 System 複製。內部路由須可信存取／認證，不能因可傳 Header 就當作可信；Builder 登入與實際網路／Probe 配置另議。
 
 API 維持 7 支業務＋2 支 Health。B 的分頁只分批取得唯一 document_id 清單，不是切 Chunk；說明與待確認項見 21 §9.3／22 §4。本輪同步 Markdown 與既有 UI Backlog，未修改 Prototype、Runtime 程式、教學程式或共用資料 Schema。
+
+
+## 2026-11-05 D-65：文件摘要清單包含目前儲存的來源版本
+
+使用者接受前輪文件摘要提案，先採用、日後有需求再調整。GET /v1/documents 的回應改為 documents[]＋next_cursor，每筆含 document_id 與 source_revisions[]；取代早期僅 document_ids[] 的回應，不新增 API 或內容查詢功能。
+
+每份 document_id 只列一筆，source_revisions 從該 System 實際保存的 Chunk.source_revision 去重彙整；不從 Runtime 工作表推定。正常完成通常只有一版，覆寫途中／部分寫入失敗可能有多版；多版不代表成功歷史或保留回復點，也不能任選一版宣稱最新。單一 Chunk 的 source_revision 仍是原字串，三份 Ingestion 契約、IndexBinding 與推論物件均不變。
+
+分頁仍是每頁列若干份文件摘要，next_cursor=null 為結束；每頁 100／上限 1,000、排序與 cursor 有效期等先沿用 22 的候選規格，沒有在本輪另行核定所有技術細節。未新增 source_revision 的大小／時間比較、最終成功版本判斷或版本回復政策。
+
+目前 Runtime API 業務範圍可先據此往下規劃，完整 OpenAPI 與實體索引／Remote 管理操作後續落實。§7 更新建議優先順序，先從最小完整 System Config 檢查 Developer 交付與 SDK 介面，再收斂模型／搜尋／更新及驗收；這是下一輪議程，不把未討論格式當成已定。本輪只改 Markdown／Backlog，未修改 UI、Runtime、可執行範例或共用機器 Schema。

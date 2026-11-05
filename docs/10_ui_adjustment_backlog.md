@@ -166,3 +166,11 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 - [ ] System 操作使用穩定 system_id；不將名稱、Config Revision 或 document_id 當成該識別碼，也不在業務 body 塞入整份 Config。
 
 只維護既有 UIB-022／023 的待辦；Prototype v0.12 不變。每頁 100／上限 1,000 的分頁提案尚未核定，不先實作分頁控制項或宣稱已接通可信路由。
+
+
+### D-65：文件摘要清單（UI 位置仍待規劃）
+
+- [ ] API 說明將文件清單回應更新為 documents[]＋next_cursor，每筆顯示 document_id／source_revisions[]，不再只列 document_ids[]。
+- [ ] 來源版本取實際儲存；多版可代表更新中／失敗後混合，不將其標為成功歷史或自行挑選最新。最近工作結果仍使用 ingestion-status。
+
+沿用 UIB-023，不新增文件內容、版本回復或清理按鈕。分頁參數與實際面板位置後續整理；本輪未修改 Prototype。

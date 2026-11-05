@@ -136,7 +136,7 @@ D-58／D-64：維持 7 支業務＋2 支 Health；統一 List、工作查詢核�
 | GET | /v1/documents/{document_id}/ingestion-status | 該 System 文件最近一次工作狀態；無可用紀錄為 unknown，不等於文件不存在 |
 | POST | /v1/queries | query／filters／metadata；200 直接回 QueryContext[]；同步限流／併發／Deadline |
 | GET | /v1/documents/{document_id}/exists | 讀取實際儲存判斷文件存在；回應格式為 21 草案，不從工作表推算 |
-| GET | /v1/documents?limit=...&cursor=... | 去重分頁取得當前全部 document_id；排序／cursor 細節待定 |
+| GET | /v1/documents?limit=...&cursor=... | D-65：documents[]＋next_cursor，每筆 document_id／source_revisions[]，由實際儲存去重彙整；排序／cursor 細節後續整理 |
 | POST | /v1/documents/{document_id}:retire | 直接刪除資料，同步完成回 200＋document_id／result=deleted 或 not_found；同文件 queued／running 回 409，Remote 清理／未知結果協定仍待細化 |
 | GET | /health/live | 程序是否存活 |
 | GET | /health/ready | Runtime／必要資源是否初始化；不等同已有可查索引 |
@@ -205,7 +205,7 @@ D-64：Batch counts 以收到的 IngestionDocument 為單位，不混入 Unit／
 
 只清理可回收的終態紀錄；queued／running 不提前清除。D-64 初始保留 24 小時且最多 10,000 份可回收終態文件紀錄，可調項與整組清理規則見 22。重啟後無紀錄回 unknown，不憑 ES／MongoDB 中有舊資料就宣稱最後那次工作成功。此政策不等於所有索引也清空，更不保證遠端寫入自動回滾。
 
-文件存在／ID 清單與 retire 另見 21 §9：直接讀取／刪除該 System 的資料儲存與索引，不以 IngestionRun 當作文件目錄。retire 後歷史 Ingestion 狀態可仍為 completed，exists 卻為 false；工作紀錄按原政策清理，避免混用兩種狀態。後端不可用時不回 false／空清單，Remote 需對應管理能力。
+文件存在／摘要清單與 retire 另見 21 §9：D-65 清單每筆回 document_id＋source_revisions[]，直接從 Chunk／實際儲存彙整；多版不等於多個成功歷史。管理操作讀取／刪除該 System 的資料儲存與索引，不以 IngestionRun 當作文件目錄。retire 後歷史 Ingestion 狀態可仍為 completed，exists 卻為 false；工作紀錄按原政策清理，避免混用兩種狀態。後端不可用時不回 false／空清單，Remote 需對應管理能力。
 
 ### 5.6 Query
 

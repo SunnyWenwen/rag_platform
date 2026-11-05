@@ -1,6 +1,6 @@
 # 22 — Runtime 可調參數清單
 
-更新日期：2026-11-05。決策依據：[08 D-64](08_implementation_plan.md)；API 行為引用 [21](21_runtime_ingestion_inference_api_inventory.md)，A～E 責任引用 [20](20_contract_inventory_responsibility_matrix.md)。
+更新日期：2026-11-05。決策依據：[08 D-64／D-65](08_implementation_plan.md)；API 行為引用 [21](21_runtime_ingestion_inference_api_inventory.md)，A～E 責任引用 [20](20_contract_inventory_responsibility_matrix.md)。
 
 ## 1. 範圍與管理方式
 
@@ -47,19 +47,19 @@ HTTP body、檔案及文件數限制各自生效。例如單個 Base64 檔案解
 - Remote 寫入結果不明時不自動重試，也不因記錄清理推定副作用不存在；unknown 紀錄回收、再次提交及查核仍沿用 API-D05。10,000 是可回收終態紀錄控制，不是整個程序記憶體 bytes 配額。
 - 調整併發須驗證 Component、Client 與索引的安全性；本文件不取消 D-60 的無 Query 讀寫鎖政策，也不新增分散式 Queue／多副本一致性承諾。
 
-## 4. 文件 ID 分頁參數：仍待確認
+## 4. 文件摘要與分頁參數
 
-使用者本輪詢問分頁的意思，尚未核定 B 的細節。下列不能混入 §2 的已確認 C 預設：
+D-65 已確認摘要回應為 documents[]＋next_cursor，每筆 document_id＋source_revisions[]，由實際 Chunk 去重彙整；source_revisions 不代表最新成功版或版本歷史。下列分頁參數先留候選規格，後續定稿，不混入 §2 已確認的 14 項 Runtime 控制預設：
 
 | 候選參數／規則 | 前輪建議 | 狀態 |
 |---|---|---|
-| documents.list.default_limit | 每頁 100 個唯一 document_id | 待確認 |
-| documents.list.max_limit | 每頁最多 1,000 個唯一 document_id | 待確認 |
+| documents.list.default_limit | 每頁 100 份唯一 document_id 的摘要 | 待確認 |
+| documents.list.max_limit | 每頁最多 1,000 份唯一 document_id 的摘要 | 待確認 |
 | 文件清單排序 | document_id 升冪 | 待確認 |
 | Cursor | Runtime 產生、綁定目標 System；最後一頁 next_cursor=null | 待確認 |
 | 清單一致性 | 不加快照；分頁途中更新資料可能改變清單 | 待確認 |
 
-分頁只是分批取得文件 ID 清單，不改變 Ingestion Batch、Parser Units、Chunking 或 Retrieval Top N。例如已有 250 個唯一 ID，每頁 100 個時，依序取得 100、100、50 個；一份文件即使有多個 Chunk，也只列一次。API／來源與候選格式見 [21 §9.3](21_runtime_ingestion_inference_api_inventory.md)。
+分頁分批取得文件摘要清單，不改變 Ingestion Batch、Parser Units、Chunking 或 Retrieval Top N。例如已有 250 份文件，每頁 100 份時，依序取得 100、100、50 筆摘要；一份文件即使有多個 Chunk 或來源版本，也只列一次，各版列在該筆 source_revisions。API／來源與候選格式見 [21 §9.3](21_runtime_ingestion_inference_api_inventory.md)。
 
 ## 5. 文件維護與驗收待辦
 

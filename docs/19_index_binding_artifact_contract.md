@@ -111,3 +111,10 @@ Document 管理使用同一 System 的儲存／索引範圍，不新增第二組
 
 
 D-60：平台不加「寫入時阻擋 Query」的讀寫鎖／全索引快照，接受更新中查到暫時新舊混合。此規則也適用文件存在／ID 清單的當前可見資料；工作成功／失敗與資料存在分開。retire 完成後新的讀取應反映刪除，但已取候選的在途 Query 可仍回舊資料。實體 backend 可見性／錯誤清理需驗證，不新增 Binding 狀態鍵。
+
+
+### D-65：文件摘要的儲存管理能力
+
+Runtime 文件清單回傳 documents[]，每筆 document_id＋source_revisions[]，完整定義引用 [21 §9.3](21_runtime_ingestion_inference_api_inventory.md)。Storage／Index Adapter 從實際 Chunk 去重彙整，不以工作完成紀錄代替，也不任取某個 Chunk 的版本充當文件最新版本。私有 Remote Indexing／儲存服務需有等價受控管理操作；完整 SDK／HTTP 操作格式仍待 Q-028，不要求無狀態 Parser／Embedding／Rerank 實作。
+
+source_revisions 是 API 摘要，不把 Chunk.source_revision 改為陣列、不新增 IndexBinding 根鍵或 Pipeline Module，也不要求持久保存 ParsedDocument。ES 聚合或 Local 對照必須能完整列出該文件實際存在的版本，不能將 backend 預設截斷的子聚合當成完整清單；具體讀取與容量實作待驗證。
