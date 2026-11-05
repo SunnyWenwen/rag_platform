@@ -96,7 +96,7 @@ async def execute(data, snapshot, context):
     return data
 ```
 
-- 每次請求與已接受的 Ingestion 文件固定 Config 快照，不在 Module 邊界重新選最新版本；Config 更新時舊工作如何交接仍待 Q-017／API-D05。
+- 每次請求與已接受的 Ingestion 文件固定 Config 快照，不在 Module 邊界重新選最新版本；D-63：該 System 有 queued／running Ingestion 時不啟用新版，工作結束後才允許套用；既有工作不重綁新 Config。舊資源回收與未知 Remote 寫入仍待 Q-017／API-D05。
 - 共用 Flow、Component 實例及模型／Client／索引資源是不同層次。無狀態且可安全併行的實例可共用；有狀態或特定資源綁定的實例可分開管理，確切快取／回收介面待 Q-002／Q-020。
 - 可共用實例不得把本次 input／config／output 放進跨請求可變 self；必要工作資料放區域變數，資源由正確的可信 Context／Resolver 取得。不得將 System A 的 IndexBinding 或資料誤用於 B。
 - Remote 整段接管在解析計畫中只保留一次呼叫，跳過已涵蓋 Modules；B 不要求遠端服務也使用同一套本地 run 簽名，不將整份 System Config／Context／Secret 自動轉送。

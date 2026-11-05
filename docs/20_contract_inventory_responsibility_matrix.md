@@ -141,4 +141,4 @@ D-59 補充：Remote 未確認寫入不自動重試，Builder 登入延後；本
 D-60 補充：共用 Runtime 明確為同一 API service／程序內多 System，不只是 Pod 共置；程序重啟影響其全部 Memory 資料／工作。平台不加 Query 讀寫鎖，接受更新期間短暫讀不一致，同文件重複 Ingestion 拒絕保留。Runtime API 暫用一組 Basic 帳密操作全部對外 API，首期不做角色／逐 API 權限；Builder 登入延後。相關解釋以 03／21 §8 為準，不改 A～E 分類或業務 DTO。
 
 
-D-61 補充：Builder 多份 D 共用一組或少數 Runtime API service，服務啟動不被單一 D 定型，由 Backend／可信管理將配置交給 Runtime；D-62 已採共用 Flow／Executor，逐請求選定 Config 快照，各 Module 解析 Component 並接收本次參數／Context，不逐 UI Config 建專屬 Flow 或服務。FTEST／ENT 主 Runtime 則一 Pod＋一組 service＋一份 D／環境綁定，啟動時組裝。E 的 Namespace／服務池分組可作部署策略但具體規格仍待定；D 更新先驗證／解析新快照及準備必要資源，啟用／舊工作與資源回收待細化；共用 Flow 不要求共用所有 Component 實例或索引資料。03 的模式對照為名詞權威，21 §8.1 說明 API 邊界。
+D-61 補充：Builder 多份 D 共用一組或少數 Runtime API service，服務啟動不被單一 D 定型，由 Backend／可信管理將配置交給 Runtime；D-62 已採共用 Flow／Executor，逐請求選定 Config 快照，各 Module 解析 Component 並接收本次參數／Context，不逐 UI Config 建專屬 Flow 或服務。FTEST／ENT 主 Runtime 則一 Pod＋一組 service＋一份 D／環境綁定，啟動時組裝。E 的 Namespace／服務池分組可作部署策略但具體規格仍待定；D 更新先驗證／解析新快照及準備必要資源，D-63 已定該 System Ingestion 結束後才允許新版啟用，舊 Query／資源回收與未知 Remote 操作仍待細化；共用 Flow 不要求共用所有 Component 實例或索引資料。03 的模式對照為名詞權威，21 §8.1 說明 API 邊界。

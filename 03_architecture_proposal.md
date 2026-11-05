@@ -85,7 +85,7 @@ Query Rewrite／Multi-query 的 1／N 統一設定提案仍保留；舊回答生
 
 核心關係是 **Retrieval Engine Library ＋ Config → Retrieval System**；實際執行還需解析必要的資源／服務綁定。Python 使用者可直接載入 Library 建立 System，不需要 HTTP 或 Builder。Platform 將 Library 與 Runtime API 打包為共用 Image，部署時再載入 Config／環境設定，無須每份 Config 重新建 Image。
 
-Builder 管理設定與測試，Library 執行模組，Platform 交付執行框架，Runtime 承載 API，System 是依 Config 建立的具體應用。System 不等於 Pod／程序；Builder Local 共用 Runtime 指同一 API service／程序內建立多個 System，不只是共用 Pod，各自保有設定與資料作用範圍，資源限制與生命週期細節仍見 Q-017／Q-020。Remote Image 第一版每 System 獨立服務實例；External Endpoint 由 Developer 自行部署。 重啟 API service 程序即使不重建 Pod，仍影響該程序內所有 System 的 Memory 資料／工作；D-62 採共用 Flow／Executor，Builder Config 更新以新版配置快照及必要資源準備生效，不要求重建每份 Config 的專屬 Flow，也不必逐 Config 重啟共用 API service；舊工作與回收機制待定，模式對照見下一節。
+Builder 管理設定與測試，Library 執行模組，Platform 交付執行框架，Runtime 承載 API，System 是依 Config 建立的具體應用。System 不等於 Pod／程序；Builder Local 共用 Runtime 指同一 API service／程序內建立多個 System，不只是共用 Pod，各自保有設定與資料作用範圍，資源限制與生命週期細節仍見 Q-017／Q-020。Remote Image 第一版每 System 獨立服務實例；External Endpoint 由 Developer 自行部署。 重啟 API service 程序即使不重建 Pod，仍影響該程序內所有 System 的 Memory 資料／工作；D-62 採共用 Flow／Executor，Builder Config 更新以新版配置快照及必要資源準備生效，不要求重建每份 Config 的專屬 Flow，也不必逐 Config 重啟共用 API service；D-63 確認該 System 的 Ingestion 結束後才允許新版設定生效；資源回收細節待定，模式對照見下一節。
 
 <a id="runtime-deployment-modes"></a>
 
@@ -93,12 +93,12 @@ Builder 管理設定與測試，Library 執行模組，Platform 交付執行框�
 
 | 環境 | Config 與 API service 的對應 | API service 啟動時 | Config 更新 |
 |---|---|---|---|
-| Builder DEV | UI 保存多份 System Config，共用一組或少數幾組 API service；每組均提供 Ingestion＋Inference，不逐張卡建立服務 | 載入 Library／Registry、服務／資源基礎設定，不被單一 System Config 定型；透過可信管理取得各 System Config | 驗證新版 Config 快照及相依資源，後續請求由共用 Executor 選 Component；不要求重建專屬 Flow，舊工作／資源切換仍待細化 |
+| Builder DEV | UI 保存多份 System Config，共用一組或少數幾組 API service；每組均提供 Ingestion＋Inference，不逐張卡建立服務 | 載入 Library／Registry、服務／資源基礎設定，不被單一 System Config 定型；透過可信管理取得各 System Config | 驗證新版 Config 快照及相依資源，後續請求由共用 Executor 選 Component；不要求重建專屬 Flow；有 queued／running Ingestion 時僅存草稿，工作結束後才允許套用，資源切換仍待細化 |
 | FTEST／ENT | 主 Runtime 第一版基準為一個 Pod＋一組 API service＋一份 System Config | 綁定該 Config 與環境資源，建立該 System 實例，業務請求不另選 System | 以重啟／重新部署該 API service 採用新 Config；資料／索引相容與需否重新 Ingestion 仍需驗證 |
 
 Builder Backend 下發／註冊 Config 與目標 Runtime 的對應，Runtime 依可信 System 識別取得已驗證 Config 快照，由共用 Flow／Executor 執行；各 Module 解析所選 Component 並傳入該次 Config／Context，Library 不直接讀 Builder DB。服務啟動不綁單份 Config，不代表 Engine／已安裝 Component 版本可任意熱替換；新增 Local 程式仍按原 Image／版本交付流程。
 
-少數共用服務可以依 Namespace／資源池等方式分組，但分組單位、數量與管理機制待決；不將 Namespace 與 Workspace／System 當成同一概念，也不新增 User 必填分組設定。Config 解析結果、Component 實例與資源可按需求快取；精確預載、LRU／回收與配額依 Q-020。共用 Flow 不要求共用所有 Component 實例，保存多份 Config 也不等於同時初始化所有模型／索引。每次請求／已接收文件固定使用同一 Config 快照，不在執行到各步時重新讀取最新版；Config 更新時既有工作如何交接仍待核定。
+少數共用服務可以依 Namespace／資源池等方式分組，但分組單位、數量與管理機制待決；不將 Namespace 與 Workspace／System 當成同一概念，也不新增 User 必填分組設定。Config 解析結果、Component 實例與資源可按需求快取；精確預載、LRU／回收與配額依 Q-020。共用 Flow 不要求共用所有 Component 實例，保存多份 Config 也不等於同時初始化所有模型／索引。每次請求／已接收文件固定使用同一 Config 快照，不在執行到各步時重新讀取最新版；D-63：該 System 有 queued／running Ingestion 時可保存草稿，暫不啟用新版；既有工作結束後才允許套用。其他 System 不受影響，不新增 Query 讀寫鎖；舊 Query 資源回收與 Remote 結果不明的判定仍待細化。
 
 FTEST／ENT 的一 Pod 基準指主 Runtime。若 Config 選 Remote Image，仍依 D-51 部署必要的遠端 Component service；External 由 Developer 維運，不因此承諾整套系統永遠只用一個 Pod。Ingestion／Inference 是同組 Runtime 的 API 能力，不強制各自一個 Pod／程序。
 

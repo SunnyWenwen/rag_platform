@@ -2,7 +2,7 @@
 
 更新日期：2026-11-05。適用 A～E 中的執行契約、System 組裝與環境控制；總盤點見 [20](20_contract_inventory_responsibility_matrix.md)。
 
-**文件分成「已確認行為」與「本次建議 API／回應格式」。**本次盤點不代表 OpenAPI、所有 HTTP code／欄位或新增功能已核定，也沒有實作 Runtime、修改共用資料 Schema 或 UI。決策由 [08 的 D-56～D-62／相關 Q-ID](08_implementation_plan.md) 追蹤。
+**文件分成「已確認行為」與「本次建議 API／回應格式」。**本次盤點不代表 OpenAPI、所有 HTTP code／欄位或新增功能已核定，也沒有實作 Runtime、修改共用資料 Schema 或 UI。決策由 [08 的 D-56～D-63／相關 Q-ID](08_implementation_plan.md) 追蹤。
 
 ## 1. 範圍與已確認基準
 
@@ -30,7 +30,7 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 - D-58：新增文件存在性與全部 document_id 清單的查詢能力，資料來源為該 System 的實際儲存／索引，與 Runtime 工作狀態分開；清單需對 Chunk 的 document_id 去重。
 - D-60：讀寫各自進行，不因 Ingestion／retire 寫入而阻擋 Query，不加共享查詢讀寫鎖／全索引快照；同文件重複 Ingestion 的忙碌拒絕維持。
 - D-60：Runtime API 暫採 HTTP Basic Auth，預設一組帳密可操作該 API service 提供的全部 API，首期不做逐角色／逐 API 權限；Builder 使用者登入另議。
-- D-61／D-62：Builder 的多份 UI Config 不對應等量 API service 或專屬 Flow；共用 Executor 逐請求固定 Config 快照，各 Module 依設定取得 Component 並傳入本次參數／Context。Component 實例與資源是否共用分開管理，Config 啟用／工作交接、Namespace／服務池分組與回收細節仍待定。
+- D-61／D-62：Builder 的多份 UI Config 不對應等量 API service 或專屬 Flow；共用 Executor 逐請求固定 Config 快照，各 Module 依設定取得 Component 並傳入本次參數／Context。Component 實例與資源是否共用分開管理，D-63 已定該 System 的 Ingestion 結束後才允許新版 Config 生效；舊 Query／資源交接、Namespace／服務池分組與回收細節仍待定。
 
 ## 2. API 清單：7 支業務 API＋2 支 Health API
 
@@ -256,7 +256,7 @@ Retire 已確認為直接刪除，不做 soft delete／restore API；再次使�
 | API-D02 | 保留 Run／文件兩種查詢；文件無 partial、Run 可 partial；無紀錄 GET 200＋unknown | 完整欄位／code、保留值、輪詢與回應上限；Remote 結果不明另見 D05 | Q-019／Q-017 |
 | API-D03 | retire 直接刪除資料；不做工作取消或 soft delete／restore | 建議同步 204、無資料重複刪除也成功、忙碌文件 409；精確方式與後端／Remote 完整刪除能力待核定 | Q-008／Q-017／Q-028 |
 | API-D04 | Queue／併發／Rate／Deadline／紀錄上限可設定 | 誰設定、存放處、Schema 與具體值暫緩；環境 E 為先前建議，不當作本輪已定 | Q-017／Q-020／Q-027 |
-| API-D05 | 共用 API／Flow、逐請求與已接收文件固定 Config 快照；不要求逐 Config 組裝專屬 Flow；獨立 Runtime 啟動綁定；無續跑／無 Query 讀寫鎖／未知寫入不自動重試 | 單 System 切換時機、舊工作／資源回收、Remote 在途操作與失敗清理仍待細化；不增加全域讀寫互斥／索引快照 | Q-008～010／Q-015／Q-017／Q-028 |
+| API-D05 | 共用 API／Flow、逐請求與已接收文件固定 Config 快照；該 System Ingestion 結束後才允許新版設定生效；獨立 Runtime 啟動綁定；無續跑／無 Query 讀寫鎖／未知寫入不自動重試 | 舊 Query／資源回收、管理端點的忙碌回應、Remote 在途操作與失敗清理仍待細化；不增加全域讀寫互斥／索引快照 | Q-008～010／Q-015／Q-017／Q-028 |
 | API-D06 | Builder 登入延後；Runtime API 暫用一組 HTTP Basic 帳密操作全部 API；首期不做角色／逐 API 授權 | HTTPS／Secret 注入／檢查位置與可信 System 路由待細化；對外 Health 也沿用同一帳密，內部 Probe 接法為部署細節 | Q-006／Q-019／Q-020 |
 | API-D07 | 查 document_id 是否存在、列出當前全部 ID；讀取實際儲存而非工作表 | 建議 exists 布林值、ID 清單去重分頁；路徑／欄位、排序／cursor／分頁一致性、Remote 讀取能力待整理 | Q-019／Q-028 |
 
@@ -282,11 +282,11 @@ Builder 儲存許多 UI Config 不等於建立等量 API service／Pod。Runtime
 
 「不綁單份 Config」不代表程式可任意熱替換：可用 Local Components／Adapters 仍由所選 Runtime Image／Registry 版本決定。新 Component 程式依既定 Image 發布流程；不同 Config 在既有能力內組裝 System。
 
-因此 Builder 改某份 Config 通常不需重啟 API service；先驗證／解析新版快照，必要時重新準備資源及驗證資料相容性。每次請求及已接收 Ingestion 文件固定同一快照，不到各 Module 再讀最新版；何時啟用新版、既有排隊／在途工作與索引資源如何交接／回收仍待 API-D05。若真的重啟共用 API 程序，即使 Pod 仍在，其內所有 System 的 Memory 資料與工作仍會遺失。
+因此 Builder 改某份 Config 通常不需重啟 API service；先驗證／解析新版快照，必要時重新準備資源及驗證資料相容性。每次請求及已接收 Ingestion 文件固定同一快照，不到各 Module 再讀最新版；D-63 已確認該 System 有 queued／running Ingestion 時可以保存草稿，暫不啟用新版，待既有 Ingestion 結束後才允許套用；既有工作不重綁新版，其他 System 照常執行，也不因此鎖住 Query。管理端點忙碌回應、既有 Query 與索引資源回收仍待 API-D05；Remote 結果不明不推定已停止寫入。若真的重啟共用 API 程序，即使 Pod 仍在，其內所有 System 的 Memory 資料與工作仍會遺失。
 
 FTEST／ENT 的一 Pod 基準是主 Runtime；若 Config 選 Remote Image，仍按 18 另部署必要 Component service；External 由 Developer 維運。ES／MongoDB 等依賴亦不因此包入主 Runtime Pod。兩種模式使用相同 Library／API 語意，不複製兩套流程。
 
-不提供任意 Config 原地熱切承諾。Ingestion／Embedding／Indexing 語意改變仍可能需要重新 Ingestion，純 Inference 改動可使用相容資料；精確版本啟用與資源交接待既有 Q-ID 落實。
+不提供任意 Config 原地熱切承諾。Ingestion／Embedding／Indexing 語意改變仍可能需要重新 Ingestion，純 Inference 改動可使用相容資料；Ingestion 結束後才允許啟用已確認；舊 Query／資源交接與未知 Remote 寫入仍待既有 Q-ID 落實。
 
 ### 8.2 Remote 寫入可能成功但 Runtime timeout
 

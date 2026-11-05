@@ -92,7 +92,7 @@ Remote External 不由 Builder 啟動／重啟；Developer／管理者登錄 End
 
 ### 4.2 Config 更新
 
-獨立 Runtime 初期透過重啟／重部署套用 Config，見 21 §8.1。D-62 採共用 Flow／Executor，每次請求與已接受的文件工作固定已驗證 Config 快照；Builder 新版 Config 需先驗證／解析及準備必要資源，通常不重啟共用 API service，也不要求重建專屬 Flow。何時啟用新版、是否等待既有工作完成、舊資源如何回收仍待 API-D05；持久索引相容性與 Remote 在途寫入不能只靠固定快照解決，不承諾熱切／無損恢復。
+獨立 Runtime 初期透過重啟／重部署套用 Config，見 21 §8.1。D-62 採共用 Flow／Executor，每次請求與已接受的文件工作固定已驗證 Config 快照；Builder 新版 Config 需先驗證／解析及準備必要資源，通常不重啟共用 API service，也不要求重建專屬 Flow。D-63 已確認該 System 有 queued／running Ingestion 時僅存草稿，工作結束後才允許新版生效；不把既有文件工作改綁新版，也不影響其他 System。舊 Query／Component 資源如何回收仍待 API-D05；持久索引相容性與 Remote 在途寫入不能只靠固定快照解決，不承諾熱切／無損恢復。
 
 Backend 儲存前以有效設定比較，依 05 判定影響；UI 與 AI 都不能繞過。Edit 使用獨立草稿，取消不生效。
 
@@ -104,7 +104,7 @@ Backend 儲存前以有效設定比較，依 05 判定影響；UI 與 AI 都不�
 
 - Ingestion／retire 與 Query 各自進行，不因寫入阻擋查詢，不加共享 Query 讀寫鎖／全索引快照；使用者接受更新期間的短暫新舊混合。
 - 同 document_id 重複 Ingestion 的忙碌拒絕保留；文件未完整成功不得標 completed。失敗清理、崩潰處理及最終資料正確性仍需 backend 實作，不代表讀取有原子保證。
-- Builder Config 以驗證後的新快照供後續請求執行，啟用／工作交接細節待決；獨立 Runtime 初期仍重啟套用。索引格式／Profile 相容與版本識別仍依 Q-010／Q-015。因資源／索引不相容而無法查詢，與因寫入而主動鎖住查詢不同。
+- Builder Config 以驗證後的新快照供後續請求執行，該 System Ingestion 結束後才允許啟用；舊 Query／資源交接細節待決，獨立 Runtime 初期仍重啟套用。索引格式／Profile 相容與版本識別仍依 Q-010／Q-015。因資源／索引不相容而無法查詢，與因寫入而主動鎖住查詢不同。
 
 純 Inference 設定不必重做 Ingestion，但仍需新設定版本與相容性驗證；初期不新增熱切／零停機承諾。
 
@@ -324,7 +324,7 @@ Local Search 第一版仍同程序／單副本。背景執行不能把唯一 Mem
 
 - 21 的 counts／錯誤 Envelope 與文件管理細節；統一 List、整批預檢、Run partial 與 retire 直接刪除方向已確認。
 - 文件級索引 staging／舊 Chunk 清除／發布點、搜尋可見性及崩潰一致性；不以單次 Bulk／Hash 宣稱原子替換已完成。
-- D-62 已定共用 Flow、逐請求／文件固定 Config 快照；新版啟用時點、既有排隊／在途工作與資源交接、持久索引相容性仍待決。讀寫不互斥／接受短暫混合已由 D-60 確認，詳見 21 §8。
+- D-62 已定共用 Flow、逐請求／文件固定 Config 快照；D-63 已定該 System 的排隊／執行中 Ingestion 結束後才允許新版生效；舊 Query／資源交接、未知 Remote 操作與持久索引相容性仍待決。讀寫不互斥／接受短暫混合已由 D-60 確認，詳見 21 §8。
 - 未知遠端寫入已確認不自動重試；具體結果查核、同文件隔離、Idempotency-Key／版本控制及清理仍待定，首期不做取消。
 - Queue／並行／Rate／Deadline／紀錄保留的具體值，與未來多 replica 下的一致控制。
 

@@ -320,8 +320,8 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 
 - D-56 已確認：每 System 文件併發可配置、預設 1；不同文件可依上限並行，同 document_id queued／running 時拒絕重複提交。文件完成後完整替換，失敗不得冒充成功；D-60 放寬更新中的讀原子性，不加平台 Query 讀寫鎖。
 - D-60 已確認讀寫各自進行，不因寫入阻擋 Query、不加共享讀寫鎖或原子快照；同文件重複提交忙碌拒絕保留。
-- D-61／D-62 已確認 Builder 用一組或少數共用 API service／Flow，啟動不綁單份 Config；各請求固定 Config 快照，更新先驗證／解析及準備必要資源，不要求重建專屬 Flow。新版啟用與既有工作交接仍待決。FTEST／ENT 主 Runtime 一 Pod＋一組 service＋一份 Config。
-- 仍待：Config 新版啟用／舊工作與 Component／資源交接時機、Config／資料 Profile 相容、實體 backend 可見性與失敗清理。整體 Query Ready 條件與寫入鎖不同，不因本輪放寬讀一致性就忽略實際錯誤。
+- D-61／D-62 已確認 Builder 用一組或少數共用 API service／Flow，啟動不綁單份 Config；各請求固定 Config 快照，更新先驗證／解析及準備必要資源，不要求重建專屬 Flow。D-63 已確認該 System Ingestion 結束後才允許新版生效；舊 Query／資源交接仍待決。FTEST／ENT 主 Runtime 一 Pod＋一組 service＋一份 Config。
+- 仍待：舊 Query 與 Component／資源回收、未知 Remote 操作判定、Config／資料 Profile 相容、實體 backend 可見性與失敗清理；D-63 已定一般 queued／running Ingestion 結束後才允許新版生效。整體 Query Ready 條件與寫入鎖不同，不因本輪放寬讀一致性就忽略實際錯誤。
 - 第一版採已確認的無 Query 讀寫鎖策略；索引版本快照／零停機世代切換不是首期新增需求。
 - 負責角色：Engine＋Backend；阻擋 M2／M3 併發正式行為。
 - 決策：未定；更新 04／05／06／07。
@@ -426,7 +426,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 - D-56 已確認：Builder DEV／獨立 Runtime 共用 System Queue／併發與 Inference Rate／併發／Deadline；Runtime 控制總量，Builder 另管理 User／Workspace 配額。上限可配置已確認；放 E 為先前建議，D-57 暫緩管理者／存放位置／Schema 的定案。Worker 是排程概念，不要求每 System 新 Pod。
 - D-61：共用 API service 啟動只綁服務／Registry 基礎設定，後續管理多份 System Config，不因每份 UI 設定新增服務；可依 Namespace／資源池分成少數共用服務，精確分組策略尚未選定。
 - D-62 已選 B：共用 Flow／Executor，逐請求／已接受文件固定 Config 快照，Module 依設定解析 Component；不要求每份 Config 建立專屬 Flow。Component 實例／資源是否共用依狀態與隔離需求決定。
-- 仍待：配置解析快取、Component／資源預載與回收、可信路由與管理 API、新版啟用與舊工作交接、服務池分組、公平排程、上限具體值、記憶體配額／清理、未來多 replica 控制與程序安全性。
+- 仍待：配置解析快取、Component／資源預載與回收、可信路由與管理 API、舊 Query／資源交接、服務池分組、公平排程、上限具體值、記憶體配額／清理、未來多 replica 控制與程序安全性。
 - 建議：先有受限共享 Runtime 與明確隔離 Binding；Local Search 每 System 的 Ingest／Query 必須同程序。
 - 替代：每 System 獨立 Runtime，增加部署／資源管理成本。
 - 負責角色：平台＋Backend／Runtime；阻擋 M5 多 System 服務。
@@ -654,6 +654,8 @@ D-60 的無 Query 讀寫鎖、單一 Basic 帳號全 API 與文件 ID 去重方�
 
 ## 2026-11-05 D-62：採 B，共用 Flow／Executor 與逐次 Config
 
+本節記錄共用執行方向；其中 Config 啟用時機後續由 D-63 收斂為該 System Ingestion 結束後才允許生效。
+
 使用者比較 A（每份 System Config 預先組裝專屬 Flow）與 B（共用 Flow、執行時依 Config 選 Component）後，確認採 B。這細化 D-61 的共用服務方向，取代「每份 Config 必須建立／重建專屬 Engine Flow」的解讀；System 仍是 Library＋Config＋必要綁定所形成的邏輯檢索系統。
 
 Builder 經可信路由選定已驗證配置；每次請求與已接受的 Ingestion 文件固定同一 Config 快照，各 Module 解析所選 Component，傳入 input、本次 Component Config 與可信 Context。Config 可預先驗證並快取解析結果，不要求逐次完整驗證；Remote 多 Module 接管在有效步驟中只呼叫一次。公開 IngestionDocument[]／Query body 不加入整份 System Config，Library 不讀 Builder DB。
@@ -663,3 +665,12 @@ Builder 經可信路由選定已驗證配置；每次請求與已接受的 Inges
 Builder 純參數變更可準備新快照，無須逐 Config 重建整套 Flow；模型／索引語意變更仍可能重新初始化或 Ingestion。新版啟用時點、排隊／在途工作交接與失敗清理仍待 API-D05／Q-017，不承諾零停機。FTEST／ENT 仍以一主 Pod＋一組 API service＋一份 Config 啟動，使用同一 Executor，初期更新可重啟；Remote Image／External 原政策維持。
 
 Runtime API 範圍維持 7 支業務＋2 支 Health。API-D01～07 的未決格式與邊界見 21 §7.2；B 不等於 OpenAPI、retire HTTP、失敗清理或部署／Builder 管理接口全部凍結。本輪只同步 Markdown，未修改 UI、Runtime、可執行教學程式、公開資料 Schema 或圖面。
+
+
+## 2026-11-05 D-63：Ingestion 結束後才允許新版 Config 生效
+
+使用者確認前輪第一項建議：「ingestion 後設定生效」。同一 System 有 queued／running 文件時可以保存設定草稿，但暫不啟用新版；既有 Ingestion 沿用接受時固定的配置，待排隊／執行工作結束後才允許套用。此處不新增自動待套用 Queue，也不承諾儲存草稿就會自動啟用。忙碌回應／管理端點的精確格式待 OpenAPI；其他 System 繼續運作，不重啟共用 API service，也不加 Query 讀寫鎖。
+
+Config 及索引／Profile 相容檢查仍要執行，更新語意可能要求重新 Ingestion。既有 Query 使用原快照，Component／Client／索引資源釋放時機仍待細化。Remote timeout 的 unknown 不等於已確認沒有在途寫入；未知結果查核與清理沿用 API-D05，不由一般 Ingestion 已結束推定安全。非預期程序重啟仍遵守既有記憶體工作遺失政策。
+
+使用者另詢問刪不到資料的回應與覆寫失敗是否可查；本輪未將 retire HTTP／Envelope 或失敗回滾政策定案。既有 Runtime 記憶體工作紀錄可回報 failed／unknown，重啟或到期無紀錄為 unknown；狀態可查不代表資料已回復舊版。回應／錯誤、document_id 分頁、限制／保存及可信 System 路由的後續建議仍待確認。本輪只同步 Markdown，未改 UI、Runtime、教學程式或公開資料 Schema。
