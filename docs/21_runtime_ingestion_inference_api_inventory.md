@@ -2,13 +2,13 @@
 
 更新日期：2026-11-05。適用 A～E 中的執行契約、System 組裝與環境控制；總盤點見 [20](20_contract_inventory_responsibility_matrix.md)。
 
-**文件分成「已確認行為」與「本次建議 API／回應格式」。**本次盤點不代表 OpenAPI、所有 HTTP code／欄位或新增功能已核定，也沒有實作 Runtime、修改共用資料 Schema 或 UI。決策由 [08 的 D-56～D-60／相關 Q-ID](08_implementation_plan.md) 追蹤。
+**文件分成「已確認行為」與「本次建議 API／回應格式」。**本次盤點不代表 OpenAPI、所有 HTTP code／欄位或新增功能已核定，也沒有實作 Runtime、修改共用資料 Schema 或 UI。決策由 [08 的 D-56～D-61／相關 Q-ID](08_implementation_plan.md) 追蹤。
 
 ## 1. 範圍與已確認基準
 
 ### 1.1 這份清單是哪一層
 
-這裡盤點 **Retrieval Runtime 對外的業務 API**：Builder DEV 與自行部署到 FTEST／ENT 使用同一語意與實作，限制可配置已確認；先前建議放 E，但本輪依使用者指示暫緩管理者、存放位置與 Schema 的定案。Builder DEV 的可信路由先選定 System；獨立 Runtime 綁定既定 System。不把 system_id／tenant 任意覆寫放進業務 JSON。
+這裡盤點 **Retrieval Runtime 對外的業務 API**：Builder DEV 與自行部署到 FTEST／ENT 使用同一語意與實作，限制可配置已確認；先前建議放 E，但本輪依使用者指示暫緩管理者、存放位置與 Schema 的定案。Builder DEV 共用一組或少數幾組 API service，啟動不綁單一 System Config，可信路由先選定 System／實例；FTEST／ENT 主 Runtime 以一 Pod＋一組 API service＋一份 Config 啟動。不把 system_id／tenant 任意覆寫放進業務 JSON。
 
 以下不是本文件的新增範圍：Builder Workspace／System CRUD、Config／Component 目錄管理、Export、AI 助手、Evaluation，以及 Developer Remote Service 的 operation HTTP 協定。後者引用 [18](18_remote_service_pipeline_integration.md)，不是將每個 Module 都公開成 Runtime API。
 
@@ -30,6 +30,7 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 - D-58：新增文件存在性與全部 document_id 清單的查詢能力，資料來源為該 System 的實際儲存／索引，與 Runtime 工作狀態分開；清單需對 Chunk 的 document_id 去重。
 - D-60：讀寫各自進行，不因 Ingestion／retire 寫入而阻擋 Query，不加共享查詢讀寫鎖／全索引快照；同文件重複 Ingestion 的忙碌拒絕維持。
 - D-60：Runtime API 暫採 HTTP Basic Auth，預設一組帳密可操作該 API service 提供的全部 API，首期不做逐角色／逐 API 權限；Builder 使用者登入另議。
+- D-61：Builder 的多份 UI Config 不對應等量 API service；共用 API manager 取得配置並管理各 System 實例，Config 更新通常只重建受影響實例，不重啟共用 API 程序。Namespace／服務池分組與實例回收細節待定。
 
 ## 2. API 清單：7 支業務 API＋2 支 Health API
 
@@ -255,7 +256,7 @@ Retire 已確認為直接刪除，不做 soft delete／restore API；再次使�
 | API-D02 | 保留 Run／文件兩種查詢；文件無 partial、Run 可 partial；無紀錄 GET 200＋unknown | 完整欄位／code、保留值、輪詢與回應上限；Remote 結果不明另見 D05 | Q-019／Q-017 |
 | API-D03 | retire 直接刪除資料；不做工作取消或 soft delete／restore | 建議同步 204、無資料重複刪除也成功、忙碌文件 409；精確方式與後端／Remote 完整刪除能力待核定 | Q-008／Q-017／Q-028 |
 | API-D04 | Queue／併發／Rate／Deadline／紀錄上限可設定 | 誰設定、存放處、Schema 與具體值暫緩；環境 E 為先前建議，不當作本輪已定 | Q-017／Q-020／Q-027 |
-| API-D05 | Remote 未知寫入不自動重試；無續跑；不加 Query 讀寫鎖，接受更新期間讀不一致 | 共用 API service 的單 System 重建生命週期、Remote 在途操作與失敗清理仍待界定；不再討論首期全域讀寫互斥／快照 | Q-008～010／Q-015／Q-017／Q-028 |
+| API-D05 | 共用 API service 不綁單份 Config、更新重建受影響實例；獨立 Runtime 啟動綁定；無續跑／無 Query 讀寫鎖／未知寫入不自動重試 | 單 System 切換時機、舊工作／資源回收、Remote 在途操作與失敗清理仍待細化；不增加全域讀寫互斥／快照 | Q-008～010／Q-015／Q-017／Q-028 |
 | API-D06 | Builder 登入延後；Runtime API 暫用一組 HTTP Basic 帳密操作全部 API；首期不做角色／逐 API 授權 | HTTPS／Secret 注入／檢查位置與可信 System 路由待細化；對外 Health 也沿用同一帳密，內部 Probe 接法為部署細節 | Q-006／Q-019／Q-020 |
 | API-D07 | 查 document_id 是否存在、列出當前全部 ID；讀取實際儲存而非工作表 | 建議 exists 布林值、ID 清單去重分頁；路徑／欄位、排序／cursor／分頁一致性、Remote 讀取能力待整理 | Q-019／Q-028 |
 
@@ -268,17 +269,24 @@ API-D01～07 沿用既有 Q-ID，不另凍結完整 OpenAPI。單一 List、接�
 
 ## 8. API-D05／06 的具體情境
 
-### 8.1 API service 重啟、Pod 與 System 實例分開
+### 8.1 Builder 共用模式與獨立部署模式（D-61）
 
-使用者的重啟是 **API service／API server 程序重啟，不是 Pod 重建**。Pod／容器是承載邊界；service 在這裡指提供 API 的應用程式，不是 Kubernetes Service 路由資源。
+使用者的 service 指 **API server 應用程式／程序，不是 Pod 或 Kubernetes Service 路由資源**。
 
-目前規劃的 **Builder 共用 Runtime 是共用同一 API service／程序**，裡面可載入多份 Library＋Config，建立多個 System；不只是多個互不相干的 API service 放在同一 Pod。不同 System 的設定／索引作用範圍分開，但仍共享程序生命週期。
+| 環境 | API service 啟動與 Config | 請求／更新 |
+|---|---|---|
+| Builder DEV | 一組或少數幾組 API service 共用 Library／Registry；不在啟動時由單一 System Config 定型 | Backend 經可信管理註冊／下發各份 Config，請求路由到對應 System 實例；更新通常只重建該實例 |
+| FTEST／ENT | 主 Runtime 第一版一 Pod＋一組 Ingestion／Inference API service＋一份 Config，啟動時綁定 | 業務請求不需選 System；Config 更新可重啟／重部署該 API service |
 
-因此即使 Pod 不重啟，重啟這個 API 程序也會失去程序內所有 System 的 Queue／工作狀態與 Memory 索引。只重建其中一個 System 的 Engine／Config 實例，才有可能不影響其他 System；如何等候／釋放舊實例仍待生命週期設計，不把「實例重建」稱為整個 API service 重啟。
+Builder 儲存許多 UI Config 不等於建立等量 API service／Pod。Runtime manager 可依使用需求初始化／取得 Engine 實例，各自有 Config、Binding、索引及工作作用範圍；預載／快取／回收、Namespace 或服務池分組的精確機制待 Q-020。Library 不直接連 Builder DB；由 Backend 經可信邊界管理 Config 與目標 Runtime 對應。
 
-獨立部署一個 Runtime 綁定一個 System 時，API service 重啟可直接載入新 Config，避免存活實例熱切混用。ES／MongoDB 持久資料仍需驗證新 Config／Profile 相容，重啟不等於重新 Ingestion；Remote External 的在途寫入也不保證隨本地程序停止。
+「不綁單份 Config」不代表程式可任意熱替換：可用 Local Components／Adapters 仍由所選 Runtime Image／Registry 版本決定。新 Component 程式依既定 Image 發布流程；不同 Config 在既有能力內組裝 System。
 
-本輪釐清的是既有共用方式及重啟範圍，**沒有改成每 System 一個 API service／Pod**。若後續希望每個 System 的 API service 可獨立重啟，再明確調整服務程序邊界。
+因此 Builder 改某份 Config 通常不需重啟 API service，但仍須建立新實例／驗證資料相容性，舊工作、索引資源的接續／回收時機待細化。若真的重啟共用 API service 程序，即使 Pod 仍在，其內所有 System 的 Memory 資料與工作仍會遺失。只重建目標 System 與重啟整個服務是不同操作。
+
+FTEST／ENT 的一 Pod 基準是主 Runtime；若 Config 選 Remote Image，仍按 18 另部署必要 Component service；External 由 Developer 維運。ES／MongoDB 等依賴亦不因此包入主 Runtime Pod。兩種模式使用相同 Library／API 語意，不複製兩套流程。
+
+不提供任意 Config 原地熱切承諾。Ingestion／Embedding／Indexing 語意改變仍可能需要重新 Ingestion，純 Inference 改動可使用相容資料；精確版本與實例切換待既有 Q-ID 落實。
 
 ### 8.2 Remote 寫入可能成功但 Runtime timeout
 

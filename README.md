@@ -37,7 +37,7 @@ Prototype v0.12 同步 Query metadata、選填追溯、Embedding 文字模板／
 | [05 資料與 Config](docs/05_data_contracts_search_design.md) | 契約總覽、Inference 物件、設定責任與變更影響 |
 | [06 UI 開發規格](docs/06_ui_development_spec.md) | Create／Edit、欄位相依、CSV、預覽及助手 |
 | [07 Backend 與 Runtime API](docs/07_backend_runtime_integration.md) | JSON API、工作狀態、儲存、服務綁定與 Export |
-| [08 開發計畫與決策](docs/08_implementation_plan.md) | M0～M7、D-01～D-60、Q-001～Q-028 與驗收 |
+| [08 開發計畫與決策](docs/08_implementation_plan.md) | M0～M7、D-01～D-61、Q-001～Q-028 與驗收 |
 | [09 Inference Contract 與 UI](docs/09_inference_contract_ui_plan.md) | ResultSet、兩層融合、四處 Top N 與連動 |
 | [10 UI Backlog](docs/10_ui_adjustment_backlog.md) | 現有原型能力及UIB-001～023 的原型／正式整合狀態 |
 | [11 Component 開發指南](docs/11_component_developer_guide.md) | SDK 示意、開發、契約測試、PR 與發布 |
@@ -91,3 +91,6 @@ Parser 開發示範：[三種交付模式圖](diagrams/04_component_delivery_mod
 2026-11-05 D-59：Remote 未知寫入不自動重試；Builder 登入延後。後續 D-60 已確認不加 Query 讀寫鎖及單一 Basic 帳號，現行規則見 21 §8；ES／Local 直接去重分頁取文件 ID。
 
 2026-11-05 D-60：Builder 共用 Runtime 是同一 API service／程序承載多個 System，service 程序重啟與 Pod 重建分開看。平台不加寫入阻擋 Query 的讀寫鎖，接受更新中讀不一致；同文件重複 Ingestion 拒絕保留。Runtime API 暫採一組 Basic 帳密操作全部 API，Builder 登入延後；未改 UI／Runtime／共用 Schema。
+
+
+2026-11-05 D-61：Builder 多份 UI Config 共用一組或少數 Ingestion＋Inference API service，啟動不綁單份 Config，改配置通常重建對應 System 實例。FTEST／ENT 主 Runtime 初期一 Pod＋一組 API service＋一份 Config；Remote Image 服務仍依需要另外部署。模式對照見 [03](03_architecture_proposal.md#runtime-deployment-modes)／21 §8.1；精確分組／管理介面／回收待決，未改 UI／圖面／程式。

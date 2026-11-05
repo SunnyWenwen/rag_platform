@@ -77,16 +77,30 @@ Query Rewrite／Multi-query 的 1／N 統一設定提案仍保留；舊回答生
 | Workspace | Builder 中管理 System 的容器；正式階層為 Workspace → System |
 | Retrieval Engine Library | 可匯入的程式庫，提供 SDK 契約、Registry、Config 驗證、模組組裝與執行核心；本身不是已啟動服務，也不是某一個 System |
 | Retrieval Engine Platform | 共用執行技術堆疊，包含 Library、Runtime API 封裝及共用 Runtime Image；不是 Builder 的別名，也不是 Runtime 每次執行必須呼叫的中央服務 |
-| Retrieval Runtime | 載入 Library、Config 與部署綁定，提供 Ingest／Query／Status／Health API 的服務載體 |
+| Retrieval Runtime | 載入 Library／Registry 與服務基礎設定，提供 Ingest／Query／文件管理／Health API；Builder 共用模式管理多個 System／Config，獨立模式啟動時綁定單一 System Config |
 | Retrieval System | Library 依特定 Config 組裝，並完成必要服務及資料／索引綁定後建立的具體檢索系統；可由 Python 直接使用，也可由 Runtime 對外提供 API |
 | Retrieval Service（圖面用語） | Runtime 內的 System 執行實例；不是新的管理層級、必要微服務或 Kubernetes Service 物件 |
-
 | AI 設定助手 | 依需求、樣本、可用方法及 Config Schema 產生設定草稿的能力；可獨立由 Python／API 使用，Builder 另外提供互動、差異預覽及套用介面，不是 Ingestion／Inference 的必經模組 |
 | Evaluation Runner | 批次執行 Dataset 與收集指標；重用 04 的評估邏輯，由 07 管理任務與儲存 |
 
 核心關係是 **Retrieval Engine Library ＋ Config → Retrieval System**；實際執行還需解析必要的資源／服務綁定。Python 使用者可直接載入 Library 建立 System，不需要 HTTP 或 Builder。Platform 將 Library 與 Runtime API 打包為共用 Image，部署時再載入 Config／環境設定，無須每份 Config 重新建 Image。
 
-Builder 管理設定與測試，Library 執行模組，Platform 交付執行框架，Runtime 承載 API，System 是依 Config 建立的具體應用。System 不等於 Pod／程序；Builder Local 共用 Runtime 指同一 API service／程序內建立多個 System，不只是共用 Pod，各自保有設定與資料作用範圍，資源限制與生命週期細節仍見 Q-017／Q-020。Remote Image 第一版每 System 獨立服務實例；External Endpoint 由 Developer 自行部署。 重啟 API service 程序即使不重建 Pod，仍影響該程序內所有 System 的 Memory 資料／工作；只重建單一 System 實例是另一種管理操作，機制待定。
+Builder 管理設定與測試，Library 執行模組，Platform 交付執行框架，Runtime 承載 API，System 是依 Config 建立的具體應用。System 不等於 Pod／程序；Builder Local 共用 Runtime 指同一 API service／程序內建立多個 System，不只是共用 Pod，各自保有設定與資料作用範圍，資源限制與生命週期細節仍見 Q-017／Q-020。Remote Image 第一版每 System 獨立服務實例；External Endpoint 由 Developer 自行部署。 重啟 API service 程序即使不重建 Pod，仍影響該程序內所有 System 的 Memory 資料／工作；Builder Config 更新採重建受影響 System 實例，不必逐 Config 重啟共用 API service；舊工作與回收機制待定，模式對照見下一節。
+
+<a id="runtime-deployment-modes"></a>
+
+#### 3.1.1 Builder 共用與 FTEST／ENT 獨立模式（D-61）
+
+| 環境 | Config 與 API service 的對應 | API service 啟動時 | Config 更新 |
+|---|---|---|---|
+| Builder DEV | UI 保存多份 System Config，共用一組或少數幾組 API service；每組均提供 Ingestion＋Inference，不逐張卡建立服務 | 載入 Library／Registry、服務／資源基礎設定，不被單一 System Config 定型；透過可信管理取得各 System Config | 重建／切換受影響 System 的 Engine 實例，通常不重啟整個共用 API service；舊工作／資源回收機制仍待細化 |
+| FTEST／ENT | 主 Runtime 第一版基準為一個 Pod＋一組 API service＋一份 System Config | 綁定該 Config 與環境資源，建立該 System 實例，業務請求不另選 System | 以重啟／重新部署該 API service 採用新 Config；資料／索引相容與需否重新 Ingestion 仍需驗證 |
+
+Builder Backend 下發／註冊 Config 與目標 Runtime 的對應，Runtime manager 依可信 System 識別選 Engine 實例；Library 不直接讀 Builder DB。服務啟動不綁單份 Config，不代表 Engine／已安裝 Component 版本可任意熱替換；新增 Local 程式仍按原 Image／版本交付流程。
+
+少數共用服務可以依 Namespace／資源池等方式分組，但分組單位、數量與管理機制待決；不將 Namespace 與 Workspace／System 當成同一概念，也不新增 User 必填分組設定。System 實例可按使用需求建立／快取，精確預載、LRU／回收與配額依 Q-020；保存多份 Config 不等於同時初始化所有模型／索引。
+
+FTEST／ENT 的一 Pod 基準指主 Runtime。若 Config 選 Remote Image，仍依 D-51 部署必要的遠端 Component service；External 由 Developer 維運，不因此承諾整套系統永遠只用一個 Pod。Ingestion／Inference 是同組 Runtime 的 API 能力，不強制各自一個 Pod／程序。
 
 **範圍：Retrieval-only，不提供 Generation。** Inference 回傳排序後的檢索結果、分數與來源／追溯資訊，由呼叫端決定如何消費。Query Rewrite／Multi-query 與 AI 設定助手仍可使用 LLM；取消 Generation 不等於移除所有 LLM。
 

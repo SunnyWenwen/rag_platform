@@ -59,6 +59,8 @@ finally:
 
 ### 2.2 編譯與初始化流程
 
+D-61：下列流程以一個 Retrieval System／Config 實例為單位，不要求每個 API service 啟動時就綁定一份 Config。Builder 的共用 Runtime manager 可在同一 API service 管理多個如此組裝的實例；FTEST／ENT 則啟動時綁定一個，見 [03 模式對照](../03_architecture_proposal.md#runtime-deployment-modes)。
+
 1. 讀取 YAML／JSON，驗證 Contract 版本及未知欄位；安全解析，不執行設定內的程式碼。
 2. 將 UI Draft 編譯成 Effective Config，排除未啟用方法／服務草稿。
 3. 根據 Registry 驗證 I/O、方法能力、欄位來源、Profile、模板與可過濾能力。

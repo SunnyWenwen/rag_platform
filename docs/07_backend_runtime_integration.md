@@ -22,7 +22,9 @@ Engine 可直接由 Python Config 使用，不能反向 import Builder Web App �
 
 助手核心也不得反向依賴 Builder UI／DB；獨立呼叫接受需求、明確允許的樣本及可選的既有 Config／基準識別，不以 Builder System ID 為必要條件。Builder Backend 負責把可信 Workspace／System 資訊與 UI Draft 轉成相同助手輸入，再將建議對回草稿。這是邏輯責任拆分，不要求獨立部署成多個微服務。
 
-兩種環境：共享 Builder DEV Runtime 是同一 API service／程序承載多個 System，由可信路由選擇；獨立 Runtime 啟動時綁定一個 System／Config。共用不只指 Pod，API service 程序重啟即使 Pod 還在，仍失去程序內 Memory 資料與工作。相同 API 語意不代表相同 Base URL、權限或資料。確切多 System 路由／內部管理接口見 Q-019／Q-020。
+D-61：Builder DEV 以一組或少數幾組 API service 承載多個 UI System／Config；每組提供 Ingestion＋Inference，啟動只載入 Library／Registry 與服務基礎設定，不綁死單份 System Config。FTEST／ENT 的主 Runtime 第一版為一 Pod＋一組 API service＋一份 System Config，啟動時綁定。兩者共用 Engine／API 實作，Builder 以可信路由選 System，獨立 Runtime 不需外部傳 System ID。
+
+共用 API service 程序真的重啟時，該程序內所有 Memory 資料／工作仍會遺失；但 Builder 修改一份 Config，應重建受影響 System 的 Engine 實例，通常不重啟共用 API service。Namespace／資源池等少數服務分組、精確內部管理接口與回收機制見 Q-019／Q-020；不因保存多份 Config 就部署多個服務。
 
 <a id="repository-build-boundaries"></a>
 
@@ -76,11 +78,11 @@ M4 助手核心的建議位置在 rag_engine，以便使用相同 Registry／Val
 
 1. Backend 驗證身分與 Workspace 權限，建立 system_id，依 05 的既定自動命名方向建立穩定 collection；不要求 UI 使用者手填。
 2. 收到 Draft，以目標 Runtime 的共用 Config 編譯／Validator 檢查有效設定，回傳錯誤與變更影響；本地格式預檢不取代完整驗證，接口依 §5.8 核定。
-3. 保存 Config Revision；以可信管理呼叫要求 Runtime 綁定配置。
-4. Runtime 呼叫 04 Engine 初始化；服務解析、Profile 與資料就緒分開回報。
+3. 保存 Config Revision；由 Backend 經可信管理呼叫註冊該 System 的 Config／目標共用 Runtime 對應，不逐份 Config 啟動新的 API service。
+4. Runtime manager 依需求建立／取得該 System 的 Engine 實例並呼叫 04 初始化；預載／快取策略待 Q-020。服務解析、Profile 與資料就緒分開回報。
 5. UI 可執行 Ingest／Query；沒有索引時 Query 回明確不就緒。
 
-共享 Runtime 不代表每建立 System 就新建 Pod。實例快取、資源配額、LRU／釋放、租戶隔離與同時工作限制見 Q-020。
+共享 Runtime 不代表每建立 System 就新建 API service 或 Pod。各 System 仍有自己的 Config／Binding／索引／Queue 與限制；共用的是 API／執行承載，不是把資料混在一起。實例快取、資源配額、LRU／釋放、租戶隔離與同時工作限制見 Q-020。
 
 ### 4.1.1 Remote Image／External 的生命週期
 
@@ -90,7 +92,7 @@ Remote External 不由 Builder 啟動／重啟；Developer／管理者登錄 End
 
 ### 4.2 Config 更新
 
-獨立 Runtime 初期透過重啟／重部署套用 Config，不做執行中熱切，見 21 §8.1；這可避免單一存活實例混讀不同 Config，但持久索引相容性與 Remote 在途寫入仍需處理。Builder 共用程序的更新範圍另決：整個程序重啟會影響其餘 System 的記憶體資料／工作，建議只重建目標 System 實例；何時切換／是否等待工作完成不在本輪宣稱已完成。
+獨立 Runtime 初期透過重啟／重部署套用 Config，不做執行中熱切，見 21 §8.1；這可避免單一存活實例混讀不同 Config，但持久索引相容性與 Remote 在途寫入仍需處理。D-61 已明確 Builder 更新對應 System 實例，通常不重啟整個共用 API service；何時切換／是否等待工作完成、舊實例與資料資源如何回收仍待細化，不承諾熱切／無損恢復。
 
 Backend 儲存前以有效設定比較，依 05 判定影響；UI 與 AI 都不能繞過。Edit 使用獨立草稿，取消不生效。
 
@@ -138,6 +140,8 @@ D-58 更新為 7 支業務＋2 支 Health：統一 List 提交、文件存在／
 | POST | /v1/documents/{document_id}:retire | 已確認直接刪除文件儲存／索引；建議同步 204，精確 HTTP／互斥與 Remote 配套待確認 |
 | GET | /health/live | 程序是否存活 |
 | GET | /health/ready | Runtime／必要資源是否初始化；不等同已有可查索引 |
+
+共用模式的 Health Ready 可在沒有已載入 System 時表示 API manager／Registry 已可接受管理與路由；個別 System／索引的 Ready 分別驗證。不能讓新增一份尚未初始化的 UI Config 使整個共用服務都不 Ready。具體狀態回應仍待 OpenAPI／管理介面核定。
 
 獨立 Runtime 的業務請求不另帶 System ID；配置已綁定。Builder DEV 的可信路由先選 System，不能直接信任使用者提供的 tenant／system header；Run／文件狀態查詢也需驗證相同 System 權限。D-60：Runtime API 暫用一組 HTTP Basic 帳密操作該服務全部對外 API，首期不做角色／逐 API 授權；採 HTTPS／TLS 與環境 Secret 引用。共享 System 路由、檢查位置與部署 Probe 接法仍待細化，Builder 登入方式延後。
 

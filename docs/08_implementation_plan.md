@@ -319,7 +319,8 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 
 - D-56 已確認：每 System 文件併發可配置、預設 1；不同文件可依上限並行，同 document_id queued／running 時拒絕重複提交。文件完成後完整替換，失敗不得冒充成功；D-60 放寬更新中的讀原子性，不加平台 Query 讀寫鎖。
 - D-60 已確認讀寫各自進行，不因寫入阻擋 Query、不加共享讀寫鎖或原子快照；同文件重複提交忙碌拒絕保留。
-- 仍待：API service 程序／System 實例的重建範圍、Config／資料 Profile 相容、實體 backend 可見性與失敗清理。整體 Query Ready 條件與寫入鎖不同，不因本輪放寬讀一致性就忽略實際錯誤。
+- D-61 已確認 Builder 用一組或少數共用 API service，啟動不綁單份 Config；Config 更新通常重建受影響 System 實例。FTEST／ENT 主 Runtime 一 Pod＋一組 service＋一份 Config。
+- 仍待：System 實例切換／舊工作與資源回收時機、Config／資料 Profile 相容、實體 backend 可見性與失敗清理。整體 Query Ready 條件與寫入鎖不同，不因本輪放寬讀一致性就忽略實際錯誤。
 - 第一版採已確認的無 Query 讀寫鎖策略；版本快照／零停機世代切換不是首期新增需求。
 - 負責角色：Engine＋Backend；阻擋 M2／M3 併發正式行為。
 - 決策：未定；更新 04／05／06／07。
@@ -422,7 +423,8 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 - D-51 已確認 Local 可同程序／Pod 建多 System；Remote Image 第一版每 System 獨立服務及儲存綁定；External 由 Developer 管理固定資料空間，無 data_space_id。下列快取／配額／清理細節仍 OPEN。
 
 - D-56 已確認：Builder DEV／獨立 Runtime 共用 System Queue／併發與 Inference Rate／併發／Deadline；Runtime 控制總量，Builder 另管理 User／Workspace 配額。上限可配置已確認；放 E 為先前建議，D-57 暫緩管理者／存放位置／Schema 的定案。Worker 是排程概念，不要求每 System 新 Pod。
-- 仍待：每 System 實例快取、可信路由、公平排程、上限具體值、記憶體配額／清理、未來多 replica 控制與程序安全性。
+- D-61：共用 API service 啟動只綁服務／Registry 基礎設定，後續管理多份 System Config，不因每份 UI 設定新增服務；可依 Namespace／資源池分成少數共用服務，精確分組策略尚未選定。
+- 仍待：每 System 實例預載／快取／回收、可信路由與管理 API、服務池分組、公平排程、上限具體值、記憶體配額／清理、未來多 replica 控制與程序安全性。
 - 建議：先有受限共享 Runtime 與明確隔離 Binding；Local Search 每 System 的 Ingest／Query 必須同程序。
 - 替代：每 System 獨立 Runtime，增加部署／資源管理成本。
 - 負責角色：平台＋Backend／Runtime；阻擋 M5 多 System 服務。
@@ -633,3 +635,14 @@ Builder 登入方式之後討論；Runtime API 的 basic oath 先按 HTTP Basic 
 Runtime API 暫採 HTTP Basic Auth，預設一組帳密可操作該 API service 提供的全部 API，不做首期角色／逐 API 權限；不同部署不硬編碼共用同一密碼，憑證用環境 Secret 引用並採 HTTPS。對外 Health 沿用同一認證，內部 Probe 接法為部署細節。Builder 登入仍延後，Remote Service／DB 的連線憑證不預設共用此帳密。
 
 文件／UI 規格待辦同步，沒有改 Runtime、UI、共用資料 Schema 或實際登入程式。API 數量維持 7 支業務＋2 支 Health；Q-006／Q-010／Q-019／Q-020 只收斂上述方向，其餘精確實作仍 OPEN。
+
+
+## 2026-11-05 D-61：共用 API manager 與單 System 獨立部署
+
+Builder UI 可以保存多份 Retrieval System Config，後台共用一組或少數幾組 Ingestion＋Inference API service，避免逐份設定建立 API service。共用服務啟動載入 Library／Registry／基礎資源，不被單份 System Config 定型；Backend 經可信管理註冊／下發配置，Runtime manager 為各 System 建立／管理 Engine 實例，Library 不直接讀 Builder DB。
+
+Builder 改一份 Config 通常重建受影響的 System 實例，不必重啟整個 API service。實例的建立／快取／回收與舊工作切換、Namespace／服務池分組仍待 Q-017／Q-019／Q-020；不因確認模式而宣稱已實作熱更新／無損切換。真正重啟共用 API 程序仍會清除其中全部 Memory 資料與工作，與單實例重建分開。
+
+FTEST／ENT 主 Runtime 初期基準一 Pod＋一組 Ingestion／Inference API service＋一份 System Config，啟動綁定並可透過重啟採用新版。必要 ES／MongoDB 及 Remote Image Component service 仍是既有外部依賴／額外部署，不承諾整套系統只用一 Pod。Remote External 仍由 Developer 維運。
+
+D-60 的無 Query 讀寫鎖、單一 Basic 帳號全 API 與文件 ID 去重方式維持。API 業務 Payload 不因共用模式加任意 system_id／tenant；共享路由與管理精確介面後續核定。此次只更新文件，UI／Runtime 程式、共用資料 Schema 與圖面未修改。
