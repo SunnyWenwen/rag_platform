@@ -35,7 +35,7 @@
 | Inference Contract 討論摘要與 UI 整合提案 | 09；欄位以 05、決策以 08 為準 |
 | Prototype 待辦／目前狀態 | 10；歷史驗證證據放 history/validation，使用者要求改 UI 時才實作 |
 | Component 開發、測試及套件交付流程 | 11；Engine 機制以 04、三份共用資料以 13～15／schemas/ 為準，Config／Inference 見 05 |
-| Component 設定描述、UI hints、動態選項與相依規則 | 12；設定介面草案，I/O 仍以 05 為準，互動待辦記於 10 |
+| Component 設定描述、UI hints、動態選項與相依規則 | 12；B 的 I/O 細化／六類宣告與逐層相依見 24；共用資料仍以 05／13～15 為準，UI 待辦記於 10 |
 
 同一型別／規則不在多份文件各寫一套。03 定義名詞，05 規範對應的資料結構／版本規則，本文保存現行決策摘要與待決狀態；原始來源及討論過程在 history/，不取代 03 的現行定義。程式 Schema 與文件同步；不能只更新 UI、測試或其中一份規格。
 
@@ -56,6 +56,7 @@
 | 推論資料 | 直接傳 QueryContext[]；ResultSet=key/items，ResultItem=chunk/選填score；items 順序即排名，過程寫 Logs | D-54；05、09、17 |
 | 結果處理 | 同 Query／跨 Query 兩層融合，各可在 Retrieval／Rerank 後；四個 Top N；RRF／Sum Score；文件去重選代表 Chunk | D-11／12／23／34／35；04、05、09 |
 | 共用模型 | System 共用 LLM 名稱清單，Rewrite 以 llm_ref 引用；模型語意與環境連線分開 | D-13／24／30；05、23 |
+| I/O 宣告與細化 | B 提供固定或依 Config 細化的資料規格，首版六類純宣告；Engine 逐層推導選項／相依。取消 D 頂層 document_schema；Local／Remote 相同，正式語法待定 | D-67；12、20、24；UIB-021 |
 | Component 開發 | 兩 repo 分工：rag_platform 管 Builder，rag_engine 管 SDK／Engine／Components／Runtime API；Admin 核可登錄，既有 System 固定元件版本 | D-40～43；03、11、12、20 |
 | Remote 整合 | Local／Remote Image／External；可接管連續多 Module，Manifest 註冊，User 選服務；不加 data_space_id。Image 每 System 獨立服務與必要儲存；External 沿用既有資料空間 | D-51；18 |
 | Flow／Config | 共用 Flow／Executor；每次請求及已接受文件固定 Config 快照，各步獨立傳入 Component Config／Context，資源作用域另管 | D-61／62；03、04、07 |
@@ -67,7 +68,7 @@
 | Runtime 控制 | 接收大小、Queue／併發、Rate／Deadline、終態狀態保存由 Admin／部署者在 E 設定；14 項初始值集中維護 | D-64；22 |
 | UI／工作方式 | 單一 Create／Edit、CSV 測試、進階收合與相依卡控；需求先更新文件，UI 只在使用者要求時修改，差異記入 Backlog | D-02／22／26／38／42；06、10 |
 | 部署／開發順序 | M0～M7；M4 獨立 AI 助手、M5 Builder 整合、M6 Evaluation、M7 Export；FTEST／ENT 自行部署，Runtime 不依賴 Builder，Export 不搬資料／真實 Secret | D-18／19／37／41／51；03、07、§4 |
-| System Config 狀態 | 23 的共同骨架、五案例及 SC-01～SC-10 是現行討論稿；尚未核定正式欄位／Meta-schema／SDK | D-66；23、Q-002／Q-028 |
+| System Config 狀態 | 23 為現行討論稿；D-67 移除頂層 document_schema，舊五案例／機器稿歸檔。其他 SC 表示與正式 Meta-schema／SDK 仍待定 | D-66／67；23、24、Q-002／Q-028 |
 
 ## 4. 開發階段與驗收
 
@@ -190,7 +191,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 - 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System；Local Search 持久化模式隨 Config 跨環境固定（D-33）；全部 Chunk.fields／metadata 保存與合法 metadata 全繼承（D-39）。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile；QueryContext[]／ResultSet 業務欄位已依 D-54 確認。仍待核定的是舊保存／繼承投影、原型短名稱／匯出標籤 migration。
 - D-62 已確認 B：共用 Flow／Executor，依固定 Config 快照在各 Module 選 Component，並傳入 input／本次 config／Context；不強制所有實例共用。精確 SDK 簽名及 Resolver／資源作用域仍待凍結。
 - 2026-10-28 補充：Component SDK 的 Module-specific I/O 包裝、run／初始化／釋放簽名、RunContext、Registry／Factory 與 Config Schema 介面待凍結；Registry 草案改稱 component_id，不直接改寫既有 Config。精確方法／版本引用、舊 module_id 別名與遷移須一致驗證；11 的 Python 程式只作介面示意。
-- 本輪交叉校對後新增 [23 System Config Schema 初版](23_system_config_schema_draft.md)，附可驗證的結構 Schema／五個案例與 SC-01～SC-10 建議；這些具體名稱與包裝仍待使用者討論，不因寫入文件就視為核定。已確認語意／修正證據見 [24](history/reviews/2026-11-05_spec_alignment_review.md)。
+- [23 System Config 討論稿](23_system_config_schema_draft.md) 依 D-67 取消頂層 document_schema，資料細節由 B／C＋D 提供；首版六類宣告與相依推導見 [24](24_component_io_schema_refinement.md)。規則語法／SDK／解析 API 仍待凍結；D-66 舊機器稿及五案例已歸 [歷史快照](history/superseded/system_config_d66/README.md)，不作新功能驗收。前輪校對過程見 [歷史報告](history/reviews/2026-11-05_spec_alignment_review.md)。
 - 建議：先核定最小完整 Config＋單一公開 Engine interface；Pydantic 匯出 JSON Schema，UI 使用相同來源。用完整欄位路徑；未知別名拒絕。
 - 替代：直接沿用 Prototype 全部短名稱；需補齊其缺少型別與執行語意。
 - 負責角色：Engine＋Backend＋Frontend；阻擋 M0 契約凍結。
@@ -422,6 +423,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 
 - 已確認方向：D-40 加入 Module Developer，由公開契約下的 Component 擴充能力供 Builder 使用；不是所有特殊策略都由平台核心開發者實作。2026-10-28 補齊 04 與 11 的規劃，未凍結套件／隔離細節。
 - 已確認開發位置（D-41）：使用本機 IDE／SDK，在 rag_engine components 目錄開發並提交 PR；與同 repo 的 Engine／Runtime API 整合測試後交付完整 Runtime Image。公開套件／契約邊界保留，以乾淨環境安裝驗證替代「必須另建 Component repo」的驗收要求。
+- D-67：B 的 I/O 細節／六類宣告規則由通用解析器處理；Local／Remote 同等宣告，不因提供 Source Code 與否改變能力；不要求所有 Component 自寫 Schema 解析函式。具體 Meta-schema／未知必要規則與相容測試待核定，見 24。
 - D-42 補充：Component 的設定描述與規則是受限 JSON 資料；共用 Schema 輸出與 Registry 驗證，不以瀏覽器腳本或任意 import 擴充 UI。具體能力／控制項名稱登錄、支援子集與契約測試待核定，見 12。
 - 建議起步：受控 Registry、核可 Component packages，先明確註冊再評估 entry points；不先建 Web IDE／任意程式上傳，也不要求以跨 repo Image 相依交付每次方法更新。
 - 已確認補充：Admin 手動審核登錄／發布 Descriptor／Manifest，第一版不要求新增 Admin 管理 UI；Component 有 implementation_version，既有 System 固定選用版本、不自動升級。Local 仍需目標 Runtime 包含程式，Remote 需支援 Adapter／邊界，只有 Schema 不代表可執行。

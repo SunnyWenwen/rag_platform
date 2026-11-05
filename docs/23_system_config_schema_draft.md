@@ -1,6 +1,6 @@
 # 23 — System Config Schema 初版與待討論決策
 
-2026-11-05｜**整合討論稿，尚未核定欄位名稱／包裝或發布正式 SDK。**前次校對已歸檔至 [歷史校對紀錄](history/reviews/2026-11-05_spec_alignment_review.md)，目前設定討論依本稿進行；已確認的語意沿用 D-49～D-65。可驗證的結構稿放在 examples/system_config，沒有替換既有 schemas/ 的共用資料契約。
+2026-11-05｜**整合討論稿，尚未核定全部欄位名稱／包裝或發布正式 SDK。**D-67 已確認移除獨立頂層 document_schema，I/O 細節由 Component 宣告＋Config 推導，見 [24](24_component_io_schema_refinement.md)。前次校對已歸檔至 [歷史校對紀錄](history/reviews/2026-11-05_spec_alignment_review.md)，目前設定討論依本稿進行；已確認的語意沿用 D-49～D-65。D-66 可驗證結構稿／五案例已移入 [歷史草案](history/superseded/system_config_d66/README.md)，保留舊格式查驗；新 Descriptor 規則尚未核定，因此尚無對應的新機器 Schema，不替換 schemas/ 的共用資料契約。
 
 ## 1. 這次要定義什麼
 
@@ -18,18 +18,17 @@ System ID、Workspace／顯示名稱、Config Revision、Runtime Image 引用屬
 
 ## 2. 共同骨架初版
 
-機器可讀討論稿：[system_config.schema.json](../examples/system_config/system_config.schema.json)。它只驗證共同形狀，不靠通過這一層宣稱整個 System 可執行。
+共同骨架以本節文字稿繼續討論。舊 [D-66 system_config.schema.json](history/superseded/system_config_d66/system_config.schema.json) 含已取消的 document_schema，僅供歷史對照；不以它驗證新設計。Component I/O 細化規則與剩餘 SC 決策確定後，再同步機器 Schema／案例。
 
 | 候選位置 | 初版內容 | 規則／待議處 |
 |---|---|---|
 | contract_version | system-config/0.1-draft | 格式版本；與 Component／Config Revision／資料版本分開 |
-| document_schema.unit_schema | Parser 每筆 Unit 的內容規格 | 建議以 JSON Schema object 描述 properties／required；不改 ParsedDocument 四鍵 |
-| document_schema.metadata_schema | 文件業務 metadata 規格 | Parser／Chunker 繼承與處理提示依 13～15；不是 Secrets／ACL 覆寫入口 |
+| I/O 資料規格（推導結果，不新增頂層欄位） | 由 Descriptor／Manifest＋有效 Config 提供 | D-67：不重複手填 document_schema；Parser 必要時開放資料欄位定義參數；共用 Contract 不變 |
 | llms | System 共用 LLM 名稱 → profile_id／service_ref | Rewrite 以 llm_ref 選用；URL／Secret 在 E。Profile 的保存／鎖定見 SC-06 |
 | pipelines.ingestion | Import／Parsing／Chunking／Embedding／Indexing 與整段引用 | 固定 Module 骨架，不是任意步驟陣列／DAG |
 | pipelines.inference | Query Transformation／Retrieval／Rerank 與結果處理 | 沿用 QueryContext[]，不加入 Generation 或歷史 State |
 
-`execution` 曾是模糊候選名稱；本稿先分開結果計畫與環境控制。Queue／Rate／Deadline／紀錄保留歸 E，結果合併／Top N 歸 inference.processing。這是具體表示的建議，正式鍵名見 SC-01／SC-07。
+`execution` 曾是模糊候選名稱；本稿先分開結果計畫與環境控制。Queue／Rate／Deadline／紀錄保留歸 E；結果合併／Top N 的候選位置為 inference.processing，是否改由 Component parameters 表達仍待審閱。這是具體表示的建議，正式鍵名見 SC-01／SC-07。
 
 ### 2.1 每次 Component 選擇
 
@@ -90,40 +89,42 @@ slot 的完整性不是只靠 required：例如 Parsing～Embedding 已由一段
 
 ES 內部 sum_score／RRF 是 Retrieval 元件的參數，平台 processing 是跨清單處理，兩者分開。ES 只有一份 Hybrid 輸出時略過無效的同 Query 融合，不捏造分項分數。單 Query／單路等條件是否在保存或編譯時移除無效值，留 SC-08；案例保留兩層預設意圖，尚未聲稱是已正規化的 Effective Config。
 
-## 3. 五個整合案例與環境對照
+## 3. D-66 歷史案例與待同步範圍
 
-| 案例 | 檔案 | 交叉驗證的需求 |
+下表保留要覆蓋的五個情境；檔案是 **D-66 舊版快照**，不是採用 D-67 後的有效 Config。正式 Descriptor 規則及其餘 SC 選項未定，不以示例偷定語法。
+
+| 案例 | 歷史檔案 | 需繼續覆蓋的情境 |
 |---|---|---|
-| Local Memory | [local_memory.json](../examples/system_config/local_memory.json) | Structured JSON→Recursive→Embedding API→Local Search；BM25＋向量、預設融合；無 Rewrite／Rerank |
-| Remote Parser | [remote_parser.json](../examples/system_config/remote_parser.json) | 只換 Parsing 元件，其餘設定相同；無私有 URL／Header 混入 D |
-| Remote 多 Module | [remote_segment.json](../examples/system_config/remote_segment.json) | 一個元件涵蓋 Parsing～Embedding，三個本地 slot 省略，接 Local Indexing；只呼叫一次 |
-| 多欄位與模型處理 | [advanced_fields.json](../examples/system_config/advanced_fields.json) | text／faq 任務結果相加、copy title／summary、原文 Chunk、Embedding 模板／多向量、Multi-query、Rerank／Top 3、document_id 代表 |
-| Elasticsearch Hybrid | [es_hybrid.json](../examples/system_config/es_hybrid.json) | 索引／檢索格式配對、ES 內部 Sum Score 與平台 RRF 的邊界 |
+| Local Memory | [local_memory.json](history/superseded/system_config_d66/local_memory.json) | Structured JSON→Recursive→Embedding API→Local Search；BM25＋向量、預設融合；無 Rewrite／Rerank |
+| Remote Parser | [remote_parser.json](history/superseded/system_config_d66/remote_parser.json) | 只換 Parsing 元件，其餘設定相同；無私有 URL／Header 混入 D |
+| Remote 多 Module | [remote_segment.json](history/superseded/system_config_d66/remote_segment.json) | 一個元件涵蓋 Parsing～Embedding，三個本地 slot 省略，接 Local Indexing；只呼叫一次 |
+| 多欄位與模型處理 | [advanced_fields.json](history/superseded/system_config_d66/advanced_fields.json) | text／faq 任務結果相加、copy title／summary、原文 Chunk、Embedding 模板／多向量、Multi-query、Rerank／Top 3、document_id 代表 |
+| Elasticsearch Hybrid | [es_hybrid.json](history/superseded/system_config_d66/es_hybrid.json) | 索引／檢索格式配對、ES 內部 Sum Score 與平台 RRF 的邊界 |
 
-[environment.example.json](../examples/system_config/environment.example.json) 示範 E 的服務 URL／Secret 引用、Remote 綁定與 Runtime 限制；所有地址為 example.invalid、沒有真實 Secret。它是對照材料，不是已定案 E Schema 或部署 YAML。Remote Image 仍依 18／Manifest 產生額外部署描述，External 僅提供連線；D 不自行增加 URL、Image 或 data_space_id。
+[environment.example.json](history/superseded/system_config_d66/environment.example.json) 示範 E 的服務 URL／Secret 引用、Remote 綁定與 Runtime 限制；所有地址為 example.invalid、沒有真實 Secret。它也是 D-66 對照材料，不是已定案 E Schema 或部署 YAML。Remote Image 仍依 18／Manifest 產生額外部署描述，External 僅提供連線；D 不自行增加 URL、Image 或 data_space_id。
 
 單位與欄位路徑保持既有責任：Chunking split_field／copy source 是 Unit key；Embedding source_field 是 Chunk.fields 的 key；搜尋／Filter／Rerank 以 fields.text／vectors.text／metadata.department 明確引用容器。衍生模板只寫在支援該能力的 Embedding Component 參數中，不新增通用處理 Module。
 
 ## 4. 驗證順序與目前驗證範圍
 
 1. **共同結構**：根欄位、固定 pipeline／slot、Component 引用、tasks／profiles／processing 的形狀；共同骨架拒絕未知欄位。
-2. **所選元件**：查 ID／版本 → 取 Descriptor.config_schema → 驗證 parameters；取得描述不啟動模型／DB。空參數服務使用合法空物件 Schema。
+2. **所選元件**：查 ID／版本 → 取 Descriptor.config_schema → 驗證 parameters → 依 24 取得當前 I/O 細節；取得描述／推導不執行業務處理或啟動模型／DB。空參數服務使用合法空物件 Schema。
 3. **跨模組語意**：連續範圍與重疊、必要 Module、欄位存在／型別、每個 Chunk 任務的可用欄位、向量／Profile、Indexing／Retrieval 格式、結果處理次序。
 4. **環境與啟動**：D 的邏輯引用是否有 E 綁定、部署／連線／實際 Profile 是否可用、索引就緒；這與前三層結構合法分開回報。
 
 JSON Schema 的 default 是描述，不會自動填值；Engine 正規化仍需共同實作並保存解析後值。不要讓 Builder、AI、Python 各自套不同預設，也不要把未知／失效引用靜默換掉。
 
-離線 [validate_examples.py](../examples/system_config/validate_examples.py) 已驗證五個正例及 19 個反例，涵蓋未知元件／參數、overlap、缺 Module／覆蓋重疊、欄位／向量、模板、LLM 引用、索引格式與 E 引用。它使用 [catalog.fixture.json](../examples/system_config/catalog.fixture.json)，只驗證固定案例；不是完整 Registry、Router／能力推導、UI Renderer、實際編碼、索引寫入或部署器。平台 Sum Score 比分／轉換等未驗證語意會明示超出 fixture 範圍。
+D-66 舊版離線 [validate_examples.py](history/superseded/system_config_d66/validate_examples.py) 當時已驗證五個正例及 19 個反例；這不是新 D-67 宣告規則／解析器的驗收。舊檢查涵蓋未知元件／參數、overlap、缺 Module／覆蓋重疊、欄位／向量、模板、LLM 引用、索引格式與 E 引用。它使用 [catalog.fixture.json](history/superseded/system_config_d66/catalog.fixture.json)，只驗證固定案例；不是完整 Registry、Router／能力推導、UI Renderer、實際編碼、索引寫入或部署器。平台 Sum Score 比分／轉換等未驗證語意會明示超出 fixture 範圍。
 
 ## 5. 需要討論的選擇與建議
 
-以下每列的既有語意已確認；「建議」是本稿待核定的具體表示，不是新決策。
+以下除 SC-03 的 D-67 已確認方向外，具體表示仍待核定；共同既有語意沿用已確認決策。SC-07 的獨立 processing 層亦未定案，須與 Component 實作／參數責任一起審閱。
 
 | ID | 要決定的表示／取捨 | 建議做法與理由 | 另一種選擇／影響 |
 |---|---|---|---|
-| SC-01 | D 的根欄位及管理包裝 | 採 contract_version／document_schema／llms／pipelines；System ID、Revision、E 及 Image 在可信管理／交付包裝，避免多處不一致 | 把管理欄位也放 D，需另外定跨環境／改名／Hash 規則 |
+| SC-01 | D 的根欄位及管理包裝 | D-67 後候選為 contract_version／llms／pipelines；System ID、Revision、E 及 Image 在可信管理／交付包裝，避免多處不一致 | 把管理欄位也放 D，需另外定跨環境／改名／Hash 規則 |
 | SC-02 | Component 版本及參數的引用方式 | 固定 component_id＋implementation_version＋parameters；用 Registry 中該版本的 Descriptor 驗參數，不內嵌 Descriptor，也不直接引用可下載 URL | 版本範圍／latest 需額外解析鎖與升級政策；首版不建議 |
-| SC-03 | System Document Schema 格式／額外欄位 | 兩份內嵌 JSON Schema object：unit_schema／metadata_schema；只從宣告 properties 提供選項，額外欄位政策明寫，例子用 allow 不是平台預設定案 | 沿用 UI 的 name/type/required/source 表列，需要再轉換成後端 Schema；未知欄位 reject 也可，但可能提高 Parser 適配成本 |
+| SC-03 | I/O 資料規格由誰提供 | **D-67 方向已確認**：取消獨立頂層 document_schema，B／C 提供固定或依 Config 細化的資料規格；任意 JSON Parser 必要時由其參數接收欄位定義 | 正式 Descriptor／規則格式、metadata 限制的參數表達、解析快照與額外欄位政策仍待 24／Q-002；不恢復重複手填的全域權威 |
 | SC-04 | Parser 多選與 Chunk 多任務包裝 | Parsing 用命名 profiles，可選 default_profile；Chunking 固定 tasks[]，單一 text 任務由 UI 自動產生，不新增一般 User 必填識別欄位 | 單一物件／陣列兩種形狀需遷移與更多分支；不建議；Import slot 是否顯式保存也在此核定 |
 | SC-05 | 跨 Module 的 Component 如何放入 D | 同 Pipeline segments[] 只存元件引用，範圍／operation 由核可目錄推導；省略被涵蓋本地 slot並驗證唯一覆蓋。Local／Remote 可共用表示，Local Segment SDK 另定 | D 重複寫 start/end／operation／完整 Manifest，較直觀但須處理與服務宣告不一致；不連續／任意 DAG 仍不在範圍 |
 | SC-06 | 模型／Tokenizer Profile 是定義還是引用 | 優先引用不可變 Profile ID；Export／直接 SDK 同時取得已驗證 Profile 定義或解析鎖，E 只換相容連線。保留 System 共用 llms＋llm_ref | 允許 D 直接宣告完整 Profile 可方便 BYO，但需另定 model／維度／encoding／tokenizer／版本 Schema；只有 ID 卻未交付定義不算可部署 |

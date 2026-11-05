@@ -2,7 +2,7 @@
 
 > 2026-11-05 D-58：Runtime POST /v1/ingestions 統一接收非空 IngestionDocument[]，單筆也包 List；**每個 item 與 Parser input 共用本文件的單筆 Schema**。HTTP 批次容器不傳入 Parser；本文單物件範例仍是文件 item，不是完整 HTTP body，完整提交見 [21](21_runtime_ingestion_inference_api_inventory.md)。
 
-> 2026-11-03 D-52：API／Parser Input 的根結構不變；合法 metadata 可含 Component 支援的文件層處理提示，例如 chunking_mode=passthrough。須在 System metadata Schema 宣告，由對應 Component 說明讀取與預設行為，不是全域覆寫 Config 的入口；_rag 追溯由輸出 Component 選填。見 [15 §4.1](15_chunk_contract.md)。
+> 2026-11-03 D-52：API／Parser Input 的根結構不變；合法 metadata 可含 Component 支援的文件層處理提示，例如 chunking_mode=passthrough。須符合共用 Contract 及適用 Component 的 metadata 細節宣告／設定，由對應 Component 說明讀取與預設行為（D-67 不再獨立頂層 document_schema），不是全域覆寫 Config 的入口；_rag 追溯由輸出 Component 選填。見 [15 §4.1](15_chunk_contract.md)。
 
 > 2026-10-29（Asia/Taipei）· 共用輸入 Schema 與語意已確認（D-44／D-45）；尚未實作 API／SDK；批次容器已由 D-58 確認非空 List，版本生成與執行細節另議。
 >
@@ -155,6 +155,9 @@ JSON-only、扁平輸入、三種來源、API／Parser 共用契約與多 Parser
 共同外層 additionalProperties=false；content／metadata 的業務內容由各自契約繼續驗證。所有已宣告欄位都不接受 null。content 暫不接受根層 array／number／boolean；若 Parser 需要清單，可在其明確宣告的物件欄位中承載，未新增通用陣列模式。minLength 不代表 trim／全空白政策已定案。
 
 JSON Schema 中沒有 default 副作用；metadata={} 是平台正規化行為。contentEncoding／format 不能取代實際 Base64 解碼、URI 協定及存取檢查。共同 Schema 通過，只代表外層合法，不代表內容可被 Parser 處理。
+
+D-67：Parser 的 Descriptor／Manifest 宣告共用 Input／Output 引用與固定或依 Config 細化的資料規格，見 [24](24_component_io_schema_refinement.md)。API 仍直接交相同 IngestionDocument，不新增 ParserInput。接收時可判定的路由／內容欄位可加入 202 前整批快速預檢；需下載、解碼、辨識或解析才可確認的檢查仍在背景工作，202 不表示解析成功。輸出驗 ParsedDocument 共用 Contract＋當前資料細節；不要求 User 再填一份全域 document_schema。
+
 
 D-58 已確認一支 POST /v1/ingestions，body 為非空 IngestionDocument[]，單筆亦一元素 List；整批預檢通過才 202，執行逐文件結果、Run 可 partial。每筆使用本共用 Schema；完整回應／錯誤 OpenAPI 仍待整理，見 21。
 

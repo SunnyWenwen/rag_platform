@@ -132,7 +132,7 @@ Header-aware 讀取 Unit 中的 Markdown #／##，不要求 heading Block。Pars
 
 ### 2.1 metadata 的描述與處理提示（D-52）
 
-ParsedDocument.metadata 可攜帶合法附帶資訊，或由下游 Component 明確支援的文件層提示，例如 chunking_mode=passthrough；Parser 依自身規則保存／產生，Chunker 按約定讀取。Unit 仍是平面內容物件，不新增根層 processing／options。metadata 的型別與允許鍵仍受 System Schema 驗證；模型、連線及 Secret 不因而搬進 metadata。詳細缺省與 passthrough 語意見 [15 §4.1](15_chunk_contract.md)。
+ParsedDocument.metadata 可攜帶合法附帶資訊，或由下游 Component 明確支援的文件層提示，例如 chunking_mode=passthrough；Parser 依自身規則保存／產生，Chunker 按約定讀取。Unit 仍是平面內容物件，不新增根層 processing／options。metadata 的型別與允許鍵仍受共用 Contract 及適用 Component 的資料規格／參數驗證；D-67 不再要求頂層 document_schema，細節見 [24](24_component_io_schema_refinement.md)；模型、連線及 Secret 不因而搬進 metadata。詳細缺省與 passthrough 語意見 [15 §4.1](15_chunk_contract.md)。
 
 ## 3. 來源追溯與欄位傳遞
 

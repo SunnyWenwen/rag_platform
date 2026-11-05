@@ -493,6 +493,8 @@ DEV 與 FTEST／ENT 維持相同方法選擇／解析版本與邏輯 Config，�
 
 ### 7.6 設定描述與動態表單（D-42）
 
+D-67 的 B 宣告能力見 [24](24_component_io_schema_refinement.md)：固定／依 Config 細化的 I/O 資料細節與六類規則、沿 Pipeline 推導選項及相依驗證。A 的共用 Contract／Module 邊界不變；D 不再獨立頂層 document_schema。這是已確認方向，Descriptor／Manifest 的正式鍵名及共用解析器仍待實作。
+
 2026-10-28 已確認依 Schema／UI hints／相依規則規劃 Component 設定。具體描述與驗收案例集中於 [12](12_component_schema_ui_contract.md)，不在本文件另建第二套欄位定義；`component-ui-0.1-draft` 尚未凍結為正式 SDK／HTTP 契約。
 
 - Component 宣告 `config_type`，共用父類別提供 Schema 輸出，Registry 強制檢查；不要求每個 Component 重寫產生 Schema 的 abstract method。UI hints 可使用預設值，特殊控制項明確宣告必要功能。
@@ -533,4 +535,4 @@ DEV 與 FTEST／ENT 維持相同方法選擇／解析版本與邏輯 Config，�
 Component Config 是處理參數；RunContext 是 Engine 準備的必要資源／Binding 引用，實際 Client／索引物件不放業務 JSON。searchable 不在 Binding，Runtime 管就緒；格式版本與 Component 版本、資料發布版本分開。內建 ES target 有 collection，Local target 可空並使用 System 唯一資源。首版不新增多組選擇；UI 差異只記 backlog。正式 SDK、後端讀寫布局、Remote 協定及更新／發布政策仍需後續核定／實作。
 
 
-整合設定的候選形狀與五個離線案例見 [23](23_system_config_schema_draft.md)；它不凍結 Descriptor／Manifest／SDK，也不等同已交付 Engine。Component 識別與參數、計畫及 E 的資源／限制需分層驗證；審閱差異見 [24](history/reviews/2026-11-05_spec_alignment_review.md)。
+整合設定的候選形狀見 [23](23_system_config_schema_draft.md)；它不凍結 Descriptor／Manifest／SDK，也不等同已交付 Engine。Component 識別與參數、計畫及 E 的資源／限制需分層驗證；審閱差異見 [24](history/reviews/2026-11-05_spec_alignment_review.md)。

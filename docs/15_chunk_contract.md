@@ -239,7 +239,7 @@ metadata = {
 }
 ```
 
-chunking_mode 是示範 Component 約定，不是所有 Component 必須認識的全域保留 key。Developer 說明會讀取哪些 key、型別、允許值、未提供時的預設及不支援值的處理；使用者資料也須通過 System 的 metadata Schema（例如 unknown_fields=reject 時要宣告此 string 欄位）。Parser 保留／產生合法提示，Chunker 讀取它，不新增三份共用物件的根欄位。
+chunking_mode 是示範 Component 約定，不是所有 Component 必須認識的全域保留 key。Developer 說明會讀取哪些 key、型別、允許值、未提供時的預設及不支援值的處理；使用者資料也須通過共用 Contract 及適用 Component 的 metadata 資料規格／設定（若採拒絕未知欄位，需宣告此 string 欄位）；D-67 不再要求獨立頂層 document_schema，見 [24](24_component_io_schema_refinement.md)。Parser 保留／產生合法提示，Chunker 讀取它，不新增三份共用物件的根欄位。
 
 支援本約定的 Chunker 可直接 `document.metadata.get("chunking_mode", "split")`：缺省正常切分；passthrough 時每 Unit／文字任務完整轉成一筆 Chunk，仍建立 chunk_id、依設定 copy 欄位、繼承 metadata、初始化 vectors={}。不跨 Unit 合併，三個 Units 的單一任務得到三筆，不是整份文件一筆；有多任務仍依任務規則串接。提示不支援時依該 Component 的已宣告行為處理，不能讓平台憑空保證所有 Chunker 都會遵守。
 

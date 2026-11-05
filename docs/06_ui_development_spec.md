@@ -36,14 +36,14 @@ Builder Frontend／Backend 位於 rag_platform；SDK／Engine／Components／Run
 
 Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保存配置；AI 套用也只修改 Draft，直到 Create／Save 才生效。版本衝突不可悄悄覆蓋他人修改，行為由 Q-015／Q-019 決定。
 
-表單順序：Document Schema → 共用 LLM／外部服務 → Ingestion 模組 → Inference 模組。Document Schema 是系統契約，不是 Pipeline 中新增的一步。服務可由相應模組開啟管理，但引用同一服務資料。UI 可在相同操作流程編輯 DEV 部署綁定，保存時仍分開邏輯 Config 與部署設定，不能因畫面放一起就混為同一 Config Hash。
+D-67 目標表單：共用 LLM／外部服務 → Ingestion 模組（選 Parser／填參數，顯示推導的資料規格）→ Inference 模組。不再要求先填獨立 Document Schema；任意 JSON Parser 有需要時在自身設定內定義欄位。現有 Prototype 尚未調整，追蹤 UIB-021。服務可由相應模組開啟管理，但引用同一服務資料。UI 可在相同操作流程編輯 DEV 部署綁定，保存時仍分開邏輯 Config 與部署設定，不能因畫面放一起就混為同一 Config Hash。
 
 ### 3.2 已確認互動與基本／進階分組
 
 以下涵蓋已確認的使用者要求及既有 Prototype 行為（確認決策見 08 §3）；不將明確要求重新列為是否需要的待決項目：
 
 - Parsing 初始只顯示「結構化 JSON」；其他格式及所有相關設定集中在預設關閉的「進階選項」，展開才出現。正式 Parser 能力另依 Q-005，顯示選項不等於可執行。
-- Create／Edit 前段有 Document Schema；先宣告 Unit 內容欄位／文件 metadata，再產生下游欄位選項。
+- D-67：由 Parser Descriptor＋Config 推導 Unit／metadata 細節，再沿 Pipeline 提供下游選項與卡控；多分支須保留可用性，缺欄位不靜默替換。詳細規則見 [24](24_component_io_schema_refinement.md)，UI 待辦 UIB-021。
 - 2026-10-16 已確認：Indexing 預設保存全部 Chunk.fields／metadata，移除「儲存內容」選單，只選全文／向量索引與可過濾欄位；Chunking 預設繼承全部合法 metadata，第一版不新增排除表單。Prototype v0.12 已有上述保存／繼承互動，見 10 的 UIB-005／006；真實儲存 Adapter 尚待實作。
 - LLM 服務集中管理；Rewrite／Multi-query 在需要時以下拉引用，同一服務不重填連線。
 - Rewrite／Multi-query 的 Prompt 可編輯，分別保留草稿；提供變數插入、驗證與預覽。
@@ -55,7 +55,7 @@ Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保�
 
 | 區塊 | 基本預設呈現 | 展開進階呈現 |
 |---|---|---|
-| Document Schema | 主要 text、需要的內容欄位、metadata | 型別、required／default／source、unknown_fields |
+| Parser 資料規格（D-67 目標） | 顯示當前輸入／輸出欄位摘要；不重填固定輸出 | 僅當 Parser 開放時設定欄位定義／映射及 metadata 限制；Schema 正式語法待核定 |
 | 服務 | DEV／自行提供、必要 URL／模型／認證引用 | Timeout、精確 Profile／Tokenizer 等 |
 | Parsing（已確認） | 只顯示結構化 JSON | 其他格式及相關設定全部收在預設關閉進階區 |
 | Chunking（欄位簡化已確認） | 切分方式／必要參數，直接用 text；不顯示切分／複製欄位選單，metadata 全繼承 | 有序多欄位任務、輸出名稱、附帶欄位與完整原文保留；共用 Token 設定與依方法啟用的分隔符／標題層級，不提供 metadata 排除；UIB-013 |

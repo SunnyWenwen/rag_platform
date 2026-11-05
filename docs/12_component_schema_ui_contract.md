@@ -1,8 +1,6 @@
 # Component 設定 Schema、動態表單與相依規則
 
-> 2026-11-04 盤點定位：本文對應 [20 的 B：Component 定義](20_contract_inventory_responsibility_matrix.md)；Config Schema 屬 B，User 填入的參數值屬 D。動態 UI Schema／Meta-schema 暫緩討論；本文的 UI hints、option_sources、rules 與單 module_type 範例仍為候選草案，不視為本輪已定案的格式。Local／Remote 共同涵蓋範圍、Registry 接線與由 Manifest 推導 Descriptor 的具體格式待後續整合。
-
-> 2026-11-02 D-51：本文的單 Component Descriptor 維持不變；新增 Service Manifest 的整合責任見 [18](18_remote_service_pipeline_integration.md)。整段 Remote Pipeline 的涵蓋範圍與部署需求不能只靠單一 module_type 描述，正式擴充格式仍待 Q-028。
+> 2026-11-05 D-67：B 新增 Component I/O 資料細節、依 Config 細化的六類宣告能力，以及沿 Pipeline 的相依驗證，完整結論見 [24](24_component_io_schema_refinement.md)。既有 UI hints／option_sources／rules 的具體語法與單 module_type 範例仍是候選，不因行為確認就視為 Meta-schema 已凍結。Remote 連續區段由 Manifest 推導 Descriptor，單 Module 範例不取代其公開邊界。
 
 日期：2026-10-28。狀態：**D-42 已確認規劃方向與操作行為；`component-ui-0.1-draft` 為待 M0 核定的介面草案，尚未實作。**
 
@@ -58,6 +56,14 @@ Registry 驗證必要欄位、JSON 可序列化、Schema 可支援程度、欄�
 
 Component 描述與版本在同一交付版本內固定，不為每個 Workspace 另寫一份 Schema。當前欄位、LLM 清單及索引狀態由帶版本的 Context 提供，不把即時選項寫死在 Component 的 `enum`。
 
+### 3.1 I/O 資料規格與設定相依細化（D-67）
+
+Descriptor Schema 的範圍包含 Config Schema、共用 I/O Contract 引用、資料細節與依 Config 改變的宣告規則，並連結動態選項／相依條件。固定 I/O 可直接提供；設定相依的 I/O 由 Engine 讀取純描述解析，不要求每個 Component 自寫 resolve_io_schema。正式欄位／Meta-schema 仍待核定；本節不把候選鍵名加入上表當成已發布格式。
+
+第一版支援固定欄位／型別、參數命名、映射清單、上游欄位選擇／複製、布林／固定選項分支，以及固定型別衍生欄位。Config Schema 不會自動推導 Data Schema；Developer 必須宣告規格與對應關係。共用外層與所有既有限制不變，fields／vectors 可有動態名稱。資料筆數與內容變動不等於 Schema 變動。
+
+上游 Output Data Schema 是下游設定的選項／適用性來源，不自動新增下游未宣告的參數。Engine 同時驗證各 Component 的設定與接線，User 不再另維護頂層 document_schema。六類規則、未知／複雜資料邊界、多 Parser／多任務、API 驗證及待建立的驗收案例統一見 [24](24_component_io_schema_refinement.md)，避免兩份規則各自演變。
+
 ## 4. SDK：宣告設定型別，父類別輸出 Schema
 
 延用 11 的 `config_type`。建議共用父類別提供 `config_schema()`，從設定型別產出 Schema；各 Component 不必重寫 Schema 轉換。`ui_hints()` 預設回傳空物件，需要時覆寫。`config_type` 雖不是 abstract method，Registry 仍強制檢查；各 Module 的執行介面繼續由對應 ABC 定義。
@@ -106,7 +112,7 @@ Manifest 引用既有 Config Schema／UI hints／rules 的支援子集，並補�
 
 ### 4.2 Component 解讀 metadata（D-52）
 
-metadata 的文件層提示不是 Config Schema 的隱藏替身。Component 應說明接受的 metadata key／型別／允許值、缺省與未知值行為，並對齊 System metadata Schema。第一版可用說明與範例交付，不新增強制 Descriptor 欄位／通用條件引擎。例：某 Chunker 支援 chunking_mode=passthrough，缺省 split；其他 Chunker 不因共享資料型別就自動支援。_rag 追溯能力為選用，有宣告才列入對應驗收，沒有不因型別或 UI 而強制補齊。
+metadata 的文件層提示不是 Config Schema 的隱藏替身。Component 應說明接受的 metadata key／型別／允許值、缺省與未知值行為，並符合共用 Contract 與適用 Component 的 metadata 資料規格／設定；D-67 不再要求獨立頂層 document_schema。第一版可用說明與範例交付，不新增強制 Descriptor 欄位／通用條件引擎。例：某 Chunker 支援 chunking_mode=passthrough，缺省 split；其他 Chunker 不因共享資料型別就自動支援。_rag 追溯能力為選用，有宣告才列入對應驗收，沒有不因型別或 UI 而強制補齊。
 
 ## 5. Config Schema 的第一版支援範圍
 
@@ -285,7 +291,7 @@ Schema 的條件必填必須與 applicability 分支一致；禁止一面無條�
 
 Component 目錄包裝至少需要：`descriptor_version`、`runtime_ref`、`catalog_revision`、`components`。runtime_ref 對回精確部署／Image／Engine 版本的正式結構待 Q-019／Q-021；catalog_revision 識別該版本核可目錄。Builder 若快取，需包含目標 Runtime、目錄版本及授權範圍，不跨權限共用候選清單。
 
-設定檢查的請求／回應關聯至少包括 draft_revision、context_revision、catalog_revision、runtime_ref。Context revision 涵蓋當前 Document Schema、上游設定／能力與可見服務清單；不把實際 Secret 內容放進回應。這是管理／設定介面草案，不改既有 Ingest／Query HTTP 回應。
+設定檢查的請求／回應關聯至少包括 draft_revision、context_revision、catalog_revision、runtime_ref。Context revision 涵蓋當前 Component I/O 規格、上游設定／能力與可見服務清單；不把實際 Secret 內容放進回應。這是管理／設定介面草案，不改既有 Ingest／Query HTTP 回應。
 
 驗證回傳區分：
 
@@ -358,7 +364,7 @@ UI 顯示 `[Chunking] 重疊 Token 數必須小於 Chunk Token 上限。`，點�
 
 參考：Pydantic 的 [JSON Schema 產生](https://docs.pydantic.dev/latest/concepts/json_schema/)、RJSF 的 [Schema 表單](https://rjsf-team.github.io/react-jsonschema-form/docs/) 與 [uiSchema](https://rjsf-team.github.io/react-jsonschema-form/docs/api-reference/uiSchema/)（2026-10-28 查閱）。參考資料支持可行性，未替本專案鎖定前端套件；本文 UI hints／rules 是本專案草案，並非 RJSF 原生格式。
 
-2026-11-02 補充：unit_fields 候選來自 Parser 輸出 Unit 的欄位 Schema／樣本；必須標示所有 Units 的欄位可用性，不能僅用第一筆推定全部符合。移除 structure 類型候選與 Chunker 結構 Router；Parser 輸入格式派送仍保留。
+D-67：unit_fields 候選來自 Parser 宣告＋有效 Config 的輸出 Unit 規格；Sample 只能建議／確認欄位定義，不以第一筆推定所有 Units 符合。多 Parser／任務須標示分支與欄位可用性。移除 structure 類型候選與 Chunker 結構 Router；Parser 輸入格式派送仍保留。
 
 
 
@@ -376,4 +382,4 @@ Inference 的資料 contract_ref 同步 query-context-list/0.3-draft；Query Tra
 Component Config 是處理參數；RunContext 是 Engine 準備的必要資源／Binding 引用，實際 Client／索引物件不放業務 JSON。searchable 不在 Binding，Runtime 管就緒；格式版本與 Component 版本、資料發布版本分開。內建 ES target 有 collection，Local target 可空並使用 System 唯一資源。首版不新增多組選擇；UI 差異只記 backlog。正式 SDK、後端讀寫布局、Remote 協定及更新／發布政策仍需後續核定／實作。
 
 
-整合設定初版見 [23](23_system_config_schema_draft.md)。Config 保存 component_id／implementation_version／parameters；Registry 取得本文件所述的 Descriptor.config_schema，再驗證所選參數。examples/system_config/catalog.fixture.json 是離線測試資料，並非已核定 Descriptor／Manifest Meta-schema；動態 UI hints／option_sources／rules 的具體格式仍照本文件頂端狀態另行討論。
+整合設定初版見 [23](23_system_config_schema_draft.md)。Config 保存 component_id／implementation_version／parameters；Registry 取得本文件所述的 Descriptor.config_schema，再驗證所選參數。[D-66 catalog.fixture.json](history/superseded/system_config_d66/catalog.fixture.json) 是已歸檔的舊離線測試資料，並非已核定 Descriptor／Manifest Meta-schema；動態 UI hints／option_sources／rules 的具體格式仍照本文件頂端狀態另行討論。

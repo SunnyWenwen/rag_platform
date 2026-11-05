@@ -242,3 +242,17 @@ API 維持 7 支業務＋2 支 Health。B 的分頁只分批取得唯一 documen
 23 為整合初版，examples/system_config 提供共用骨架 Schema、fixture Config Schema、五種邏輯設定與 E 綁定示例。三層驗證為共同結構 → 所選 Component 參數 → 跨模組語意，E 綁定／真實資源就緒另驗；離線案例不是 Engine、正式 Descriptor／Manifest Meta-schema、模型／DB 或部署驗收。
 
 SC-01～SC-10 保留具體格式、Profile、Remote 範圍／操作、參數正規化與遷移等待議點。Runtime 限制仍歸 E／22，System ID／Config Revision 由可信管理提供；沒有 Generation、任意 DAG、data_space_id、多邏輯索引或工作取消的新需求。UI 只更新 Backlog，程式與圖面呈現不變；圖說補明邏輯關係不代表 Library 直連 Builder DB 或逐 Config 新建 API service。
+
+<a id="d-67"></a>
+## 2026-11-05 D-67：B 的 I/O 資料規格與逐層相依
+
+來源：使用者確認第一版純 Descriptor 規則範圍，持續釐清 Parser Output 對 Chunker 設定的連動，並要求盤點既有紀錄及補入 B。現行結論見 [24](../../24_component_io_schema_refinement.md)、[12](../../12_component_schema_ui_contract.md)、[20](../../20_contract_inventory_responsibility_matrix.md)。
+
+- B 提供 Config Schema、共用 I/O Contract 引用、固定或依 Config 細化的資料細節、選項來源與相依條件。A 外層／限制不變，Local／Remote 等價。
+- 首版六類宣告：固定欄位／型別、參數命名、映射清單、上游選擇／copy、布林／固定選項分支、固定型別衍生欄位。Engine 通用解析器處理，不要求逐 Component 自寫 Schema 解析函式。
+- 純宣告不涵蓋任意程式／未宣告即時狀態；未知資料可用開放 Schema 接受，但不冒充精確欄位候選。Sample 推測需確認。
+- 取消 D 頂層獨立 document_schema；必要資料欄位定義由 Parser 的參數開放，解析規格是 B／C＋D 的結果。Parser 輸入細節可供接收預檢，實際內容與輸出仍在工作中驗證；202 不代表解析完成。
+- 沿 Pipeline 推導資料規格／選項及相依卡控，上游變更保留失效值報錯；多 Parser／任務維持分支可用性。UI 待辦 UIB-021，未修改 Prototype／Engine。
+- Descriptor／Manifest Meta-schema、規則語法、解析結果／SDK／API、其餘 System Config SC 選項未定案。本輪不選定獨立 processing 層或新的 Remote endpoint。
+
+D-66 含 document_schema 的舊 Schema／五案例／Fixture／驗證器移至 [歷史快照](../superseded/system_config_d66/README.md)。來源 commit 為 e89d5ddcdd72b79e3cde651ab0411c883919467c；舊驗證結果只代表當時候選格式。

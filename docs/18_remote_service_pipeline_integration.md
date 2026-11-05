@@ -18,6 +18,8 @@ Developer 可能不提供原始碼，而是交付既有 API 或 Image；既有�
 
 ## 2. 整段的輸入輸出與組裝
 
+D-67：Remote Manifest 也須提供固定或依 Config 細化的公開邊界資料規格／規則，由平台推導成 B，完整責任與首版能力見 [24](24_component_io_schema_refinement.md)。不提供 Source Code 不影響此要求，也不要求額外公開中間 Module 物件；第一版不因此新增任意規格解析程式或 Remote schema endpoint，正式 Manifest 語法仍待核定。
+
 常見例子：文件處理服務承接 **Parsing → Chunking → Embedding**。
 
 | 項目 | 約定 |

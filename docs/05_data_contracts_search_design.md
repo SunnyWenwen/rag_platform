@@ -52,22 +52,21 @@ CSV 每列是邏輯文件。跨批更新需映射穩定鍵；Prototype 的批次
 
 Builder 由 Workspace＋Retrieval System 名稱自動產生邏輯 collection，使用者不用手填。既有實作附穩定 System ID，避免同名及正規化碰撞；建立後改顯示名稱不重命名既有目標。UI 的邏輯名稱唯讀；各環境的 DB／實體索引目標由部署綁定及 Adapter 管理，不因實體目標不同修改處理 Config。正規化演算法、長度與匯入既有集合的權限規則仍屬 Q-007／Q-019，不重開「是否自動命名」的方向。直接 Engine 則使用 Config／可信 Binding 中明確的集合，不依賴 Builder 才可運作。
 
-## 3. Document Schema
+## 3. Component I/O 資料規格與欄位（D-67）
 
-固定外層不可自訂。每個 System 宣告每筆 Unit 的內容欄位及文件 metadata；Chunk.fields 由切分／複製映射推導：
+共用外層及既有限制由 13～15／schemas/ 固定；Component 在 B 宣告資料細節、參數與欄位規則，Engine 根據 D 的有效 Config 推導當前規格。取消每個 System 另外維護頂層 document_schema；完整責任與六類宣告能力見 [24](24_component_io_schema_refinement.md)。
 
-| 屬性 | 規則 |
+| 項目 | 規則 |
 |---|---|
-| name | 容器內非空、唯一；不可占用平台保留欄位 |
-| type | 共用 Unit 欄位值可為合法 JSON；System／Component 可縮限 string／number／boolean／array／object／null；UI 支援子集仍待 Q-002 |
-| required | API 外層與 Parser content 各依 Schema 檢查；解析後逐 Unit 驗證必要內容欄位及文件 metadata |
-| source | input／parser；不能要求呼叫者偽造 Parser 產生的結構 |
-| default | 必須符合型別；缺值、null、空字串的區別需核定 |
-| unknown_fields | Prototype 預設 reject；allow 可保留，後續選單仍只取已宣告欄位 |
+| Unit／fields／vectors／metadata 的名稱與型別 | 固定或依所選 Component 的 Config 宣告；來源名稱唯一、輸出不得衝突，不占用平台保留欄位 |
+| required／型別／文字能力 | API 共用外層與 Parser 輸入細節分開檢查；解析後及後續 Module 輸出持續驗證共用 Contract＋當前資料細節 |
+| 上游選項 | 只以已宣告且相容的欄位／能力提供；未知欄位可被開放 Schema 接受，但不能冒充已知候選 |
+| 任意 JSON／User 業務限制 | 有需要時由該 Parser 的設定接受欄位定義／metadata 限制；Sample 建議需確認，不重複維護全域權威 |
+| 缺值／default／額外欄位 | 依核定的 Schema／正規化規則；Prototype 舊 unknown_fields=reject 不自動成為所有 Parser 的後端預設 |
 
-預設每筆 Unit 有必填 string 的 text。主要切分欄位必填且為 string；Embedding／全文／Prompt 的文字用途只選型別相容欄位。第一版精確 Filter 只支援字串。Schema 名稱修改保留失效引用並阻止保存，不自動轉移到同名欄位。
+預設 text 路徑不變；實際所選切分欄位須在收到的每個 Unit 存在且為非空白字串，copy 欄位亦須存在。下游只選型別／能力相容的欄位；多 Parser／多任務保留分支與可用性，不以欄位聯集保證全體都有。上游改名／移除欄位時保留失效引用並阻止套用，不自動替換。第一版精確 Filter 仍只支援字串。
 
-**待決**：default 與 required 的順序、null／空白政策、缺少選填 Embedding 欄位如何處理、array 元素、保留名稱及 Schema migration，見 Q-002／Q-006。正式後端不得直接沿用 Prototype 的寬鬆 JavaScript 行為。
+**待決**：六類宣告的正式語法、default／required／nullable／空白／額外欄位政策、array 型別、保留名稱及 migration，仍見 Q-002／Q-006。正式後端不得直接沿用 Prototype 的 JavaScript 行為。
 
 ## 4. 共用業務資料
 
@@ -268,7 +267,7 @@ D-51 的有效 Config 以整段引用保存服務識別／版本、連續範圍�
 
 ### 6.1.2 文件 metadata 處理提示（D-52）
 
-metadata 不只供描述／過濾，也可傳遞 Component 明確約定的文件層提示，例如 chunking_mode=passthrough。遵守 metadata Schema，並由 Component 說明鍵名、型別、允許值、缺省／未知值處理；不是任意參數都自動生效。固定演算法／模型／服務設定仍在 Config／環境綁定，不放 Secret 或授權指令。第一版不新增全域控制欄位／規則引擎；ParsedDocument 與 Chunk 根結構不變。見 [15 §4.1](15_chunk_contract.md)。
+metadata 不只供描述／過濾，也可傳遞 Component 明確約定的文件層提示，例如 chunking_mode=passthrough。遵守共用 Contract 及適用 Component 的 metadata 細節宣告／設定，並由 Component 說明鍵名、型別、允許值、缺省／未知值處理；不是任意參數都自動生效。固定演算法／模型／服務設定仍在 Config／環境綁定，不放 Secret 或授權指令。第一版不新增全域控制欄位／規則引擎；ParsedDocument 與 Chunk 根結構不變。見 [15 §4.1](15_chunk_contract.md)。
 
 ### 6.2 草稿、有效 Config 與部署綁定
 
@@ -278,7 +277,7 @@ metadata 不只供描述／過濾，也可傳遞 Component 明確約定的文件
 - 更換 Embedding 語意 Profile 不能當作純環境覆寫，必須重新 Embedding／Indexing。
 - 使用相同服務的兩個模組引用同一 llm_ref；匯出只包含實際引用的服務。
 
-整合初版集中見 [23 System Config Schema 草案](23_system_config_schema_draft.md)：候選根結構為 contract_version、document_schema、llms、pipelines.ingestion／inference。先前 execution 名稱沒有凍結，不再作為同時包含流程與 Runtime 限制的模糊容器；結果處理計畫放 inference，Queue／Rate／Deadline 等依 D-64 歸 E／22。Component 引用用 component_id＋implementation_version，由 Registry 取得 Descriptor.config_schema 驗證 parameters；不把完整 Descriptor／Manifest 複製進 D。System ID／Revision／IndexBinding 由可信管理與 Context 提供，完整型別／Profile／部署包裝仍待 SC 決策。
+整合初版集中見 [23 System Config Schema 草案](23_system_config_schema_draft.md)：D-67 後候選根結構為 contract_version、llms、pipelines.ingestion／inference；資料規格由 Component 宣告＋Config 推導，不再獨立頂層 document_schema。先前 execution 名稱沒有凍結，不再作為同時包含流程與 Runtime 限制的模糊容器；結果處理計畫放 inference，Queue／Rate／Deadline 等依 D-64 歸 E／22。Component 引用用 component_id＋implementation_version，由 Registry 取得 Descriptor.config_schema 驗證 parameters；不把完整 Descriptor／Manifest 複製進 D。System ID／Revision／IndexBinding 由可信管理與 Context 提供，完整型別／Profile／部署包裝仍待 SC 決策。
 
 ### 6.3 模組設定詞彙
 
@@ -343,7 +342,7 @@ Indexing 宣告可過濾欄位；Retrieval 保存預設條件；Query API 可加
 |---|---|---|
 | Builder 上傳映射 | CSV column → document_id／source_revision／content.*／metadata.* | 每列先驗 IngestionDocument；不屬 Engine 的切分設定 |
 | Parser Component | 接受的 media_type／schema_id、content 形狀與轉換、輸出 Unit 欄位／文字格式能力 | 共用輸入＋Component 內容驗證 → ParsedDocument Schema／語意驗證 |
-| System Document Schema | 宣告每筆 Unit 欄位及文件 metadata 的型別、來源與必填條件 | 解析後驗證；input 來源另依 Parser 映射檢查，不能把 fields 路徑直接當 API 根欄位 |
+| Component I/O 資料規格（B） | 固定細節或依有效 Config 細化 Unit／fields／vectors／metadata；資料欄位定義必要時是 Parser 參數 | 組裝與候選驗證，以及 API／各 Module 執行輸入輸出驗證；不新增一份由 User 重填的全域 Schema |
 | Chunking | 基本 text；進階有序 tasks、每任務 Component／參數、split_field／output_field／copy_fields | 逐 Unit 檢查來源欄位與文字格式相容；六鍵輸出、必要 ID／任務產出及有提供時的追溯驗證 |
 | Embedding | 來源欄位、向量名稱、不可變 Profile 識別 | 預設 fields.text → vectors.text；寫入 values／embedding_profile_id／source_field |
 | Indexing | 全文／向量／Filter 欄位、搜尋後端、持久化模式 | 保存全部 Chunk 內容；Binding 檢查向量來源、Profile、維度及索引能力 |
@@ -364,7 +363,7 @@ ParsedDocument.units 每筆直接放內容欄位；Chunk 的 metadata._rag.sourc
 
 | 有效變更 | 影響 |
 |---|---|
-| Document Schema、Import／Parsing／Chunking／Embedding／Indexing 的邏輯配置 | 新 Config Revision，標記需重新 Ingestion；中間產物重用另決 |
+| 影響資料規格的 Component 版本／參數、Import／Parsing／Chunking／Embedding／Indexing 的邏輯配置 | 新 Config Revision，標記需重新 Ingestion；中間產物重用另決 |
 | D-53 模板／衍生欄位／映射 | 需重新組合、Embedding／Indexing；Chunk 重用依來源保留與版本政策，不保證自動局部重跑 |
 | D-53 額外原文 Chunk 開關 | Chunk 集合改變，需重新 Ingestion；沿用既有資料替換／發布政策 |
 | 部署設定的 DB／實體索引目標 | Config Revision 不因此改變；更新部署綁定，目標需有相容資料或重新 Ingestion |

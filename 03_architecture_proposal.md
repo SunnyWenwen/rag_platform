@@ -133,7 +133,7 @@ Remote Pipeline 可用一次 API 呼叫替換同一流程內連續 Modules，只
 
 | 名詞 | 定義 |
 |---|---|
-| Config | System 的邏輯處理設定，包含 Module 的 Component／參數，以及 Pipeline、Document Schema、欄位、Prompt、模型語意 Profile 與邏輯服務引用 |
+| Config | System 的邏輯處理設定，包含 Module 的 Component／參數，以及 Pipeline、資料欄位相關參數、Prompt、模型語意 Profile 與邏輯服務引用；I/O 資料細節由 Component 宣告＋Config 推導，見 [24](docs/24_component_io_schema_refinement.md) |
 | 部署設定（Deployment Settings） | 特定環境的執行與連線綁定，包含服務 URL、認證／Secret 引用、DB／實體索引目標及 Runtime／K8s 資源 |
 | Builder DEV | Retrieval Builder 提供的開發／測試環境，涵蓋前後端、測試 Runtime 與可選平台測試資源；既有文件未特別註明的 DEV 指此情境 |
 | FTEST／ENT | 使用單位匯出設定後自行部署 Runtime／必要服務的目標環境；不預設平台測試資源或資料會一併移轉 |

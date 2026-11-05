@@ -6,7 +6,7 @@
 
 單一 Workspace／Group 主畫面，Create／Edit 共用設定介面，提供 Ingest、Inference、檢索 Evaluation、Export。全部為瀏覽器記憶體內操作，重新整理重設；沒有真實 Engine、模型、DB、Registry、服務健康探測或部署控制器。
 
-- Document Schema、CSV column 映射、單筆 IngestionDocument API 範例與平面 ParsedDocument.units。
+- 舊版 Document Schema 編輯、CSV column 映射、單筆 IngestionDocument API 範例與平面 ParsedDocument.units；D-67 的 Parser 驅動規格尚待 UIB-021。
 - Fixed-size／Recursive／Header-aware 的配置、Tokenizer 連動、預設 text／進階多欄位任務，metadata 繼承。
 - 全部 Chunk 內容預設保存；全文、向量、Filter 能力分開，失效欄位保留並報錯。
 - 推論 QueryContext[]／filters／metadata、兩層融合與四處 Top N；可以回多份分組清單。
@@ -57,6 +57,7 @@ ResultSet.key 對應 Config 路徑／群組；items 位置即名次。RRF 可用
 | UIB-018 | Embedding 前欄位模板 | 字串替換／驗證／Picker／預覽／有效匯出完成；模型 Token 上限仍待真實 Tokenizer |
 | UIB-019 | 額外原文 Chunk | 控制、獨立 copy、每 Unit/task 去重示例及變更影響完成；真實切分待 Engine |
 | UIB-020 | 簡化推論 Contract | D-54 本輪完成：root QueryContext[]，含 filters／metadata；無歷史物件 |
+| UIB-021 | Descriptor 驅動 I/O 資料規格與逐層相依 | D-67 新增，僅文件／待實作；取代獨立全域 Document Schema，見文末 |
 
 <a id="uib-010-component-selection"></a>
 ## 4. Component 與 Remote 的原型範圍
@@ -75,7 +76,7 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 
 內建預覽預設沒有 _rag，不以缺少 source_refs／fingerprint／ordinal 阻擋儲存或執行。Component 未提供來源就不捏造。Chunk.metadata._rag 保留為選填擴充；ResultItem 不另帶分數血緣，流程診斷交 Logs。
 
-內建 Chunker 的示例可讀 metadata.chunking_mode="passthrough"，逐 Unit／task 完整轉 Chunk；預設無提示時正常切分。請在 Document Schema 宣告此字串，CSV 映射到 metadata。這不是任意 Config／ACL 覆寫；其他 Component 的支援由其宣告決定。
+內建 Chunker 的示例可讀 metadata.chunking_mode="passthrough"，逐 Unit／task 完整轉 Chunk；預設無提示時正常切分。D-67 目標是在適用 Parser／Component 的資料規格與參數中宣告此字串，CSV 映射到 metadata；現有 Prototype 仍用舊 Document Schema，待 UIB-021 調整。這不是任意 Config／ACL 覆寫；其他 Component 的支援由其宣告決定。
 
 <a id="uib-018-embedding-composition"></a>
 ## 6. 欄位組合與原文 Chunk
@@ -164,3 +165,17 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 - [ ] Runtime 限制、URL／Secret／實體目標在 E 的資源／部署區處理，模型語意與演算法參數留 D；不增加每次 Request 任意覆寫或一般 User 的 Admin 控制頁。
 
 分頁精確參數、實際文件管理面板位置及 System Config 遷移仍依 21～23／SC 決策；原型未接通真實服務。需求先記待辦，收到改 UI 指示後再實作。逐輪文件整理說明見 [歷史 UI 記錄](history/changes/ui_backlog_notes.md)。
+
+<a id="uib-021-io-schema-refinement"></a>
+## UIB-021：Descriptor 驅動 I/O 規格與逐層相依（D-67）
+
+2026-11-05｜**待實作，本輪不改 Prototype。**責任與六類宣告能力以 [24](24_component_io_schema_refinement.md) 為準，正式 Meta-schema／API 未定案。
+
+- [ ] Create／Edit 取消要求先填獨立全域 Document Schema；在 Parser 設定顯示當前輸入／輸出欄位摘要。
+- [ ] 僅在 Parser 開放此能力時顯示資料欄位定義／映射與 metadata 限制；固定輸出不重複填寫。
+- [ ] 透過 Engine 同一份解析結果連動 Parser→Chunker→Embedding→Indexing→Retrieval 的候選／停用原因；不硬編碼第二套規則。
+- [ ] 支援首版固定、命名、清單映射、copy、條件分支、固定型別衍生欄位的規格顯示；未知必要規則明示不支援。
+- [ ] 上游改名／移除／條件切換時保留失效值並定位報錯；防止過期目錄／解析回應覆蓋最新草稿。
+- [ ] 多 Parser／多任務顯示分支與欄位可用性；Sample 僅供建議／確認，不以第一筆／候選聯集作為全體保證。
+- [ ] Create／Edit／AI Diff／CSV 映射／驗證／有效匯出共用 Component 參數與推導規格；舊原型 documentSchema 草稿的遷移方式另定，不冒充正式 Config。
+- [ ] API 說明區分 202 前可完成的共用＋Parser 預檢與背景實際內容驗證；提供 Local／Remote 同等宣告與錯誤示例。

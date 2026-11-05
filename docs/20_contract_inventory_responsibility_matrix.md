@@ -47,9 +47,9 @@
 | 契約群組 | 包含的子項目與內容 | Admin／平台開發者制定 | Developer 閱讀／遵守 | Developer 交付 | Builder User 操作 | Library 使用 | Builder 使用 | Deploy 使用 | 關係與邊界 |
 |---|---|---|---|---|---|---|---|---|---|
 | **A. Engine 執行契約** | **資料**：IngestionDocument、ParsedDocument、Chunk、QueryContext、ResultSet 等。<br><br>**執行**：Module／連續區段 I/O、Local 執行介面、Context。<br><br>**索引**：IndexBinding、Artifact Definition。 | 共用資料 Schema、I/O 語意、SDK 執行介面、Context 取得規則；Artifact Definition 格式及相容性規則。 | 自己涵蓋區段的 I/O 與語意。<br><br>**Local**：另看 SDK 介面／必要的 Context 用法。<br><br>**涉及索引**：另看 Binding 與支援的格式。 | 符合契約的實作、輸入輸出範例、契約測試。<br><br>**引入新／未註冊索引格式時**：提供 Artifact Definition（target Schema、讀寫語意、能力限制）及相容 Retrieval／Adapter；沿用已註冊格式則宣告支援。 | — | 執行並傳遞資料、提供 Context、驗證 I/O 與索引相容性。 | 使用測試 API 對外的輸入／輸出格式；不承擔所有內部 SDK 介面。 | — | **B／C 引用 A。**跨 Module 的 Component 遵守核定區段邊界，不強迫回傳所有中間物件。<br><br>IndexBinding 是執行資料；Artifact Definition 是可共用的索引格式規格，屬 A 的擴充規格，不必每個 Component 各寫一份。 |
-| **B. Component 定義** | **Descriptor**：識別、版本、涵蓋範圍、I/O 引用、能力、相依與資源需求。<br><br>**Config Schema**：參數、型別、預設值、限制。<br><br>**UI 宣告**：提示、動態選項、相依規則，具體格式待定。 | Descriptor Schema；Config Schema 採用規範與支援範圍／必要的 Meta-schema 或驗證規則。<br><br>UI 宣告格式另行討論。 | Descriptor 必要資訊、參數 Schema 規範、能力與資源宣告方式。 | **Local**：Component 宣告、Config Schema、能力／資源需求，可由 SDK 根據程式定義產生。<br><br>**Remote**：相關資訊以 C 為來源，由平台推導／適配成目錄描述，避免手寫兩份。 | — | 驗證參數與能力，經 Registry 取得 Local 實作或 Remote Adapter。 | 顯示 Component 選項，產生表單與相依提示；真實 Registry／動態規則整合尚待實作。 | — | **B 的規格供 D 選用；Config Schema 驗證 D 的參數值。**<br><br>Local class／factory 接線由 Registry／SDK 管理；共用 Descriptor 是否需額外接線欄位、正式來源與版本格式仍待定。 |
+| **B. Component 定義** | **Descriptor**：識別、版本、涵蓋範圍、共用 I/O 引用、能力／資源。<br><br>**Config Schema**：參數與限制。<br><br>**I/O Data Schema／規則**：固定資料細節、依 Config 細化、上游選項來源與相依條件；六類能力見 [24](24_component_io_schema_refinement.md)。<br><br>UI 提示／呈現語法仍待定。 | Descriptor Schema、Schema 採用規範／必要 Meta-schema、有限細化規則與相依語意；定義不改變 A 的邊界。 | 設定／I/O 宣告、規則支援範圍、能力與資源要求。 | **Local**：Component、Config Schema、I/O 細節／規則及測試，可由 SDK 產出。<br><br>**Remote**：以 C 為來源推導／適配等價描述，避免手寫兩份。 | — | 驗證參數，依 Config／上游規格推導 I/O 與候選，檢查接線；經 Registry 取得實作或 Adapter。 | 產生表單、顯示當前資料規格／選項與相依原因；正式解析器／Registry 尚未實作。 | — | **B 宣告規格，D 提供設定值，A 限制共用格式。**<br><br>細化支援方向已確認，具體 Descriptor／規則鍵名與解析 API 未凍結。任意程式或即時資料決定的規格不屬首版純宣告。 |
 | **C. Remote Service 定義** | **Manifest**：服務識別、operations、參數、呼叫資訊、部署／連線需求。<br><br>**Image 分支**：image、啟動／部署描述。<br><br>**External 分支**：既有服務連線及認證綁定需求。 | Manifest Schema、operation 規則、Remote HTTP 請求／回應／參數協定、Image／External 必要資訊；具體格式待定。 | **Remote Developer 才需閱讀**：Manifest、呼叫協定與 operation 的 A 邊界契約；依部署模式看對應交付規格。 | Manifest、可呼叫的服務、API 範例與契約測試。<br><br>**Image**：另附 image 與啟動／部署資訊。<br><br>**External**：由 Developer 部署，交接可用服務及環境連線資訊；環境實際值歸 E。 | — | Adapter 依 operation 呼叫服務，驗證並轉交符合 A 的業務資料。 | 登錄服務、推導 B 的選項；管理 Builder DEV 測試所需的服務啟動或連線。 | **Image**：產生／使用服務部署設定。<br><br>**External**：只綁定既有服務，不部署該服務。 | **operation 導出 B，I/O 遵守 A，環境需求由 E 滿足。**兩種 Remote 模式都可有多個 operation；一個 operation 可涵蓋連續多 Module。<br><br>僅宣告平台需提供／部署／驗證的依賴；Developer 內部自行管理的服務不必全部公開。 |
-| **D. System 組裝設定** | **System Config**：Component 選用、參數值、流程與結果處理設定、資源引用。<br><br>**System Document Schema**：業務欄位與 metadata 規格；目前語意見 05，正式包裝／格式待定。 | System Config Schema、組裝與相容性規則；Document Schema 定義格式與驗證責任。 | 整合範例時，閱讀 Component 選用、參數與資源引用方式。 | 可執行的整合範例 Config 與測資，展示如何接上前後段；正式 SDK 未交付前，現有示例須標註草案／離線範例。 | **主要操作位置**：選 Component、填參數、設定流程與資料欄位。 | 解析 Config、取得 B／C 定義，驗證後組裝並執行 System。 | 編輯、驗證、儲存與測試 Config，呈現設定錯誤。 | 將 Config 提供給目標 Runtime。 | **D 保存 System 的邏輯組裝結果**，引用 B／必要的 C，搭配 E 執行。<br><br>不把 Descriptor、Manifest 或 Live Client 全部複製進 D；邏輯資源引用與環境實際值分開。 |
+| **D. System 組裝設定** | **System Config**：Component 選用／版本、參數值、流程、結果處理與邏輯資源引用。<br><br>資料欄位相關設定由所選 Component 開放，不再獨立頂層 document_schema。 | System Config Schema、組裝／相容規則、有效設定的解析與版本包裝。 | 閱讀 Component 選用、參數及資源引用方式。 | 整合範例 Config／測資，展示接上前後段；正式 SDK 前明示草案／離線狀態。 | **主要操作位置**：選 Component、填參數，必要時在 Parser 設定欄位定義／映射。 | 取得 B／C，依參數推導 I/O／相依，驗證後執行。 | 編輯、驗證、測試 Config；顯示推導資料規格與錯誤。 | 將 Config 提供給目標 Runtime。 | **D 保存使用值；資料規格由 B／C＋D 推導。**<br><br>解析規格可作結果／快照，不要求 User 重複手填；不複製完整 Descriptor、Manifest 或 Live Client。 |
 | **E. 環境與資源綁定** | Builder DEV／FTEST／ENT 的 Endpoint、Secret 引用、DB／實體索引目標、儲存與部署資源設定。<br><br>涵蓋平台測試資源、自備 DB／模型 API 與 Remote Service 的環境值。 | 環境綁定 Schema、資源類型、Secret 引用、部署／驗證規則；管理平台可提供的資源。 | **需要平台資源或協助部署時**，閱讀綁定與部署規格。 | 必要的綁定範例及部署／連線交接資訊。<br><br>資源「需求」已寫在 B／C，E 示範如何滿足，不重複定義需求。 | 選用資源；自備資源或兼任部署者時補設定。 | 解析綁定、初始化 Client 等資源，透過 A 的 Context 提供。 | 提供 Builder DEV 資源選擇與必要設定介面。 | 注入連線、Secret 引用、儲存及部署資源。 | **E 滿足 B／C 需求，與 D 一起建立可執行 System。**<br><br>同版 D 可搭配不同 E，但需相同邏輯能力。Live Client／索引物件留在 Runtime 程序中，由 Engine 管理生命週期。 |
 
 上表 A～E 的內容可分別存在程式定義、JSON Schema、登錄資料或設定檔；**交付內容不等於要求 Developer 手寫多份 JSON**。SDK 可產出設定 Schema／Descriptor，Remote 可由 Manifest 推導目錄資訊。精確包裝與來源規則待正式介面核定。
@@ -82,13 +82,13 @@ Local／Remote 是執行模式；單 Module／連續多 Module 是涵蓋範圍�
 
 擬議第一版同一 Pipeline 內以連續區段處理，依核定的邊界型別交接；不在本次新增任意 DAG、不連續範圍或跨 Ingestion／Inference 的單次操作格式。
 
-### 4.5 Document Schema 與動態 UI 選項
+### 4.5 B 的 I/O 資料規格、細化與動態選項（D-67）
 
-System Document Schema 屬 D 的資料規格；既有 05 約定以 ParsedDocument 的 Unit 欄位／文件 metadata 為對象，解析後驗證，原始輸入另由 IngestionDocument 與 Parser 規格檢查。正式定義格式、映射／錯誤定位細節仍待對齊，不把每種 Parser 的任意輸入都當成同一欄位表。
+先前把 Unit／metadata 規格獨立列為 D 的 System Document Schema，現改由 B 的宣告＋D 的 Component 參數提供。A 保持共用物件與限制；Parser 固定欄位直接宣告，欄位映射／條件依 Config 細化。任意 JSON Parser 必要時開放欄位定義參數，不要求每個 System 重複填頂層 document_schema。
 
-「Embedding 設定產出哪些向量，Indexing 才能選哪些向量」是另一項動態候選與相依需求，預計由 B 的宣告配合 D 當前設定解析。候選值應是向量的輸出名稱，不一定等於原始來源欄位名稱。
+Parser 的 Output Data Schema 決定 Chunker 可用的來源；Chunker 決定 fields，Embedding 決定 vectors，Indexing 決定 Retrieval 可用能力。動態的是設定選項與適用性，不是任意新增 Developer 未宣告的設定。設定階段可組裝與執行期實際資料／IndexBinding 就緒分開驗證。
 
-**動態 UI 的 Schema／Meta-schema 本輪暫緩討論。**[12](12_component_schema_ui_contract.md) 中的 option_sources、UI hints、規則與範例均仍是草案，不能因總表使用這些概念就視為格式定案。解析候選只需可序列化的設定／能力資訊，不把 Live Client 或完整 RunContext 傳入瀏覽器。
+「Pipeline 的 Schema 推導／細化與相依驗證」及首版六類純宣告規則完整見 [24](24_component_io_schema_refinement.md)；12 保留表單／問題定位與相依草案。**支援方向已確認，但正式 Meta-schema／UI 描述語法仍待核定。**Local 與 Remote 相同；瀏覽器只收可序列化規格與選項，不取得 Live Client、Secret 或完整 RunContext。
 
 ## 5. Developer 依開發模式閱讀與交付
 
@@ -103,12 +103,12 @@ Parser 的具體教學入口是 [16](16_parser_component_development_examples.md
 
 ## 6. 既有規格位置與待定事項
 
-2026-11-05 整合討論稿：[23 System Config Schema 初版](23_system_config_schema_draft.md)提供 D 的共同骨架與五案例，B／C 仍以核可目錄提供參數／能力，E 仍提供環境實值與 Runtime 限制。具體 SC 選項尚未定案；交叉校對修正見 [24](history/reviews/2026-11-05_spec_alignment_review.md)。
+2026-11-05 整合討論稿：[23 System Config Schema 初版](23_system_config_schema_draft.md)提供 D 的現行討論骨架，D-67 的 B 資料規格與相依細化見 [24](24_component_io_schema_refinement.md)。D-66 舊機器稿／五案例已歸檔，其他 SC 具體表示仍待核定；前輪校對過程見 [歷史報告](history/reviews/2026-11-05_spec_alignment_review.md)。
 
 ### 6.1 精確定義的閱讀入口
 
 - **A**：[04 Module I/O](04_module_components_io_contracts.md)、[13 IngestionDocument](13_ingestion_parser_input_contract.md)、[14 ParsedDocument](14_parsed_document_contract.md)、[15 Chunk](15_chunk_contract.md)、[17 Pydantic 範例](17_pydantic_contracts_draft.md)、[19 IndexBinding／Artifact](19_index_binding_artifact_contract.md)。Inference 沿用 QueryContext[]，不恢復 InferenceState wrapper。
-- **B**：[11 開發指南](11_component_developer_guide.md)、[12 設定描述草案](12_component_schema_ui_contract.md)。
+- **B**：[11 開發指南](11_component_developer_guide.md)、[12 設定描述草案](12_component_schema_ui_contract.md)、[24 I/O 細化與相依驗證](24_component_io_schema_refinement.md)。
 - **C**：[18 Remote Service／Pipeline](18_remote_service_pipeline_integration.md)、[16 Parser 開發範例](16_parser_component_development_examples.md)。
 - **D**：[05 資料／Config](05_data_contracts_search_design.md)、[06 UI 規格](06_ui_development_spec.md)。
 - **E**：[03 正式名詞與環境邊界](../03_architecture_proposal.md)、[07 Backend／Runtime／Export](07_backend_runtime_integration.md)、[18 Remote 部署](18_remote_service_pipeline_integration.md)。
@@ -118,7 +118,7 @@ Parser 的具體教學入口是 [16](16_parser_component_development_examples.md
 - **A**：正式 SDK／Context 介面、Local 跨 Module 區段介面、索引實體布局與 Artifact Definition 完整機器格式；追蹤 Q-002／Q-011／Q-013／Q-028。
 - **B**：統一涵蓋範圍、Descriptor 精確欄位、Local Registry 接線／Remote 推導規則。動態 UI Meta-schema 特別保留待討論；追蹤 Q-002／Q-022／Q-028。
 - **C**：Manifest 的 Image／External 必填與選填欄位、HTTP Envelope／錯誤／參數傳遞、版本及註冊管理；追蹤 Q-019／Q-021／Q-028。
-- **D**：完整 System Config／Document Schema 定義格式、引用與版本包裝、動態相容性驗證；追蹤 Q-002／Q-015。
+- **D**：完整 System Config、引用／版本包裝、推導資料規格的快照與動態相容性驗證；不恢復已取消的獨立頂層 document_schema，追蹤 Q-002／Q-015。
 - **E**：綁定實體格式、資源／Secret 管理與部署生命週期；追蹤 Q-017／Q-020／Q-021。
 
 決策狀態由 [08](08_implementation_plan.md) 維護。本次總盤點沒有將整個 Q-ID 關閉，也未新增 UI 實作承諾。後續若核定具體 UI 變更，仍先記入 [10 UI Backlog](10_ui_adjustment_backlog.md)，收到改 UI 指示後再實作。

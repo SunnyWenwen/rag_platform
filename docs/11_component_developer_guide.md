@@ -149,6 +149,8 @@ Component 不自己重建 Engine 的重試、排程與授權流程。必要 Clie
 
 ### 4.1 讓 Component 可由 Builder 設定
 
+D-67 補充：Developer 另提供共用 I/O Contract 引用、固定或依 Config 細化的資料規格，以及上游選項／相依條件。首版六類純宣告由 Engine 通用解析器處理，不要求每個 Component 自寫 resolve_io_schema；Local／Remote 等價交付，完整內容見 [24](24_component_io_schema_refinement.md)。不再以 User 手填的頂層 document_schema 取代 Parser 輸出宣告；正式語法／SDK 尚未凍結。
+
 依 D-42 與 [12](12_component_schema_ui_contract.md)，開發者先宣告 `config_type`；共用父類別輸出 Config Schema，Registry 檢查，不必重寫同一份 Schema 產生函式。需要特殊顯示時提供 UI hints；動態欄位／LLM 選單另宣告 option_sources，參數相依另列 rules／capabilities，不能只把限制寫在 UI。
 
 Descriptor 為純 JSON，不能包含前端程式／任意 import 或連線憑證。宣告必要控制項／能力版本，提供合法、失效與分支切換案例；無參數方法也需合法空設定 Schema。取得描述不應先初始化 Component 資源。機器可讀格式目前為 `component-ui-0.1-draft`，完整 SDK／Meta-schema 仍待 M0 核定。
@@ -208,7 +210,7 @@ Python Packaging User Guide 說明以套件 metadata／entry points 發現及載
 
 | 配套 | 開發者應交付的材料 |
 |---|---|
-| I/O Contract | 引用平台 Input／Output 型別與契約版本，列明遵守的語意及相容測試；不自行重新定義相同 Module 的必要外層結構 |
+| I/O Contract／資料細節 | 引用平台型別／版本並遵守必要外層；提供固定資料規格或六類支援規則、依 Config 的正反例與上下游相依測試，見 24；不要求另寫每元件解析函式 |
 | Config Schema | 參數型別、預設值、必填／條件必填、限制與說明，以及合法／非法設定範例 |
 | 能力與相依宣告 | 所需文字格式、索引能力、模型／Tokenizer、配套 Component 與相容版本；說明方法產出的能力及相關驗證 |
 | 執行介面 | 初始化、執行、關閉／取消行為，Batch／Async／Streaming 支援狀態及對應測試；未支援者明示 |
