@@ -37,7 +37,7 @@ Prototype v0.12 同步 Query metadata、選填追溯、Embedding 文字模板／
 | [05 資料與 Config](docs/05_data_contracts_search_design.md) | 契約總覽、Inference 物件、設定責任與變更影響 |
 | [06 UI 開發規格](docs/06_ui_development_spec.md) | Create／Edit、欄位相依、CSV、預覽及助手 |
 | [07 Backend 與 Runtime API](docs/07_backend_runtime_integration.md) | JSON API、工作狀態、儲存、服務綁定與 Export |
-| [08 開發計畫與決策](docs/08_implementation_plan.md) | M0～M7、D-01～D-56、Q-001～Q-028 與驗收 |
+| [08 開發計畫與決策](docs/08_implementation_plan.md) | M0～M7、D-01～D-57、Q-001～Q-028 與驗收 |
 | [09 Inference Contract 與 UI](docs/09_inference_contract_ui_plan.md) | ResultSet、兩層融合、四處 Top N 與連動 |
 | [10 UI Backlog](docs/10_ui_adjustment_backlog.md) | 現有原型能力及UIB-001～022 的原型／正式整合狀態 |
 | [11 Component 開發指南](docs/11_component_developer_guide.md) | SDK 示意、開發、契約測試、PR 與發布 |
@@ -85,4 +85,7 @@ Parser 開發示範：[三種交付模式圖](diagrams/04_component_delivery_mod
 2026-11-04 D-55：每 System 一組邏輯索引，IndexBinding 五鍵，省略 index_ref／searchable。索引格式定義、target Schema、Developer 配套及狀態責任見 [19](docs/19_index_binding_artifact_contract.md)；共用 [Schema](schemas/index_binding.schema.json)、[格式 target 範例](examples/pydantic_contracts/artifact_definitions.json)。UI 待調整記 UIB-021，未改 Prototype。
 
 
-2026-11-05 D-56：同 System／document_id 完整覆寫、Batch 逐文件結果；Runtime 共用有上限 Queue／Inference 流量控制，記憶體保存工作／文件狀態，重啟不恢復，查不到為 unknown。[21](docs/21_runtime_ingestion_inference_api_inventory.md) 盤點建議 5 支業務＋2 支 Health API，精確路徑／Batch 接收／回應仍待核定；UI 待辦 UIB-022，未改原型。
+2026-11-05 D-56：同 System／document_id 完整覆寫、Batch 逐文件結果；Runtime 共用有上限 Queue／Inference 流量控制，記憶體保存工作／文件狀態，重啟不恢復，查不到為 unknown。[21](docs/21_runtime_ingestion_inference_api_inventory.md) 盤點建議 5 支業務＋2 支 Health API，後續 D-57 已確認整批預檢／Run partial／unknown HTTP 200；統一 List 提交／retire 語意等仍待核定；UI 待辦 UIB-022，未改原型。
+
+
+2026-11-05 D-57：整批預檢通過才回 202，入列後逐文件結果；首期需要 retire API，不做工作取消。限制可配置，管理者／存放位置暫緩。21 更新推薦一支 Ingestion API 接非空 List（待確認），並說明 failed 狀態也記於 Runtime、Config 變更／Remote timeout 與認證授權情境；未改 UI／共用 Schema。

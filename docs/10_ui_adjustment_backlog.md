@@ -134,4 +134,4 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 - [ ] Ingestion Queue 額滿、Inference Rate／併發／Timeout 有可理解提示；不在每次文件／Query 表單加入環境上限設定。
 - [ ] 區分文件工作狀態、索引是否可查與 Runtime Health；Local／Remote 的未知結果不冒充可安全重試。
 
-本輪只更新文件／Backlog，Prototype v0.12 不變。工作狀態的精確欄位、Run partial 與 API-D01～06 尚待核定；不先增加取消／刪除、管理 UI 或動態 UI Meta-schema。
+本輪只更新文件／Backlog，Prototype v0.12 不變。D-57 已確認 Run partial、未知紀錄 HTTP 200 與整批預檢；工作狀態精確欄位、統一 List 提交／retire 語意等仍待核定。Retire API 列首期必要，UI 操作另盤點；首期不做工作取消，不新增管理 UI 或凍結動態 UI Meta-schema。

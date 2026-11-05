@@ -2,13 +2,13 @@
 
 更新日期：2026-11-05。適用 A～E 中的執行契約、System 組裝與環境控制；總盤點見 [20](20_contract_inventory_responsibility_matrix.md)。
 
-**文件分成「已確認行為」與「本次建議 API／回應格式」。**本次盤點不代表 OpenAPI、所有 HTTP code／欄位或新增功能已核定，也沒有實作 Runtime、修改共用資料 Schema 或 UI。決策由 [08 的 D-56／相關 Q-ID](08_implementation_plan.md) 追蹤。
+**文件分成「已確認行為」與「本次建議 API／回應格式」。**本次盤點不代表 OpenAPI、所有 HTTP code／欄位或新增功能已核定，也沒有實作 Runtime、修改共用資料 Schema 或 UI。決策由 [08 的 D-56／D-57／相關 Q-ID](08_implementation_plan.md) 追蹤。
 
 ## 1. 範圍與已確認基準
 
 ### 1.1 這份清單是哪一層
 
-這裡盤點 **Retrieval Runtime 對外的業務 API**：Builder DEV 與自行部署到 FTEST／ENT 使用同一語意與實作，各環境以 E 設定限制。Builder DEV 的可信路由先選定 System；獨立 Runtime 綁定既定 System。不把 system_id／tenant 任意覆寫放進業務 JSON。
+這裡盤點 **Retrieval Runtime 對外的業務 API**：Builder DEV 與自行部署到 FTEST／ENT 使用同一語意與實作，限制可配置已確認；先前建議放 E，但本輪依使用者指示暫緩管理者、存放位置與 Schema 的定案。Builder DEV 的可信路由先選定 System；獨立 Runtime 綁定既定 System。不把 system_id／tenant 任意覆寫放進業務 JSON。
 
 以下不是本文件的新增範圍：Builder Workspace／System CRUD、Config／Component 目錄管理、Export、AI 助手、Evaluation，以及 Developer Remote Service 的 operation HTTP 協定。後者引用 [18](18_remote_service_pipeline_integration.md)，不是將每個 Module 都公開成 Runtime API。
 
@@ -24,50 +24,62 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 - Runtime 額外保存文件級工作紀錄於記憶體，不放入 IngestionDocument／ParsedDocument／Chunk，也不從既有索引反推執行狀態；重啟後查不到的狀態為 unknown。
 - 202 表示已接受排隊，不表示解析、Embedding、索引或可搜尋已成功；提交後須可查詢結果。
 - Inference 沿用 query／filters／metadata 輸入，同步回 QueryContext[]；不做 Generation，不因非同步 Ingestion 而新增 InferenceState。
+- D-57：整批接收前預檢通過才入列、回 202；入列後逐文件結果，文件無 partial，Run 可 partial，無紀錄回 200＋unknown。這不是要求完成 Parsing／Embedding／Indexing 才回 202。
+- D-57：刪除能力首期需要，以 retire API 表達；實際保留或刪除資料、回應與執行方式仍待定。取消 queued／running 文件工作首期不做。
 
-## 2. 建議第一版：5 支業務 API＋2 支 Health API
+## 2. API 清單：合併提交提案＋已確認需要的 retire
 
-路徑、Header 與 Envelope 為本輪提案；既有單筆 IngestionDocument 與 QueryContext 契約維持。P0 表示建議納入最小交付，不表示已實作。
+目前建議 **5 支業務 API＋2 支 Health API**：將原本單筆／Batch 兩支提交收斂為一支，新增已確認需要的 retire。**單一端點＋根層 List 是本輪建議，待使用者確認**；路徑／完整 Envelope 也仍為草案。每個 List item 仍符合既有 IngestionDocument，Parser input 不改。
 
-| 優先 | Method／Path 草案 | 用途 | Request | 成功回應草案 | 主要行為 |
+| 優先 | Method／Path 草案 | 用途 | Request | 成功回應／狀態 | 主要行為 |
 |---|---|---|---|---|---|
-| P0 | POST /v1/ingestions | 提交單份文件 | 一份既有 IngestionDocument | 202：run_id、queued、config_revision、文件清單；Location 指向工作查詢 | 預檢與容量檢查通過、入列及紀錄建立完成後接受；API body 仍與單筆 Parser input 相同 |
-| P0 | POST /v1/ingestions:batch | 提交多份文件 | {documents: IngestionDocument[]} | 202：同一 run_id 對應多份文件 | 每筆仍驗證同一份 IngestionDocument，逐文件執行／更新；批次入列前拒絕政策見討論項 API-D01 |
-| P0 | GET /v1/ingestions/{run_id} | 查一次提交的整體及逐文件結果 | run_id | 200：Run 狀態、文件計數、逐文件狀態／錯誤 | run_id 僅是一次提交的追蹤 ID；Batch 不另造另一種任務 ID |
-| P0 | GET /v1/documents/{document_id}/ingestion-status | 只知道文件 ID 時查最近一次狀態 | document_id | 200：最近一次 run_id、status、目前 Module、時間與錯誤 | 只查已授權 System；不是文件內容／存在性查詢；無紀錄回 unknown 的 HTTP 表達為本輪建議 |
-| P0 | POST /v1/queries | 執行設定好的 Query Transformation／Retrieval／Rerank | {query, filters?, metadata?} | 200：根層直接 QueryContext[] | 同步完成；Rate limit、執行併發與 Deadline 由 Runtime 管理，不走 Ingestion 長工作 Queue |
-| P0 支援 | GET /health/live | 檢查 Runtime 程序存活 | — | 200：存活 | 不依是否有資料判斷；對外暴露範圍依部署政策 |
-| P0 支援 | GET /health/ready | 檢查 Runtime／必要依賴是否可接收操作 | — | 200：初始化／必要依賴就緒；否則 503 | 不把「尚無可查索引」一律當成不 Ready，否則空 System 無法正常接收 Ingestion |
+| P0 提案 | POST /v1/ingestions | 統一提交一份或多份文件 | IngestionDocument[]，單筆也放一元素 List | 202：run_id、queued、config_revision、文件清單；Location 指向查詢 | 預檢整批通過、入列與紀錄建立後接受；不再需要 :batch 端點的建議見 API-D01 |
+| P0 | GET /v1/ingestions/{run_id} | 查一次提交及逐文件結果 | run_id | 200：Run 狀態／計數／逐文件結果 | Run 可 partial；不表示半份文件可發布 |
+| P0 | GET /v1/documents/{document_id}/ingestion-status | 查文件最近一次工作 | document_id | 200：run_id、status、Module、時間／錯誤；無紀錄為 unknown | 文件 ID 來自請求，不必先成功寫入索引；不是文件存在性／內容查詢 |
+| P0 | POST /v1/queries | 完整 Inference | {query, filters?, metadata?} | 200：根層 QueryContext[] | 同步完成；限流／併發／Deadline 由 Runtime 執行 |
+| P0 能力；格式待定 | POST /v1/documents/{document_id}:retire | 退役／刪除文件，使其不再被檢索 | document_id；其他參數待定 | 同步 2xx 或非同步 202 待決 | 是否保留底層資料、可否恢復、忙碌時拒絕、Remote 支援及狀態 API 見 API-D03，不逕自視為 soft delete |
+| P0 支援 | GET /health/live | 程序存活 | — | 200：存活 | 不依是否有資料判斷 |
+| P0 支援 | GET /health/ready | Runtime／必要資源初始化 | — | 200：就緒；否則 503 | 尚無可查索引不一律等於不 Ready |
 
-共享 Builder DEV 的多 System 路由／各 System 就緒狀態須由可信管理層區分；Pod 的 Health 不能代替任意 System 的 Query-ready。精確路由、授權及能力接口仍見 07／Q-019／Q-020。
+共享 Builder DEV 的 System 選擇與資料權限由可信層決定，單一 Pod Health 不能代表每個 System 的 Query-ready。API-D06 同時涵蓋身分驗證、授權與路由。
+
+已確認的是 retire 能力必須有，不是上述 Path、HTTP Method、資料保留或任務 Envelope 已核定。首期不新增文件工作取消端點；也不把 retire 解讀為取消排隊／執行中的 Ingestion。
 
 ## 3. Ingestion 的提交與接收
 
-### 3.1 單筆保持既有輸入
+### 3.1 建議單一端點，單份也包 List
+
+POST /v1/ingestions 的單份文件 body 候選：
 
 ```json
-{
-  "document_id": "manual-001",
-  "source_revision": "v1",
-  "content": {"text": "設備每月需清潔散熱孔。", "title": "保養規範"},
-  "metadata": {"department": "manufacturing"}
-}
+[
+  {
+    "document_id": "manual-001",
+    "source_revision": "v1",
+    "content": {"text": "設備每月需清潔散熱孔。", "title": "保養規範"},
+    "metadata": {"department": "manufacturing"}
+  }
+]
 ```
 
-content／base64／uri 三選一及其他合法欄位引用 [13](13_ingestion_parser_input_contract.md) 與共用 [Schema](../schemas/ingestion_document.schema.json)。Batch 包裝只屬 Runtime 接收層；Parser 每次收到的仍是單份 IngestionDocument，不收到 documents 容器或 run_id。
+**API 每個 item＝Parser input**；不再把整個 HTTP body 與單份 Parser input 當成完全相同。共用 IngestionDocument 的欄位、content／base64／uri 三選一及驗證規則引用 [13](13_ingestion_parser_input_contract.md)／[Schema](../schemas/ingestion_document.schema.json)，沒有更改。HTTP List 由 Runtime 拆成逐文件工作，run_id 不放進 Parser 業務資料。
 
-### 3.2 Batch 包裝提案
+根層 List 的 Request Schema 可在正式定案時用 array＋items 引用共用 IngestionDocument，minItems=1；不必把共用資料 Schema 改成 List。這次只提供格式提案，不發布新機器 Schema。
+
+### 3.2 多份使用相同格式
 
 ```json
-{
-  "documents": [
-    {"document_id": "manual-001", "content": {"text": "設備每月需清潔散熱孔。"}},
-    {"document_id": "manual-002", "content": {"text": "每週清潔濾網並記錄保養結果。"}}
-  ]
-}
+[
+  {"document_id": "manual-001", "content": {"text": "設備每月需清潔散熱孔。"}},
+  {"document_id": "manual-002", "content": {"text": "每週清潔濾網並記錄保養結果。"}}
+]
 ```
 
-建議使用獨立 Batch 端點，保持原本「單筆 API body＝Parser input」的承諾；不要求單筆也套 documents wrapper。是否採此路徑／包裝列 API-D01。
+根層 List 與物件包 List 都是實際 API 採用的方式：Meilisearch 的 Add or replace documents 使用根層陣列；Azure AI Search 的 Documents Index 使用 {value: [...]}。沒有必須分開單筆／Batch 端點的統一規定。
+
+以目前 KISS 需求建議一支 POST，固定接收非空 List，不同時接受 object／array 兩種 body。代價是單筆也要包 List，未來若增加全批共用選項需另外設計位置／版本。先前兩支端點與 documents wrapper 為已被替代的助理提案，並非已發布 API；本輪替代方案仍待確認。
+
+官方格式查核（2026-11-05）：[Meilisearch](https://www.meilisearch.com/docs/reference/api/documents/add-or-replace-documents)、[Azure AI Search](https://learn.microsoft.com/en-us/rest/api/searchservice/documents/?view=rest-searchservice-2025-09-01)。參考的是輸入形式，不照搬其持久化、部分接受或寫入語意。
 
 ### 3.3 202 回應提案
 
@@ -85,17 +97,29 @@ Location: /v1/ingestions/ing-001
 }
 ```
 
-單筆提交也使用相同 receipt，只含一筆 documents；不改動輸入契約。Receipt 是接受當下的快照，Client 查詢時可能已 running 或完成。
+提交一份或多份使用相同 receipt，一份只有一筆 documents；Receipt 的 documents 是回應格式，不代表 Request 必須有 documents wrapper。Receipt 是接受當下的快照，Client 查詢時可能已 running 或完成。
 
 建議接收階段只做授權、JSON／外層 Schema、有效 Config／Parser 能力等快速預檢、文件忙碌檢查與容量預留。下載、昂貴 Parsing、Embedding／Indexing 在 Worker 執行，失敗由狀態 API 回報，不能把 202 當作最後成功。
 
-**Batch 建議採「預檢整批通過才入列；入列後逐文件獨立結果」。**例如外層不合法、同批重複 ID、某文件已 queued／running、容量不足時，先拒絕整次請求，保證沒有未交代的部分入列；這是 API-D01 提案，尚未核定。合法文件入列後，另一份文件 Parsing 失敗不回滾已成功文件。
+**D-57 已確認：「預檢整批通過才入列；入列後逐文件獨立結果」。**例如外層不合法、同批重複 ID、某文件已 queued／running、容量不足時，先拒絕整次請求，保證沒有未交代的部分入列；接收政策已確認；API-D01 只剩提交路徑／包裝等待確認。合法文件入列後，另一份文件 Parsing 失敗不回滾已成功文件。
 
 併發與 Queue 容量建議以文件工作計數，並另限制排隊資料量／總請求大小，避免一個巨大 Batch 算一個 queue slot。具體數值、接收容量預留及公平排程見 API-D04。預留文件忙碌標記、Queue 容量與狀態紀錄須一致，不能檢查後因競態收進同文件兩份工作。
 
 ## 4. 文件狀態與一次提交的狀態
 
 ### 4.1 文件級狀態
+
+**document_id 來自 Request 的每份 IngestionDocument，不需要先在索引中成功存在。**整批預檢通過、入列時即建立 Run 與每份文件的 queued 紀錄；Worker 更新 running，再記錄 completed／failed。失敗紀錄與成功紀錄同樣保留到終態清理，不只有成功文件才有狀態。
+
+| 階段 | Runtime 工作紀錄 | 搜尋資料／判斷 |
+|---|---|---|
+| 入列前整批拒絕 | 不建立新的 Run／工作；HTTP 回位置與錯誤，可辨識時附 document_id | 不改既有文件；若有舊狀態，不覆寫成這次的新工作 |
+| 已入列 | queued | 不代表已產生／寫入 Chunk |
+| 執行中 | running，必要時附 Module | 舊版可仍存在，不能以此推算本次完成 |
+| 執行失敗 | failed＋error | 工作失敗紀錄仍可查；不等於必有成功索引 |
+| 成功發布 | completed | 才表示本次完整處理成功 |
+| Runtime 重啟／紀錄到期 | 查詢為 unknown | 持久索引可能存在，不能據此假造本次工作狀態 |
+
 
 | status | 定義 |
 |---|---|
@@ -137,7 +161,7 @@ module 可為 null（例如 queued 或終態），亦可指目前 Local Module �
 
 文件最新狀態索引以可信的 (System, document_id) 對應最近一次 run_id；每次合法重新提交建立新 run_id，先前 Run 的結果在保留期內仍能查，不被文件最新狀態覆寫。這不要求持久儲存完整執行歷史。
 
-Batch 彙總狀態建議：仍有 running 為 running，只有等待且尚無終態為 queued；已處理部分且還有待處理文件時為 running；全成功為 completed、全失敗為 failed、已全部終結但有成功亦有失敗為 partial。**partial 只適用 Run 彙總，不適用半份文件發布。**沒有活躍工作但至少一筆結果未確認時，Run 建議為 unknown，不偽裝為全失敗或已確認 partial。名稱／彙總規則列 API-D02。
+D-57 已確認 Batch 彙總方向：仍有 running 為 running，只有等待且尚無終態為 queued；已處理部分且還有待處理文件時為 running；全成功為 completed、全失敗為 failed、已全部終結但有成功亦有失敗為 partial。**partial 只適用 Run 彙總，不適用半份文件發布。**沒有活躍工作但至少一筆結果未確認時，Run 為 unknown，不偽裝為全失敗或已確認 partial。Run partial／未知紀錄 HTTP 200 已確認；精確欄位與未知結果處理仍見 API-D02／05。
 
 ```json
 {
@@ -179,7 +203,7 @@ query 必填；filters／metadata 選填，預設 []／{}，沿用 [05](05_data_
 
 每 System 配置請求頻率、執行併發、等待／執行 Deadline；Runtime 再控制共享資源總量。Builder 可額外限制 User／Workspace 的平台測試配額。共用 Runtime 的限制不能只寫在前端。
 
-第一版採同步查詢，額滿直接拒絕或僅允許有上限的短等待；精確行為列 API-D04，不把查詢塞進 Ingestion 的長工作 Queue。實際 Rate／併發數由 E 設定，不放在每次 query body，也不因換環境改寫 D 的搜尋邏輯。
+第一版採同步查詢，額滿直接拒絕或僅允許有上限的短等待；精確行為列 API-D04，不把查詢塞進 Ingestion 的長工作 Queue。實際 Rate／併發數需可配置；管理者、設定位置與格式依本輪指示暫緩定義，先前 E 是建議位置。不要把環境流量控制混入每次 query body 或搜尋演算法參數。
 
 目前不需要另開 async Query／查詢工作狀態 API，也不增加獨立 Rewrite／Retrieval／Rerank 測試端點；後者需有明確需求再討論，既有 UIB-007／008 仍未核定。
 
@@ -190,13 +214,13 @@ query 必填；filters／metadata 選填，預設 []／{}，沿用 [05](05_data_
 | JSON 不可解析 | 400，未接受工作 |
 | 授權缺失／不足 | 401／403，適用提交與所有狀態查詢 |
 | Request body 超過限制 | 413，未接受工作 |
-| 外層 Schema 不合法／同 Batch 重複 document_id | 422，附位置；批次整批拒絕為 API-D01 提案 |
+| 外層 Schema 不合法／同 Batch 重複 document_id | 422，附位置；整批預檢拒絕已確認，具體錯誤 code／位置格式待定 |
 | 同 System 的 document_id 已 queued／running | 409，附目前 run_id 或可查狀態；不建立第二份工作 |
 | System／使用者的請求速率或接收配額已滿 | 429，附可用的 Retry-After／錯誤原因；不回 202 |
 | Runtime 不就緒／整體容量無法接收／Query 索引不就緒 | 503，使用可區別的 code；接收容量與 Query index-ready 分開 |
 | 已成功接收 Ingestion | 202＋run_id／Location；尚未成功完成 |
 | 202 之後的文件執行失敗 | 狀態 GET 仍為 200，文件 status=failed 與 error；不是將原 POST 改回 HTTP 500 |
-| 狀態紀錄遺失／到期 | 建議狀態 GET 200＋unknown；不宣稱文件不存在，列 API-D02 |
+| 狀態紀錄遺失／到期 | 狀態 GET 200＋unknown 已確認；不宣稱文件不存在，精確欄位列 API-D02 |
 | Query 成功但無命中 | 200＋QueryContext[] 中的空候選 |
 | Query 執行／上游 API 失敗或超時 | 依錯誤來源映射 5xx（502／503／504 等）與 code；不偽造成功結果 |
 
@@ -206,27 +230,57 @@ query 必填；filters／metadata 選填，預設 []／{}，沿用 [05](05_data_
 
 ## 7. 非必備端點與本輪待討論
 
-### 7.1 先列需求，不加入最小 7 支
+### 7.1 首期不納入／後續能力
 
-| 能力／候選 API | 本次建議 | 還需定義什麼 |
+| 能力 | 狀態 | 後續界線 |
 |---|---|---|
-| DELETE /v1/documents/{document_id} | 若第一版需刪除資料再納入，不因支援覆寫就自動加入 | 忙碌時是否拒絕、刪除索引／文件／狀態範圍、Remote 支援及同步／非同步 |
-| POST /v1/ingestions/{run_id}:cancel | 先延後 | queued／running 的取消邊界、Remote 停止能力、已提交文件不回滾、狀態 |
-| 文件列表／內容／Chunk 查詢 | 先延後，與工作狀態分開 | 分頁、投影、權限、所有儲存／Remote 模式是否可提供 |
-| 索引詳細狀態／容量資訊 | 可作後續管理診斷能力 | System index-ready／恢復狀態、統計來源與成本；不能只靠 Health 或最近一次 Run 推斷 |
-| Rewrite／Rerank 單步測試、async Inference／streaming | 目前不納入 | 獨立需求、I/O、成本與正式範圍；不重新引入 Generation |
+| 取消 queued／running 文件工作 | 已確認首期不做 | 未來另訂排隊移除、正在執行的中止／Remote 配合與已提交副作用；retire 不代替取消 |
+| 文件列表／內容／Chunk 查詢 | 先延後 | 分頁、投影、權限與 backend 支援 |
+| 索引詳細狀態／容量資訊 | 可作後續管理診斷 | index-ready／恢復／統計來源，不用 Health／最後 Run 反推 |
+| Rewrite／Rerank 單步測試、async Inference／streaming | 目前不納入 | 有明確需求再定義，不重新引入 Generation |
 
-### 7.2 建議逐項確認的決策
+Retire 已移至首期 API 清單。**尚待確認是邏輯停用保留資料，或清除對應 Chunk／向量**；是否恢復、資料保留／重啟持續性及再次 Ingestion 行為要一起定義，不能只換 URL 名稱就視為完成。
 
-| ID | 尚需確認 | 建議起點 | 關聯 |
+### 7.2 決策狀態與剩餘討論
+
+| ID | 已確認 | 仍待確認／建議 | 關聯 |
 |---|---|---|---|
-| API-D01 | Batch 路徑／容器與入列前部分接收政策 | 單筆維持原格式；Batch 獨立端點＋documents[]；預檢整批通過才入列，之後逐文件獨立結果 | Q-019／Q-009 |
-| API-D02 | Run 彙總狀態／回應格式及未知狀態 HTTP | 文件無 partial；Run 可 partial；狀態紀錄不見回 200＋unknown；保留 run_id 與 document_id 兩種查詢 | Q-019／Q-017 |
-| API-D03 | 文件刪除／工作取消是否首期必要 | 第一版先不開取消；刪除依實際使用需求決定；不要求完整文件 CRUD | Q-008／Q-017 |
-| API-D04 | 併發／容量／保留時間／Deadline 的具體值與排程 | 文件併發預設 1 且可調；Queue 依文件數與資料量設限；終態紀錄有限保留；Inference 先不長時間排隊 | Q-017／Q-020／Q-027 |
-| API-D05 | Remote 結果不明、索引發布、Config 改變時的工作／Query 行為 | 不自動重試未知寫入；提交固定當次 config_revision；活躍工作期間先限制不相容 Config 變更；文件發布由後端明確實作 | Q-008～010／Q-015／Q-017／Q-028 |
-| API-D06 | 對外認證與共享 Runtime 的 System 路由 | 遵循企業 Gateway／Token 規範，所有提交／查詢都驗證 System 權限；Health 暴露另設；不接受任意 Header 覆寫租戶 | Q-006／Q-019／Q-020 |
+| API-D01 | 整批預檢通過才入列、回 202；執行結果逐文件獨立 | 本輪改建議單一 POST／根層非空 List；每個 item 仍是 IngestionDocument；此輸入包裝待確認 | Q-019／Q-009 |
+| API-D02 | 保留 Run／文件兩種查詢；文件無 partial、Run 可 partial；無紀錄 GET 200＋unknown | 完整欄位／code、保留值、輪詢與回應上限；Remote 結果不明另見 D05 | Q-019／Q-017 |
+| API-D03 | 首期要 retire API；不提供排隊／執行中文件取消 | retire 是停用保留或實際刪除；同步／非同步、可否恢復、與 Ingestion 互斥、Remote 支援及追蹤方式 | Q-008／Q-017／Q-028 |
+| API-D04 | Queue／併發／Rate／Deadline／紀錄上限可設定 | 誰設定、存放處、Schema 與具體值暫緩；環境 E 為先前建議，不當作本輪已定 | Q-017／Q-020／Q-027 |
+| API-D05 | 文件成功發布／失敗不發布半份的方向 | 活躍工作改 Config、Query 的資料可見性、Remote 未確認寫入；情境與簡化建議見 §8 | Q-008～010／Q-015／Q-017／Q-028 |
+| API-D06 | 所有操作應有對應存取邊界 | Authentication（辨識誰）＋Authorization（允許何種 System／操作）＋可信路由；實際 Gateway／Token／API Key 等方式未選 | Q-006／Q-019／Q-020 |
 
-API-D01～06 是本文件的盤點子項，沿用現有 Q-ID，不宣稱新增 API 已定案。完整 JSON Schema／OpenAPI、錯誤碼、ID 編碼與協定版本在此基礎上再凍結。單筆文件忙碌拒絕、重啟不恢復、文件級記憶體狀態與 Inference 流量控制等已確認方向，不重新列為選擇題。
+API-D01～06 沿用既有 Q-ID，不另凍結完整 OpenAPI。已確認的接收／Run 彙總／取消暫緩方向不再重問；根層 List、retire 具體語意與精確格式仍保留待決。
+
+
 
 驗收先採：單筆／Batch 接收、文件忙碌衝突、Queue 滿、逐文件 partial、狀態兩種查詢、重啟 unknown、同 ID 完整替換、Query 無命中／不就緒／限流，以及已授權 System 隔離。這些是未來實作驗收清單，不是本文件新增的可執行測試。
+
+
+## 8. API-D05／06 的具體情境
+
+### 8.1 Ingestion 排隊或執行時改 Config
+
+例：文件以 C1（chunk_size=512、Embedding Profile A）提交排隊，尚未執行時 System 被改成 C2（chunk_size=256、Profile B）。若 Worker 臨時讀「目前 Config」，可能同一 Run 前幾份用 C1、後幾份用 C2，或向量／索引 Profile 不相容。
+
+建議提交時固定使用當次 config_revision；第一版在有活躍工作時，先拒絕會影響 Ingestion／索引的 Config 套用，等待完成再改。這是待確認的簡化政策，不要求保存全套中間狀態；純 Inference 設定能否獨立更新仍需相容性規則。
+
+### 8.2 Remote 寫入可能成功但 Runtime timeout
+
+例：Runtime 呼叫 Remote Indexing，服務已寫完或仍在寫，但回應超時。若當作沒寫入而立即重送，可能重複計算／寫入；舊操作若稍後完成，也可能覆蓋較新的提交。document_id 覆寫本身不保證解決所有時序問題。
+
+建議以 unknown＋可辨識原因表達，不自動重試未知寫入；如何確認結果、暫時限制同文件新提交、或要求服務提供冪等／版本控制，需與 Remote 協定一起定義。Runtime 重啟清空狀態也不代表 Remote 工作已停止。
+
+### 8.3 同時進行 Ingestion 與 Query
+
+例：舊文件有 5 個 Chunk，新版處理出 3 個。若邊寫邊刪又允許 Query 任意讀取，可能看到新舊混合。已確認的目標是該文件成功後才發布新版；實作需選擇短暫鎖定／阻擋，或後端可見版本切換，並定義 Query 的行為。整份 Config／Index 重建與單文件更新也不能混為同一交易。
+
+### 8.4 API-D06 不只有 Authorization
+
+- Authentication：確認呼叫者身分，例如企業 Gateway 驗證的服務憑證／Token。
+- Authorization：確認該身分能否對目標 System 執行 Ingest、Query、狀態查詢或 Retire。
+- 可信路由：Builder DEV 的多 System 請求如何對應已授權 System；一般呼叫者不能用任意 Header 選別人的 System。
+
+Builder 使用者登入與 FTEST／ENT 業務系統呼叫 Runtime 可以有不同驗證方式。選用 API Key／Bearer Token／Gateway 整合需依部署環境討論，不在本輪另造登入服務。

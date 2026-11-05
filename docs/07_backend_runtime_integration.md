@@ -123,25 +123,25 @@ System 列表／讀取、Workspace／Dataset CRUD、AI suggestion／連線檢查
 
 ### 5.2 Runtime API
 
-建議第一版 5 支業務 API＋2 支 Health API；詳細契約與待討論項見 [21](21_runtime_ingestion_inference_api_inventory.md)。Batch、文件級查詢的精確路徑與回應包裝為本輪草案。
+更新盤點建議 5 支業務＋2 支 Health：Ingestion 單一 List 提交提案取代兩支端點，加入已確認需要的 retire。整批預檢／Run partial／unknown HTTP 已確認；提交包裝、retire 語意及其他精確格式仍待定，見 [21](21_runtime_ingestion_inference_api_inventory.md)。
 
 | HTTP method | Path 草案 | 行為 |
 |---|---|---|
-| POST | /v1/ingestions | 單筆 IngestionDocument；成功接受回 202＋run_id／Location |
-| POST | /v1/ingestions:batch | documents[]，每筆仍為 IngestionDocument；逐文件處理，批次預檢／接收政策待 API-D01 |
-| GET | /v1/ingestions/{run_id} | 一次提交的狀態、計數及逐文件結果；Run partial 彙總格式待 API-D02 |
+| POST | /v1/ingestions | 本輪建議根層 IngestionDocument[]，單筆亦為一元素 List；整批預檢通過才 202＋run_id／Location；包裝待確認 |
+| GET | /v1/ingestions/{run_id} | 一次提交及逐文件結果；Run partial 已確認，精確格式待 API-D02 |
 | GET | /v1/documents/{document_id}/ingestion-status | 該 System 文件最近一次工作狀態；無可用紀錄為 unknown，不等於文件不存在 |
 | POST | /v1/queries | query／filters／metadata；200 直接回 QueryContext[]；同步限流／併發／Deadline |
+| POST | /v1/documents/{document_id}:retire | 首期需要退役／刪除能力；停用保留或清除資料、執行／追蹤及 HTTP 仍待確認 |
 | GET | /health/live | 程序是否存活 |
 | GET | /health/ready | Runtime／必要資源是否初始化；不等同已有可查索引 |
 
 獨立 Runtime 的業務請求不另帶 System ID；配置已綁定。Builder DEV 的可信路由先選 System，不能直接信任使用者提供的 tenant／system header；Run／文件狀態查詢也需驗證相同 System 權限。Bearer Token 僅為認證示意，實際 Gateway／Token 政策見 Q-006／Q-019。
 
-文件刪除、工作取消、文件／Chunk 列表、索引診斷與單步 Module 測試未加入最小 API 集合，是否首期需要見 21 §7。
+Retire 納入首期能力；排隊／執行中文件取消確認首期不做。文件／Chunk 列表、索引診斷與單步測試仍未納入，見 21 §7。
 
 ### 5.3 JSON Ingestion
 
-2026-10-29 更新：Runtime 只提供 JSON Ingestion。單筆文件以 document_id＋content／base64／uri 三選一表示，欄位與解析責任見 [13](13_ingestion_parser_input_contract.md)，機器可讀 [JSON Schema](../schemas/ingestion_document.schema.json)。以下為單筆 request body 草案；Batch 以 documents[] 包裝的提案見 21，每筆文件驗證同一份 IngestionDocument；Parser 不收到 Batch 容器。執行以文件為更新／成功失敗單位已確認，批次入列前的拒絕政策及數值上限仍待核定。
+2026-10-29 更新：Runtime 只提供 JSON Ingestion。單筆文件以 document_id＋content／base64／uri 三選一表示，欄位與解析責任見 [13](13_ingestion_parser_input_contract.md)，機器可讀 [JSON Schema](../schemas/ingestion_document.schema.json)。以下展示單份 IngestionDocument；21 本輪建議 HTTP body 統一為 IngestionDocument[]，單筆也包 List，包裝仍待確認。每筆文件與 Parser input 共用相同 Schema，Parser 不收到 List／run_id；整批預檢通過才入列已確認，數值上限待定。
 
 ```json
 {
@@ -180,9 +180,9 @@ Builder 上傳管理端點、暫存儲存與下載授權／生命週期尚待 Q-
 
 ### 5.5 工作查詢
 
-D-56 採兩種查詢：run_id 追蹤一次提交；document_id 查文件最近一次狀態。Runtime 記憶體保存 Run／逐文件紀錄及最新對照，不把工作狀態寫入 Chunk／metadata，不從已儲存資料反推最近一次更新是否完成。
+D-56 採兩種查詢：run_id 追蹤一次提交；document_id 查文件最近一次狀態。ID 直接來自 Request，預檢通過入列即有 queued 紀錄；執行失敗也保留 failed 紀錄，並非只有索引成功才記錄。預檢前拒絕不建立新工作，直接回 HTTP 錯誤。Runtime 記憶體保存 Run／逐文件紀錄及最新對照，不把工作狀態寫入 Chunk／metadata，不從已儲存資料反推最近一次更新是否完成。
 
-文件狀態為 queued／running／completed／failed；無可用紀錄或結果未確認為 unknown，後者須有可辨識原因。completed 代表該文件完整發布；Batch 不得用 completed 掩蓋部分失敗。Run partial、counts 與未知狀態 HTTP 200 等詳細回應仍為 [21 §4](21_runtime_ingestion_inference_api_inventory.md) 的提案。
+文件狀態為 queued／running／completed／failed；無可用紀錄或結果未確認為 unknown，後者須有可辨識原因。completed 代表該文件完整發布；Batch 不得用 completed 掩蓋部分失敗。Run partial 與無紀錄 HTTP 200＋unknown 已確認，counts／其他精確欄位仍待 [21 §4](21_runtime_ingestion_inference_api_inventory.md) 定義。
 
 ```json
 {
@@ -300,7 +300,7 @@ D-42 的 Descriptor、動態選項／能力 Context、規則與驗證回傳草�
 
 ## 6. 非同步工作與一致性
 
-D-56 已確認：Builder DEV 與 FTEST／ENT 共用 Runtime 工作控制，Library 執行流程；Builder 上傳與直接呼叫 API 走同一 Queue，不再重複排一次。每 System 文件執行併發可配置、預設 1；Runtime 再設總量，Inference 有頻率／併發／Deadline。限制與 Queue 配置屬環境控制 E，不由每次文件／Query 覆寫。
+D-56 已確認：Builder DEV 與 FTEST／ENT 共用 Runtime 工作控制，Library 執行流程；Builder 上傳與直接呼叫 API 走同一 Queue，不再重複排一次。每 System 文件執行併發可配置、預設 1；Runtime 再設總量，Inference 有頻率／併發／Deadline。限制可配置已確認；放 E 是先前建議，管理者／存放位置／Schema 本輪暫緩定案；不由每次文件／Query 任意覆寫。
 
 Batch 逐文件處理；併發 1 時依序，併發 2 時不同文件可同時處理。相同 (System, document_id) 已 queued／running 時拒絕再次提交。支援提高併發仍需驗證 Component／Client／共享索引的安全性，必要提交階段加鎖，不承諾任意 backend 可無限制並行。
 
@@ -310,7 +310,7 @@ Local Search 第一版仍同程序／單副本。背景執行不能把唯一 Mem
 
 尚待 Q-008～Q-010／Q-015／Q-017／Q-019：
 
-- 21 的 Batch 接收預檢、Run partial／counts、HTTP／錯誤 Envelope。
+- 21 的統一 List 提交包裝、counts／錯誤 Envelope；整批預檢與 Run partial 方向已確認。
 - 文件級索引 staging／舊 Chunk 清除／發布點、搜尋可見性及崩潰一致性；不以單次 Bulk／Hash 宣稱原子替換已完成。
 - 工作固定 config_revision 的方式；活躍工作與 Config／索引格式變更的互斥，以及 Query 使用何版／何時阻擋。
 - 具有副作用的遠端呼叫結果未確認、Idempotency-Key 的必要性／範圍、重試／取消及清理。

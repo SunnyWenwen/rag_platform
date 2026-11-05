@@ -299,7 +299,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 ### Q-008 重送、更新與刪除
 
 - D-56 已確認：同 (System, document_id) 完整覆寫，不存在則新增；成功後清除舊文件不再產出的 Chunk，不做欄位 merge。同文件 queued／running 時拒絕重複提交，終態後可重新提交；Runtime 重啟不恢復工作。
-- 仍待：source_revision 衝突／較舊來源、相同內容是否可 no-op、Idempotency-Key／遠端未知結果、刪除 API、實體索引替換／舊版清除及保留政策。批內重複 ID／批次接收前全拒或部分接受列 21 API-D01，不能自行當作已定案。
+- 仍待：source_revision 衝突／較舊來源、相同內容是否可 no-op、Idempotency-Key／遠端未知結果、retire 的語意與協定、實體索引替換／舊版清除及保留政策。整批接收前預檢通過才入列已由 D-57 確認；入列後逐文件結果。21 API-D01 的 List 包裝仍待確認。Retire 能力必須有，但資料保留語意待定；取消工作首期不做。
 - 建議：先不承諾 exactly-once 或未知寫入自動重試，按文件發布與相容機制實作；文件刪除另外定義。
 - 負責角色：產品＋Engine＋Backend；阻擋安全重試／正式更新實作。
 - 決策狀態：覆寫單位與忙碌拒絕方向已確認，以上其餘細節 OPEN；更新 04／05／07／21。
@@ -308,7 +308,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 ### Q-009 部分失敗與提交原子性
 
 - D-56 已確認：以 document_id 為更新與成功／失敗單位；Batch 逐文件獨立結果，不要求全 Batch 回滾；成功才發布，失敗保留最後成功版本，不接受半份文件為成功。
-- 仍待：ES／Local／MongoDB／Remote 的 staging／提交與搜尋可見性、崩潰清理；Run partial／counts 及批次預檢接收政策見 21 API-D01／02。單次 Bulk／Hash 不代表已具有文件原子替換。
+- 仍待：ES／Local／MongoDB／Remote 的 staging／提交與搜尋可見性、崩潰清理；整批預檢與 Run partial／文件無 partial 已確認，counts／精確 Envelope 見 21 API-D01／02。單次 Bulk／Hash 不代表已具有文件原子替換。
 - 負責角色：Engine＋Backend；阻擋 M2 更新與 M3 終態／提交驗收。
 - 決策狀態：文件級原則已確認，實作與精確 Envelope OPEN；更新 04／05／07／21。
 
@@ -383,7 +383,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 ### Q-017 Timeout、重試、取消與工作恢復
 
 - D-56 已確認：Runtime 共用有上限 Queue；工作／文件狀態放記憶體，重啟不保留／恢復，不保存斷點續跑。查不到紀錄為 unknown，不等於文件未寫入；終態紀錄可以限量／限時清理，活躍紀錄不提前清除。
-- 仍待：Deadline、模組 Timeout、有限重試／可重試錯誤、Client 中斷、取消與未知遠端結果的副作用處理；具體保留值及 HTTP 查詢 Envelope 見 21 API-D02／04／05。
+- 仍待：Deadline、模組 Timeout、有限重試／可重試錯誤、Client 中斷與未知遠端結果的副作用處理；D-57 已確認取消工作首期不做；具體保留值及 HTTP 查詢 Envelope 見 21 API-D02／04／05。
 - 建議：Engine 統一執行預算；不自動重試未確認的寫入，重試完整文件且需冪等支援。持久 Queue／自動恢復不屬第一版已確認需求。
 - 負責角色：Engine＋Runtime；阻擋 M1 錯誤政策及 M3 工作語意。
 - 決策狀態：無恢復與記憶體狀態方向已確認，其餘 OPEN；更新 04／05／07／21。
@@ -401,7 +401,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 <a id="q-019"></a>
 ### Q-019 API／HTTP Envelope 與呼叫認證
 
-- 2026-11-05：[21](21_runtime_ingestion_inference_api_inventory.md) 盤點建議最小 5 支業務＋2 支 Health API，既有單筆／Query 契約不變。Batch 路徑／接收政策、Run partial、未知狀態 HTTP、認證與錯誤 Envelope 為 API-D01～06 提案；不將整個 API 格式視為定案。
+- 2026-11-05：[21](21_runtime_ingestion_inference_api_inventory.md) 盤點更新為建議 5 支業務＋2 支 Health：統一 List 提交為待確認替代方案、retire 為必需能力；每筆 IngestionDocument／Query 契約不變。D-57 已確認整批預檢、Run partial、未知紀錄 HTTP 200；其餘包裝、retire 語意、認證與錯誤 Envelope 仍待定。
 
 - 不清楚：完整 CRUD／助手／管理 API、OpenAPI、錯誤碼／狀態、上傳限制、manifest、冪等鍵、DEV 路由、認證及暴露 Trace。
 - D-41 補充：Builder 與 Runtime 透過 API／Component 目錄合作；需核定目標 Runtime 版本識別、Config Schema／能力目錄、完整 Config 驗證、快取失效與接口相容政策。能力範圍見 07 §5.8，精確端點與 Envelope 仍 OPEN。
@@ -417,7 +417,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 
 - D-51 已確認 Local 可同程序／Pod 建多 System；Remote Image 第一版每 System 獨立服務及儲存綁定；External 由 Developer 管理固定資料空間，無 data_space_id。下列快取／配額／清理細節仍 OPEN。
 
-- D-56 已確認：Builder DEV／獨立 Runtime 共用 System Queue／併發與 Inference Rate／併發／Deadline；Runtime 控制總量，Builder 另管理 User／Workspace 配額。上限與 Queue／資源配置屬 E。Worker 是排程概念，不要求每 System 新 Pod。
+- D-56 已確認：Builder DEV／獨立 Runtime 共用 System Queue／併發與 Inference Rate／併發／Deadline；Runtime 控制總量，Builder 另管理 User／Workspace 配額。上限可配置已確認；放 E 為先前建議，D-57 暫緩管理者／存放位置／Schema 的定案。Worker 是排程概念，不要求每 System 新 Pod。
 - 仍待：每 System 實例快取、可信路由、公平排程、上限具體值、記憶體配額／清理、未來多 replica 控制與程序安全性。
 - 建議：先有受限共享 Runtime 與明確隔離 Binding；Local Search 每 System 的 Ingest／Query 必須同程序。
 - 替代：每 System 獨立 Runtime，增加部署／資源管理成本。
@@ -580,8 +580,17 @@ Prototype 仍為 v0.12，D-55 的必要調整記入 UIB-021；本輪未修改 UI
 
 同 System／document_id 完整覆寫，文件是更新與成功／失敗單位，Batch 逐文件結果；成功才發布、失敗保留最後成功版本，不做半份續跑。文件 queued／running 時拒絕重複提交；System 文件併發預設 1 且可配置，提高前驗證並行能力。
 
-Builder DEV 與 FTEST／ENT 共用 Runtime Queue／Inference 流量控制，環境上限放 E；Runtime 有總量控制，Builder 可另設平台配額。不新增每 System Pod 要求。202 接受後查 Run／文件狀態；Queue／Run／文件紀錄留記憶體，Runtime 重啟不保留／恢復；無紀錄或結果未確認為 unknown，不能由舊索引反推最近一次成功，也不保證 Remote 副作用回滾。
+Builder DEV 與 FTEST／ENT 共用 Runtime Queue／Inference 流量控制，環境上限先建議放 E（D-57 將管理者與存放位置暫緩）；Runtime 有總量控制，Builder 可另設平台配額。不新增每 System Pod 要求。202 接受後查 Run／文件狀態；Queue／Run／文件紀錄留記憶體，Runtime 重啟不保留／恢復；無紀錄或結果未確認為 unknown，不能由舊索引反推最近一次成功，也不保證 Remote 副作用回滾。
 
 最小 API 盤點與可討論子項集中 [21](21_runtime_ingestion_inference_api_inventory.md)；新增 Batch 包裝、路徑、Run partial、HTTP／錯誤／保留值仍是提案。Q-008～010／Q-017／Q-019／Q-020 只收斂以上方向，索引提交／崩潰一致性、Config／資料版本、未知重試、認證及精確格式仍 OPEN。
 
 UI 待辦記 UIB-022；Prototype v0.12、共用資料 Schema 與示例程式均未修改，未宣稱真實 Runtime／Queue／限流已完成。
+
+
+## 2026-11-05 D-57：接收／彙總確認與 Retire 納入
+
+整批接收前預檢通過才入列／回 202，之後逐文件獨立結果。文件無 partial、Run 可 partial；無紀錄查詢 HTTP 200＋unknown。工作紀錄從 queued 建立，failed 與 completed 一樣可查到終態清理；入列前拒絕直接回錯誤，不新建 Run。
+
+刪除能力首期必須有，使用 retire 命名；是否停用保留資料或清除 Chunk／向量、同步／非同步與 Remote 支援仍待確認。取消排隊／執行中文件工作首期不做。限制需可設定；管理者、位置與 Schema 依本輪指示暫緩，E 是既有建議而非新凍結格式。
+
+使用者詢問是否統一 List：21 改推薦單一 POST /v1/ingestions，根層 List、單筆亦包一層，每個 item 仍為 IngestionDocument。此處是待確認的新提案，並未修改共用資料 Schema／正式 API 或 UI。Config 執行中變更、Remote timeout／Query 可見性及 Authentication／Authorization／可信路由的情境見 21 §8，仍待後續討論。

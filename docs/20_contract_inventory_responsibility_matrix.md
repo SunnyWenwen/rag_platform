@@ -126,8 +126,8 @@ Parser 的具體教學入口是 [16](16_parser_component_development_examples.md
 
 - **A**：同 System／document_id 完整覆寫，文件級成功／失敗；成功發布新版、失敗保留最後成功版本，不續跑半份資料。具體提交／Remote 崩潰一致性仍須實作驗證。
 - **B／C**：Component 有實作版本，System 固定選用、不自動升級；Admin 手動審核登錄／發布。Local 須在目標 Runtime 有程式／依賴；Remote 須有相容 Adapter／操作邊界與可用服務。動態 UI Meta-schema 仍暫緩，不因確認管理方式而凍結 Descriptor／Manifest。
-- **D／E**：D 保存流程／參數／版本選用；E 保存 Queue／併發／Rate／Deadline 等環境控制值。Builder DEV 與獨立 Runtime 共用控制實作，Builder 可另設 User／Workspace 平台配額。
+- **D／E**：D 保存流程／參數／版本選用；Queue／併發／Rate／Deadline 等上限需可設定；先前建議歸 E，管理者、存放位置與格式依 D-57 暫緩定案。Builder DEV 與獨立 Runtime 共用控制實作，Builder 可另設 User／Workspace 平台配額。
 - **Runtime 管理資料**：有上限 Queue，文件執行併發預設 1 可調；同文件 queued／running 拒絕重複提交。202 後提供 run_id／document_id 查詢，文件最新狀態另存記憶體，不改共用業務 DTO。
 - **重啟政策**：不保留／恢復 Queue／Run／文件狀態；無紀錄查 unknown，不由已儲存文件推定最近一次完成。索引持久化／Remote 副作用與工作紀錄分開看待。
 
-上述方向記 D-56；[21 API 盤點](21_runtime_ingestion_inference_api_inventory.md) 列出 5 支業務＋2 支 Health 的建議最小清單及 API-D01～06。API 路徑、Batch 包裝／接收、Run partial、HTTP／錯誤及數值上限仍待核定；不是新增五個已實作的契約或已發布 API。
+上述方向記 D-56；[21 API 盤點](21_runtime_ingestion_inference_api_inventory.md) 列出 5 支業務＋2 支 Health 的建議最小清單及 API-D01～06。後續 D-57 已確認整批接收預檢、Run partial／未知紀錄 HTTP 200，retire 能力納入、工作取消暫緩；統一 List 提交、retire 保留語意、精確格式與數值仍待確認。不是新增五個已實作的契約或已發布 API。
