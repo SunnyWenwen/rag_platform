@@ -299,7 +299,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 ### Q-008 重送、更新與刪除
 
 - D-56 已確認：同 (System, document_id) 完整覆寫，不存在則新增；成功後清除舊文件不再產出的 Chunk，不做欄位 merge。同文件 queued／running 時拒絕重複提交，終態後可重新提交；Runtime 重啟不恢復工作。
-- 仍待：source_revision 衝突／較舊來源、相同內容是否可 no-op、Idempotency-Key／遠端未知結果、retire 的語意與協定、實體索引替換／舊版清除及保留政策。整批接收前預檢通過才入列已由 D-57 確認；入列後逐文件結果。21 API-D01 的 List 包裝仍待確認。Retire 能力必須有，但資料保留語意待定；取消工作首期不做。
+- 仍待：source_revision 衝突／較舊來源、相同內容是否可 no-op、Idempotency-Key／遠端未知結果、retire 的執行／錯誤協定、實體索引替換／舊版清除及保留政策。整批接收前預檢通過才入列已由 D-57 確認；入列後逐文件結果。D-58 已確認單一 List 包裝、文件存在／ID 清單，以及 retire 直接刪除；精確管理介面仍待整理，取消工作首期不做。
 - 建議：先不承諾 exactly-once 或未知寫入自動重試，按文件發布與相容機制實作；文件刪除另外定義。
 - 負責角色：產品＋Engine＋Backend；阻擋安全重試／正式更新實作。
 - 決策狀態：覆寫單位與忙碌拒絕方向已確認，以上其餘細節 OPEN；更新 04／05／07／21。
@@ -401,7 +401,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 <a id="q-019"></a>
 ### Q-019 API／HTTP Envelope 與呼叫認證
 
-- 2026-11-05：[21](21_runtime_ingestion_inference_api_inventory.md) 盤點更新為建議 5 支業務＋2 支 Health：統一 List 提交為待確認替代方案、retire 為必需能力；每筆 IngestionDocument／Query 契約不變。D-57 已確認整批預檢、Run partial、未知紀錄 HTTP 200；其餘包裝、retire 語意、認證與錯誤 Envelope 仍待定。
+- 2026-11-05：[21](21_runtime_ingestion_inference_api_inventory.md) 盤點更新為 7 支業務＋2 支 Health：D-58 確認統一 List、文件存在／ID 清單與 retire 直接刪除；每筆 IngestionDocument／Query 契約不變。D-57 的整批預檢、Run partial／未知紀錄 HTTP 200 延續；精確文件管理 Path／Envelope／分頁／刪除執行、認證與錯誤仍待整理。
 
 - 不清楚：完整 CRUD／助手／管理 API、OpenAPI、錯誤碼／狀態、上傳限制、manifest、冪等鍵、DEV 路由、認證及暴露 Trace。
 - D-41 補充：Builder 與 Runtime 透過 API／Component 目錄合作；需核定目標 Runtime 版本識別、Config Schema／能力目錄、完整 Config 驗證、快取失效與接口相容政策。能力範圍見 07 §5.8，精確端點與 Envelope 仍 OPEN。
@@ -594,3 +594,14 @@ UI 待辦記 UIB-022；Prototype v0.12、共用資料 Schema 與示例程式均�
 刪除能力首期必須有，使用 retire 命名；是否停用保留資料或清除 Chunk／向量、同步／非同步與 Remote 支援仍待確認。取消排隊／執行中文件工作首期不做。限制需可設定；管理者、位置與 Schema 依本輪指示暫緩，E 是既有建議而非新凍結格式。
 
 使用者詢問是否統一 List：21 改推薦單一 POST /v1/ingestions，根層 List、單筆亦包一層，每個 item 仍為 IngestionDocument。此處是待確認的新提案，並未修改共用資料 Schema／正式 API 或 UI。Config 執行中變更、Remote timeout／Query 可見性及 Authentication／Authorization／可信路由的情境見 21 §8，仍待後續討論。
+
+
+## 2026-11-05 D-58：統一 List 與文件資料管理
+
+已確認一支 POST /v1/ingestions 接非空 IngestionDocument[]，單份亦 List；每個 item／Parser input 沿用相同單筆 Schema，沒有另開 :batch。13／16 區分公開 Runtime transport 與 Remote Parser operation，既有共用 Schema／Parser 範例程式不改。
+
+已確認查某 document_id 是否存在、列出當前全部 ID 的 API，以及 retire 直接刪除資料。兩支讀取資料儲存／索引，不從記憶體工作紀錄推算；預設從 Chunk.document_id 取存在與去重清單。retire 清除該 System 文件的儲存／搜尋副本，不只改 soft-delete 標記，也不提供 restore 或取消工作。工作紀錄仍依既定記憶體保留政策處理。
+
+21 的範圍更新為 7 支業務＋2 支 Health；GET exists／文件清單與 POST retire 的具體 Path／欄位、分頁、同步 204／重複刪除／忙碌 409 建議、Remote／Storage 操作能力仍待核定。這些延伸 Q-008／Q-019／Q-028，不關閉整個 Q-ID、不新增 IndexBinding 根鍵或 Pipeline Module。
+
+UI 待辦記 UIB-023（UI 呈現尚待規劃）；本輪只同步文件，Prototype v0.12、共用機器 Schema 與 SDK／教學程式不變。

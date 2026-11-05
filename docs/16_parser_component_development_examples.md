@@ -1,5 +1,7 @@
 # 16 — Parser 開發模式：Local Component 與 Remote API
 
+> 2026-11-05 D-58：公開 Runtime Ingestion body 統一為 IngestionDocument[]；本篇 Remote Parser operation 的 HTTP body 仍是一份 IngestionDocument，由 Runtime／Adapter 逐筆呼叫，範例程式不改成批次 API。API item 與 Parser 共用 Schema，文件管理另見 [21](21_runtime_ingestion_inference_api_inventory.md)。
+
 > 2026-11-02 D-51：本篇維持無參數、單 Parser 的可執行教學；產品端由 Developer 提供 Manifest 註冊服務，Builder User 不手填 API。Adapter 的 endpoint 由部署綁定注入。連續多 Module、Image／External 及固定資料責任見 [18](18_remote_service_pipeline_integration.md)，不因新方向改寫本例 HTTP body。
 
 2026-11-02｜可執行的教學草案，非已發布 SDK。搭配 [04 三種交付模式](../diagrams/04_component_delivery_modes.md)／[比較圖](../diagrams/04_component_delivery_modes.png) 介紹。

@@ -27,7 +27,7 @@
 
 狀態用語：**已確認**為先前明確採用的方向；**建議**為本輪技術草案；**待決**以 Q-ID 追蹤；**後續**為未納入目前實作承諾的能力。03～07 引用問題 ID，08 是決策狀態的單一追蹤位置。文件版本不等於 Config contract_version、Engine 版本或完成進度。
 
-資料契約的單一來源為 schemas/ 及 13～15 的語意規則。其餘文件引用而不另定格式：API／Import／Parser 共用 IngestionDocument；Parser 產生 ParsedDocument；Chunker 產生 Chunk；Embedding、Indexing 及 Inference 沿用 Chunk。歷史規格由 Git 保留，不能用舊格式覆蓋現行契約。
+資料契約的單一來源為 schemas/ 及 13～15 的語意規則。其餘文件引用而不另定格式：D-58 的 Runtime API 接 IngestionDocument[]，每個 item／Import／Parser 共用 IngestionDocument；Parser 產生 ParsedDocument；Chunker 產生 Chunk；Embedding、Indexing 及 Inference 沿用 Chunk。歷史規格由 Git 保留，不能用舊格式覆蓋現行契約。
 
 ## 2. 產品目的與核心概念
 

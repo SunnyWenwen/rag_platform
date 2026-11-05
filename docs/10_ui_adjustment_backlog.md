@@ -134,4 +134,15 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 - [ ] Ingestion Queue 額滿、Inference Rate／併發／Timeout 有可理解提示；不在每次文件／Query 表單加入環境上限設定。
 - [ ] 區分文件工作狀態、索引是否可查與 Runtime Health；Local／Remote 的未知結果不冒充可安全重試。
 
-本輪只更新文件／Backlog，Prototype v0.12 不變。D-57 已確認 Run partial、未知紀錄 HTTP 200 與整批預檢；工作狀態精確欄位、統一 List 提交／retire 語意等仍待核定。Retire API 列首期必要，UI 操作另盤點；首期不做工作取消，不新增管理 UI 或凍結動態 UI Meta-schema。
+本輪只更新文件／Backlog，Prototype v0.12 不變。D-57 已確認 Run partial、未知紀錄 HTTP 200 與整批預檢；D-58 已確認統一 List 與 retire 直接刪除；工作狀態精確欄位、文件管理分頁／刪除執行等仍待核定。Retire API 列首期必要，UI 操作另盤點；首期不做工作取消，不新增管理 UI 或凍結動態 UI Meta-schema。
+
+
+<a id="uib-023-document-management"></a>
+## UIB-023：D-58 統一 List 與文件管理 API（API 方向確認，UI 待規劃）
+
+- [ ] Ingestion API 說明與產生的 payload 改為非空 List，單份亦包 List；CSV 逐列映射仍產生單份 IngestionDocument，再組合提交。
+- [ ] API 說明區分工作狀態與實際文件存在／ID 清單，retire 是直接刪除，不是取消工作或保留資料的停用。
+- [ ] 文件 ID 清單／存在查詢／retire 在 UI 的操作位置、分頁、確認與錯誤呈現，待需求及 21 的精確介面對齊後規劃；本輪不先實作面板或刪除按鈕。
+- [ ] 需由 Runtime／backend 實際查詢及刪除，不用前端記憶體列表或 Ingestion 成功紀錄假裝資料來源。
+
+目前只更新文件，Prototype v0.12 不變；使用者要求改 UI 時才修改原型。Retire 執行模式與分頁仍待核定，不將新的草案能力描述為已完成。

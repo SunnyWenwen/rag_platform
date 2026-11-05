@@ -115,3 +115,10 @@ v0.12 的 Service Manifest／健康狀態／Image／Endpoint／資料綁定僅�
 每 System 一組邏輯索引，IndexBinding 只有 artifact_type／target／fulltext_fields／filter_fields／vector_bindings，省略 index_ref。Indexing 提供，Engine 驗證與管理；Retrieval 須宣告支援格式／版本，並只搜尋 Binding 宣告且相容的能力。target 依受控註冊的格式 Schema 驗證；Developer 還需共同儲存／讀取規格與 SDK／範例才能開發。完整定義見 [19 IndexBinding 與索引格式契約](19_index_binding_artifact_contract.md)。
 
 Component Config 是處理參數；RunContext 是 Engine 準備的必要資源／Binding 引用，實際 Client／索引物件不放業務 JSON。searchable 不在 Binding，Runtime 管就緒；格式版本與 Component 版本、資料發布版本分開。內建 ES target 有 collection，Local target 可空並使用 System 唯一資源。首版不新增多組選擇；UI 差異只記 backlog。正式 SDK、後端讀寫布局、Remote 協定及更新／發布政策仍需後續核定／實作。
+
+
+## 2026-11-05 D-58：文件管理能力配套
+
+Runtime 新增查 document_id 存在、列出所有 ID 與 retire 直接刪除能力，見 [21 §9](21_runtime_ingestion_inference_api_inventory.md)。資料由平台直接管理時走相容 storage／index adapter；若包含 Indexing／Retrieval 的私有 Remote Service 管理資料，需宣告可完成上述操作的 operation 或受控存取方式，不能假設只有 ingest/query 就能管理文件。
+
+無狀態 Parser／Embedding／Rerank 服務不因此多交付資料管理端點。Manifest／Artifact／SDK 的具體欄位與操作規格仍待定，沒有加入新 Pipeline Module、IndexBinding 根鍵、data_space_id 或取消功能。不支援管理操作時明確回報／卡控，不回空清單、false 或成功刪除冒充支援。

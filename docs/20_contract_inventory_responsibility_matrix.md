@@ -130,4 +130,7 @@ Parser 的具體教學入口是 [16](16_parser_component_development_examples.md
 - **Runtime 管理資料**：有上限 Queue，文件執行併發預設 1 可調；同文件 queued／running 拒絕重複提交。202 後提供 run_id／document_id 查詢，文件最新狀態另存記憶體，不改共用業務 DTO。
 - **重啟政策**：不保留／恢復 Queue／Run／文件狀態；無紀錄查 unknown，不由已儲存文件推定最近一次完成。索引持久化／Remote 副作用與工作紀錄分開看待。
 
-上述方向記 D-56；[21 API 盤點](21_runtime_ingestion_inference_api_inventory.md) 列出 5 支業務＋2 支 Health 的建議最小清單及 API-D01～06。後續 D-57 已確認整批接收預檢、Run partial／未知紀錄 HTTP 200，retire 能力納入、工作取消暫緩；統一 List 提交、retire 保留語意、精確格式與數值仍待確認。不是新增五個已實作的契約或已發布 API。
+上述方向記 D-56；[21 API 盤點](21_runtime_ingestion_inference_api_inventory.md) 更新為 7 支業務＋2 支 Health 清單及 API-D01～07。後續 D-57 已確認整批接收預檢、Run partial／未知紀錄 HTTP 200，retire 能力納入、工作取消暫緩；D-58 已確認統一 List、文件存在／ID 清單與 retire 直接刪除；精確管理格式／分頁／執行與數值仍待整理。不是新增已實作的契約或已發布 API。
+
+
+D-58 補充：**Runtime 工作狀態**與**文件資料管理**分開。前者重啟為 unknown；後者讀取實際儲存的文件存在／ID 清單，retire 真正刪除資料。屬 A 的 storage／index 管理能力與 C 的 Remote 配套；HTTP 經 Runtime 提供，Builder UI 另行規劃，不新增 Module 或強制保存 ParsedDocument。

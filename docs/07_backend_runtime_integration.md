@@ -123,36 +123,40 @@ System 列表／讀取、Workspace／Dataset CRUD、AI suggestion／連線檢查
 
 ### 5.2 Runtime API
 
-更新盤點建議 5 支業務＋2 支 Health：Ingestion 單一 List 提交提案取代兩支端點，加入已確認需要的 retire。整批預檢／Run partial／unknown HTTP 已確認；提交包裝、retire 語意及其他精確格式仍待定，見 [21](21_runtime_ingestion_inference_api_inventory.md)。
+D-58 更新為 7 支業務＋2 支 Health：統一 List 提交、文件存在／ID 清單查詢及 retire 直接刪除均已確認；完整管理 API 路徑／Envelope、同步刪除建議等仍待整理，見 [21](21_runtime_ingestion_inference_api_inventory.md)。
 
 | HTTP method | Path 草案 | 行為 |
 |---|---|---|
-| POST | /v1/ingestions | 本輪建議根層 IngestionDocument[]，單筆亦為一元素 List；整批預檢通過才 202＋run_id／Location；包裝待確認 |
+| POST | /v1/ingestions | 根層非空 IngestionDocument[]，單筆亦為一元素 List；整批預檢通過才 202＋run_id／Location |
 | GET | /v1/ingestions/{run_id} | 一次提交及逐文件結果；Run partial 已確認，精確格式待 API-D02 |
 | GET | /v1/documents/{document_id}/ingestion-status | 該 System 文件最近一次工作狀態；無可用紀錄為 unknown，不等於文件不存在 |
 | POST | /v1/queries | query／filters／metadata；200 直接回 QueryContext[]；同步限流／併發／Deadline |
-| POST | /v1/documents/{document_id}:retire | 首期需要退役／刪除能力；停用保留或清除資料、執行／追蹤及 HTTP 仍待確認 |
+| GET | /v1/documents/{document_id}/exists | 讀取實際儲存判斷文件存在；回應格式為 21 草案，不從工作表推算 |
+| GET | /v1/documents?limit=...&cursor=... | 去重分頁取得當前全部 document_id；排序／cursor 細節待定 |
+| POST | /v1/documents/{document_id}:retire | 已確認直接刪除文件儲存／索引；建議同步 204，精確 HTTP／互斥與 Remote 配套待確認 |
 | GET | /health/live | 程序是否存活 |
 | GET | /health/ready | Runtime／必要資源是否初始化；不等同已有可查索引 |
 
 獨立 Runtime 的業務請求不另帶 System ID；配置已綁定。Builder DEV 的可信路由先選 System，不能直接信任使用者提供的 tenant／system header；Run／文件狀態查詢也需驗證相同 System 權限。Bearer Token 僅為認證示意，實際 Gateway／Token 政策見 Q-006／Q-019。
 
-Retire 納入首期能力；排隊／執行中文件取消確認首期不做。文件／Chunk 列表、索引診斷與單步測試仍未納入，見 21 §7。
+Retire 納入首期能力；排隊／執行中文件取消確認首期不做。文件 ID 清單與存在查詢已納入；整份文件／Chunk 內容、索引診斷與單步測試仍未納入，見 21 §7／§9。
 
 ### 5.3 JSON Ingestion
 
-2026-10-29 更新：Runtime 只提供 JSON Ingestion。單筆文件以 document_id＋content／base64／uri 三選一表示，欄位與解析責任見 [13](13_ingestion_parser_input_contract.md)，機器可讀 [JSON Schema](../schemas/ingestion_document.schema.json)。以下展示單份 IngestionDocument；21 本輪建議 HTTP body 統一為 IngestionDocument[]，單筆也包 List，包裝仍待確認。每筆文件與 Parser input 共用相同 Schema，Parser 不收到 List／run_id；整批預檢通過才入列已確認，數值上限待定。
+2026-10-29 更新：Runtime 只提供 JSON Ingestion。單筆文件以 document_id＋content／base64／uri 三選一表示，欄位與解析責任見 [13](13_ingestion_parser_input_contract.md)，機器可讀 [JSON Schema](../schemas/ingestion_document.schema.json)。以下展示已確認的 List body，內含單份 IngestionDocument；單筆也包 List。每筆文件與 Parser input 共用相同 Schema，Parser 不收到 List／run_id；整批預檢通過才入列已確認，數值上限待定。
 
 ```json
-{
-  "document_id": "manual-001",
-  "source_revision": "v1",
-  "content": {"text": "設備每月需清潔散熱孔。", "title": "保養規範"},
-  "metadata": {"department": "manufacturing"}
-}
+[
+  {
+    "document_id": "manual-001",
+    "source_revision": "v1",
+    "content": {"text": "設備每月需清潔散熱孔。", "title": "保養規範"},
+    "metadata": {"department": "manufacturing"}
+  }
+]
 ```
 
-content 由相容 Parser 轉成 ParsedDocument.units；可接收已解析內容，但須符合對應 schema／Adapter，ParsedDocument 已有 [0.2 units 契約與驗證範圍](14_parsed_document_contract.md)，尚未凍結；不代表 Runtime 已載入這些 Parser。API 外層不直接宣告 fields／structure／vectors。**API 與 Parser Input 使用同一份 IngestionDocument JSON Schema（D-45）**，Parser 專屬內容限制再驗證。Parser 透過 SDK 共用 resolver 取得／解碼內容，不另要求轉成另一份 ParserInput；Context 為 Engine 注入的執行資源，不是 HTTP body。
+content 由相容 Parser 轉成 ParsedDocument.units；可接收已解析內容，但須符合對應 schema／Adapter，ParsedDocument 已有 [0.2 units 契約與驗證範圍](14_parsed_document_contract.md)，尚未凍結；不代表 Runtime 已載入這些 Parser。API 外層不直接宣告 fields／structure／vectors。**API 每個 List item 與 Parser Input 使用同一份 IngestionDocument JSON Schema（D-45／D-58）**，Parser 專屬內容限制再驗證。Parser 透過 SDK 共用 resolver 取得／解碼內容，不另要求轉成另一份 ParserInput；Context 為 Engine 注入的執行資源，不是 HTTP body。
 
 Runtime 驗證分層，不以 API 外層通過就宣稱資料可搜尋：
 
@@ -194,6 +198,8 @@ D-56 採兩種查詢：run_id 追蹤一次提交；document_id 查文件最近�
 Batch 計數提案以收到的 IngestionDocument 為單位，不混入 Unit／Chunk 數；各計數拼字／彙總終態待 API-D02。舊 processed_documents／total_documents 示例不作正式欄位依據。
 
 只清理可回收的終態紀錄；queued／running 不提前清除。保留時間／數量上限尚待設定。重啟後無紀錄回 unknown，不憑 ES／MongoDB 中有舊資料就宣稱最後那次工作成功。此政策不等於所有索引也清空，更不保證遠端寫入自動回滾。
+
+文件存在／ID 清單與 retire 另見 21 §9：直接讀取／刪除該 System 的資料儲存與索引，不以 IngestionRun 當作文件目錄。retire 後歷史 Ingestion 狀態可仍為 completed，exists 卻為 false；工作紀錄按原政策清理，避免混用兩種狀態。後端不可用時不回 false／空清單，Remote 需對應管理能力。
 
 ### 5.6 Query
 
@@ -310,7 +316,7 @@ Local Search 第一版仍同程序／單副本。背景執行不能把唯一 Mem
 
 尚待 Q-008～Q-010／Q-015／Q-017／Q-019：
 
-- 21 的統一 List 提交包裝、counts／錯誤 Envelope；整批預檢與 Run partial 方向已確認。
+- 21 的 counts／錯誤 Envelope 與文件管理細節；統一 List、整批預檢、Run partial 與 retire 直接刪除方向已確認。
 - 文件級索引 staging／舊 Chunk 清除／發布點、搜尋可見性及崩潰一致性；不以單次 Bulk／Hash 宣稱原子替換已完成。
 - 工作固定 config_revision 的方式；活躍工作與 Config／索引格式變更的互斥，以及 Query 使用何版／何時阻擋。
 - 具有副作用的遠端呼叫結果未確認、Idempotency-Key 的必要性／範圍、重試／取消及清理。

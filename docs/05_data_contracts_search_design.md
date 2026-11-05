@@ -73,7 +73,7 @@ Builder 由 Workspace＋Retrieval System 名稱自動產生邏輯 collection，�
 
 ### 4.1 Ingestion 輸入與 Parser Input
 
-API／Import／Parser 共用同一份 [IngestionDocument Schema](../schemas/ingestion_document.schema.json)，完整語意見 [13](13_ingestion_parser_input_contract.md)。document_id 必填，content／base64／uri 恰選一種；可選 source_revision、metadata、media_type、schema_id、parsing_profile。Engine 不提供 multipart，Builder／呼叫端負責將上傳轉成這份 JSON。
+API／Import／Parser 共用同一份 [IngestionDocument Schema](../schemas/ingestion_document.schema.json)，完整語意見 [13](13_ingestion_parser_input_contract.md)。document_id 必填，content／base64／uri 恰選一種；可選 source_revision、metadata、media_type、schema_id、parsing_profile。Engine 不提供 multipart，Builder／呼叫端將每份上傳轉成此單筆 JSON，再依 D-58 組成非空 List 呼叫 Runtime。以下範例是一份 item，完整 HTTP body／工作與文件管理見 [21](21_runtime_ingestion_inference_api_inventory.md)。
 
 ```json
 {
@@ -84,9 +84,9 @@ API／Import／Parser 共用同一份 [IngestionDocument Schema](../schemas/inge
 }
 ```
 
-此例由相容的 Structured JSON Parser 將 content 鍵整理成 ParsedDocument.units 中的一筆 dict；metadata 使用外層欄位。CSV 每列映射成一份 IngestionDocument，API 根層不直接放 fields／structure／vectors。來源版本省略時的產生政策仍待 Q-007。
+此例由相容的 Structured JSON Parser 將 content 鍵整理成 ParsedDocument.units 中的一筆 dict；metadata 使用外層欄位。CSV 每列映射成一份 IngestionDocument，每筆 IngestionDocument 不直接放 fields／structure／vectors。來源版本省略時的產生政策仍待 Q-007。
 
-Parser 透過可信 Context 的共用 resolver 取得 URI 或解碼 Base64，原 IngestionDocument 形狀不變。Context、資源生命週期及批次 envelope 另見 Q-002／Q-016／Q-017／Q-019。已解析內容仍放 content 並使用相容 Adapter，不等於直接接收 Chunk 或向量。
+Parser 透過可信 Context 的共用 resolver 取得 URI 或解碼 Base64，原 IngestionDocument 形狀不變。批次 body=IngestionDocument[] 已確認；Context、資源生命週期與精確回應另見 Q-002／Q-016／Q-017／Q-019。已解析內容仍放 content 並使用相容 Adapter，不等於直接接收 Chunk 或向量。
 
 ### 4.2 ParsedDocument：四個固定頂層 key
 

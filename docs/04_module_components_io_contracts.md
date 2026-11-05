@@ -151,7 +151,7 @@ D-56 已確認不做斷點續跑、Runtime 重啟不恢復工作／記憶體狀�
 
 **目的與邊界**：Engine 接收扁平 JSON，驗證共用 IngestionDocument，並提供共同的內容取得能力；文件／CSV 上傳轉換由 Builder 或呼叫端處理，不提供 Engine multipart，不做 PDF／OCR 語意解析或 Embedding。
 
-**Config／I/O**：[13](13_ingestion_parser_input_contract.md) 記錄 API／Parser 共用的 IngestionDocument 與 [同一份 JSON Schema](../schemas/ingestion_document.schema.json)。content／base64／uri 三選一，文件 ID、版本與 metadata 持續傳遞；SDK resolver 共用 URI 取得與 Base64 解碼，不另建 ParserInput envelope。資源保存、大小／逾時與 Batch 政策仍待決。
+**Config／I/O**：[13](13_ingestion_parser_input_contract.md) 記錄 API／Parser 共用的 IngestionDocument 與 [同一份 JSON Schema](../schemas/ingestion_document.schema.json)。content／base64／uri 三選一，文件 ID、版本與 metadata 持續傳遞；SDK resolver 共用 URI 取得與 Base64 解碼，不另建 ParserInput envelope。D-58 的 Runtime body 為非空 IngestionDocument[]，每份 item 與 Parser input 相同；資源保存與大小／逾時數值仍待決。
 
 **驗收方向**：相同內容經 inline／Base64／URI 後，在相容格式下具有相同解析語意；Builder CSV 映射一次後與直接 JSON 得到一致結果；不丟失身分／metadata，不接受未授權來源。外層多重來源、格式／內容不符及超限須明確失敗。
 
@@ -161,7 +161,7 @@ D-56 已確認不做斷點續跑、Runtime 重啟不恢復工作／記憶體狀�
 
 **目的與邊界**：相容 Parser／Adapter 解析原始內容或正規化已解析資料，產出四鍵 ParsedDocument：document_id、source_revision、units、metadata。units 是平面的 list[dict]，每筆直接放 text 與其他欄位，不包 fields、不要求 unit_id。Parser 負責文件結構、語意單位與閱讀順序；不生成向量或自動摘要。
 
-**輸入與路由**：與 API 共用 IngestionDocument（content／base64／uri 三選一）；由 Component 支援的格式與 profile 派送，歧義需明確解決。Builder CSV 每列先映射 API body，Parser 再正規化，不要求重複設定相同欄位映射。
+**輸入與路由**：與 API 共用 IngestionDocument（content／base64／uri 三選一）；由 Component 支援的格式與 profile 派送，歧義需明確解決。Builder CSV 每列先映射一份 IngestionDocument，再組成 Runtime List body，Parser 逐文件正規化，不要求重複設定相同欄位映射。
 
 **輸出與驗證**：以 [14](14_parsed_document_contract.md)／[Schema](../schemas/parsed_document.schema.json) 驗證。text-spans／page-blocks 等上游結構由 Parser 內部處理，不再作 Chunker 的輸入分類。表格整理成逐列語意文字或 Markdown；圖片需具備 OCR／描述能力。Header-aware 需要 Unit 文字保留 Markdown 標題。來源欄位可附 page／slide／sheet 等；不得捏造位置或把無內容當成功。
 
@@ -233,7 +233,7 @@ D-53 功能待實作：預設 Chunker 可選擇另留每 Unit／任務的完整�
 2. 比較目標 Schema／Profile，拒絕不相容寫入，避免不同模型混在同一向量欄位。
 3. 依版本／冪等策略寫入 Chunk，維護 chunk_id 對照及 Binding。
 4. 按後端 refresh／發布規則回報 searchable；write_acknowledged 不等於 searchable。
-5. D-56：同 System／document_id 成功後整份替換並清除不再產出的舊 Chunk，失敗保留最後成功版本；實體提交與崩潰可見性需 Q-008／Q-009 驗證，文件刪除 API 仍待決。
+5. D-56：同 System／document_id 成功後整份替換並清除不再產出的舊 Chunk，失敗保留最後成功版本；實體提交與崩潰可見性需 Q-008／Q-009 驗證，D-58 文件管理需要存在／ID 清單與 retire 直接刪除，精確介面見 21／19。
 
 | Adapter | 內部責任 |
 |---|---|

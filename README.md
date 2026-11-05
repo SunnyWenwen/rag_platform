@@ -14,7 +14,7 @@
 
 | 契約 | 交接邊界 | 定義與例子 |
 |---|---|---|
-| IngestionDocument | API／Import／Parser 共用輸入；document_id＋content／base64／uri 三選一 | [13 說明](docs/13_ingestion_parser_input_contract.md) · [Schema](schemas/ingestion_document.schema.json) · [分類案例](examples/contracts/report_cases.json) |
+| IngestionDocument | API List 的每個 item／Import／Parser 共用輸入；document_id＋content／base64／uri 三選一 | [13 說明](docs/13_ingestion_parser_input_contract.md) · [Schema](schemas/ingestion_document.schema.json) · [分類案例](examples/contracts/report_cases.json) |
 | ParsedDocument | Parser 輸出／Chunker 輸入；document_id、source_revision、units、metadata | [14 說明](docs/14_parsed_document_contract.md) · [Schema](schemas/parsed_document.schema.json) · [案例](examples/parsed_document/plain_text.json) |
 | Chunk | Chunking 後的下游資料；chunk_id、document_id、source_revision、fields、metadata、vectors | [15 說明](docs/15_chunk_contract.md) · [Schema](schemas/chunk.schema.json) · [案例](examples/chunk/cases.json) |
 
@@ -37,9 +37,9 @@ Prototype v0.12 同步 Query metadata、選填追溯、Embedding 文字模板／
 | [05 資料與 Config](docs/05_data_contracts_search_design.md) | 契約總覽、Inference 物件、設定責任與變更影響 |
 | [06 UI 開發規格](docs/06_ui_development_spec.md) | Create／Edit、欄位相依、CSV、預覽及助手 |
 | [07 Backend 與 Runtime API](docs/07_backend_runtime_integration.md) | JSON API、工作狀態、儲存、服務綁定與 Export |
-| [08 開發計畫與決策](docs/08_implementation_plan.md) | M0～M7、D-01～D-57、Q-001～Q-028 與驗收 |
+| [08 開發計畫與決策](docs/08_implementation_plan.md) | M0～M7、D-01～D-58、Q-001～Q-028 與驗收 |
 | [09 Inference Contract 與 UI](docs/09_inference_contract_ui_plan.md) | ResultSet、兩層融合、四處 Top N 與連動 |
-| [10 UI Backlog](docs/10_ui_adjustment_backlog.md) | 現有原型能力及UIB-001～022 的原型／正式整合狀態 |
+| [10 UI Backlog](docs/10_ui_adjustment_backlog.md) | 現有原型能力及UIB-001～023 的原型／正式整合狀態 |
 | [11 Component 開發指南](docs/11_component_developer_guide.md) | SDK 示意、開發、契約測試、PR 與發布 |
 | [12 Component 設定描述](docs/12_component_schema_ui_contract.md) | Config Schema、UI hints、動態選項與相依規則 |
 | [13 IngestionDocument](docs/13_ingestion_parser_input_contract.md) | 輸入分類、路由、API／Parser 相同 Schema |
@@ -50,7 +50,7 @@ Prototype v0.12 同步 Query metadata、選填追溯、Embedding 文字模板／
 | [18 Remote Service／Pipeline 整合](docs/18_remote_service_pipeline_integration.md) | Manifest 註冊、連續 Module 替換、三種部署、固定服務與 Export／UI 卡控 |
 | [19 IndexBinding／Artifact 契約](docs/19_index_binding_artifact_contract.md) | 單組邏輯索引、Binding 五鍵、索引格式定義與相容性 |
 | [20 契約與責任總盤點](docs/20_contract_inventory_responsibility_matrix.md) | A～E 詳細總表、角色／系統分工、Developer 交付、Builder DEV 與 FTEST／ENT 邊界 |
-| [21 Runtime API 盤點](docs/21_runtime_ingestion_inference_api_inventory.md) | Ingestion／Inference 最小 API 草案、202／文件狀態、Queue／限流、重啟政策與待討論項 |
+| [21 Runtime API 盤點](docs/21_runtime_ingestion_inference_api_inventory.md) | Ingestion／Inference、文件存在／ID 清單／retire、202／工作狀態、Queue／限流及待討論項 |
 
 名詞以 03 為準；資料的精確定義引用 schemas/ 與 13～15，不在各模組重寫一份。Component Developer 先由 20 選擇 Local／Remote 閱讀路線，再依 11 → 04 → 對應資料契約 → 12／18 準備交付。完整 Engine Config／SDK 尚未凍結，示例不等於可直接執行的產品介面。
 
@@ -85,7 +85,4 @@ Parser 開發示範：[三種交付模式圖](diagrams/04_component_delivery_mod
 2026-11-04 D-55：每 System 一組邏輯索引，IndexBinding 五鍵，省略 index_ref／searchable。索引格式定義、target Schema、Developer 配套及狀態責任見 [19](docs/19_index_binding_artifact_contract.md)；共用 [Schema](schemas/index_binding.schema.json)、[格式 target 範例](examples/pydantic_contracts/artifact_definitions.json)。UI 待調整記 UIB-021，未改 Prototype。
 
 
-2026-11-05 D-56：同 System／document_id 完整覆寫、Batch 逐文件結果；Runtime 共用有上限 Queue／Inference 流量控制，記憶體保存工作／文件狀態，重啟不恢復，查不到為 unknown。[21](docs/21_runtime_ingestion_inference_api_inventory.md) 盤點建議 5 支業務＋2 支 Health API，後續 D-57 已確認整批預檢／Run partial／unknown HTTP 200；統一 List 提交／retire 語意等仍待核定；UI 待辦 UIB-022，未改原型。
-
-
-2026-11-05 D-57：整批預檢通過才回 202，入列後逐文件結果；首期需要 retire API，不做工作取消。限制可配置，管理者／存放位置暫緩。21 更新推薦一支 Ingestion API 接非空 List（待確認），並說明 failed 狀態也記於 Runtime、Config 變更／Remote timeout 與認證授權情境；未改 UI／共用 Schema。
+2026-11-05 D-56～D-58：Ingestion 統一接非空 IngestionDocument[]，整批預檢才 202、逐文件完整覆寫／結果；工作狀態留 Runtime 記憶體，重啟 unknown。文件存在／document_id 清單直接讀取資料儲存，retire 真正刪除 Chunk／向量與搜尋／持久副本。共用 Queue／Inference 流量控制可配置，管理者／位置暫緩；21 已更新為 7 支業務＋2 支 Health，精確管理格式／執行仍待整理。UIB-022／023 記錄待辦，不改 UI／共用機器 Schema。
