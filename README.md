@@ -37,7 +37,7 @@ Prototype v0.12 同步 Query metadata、選填追溯、Embedding 文字模板／
 | [05 資料與 Config](docs/05_data_contracts_search_design.md) | 契約總覽、Inference 物件、設定責任與變更影響 |
 | [06 UI 開發規格](docs/06_ui_development_spec.md) | Create／Edit、欄位相依、CSV、預覽及助手 |
 | [07 Backend 與 Runtime API](docs/07_backend_runtime_integration.md) | JSON API、工作狀態、儲存、服務綁定與 Export |
-| [08 開發計畫與決策](docs/08_implementation_plan.md) | M0～M7、D-01～D-58、Q-001～Q-028 與驗收 |
+| [08 開發計畫與決策](docs/08_implementation_plan.md) | M0～M7、D-01～D-59、Q-001～Q-028 與驗收 |
 | [09 Inference Contract 與 UI](docs/09_inference_contract_ui_plan.md) | ResultSet、兩層融合、四處 Top N 與連動 |
 | [10 UI Backlog](docs/10_ui_adjustment_backlog.md) | 現有原型能力及UIB-001～023 的原型／正式整合狀態 |
 | [11 Component 開發指南](docs/11_component_developer_guide.md) | SDK 示意、開發、契約測試、PR 與發布 |
@@ -86,3 +86,6 @@ Parser 開發示範：[三種交付模式圖](diagrams/04_component_delivery_mod
 
 
 2026-11-05 D-56～D-58：Ingestion 統一接非空 IngestionDocument[]，整批預檢才 202、逐文件完整覆寫／結果；工作狀態留 Runtime 記憶體，重啟 unknown。文件存在／document_id 清單直接讀取資料儲存，retire 真正刪除 Chunk／向量與搜尋／持久副本。共用 Queue／Inference 流量控制可配置，管理者／位置暫緩；21 已更新為 7 支業務＋2 支 Health，精確管理格式／執行仍待整理。UIB-022／023 記錄待辦，不改 UI／共用機器 Schema。
+
+
+2026-11-05 D-59：Remote 未知寫入不自動重試；Config 重啟／共用 System 重建與 Query 讀寫邊界見 21 §8。Builder 登入延後，Runtime API 暫按 HTTP Basic Auth 規劃（basic oath 的理解待名詞對齊）；ES／Local 直接去重分頁取文件 ID，未改 Runtime／UI 程式。

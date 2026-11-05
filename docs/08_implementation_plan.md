@@ -279,6 +279,8 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 <a id="q-006"></a>
 ### Q-006 metadata 保留區、租戶與授權
 
+- D-59：Builder 登入方式延後；Runtime API 暫按 basic oath 理解為 HTTP Basic Auth（帳密），部署採 HTTPS／Secret 引用，名詞如為 OAuth 需再對齊。Basic 不代替 System 操作授權／可信路由，保留區與帳號作用域仍 OPEN。
+
 - 不清楚：保留欄位名稱、ACL 來源、System／Workspace 權限、tSSO／Gateway 驗證、獨立 Runtime 認證。
 - 建議：可信 Context 注入租戶與 ACL，保留 metadata 顯式命名且不可覆寫；初期最小權限模型先核定。
 - 替代：只先驗單 System 的封閉環境；不得宣稱多租戶安全已完成。
@@ -400,6 +402,8 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 
 <a id="q-019"></a>
 ### Q-019 API／HTTP Envelope 與呼叫認證
+
+- D-59：Runtime API 暫按 HTTP Basic Auth 規劃（由 basic oath 理解，非已選 OAuth）；Builder 登入延後。既有 Bearer／Token 是舊示意，正式 OpenAPI Security Scheme、驗證位置、帳密引用、Health 與 System 授權仍待細化。
 
 - 2026-11-05：[21](21_runtime_ingestion_inference_api_inventory.md) 盤點更新為 7 支業務＋2 支 Health：D-58 確認統一 List、文件存在／ID 清單與 retire 直接刪除；每筆 IngestionDocument／Query 契約不變。D-57 的整批預檢、Run partial／未知紀錄 HTTP 200 延續；精確文件管理 Path／Envelope／分頁／刪除執行、認證與錯誤仍待整理。
 
@@ -605,3 +609,14 @@ UI 待辦記 UIB-022；Prototype v0.12、共用資料 Schema 與示例程式均�
 21 的範圍更新為 7 支業務＋2 支 Health；GET exists／文件清單與 POST retire 的具體 Path／欄位、分頁、同步 204／重複刪除／忙碌 409 建議、Remote／Storage 操作能力仍待核定。這些延伸 Q-008／Q-019／Q-028，不關閉整個 Q-ID、不新增 IndexBinding 根鍵或 Pipeline Module。
 
 UI 待辦記 UIB-023（UI 呈現尚待規劃）；本輪只同步文件，Prototype v0.12、共用機器 Schema 與 SDK／教學程式不變。
+
+
+## 2026-11-05 D-59：生命週期／讀寫邊界與暫定 API 驗證
+
+Remote 寫入結果不明沿用 unknown，不自動重試；後續查核／互斥與服務冪等協定仍待定。使用者以 Config 更新時重啟 Runtime 避免熱切混用，符合獨立部署方向；Builder 共用 Runtime 重建哪個範圍、在途工作與持久索引相容性仍需界定，不能把一個 System 改 Config 默認成重啟全部共享 System。
+
+已確認同文件寫入互斥延續。如何鎖 Query／提交可用同 System 共用鎖示意，使用者偏向 KISS；是否接受更新期間暫時新舊混合仍待明確取捨，不把這個問題當成已放棄成功發布／失敗保留舊版。沒有新增分散式鎖／快照需求。
+
+Builder 登入方式之後討論；Runtime API 的 basic oath 先按 HTTP Basic Auth（帳號／密碼）理解為暫定，若原意為 OAuth 需再對齊。採 HTTPS／環境 Secret 引用；授權與多 System 路由、驗證位置仍 OPEN。沒有更改實際登入程式或暴露憑證。
+
+文件 ID 清單直接查 ES／Local 實際資料並去重；ES 要分頁取完整去重集合，不能只對首批 Chunk 去重。Local 由 Chunk store／一致對照提供，不另強制中央 DB。實作選項與標準來源見 21 §8～9。

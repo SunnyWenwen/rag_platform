@@ -134,3 +134,6 @@ Parser 的具體教學入口是 [16](16_parser_component_development_examples.md
 
 
 D-58 補充：**Runtime 工作狀態**與**文件資料管理**分開。前者重啟為 unknown；後者讀取實際儲存的文件存在／ID 清單，retire 真正刪除資料。屬 A 的 storage／index 管理能力與 C 的 Remote 配套；HTTP 經 Runtime 提供，Builder UI 另行規劃，不新增 Module 或強制保存 ParsedDocument。
+
+
+D-59 補充：Remote 未確認寫入不自動重試；獨立 Runtime 以重啟／重建採用 Config，Builder 共用程序的範圍及 Query 讀一致性取捨仍待界定。Builder 登入延後，Runtime API 暫按 basic oath 理解為 HTTP Basic Auth 規劃；Basic 名詞／帳號作用域、Authorization 與可信路由未整體定案，見 21 §8。文件 ID 直接從 ES／Local 等資料儲存去重分頁，與工作紀錄分開。

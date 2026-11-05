@@ -90,6 +90,8 @@ Remote External 不由 Builder 啟動／重啟；Developer／管理者登錄 End
 
 ### 4.2 Config 更新
 
+獨立 Runtime 初期透過重啟／重部署套用 Config，不做執行中熱切，見 21 §8.1；這可避免單一存活實例混讀不同 Config，但持久索引相容性與 Remote 在途寫入仍需處理。Builder 共用程序的更新範圍另決：整個程序重啟會影響其餘 System 的記憶體資料／工作，建議只重建目標 System 實例；何時切換／是否等待工作完成不在本輪宣稱已完成。
+
 Backend 儲存前以有效設定比較，依 05 判定影響；UI 與 AI 都不能繞過。Edit 使用獨立草稿，取消不生效。
 
 2026-10-30 Chunk 草案：Embedding／Indexing／Inference 共用 [15](15_chunk_contract.md) 與 [Chunk Schema](../schemas/chunk.schema.json)；來源位置若有提供則在 metadata._rag.source_refs（D-52：追溯選填），向量仍為具 Profile 識別的物件。該資料不改 API／Parser 的 IngestionDocument 輸入，也不核可直接匯入 Chunk／vectors。D-56 已確認文件級成功替換／失敗不發布半份新版；具體索引提交、崩潰可見性與 Config／索引版本切換仍依 Q-008～Q-010／Q-015 落實，不能由 Hash 就宣稱已實作。
@@ -137,7 +139,7 @@ D-58 更新為 7 支業務＋2 支 Health：統一 List 提交、文件存在／
 | GET | /health/live | 程序是否存活 |
 | GET | /health/ready | Runtime／必要資源是否初始化；不等同已有可查索引 |
 
-獨立 Runtime 的業務請求不另帶 System ID；配置已綁定。Builder DEV 的可信路由先選 System，不能直接信任使用者提供的 tenant／system header；Run／文件狀態查詢也需驗證相同 System 權限。Bearer Token 僅為認證示意，實際 Gateway／Token 政策見 Q-006／Q-019。
+獨立 Runtime 的業務請求不另帶 System ID；配置已綁定。Builder DEV 的可信路由先選 System，不能直接信任使用者提供的 tenant／system header；Run／文件狀態查詢也需驗證相同 System 權限。Retrieval API 暫按使用者的 basic oath 理解為 HTTP Basic Auth（帳密），採 HTTPS／TLS 與環境 Secret 引用；若原意為 OAuth 需再對齊。Basic 的檢查位置／帳號作用域尚待細化；Authorization／共享 System 路由仍見 Q-006／Q-019，Builder 登入方式延後。
 
 Retire 納入首期能力；排隊／執行中文件取消確認首期不做。文件 ID 清單與存在查詢已納入；整份文件／Chunk 內容、索引診斷與單步測試仍未納入，見 21 §7／§9。
 
@@ -318,8 +320,8 @@ Local Search 第一版仍同程序／單副本。背景執行不能把唯一 Mem
 
 - 21 的 counts／錯誤 Envelope 與文件管理細節；統一 List、整批預檢、Run partial 與 retire 直接刪除方向已確認。
 - 文件級索引 staging／舊 Chunk 清除／發布點、搜尋可見性及崩潰一致性；不以單次 Bulk／Hash 宣稱原子替換已完成。
-- 工作固定 config_revision 的方式；活躍工作與 Config／索引格式變更的互斥，以及 Query 使用何版／何時阻擋。
-- 具有副作用的遠端呼叫結果未確認、Idempotency-Key 的必要性／範圍、重試／取消及清理。
+- 每個存活實例固定 Config、重啟／重建生效的生命週期；Builder 共用實例更新範圍、持久索引相容性，以及 Query 讀寫鎖或允許短暫混合的取捨見 21 §8。
+- 未知遠端寫入已確認不自動重試；具體結果查核、同文件隔離、Idempotency-Key／版本控制及清理仍待定，首期不做取消。
 - Queue／並行／Rate／Deadline／紀錄保留的具體值，與未來多 replica 下的一致控制。
 
 方向已確認不表示提交機制已實作；詳細盤點與待決子項見 [21](21_runtime_ingestion_inference_api_inventory.md)。
@@ -409,7 +411,7 @@ Runtime 更新若重啟 Memory 模式，依既有規則需要重新 Ingestion；
 
 request／run／trace 必須可跨 Backend／Runtime／模組關聯。輸出結構化錯誤、耗時、輸入輸出數及可取得用量；模型與 Judge 也記版本。OTel／Langfuse 為候選，非每個 Runtime 必備外部依賴，具體方案 Q-016／Q-027。
 
-tSSO 是 Builder 的登入方向，實際 Token／Gateway／Backend 驗證見 Q-006。呼叫 Runtime 的認證與 Runtime 呼叫模型／DB 的 Secret 不同。System／Workspace／ACL 由可信 Backend／Runtime Context 注入，Filter 不能提權；獨立 Runtime 仍需部署端認證，不因 API only 就公開匿名。
+Builder 使用者登入依本輪指示延後討論；既有 tSSO 圖示不代表本輪已凍結或實作登入方案，具體方式見 Q-006。呼叫 Runtime 的認證與 Runtime 呼叫模型／DB 的 Secret 不同。System／Workspace／ACL 由可信 Backend／Runtime Context 注入，Filter 不能提權；獨立 Runtime 仍需部署端認證，不因 API only 就公開匿名。
 
 ## 11. 待討論與決策
 

@@ -2,7 +2,7 @@
 
 更新日期：2026-11-05。適用 A～E 中的執行契約、System 組裝與環境控制；總盤點見 [20](20_contract_inventory_responsibility_matrix.md)。
 
-**文件分成「已確認行為」與「本次建議 API／回應格式」。**本次盤點不代表 OpenAPI、所有 HTTP code／欄位或新增功能已核定，也沒有實作 Runtime、修改共用資料 Schema 或 UI。決策由 [08 的 D-56／D-57／D-58／相關 Q-ID](08_implementation_plan.md) 追蹤。
+**文件分成「已確認行為」與「本次建議 API／回應格式」。**本次盤點不代表 OpenAPI、所有 HTTP code／欄位或新增功能已核定，也沒有實作 Runtime、修改共用資料 Schema 或 UI。決策由 [08 的 D-56／D-57／D-58／D-59／相關 Q-ID](08_implementation_plan.md) 追蹤。
 
 ## 1. 範圍與已確認基準
 
@@ -253,8 +253,8 @@ Retire 已確認為直接刪除，不做 soft delete／restore API；再次使�
 | API-D02 | 保留 Run／文件兩種查詢；文件無 partial、Run 可 partial；無紀錄 GET 200＋unknown | 完整欄位／code、保留值、輪詢與回應上限；Remote 結果不明另見 D05 | Q-019／Q-017 |
 | API-D03 | retire 直接刪除資料；不做工作取消或 soft delete／restore | 建議同步 204、無資料重複刪除也成功、忙碌文件 409；精確方式與後端／Remote 完整刪除能力待核定 | Q-008／Q-017／Q-028 |
 | API-D04 | Queue／併發／Rate／Deadline／紀錄上限可設定 | 誰設定、存放處、Schema 與具體值暫緩；環境 E 為先前建議，不當作本輪已定 | Q-017／Q-020／Q-027 |
-| API-D05 | 文件成功發布／失敗不發布半份的方向 | 活躍工作改 Config、Query 的資料可見性、Remote 未確認寫入；情境與簡化建議見 §8 | Q-008～010／Q-015／Q-017／Q-028 |
-| API-D06 | 所有操作應有對應存取邊界 | Authentication（辨識誰）＋Authorization（允許何種 System／操作）＋可信路由；實際 Gateway／Token／API Key 等方式未選 | Q-006／Q-019／Q-020 |
+| API-D05 | Remote 結果不明回 unknown、不自動重試未知寫入；不做斷點續跑 | Config 以重啟／重建生效可避免熱切混用，但共享 Runtime 的影響範圍、Remote 在途操作及 Query 讀寫一致性仍需界定，見 §8 | Q-008～010／Q-015／Q-017／Q-028 |
+| API-D06 | Builder 登入方式延後；Runtime API 先暫按 HTTP Basic Auth 規劃（由 basic oath 理解） | Basic 名詞若原意為 OAuth 需再對齊；HTTPS／帳密引用、身分作用域、Authorization／System 路由及 Health 暴露仍待細化 | Q-006／Q-019／Q-020 |
 | API-D07 | 查 document_id 是否存在、列出當前全部 ID；讀取實際儲存而非工作表 | 建議 exists 布林值、ID 清單去重分頁；路徑／欄位、排序／cursor／分頁一致性、Remote 讀取能力待整理 | Q-019／Q-028 |
 
 API-D01～07 沿用既有 Q-ID，不另凍結完整 OpenAPI。單一 List、接收／Run 彙總、取消暫緩、文件 ID 管理與 retire 直接刪除方向不再重問；存在／清單／刪除的精確格式與執行細節仍待核定。
@@ -266,30 +266,45 @@ API-D01～07 沿用既有 Q-ID，不另凍結完整 OpenAPI。單一 List、接�
 
 ## 8. API-D05／06 的具體情境
 
-### 8.1 Ingestion 排隊或執行時改 Config
+### 8.1 Config 透過重啟生效，與共享 Runtime 的範圍
 
-例：文件以 C1（chunk_size=512、Embedding Profile A）提交排隊，尚未執行時 System 被改成 C2（chunk_size=256、Profile B）。若 Worker 臨時讀「目前 Config」，可能同一 Run 前幾份用 C1、後幾份用 C2，或向量／索引 Profile 不相容。
+使用者提出 Config 更新時 Runtime 會重啟，因此不做執行中熱切。這符合 07 的獨立 Runtime 重部署方向：每個實例持有固定 Config，採用新 Config 時重新建立，舊的排隊／執行工作不轉移到新版繼續跑；程序重啟後狀態依既定政策為 unknown。
 
-建議提交時固定使用當次 config_revision；第一版在有活躍工作時，先拒絕會影響 Ingestion／索引的 Config 套用，等待完成再改。這是待確認的簡化政策，不要求保存全套中間狀態；純 Inference 設定能否獨立更新仍需相容性規則。
+重啟可以排除同一個存活實例臨時改讀新 Config 的情境，但仍要區分：
+
+- **獨立 Runtime**：可透過重啟／重新部署套用新 Config；持久 ES／MongoDB 索引仍需檢查 Profile／格式相容，重啟不等於已重新 Ingestion。
+- **Builder 共用 Runtime**：同程序可承載多個 System；若改一個 System 就重啟整個程序，其餘 System 的 Queue／工作狀態與 Memory 索引也會受影響。建議重建目標 System 實例，或明確接受整個程序重啟的影響，具體流程仍待決。
+- **Remote 在途操作**：Runtime 重啟不保證 External Service 已停止寫入，因此 §8.2 的未知結果／互斥問題仍存在。
+
+初期不承諾熱更新／無損切換；是否等待活躍工作完成才重建、如何處理排隊工作與共享實例回收，需要與生命週期一起定義，不重新引入取消 API 或 checkpoint 恢復。
 
 ### 8.2 Remote 寫入可能成功但 Runtime timeout
 
 例：Runtime 呼叫 Remote Indexing，服務已寫完或仍在寫，但回應超時。若當作沒寫入而立即重送，可能重複計算／寫入；舊操作若稍後完成，也可能覆蓋較新的提交。document_id 覆寫本身不保證解決所有時序問題。
 
-建議以 unknown＋可辨識原因表達，不自動重試未知寫入；如何確認結果、暫時限制同文件新提交、或要求服務提供冪等／版本控制，需與 Remote 協定一起定義。Runtime 重啟清空狀態也不代表 Remote 工作已停止。
+D-59 已確認沿用 unknown＋可辨識原因，不自動重試未知寫入；如何確認結果、暫時限制同文件新提交、或要求服務提供冪等／版本控制，需與 Remote 協定一起定義。Runtime 重啟清空狀態也不代表 Remote 工作已停止。
 
-### 8.3 同時進行 Ingestion 與 Query
+### 8.3 同時進行 Ingestion 與 Query：鎖的最小範圍
 
-例：舊文件有 5 個 Chunk，新版處理出 3 個。若邊寫邊刪又允許 Query 任意讀取，可能看到新舊混合。已確認的目標是該文件成功後才發布新版；實作需選擇短暫鎖定／阻擋，或後端可見版本切換，並定義 Query 的行為。整份 Config／Index 重建與單文件更新也不能混為同一交易。
+例：舊文件 5 個 Chunk，新版 3 個。更新期間若搜尋與寫入交錯，可能讀到暫時的新舊混合。
 
-### 8.4 API-D06 不只有 Authorization
+**同文件寫入互斥**已確認：同一 (System, document_id) 不同時更新，retire 的忙碌互斥具體回應仍待核定。這與下列 **Query 的讀寫鎖**是兩件事。
 
-- Authentication：確認呼叫者身分，例如企業 Gateway 驗證的服務憑證／Token。
-- Authorization：確認該身分能否對目標 System 執行 Ingest、Query、狀態查詢或 Retire。
-- 可信路由：Builder DEV 的多 System 請求如何對應已授權 System；一般呼叫者不能用任意 Header 選別人的 System。
+最簡單的單程序方案是由 Runtime／Engine 維護同一 System 共用的鎖，Indexing 真正提交／retire 時持有，Retrieval 取得候選時使用同一把鎖；Parsing／Embedding 及後續 Rerank 不占這把鎖，避免整個模型呼叫期間阻擋查詢。這是設計示意，不凍結 Python SDK 的 lock 類型或介面。
 
-Builder 使用者登入與 FTEST／ENT 業務系統呼叫 Runtime 可以有不同驗證方式。選用 API Key／Bearer Token／Gateway 整合需依部署環境討論，不在本輪另造登入服務。
+此鎖只協調同 Runtime／同鎖管理範圍內的存取，不自動涵蓋其他程序、直連 ES 的客戶端或仍在執行的 External Service；ES refresh／資料可見性也需配合。不是資料庫交易或分散式原子發布保證。
 
+使用者傾向 KISS、可討論接受極短更新窗口的競態。**是否省略 Query 讀寫鎖、接受暫時新舊混合，仍保留為取捨，未在本輪默默撤銷原有成功發布／失敗保留舊版要求。**若採此簡化，需明確記錄放寬的是更新期間的讀一致性；工作 completed 與刪除成功後仍須反映正確資料，不讓半份永久失敗結果冒充成功。不加入複雜分散式鎖／全索引快照作為本輪新需求。
+
+### 8.4 Runtime API 暫定 Basic；Builder 登入延後
+
+使用者要求 Builder 的使用者登入方式之後再討論；Retrieval API 暫訂 basic oath。本輪**先按 HTTP Basic Auth（帳號／密碼）理解並規劃，不視為 OAuth／Token 流程已選定**；若原意是 OAuth，需要再對齊名詞。這是暫定方向，不凍結企業帳號／權限模型。
+
+HTTP Basic 以使用者名稱／密碼認證；部署採 HTTPS／TLS，帳密經環境 Secret 引用配置，不寫入文件資料或邏輯 Config。標準依據：[RFC 7617](https://www.rfc-editor.org/rfc/rfc7617.html)。
+
+Basic 解決 Authentication（辨識呼叫者），不自動決定 Authorization（能否對某個 System 執行 Ingest、Query、查清單／狀態或 Retire）。共享 Runtime 的可信 System 路由、帳號作用範圍與 Health 暴露仍須界定；不能直接相信外部任意 Header 選租戶。
+
+本輪不要求實作 Builder 登入／tSSO／SSO 管理流程，也不新增 OAuth 服務。Basic 的具體檢查位置、帳密管理與 Gateway 整合依部署條件後續討論。
 
 ## 9. 文件資料查詢與直接刪除
 
@@ -325,7 +340,11 @@ GET /v1/documents?limit=100&cursor=...
 {"document_ids": ["manual-001", "manual-002"], "next_cursor": null}
 ```
 
-完整清單以分頁讀取，不無限制一次塞入所有 ID；一份文件有多個 Chunk 仍只回一個 document_id。limit=100 僅是例子，不是已核定預設值；頁面排序、cursor 有效期與同時寫入時的一致性見 API-D07。初版不要求計算全量 total 或提供內容投影。
+完整清單直接查該 System 的實際 ES／Local 資料，對 document_id 去重並分頁；一份文件有多個 Chunk 仍只回一個 ID，不無限制一次塞入全部結果。limit=100 僅是例子，不是已核定預設值；頁面排序、cursor 有效期與同時寫入時的一致性見 API-D07。初版不要求計算全量 total 或提供內容投影。
+
+後端實作可依布局選擇：ES 以可精確聚合的 document_id 欄位作去重，候選是 composite aggregation，使用回傳 after_key 接續頁面；不能只取前 N 個 Chunk hits 去重，就當作已列出所有文件。Local 可由 Chunk store 的 document_id 去重集合或一致維護的文件對照取得，MongoDB 模式使用實際保存的文件資料；不查 Runtime 工作表，也不需要為這個 API 再建中央目錄 DB。
+
+ES 分頁聚合依據：[Composite aggregation](https://www.elastic.co/docs/reference/aggregations/search-aggregations-bucket-composite-aggregation)。具體 Mapping、排序、資料更新中的頁面一致性與效能仍由 Artifact／backend 驗證，不把方案寫成已實作。
 
 ### 9.4 Retire 直接刪除
 
