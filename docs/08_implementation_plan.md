@@ -33,73 +33,41 @@
 | HTTP、平台儲存、工作與部署整合 | 07 |
 | 決策狀態、階段、驗收／阻擋 | 08 |
 | Inference Contract 討論摘要與 UI 整合提案 | 09；欄位以 05、決策以 08 為準 |
-| Prototype 待辦與歷史完成證據 | 10；使用者要求改 UI 時才實作 |
+| Prototype 待辦／目前狀態 | 10；歷史驗證證據放 history/validation，使用者要求改 UI 時才實作 |
 | Component 開發、測試及套件交付流程 | 11；Engine 機制以 04、三份共用資料以 13～15／schemas/ 為準，Config／Inference 見 05 |
 | Component 設定描述、UI hints、動態選項與相依規則 | 12；設定介面草案，I/O 仍以 05 為準，互動待辦記於 10 |
 
-同一型別／規則不在多份文件各寫一套。03 定義名詞，05 規範對應的資料結構／版本規則，本文保存決策來源及狀態；決策摘要不取代 03 的現行定義。程式 Schema 與文件同步；不能只更新 UI、測試或其中一份規格。
+同一型別／規則不在多份文件各寫一套。03 定義名詞，05 規範對應的資料結構／版本規則，本文保存現行決策摘要與待決狀態；原始來源及討論過程在 history/，不取代 03 的現行定義。程式 Schema 與文件同步；不能只更新 UI、測試或其中一份規格。
 
 ## 3. 已確認方向與保留基線
 
-| ID | 方向 | 依據／狀態 | 主責文件 |
-|---|---|---|---|
-| D-01 | 03 概覽；04 獨立 Engine；05 資料／Config；06 UI；07 Backend；08 開發與決策 | 2026-10-15 對話／已確認 | 03～08 |
-| D-02 | 同一系統支援新手與熟悉 Retrieval 者；AI 設定、CSV 起始、進階收合 | 2026-10-15 使用者提出／已確認 | 03／06 |
-| D-03 | 手寫 Config 可直接執行 Engine；UI 產生 Config，不另生成一套 Engine 程式 | 2026-10-15 對話／已確認 | 04／05 |
-| D-04 | 固定 Ingestion／Inference；Builder 與獨立 API Runtime 使用同一 Engine | 舊 03 v0.8／既有基線 | 03／04／07 |
-| D-05 | 歷史五／六鍵方向；ParsedDocument 已由 D-49 改為四鍵 units，Chunk 保持六鍵、vectors 位於 Chunk | 由 D-49／D-52 細化，現行引用 13～15 | 13～15／schemas/ |
-| D-06 | fields／metadata 宣告 Schema；CSV 每列映射一次為 IngestionDocument（D-44／45 明確輸入格式） | 舊 05 §15～16／既有基線 | 05／06 |
-| D-07 | Recursive／Header-aware、Token 計量；Fixed-size 見 D-36；預設 text 與進階多任務／copy 依 D-47／48 | 舊 05 §13.1／既有基線，新增 Component 不取消原方法 | 04 |
-| D-08 | Embedding fields→vectors；摘要先由輸入提供；文字 Dense 優先 | 舊 05 §6／既有基線 | 04／05 |
-| D-09 | ES／Local Search（FAISS＋BM25）；Local Memory／MongoDB | 舊 05 §8／既有基線 | 03／04 |
-| D-10 | Local Search 同程序／單副本；MongoDB 只持久化並支援重建 | 舊 03 §5.3／既有基線 | 04／07 |
-| D-11 | 結果處理採兩層合併時點設定／四處 Top N；Prototype 已有設定與預覽，Engine 未實作 | 2026-10-15 已確認 UI 與原型更新；現行紀錄見 10 | 04／05／10 |
-| D-12 | Sum Score 不自動正規化；RRF 預設 k=60；兩種策略有效參數分開 | 舊 05 §17／既有基線 | 04／05 |
-| D-13 | System 共用 LLM 清單；Rewrite 以 llm_ref 引用 | 舊 05 §14／既有基線 | 05／06 |
-| D-14 | 原始問題保留；Rerank 使用平台約定 API；舊 Generation 模板已由 D-50 撤銷 | 舊 05 §13～14／既有基線 | 04／05 |
-| D-15 | Filter 區分可過濾欄位／預設條件／本次條件；eq／in 字串、全部與 ACL AND、Top-K 前限制 | 舊 05 §15／既有基線 | 04／05／07 |
-| D-16 | Ingestion 有效配置變動需重建；Inference 變動重測；未啟用草稿不影響執行 | 舊 05 §13.7／既有基線 | 05／07 |
-| D-17 | 助手建議需驗證及使用者套用，不自動執行 Ingestion／猜憑證 | 舊 05 §13.7／既有基線 | 06／07 |
-| D-18 | DEV 服務只供測試；部署覆寫不改測試 Config；只輸出 Secret 引用，不搬資料 | 舊 03 §4／§8／既有基線 | 03／07 |
-| D-19 | FTEST／ENT 由使用單位自行 K8s 部署，Runtime 不依賴 Builder 管理 UI | 舊 03 與最新圖／既有基線 | 03／07 |
-| D-20 | Evaluation 重用相同查詢／檢索，版本與缺標註需可追蹤；首批指標與 Gate 待定 | 舊 04／03／既有基線 | 04／07 |
-| D-21 | collection 由 Workspace＋System 名稱自動產生，不要求手填；穩定 ID 防重，改名不換實體 | 2026-10-14 09:31（台北）使用者要求／已確認 | 05／06／07 |
-| D-22 | Parsing 只顯示結構化 JSON；其他格式及所有相關設定預設收合 | 2026-10-14 17:09 使用者要求／已確認 | 06 |
-| D-23 | 使用者可配置融合策略及在哪個合法處理步驟後合併；先釐清 Inference 傳遞物件／多路分數，再核定具體 stages／兩層／預設 | 2026-10-14 要求及 2026-10-15 11:03 釐清／需求已確認，細節 Q-014 | 03／04／05／06／07 |
-| D-24 | 共用 LLM、可編輯 Query Prompt、（舊 Generation 模板範例已取消）及 Rerank 格式說明 | 2026-10-14 10:44～11:00 對話／已確認方向 | 04／05／06 |
-| D-25 | L1／Infra 的框、標籤、方向、圖示及省略線依使用者既有修改保留 | 2026-10-14～15 對話與基準圖／已確認 | 03 §4／既有圖面 |
-| D-26 | Ingest／Inference 的 API 端點說明隨時可看，包含未 Ingestion 狀態 | 2026-10-14 13:11 使用者要求／已確認 | 06／07 |
-| D-27 | 以部門 LangChain／LangGraph 生態為技術背景；Haystack 未被使用者選定 | 2026-10-12 15:58 對話核對／已確認偏好 | 03／04／Q-001 |
-| D-28 | Engine 是模組組裝／執行核心，Runtime 加 API，System 是套用 Config 的具體應用；可直接 SDK 建立 | 2026-10-15 名詞對齊／已確認方向 | 03 §3、04、07 |
-| D-29 | 正式 Config 指模組 Component／參數與邏輯；Blueprint 是助理引入的名稱，移出正式領域模型 | 2026-10-15 10:06 使用者釐清／已確認 | 03／05／06／07 |
-| D-30 | 同一 System 同版 Config 在不同環境保持相同；部署設定可不同 | 2026-10-15 10:06 使用者確認／已確認 | 03／05／07／Q-015／Q-021 |
-| D-31 | 正式階層為 Workspace → System，無額外 Group 層 | 2026-10-15 10:06 使用者確認／已確認 | 03／05／06／07 |
-| D-32 | 名詞定義集中在 03 §3，05 統整資料／版本規則，三份資料細節見 13～15，08 保留決策紀錄；其餘引用主責文件 | 2026-10-15 10:22～10:24 建議後由使用者確認撰寫／已確認 | 03 §3、04～08／README |
-| D-33 | Memory／MongoDB 模式隨 Config 跨環境固定；DEV 用 Memory，FTEST／ENT 也用 Memory，不能只以部署覆寫切換 | 2026-10-15 11:03 使用者確認／已確認 | 03／05／06／07 |
-| D-34 | ResultSet 後處理只有去重＆合併、取 Top N、新模型算分三類；Fusion 為合併策略 | 2026-10-15 14:24 使用者提出、14:28 延續／已確認方向 | 04／05；討論記錄 09 |
-| D-35 | 三類操作輸出皆有序；D-54 明確名次由 items 陣列位置表示，無獨立 rank 欄位 | 2026-10-15 14:28 使用者要求、14:31 要求記錄／已確認方向 | 04／05；UI 提案 09 |
-| D-36 | Chunking 新增 Fixed-size，沿用 Token 計量；保留 Recursive／Header-aware | 2026-10-16 09:42 使用者要求／方法已確認，精確 Token 邊界 Q-004 | 04／05／06；UI 待辦 10 |
-| D-37 | 階段重排 M0～M7；M4 獨立 AI 設定助手，M5 Builder 前後端與助手 UI 整合，M6 評估，M7 獨立交付 | 2026-10-16 09:31～09:45 討論及使用者修正／已確認方向 | 03／06／07／08 |
-| D-38 | 後續需求先更新文件；Prototype 調整記入 backlog，使用者要求改 UI 時才實作 | 2026-10-16 09:42／09:45 使用者要求／已確認 | README／03／06／08／10 |
-| D-39 | Indexing 保存全部 Chunk.fields／metadata，移除「儲存內容」；只選全文／向量／過濾索引；Chunking 預設繼承全部有效 metadata，排除功能有需求再規劃 | 2026-10-16 使用者確認；Prototype v0.12 已完成配置互動，真實儲存未交付 | 03／04／05／06；UIB-005／006 |
-| D-40 | 新增 Module Developer，依公開 Module 契約開發 Component，讓 Builder User 選用；04 維護 Engine 擴充規格，11 維護開發指南 | 2026-10-28 使用者提出角色／修改 L1，並要求依前述討論調整文件／需求方向；具體介面、套件與發布政策仍待決 | 03／04／11；Q-001／Q-002／Q-022；UIB-010 |
-| D-41 | 固定兩個 repo：rag_platform 放 Builder 前後端與管理整合；rag_engine 放 SDK、Engine、Components／Adapters 與 Runtime API。Module Developer 在同 repo 提交 Component，整合測試後交付完整 Runtime Image；接口相容時 Builder／Runtime 可各自升級 | 2026-10-28 使用者確認 Builder 與 Engine＋擴充實作分為兩個 repo，並要求調整文件／已確認；精確套件／接口／CI 細節仍待決 | 03 §3.7／04／07／11；Q-001／Q-019／Q-021／Q-022；UIB-010 |
-| D-42 | 採 Schema 驅動 Component 設定表單：共用 Schema 輸出、UI hints、動態選項與 Engine 相依驗證；不相容選項可見且停用、無關欄位隱藏、進階收合、失效選擇保留報錯、未知必要控制項明示不支援 | 2026-10-28 使用者回覆「好，按照你的建議規劃」／方向與操作行為已確認；component-ui-0.1-draft 的鍵名、Meta-schema、工具與 API 仍待 M0 起分階段核定 | 04 §7.6／06／07 §5.8／11／12；Q-001／Q-002／Q-019／Q-022／Q-025；UIB-010 |
-| D-43 | 可擴充實作統一稱 Component；Module 為功能分類／契約，Component Instance 為配置後的實例。同步 component_id、SDK 類別、目錄／套件／entry point、Descriptor 及文件／L1 圖 | 2026-10-29 使用者確認「Component 好了，有疊積木的感覺」並要求更新相關文件／命名已確認；不改模組分工或執行行為 | 03 §3.8 為權威對照；04～12／README／L1；Q-002 遷移，UIB-010 |
-| D-44 | Engine JSON-only Ingestion；扁平 document_id＋content／base64／uri 三選一；Builder／呼叫端負責上傳轉換；原始／已解析資料需相容 Parser，多 Parser 自動路由 | 2026-10-29 使用者確認全部支援、自動路由、扁平格式並要求保存 Schema；共用 Parser 輸入後依 D-45 確認；批次及輸出結構仍為草案 | 13／schemas/ingestion_document.schema.json；04～07；Q-002／Q-005／Q-019；UIB-011 |
-| D-45 | API 單筆文件與 Parser Input 共用相同 IngestionDocument Schema；content／base64／uri 三選一保留，不另建 ParserInput；取得內容使用 SDK 共用能力，Context 不屬 API body | 2026-10-29 使用者確認「api schema 跟 parser 的 Input 都是相同 schema」並要求記錄；共用契約已確認，SDK／Context 精確簽名仍待決 | 13 §2／§4、schemas/ingestion_document.schema.json；04／05／07；Q-002／Q-016／Q-017；UIB-011 |
-| D-46 | 歷史決策（結構設計已由 D-49 取代）：0.1 五鍵／結構草案與當時固定供應者測資比對，保留歷史追溯 | 2026-10-30 使用者要求先按前述建議寫 Schema 並實際比對；草案產出與驗證範圍已授權，具體擴充／子結構／版本與 SDK 尚未凍結 | 14／schemas/parsed_document.schema.json／examples/parsed_document；04～07／13；Q-002／Q-005／Q-006／Q-016；UIB-012 |
-| D-47 | Chunk 六鍵共用草案；預設直接切 text、不選欄位，進階才多任務／複製；來源追溯放 metadata._rag，向量項目記錄 Profile／來源；可重現 fingerprint＋全域 ordinal | 2026-10-30 使用者確認前述方向並要求 Schema／文件；語意方向已確認，精確格式／SDK 與索引發布仍為草案 | 15／schemas/chunk.schema.json／examples/chunk；04～12；Q-002／Q-003／Q-004／Q-006／Q-007～Q-010／Q-015；UIB-013 |
-| D-48 | 多欄位切分任務預設各自輸出 fields.text；完整來源需明確複製到不衝突名稱。第一版必要切分欄位缺失／型別錯誤／全空白、必要任務零產出及明確 copy 缺失均報錯 | 2026-10-30 使用者回覆「24 照你建議 OK」；concat／固定文字另討論，精確 Schema／SDK 未凍結 | 15 §2／§9；04／05／06／UIB-013；Q-002／Q-004／Q-009 |
-| D-49 | ParsedDocument 統一為平面 units；Parser 整理結構，Chunker 單筆切分，不跨 Unit 合併／overlap；來源以 unit_index 追溯 | 2026-11-02 已確認 units 名稱及無 fields／unit_id 包裝 | 04～08／10～15／schemas／examples；UIB-014 |
-| D-50 | Retrieval-only；產品名統一 Retrieval；Library＋Config 建立 System，Platform 包含 Library／API／Image；取消 Generation 及答案評估 | 2026-11-02 使用者確認 | 03～15／架構圖；UIB-015 |
-| D-51 | Remote Pipeline 可承接連續多 Module；Developer 以 Manifest 註冊服務，User 選用；Local 共用 Runtime、Image 每 System 獨立部署、External 自行部署／固定資料空間；第一版不加 data_space_id | 2026-11-02 使用者確認 1～5、Indexing 配對及簡化資料空間後授權更新文件 | 18／03～07／10～12／16；UIB-016；Q-002／Q-019～Q-022／Q-028 |
-| D-52 | KISS：正式 Chunker 也可不提供 _rag／source_refs／fingerprint／ordinal，有提供才驗證；metadata 可攜帶 Component 支援的文件層提示，不另建通用規則引擎 | 2026-11-03 使用者確認兩點並要求同步文件；放寬 D-47／D-49 中追溯強制性，必要六鍵／ID／內容／向量規則不變 | 04～08／10～18／Schema 說明與參考驗證；UIB-017 |
-| D-53 | 預設 Embedding Component 提供選用欄位模板組合，預設獨立 embedding_text；預設 Chunker 可選擇額外保留每 Unit／任務原文 Chunk，相同不重複新增；兩者預設關閉 | 2026-11-03 使用者接受建議並要求記錄；僅需求文件，不修改 UI／Engine，正式設定 Schema 待核定 | 04／05／15 §9；UIB-018／019；Q-002／Q-003／Q-004／Q-015 |
-| D-54 | 簡化推論直接傳 QueryContext[]：ori_query／query／filters／result_sets／metadata；ResultSet=key/items、ResultItem=chunk/選填score；陣列順序為名次、歷史寫 Logs；RRF 用位置，Sum 仍須可比分數 | 2026-11-03 使用者確認此版本並要求所有文件與累積 UI 同步 | 04～09／17～18／Schema／Python／03 圖；Prototype v0.12；UIB-020 |
-| D-55 | 每 System 一組邏輯索引；IndexBinding 五鍵，省略 index_ref／searchable；Indexing 提供、Engine 驗證管理、Retrieval 宣告格式相容及可搜尋能力；格式定義含 target Schema 與讀寫規格，Context／狀態／資源獨立 | 2026-11-04 使用者確認六項並授權更新文件 | 19／04～08／10～12／16～18／Schema／範例；UIB-021 |
+現行結論集中如下；D-ID 用來追查來源，不要求閱讀歷次討論才能實作。完整原始決策表、當時提案及逐輪變更見 [歷史決策紀錄](history/decisions/decision_history.md)。公共 Contract 的精確形狀以主責文件／Schema 為準。
 
-兩層合併預設勾選且在 Retrieval 後已確認，Prototype 的設定／預覽狀態見 10；不能把展示能力當作 Engine 已實作。Q-014 仍負責正式支援路徑、stage 命名及執行契約等剩餘細節。
+| 主題 | 現行結論 | 來源／主責 |
+|---|---|---|
+| 產品／範圍 | Retrieval-only；無 Generation，Rewrite／助手仍可用 LLM；Evaluation 保留 M6 | D-50／03、04、21 |
+| 管理階層 | Workspace → System；system_id 穩定，名稱／Config Revision／document_id 分開 | D-21／D-31／D-64；03、05、07、21 |
+| 輸入與 Parser | JSON-only；IngestionDocument[] 非空 List，每筆與 Parser 共用 Schema；content／base64／uri 三選一；多 Parser 按能力分派 | D-44／45／58；13、21 |
+| ParsedDocument／Chunk | ParsedDocument 四鍵＋平面 units；Chunk 六鍵；不跨 Unit 合併／overlap，進階多任務結果相加 | D-47～49；14、15 |
+| 追溯與 metadata | _rag／來源／fingerprint／ordinal 由 Component 選擇提供；metadata 可有明確支援的處理提示 | D-52；13～17 |
+| Chunk／Embedding 能力 | Fixed-size／Recursive／Header-aware 用 Token；可複製原文欄位、另留原文 Chunk；Embedding 可選模板衍生欄位，兩項新增功能預設關閉 | D-36／48／53；04、15 |
+| 保存／搜尋 | 保存完整 Chunk；全文／向量／Filter 能力分開。ES 或 Local Search；Memory／MongoDB 持久化模式屬邏輯 Config，跨環境不任意切換 | D-09／10／33／39；04、05、19 |
+| 索引交接 | 每 System 一組邏輯索引；IndexBinding 五鍵，無 index_ref／searchable；Indexing 提供，Retrieval 宣告格式及能力相容 | D-55；19 |
+| 推論資料 | 直接傳 QueryContext[]；ResultSet=key/items，ResultItem=chunk/選填score；items 順序即排名，過程寫 Logs | D-54；05、09、17 |
+| 結果處理 | 同 Query／跨 Query 兩層融合，各可在 Retrieval／Rerank 後；四個 Top N；RRF／Sum Score；文件去重選代表 Chunk | D-11／12／23／34／35；04、05、09 |
+| 共用模型 | System 共用 LLM 名稱清單，Rewrite 以 llm_ref 引用；模型語意與環境連線分開 | D-13／24／30；05、23 |
+| Component 開發 | 兩 repo 分工：rag_platform 管 Builder，rag_engine 管 SDK／Engine／Components／Runtime API；Admin 核可登錄，既有 System 固定元件版本 | D-40～43；03、11、12、20 |
+| Remote 整合 | Local／Remote Image／External；可接管連續多 Module，Manifest 註冊，User 選服務；不加 data_space_id。Image 每 System 獨立服務與必要儲存；External 沿用既有資料空間 | D-51；18 |
+| Flow／Config | 共用 Flow／Executor；每次請求及已接受文件固定 Config 快照，各步獨立傳入 Component Config／Context，資源作用域另管 | D-61／62；03、04、07 |
+| Config 生效／環境 | 同 System 有 queued／running Ingestion 時僅存草稿，工作結束後才允許新版生效；D 存邏輯值，E 存連線／Secret／目標及 Runtime 限制 | D-29／30／63／64；05、07、22、23 |
+| Ingestion 工作 | document_id 完整覆寫、逐文件結果；整批預檢才 202；文件無 partial，Run 可 partial；工作／Queue 留記憶體，重啟 unknown，不續跑、不提供取消 | D-56～58；21 |
+| 讀寫／失敗 | 不加 Query 讀寫鎖，接受更新期間混合可見；同文件 queued／running 拒絕重複提交；未知 Remote 寫入不自動重試；資料清理／恢復仍有待決項 | D-59／60；21、Q-008～Q-010／Q-017 |
+| 文件管理 | exists、文件摘要與 retire 讀取／管理實際儲存；摘要為 documents[]／next_cursor、document_id／source_revisions[]；retire 同步 200＋deleted 或 not_found，忙碌 409 | D-58／64／65；21 |
+| API／認證 | 7 支業務＋2 支 Health；Runtime 暫採一組 Basic 帳密操作服務 API；Builder 登入延後；共用 Runtime 經可信內部 System 路由選 Config | D-60／64；07、21 |
+| Runtime 控制 | 接收大小、Queue／併發、Rate／Deadline、終態狀態保存由 Admin／部署者在 E 設定；14 項初始值集中維護 | D-64；22 |
+| UI／工作方式 | 單一 Create／Edit、CSV 測試、進階收合與相依卡控；需求先更新文件，UI 只在使用者要求時修改，差異記入 Backlog | D-02／22／26／38／42；06、10 |
+| 部署／開發順序 | M0～M7；M4 獨立 AI 助手、M5 Builder 整合、M6 Evaluation、M7 Export；FTEST／ENT 自行部署，Runtime 不依賴 Builder，Export 不搬資料／真實 Secret | D-18／19／37／41／51；03、07、§4 |
+| System Config 狀態 | 23 的共同骨架、五案例及 SC-01～SC-10 是現行討論稿；尚未核定正式欄位／Meta-schema／SDK | D-66；23、Q-002／Q-028 |
 
 ## 4. 開發階段與驗收
 
@@ -222,7 +190,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 - 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System；Local Search 持久化模式隨 Config 跨環境固定（D-33）；全部 Chunk.fields／metadata 保存與合法 metadata 全繼承（D-39）。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile；QueryContext[]／ResultSet 業務欄位已依 D-54 確認。仍待核定的是舊保存／繼承投影、原型短名稱／匯出標籤 migration。
 - D-62 已確認 B：共用 Flow／Executor，依固定 Config 快照在各 Module 選 Component，並傳入 input／本次 config／Context；不強制所有實例共用。精確 SDK 簽名及 Resolver／資源作用域仍待凍結。
 - 2026-10-28 補充：Component SDK 的 Module-specific I/O 包裝、run／初始化／釋放簽名、RunContext、Registry／Factory 與 Config Schema 介面待凍結；Registry 草案改稱 component_id，不直接改寫既有 Config。精確方法／版本引用、舊 module_id 別名與遷移須一致驗證；11 的 Python 程式只作介面示意。
-- 本輪交叉校對後新增 [23 System Config Schema 初版](23_system_config_schema_draft.md)，附可驗證的結構 Schema／五個案例與 SC-01～SC-10 建議；這些具體名稱與包裝仍待使用者討論，不因寫入文件就視為核定。已確認語意／修正證據見 [24](24_spec_alignment_review.md)。
+- 本輪交叉校對後新增 [23 System Config Schema 初版](23_system_config_schema_draft.md)，附可驗證的結構 Schema／五個案例與 SC-01～SC-10 建議；這些具體名稱與包裝仍待使用者討論，不因寫入文件就視為核定。已確認語意／修正證據見 [24](history/reviews/2026-11-05_spec_alignment_review.md)。
 - 建議：先核定最小完整 Config＋單一公開 Engine interface；Pydantic 匯出 JSON Schema，UI 使用相同來源。用完整欄位路徑；未知別名拒絕。
 - 替代：直接沿用 Prototype 全部短名稱；需補齊其缺少型別與執行語意。
 - 負責角色：Engine＋Backend＋Frontend；阻擋 M0 契約凍結。
@@ -564,162 +532,11 @@ Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract�
 
 ## 9. 目前交付狀態與下一步
 
-目前可審閱的交付為 03～15 規格、共用 JSON Schema、契約資料／參考驗證器、模擬 Prototype 及架構圖。三份 Ingestion 資料以 13～15 為準；Inference 的 ResultItem 引用共用 Chunk。
+目前可審閱的交付為 03～23 的現行規格／討論稿、共用 JSON Schema、契約資料／參考驗證器、模擬 Prototype 及架構圖。三份 Ingestion 資料以 13～15 為準；Inference 的 ResultItem 引用共用 Chunk。
 
 - 資料驗證：examples/parsed_document、examples/chunk 與 examples/inference；完整限制與執行方式見 14／15。
-- Parser 對照：Docling／MinerU 固定官方輸出映射，以及 MarkItDown／PyMuPDF4LLM 的已記錄本地解析證據，見 14 §5／§5.1。範例通過不表示已交付 Engine Component。
+- Parser 對照：現行映射與驗收界線見 14 §5；舊版供應者對照／試驗保存在 history/superseded，不等同目前契約的完整 Parser 驗收。範例通過不表示已交付 Engine Component。
 - Prototype v0.12：現行原型完成／提案／後端待辦以 10 §1～7 為準。不可再把 UIB-001～013 全列未實作；多項已完成模擬，UIB-007／008 仍未核定，UIB-021～023 等累積項仍待改 UI／正式整合。
 - 優先決策：正式共用契約／SDK、模型與 Tokenizer、ID／更新／發布政策，再按 M0～M7 推進。D-53 的 Chunk 後模板組合與額外原文 Chunk 已確認需求，尚待實作及凍結具體設定格式，見 15 §9。
 
-已被取代的格式、臨時交接核對及逐輪交付流水帳不再佔用現行規格；歷史可由 Git 查閱。D-01～D-48 保留決策依據，Q-001～Q-027 保留剩餘取捨與階段 Gate，不能把文件整理視為功能驗收完成。
-
-## D-49：Parser／Chunker 分工與平面 Units（2026-11-02）
-
-ParsedDocument 採 units 列表，Unit 直接放內容欄位；無 fields 包裝、無必要 unit_id、無 structure。Parser 整理來源結構；Chunker 僅單筆文字內切分，不跨 Unit 合併／overlap。Fixed-size、Recursive、Markdown Header-aware 保留。來源追溯採 unit_index；其他既定 Chunk／Embedding／Indexing 規則延續。文件、Schema、範例同步；Prototype 遷移獨立列 UIB-014。
-
-## D-50：Retrieval-only 與 Library／Platform（2026-11-02）
-
-Generation 不在開發或驗收範圍；Inference 輸出檢索結果。Rewrite／Multi-query、助手的 LLM 仍保留。03 §3 統一定義 Library、Platform、Runtime、System；Library 配 Config 並綁定必要資源才成為可執行 System。舊 D-14／D-24 中答案相關部分撤銷，UIB-009 取消。實際 repo／package／URN／保留欄位暫不更名，另列遷移；Prototype 已於 v0.12 同步模擬需求，真實功能另依里程碑驗收。
-
-
-
-
-
-### 2026-11-03 D-54／Prototype v0.12 同步
-
-QueryContext 業務欄位已確認；正式 SDK 發布、HTTP 版本／錯誤、IndexBinding（已由 D-55 更新）、分數正規化／同分政策仍依各 Q-ID。UIB-010／016～020 已有模擬互動與驗證；完整 Schema Renderer、Registry、真實服務／部署與模型能力尚待實作。D-53 已由單純記錄推進到 UI 配置與示例，不表示 Engine 完成。UIB-007／008 仍為未核定提案。完整狀態以 10 為準。
-
-## 2026-11-04 D-55 決策追蹤更新
-
-Q-002 的 IndexBinding 業務欄位與單組範圍、Q-014 的能力宣告、Q-028 的索引格式配對方向已收斂，細節以 19 為準。其餘完整 Config／SDK、後端資料布局、Descriptor／Manifest 精確格式、Profile／Filter 實作與資料版本／發布仍 OPEN；不把整個 Q-ID 關閉。舊 IndexBinding 提案以本次五鍵 Schema 取代，Runtime 就緒與 API 狀態投影分開。
-
-Prototype 仍為 v0.12，D-55 的必要調整記入 UIB-021；本輪未修改 UI 或宣稱已建立 Engine Registry／真實索引。實作範例只驗證 DTO、target Schema 及註冊／相容性規則。
-
-
-## 2026-11-05 D-56：文件級更新、Runtime 排程與狀態
-
-同 System／document_id 完整覆寫，文件是更新與成功／失敗單位，Batch 逐文件結果；成功才發布、失敗保留最後成功版本，不做半份續跑。文件 queued／running 時拒絕重複提交；System 文件併發預設 1 且可配置，提高前驗證並行能力。
-
-Builder DEV 與 FTEST／ENT 共用 Runtime Queue／Inference 流量控制，環境上限先建議放 E（D-57 將管理者與存放位置暫緩）；Runtime 有總量控制，Builder 可另設平台配額。不新增每 System Pod 要求。202 接受後查 Run／文件狀態；Queue／Run／文件紀錄留記憶體，Runtime 重啟不保留／恢復；無紀錄或結果未確認為 unknown，不能由舊索引反推最近一次成功，也不保證 Remote 副作用回滾。
-
-最小 API 盤點與可討論子項集中 [21](21_runtime_ingestion_inference_api_inventory.md)；新增 Batch 包裝、路徑、Run partial、HTTP／錯誤／保留值仍是提案。Q-008～010／Q-017／Q-019／Q-020 只收斂以上方向，索引提交／崩潰一致性、Config／資料版本、未知重試、認證及精確格式仍 OPEN。
-
-UI 待辦記 UIB-022；Prototype v0.12、共用資料 Schema 與示例程式均未修改，未宣稱真實 Runtime／Queue／限流已完成。
-
-
-## 2026-11-05 D-57：接收／彙總確認與 Retire 納入
-
-整批接收前預檢通過才入列／回 202，之後逐文件獨立結果。文件無 partial、Run 可 partial；無紀錄查詢 HTTP 200＋unknown。工作紀錄從 queued 建立，failed 與 completed 一樣可查到終態清理；入列前拒絕直接回錯誤，不新建 Run。
-
-刪除能力首期必須有，使用 retire 命名；是否停用保留資料或清除 Chunk／向量、同步／非同步與 Remote 支援仍待確認。取消排隊／執行中文件工作首期不做。限制需可設定；管理者、位置與 Schema 依本輪指示暫緩，E 是既有建議而非新凍結格式。
-
-使用者詢問是否統一 List：21 改推薦單一 POST /v1/ingestions，根層 List、單筆亦包一層，每個 item 仍為 IngestionDocument。此處是待確認的新提案，並未修改共用資料 Schema／正式 API 或 UI。Config 執行中變更、Remote timeout／Query 可見性及 Authentication／Authorization／可信路由的情境見 21 §8，仍待後續討論。
-
-
-## 2026-11-05 D-58：統一 List 與文件資料管理
-
-已確認一支 POST /v1/ingestions 接非空 IngestionDocument[]，單份亦 List；每個 item／Parser input 沿用相同單筆 Schema，沒有另開 :batch。13／16 區分公開 Runtime transport 與 Remote Parser operation，既有共用 Schema／Parser 範例程式不改。
-
-已確認查某 document_id 是否存在、列出當前全部 ID 的 API，以及 retire 直接刪除資料。兩支讀取資料儲存／索引，不從記憶體工作紀錄推算；預設從 Chunk.document_id 取存在與去重清單。retire 清除該 System 文件的儲存／搜尋副本，不只改 soft-delete 標記，也不提供 restore 或取消工作。工作紀錄仍依既定記憶體保留政策處理。
-
-21 的範圍更新為 7 支業務＋2 支 Health；GET exists／文件清單與 POST retire 的具體 Path／欄位、分頁、同步 204／重複刪除／忙碌 409 建議、Remote／Storage 操作能力仍待核定。這些延伸 Q-008／Q-019／Q-028，不關閉整個 Q-ID、不新增 IndexBinding 根鍵或 Pipeline Module。
-
-UI 待辦記 UIB-023（UI 呈現尚待規劃）；本輪只同步文件，Prototype v0.12、共用機器 Schema 與 SDK／教學程式不變。
-
-
-## 2026-11-05 D-59：生命週期／讀寫邊界與暫定 API 驗證
-
-> 此節保留前次討論脈絡；Query 讀寫鎖與 Basic 名詞／帳號範圍已由後續 D-60 收斂，現行以 D-60 與 21 §8 為準。
-
-Remote 寫入結果不明沿用 unknown，不自動重試；後續查核／互斥與服務冪等協定仍待定。使用者以 Config 更新時重啟 Runtime 避免熱切混用，符合獨立部署方向；Builder 共用 Runtime 重建哪個範圍、在途工作與持久索引相容性仍需界定，不能把一個 System 改 Config 默認成重啟全部共享 System。
-
-已確認同文件寫入互斥延續。如何鎖 Query／提交可用同 System 共用鎖示意，使用者偏向 KISS；是否接受更新期間暫時新舊混合仍待明確取捨，不把這個問題當成已放棄成功發布／失敗保留舊版。沒有新增分散式鎖／快照需求。
-
-Builder 登入方式之後討論；Runtime API 的 basic oath 先按 HTTP Basic Auth（帳號／密碼）理解為暫定，若原意為 OAuth 需再對齊。採 HTTPS／環境 Secret 引用；授權與多 System 路由、驗證位置仍 OPEN。沒有更改實際登入程式或暴露憑證。
-
-文件 ID 清單直接查 ES／Local 實際資料並去重；ES 要分頁取完整去重集合，不能只對首批 Chunk 去重。Local 由 Chunk store／一致對照提供，不另強制中央 DB。實作選項與標準來源見 21 §8～9。
-
-
-## 2026-11-05 D-60：共用 API service、無 Query 讀寫鎖、單一帳號
-
-使用者的重啟指 API service／程序重啟，不是 Pod 重建。現行 Builder 共用 Runtime 指同一 API service／程序內多個 System，不只是共用 Pod；即使 Pod 仍在，重啟該程序也會清掉其中全部 System 的 Memory 資料與工作。重建單一 System 實例與重啟整個 API service 是不同管理操作，前者機制仍待定；本輪沒有改成每 System 一個 service／Pod。
-
-不加寫入期間阻擋 Query 的平台讀寫鎖；讀寫各自執行，接受更新期間短暫新舊混合，不要求原子讀取／全索引快照。保留同 document_id 重複 Ingestion 的忙碌拒絕，工作未完整成功不得標 completed；失敗清理／崩潰恢復仍待後端落實。在 retire 前已取得候選的 Query 可於刪除完成後回舊資料；新的讀取應反映完成後資料狀態。
-
-Runtime API 暫採 HTTP Basic Auth，預設一組帳密可操作該 API service 提供的全部 API，不做首期角色／逐 API 權限；不同部署不硬編碼共用同一密碼，憑證用環境 Secret 引用並採 HTTPS。對外 Health 沿用同一認證，內部 Probe 接法為部署細節。Builder 登入仍延後，Remote Service／DB 的連線憑證不預設共用此帳密。
-
-文件／UI 規格待辦同步，沒有改 Runtime、UI、共用資料 Schema 或實際登入程式。API 數量維持 7 支業務＋2 支 Health；Q-006／Q-010／Q-019／Q-020 只收斂上述方向，其餘精確實作仍 OPEN。
-
-
-## 2026-11-05 D-61：共用 API manager 與單 System 獨立部署
-
-本節保留當時決策；其中逐 System Engine 實例／重建的描述已由後續 D-62 細化為共用 Flow 與 Config 快照，不代表必須各建專屬 Flow。
-
-Builder UI 可以保存多份 Retrieval System Config，後台共用一組或少數幾組 Ingestion＋Inference API service，避免逐份設定建立 API service。共用服務啟動載入 Library／Registry／基礎資源，不被單份 System Config 定型；Backend 經可信管理註冊／下發配置，Runtime manager 為各 System 建立／管理 Engine 實例，Library 不直接讀 Builder DB。
-
-Builder 改一份 Config 通常重建受影響的 System 實例，不必重啟整個 API service。實例的建立／快取／回收與舊工作切換、Namespace／服務池分組仍待 Q-017／Q-019／Q-020；不因確認模式而宣稱已實作熱更新／無損切換。真正重啟共用 API 程序仍會清除其中全部 Memory 資料與工作，與單實例重建分開。
-
-FTEST／ENT 主 Runtime 初期基準一 Pod＋一組 Ingestion／Inference API service＋一份 System Config，啟動綁定並可透過重啟採用新版。必要 ES／MongoDB 及 Remote Image Component service 仍是既有外部依賴／額外部署，不承諾整套系統只用一 Pod。Remote External 仍由 Developer 維運。
-
-D-60 的無 Query 讀寫鎖、單一 Basic 帳號全 API 與文件 ID 去重方式維持。API 業務 Payload 不因共用模式加任意 system_id／tenant；共享路由與管理精確介面後續核定。此次只更新文件，UI／Runtime 程式、共用資料 Schema 與圖面未修改。
-
-
-## 2026-11-05 D-62：採 B，共用 Flow／Executor 與逐次 Config
-
-本節記錄共用執行方向；其中 Config 啟用時機後續由 D-63 收斂為該 System Ingestion 結束後才允許生效。
-
-使用者比較 A（每份 System Config 預先組裝專屬 Flow）與 B（共用 Flow、執行時依 Config 選 Component）後，確認採 B。這細化 D-61 的共用服務方向，取代「每份 Config 必須建立／重建專屬 Engine Flow」的解讀；System 仍是 Library＋Config＋必要綁定所形成的邏輯檢索系統。
-
-Builder 經可信路由選定已驗證配置；每次請求與已接受的 Ingestion 文件固定同一 Config 快照，各 Module 解析所選 Component，傳入 input、本次 Component Config 與可信 Context。Config 可預先驗證並快取解析結果，不要求逐次完整驗證；Remote 多 Module 接管在有效步驟中只呼叫一次。公開 IngestionDocument[]／Query body 不加入整份 System Config，Library 不讀 Builder DB。
-
-共用 Flow 不強制共用 Component 實例；無狀態且可安全併行者可共用，有狀態／專屬資源者可分開。模型、Client、IndexBinding 及索引資料按正確作用範圍管理，不能把逐次 input／config／output 存在共用可變 self。精確 Resolver／ResourceManager、快取／釋放與 SDK 方法簽名仍待 Q-002／Q-020。
-
-Builder 純參數變更可準備新快照，無須逐 Config 重建整套 Flow；模型／索引語意變更仍可能重新初始化或 Ingestion。新版啟用時點、排隊／在途工作交接與失敗清理仍待 API-D05／Q-017，不承諾零停機。FTEST／ENT 仍以一主 Pod＋一組 API service＋一份 Config 啟動，使用同一 Executor，初期更新可重啟；Remote Image／External 原政策維持。
-
-Runtime API 範圍維持 7 支業務＋2 支 Health。API-D01～07 的未決格式與邊界見 21 §7.2；B 不等於 OpenAPI、retire HTTP、失敗清理或部署／Builder 管理接口全部凍結。本輪只同步 Markdown，未修改 UI、Runtime、可執行教學程式、公開資料 Schema 或圖面。
-
-
-## 2026-11-05 D-63：Ingestion 結束後才允許新版 Config 生效
-
-本節保留當時狀態；其中退回待議的 retire 回應、錯誤格式、Runtime 初始限制與可信路由，後續已由 D-64 確認，分頁細節仍待確認。
-
-使用者確認前輪第一項建議：「ingestion 後設定生效」。同一 System 有 queued／running 文件時可以保存設定草稿，但暫不啟用新版；既有 Ingestion 沿用接受時固定的配置，待排隊／執行工作結束後才允許套用。此處不新增自動待套用 Queue，也不承諾儲存草稿就會自動啟用。忙碌回應／管理端點的精確格式待 OpenAPI；其他 System 繼續運作，不重啟共用 API service，也不加 Query 讀寫鎖。
-
-Config 及索引／Profile 相容檢查仍要執行，更新語意可能要求重新 Ingestion。既有 Query 使用原快照，Component／Client／索引資源釋放時機仍待細化。Remote timeout 的 unknown 不等於已確認沒有在途寫入；未知結果查核與清理沿用 API-D05，不由一般 Ingestion 已結束推定安全。非預期程序重啟仍遵守既有記憶體工作遺失政策。
-
-使用者另詢問刪不到資料的回應與覆寫失敗是否可查；本輪未將 retire HTTP／Envelope 或失敗回滾政策定案。既有 Runtime 記憶體工作紀錄可回報 failed／unknown，重啟或到期無紀錄為 unknown；狀態可查不代表資料已回復舊版。回應／錯誤、document_id 分頁、限制／保存及可信 System 路由的後續建議仍待確認。本輪只同步 Markdown，未改 UI、Runtime、教學程式或公開資料 Schema。
-
-
-## 2026-11-05 D-64：刪除結果、錯誤格式、Runtime 參數與 System 路由
-
-本節保留當時狀態；文件清單的摘要回應後續已由 D-65 確認，精確分頁參數／cursor 仍留規格定稿階段整理。
-
-使用者確認前輪 2、3、A、C、D，並要求有固定位置整理可調參數；B 本輪是詢問 document_id 分頁的意思，不視為已接受每頁 100／上限 1,000／排序／cursor 等細節。
-
-- Retire 同步確認刪除完成回 HTTP 200，body 為 document_id＋result，實際刪除為 deleted、確認原本不存在為 not_found。同文件 queued／running 回 409，不取消工作；後端失敗、部分刪除或結果不明不得回成功或 not_found。取代早期 204 提案，詳細後端／Remote 清理協定仍待 API-D03／05。
-- 覆寫失敗記在 Runtime 記憶體，Run／文件工作狀態 API 可查 failed＋Module／錯誤；重啟／到期無紀錄為 unknown。這不是磁碟／DB 工作歷史，也不表示舊資料自動回復；資料存在與工作成功分開。
-- A 的回應核心欄位採用 21 範例：接收 run_id／status／config_revision／documents，文件狀態 document_id／run_id／status／module／updated_at／error，Run 另含 counts／documents。Query 仍直接回 QueryContext[]。HTTP 錯誤外框 error，核心 code／message／module；輸入驗證另附 JSON Pointer path，狀態 error 使用相同核心。正式型別／完整錯誤碼／Header／多錯誤包裝仍待 OpenAPI。
-- C 的初始預設及做法確認，集中記錄於新 [22](22_runtime_settings_catalog.md)：文件數／body／來源大小、每 System 與 Runtime 總量 Queue／併發、Query Rate／Deadline、終態工作保存時間／數量。歸 E 的 Runtime 環境設定，Admin／部署管理者提供；一般 Builder User 不透過每次業務請求覆寫。候選參數名稱與正式機器 Schema／載入方式仍需實作規格，沒有新增 Admin UI。
-- D 採可信 Backend → Runtime 的受保護內部 System 路由。S1 表示穩定 system_id，不是顯示名稱、Config Revision、document_id 或索引名稱。Builder 業務路由前綴 /api/systems/{system_id}，Runtime 內部前綴 /internal/systems/{system_id}/v1，Runtime 依已註冊 System 取得有效快照；FTEST／ENT 單 System 仍用 /v1。Health 屬 service 級不逐 System 複製。內部路由須可信存取／認證，不能因可傳 Header 就當作可信；Builder 登入與實際網路／Probe 配置另議。
-
-API 維持 7 支業務＋2 支 Health。B 的分頁只分批取得唯一 document_id 清單，不是切 Chunk；說明與待確認項見 21 §9.3／22 §4。本輪同步 Markdown 與既有 UI Backlog，未修改 Prototype、Runtime 程式、教學程式或共用資料 Schema。
-
-
-## 2026-11-05 D-65：文件摘要清單包含目前儲存的來源版本
-
-使用者接受前輪文件摘要提案，先採用、日後有需求再調整。GET /v1/documents 的回應改為 documents[]＋next_cursor，每筆含 document_id 與 source_revisions[]；取代早期僅 document_ids[] 的回應，不新增 API 或內容查詢功能。
-
-每份 document_id 只列一筆，source_revisions 從該 System 實際保存的 Chunk.source_revision 去重彙整；不從 Runtime 工作表推定。正常完成通常只有一版，覆寫途中／部分寫入失敗可能有多版；多版不代表成功歷史或保留回復點，也不能任選一版宣稱最新。單一 Chunk 的 source_revision 仍是原字串，三份 Ingestion 契約、IndexBinding 與推論物件均不變。
-
-分頁仍是每頁列若干份文件摘要，next_cursor=null 為結束；每頁 100／上限 1,000、排序與 cursor 有效期等先沿用 22 的候選規格，沒有在本輪另行核定所有技術細節。未新增 source_revision 的大小／時間比較、最終成功版本判斷或版本回復政策。
-
-目前 Runtime API 業務範圍可先據此往下規劃，完整 OpenAPI 與實體索引／Remote 管理操作後續落實。§7 更新建議優先順序，先從最小完整 System Config 檢查 Developer 交付與 SDK 介面，再收斂模型／搜尋／更新及驗收；這是下一輪議程，不把未討論格式當成已定。本輪只改 Markdown／Backlog，未修改 UI、Runtime、可執行範例或共用機器 Schema。
-
-
-## 2026-11-05 D-66：規格交叉校對與 System Config 初版提案
-
-使用者授權先比對已討論結果與文件，拉齊漏更新／不一致，再提出 System Config Schema 初版、待討論與建議。已修正的既有語意以 D-49～D-65 為依據，詳見 24；不將新草案選項當成已確認決策。
-
-23 為整合初版，examples/system_config 提供共用骨架 Schema、fixture Config Schema、五種邏輯設定與 E 綁定示例。三層驗證為共同結構 → 所選 Component 參數 → 跨模組語意，E 綁定／真實資源就緒另驗；離線案例不是 Engine、正式 Descriptor／Manifest Meta-schema、模型／DB 或部署驗收。
-
-SC-01～SC-10 保留具體格式、Profile、Remote 範圍／操作、參數正規化與遷移等待議點。Runtime 限制仍歸 E／22，System ID／Config Revision 由可信管理提供；沒有 Generation、任意 DAG、data_space_id、多邏輯索引或工作取消的新需求。UI 只更新 Backlog，程式與圖面呈現不變；圖說補明邏輯關係不代表 Library 直連 Builder DB 或逐 Config 新建 API service。
+歷史決策來源、過時提案、驗證及校對過程集中於 [history/](history/README.md)，包括 D-01～D-66 的來源與演變。Q-001～Q-028 及 SC-01～SC-10 仍是現行待決／討論項目；文件歸檔不代表功能驗收完成。

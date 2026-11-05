@@ -533,4 +533,4 @@ DEV 與 FTEST／ENT 維持相同方法選擇／解析版本與邏輯 Config，�
 Component Config 是處理參數；RunContext 是 Engine 準備的必要資源／Binding 引用，實際 Client／索引物件不放業務 JSON。searchable 不在 Binding，Runtime 管就緒；格式版本與 Component 版本、資料發布版本分開。內建 ES target 有 collection，Local target 可空並使用 System 唯一資源。首版不新增多組選擇；UI 差異只記 backlog。正式 SDK、後端讀寫布局、Remote 協定及更新／發布政策仍需後續核定／實作。
 
 
-整合設定的候選形狀與五個離線案例見 [23](23_system_config_schema_draft.md)；它不凍結 Descriptor／Manifest／SDK，也不等同已交付 Engine。Component 識別與參數、計畫及 E 的資源／限制需分層驗證；審閱差異見 [24](24_spec_alignment_review.md)。
+整合設定的候選形狀與五個離線案例見 [23](23_system_config_schema_draft.md)；它不凍結 Descriptor／Manifest／SDK，也不等同已交付 Engine。Component 識別與參數、計畫及 E 的資源／限制需分層驗證；審閱差異見 [24](history/reviews/2026-11-05_spec_alignment_review.md)。

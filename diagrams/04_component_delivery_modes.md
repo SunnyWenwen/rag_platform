@@ -30,4 +30,4 @@
 
 
 
-D-62／D-66 解讀：圖中的 System／Component 實例是邏輯配置與資料作用範圍，不要求逐 Config 建立專屬 Flow、API service 或 Pod。Builder 的實際模式採共用 Executor／固定 Config 快照，Remote Image 的額外服務仍依 18 部署。配置格式與圖說校對見 [23](../docs/23_system_config_schema_draft.md)／[24](../docs/24_spec_alignment_review.md)，不把示意圖當成已完成執行架構。
+D-62／D-66 解讀：圖中的 System／Component 實例是邏輯配置與資料作用範圍，不要求逐 Config 建立專屬 Flow、API service 或 Pod。Builder 的實際模式採共用 Executor／固定 Config 快照，Remote Image 的額外服務仍依 18 部署。配置格式與圖說校對見 [23](../docs/23_system_config_schema_draft.md)／[24](../docs/history/reviews/2026-11-05_spec_alignment_review.md)，不把示意圖當成已完成執行架構。

@@ -94,7 +94,7 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 
 ## 7. 驗證與剩餘整合
 
-回歸測試涵蓋既有設定／DOM、QueryContext 新 JSON、模板／重名、原文 3／4 筆、passthrough、Component 參數／失效版本、Remote 覆蓋／重疊／Export 差異、Save／Cancel／AI Draft。Chromium 153.0.8010.0 已通過 1440×1000 桌面及 390×844 手機互動／水平溢出檢查，無頁面 JavaScript 錯誤；已實際檢視桌面模板、Remote 鎖定及手機畫面。
+現行驗收要求與未完成整合如下；歷次瀏覽器／契約驗證結果見 [歷史驗證紀錄](history/validation/2026-11-03_prototype_v0.12.md)。
 
 - [ ] 真實 SDK／Config Schema／Registry 與 12 的完整動態 UI 協定。
 - [ ] 真實 Tokenizer、Parser／Resolver、多 Parser 路由、Embedding／ES／Rerank API 與品質驗收。
@@ -102,15 +102,6 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 - [ ] 真實 AI 助手 API、目錄／Draft 版本一致性；UIB-007／008 先決策再實作。
 
 這些未完成工作不阻止展示已確認的 UI 設定流程，但不可當作 Engine／部署里程碑完成證據。後續需求先記文件；使用者要求改 UI 時再更新原型。
-
-### 2026-11-03 驗證紀錄
-
-- Pydantic 12 項、Chunk 10 項通過；ParsedDocument 6 個正例／12 個反例通過；五份 Inference JSON 通過新版共用 Schema。RRF 以陣列名次驗算，舊 wrapper 明確拒絕。
-- 既有 56 項 Prototype、23 項結果處理、5 項 Schema UI 檢查通過；DOM 回歸及新增 12 組 v0.12 流程通過。
-- Chromium 真實互動涵蓋 Create／Edit／取消、CSV 映射、QueryContext 呈現、API 說明、Export、欄位模板、原文 3／4 筆示例、Remote 鎖定／External 固定設定，以及手機版面。Source SVG／MMD／PNG 已同步 QueryContext[]，保留 03 原版型。
-- 瀏覽器套件下載曾緩慢，補齊下載後以本地 Chromium 成功驗證；使用 Noto Sans TC 作中文畫面及圖檔輸出。測試可用既有 Playwright Chromium，或設定 CHROMIUM_EXECUTABLE 與選填 CHROMIUM_ARGS_JSON；外部套件未加入產品頁依賴。
-
-以上為契約、瀏覽器配置與模擬操作驗證，沒有呼叫真實模型／DB／Remote API，也沒有建立 Pod 或發布服務。
 
 <a id="uib-021-index-binding"></a>
 ## UIB-021：D-55 單組 IndexBinding／索引格式配對（已確認，待改 UI）
@@ -120,8 +111,6 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 - [ ] Retrieval 候選依支援的索引格式／版本停用不相容項，顯示原因；僅有相同 JSON 外層不足以接線。
 - [ ] Binding 與 target 為唯讀交接資訊，不把 RunContext、Client、Secret 或 Runtime searchable 狀態當使用者參數。
 - [ ] 正式串接後 Create／Edit／AI／匯出共用驗證，SDK／HTTP 拒絕未宣告能力；目前 mock 不算真實後端驗收。
-
-本輪只同步文件／契約範例；Prototype v0.12 不變。規格見 19，Registry／動態 UI／真實服務整合仍在既有待辦。
 
 
 <a id="uib-022-runtime-ingestion-status"></a>
@@ -134,8 +123,6 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 - [ ] Ingestion Queue 額滿、Inference Rate／併發／Timeout 有可理解提示；不在每次文件／Query 表單加入環境上限設定。
 - [ ] 區分文件工作狀態、索引是否可查與 Runtime Health；Local／Remote 的未知結果不冒充可安全重試。
 
-本輪只更新文件／Backlog，Prototype v0.12 不變。D-57 已確認 Run partial、未知紀錄 HTTP 200 與整批預檢；D-58 已確認統一 List 與 retire 直接刪除；後續 D-64 已確認狀態／錯誤核心欄位、retire 同步結果與 Runtime 初始限制，詳細機器 Schema／文件管理分頁／後端清理仍待核定。Retire API 列首期必要，UI 操作另盤點；首期不做工作取消，不新增管理 UI 或凍結動態 UI Meta-schema。
-
 
 <a id="uib-023-document-management"></a>
 ## UIB-023：D-58 統一 List 與文件管理 API（API 方向確認，UI 待規劃）
@@ -145,16 +132,12 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 - [ ] 文件 ID 清單／存在查詢／retire 在 UI 的操作位置、分頁、確認與錯誤呈現，待需求及 21 的精確介面對齊後規劃；本輪不先實作面板或刪除按鈕。
 - [ ] 需由 Runtime／backend 實際查詢及刪除，不用前端記憶體列表或 Ingestion 成功紀錄假裝資料來源。
 
-目前只更新文件，Prototype v0.12 不變；使用者要求改 UI 時才修改原型。D-64 已確認 retire 同步 200＋deleted／not_found、忙碌文件 409；文件 ID 分頁細節仍待核定，不將規格決策描述為已完成程式。
-
 
 ### D-60：讀寫並行與暫定驗證方式補充
 
 - [ ] 不因有 Ingestion／retire 寫入就禁用 Inference 或顯示等待讀寫鎖；索引實際未就緒／限流／錯誤仍按 Runtime 回應呈現。
 - [ ] API 說明暫採單一 Basic 帳密操作全部 Runtime API，憑證不寫進業務 payload；不因此新增 Builder 登入或角色權限 UI。
 - [ ] 更新期間 Query 可反映不同時點的資料，不在 UI 宣稱原子快照；同文件 queued／running 重複提交仍保留忙碌提示。
-
-只更新既有 UIB-022／023 對應規格，Prototype v0.12 不變；未實作認證或讀寫控制。
 
 
 ### D-63／D-64：設定啟用、刪除結果與錯誤補充（待改 UI）
@@ -164,8 +147,6 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 - [ ] 工作失敗呈現 status=failed、module 與 error；HTTP 請求錯誤讀取 error 外框，驗證位置使用 path。兩者不混同，Runtime 記錄失效仍顯示 unknown。
 - [ ] API／部署說明引用 22 的 Runtime 可調參數，不在單次業務表單加入環境上限或 Admin 控制頁。
 - [ ] System 操作使用穩定 system_id；不將名稱、Config Revision 或 document_id 當成該識別碼，也不在業務 body 塞入整份 Config。
-
-只維護既有 UIB-022／023 的待辦；Prototype v0.12 不變。每頁 100／上限 1,000 的分頁提案尚未核定，不先實作分頁控制項或宣稱已接通可信路由。
 
 
 ### D-65：文件摘要清單（UI 位置仍待規劃）
@@ -182,4 +163,4 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 - [ ] UI Draft 保留停用選擇；Engine 編譯出有效參數／引用並做共同驗證，錯誤仍以 Module／欄位定位。具體正規化與 Hash 依 23 的 SC-08 討論。
 - [ ] Runtime 限制、URL／Secret／實體目標在 E 的資源／部署區處理，模型語意與演算法參數留 D；不增加每次 Request 任意覆寫或一般 User 的 Admin 控制頁。
 
-本次只修正文案狀態與記錄候選格式。Prototype v0.12、Renderer／動態 UI Meta-schema 與圖檔均未修改；23 的 Schema／範例是討論材料。
+分頁精確參數、實際文件管理面板位置及 System Config 遷移仍依 21～23／SC 決策；原型未接通真實服務。需求先記待辦，收到改 UI 指示後再實作。逐輪文件整理說明見 [歷史 UI 記錄](history/changes/ui_backlog_notes.md)。

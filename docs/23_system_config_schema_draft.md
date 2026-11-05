@@ -1,6 +1,6 @@
 # 23 — System Config Schema 初版與待討論決策
 
-2026-11-05｜**整合討論稿，尚未核定欄位名稱／包裝或發布正式 SDK。**先完成 [24 規格拉齊](24_spec_alignment_review.md)，再以本稿討論；已確認的語意沿用 D-49～D-65。可驗證的結構稿放在 examples/system_config，沒有替換既有 schemas/ 的共用資料契約。
+2026-11-05｜**整合討論稿，尚未核定欄位名稱／包裝或發布正式 SDK。**前次校對已歸檔至 [歷史校對紀錄](history/reviews/2026-11-05_spec_alignment_review.md)，目前設定討論依本稿進行；已確認的語意沿用 D-49～D-65。可驗證的結構稿放在 examples/system_config，沒有替換既有 schemas/ 的共用資料契約。
 
 ## 1. 這次要定義什麼
 

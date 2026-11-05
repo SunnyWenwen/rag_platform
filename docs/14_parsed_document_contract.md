@@ -159,7 +159,7 @@ page、slide、sheet、section_title、image_uri 等自訂來源欄位不會因�
 | MarkItDown | Markdown 整份一個 Unit，或 Parser 先整理成數個 Units | 不再需要產生 text-spans；新版實際解析整合待驗證 |
 | PyMuPDF4LLM | Markdown 一個 Unit，或逐頁文字各成 Unit；Layout 資訊在 Parser 內處理 | 新版空白頁／跨頁／表格策略與整合待驗證 |
 
-這是對既有來源表示的設計對照，不是宣稱供應者直接輸出本 Schema。上輪 0.1 的官方測資／實際解析結果僅適用舊契約；已移除現行目錄中的舊轉換器及通過報告，避免被當成新版驗收。完整歷史可於 [0.1 基線提交](https://github.com/SunnyWenwen/rag_platform/tree/2e1a3863e8c0217246c1869ffa131434c0983338/examples/parsed_document) 查閱；[固定測資清單](../examples/parsed_document/provider_cases.json) 保留 URL／revision／hash 供後續重驗。
+這是來源表示的設計對照，不是供應者直接輸出本 Schema 的承諾。0.1 的舊規格／官方測資對照已歸檔至 [歷史 ParsedDocument 0.1](history/superseded/parsed_document_0.1.md)，供查驗、不作新版驗收證據；[固定測資清單](../examples/parsed_document/provider_cases.json) 仍供後續重驗。
 
 本次本地驗證是 [test_contract.py](../examples/parsed_document/test_contract.py) 的新正負案例及 [Docling 摘錄](../examples/parsed_document/docling_report_excerpt.json)，未執行外部模型或重新量測解析品質。
 
