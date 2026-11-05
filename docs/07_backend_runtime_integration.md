@@ -127,29 +127,29 @@ System 列表／讀取、Workspace／Dataset CRUD、AI suggestion／連線檢查
 
 ### 5.2 Runtime API
 
-D-58 更新為 7 支業務＋2 支 Health：統一 List 提交、文件存在／ID 清單查詢及 retire 直接刪除均已確認；完整管理 API 路徑／Envelope、同步刪除建議等仍待整理，見 [21](21_runtime_ingestion_inference_api_inventory.md)。
+D-58／D-64：維持 7 支業務＋2 支 Health；統一 List、工作查詢核心欄位、retire 同步 200 與 deleted／not_found、忙碌文件 409、錯誤核心格式與可信 System 路由已確認。文件 ID 分頁細節及完整 OpenAPI 尚待整理，見 [21](21_runtime_ingestion_inference_api_inventory.md)；可調 Runtime 限制集中在 [22](22_runtime_settings_catalog.md)。
 
 | HTTP method | Path 草案 | 行為 |
 |---|---|---|
 | POST | /v1/ingestions | 根層非空 IngestionDocument[]，單筆亦為一元素 List；整批預檢通過才 202＋run_id／Location |
-| GET | /v1/ingestions/{run_id} | 一次提交及逐文件結果；Run partial 已確認，精確格式待 API-D02 |
+| GET | /v1/ingestions/{run_id} | 一次提交及逐文件結果；Run partial、config_revision／counts／documents 等核心欄位已確認，完整 OpenAPI 待 API-D02 |
 | GET | /v1/documents/{document_id}/ingestion-status | 該 System 文件最近一次工作狀態；無可用紀錄為 unknown，不等於文件不存在 |
 | POST | /v1/queries | query／filters／metadata；200 直接回 QueryContext[]；同步限流／併發／Deadline |
 | GET | /v1/documents/{document_id}/exists | 讀取實際儲存判斷文件存在；回應格式為 21 草案，不從工作表推算 |
 | GET | /v1/documents?limit=...&cursor=... | 去重分頁取得當前全部 document_id；排序／cursor 細節待定 |
-| POST | /v1/documents/{document_id}:retire | 已確認直接刪除文件儲存／索引；建議同步 204，精確 HTTP／互斥與 Remote 配套待確認 |
+| POST | /v1/documents/{document_id}:retire | 直接刪除資料，同步完成回 200＋document_id／result=deleted 或 not_found；同文件 queued／running 回 409，Remote 清理／未知結果協定仍待細化 |
 | GET | /health/live | 程序是否存活 |
 | GET | /health/ready | Runtime／必要資源是否初始化；不等同已有可查索引 |
 
 共用模式的 Health Ready 可在沒有已載入 System 時表示 API manager／Registry 已可接受管理與路由；個別 System／索引的 Ready 分別驗證。不能讓新增一份尚未初始化的 UI Config 使整個共用服務都不 Ready。具體狀態回應仍待 OpenAPI／管理介面核定。
 
-獨立 Runtime 的業務請求不另帶 System ID；配置已綁定。Builder DEV 的可信路由先選 System，不能直接信任使用者提供的 tenant／system header；Run／文件狀態查詢也需驗證相同 System 權限。D-60：Runtime API 暫用一組 HTTP Basic 帳密操作該服務全部對外 API，首期不做角色／逐 API 授權；採 HTTPS／TLS 與環境 Secret 引用。共享 System 路由、檢查位置與部署 Probe 接法仍待細化，Builder 登入方式延後。
+獨立 Runtime 的業務請求不另帶 System ID；配置已綁定。Builder DEV 的可信路由先選 System，不能直接信任使用者提供的 tenant／system header；Run／文件狀態查詢也需驗證相同 System 權限。D-60：Runtime API 暫用一組 HTTP Basic 帳密操作該服務全部對外 API，首期不做角色／逐 API 授權；採 HTTPS／TLS 與環境 Secret 引用。D-64 採受保護的內部 /internal/systems/{system_id}/v1/... 業務路由，由可信 Backend 選擇已註冊 System，Runtime 固定其有效 Config 快照；S1 是 system_id 示意，不是 Config Revision／Collection 名稱。路由只供可信 Backend 存取且驗證認證，不能只信任可偽造 Header；精確保護／Probe 接法仍待部署規格，Builder 登入方式延後。Health 仍是 service 級，不逐 System 複製。
 
 Retire 納入首期能力；排隊／執行中文件取消確認首期不做。文件 ID 清單與存在查詢已納入；整份文件／Chunk 內容、索引診斷與單步測試仍未納入，見 21 §7／§9。
 
 ### 5.3 JSON Ingestion
 
-2026-10-29 更新：Runtime 只提供 JSON Ingestion。單筆文件以 document_id＋content／base64／uri 三選一表示，欄位與解析責任見 [13](13_ingestion_parser_input_contract.md)，機器可讀 [JSON Schema](../schemas/ingestion_document.schema.json)。以下展示已確認的 List body，內含單份 IngestionDocument；單筆也包 List。每筆文件與 Parser input 共用相同 Schema，Parser 不收到 List／run_id；整批預檢通過才入列已確認，數值上限待定。
+2026-10-29 更新：Runtime 只提供 JSON Ingestion。單筆文件以 document_id＋content／base64／uri 三選一表示，欄位與解析責任見 [13](13_ingestion_parser_input_contract.md)，機器可讀 [JSON Schema](../schemas/ingestion_document.schema.json)。以下展示已確認的 List body，內含單份 IngestionDocument；單筆也包 List。每筆文件與 Parser input 共用相同 Schema，Parser 不收到 List／run_id；整批預檢通過才入列已確認，初始文件數／大小上限與可調項見 22。
 
 ```json
 [
@@ -186,13 +186,13 @@ Runtime 驗證分層，不以 API 外層通過就宣稱資料可搜尋：
 
 Engine 不提供 multipart 上傳端點。Builder 可接收檔案／CSV，轉成 content、Base64 或可存取 URI 再呼叫相同 JSON API；自行部署的呼叫端負責相同轉換。檔案傳輸轉換不等於語意 Parsing，原始檔案內容仍需 Engine 有相容 Parser。
 
-Builder 上傳管理端點、暫存儲存與下載授權／生命週期尚待 Q-016／Q-019；獨立 Runtime 不得因此強制依賴 Builder Object Storage。MIME、大小／逾時限制與實際格式偵測待核定；選擇多個 Parser 不代表所有檔案都可解析。
+Builder 上傳管理端點、暫存儲存與下載授權／生命週期尚待 Q-016／Q-019；獨立 Runtime 不得因此強制依賴 Builder Object Storage。Builder 上傳入口／暫存的 MIME、大小／逾時及實際格式偵測規則另待核定；Runtime JSON／來源取得的已確認初始限制依 22；選擇多個 Parser 不代表所有檔案都可解析。
 
 ### 5.5 工作查詢
 
 D-56 採兩種查詢：run_id 追蹤一次提交；document_id 查文件最近一次狀態。ID 直接來自 Request，預檢通過入列即有 queued 紀錄；執行失敗也保留 failed 紀錄，並非只有索引成功才記錄。預檢前拒絕不建立新工作，直接回 HTTP 錯誤。Runtime 記憶體保存 Run／逐文件紀錄及最新對照，不把工作狀態寫入 Chunk／metadata，不從已儲存資料反推最近一次更新是否完成。
 
-文件狀態為 queued／running／completed／failed；無可用紀錄或結果未確認為 unknown，後者須有可辨識原因。completed 代表該文件完整發布；Batch 不得用 completed 掩蓋部分失敗。Run partial 與無紀錄 HTTP 200＋unknown 已確認，counts／其他精確欄位仍待 [21 §4](21_runtime_ingestion_inference_api_inventory.md) 定義。
+文件狀態為 queued／running／completed／failed；無可用紀錄或結果未確認為 unknown，後者須有可辨識原因。completed 代表該文件完整發布；Batch 不得用 completed 掩蓋部分失敗。Run partial 與無紀錄 HTTP 200＋unknown 已確認，counts／狀態核心欄位已由 D-64 確認，引用 [21 §4](21_runtime_ingestion_inference_api_inventory.md)，完整型別及未知結果處理仍待核定。
 
 ```json
 {
@@ -201,9 +201,9 @@ D-56 採兩種查詢：run_id 追蹤一次提交；document_id 查文件最近�
 }
 ```
 
-Batch 計數提案以收到的 IngestionDocument 為單位，不混入 Unit／Chunk 數；各計數拼字／彙總終態待 API-D02。舊 processed_documents／total_documents 示例不作正式欄位依據。
+D-64：Batch counts 以收到的 IngestionDocument 為單位，不混入 Unit／Chunk 數；total／queued／running／completed／failed／unknown 與 Run partial 語意引用 21。核心欄位已確認，完整 Schema／OpenAPI 與未知結果細節仍待 API-D02／05。舊 processed_documents／total_documents 示例不作正式欄位依據。
 
-只清理可回收的終態紀錄；queued／running 不提前清除。保留時間／數量上限尚待設定。重啟後無紀錄回 unknown，不憑 ES／MongoDB 中有舊資料就宣稱最後那次工作成功。此政策不等於所有索引也清空，更不保證遠端寫入自動回滾。
+只清理可回收的終態紀錄；queued／running 不提前清除。D-64 初始保留 24 小時且最多 10,000 份可回收終態文件紀錄，可調項與整組清理規則見 22。重啟後無紀錄回 unknown，不憑 ES／MongoDB 中有舊資料就宣稱最後那次工作成功。此政策不等於所有索引也清空，更不保證遠端寫入自動回滾。
 
 文件存在／ID 清單與 retire 另見 21 §9：直接讀取／刪除該 System 的資料儲存與索引，不以 IngestionRun 當作文件目錄。retire 後歷史 Ingestion 狀態可仍為 completed，exists 卻為 false；工作紀錄按原政策清理，避免混用兩種狀態。後端不可用時不回 false／空清單，Remote 需對應管理能力。
 
@@ -277,21 +277,21 @@ ES 內部融合只回真正取得的 Hybrid 清單；平台不捏造分項排名
 
 ### 5.7 標準錯誤
 
-建議 HTTP Envelope：
+D-64 已確認 HTTP 錯誤使用 error 外框，核心為 code／message／module；輸入驗證另附相對 Request 的 JSON Pointer path。Module 可為 null，無 path 時省略；工作狀態 error 使用相同核心，不額外再包 error。以下不新增成功回應外框：
 
 ```json
-{"request_id":"req-001","error":{"code":"INDEX_NOT_READY","module":"Retrieval","message":"索引尚未就緒，請完成 Ingestion。","retryable":false}}
+{"error":{"code":"INDEX_NOT_READY","module":"Retrieval","message":"索引尚未就緒，請完成 Ingestion。"}}
 ```
 
 | HTTP | 領域例子 |
 |---|---|
 | 400 | 請求格式／Filter 非法 |
 | 401／403 | 未認證／無權操作 |
-| 404 | 不存在的工作／System |
-| 409 | Revision 衝突、索引不相容或尚未就緒 |
+| 404 | 不存在／不可路由的 System；查無 Run／文件工作紀錄仍按已確認規則回 200＋unknown |
+| 409 | 同文件忙碌、Revision 衝突或索引不相容；Query 索引尚未就緒依 21 使用 503 |
 | 503 | 必要外部服務不可用 |
 
-這是草案而非完整錯誤碼表；422／413／429／504、錯誤陣列、lost Run 與重試提示見 Q-019。ModuleResult、HTTP error 與非同步 Run errors 各有層次，必須有明確映射；不能把 202 後的執行失敗當作 POST HTTP failure 重送。
+核心錯誤格式與工作 unknown 已確認；本表仍不是完整錯誤碼表，422／413／429／504、一次回報多個驗證問題、重試提示及正式 Header 名稱見 Q-019／21。SDK 內部 ModuleError 的 retryable 等欄位不自動成為對外必要欄位。ModuleResult、HTTP error 與非同步 Run errors 各有層次，必須有明確映射；不能把 202 後的執行失敗當作 POST HTTP failure 重送。
 
 <a id="runtime-capability-contract"></a>
 
@@ -312,7 +312,7 @@ D-42 的 Descriptor、動態選項／能力 Context、規則與驗證回傳草�
 
 ## 6. 非同步工作與一致性
 
-D-56 已確認：Builder DEV 與 FTEST／ENT 共用 Runtime 工作控制，Library 執行流程；Builder 上傳與直接呼叫 API 走同一 Queue，不再重複排一次。每 System 文件執行併發可配置、預設 1；Runtime 再設總量，Inference 有頻率／併發／Deadline。限制可配置已確認；放 E 是先前建議，管理者／存放位置／Schema 本輪暫緩定案；不由每次文件／Query 任意覆寫。
+D-56 已確認：Builder DEV 與 FTEST／ENT 共用 Runtime 工作控制，Library 執行流程；Builder 上傳與直接呼叫 API 走同一 Queue，不再重複排一次。每 System 文件執行併發可配置、預設 1；Runtime 再設總量，Inference 有頻率／併發／Deadline。D-64 已確認初始預設與管理方式：E 的 Runtime 環境設定，由 Admin／部署管理者控制，不由每次文件／Query 任意覆寫；完整可調項、單位與作用範圍集中見 22，正式參數路徑／機器 Schema 與載入方式仍待核定。
 
 Batch 逐文件處理；併發 1 時依序，併發 2 時不同文件可同時處理。相同 (System, document_id) 已 queued／running 時拒絕再次提交。支援提高併發仍需驗證 Component／Client／共享索引的安全性，必要的同文件寫入互斥與資源安全由執行實作處理，但不加阻擋 Query 的共享讀寫鎖；不承諾任意 backend 可無限制並行。
 
@@ -326,7 +326,7 @@ Local Search 第一版仍同程序／單副本。背景執行不能把唯一 Mem
 - 文件級索引 staging／舊 Chunk 清除／發布點、搜尋可見性及崩潰一致性；不以單次 Bulk／Hash 宣稱原子替換已完成。
 - D-62 已定共用 Flow、逐請求／文件固定 Config 快照；D-63 已定該 System 的排隊／執行中 Ingestion 結束後才允許新版生效；舊 Query／資源交接、未知 Remote 操作與持久索引相容性仍待決。讀寫不互斥／接受短暫混合已由 D-60 確認，詳見 21 §8。
 - 未知遠端寫入已確認不自動重試；具體結果查核、同文件隔離、Idempotency-Key／版本控制及清理仍待定，首期不做取消。
-- Queue／並行／Rate／Deadline／紀錄保留的具體值，與未來多 replica 下的一致控制。
+- Queue／並行／Rate／Deadline／紀錄保留初始值已依 D-64 記於 22；尚待正式設定 Schema／載入方式、未知紀錄清理與未來多 replica 一致控制。
 
 方向已確認不表示提交機制已實作；詳細盤點與待決子項見 [21](21_runtime_ingestion_inference_api_inventory.md)。
 

@@ -126,11 +126,11 @@ Parser 的具體教學入口是 [16](16_parser_component_development_examples.md
 
 - **A**：同 System／document_id 完整覆寫，文件級成功／失敗；文件完整成功才記 completed，失敗清理／保留舊版仍需實作，不續跑半份資料；D-60 不鎖 Query，更新期間允許暫時新舊混合。具體提交／Remote 崩潰一致性仍須實作驗證。
 - **B／C**：Component 有實作版本，System 固定選用、不自動升級；Admin 手動審核登錄／發布。Local 須在目標 Runtime 有程式／依賴；Remote 須有相容 Adapter／操作邊界與可用服務。動態 UI Meta-schema 仍暫緩，不因確認管理方式而凍結 Descriptor／Manifest。
-- **D／E**：D 保存流程／參數／版本選用；Queue／併發／Rate／Deadline 等上限需可設定；先前建議歸 E，管理者、存放位置與格式依 D-57 暫緩定案。Builder DEV 與獨立 Runtime 共用控制實作，Builder 可另設 User／Workspace 平台配額。
+- **D／E**：D 保存流程／演算法參數／版本選用；D-64 已確認 Queue／併發／Rate／Deadline／狀態保存等 Runtime 控制歸 E，由 Admin／部署管理者提供。初始預設、單位與作用範圍集中在 [22](22_runtime_settings_catalog.md)，正式參數路徑／機器 Schema 與載入方式仍待核定。Builder DEV 與獨立 Runtime 共用控制實作；User／Workspace 額外平台配額另議，不透過單次業務 body 覆寫。
 - **Runtime 管理資料**：有上限 Queue，文件執行併發預設 1 可調；同文件 queued／running 拒絕重複提交。202 後提供 run_id／document_id 查詢，文件最新狀態另存記憶體，不改共用業務 DTO。
 - **重啟政策**：不保留／恢復 Queue／Run／文件狀態；無紀錄查 unknown，不由已儲存文件推定最近一次完成。索引持久化／Remote 副作用與工作紀錄分開看待。
 
-上述方向記 D-56；[21 API 盤點](21_runtime_ingestion_inference_api_inventory.md) 更新為 7 支業務＋2 支 Health 清單及 API-D01～07。後續 D-57 已確認整批接收預檢、Run partial／未知紀錄 HTTP 200，retire 能力納入、工作取消暫緩；D-58 已確認統一 List、文件存在／ID 清單與 retire 直接刪除；精確管理格式／分頁／執行與數值仍待整理。不是新增已實作的契約或已發布 API。
+上述方向記 D-56；[21 API 盤點](21_runtime_ingestion_inference_api_inventory.md) 更新為 7 支業務＋2 支 Health 清單及 API-D01～07。後續 D-57 已確認整批接收預檢、Run partial／未知紀錄 HTTP 200，retire 能力納入、工作取消暫緩；D-58 已確認統一 List、文件存在／ID 清單與 retire 直接刪除；D-64 已進一步確認 retire 結果／錯誤核心格式、可信 System 路由與 Runtime 初始預設；文件 ID 分頁細節、完整 OpenAPI 與後端清理仍待整理。不是新增已實作的契約或已發布 API。
 
 
 D-58 補充：**Runtime 工作狀態**與**文件資料管理**分開。前者重啟為 unknown；後者讀取實際儲存的文件存在／ID 清單，retire 真正刪除資料。屬 A 的 storage／index 管理能力與 C 的 Remote 配套；HTTP 經 Runtime 提供，Builder UI 另行規劃，不新增 Module 或強制保存 ParsedDocument。

@@ -134,7 +134,7 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 - [ ] Ingestion Queue 額滿、Inference Rate／併發／Timeout 有可理解提示；不在每次文件／Query 表單加入環境上限設定。
 - [ ] 區分文件工作狀態、索引是否可查與 Runtime Health；Local／Remote 的未知結果不冒充可安全重試。
 
-本輪只更新文件／Backlog，Prototype v0.12 不變。D-57 已確認 Run partial、未知紀錄 HTTP 200 與整批預檢；D-58 已確認統一 List 與 retire 直接刪除；工作狀態精確欄位、文件管理分頁／刪除執行等仍待核定。Retire API 列首期必要，UI 操作另盤點；首期不做工作取消，不新增管理 UI 或凍結動態 UI Meta-schema。
+本輪只更新文件／Backlog，Prototype v0.12 不變。D-57 已確認 Run partial、未知紀錄 HTTP 200 與整批預檢；D-58 已確認統一 List 與 retire 直接刪除；後續 D-64 已確認狀態／錯誤核心欄位、retire 同步結果與 Runtime 初始限制，詳細機器 Schema／文件管理分頁／後端清理仍待核定。Retire API 列首期必要，UI 操作另盤點；首期不做工作取消，不新增管理 UI 或凍結動態 UI Meta-schema。
 
 
 <a id="uib-023-document-management"></a>
@@ -145,7 +145,7 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 - [ ] 文件 ID 清單／存在查詢／retire 在 UI 的操作位置、分頁、確認與錯誤呈現，待需求及 21 的精確介面對齊後規劃；本輪不先實作面板或刪除按鈕。
 - [ ] 需由 Runtime／backend 實際查詢及刪除，不用前端記憶體列表或 Ingestion 成功紀錄假裝資料來源。
 
-目前只更新文件，Prototype v0.12 不變；使用者要求改 UI 時才修改原型。Retire 執行模式與分頁仍待核定，不將新的草案能力描述為已完成。
+目前只更新文件，Prototype v0.12 不變；使用者要求改 UI 時才修改原型。D-64 已確認 retire 同步 200＋deleted／not_found、忙碌文件 409；文件 ID 分頁細節仍待核定，不將規格決策描述為已完成程式。
 
 
 ### D-60：讀寫並行與暫定驗證方式補充
@@ -155,3 +155,14 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 - [ ] 更新期間 Query 可反映不同時點的資料，不在 UI 宣稱原子快照；同文件 queued／running 重複提交仍保留忙碌提示。
 
 只更新既有 UIB-022／023 對應規格，Prototype v0.12 不變；未實作認證或讀寫控制。
+
+
+### D-63／D-64：設定啟用、刪除結果與錯誤補充（待改 UI）
+
+- [ ] 設定可保存草稿，但該 System 有 queued／running Ingestion 時不啟用新版；工作結束後才允許套用，不影響其他 System，也不因此禁用 Query。
+- [ ] API 說明將 retire 更新為同步 200，顯示 deleted／not_found 的不同結果；忙碌文件顯示 409，後端異常不冒充不存在／成功。UI 刪除按鈕與確認流程位置仍待規劃。
+- [ ] 工作失敗呈現 status=failed、module 與 error；HTTP 請求錯誤讀取 error 外框，驗證位置使用 path。兩者不混同，Runtime 記錄失效仍顯示 unknown。
+- [ ] API／部署說明引用 22 的 Runtime 可調參數，不在單次業務表單加入環境上限或 Admin 控制頁。
+- [ ] System 操作使用穩定 system_id；不將名稱、Config Revision 或 document_id 當成該識別碼，也不在業務 body 塞入整份 Config。
+
+只維護既有 UIB-022／023 的待辦；Prototype v0.12 不變。每頁 100／上限 1,000 的分頁提案尚未核定，不先實作分頁控制項或宣稱已接通可信路由。

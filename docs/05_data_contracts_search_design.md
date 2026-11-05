@@ -237,7 +237,7 @@ Config、資源與可信授權由 Runtime 注入，不因移除記錄欄位而�
 | ModuleConfig | module_type、component_id、implementation_version、contract_version、parameters、服務引用；具體實例引用與完整巢狀結構待 Q-002 |
 | RunContext | workspace_id、system_id、config_revision、run_id／request_id、trace_id、deadline、attempt、可信 auth_scope；環境／部署綁定另明確記錄 |
 | ModuleResult[T] | status: succeeded／partial／failed，data、errors、warnings、metrics |
-| ModuleError | code、module、message、retryable、item_id?、details? |
+| ModuleError | SDK 內部錯誤草案：code、module、message、retryable、item_id?、details?；對外 HTTP／狀態 error 核心依 21 的 code／message／module，輸入驗證另附 path，不直接透出內部包裝 |
 | ExecutionMetrics | duration_ms、input_count、output_count、token_usage?、provider_request_id? |
 
 failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項目，不能默默少資料。哪些模組允許 partial 及如何提交資料仍受 Q-009 限制。HTTP 任務狀態不是 ModuleResult.status，見 07。
@@ -257,6 +257,8 @@ failed 時 data 為 null；partial 必須能對應成功／失敗／skipped 項�
 同一 System、同一 Config Revision 的邏輯設定跨環境一致。若要改處理方法、模型／維度／Encoding 等語意，需建立新 Config Revision 並依影響重建，不用環境覆寫掩蓋邏輯差異。不同環境仍需檢查實際模型 Profile 相容性。
 
 原型曾把服務 URL／Secret 引用與 Pipeline 放在同一物件，需明確 migration。具體型別與檔案包裝 Q-002 未凍結，但分離方向已確認。依 03 的正式用語，正式契約不新增 Blueprint 領域物件；舊匯出型別／檔名的遷移見 06。
+
+D-64：Runtime 的大小、Queue／並行、Rate、Deadline 及工作狀態保存設定歸 E，由 Admin／部署管理者控制，不混入每次業務 body 或 D 的演算法參數。初始預設與可調項集中在 [22](22_runtime_settings_catalog.md)；候選參數路徑與正式機器 Schema 不等同，尚未交付實作。
 
 ### 6.1.1 Remote Pipeline 與固定服務
 

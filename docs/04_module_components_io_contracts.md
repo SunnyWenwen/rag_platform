@@ -184,7 +184,7 @@ D-56 已確認不做斷點續跑、Runtime 重啟不恢復工作／記憶體狀�
 
 **目的與邊界**：Engine 接收扁平 JSON，驗證共用 IngestionDocument，並提供共同的內容取得能力；文件／CSV 上傳轉換由 Builder 或呼叫端處理，不提供 Engine multipart，不做 PDF／OCR 語意解析或 Embedding。
 
-**Config／I/O**：[13](13_ingestion_parser_input_contract.md) 記錄 API／Parser 共用的 IngestionDocument 與 [同一份 JSON Schema](../schemas/ingestion_document.schema.json)。content／base64／uri 三選一，文件 ID、版本與 metadata 持續傳遞；SDK resolver 共用 URI 取得與 Base64 解碼，不另建 ParserInput envelope。D-58 的 Runtime body 為非空 IngestionDocument[]，每份 item 與 Parser input 相同；資源保存與大小／逾時數值仍待決。
+**Config／I/O**：[13](13_ingestion_parser_input_contract.md) 記錄 API／Parser 共用的 IngestionDocument 與 [同一份 JSON Schema](../schemas/ingestion_document.schema.json)。content／base64／uri 三選一，文件 ID、版本與 metadata 持續傳遞；SDK resolver 共用 URI 取得與 Base64 解碼，不另建 ParserInput envelope。D-58 的 Runtime body 為非空 IngestionDocument[]，每份 item 與 Parser input 相同；D-64 已確認的 Runtime body／來源大小與文件 Deadline 初始預設集中見 [22](22_runtime_settings_catalog.md)；原始資源保存與逐模型／Client timeout 仍另行核定。
 
 **驗收方向**：相同內容經 inline／Base64／URI 後，在相容格式下具有相同解析語意；Builder CSV 映射一次後與直接 JSON 得到一致結果；不丟失身分／metadata，不接受未授權來源。外層多重來源、格式／內容不符及超限須明確失敗。
 

@@ -280,7 +280,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 <a id="q-006"></a>
 ### Q-006 metadata 保留區、租戶與授權
 
-- D-60：Builder 登入方式延後；Runtime API 暫採一組 HTTP Basic 帳密操作該服務全部 API，首期不做多角色／逐 API 授權，部署採 HTTPS／Secret 引用。可信路由／Secret 注入細節與 metadata 保留區仍 OPEN。
+- D-60：Builder 登入方式延後；Runtime API 暫採一組 HTTP Basic 帳密操作該服務全部 API，首期不做多角色／逐 API 授權，部署採 HTTPS／Secret 引用。D-64 已選可信 Backend 的內部 System 路由；具體部署保護／Secret 注入與 metadata 保留區仍 OPEN。
 
 - 不清楚：保留欄位名稱、ACL 來源、System／Workspace 權限、tSSO／Gateway 驗證、獨立 Runtime 認證。
 - 建議：可信 Context 注入租戶與 ACL，保留 metadata 顯式命名且不可覆寫；初期最小權限模型先核定。
@@ -387,7 +387,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 ### Q-017 Timeout、重試、取消與工作恢復
 
 - D-56 已確認：Runtime 共用有上限 Queue；工作／文件狀態放記憶體，重啟不保留／恢復，不保存斷點續跑。查不到紀錄為 unknown，不等於文件未寫入；終態紀錄可以限量／限時清理，活躍紀錄不提前清除。
-- 仍待：Deadline、模組 Timeout、有限重試／可重試錯誤、Client 中斷與未知遠端結果的副作用處理；D-57 已確認取消工作首期不做；具體保留值及 HTTP 查詢 Envelope 見 21 API-D02／04／05。
+- D-64 已確認 Runtime 整體 Deadline／狀態保存初始值與管理方式，集中見 22；A 的成功／錯誤核心欄位已確認。仍待模組／Client Timeout、有限重試／可重試錯誤、中斷及未知遠端副作用處理、正式 Schema／載入方式；取消工作首期不做。
 - 建議：Engine 統一執行預算；不自動重試未確認的寫入，重試完整文件且需冪等支援。持久 Queue／自動恢復不屬第一版已確認需求。
 - 負責角色：Engine＋Runtime；阻擋 M1 錯誤政策及 M3 工作語意。
 - 決策狀態：無恢復與記憶體狀態方向已確認，其餘 OPEN；更新 04／05／07／21。
@@ -405,15 +405,15 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 <a id="q-019"></a>
 ### Q-019 API／HTTP Envelope 與呼叫認證
 
-- D-60：Runtime API 暫採 HTTP Basic Auth，一組帳密可操作該 service 全部對外 API（含對外 Health），不做首期角色／逐 API 授權；Builder 登入延後。OpenAPI Security Scheme、驗證位置、Secret／Probe 配置及可信 System 路由仍待細化，不另加匿名 API 例外。
+- D-60：Runtime API 暫採 HTTP Basic Auth，一組帳密可操作該 service 全部對外 API（含對外 Health），不做首期角色／逐 API 授權；Builder 登入延後。OpenAPI Security Scheme、驗證位置、Secret／Probe 配置與內部路由的具體部署保護仍待細化，不另加匿名 API 例外。
 
 - 2026-11-05：[21](21_runtime_ingestion_inference_api_inventory.md) 盤點更新為 7 支業務＋2 支 Health：D-58 確認統一 List、文件存在／ID 清單與 retire 直接刪除；每筆 IngestionDocument／Query 契約不變。D-57 的整批預檢、Run partial／未知紀錄 HTTP 200 延續；精確文件管理 Path／Envelope／分頁／刪除執行、認證與錯誤仍待整理。
 
-- 不清楚：完整 CRUD／助手／管理 API、OpenAPI、錯誤碼／狀態、上傳限制、manifest、冪等鍵、DEV 路由、認證及暴露 Trace。
+- 仍待：完整 CRUD／助手／管理 API、OpenAPI／完整錯誤碼、檔案 manifest、冪等鍵、內部路由的部署保護、Header／認證接線及暴露 Trace。D-64 已確認核心回應／錯誤、retire 結果、System 路由方向與 22 的初始限制，不再把這些全部視為未決。
 - D-41 補充：Builder 與 Runtime 透過 API／Component 目錄合作；需核定目標 Runtime 版本識別、Config Schema／能力目錄、完整 Config 驗證、快取失效與接口相容政策。能力範圍見 07 §5.8，精確端點與 Envelope 仍 OPEN。
 - D-42 已按建議規劃描述／Context／選項及驗證關聯值，候選格式見 12；精確路徑、認證、版本識別與公開 Meta-schema 仍 OPEN，不影響既有 Ingest／Query 範例。
 - Query API 成功 body 直接回傳 QueryContext[]，只保留目前 key／items／score；排名以陣列順序表示。request／版本進 Headers／Logs；精確 HTTP 版本協商及錯誤待核定。
-- 建議：沿用 07 的 Endpoint 草案，先凍結 Ingestion／Status／Query，補齊 Backend API；HTTP 與領域錯誤分層。
+- D-64 已確認 retire 同步 200＋deleted／not_found、忙碌 409，狀態／錯誤核心欄位與可信內部 System 路由；文件 ID 分頁細節仍待說明／確認。完整 OpenAPI、Backend 管理 API 與部署保護仍 OPEN；HTTP 與領域錯誤分層。
 - 替代：沿用既有企業 API 規範並明確映射。
 - 負責角色：Backend＋Runtime＋Frontend／身分團隊；阻擋 M3 Runtime／M4 助手 API／M5 Builder 真實串接。
 - 決策：未定；更新 05／06／07、OpenAPI／cURL 範例。
@@ -426,7 +426,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 - D-56 已確認：Builder DEV／獨立 Runtime 共用 System Queue／併發與 Inference Rate／併發／Deadline；Runtime 控制總量，Builder 另管理 User／Workspace 配額。上限可配置已確認；放 E 為先前建議，D-57 暫緩管理者／存放位置／Schema 的定案。Worker 是排程概念，不要求每 System 新 Pod。
 - D-61：共用 API service 啟動只綁服務／Registry 基礎設定，後續管理多份 System Config，不因每份 UI 設定新增服務；可依 Namespace／資源池分成少數共用服務，精確分組策略尚未選定。
 - D-62 已選 B：共用 Flow／Executor，逐請求／已接受文件固定 Config 快照，Module 依設定解析 Component；不要求每份 Config 建立專屬 Flow。Component 實例／資源是否共用依狀態與隔離需求決定。
-- 仍待：配置解析快取、Component／資源預載與回收、可信路由與管理 API、舊 Query／資源交接、服務池分組、公平排程、上限具體值、記憶體配額／清理、未來多 replica 控制與程序安全性。
+- 仍待：配置解析快取、Component／資源預載與回收、可信路由與管理 API、舊 Query／資源交接、服務池分組、公平排程、正式參數 Schema／載入方式、實際記憶體 bytes 配額、未知結果清理、未來多 replica 控制與程序安全性；初始上限與終態紀錄保存值已由 D-64 確認並記錄於 22。
 - 建議：先有受限共享 Runtime 與明確隔離 Binding；Local Search 每 System 的 Ingest／Query 必須同程序。
 - 替代：每 System 獨立 Runtime，增加部署／資源管理成本。
 - 負責角色：平台＋Backend／Runtime；阻擋 M5 多 System 服務。
@@ -669,8 +669,23 @@ Runtime API 範圍維持 7 支業務＋2 支 Health。API-D01～07 的未決格�
 
 ## 2026-11-05 D-63：Ingestion 結束後才允許新版 Config 生效
 
+本節保留當時狀態；其中退回待議的 retire 回應、錯誤格式、Runtime 初始限制與可信路由，後續已由 D-64 確認，分頁細節仍待確認。
+
 使用者確認前輪第一項建議：「ingestion 後設定生效」。同一 System 有 queued／running 文件時可以保存設定草稿，但暫不啟用新版；既有 Ingestion 沿用接受時固定的配置，待排隊／執行工作結束後才允許套用。此處不新增自動待套用 Queue，也不承諾儲存草稿就會自動啟用。忙碌回應／管理端點的精確格式待 OpenAPI；其他 System 繼續運作，不重啟共用 API service，也不加 Query 讀寫鎖。
 
 Config 及索引／Profile 相容檢查仍要執行，更新語意可能要求重新 Ingestion。既有 Query 使用原快照，Component／Client／索引資源釋放時機仍待細化。Remote timeout 的 unknown 不等於已確認沒有在途寫入；未知結果查核與清理沿用 API-D05，不由一般 Ingestion 已結束推定安全。非預期程序重啟仍遵守既有記憶體工作遺失政策。
 
 使用者另詢問刪不到資料的回應與覆寫失敗是否可查；本輪未將 retire HTTP／Envelope 或失敗回滾政策定案。既有 Runtime 記憶體工作紀錄可回報 failed／unknown，重啟或到期無紀錄為 unknown；狀態可查不代表資料已回復舊版。回應／錯誤、document_id 分頁、限制／保存及可信 System 路由的後續建議仍待確認。本輪只同步 Markdown，未改 UI、Runtime、教學程式或公開資料 Schema。
+
+
+## 2026-11-05 D-64：刪除結果、錯誤格式、Runtime 參數與 System 路由
+
+使用者確認前輪 2、3、A、C、D，並要求有固定位置整理可調參數；B 本輪是詢問 document_id 分頁的意思，不視為已接受每頁 100／上限 1,000／排序／cursor 等細節。
+
+- Retire 同步確認刪除完成回 HTTP 200，body 為 document_id＋result，實際刪除為 deleted、確認原本不存在為 not_found。同文件 queued／running 回 409，不取消工作；後端失敗、部分刪除或結果不明不得回成功或 not_found。取代早期 204 提案，詳細後端／Remote 清理協定仍待 API-D03／05。
+- 覆寫失敗記在 Runtime 記憶體，Run／文件工作狀態 API 可查 failed＋Module／錯誤；重啟／到期無紀錄為 unknown。這不是磁碟／DB 工作歷史，也不表示舊資料自動回復；資料存在與工作成功分開。
+- A 的回應核心欄位採用 21 範例：接收 run_id／status／config_revision／documents，文件狀態 document_id／run_id／status／module／updated_at／error，Run 另含 counts／documents。Query 仍直接回 QueryContext[]。HTTP 錯誤外框 error，核心 code／message／module；輸入驗證另附 JSON Pointer path，狀態 error 使用相同核心。正式型別／完整錯誤碼／Header／多錯誤包裝仍待 OpenAPI。
+- C 的初始預設及做法確認，集中記錄於新 [22](22_runtime_settings_catalog.md)：文件數／body／來源大小、每 System 與 Runtime 總量 Queue／併發、Query Rate／Deadline、終態工作保存時間／數量。歸 E 的 Runtime 環境設定，Admin／部署管理者提供；一般 Builder User 不透過每次業務請求覆寫。候選參數名稱與正式機器 Schema／載入方式仍需實作規格，沒有新增 Admin UI。
+- D 採可信 Backend → Runtime 的受保護內部 System 路由。S1 表示穩定 system_id，不是顯示名稱、Config Revision、document_id 或索引名稱。Builder 業務路由前綴 /api/systems/{system_id}，Runtime 內部前綴 /internal/systems/{system_id}/v1，Runtime 依已註冊 System 取得有效快照；FTEST／ENT 單 System 仍用 /v1。Health 屬 service 級不逐 System 複製。內部路由須可信存取／認證，不能因可傳 Header 就當作可信；Builder 登入與實際網路／Probe 配置另議。
+
+API 維持 7 支業務＋2 支 Health。B 的分頁只分批取得唯一 document_id 清單，不是切 Chunk；說明與待確認項見 21 §9.3／22 §4。本輪同步 Markdown 與既有 UI Backlog，未修改 Prototype、Runtime 程式、教學程式或共用資料 Schema。

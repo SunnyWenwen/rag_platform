@@ -2,13 +2,13 @@
 
 更新日期：2026-11-05。適用 A～E 中的執行契約、System 組裝與環境控制；總盤點見 [20](20_contract_inventory_responsibility_matrix.md)。
 
-**文件分成「已確認行為」與「本次建議 API／回應格式」。**本次盤點不代表 OpenAPI、所有 HTTP code／欄位或新增功能已核定，也沒有實作 Runtime、修改共用資料 Schema 或 UI。決策由 [08 的 D-56～D-63／相關 Q-ID](08_implementation_plan.md) 追蹤。
+**文件分成「已確認行為」與「本次建議 API／回應格式」。**本次盤點不代表 OpenAPI、所有 HTTP code／欄位或新增功能已核定，也沒有實作 Runtime、修改共用資料 Schema 或 UI。決策由 [08 的 D-56～D-64／相關 Q-ID](08_implementation_plan.md) 追蹤。
 
 ## 1. 範圍與已確認基準
 
 ### 1.1 這份清單是哪一層
 
-這裡盤點 **Retrieval Runtime 對外的業務 API**：Builder DEV 與自行部署到 FTEST／ENT 使用同一語意與實作，限制可配置已確認；先前建議放 E，但本輪依使用者指示暫緩管理者、存放位置與 Schema 的定案。Builder DEV 共用一組或少數幾組 API service，啟動不綁單一 System Config，可信路由先選定 System 的已驗證 Config 快照，共用 Flow／Executor 依配置執行；FTEST／ENT 主 Runtime 以一 Pod＋一組 API service＋一份 Config 啟動。不把 system_id／tenant 任意覆寫放進業務 JSON。
+這裡盤點 **Retrieval Runtime 對外的業務 API**：Builder DEV 與自行部署到 FTEST／ENT 使用同一語意與實作，D-64 已確認 Runtime 限制初始預設與管理方式，歸 E 的 Runtime 環境設定，由 Admin／部署管理者提供，可調項集中見 [22](22_runtime_settings_catalog.md)；正式參數名稱／機器 Schema 與載入方式仍待核定。Builder DEV 共用一組或少數幾組 API service，啟動不綁單一 System Config，可信路由先選定 System 的已驗證 Config 快照，共用 Flow／Executor 依配置執行；FTEST／ENT 主 Runtime 以一 Pod＋一組 API service＋一份 Config 啟動。不把 system_id／tenant 任意覆寫放進業務 JSON。
 
 以下不是本文件的新增範圍：Builder Workspace／System CRUD、Config／Component 目錄管理、Export、AI 助手、Evaluation，以及 Developer Remote Service 的 operation HTTP 協定。後者引用 [18](18_remote_service_pipeline_integration.md)，不是將每個 Module 都公開成 Runtime API。
 
@@ -25,16 +25,18 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 - 202 表示已接受排隊，不表示解析、Embedding、索引或可搜尋已成功；提交後須可查詢結果。
 - Inference 沿用 query／filters／metadata 輸入，同步回 QueryContext[]；不做 Generation，不因非同步 Ingestion 而新增 InferenceState。
 - D-57：整批接收前預檢通過才入列、回 202；入列後逐文件結果，文件無 partial，Run 可 partial，無紀錄回 200＋unknown。這不是要求完成 Parsing／Embedding／Indexing 才回 202。
-- D-57／D-58：首期需要 retire，已確認為直接刪除該 System／document_id 的儲存資料與搜尋索引，不是保留資料的邏輯停用；回應與執行方式仍待定。取消 queued／running 文件工作首期不做。
+- D-57／D-58：首期需要 retire，已確認為直接刪除該 System／document_id 的儲存資料與搜尋索引，不是保留資料的邏輯停用；後續 D-64 確認同步 200＋deleted／not_found，忙碌文件 409，後端／Remote 清理協定仍待細化。取消 queued／running 文件工作首期不做。
 - D-58：一支 POST /v1/ingestions 接收非空 IngestionDocument[]，單筆也包 List；Parser 每次仍接收單份物件，不另開 :batch。
 - D-58：新增文件存在性與全部 document_id 清單的查詢能力，資料來源為該 System 的實際儲存／索引，與 Runtime 工作狀態分開；清單需對 Chunk 的 document_id 去重。
 - D-60：讀寫各自進行，不因 Ingestion／retire 寫入而阻擋 Query，不加共享查詢讀寫鎖／全索引快照；同文件重複 Ingestion 的忙碌拒絕維持。
 - D-60：Runtime API 暫採 HTTP Basic Auth，預設一組帳密可操作該 API service 提供的全部 API，首期不做逐角色／逐 API 權限；Builder 使用者登入另議。
 - D-61／D-62：Builder 的多份 UI Config 不對應等量 API service 或專屬 Flow；共用 Executor 逐請求固定 Config 快照，各 Module 依設定取得 Component 並傳入本次參數／Context。Component 實例與資源是否共用分開管理，D-63 已定該 System 的 Ingestion 結束後才允許新版 Config 生效；舊 Query／資源交接、Namespace／服務池分組與回收細節仍待定。
 
+- D-64：確認接收／文件與 Run 狀態核心欄位及錯誤格式；覆寫失敗留 Runtime 記憶體可查，不代表資料回復舊版。初始限制見 22；可信內部 System 路由見 §8.5。文件 ID 每頁數量／排序／cursor 的細節仍待確認。
+
 ## 2. API 清單：7 支業務 API＋2 支 Health API
 
-**能力與 Ingestion List 格式已確認；存在／清單／retire 的具體路徑、完整 Envelope 與同步刪除建議仍為草案。**查詢以目標 System 為作用範圍，不直接開放任意 DB／Collection 管理。
+**能力、Ingestion List、狀態／錯誤核心欄位及 retire 同步結果已確認；完整 OpenAPI、存在／清單精確格式與分頁細節仍待整理。**查詢以目標 System 為作用範圍，不直接開放任意 DB／Collection 管理。
 
 | 優先 | Method／Path 草案 | 用途 | Request | 成功回應／狀態 | 主要行為 |
 |---|---|---|---|---|---|
@@ -43,12 +45,12 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 | P0 | GET /v1/documents/{document_id}/ingestion-status | 查文件最近一次工作 | document_id | 200：run_id、status、Module、時間／錯誤；無紀錄為 unknown | 工作狀態，不用成功儲存的文件反推 |
 | P0 能力；格式草案 | GET /v1/documents/{document_id}/exists | 查目前文件資料是否存在 | document_id | 200：document_id／exists | 從實際文件儲存／索引讀取；不是工作紀錄是否存在；backend 無法確認時回錯誤 |
 | P0 能力；格式草案 | GET /v1/documents?limit=...&cursor=... | 列出目前全部 document_id | 分頁參數 | 200：document_ids／next_cursor | 去重且分頁讀完整清單；不是列 Chunk ID／工作紀錄 |
-| P0 能力；格式草案 | POST /v1/documents/{document_id}:retire | 直接刪除文件資料 | document_id | 建議同步刪除完成回 204；精確行為待 API-D03 | 清除對應 Chunk／向量、持久儲存與本地搜尋副本，避免重啟重建復活；不取消 Ingestion 工作 |
+| P0 | POST /v1/documents/{document_id}:retire | 直接刪除文件資料 | document_id | 200：document_id／result=deleted 或 not_found；同文件忙碌 409 | 清除對應 Chunk／向量、持久儲存與本地搜尋副本，避免重啟重建復活；不取消 Ingestion 工作 |
 | P0 | POST /v1/queries | 完整 Inference | {query, filters?, metadata?} | 200：根層 QueryContext[] | 同步完成；Runtime 控制 Rate／併發／Deadline |
 | P0 支援 | GET /health/live | 程序存活 | — | 200：存活 | 不依是否有資料判斷 |
 | P0 支援 | GET /health/ready | Runtime／必要資源初始化 | — | 200：就緒；否則 503 | 尚無可查索引不一律等於不 Ready |
 
-共享 Builder DEV 的 System 選擇與資料權限由可信層決定，單一 Pod Health 不能代表每個 System 的 Query-ready。API-D06 涵蓋身分驗證、授權與路由；清單／存在／retire 也必須受相同存取邊界限制。
+共享 Builder DEV 的 System 選擇與資料權限由可信層決定，單一 Pod Health 不能代表每個 System 的 Query-ready。D-64 已採可信 Backend 的內部 System 路由，S1 為 system_id 示意，見 §8.5；API-D06 仍涵蓋實際認證／部署保護；清單／存在／retire 也必須受相同存取邊界限制。
 
 Document 管理細節見 §9。讀取整份文件／Chunk 內容、取消工作、單步 Module 測試仍不因加入 ID 清單而自動納入。
 
@@ -88,7 +90,7 @@ D-58 已確認一支 POST 固定接收非空 List，不同時接受 object／arr
 
 官方格式查核（2026-11-05）：[Meilisearch](https://www.meilisearch.com/docs/reference/api/documents/add-or-replace-documents)、[Azure AI Search](https://learn.microsoft.com/en-us/rest/api/searchservice/documents/?view=rest-searchservice-2025-09-01)。參考的是輸入形式，不照搬其持久化、部分接受或寫入語意。
 
-### 3.3 202 回應提案
+### 3.3 202 回應核心欄位（D-64 已確認）
 
 Location: /v1/ingestions/ing-001
 
@@ -110,7 +112,7 @@ Location: /v1/ingestions/ing-001
 
 **D-57 已確認：「預檢整批通過才入列；入列後逐文件獨立結果」。**例如外層不合法、同批重複 ID、某文件已 queued／running、容量不足時，先拒絕整次請求，保證沒有未交代的部分入列；接收政策與單一 List 包裝均已確認；完整錯誤／OpenAPI 規格另行整理。合法文件入列後，另一份文件 Parsing 失敗不回滾已成功文件。
 
-併發與 Queue 容量建議以文件工作計數，並另限制排隊資料量／總請求大小，避免一個巨大 Batch 算一個 queue slot。具體數值、接收容量預留及公平排程見 API-D04。預留文件忙碌標記、Queue 容量與狀態紀錄須一致，不能檢查後因競態收進同文件兩份工作。
+併發與 Queue 容量建議以文件工作計數，並另限制排隊資料量／總請求大小，避免一個巨大 Batch 算一個 queue slot。已確認每次最多 100 份文件、body 20 MiB、每 System 100／Runtime 500 份等待容量等初始值集中見 22；參數可調，接收容量預留及公平排程細節仍見 API-D04。預留文件忙碌標記、Queue 容量與狀態紀錄須一致，不能檢查後因競態收進同文件兩份工作。
 
 ## 4. 文件狀態與一次提交的狀態
 
@@ -138,7 +140,7 @@ Location: /v1/ingestions/ing-001
 
 unknown 的兩種原因需可區分：一是重啟／到期後已無紀錄；二是 Remote timeout 等造成提交結果未確認。後者若尚有紀錄應帶 error code，不能將「不知道是否寫入」偽裝為確定失敗可安全重送。具體 code 與再次提交前如何確認／隔離，列 API-D05。
 
-module 可為 null（例如 queued 或終態），亦可指目前 Local Module 或 Remote operation 的可知邊界；不假造 Remote 私有流程內部的百分比。error 在沒有錯誤時為 null，失敗時使用 code／module／message 等受控內容，不公開 Stack／Secret。
+module 可為 null（例如 queued 或終態），亦可指目前 Local Module 或 Remote operation 的可知邊界；不假造 Remote 私有流程內部的百分比。D-64：文件狀態核心為 document_id／run_id／status／module／updated_at／error，Run 另含 config_revision／counts／documents。error 在沒有錯誤時為 null，失敗時使用 code／module／message，輸入驗證另附 path，不公開 Stack／Secret；狀態物件的 error 內不再包一層 error。核心已確認，完整型別／未知結果原因及 OpenAPI 待 API-D02／05。
 
 ```json
 {
@@ -188,7 +190,7 @@ counts 指這次接收的 IngestionDocument 數，不是 Unit／Chunk／模型�
 ### 4.3 紀錄的保存與重啟
 
 - 由 Runtime 記憶體保存 Queue、Run／逐文件狀態，以及 document_id 的最新 Run 對照；不新增必要 DB。
-- 僅完成／失敗等可回收紀錄依保留時間／數量清理，不能因 TTL 提前刪除活躍工作；未確認結果的紀錄需依 API-D05 處理。具體保留值列 API-D04。
+- 僅完成／失敗等可回收紀錄依保留時間／數量清理，不能因 TTL 提前刪除活躍工作；未確認結果的紀錄需依 API-D05 處理。D-64 已確認初始保存 24 小時且最多 10,000 份可回收終態文件紀錄，以最舊已結束 Run 整組清理，集中見 22；unknown 紀錄回收仍待 API-D05，不能據此推定 Remote 副作用不存在。
 - Runtime 重啟後不恢復 Queue／工作／狀態。已接受但未完成的工作可能遺失；202 不承諾跨重啟完成。
 - 狀態清空不保證 ES／MongoDB／Remote Service 也回滾。既有持久資料或仍在執行的 External 呼叫須按實際結果確認，不能從「查不到 Run」推定沒有副作用。
 - Memory 索引重啟遺失仍依既定政策重新 Ingestion；ES／MongoDB 的資料恢復與工作續跑是兩件事。
@@ -210,7 +212,7 @@ query 必填；filters／metadata 選填，預設 []／{}，沿用 [05](05_data_
 
 每 System 配置請求頻率、執行併發、等待／執行 Deadline；Runtime 再控制共享資源總量。Builder 可額外限制 User／Workspace 的平台測試配額。共用 Runtime 的限制不能只寫在前端。
 
-第一版採同步查詢，額滿直接拒絕或僅允許有上限的短等待；精確行為列 API-D04，不把查詢塞進 Ingestion 的長工作 Queue。實際 Rate／併發數需可配置；管理者、設定位置與格式依本輪指示暫緩定義，先前 E 是建議位置。不要把環境流量控制混入每次 query body 或搜尋演算法參數。
+D-64：第一版同步查詢額滿直接拒絕，不加短等待 Queue，也不進 Ingestion 的長工作 Queue。初始每 System 5 次／秒、同時 2 個，Runtime 同時 8 個，整體 Deadline 60 秒；數值可調且集中記於 22，由 Admin／部署管理者在 E 的 Runtime 環境設定控制。正式名稱／機器 Schema 與載入方式仍待核定，不把環境流量控制混入 query body 或 D 的搜尋演算法參數。
 
 目前不需要另開 async Query／查詢工作狀態 API，也不增加獨立 Rewrite／Retrieval／Rerank 測試端點；後者需有明確需求再討論，既有 UIB-007／008 仍未核定。
 
@@ -235,6 +237,18 @@ query 必填；filters／metadata 選填，預設 []／{}，沿用 [05](05_data_
 
 202／狀態監看依據：[RFC 9110 §15.3.3](https://www.rfc-editor.org/rfc/rfc9110.html#section-15.3.3)；429／Retry-After 依據：[RFC 6585 §4](https://www.rfc-editor.org/rfc/rfc6585.html#section-4)。RFC 支持 HTTP 語意，不替本專案決定 Queue 耐久性、批次政策或錯誤 Envelope。
 
+### 6.1 已確認的錯誤核心格式（D-64）
+
+HTTP 請求失敗使用 error 外框，核心欄位為 code／message／module；module 無法歸屬時為 null，輸入驗證另附相對該 Request body 的 JSON Pointer path。以下是 422 輸入錯誤示例，code 的完整枚舉及所有 HTTP 映射仍待 OpenAPI：
+
+```json
+{"error": {"code": "REQUEST_VALIDATION_FAILED", "message": "document_id 為必填。", "module": null, "path": "/0/document_id"}}
+```
+
+path 指向 Ingestion List 第一筆的 document_id，不是 UI Config 的 node_ref 或 Python Stack。無驗證位置時省略 path。SDK 內部 ModuleError 與 ModuleResult 不直接當作 HTTP body，retryable／details 等擴充尚非已確認的必要對外欄位。
+
+已接受工作後的執行失敗仍以 GET 200＋status=failed 查詢；其 error 直接放相同 code／message／module 核心，不再嵌套 HTTP error 外框。失敗工作紀錄只留 Runtime 記憶體，重啟／到期未知，不自動轉成持久歷史或保證舊資料回復。Query 成功 body 保持 QueryContext[]；request／版本的 Header 名稱、正式型別、多筆驗證問題及完整錯誤碼仍待核定。
+
 ## 7. 非必備端點與本輪待討論
 
 ### 7.1 首期不納入／後續能力
@@ -246,21 +260,21 @@ query 必填；filters／metadata 選填，預設 []／{}，沿用 [05](05_data_
 | 索引詳細狀態／容量資訊 | 可作後續管理診斷 | index-ready／恢復／統計來源，不用 Health／最後 Run 反推 |
 | Rewrite／Rerank 單步測試、async Inference／streaming | 目前不納入 | 有明確需求再定義，不重新引入 Generation |
 
-Retire 已確認為直接刪除，不做 soft delete／restore API；再次使用同 document_id 需重新 Ingestion。同步／非同步、忙碌文件互斥、重複刪除、Remote 與快取一致性等細節見 §9／API-D03。
+Retire 已確認為直接刪除，不做 soft delete／restore API；再次使用同 document_id 需重新 Ingestion。D-64 已確認同步結果／忙碌拒絕／重複刪除的不同結果；Remote／儲存清理與未知結果等後端細節見 §9／API-D03。
 
 ### 7.2 決策狀態與剩餘討論
 
 | ID | 已確認 | 仍待確認／建議 | 關聯 |
 |---|---|---|---|
 | API-D01 | 單一 POST、非空 IngestionDocument[]、單筆也包 List；整批預檢通過才 202；逐文件結果 | 方向已收斂；完整 Runtime Request／錯誤 OpenAPI 後續整理，不改單筆共用資料契約 | Q-019／Q-009 |
-| API-D02 | 保留 Run／文件兩種查詢；文件無 partial、Run 可 partial；無紀錄 GET 200＋unknown | 完整欄位／code、保留值、輪詢與回應上限；Remote 結果不明另見 D05 | Q-019／Q-017 |
-| API-D03 | retire 直接刪除資料；不做工作取消或 soft delete／restore | 建議同步 204、無資料重複刪除也成功、忙碌文件 409；精確方式與後端／Remote 完整刪除能力待核定 | Q-008／Q-017／Q-028 |
-| API-D04 | Queue／併發／Rate／Deadline／紀錄上限可設定 | 誰設定、存放處、Schema 與具體值暫緩；環境 E 為先前建議，不當作本輪已定 | Q-017／Q-020／Q-027 |
+| API-D02 | 保留 Run／文件兩種查詢；文件無 partial、Run 可 partial；無紀錄 GET 200＋unknown；D-64 確認狀態／counts／error 核心欄位及 22 的終態保存初始值 | 完整型別／錯誤碼、輪詢、未知結果與機器 OpenAPI；不把記錄失敗等同自動回復資料 | Q-019／Q-017 |
+| API-D03 | retire 同步確認後 200＋document_id／result=deleted 或 not_found，同文件 queued／running 回 409；不取消工作或 soft delete／restore | 後端／Remote 完整刪除能力、部分刪除／未知結果與重試清理協定仍待核定 | Q-008／Q-017／Q-028 |
+| API-D04 | D-64 確認 22 的初始預設與管理方式：E 的 Runtime 環境設定，由 Admin／部署管理者提供；Query 額滿直接拒絕 | 候選參數路徑、正式機器 Schema／載入方式、排程／計數算法與實際容量驗證；不新增單次請求覆寫 | Q-017／Q-020／Q-027 |
 | API-D05 | 共用 API／Flow、逐請求與已接收文件固定 Config 快照；該 System Ingestion 結束後才允許新版設定生效；獨立 Runtime 啟動綁定；無續跑／無 Query 讀寫鎖／未知寫入不自動重試 | 舊 Query／資源回收、管理端點的忙碌回應、Remote 在途操作與失敗清理仍待細化；不增加全域讀寫互斥／索引快照 | Q-008～010／Q-015／Q-017／Q-028 |
-| API-D06 | Builder 登入延後；Runtime API 暫用一組 HTTP Basic 帳密操作全部 API；首期不做角色／逐 API 授權 | HTTPS／Secret 注入／檢查位置與可信 System 路由待細化；對外 Health 也沿用同一帳密，內部 Probe 接法為部署細節 | Q-006／Q-019／Q-020 |
+| API-D06 | Builder 登入延後；Runtime API 暫用一組 HTTP Basic 帳密操作全部 API；首期不做角色／逐 API 授權 | D-64 已選 §8.5 的受保護內部 System 路由；HTTPS／Secret 注入／網路保護與檢查位置待細化；對外 Health 同一帳密，Probe 接法為部署細節 | Q-006／Q-019／Q-020 |
 | API-D07 | 查 document_id 是否存在、列出當前全部 ID；讀取實際儲存而非工作表 | 建議 exists 布林值、ID 清單去重分頁；路徑／欄位、排序／cursor／分頁一致性、Remote 讀取能力待整理 | Q-019／Q-028 |
 
-API-D01～07 沿用既有 Q-ID，不另凍結完整 OpenAPI。單一 List、接收／Run 彙總、取消暫緩、文件 ID 管理與 retire 直接刪除方向不再重問；存在／清單／刪除的精確格式與執行細節仍待核定。
+API-D01～07 沿用既有 Q-ID，不另凍結完整 OpenAPI。單一 List、接收／Run 彙總、取消暫緩、文件 ID 管理與 retire 直接刪除方向不再重問；D-64 已收斂刪除結果／錯誤核心及 Runtime 參數，存在／清單的精確格式與 B 的分頁細節仍待確認；不因此關閉所有 Q-ID。
 
 
 
@@ -314,6 +328,20 @@ D-60：Runtime API 暫採 **HTTP Basic Auth（帳號／密碼）**，預設一�
 
 Builder 的使用者登入方式之後再討論；不因 Runtime Basic 決策而替 Builder 加上登入流程，也不新增 OAuth／SSO 服務。Developer Remote API／模型／DB 的憑證是各自服務連線，不預設沿用 Runtime 對外帳密。
 
+### 8.5 可信 System 路由與 S1 的意思（D-64）
+
+S1 是 system_id 示意：由 Builder Backend 建立並維護的穩定 Retrieval System 識別碼，在同一 Builder 管理範圍內唯一。它不是可變顯示名稱、Workspace 名稱、Config Revision、document_id 或索引集合名；System 改名或換 Config Revision 不因此換 system_id。實際 ID 格式／生成方式尚未凍結。
+
+| 呼叫方向 | 規劃路由示例 | System／Config 選擇 |
+|---|---|---|
+| Builder UI → Backend | POST /api/systems/S1/queries | Backend 經可信管理關係選定目標 System；Builder 登入具體方案仍延後 |
+| Backend → 共用 Runtime | POST /internal/systems/S1/v1/queries | 只供可信 Backend 存取且驗證認證；Runtime 查已註冊 S1 的有效配置，固定快照後執行 |
+| 呼叫端 → FTEST／ENT | POST /v1/queries | 單 System Runtime 已載入配置，業務請求不需再帶 S1 |
+
+七支業務 API 依同一內部前綴選 System，Request／Response 的業務語意不複製兩套；Health 仍是 service 級 /health/live／ready，不逐 System 複製。Builder 路由前綴為 /api/systems/{system_id}，共用 Runtime 為 /internal/systems/{system_id}/v1，完整 Backend CRUD／Config 註冊接口與 OpenAPI 另定。
+
+路徑識別不能單獨充當授權；內部路由須受可信網路／Backend 存取與認證保護，不依任意外部 Header 載入配置。具體部署保護、Secret／Probe 接法仍待核定，Runtime 暫採單一 Basic 帳號的政策不變。工作狀態、文件管理與 Query 都遵守相同 System 作用範圍，不在業務 body 加入整份 Config／任意索引位置。Library 不讀 Builder DB。
+
 ## 9. 文件資料查詢與直接刪除
 
 ### 9.1 資料來源與工作狀態不同
@@ -348,7 +376,9 @@ GET /v1/documents?limit=100&cursor=...
 {"document_ids": ["manual-001", "manual-002"], "next_cursor": null}
 ```
 
-完整清單直接查該 System 的實際 ES／Local 資料，對 document_id 去重並分頁；一份文件有多個 Chunk 仍只回一個 ID，不無限制一次塞入全部結果。limit=100 僅是例子，不是已核定預設值；頁面排序、cursor 有效期與同時寫入時的一致性見 API-D07。初版不要求計算全量 total 或提供內容投影。
+完整清單直接查該 System 的實際 ES／Local 資料，對 document_id 去重並分頁；一份文件有多個 Chunk 仍只回一個 ID，不無限制一次塞入全部結果。使用者本輪詢問分頁含義，尚未核定 B：每頁預設 100／上限 1,000、document_id 升冪、System 綁定 cursor 與不加快照，均為前輪建議，另列 22 §4；不能與已確認 C 的 Runtime 預設混為一談。頁面排序、cursor 有效期與同時寫入一致性見 API-D07。初版不要求計算全量 total 或提供內容投影。
+
+分頁只代表清單分批傳回。例如 250 份不同文件，每頁取 100 個 ID，可依 next_cursor 取得第 1 批 100、第 2 批 100、第 3 批 50；最後 next_cursor=null。它不切文件、不改 Chunk，也不是 Retrieval 的 Top N；Client 可讀完所有頁取得當時可遍歷的清單。
 
 後端實作可依布局選擇：ES 以可精確聚合的 document_id 欄位作去重，候選是 composite aggregation，使用回傳 after_key 接續頁面；不能只取前 N 個 Chunk hits 去重，就當作已列出所有文件。Local 可由 Chunk store 的 document_id 去重集合或一致維護的文件對照取得，MongoDB 模式使用實際保存的文件資料；不查 Runtime 工作表，也不需要為這個 API 再建中央目錄 DB。
 
@@ -358,7 +388,17 @@ ES 分頁聚合依據：[Composite aggregation](https://www.elastic.co/docs/refe
 
 Retire 刪除該 System／document_id 對應的 Chunk、vectors、全文／向量索引，以及供恢復／重建使用的持久儲存與搜尋副本。具體儲存布局由 Artifact／backend 決定，不因 ID 命名相同就刪除其他 System 的文件，也不要求刪除使用者傳入 URI 所指的外部來源檔案。
 
-本輪建議同步完成後回 204；相同文件已不存在時視為已達刪除目標，重複呼叫仍成功；同文件仍 queued／running 時建議 409，先不取消工作。這些 HTTP／互斥細節仍待 API-D03 核定。後端 timeout 或部分刪除未確認時不能回完整成功，後續查詢／重試及清理需與後端政策對齊。
+D-64 已確認同步完成並回 200，以 result 區分「確實刪除」與「確認原本就不存在」；取代早期 204 提案。同文件仍 queued／running 時回 409，不取消工作。回應核心如下：
+
+```json
+{"document_id": "manual-001", "result": "deleted"}
+```
+
+```json
+{"document_id": "manual-001", "result": "not_found"}
+```
+
+not_found 只在已確認目標範圍沒有資料時使用，不能把 DB／索引未就緒、連線失敗或不支援操作當成不存在。後端 timeout、部分刪除或結果未確認時回對應錯誤，不回成功；具體 code、Remote 查核／重試／清理協定仍待 API-D03／05。多個儲存／搜尋副本的清除以完整目標為準，不只刪一個 Chunk 就回 deleted。
 
 刪除完成後新發起的查詢／exists／ID 清單應反映刪除結果；先前已取得候選的在途 Query 仍可能回傳舊資料，依 D-60 不加鎖或回收其候選。exists 應為 false，ID 清單不再列出該 ID。此處沒有 soft delete 標記或 restore；若需要再次使用，重新提交文件 Ingestion。Retire 不透過改寫 metadata／Query filters 來假裝完成實際刪除。
 
