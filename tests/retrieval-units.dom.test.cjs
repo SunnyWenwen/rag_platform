@@ -9,7 +9,7 @@ run('openCreate()');assert(!d.querySelector('#querynodes').textContent.includes(
 assert.deepEqual(Object.keys(json('exampleDocument(config)')),['document_id','source_revision','units','metadata']);
 run("config.indexing.backend='Local Search';config.transform.method='Multi-query';config.retrieval.processing.same_query.enabled=false;config.retrieval.processing.cross_query.enabled=false;selectMod('retrieval')");
 assert(run('resultPlan(config).final.length')>1);assert(!d.querySelector('#createButton').disabled);
-run("config=defaults();config.parsing.routes.records='Preparsed Units Adapter';config.document_schema.fields.push(schemaField('page','number',true));config.chunking.tasks=[{task_id:'body',split_field:'text',output_field:'text',copy_fields:[{source_field:'text',output_field:'original_text'},{source_field:'page',output_field:'page'}]}];selectMod('chunking')");
+run("config=defaults();config.parsing.routes.records='Preparsed Units Adapter';config.parsing.field_rules.fields.push(schemaField('page','number',true));config.chunking.tasks=[{task_id:'body',split_field:'text',output_field:'text',copy_fields:[{source_field:'text',output_field:'original_text'},{source_field:'page',output_field:'page'}]}];selectMod('chunking')");
 w.fixture={document_id:'manual',source_revision:'v1',content:{units:[{text:'😀清潔前先斷電。',page:1},{text:'每月保養。',page:2}]},metadata:{}};
 let state=json('validateRecords(config,[fixture])');assert.deepEqual(state.errors,[]);
 w.parsed=state.parsed[0];const chunks=json('previewChunks(config,parsed)');assert.equal(chunks.length,2);

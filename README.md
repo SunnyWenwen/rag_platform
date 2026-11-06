@@ -12,7 +12,7 @@
 | 4 | [Component Descriptor](docs/04_component_descriptor.md) | 已確認細化行為、Config／Data Schema、動態選項／UI、候選格式與 DS-01～DS-13 |
 | 5 | [System Config](docs/05_system_config.md) | 版本、草稿／有效設定、變更影響、D 草案與 SC-01～SC-10 |
 | 6 | [Runtime API 與部署](docs/06_runtime_api_and_deployment.md) | 九支 API、Queue／工作狀態、14 項 Runtime 控制、Remote／Export／環境綁定 |
-| 7 | [Builder UI 與 Backlog](docs/07_builder_ui.md) | 目標互動、v0.12 模擬現況、40 個未勾選工作項；UIB 重號已整理 |
+| 7 | [Builder UI 與 Backlog](docs/07_builder_ui.md) | 目標互動、v0.13 模擬現況與待整合工作 |
 | 8 | [開發計畫、決策與驗收](docs/08_plan_and_decisions.md) | 已確認基線、M0～M7、Q-001～Q-028、狀態與驗收；其他決策表只連回主責文件 |
 
 ## 依工作選擇閱讀順序
@@ -39,7 +39,7 @@
 | Descriptor 候選與五組對照 | [examples/component_descriptor](examples/component_descriptor/README.md)；含離線驗證與限制 |
 | Python 型別／連續範例 | [models.py](examples/pydantic_contracts/models.py)、[typed_examples.py](examples/pydantic_contracts/typed_examples.py) |
 | Parser Local／Remote 教學 | [examples/component_development](examples/component_development/)；開發步驟見 Engine 手冊 |
-| 瀏覽器原型 | [01_ui_prototype.html](01_ui_prototype.html)；v0.12 記憶體模擬，正式差異見 UI 手冊 |
+| 瀏覽器原型 | [01_ui_prototype.html](01_ui_prototype.html)；v0.13 記憶體模擬，包含 Chunking → Embedding Schema 相依示範 |
 | L1 使用／開發流程 | [PNG](diagrams/01_user_system_l1.png)／[MMD](diagrams/01_user_system_l1.mmd)／[SVG](diagrams/01_user_system_l1.svg) |
 | Infra | [PNG](diagrams/02_infra_architecture.png)／[MMD](diagrams/02_infra_architecture.mmd) |
 | Module／Component／三個 System | [圖說](diagrams/03_module_component_concept.md)／[PNG](diagrams/03_module_component_concept.png)／[MMD](diagrams/03_module_component_concept.mmd) |

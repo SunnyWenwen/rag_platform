@@ -46,7 +46,7 @@ test('invalid content field stays selected, error focuses the module and blocks 
   q('[data-rerank-content]').value='text';q('[data-rerank-content]').dispatchEvent(new w.Event('change',{bubbles:true}));assert.equal(run('config.rerank.content[0]'),'text');assert(q('#createButton').disabled);showModule('chunking');click('[data-pick="chunking.copy"][value="summary"]');assert(!q('#createButton').disabled);
 });
 test('unused type/unindexed choices are visible disabled, not silently substituted',()=>{
-  run("config.document_schema.fields.push(schemaField('price','number'));config.document_schema.fields.push(schemaField('summary'))");showModule('rerank');assert(q('[data-rerank-content] option[value="price"]').disabled);assert(q('[data-rerank-content] option[value="summary"]').disabled);showModule('retrieval');assert(q('[data-pick="retrieval.fulltext"][value="summary"]').disabled);assert.equal(run('config.rerank.content[0]'),'text');
+  run("config.parsing.field_rules.fields.push(schemaField('price','number'));config.parsing.field_rules.fields.push(schemaField('summary'))");showModule('rerank');assert(q('[data-rerank-content] option[value="price"]').disabled);assert(q('[data-rerank-content] option[value="summary"]').disabled);showModule('retrieval');assert(q('[data-pick="retrieval.fulltext"][value="summary"]').disabled);assert.equal(run('config.rerank.content[0]'),'text');
 });
 test('advanced error remains visible collapsed and click opens correct section',()=>{
   showModule('indexing');change('indexing.backend','Local Search');showModule('retrieval');advanced();change('retrieval.processing.same_query.method','Sum Score');q('#resultAdvanced > summary').click();assert(!q('#resultAdvanced').open);assert(q('#createButton').disabled);

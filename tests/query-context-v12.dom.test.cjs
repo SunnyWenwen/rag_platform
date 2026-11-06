@@ -8,7 +8,7 @@ const change=(selector,value)=>{const el=q(selector);el.type==='checkbox'?el.che
 let count=0;function test(name,fn){run('openCreate()');fn();count++;console.log('PASS '+name);}
 test('composition is opt-in, previews exact substitution, preserves sources and updates downstream pickers',()=>{
  run("selectMod('embedding')");assert(!q('#compositionAdvanced').open);assert(!run('compositionOn(config)'));q('#compositionAdvanced').open=true;
- run("config.document_schema.fields.push(schemaField('title','string',true));config.chunking.copy=['title'];selectMod('embedding')");
+ run("config.parsing.field_rules.fields.push(schemaField('title','string',true));config.chunking.copy=['title'];selectMod('embedding')");
  change('[data-path="embedding.composition.enabled"]',true);assert(q('#compositionAdvanced').open);change('[data-path="embedding.mappings.0.source"]','embedding_text');
  const chunk=json('previewChunks(config,exampleDocument(config))[0]');assert.equal(chunk.fields.embedding_text,'標題：設備保養規範\n內容：設備每月需清潔散熱孔。');assert.equal(chunk.fields.text,'設備每月需清潔散熱孔。');assert.equal(chunk.vectors.text.source_field,'embedding_text');assert(!chunk.metadata._rag);
  run("selectMod('indexing')");assert(q('[data-pick="indexing.fulltext"][value="embedding_text"]'));assert(q('[data-pick="indexing.filters"][value="fields.embedding_text"]'));run("selectMod('rerank')");assert(!q('[data-rerank-content] option[value="embedding_text"]').disabled);

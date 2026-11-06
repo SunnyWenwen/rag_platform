@@ -54,8 +54,8 @@ test('current-query draft preserved but original query used after cross merge',(
 });
 test('Reranker fields must exist, be strings, be inherited and stored',()=>{
   run("config=exampleConfig();config.rerank.content=['summary'];config.chunking.copy=config.chunking.copy.filter(x=>x!=='summary')");assert(run('resultErrors(config)').some(x=>x.includes('fields.summary')));assert.deepEqual(copy(run('config.rerank.content')),['summary']);
-  run("config.chunking.copy.push('summary');config.document_schema.fields.find(f=>f.name==='summary').type='number'");assert(run('resultErrors(config)').some(x=>x.includes('fields.summary')));
-  run("config.document_schema.fields.find(f=>f.name==='summary').type='string';config.chunking.copy=[]");assert(run('resultErrors(config)').some(x=>x.includes('fields.summary')));
+  run("config.chunking.copy.push('summary');config.parsing.field_rules.fields.find(f=>f.name==='summary').type='number'");assert(run('resultErrors(config)').some(x=>x.includes('fields.summary')));
+  run("config.parsing.field_rules.fields.find(f=>f.name==='summary').type='string';config.chunking.copy=[]");assert(run('resultErrors(config)').some(x=>x.includes('fields.summary')));
 });
 test('selected routes retain identities and stale refs fail without substitution',()=>{
   run("config=exampleConfig();config.indexing.backend='Local Search';config.transform.method='Rewrite';config.retrieval.processing.same_query.route_scope='selected';config.retrieval.processing.same_query.routes=['fulltext:text','vector:text']");const p=plan();assert.equal(p.final.length,2);assert(p.final.some(x=>x.routes.length===2));assert.equal(run('resultErrors(config).length'),0);

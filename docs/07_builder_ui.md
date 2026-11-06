@@ -26,7 +26,7 @@
 - [Prototype／Backlog：UIB-024：Descriptor 驅動 I/O 規格與逐層相依（D-67）](#src-10-uib-024descriptor-驅動-io-規格與逐層相依d-67)
 
 
-更新：2026-11-05。本手冊同時管理目標互動與 Prototype 差異，兩者分區。**v0.12 是瀏覽器模擬，不是已串接 Engine／DB／模型的產品。**這次文件整合不修改 HTML／UI。
+更新：2026-11-06。本手冊同時管理目標互動與 Prototype 差異，兩者分區。**v0.13 是瀏覽器模擬；欄位推導使用本機示範規則，未串接正式 Engine／DB／模型。**
 
 UIB-021 保留給 D-55 索引綁定；後加入且重號的 Descriptor 驅動規格改為 **UIB-024**。保留舊 uib-021-io-schema-refinement 錨點作相容別名；正式需求 ID 以 UIB-024 為準，所有待辦保留。
 
@@ -66,7 +66,7 @@ UIB-021 保留給 D-55 索引綁定；後加入且重號的 Descriptor 驅動規
 
 Create 產生獨立 Draft；Edit 複製選定 Revision。取消不修改已保存配置；AI 套用也只修改 Draft，直到 Create／Save 才生效。版本衝突不可悄悄覆蓋他人修改，行為由 Q-015／Q-019 決定。
 
-D-67 目標表單：共用 LLM／外部服務 → Ingestion 模組（選 Parser／填參數，顯示推導的資料規格）→ Inference 模組。不再要求先填獨立 Document Schema；任意 JSON Parser 有需要時在自身設定內定義欄位。現有 Prototype 尚未調整，追蹤 UIB-024。服務可由相應模組開啟管理，但引用同一服務資料。UI 可在相同操作流程編輯 DEV 部署綁定，保存時仍分開邏輯 Config 與部署設定，不能因畫面放一起就混為同一 Config Hash。
+D-67 目標表單：共用 LLM／外部服務 → Ingestion 模組（選 Parser／填參數，顯示推導的資料規格）→ Inference 模組。不再要求先填獨立 Document Schema；任意 JSON Parser 有需要時在自身設定內定義欄位。Prototype v0.13 已示範 Parsing 起始流程與下游規格連動，見 UIB-024。服務可由相應模組開啟管理，但引用同一服務資料。UI 可在相同操作流程編輯 DEV 部署綁定，保存時仍分開邏輯 Config 與部署設定，不能因畫面放一起就混為同一 Config Hash。
 
 <a id="src-06-32-已確認互動與基本進階分組"></a>
 ### 已確認互動與基本／進階分組
@@ -365,7 +365,7 @@ API 回傳最終有效清單。D-52：Chunk.metadata._rag.source_refs 為選填�
 
 單一 Workspace／Group 主畫面，Create／Edit 共用設定介面，提供 Ingest、Inference、檢索 Evaluation、Export。全部為瀏覽器記憶體內操作，重新整理重設；沒有真實 Engine、模型、DB、Registry、服務健康探測或部署控制器。
 
-- 舊版 Document Schema 編輯、CSV column 映射、單筆 IngestionDocument API 範例與平面 ParsedDocument.units；D-67 的 Parser 驅動規格尚待 UIB-024。
+- Parsing 進階欄位宣告、各步輸入／輸出規格摘要、CSV column 映射、單筆 IngestionDocument API 範例與平面 ParsedDocument.units。
 - Fixed-size／Recursive／Header-aware 的配置、Tokenizer 連動、預設 text／進階多欄位任務，metadata 繼承。
 - 全部 Chunk 內容預設保存；全文、向量、Filter 能力分開，失效欄位保留並報錯。
 - 推論 QueryContext[]／filters／metadata、兩層融合與四處 Top N；可以回多份分組清單。
@@ -400,7 +400,7 @@ ResultSet.key 對應 Config 路徑／群組；items 位置即名次。RRF 可用
 
 「原型完成」只代表配置／互動／模擬預覽，不代替真實功能驗收。
 
-| 編號 | 需求 | v0.12 狀態 |
+| 編號 | 需求 | v0.13 狀態 |
 |---|---|---|
 | UIB-001／002 | Fixed-size 及 Tokens 說明 | 原型已完成；真實 Tokenizer／切分待 Engine |
 | UIB-003 | AI 助手串接 M4 核心／API | 待後端整合；目前明示本機規則 |
@@ -418,7 +418,7 @@ ResultSet.key 對應 Config 路徑／群組；items 位置即名次。RRF 可用
 | UIB-018 | Embedding 前欄位模板 | 字串替換／驗證／Picker／預覽／有效匯出完成；模型 Token 上限仍待真實 Tokenizer |
 | UIB-019 | 額外原文 Chunk | 控制、獨立 copy、每 Unit/task 去重示例及變更影響完成；真實切分待 Engine |
 | UIB-020 | 簡化推論 Contract | D-54 本輪完成：root QueryContext[]，含 filters／metadata；無歷史物件 |
-| UIB-024 | Descriptor 驅動 I/O 資料規格與逐層相依 | D-67 新增，僅文件／待實作；取代獨立全域 Document Schema，見文末 |
+| UIB-024 | Descriptor 驅動 I/O 資料規格與逐層相依 | v0.13 完成本機互動示範，正式 Engine／Registry／API 待整合，見文末 |
 
 <a id="uib-010-component-selection"></a>
 <a id="src-10-4-component-與-remote-的原型範圍"></a>
@@ -439,7 +439,7 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 
 內建預覽預設沒有 _rag，不以缺少 source_refs／fingerprint／ordinal 阻擋儲存或執行。Component 未提供來源就不捏造。Chunk.metadata._rag 保留為選填擴充；ResultItem 不另帶分數血緣，流程診斷交 Logs。
 
-內建 Chunker 的示例可讀 metadata.chunking_mode="passthrough"，逐 Unit／task 完整轉 Chunk；預設無提示時正常切分。D-67 目標是在適用 Parser／Component 的資料規格與參數中宣告此字串，CSV 映射到 metadata；現有 Prototype 仍用舊 Document Schema，待 UIB-024 調整。這不是任意 Config／ACL 覆寫；其他 Component 的支援由其宣告決定。
+內建 Chunker 的示例可讀 metadata.chunking_mode="passthrough"，逐 Unit／task 完整轉 Chunk；預設無提示時正常切分。v0.13 在 Parsing 的欄位宣告中設定此字串，CSV 映射到 metadata。這不是任意 Config／ACL 覆寫；其他 Component 的支援由其宣告決定。
 
 <a id="uib-018-embedding-composition"></a>
 <a id="src-10-6-欄位組合與原文-chunk"></a>
@@ -542,13 +542,18 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 <a id="src-10-uib-024descriptor-驅動-io-規格與逐層相依d-67"></a>
 ## Prototype／Backlog：UIB-024：Descriptor 驅動 I/O 規格與逐層相依（D-67）
 
-2026-11-05｜**待實作，本輪不改 Prototype。**責任與六類宣告能力以 [Descriptor](04_component_descriptor.md) 為準；[Descriptor](04_component_descriptor.md) 提供可重複 A→B 表單／路徑等具體候選，尚未核定 Meta-schema／API，不以離線範例當正式 Renderer。
+2026-11-06｜**v0.13 已完成瀏覽器模擬。** 規格來源見 [Descriptor](04_component_descriptor.md)，九個節點的報告範例見 [Chunking → Embedding 的 Schema 相依](04_component_descriptor.md#chunking-embedding-schema-walkthrough)。
 
-- [ ] Create／Edit 取消要求先填獨立全域 Document Schema；在 Parser 設定顯示當前輸入／輸出欄位摘要。
-- [ ] 僅在 Parser 開放此能力時顯示資料欄位定義／映射與 metadata 限制；固定輸出不重複填寫。
-- [ ] 透過 Engine 同一份解析結果連動 Parser→Chunker→Embedding→Indexing→Retrieval 的候選／停用原因；不硬編碼第二套規則。
-- [ ] 支援首版固定、命名、清單映射、copy、條件分支、固定型別衍生欄位的規格顯示；未知必要規則明示不支援。
-- [ ] 上游改名／移除／條件切換時保留失效值並定位報錯；防止過期目錄／解析回應覆蓋最新草稿。
-- [ ] 多 Parser／多任務顯示分支與欄位可用性；Sample 僅供建議／確認，不以第一筆／候選聯集作為全體保證。
-- [ ] Create／Edit／AI Diff／CSV 映射／驗證／有效匯出共用 Component 參數與推導規格；舊原型 documentSchema 草稿的遷移方式另定，不冒充正式 Config。
-- [ ] API 說明區分 202 前可完成的共用＋Parser 預檢與背景實際內容驗證；提供 Local／Remote 同等宣告與錯誤示例。
+操作路徑：**Create Retrieval System → 套用設定示範 → ⑫ Schema 相依：欄位改名**。
+
+1. **Chunking** 顯示 `fields.body_text`、`fields.title`、`fields.page` 的輸出規格。`page` 是整數，仍可被複製到 Chunk。
+2. **Embedding** 保留 `page` 供查看，但停用其來源選項；映射 `body_text → body_vec` 時，輸出規格仍有三個原欄位，另有向量來源、測試 Profile 與維度。
+3. 回到 **Chunking** 把切片輸出名稱改成 `content`。儲存會被阻止；點底部驗證訊息可聚焦到失效的 Embedding 映射。修正 Embedding 的來源後，原本的 `body_vec` 向量索引選擇可沿用，仍引用 `body_text` 的全文搜尋與評分欄位則需修正。
+
+Create／Edit 直接從 Parsing 開始。內建 Parser 的欄位和 metadata 在進階參數內調整，固定輸出服務只顯示宣告。下游使用目前設定推導的規格；多 Chunking 任務只把各任務都保證且型別相容的欄位列為必填來源候選。AI 建議更新 Parser 參數，CSV 從 Parser 輸入取得映射目標，Export 將欄位宣告放在 Parsing 的設定內。
+
+尚待正式整合：
+
+- [ ] 串接 Engine 的 Descriptor 解析結果與 Registry；涵蓋 Meta-schema、未知必要規則、Profile 能力與過期回應卡控。v0.13 的本機示例不等同通用 Renderer。
+- [ ] 多 Parser 的實際分派與分支規格、Header-aware 的欄位能力驗證，以及已保存舊原型設定的正式遷移。
+- [ ] Runtime API 的 202 前 Parser 預檢、背景內容驗證，以及 Local／Remote 的契約錯誤示例。
