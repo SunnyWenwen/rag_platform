@@ -1,0 +1,215 @@
+{
+  "descriptor_version": "component-descriptor/0.1-draft",
+  "component_id": "example.inference.rank",
+  "implementation_version": "1.0.0-fixture",
+  "title": "Rerank",
+  "description": "離線 Inference 契約範例；參數拼字與能力名稱僅供驗證草案。",
+  "scope": {
+    "pipeline": "inference",
+    "modules": [
+      "rerank"
+    ]
+  },
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "service_ref": {
+        "type": "string",
+        "minLength": 1
+      },
+      "query_source": {
+        "enum": [
+          "original",
+          "current"
+        ]
+      },
+      "content_fields": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        },
+        "minItems": 1,
+        "uniqueItems": true
+      }
+    },
+    "required": [
+      "service_ref",
+      "query_source",
+      "content_fields"
+    ],
+    "additionalProperties": false
+  },
+  "io": {
+    "input": {
+      "contract_ref": "https://rag-builder.example.invalid/schemas/query-context-list-0.3-draft.schema.json",
+      "shape": "direct",
+      "constraints": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "result_sets": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  }
+                },
+                "required": [
+                  "key",
+                  "items"
+                ]
+              }
+            }
+          },
+          "required": [
+            "result_sets"
+          ]
+        }
+      }
+    },
+    "output": {
+      "contract_ref": "https://rag-builder.example.invalid/schemas/query-context-list-0.3-draft.schema.json",
+      "shape": "direct",
+      "constraints": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "result_sets": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "score": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "score"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "key",
+                  "items"
+                ]
+              }
+            }
+          },
+          "required": [
+            "result_sets"
+          ]
+        }
+      },
+      "inherit": [
+        "/filters",
+        "/metadata",
+        "/result_sets/*/items/*/chunk/fields"
+      ],
+      "schema_bindings": [
+        {
+          "path": "/items/properties/result_sets/items/properties/key/enum",
+          "value": {
+            "scope": "context",
+            "path": "/inference/rerank/input_result_set_keys"
+          }
+        },
+        {
+          "path": "/items/properties/result_sets/items/properties/items/maxItems",
+          "value": {
+            "scope": "context",
+            "path": "/inference/rerank/top_n"
+          }
+        }
+      ]
+    }
+  },
+  "option_sources": [
+    {
+      "id": "rerank-service",
+      "target": "/service_ref",
+      "kind": "service_profiles",
+      "source": {
+        "side": "context",
+        "path": "/inference/rerank/services"
+      }
+    },
+    {
+      "id": "rerank-fields",
+      "target": "/content_fields/*",
+      "kind": "fields",
+      "source": {
+        "side": "input",
+        "path": "/result_sets/*/items/*/chunk/fields"
+      },
+      "filter": {
+        "types": [
+          "string"
+        ],
+        "required": true
+      }
+    }
+  ],
+  "rules": [
+    {
+      "id": "current-query",
+      "kind": "constraint",
+      "target": "/query_source",
+      "code": "CURRENT_QUERY_UNAVAILABLE",
+      "message": "跨 Query 融合後沒有唯一的目前改寫 Query。",
+      "assert": {
+        "any": [
+          {
+            "op": "eq",
+            "left": {
+              "scope": "config",
+              "path": "/query_source"
+            },
+            "right": {
+              "value": "original"
+            }
+          },
+          {
+            "op": "eq",
+            "left": {
+              "scope": "context",
+              "path": "/inference/rerank/current_query_available"
+            },
+            "right": {
+              "value": true
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "resources": [
+    {
+      "id": "rerank",
+      "kind": "rerank_api",
+      "service_parameter": "/service_ref"
+    }
+  ]
+}

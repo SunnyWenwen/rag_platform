@@ -10,6 +10,12 @@
     },
     "urn:rag-builder:chunk:0.2-draft": {
       "file": "../../schemas/chunk.schema.json"
+    },
+    "https://rag-builder.example.invalid/schemas/query-context-list-0.3-draft.schema.json": {
+      "file": "../../schemas/inference_context.schema.json"
+    },
+    "urn:retrieval-builder:index-binding:0.2-draft": {
+      "file": "../../schemas/index_binding.schema.json"
     }
   },
   "facts": {
@@ -21,5 +27,8 @@
         }
       }
     }
-  }
+  },
+  "inference_context_inherit": [
+    "/inference/retrieval/hydrated_fields"
+  ]
 }

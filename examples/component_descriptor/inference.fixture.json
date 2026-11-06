@@ -1,0 +1,154 @@
+{
+  "note": "只使用合成資料，沒有呼叫模型或索引。識別、Profile、參數拼字是 fixture；3 維沿用 Ingestion 範例。",
+  "configs": {
+    "query_transformation": {
+      "count": 2,
+      "include_original": true,
+      "prompt": "改寫 {{query}}，提供 {{count}} 個不同的搜尋表述。",
+      "llm_ref": "llm.main"
+    },
+    "retrieval": {
+      "fulltext_fields": [
+        "fields.body_text"
+      ],
+      "vector_fields": [
+        "body_vec"
+      ],
+      "per_route_k": 2,
+      "output_mode": "backend_fused",
+      "filters": []
+    },
+    "rerank": {
+      "service_ref": "rerank.main",
+      "query_source": "current",
+      "content_fields": [
+        "body_text",
+        "title"
+      ]
+    }
+  },
+  "initial": [
+    {
+      "ori_query": "設備多久需要清潔？",
+      "query": "設備多久需要清潔？",
+      "filters": [
+        {
+          "field": "metadata.department",
+          "operator": "eq",
+          "value": "manufacturing"
+        }
+      ],
+      "result_sets": [],
+      "metadata": {
+        "language": "zh-TW"
+      }
+    }
+  ],
+  "provider_rewrites": {
+    "queries": [
+      "設備清潔週期是多久？",
+      "多久清理一次設備濾網？"
+    ]
+  },
+  "index_binding": {
+    "artifact_type": "builtin.elasticsearch/v1",
+    "target": {
+      "collection": "example-manuals"
+    },
+    "fulltext_fields": [
+      "fields.body_text"
+    ],
+    "filter_fields": [
+      "metadata.department"
+    ],
+    "vector_bindings": {
+      "body_vec": {
+        "embedding_profile_id": "example.embedding/v1",
+        "source_field": "body_text",
+        "dimensions": 3
+      }
+    }
+  },
+  "stored_fields_contract": {
+    "type": "object",
+    "properties": {
+      "body_text": {
+        "type": "string",
+        "minLength": 1
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1
+      },
+      "page": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "body_text",
+      "title",
+      "page"
+    ]
+  },
+  "chunks": [
+    {
+      "chunk_id": "c1",
+      "document_id": "manual-c1",
+      "source_revision": "v1",
+      "fields": {
+        "body_text": "每月清潔散熱孔。",
+        "title": "保養手冊",
+        "page": 2
+      },
+      "metadata": {
+        "department": "manufacturing"
+      },
+      "vectors": {}
+    },
+    {
+      "chunk_id": "c2",
+      "document_id": "manual-c2",
+      "source_revision": "v1",
+      "fields": {
+        "body_text": "每週清潔濾網。",
+        "title": "維護手冊",
+        "page": 3
+      },
+      "metadata": {
+        "department": "manufacturing"
+      },
+      "vectors": {}
+    }
+  ],
+  "hybrid_hits": [
+    [
+      {
+        "chunk_id": "c1",
+        "score": 5.84
+      },
+      {
+        "chunk_id": "c2",
+        "score": 4.47
+      }
+    ],
+    [],
+    [
+      {
+        "chunk_id": "c1",
+        "score": 4.03
+      }
+    ]
+  ],
+  "rerank_scores": {
+    "c1": 0.61,
+    "c2": 0.92
+  },
+  "result_plan": {
+    "rerank_top_n": 1
+  },
+  "query_encoders": {
+    "example.embedding/v1": {
+      "dimensions": 3
+    }
+  }
+}

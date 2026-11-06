@@ -1,0 +1,281 @@
+{
+  "descriptor_version": "component-descriptor/0.1-draft",
+  "component_id": "example.inference.search",
+  "implementation_version": "1.0.0-fixture",
+  "title": "Retrieval",
+  "description": "離線 Inference 契約範例；參數拼字與能力名稱僅供驗證草案。",
+  "scope": {
+    "pipeline": "inference",
+    "modules": [
+      "retrieval"
+    ]
+  },
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "fulltext_fields": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        },
+        "uniqueItems": true
+      },
+      "vector_fields": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        },
+        "uniqueItems": true
+      },
+      "per_route_k": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "output_mode": {
+        "enum": [
+          "independent",
+          "backend_fused"
+        ]
+      },
+      "filters": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "field": {
+              "type": "string",
+              "minLength": 1
+            },
+            "operator": {
+              "enum": [
+                "eq",
+                "in"
+              ]
+            },
+            "value": {}
+          },
+          "required": [
+            "field",
+            "operator",
+            "value"
+          ],
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "operator": {
+                    "const": "eq"
+                  }
+                },
+                "required": [
+                  "operator"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "operator": {
+                    "const": "in"
+                  }
+                },
+                "required": [
+                  "operator"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 1
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "required": [
+      "fulltext_fields",
+      "vector_fields",
+      "per_route_k",
+      "output_mode",
+      "filters"
+    ],
+    "additionalProperties": false
+  },
+  "io": {
+    "input": {
+      "contract_ref": "https://rag-builder.example.invalid/schemas/query-context-list-0.3-draft.schema.json",
+      "shape": "direct",
+      "constraints": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "ori_query": {
+              "type": "string",
+              "minLength": 1
+            },
+            "query": {
+              "type": "string",
+              "minLength": 1
+            },
+            "result_sets": {
+              "type": "array",
+              "items": {},
+              "maxItems": 0
+            },
+            "filters": {
+              "type": "array",
+              "items": {}
+            },
+            "metadata": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "output": {
+      "contract_ref": "https://rag-builder.example.invalid/schemas/query-context-list-0.3-draft.schema.json",
+      "shape": "direct",
+      "constraints": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "result_sets": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  }
+                },
+                "required": [
+                  "key",
+                  "items"
+                ]
+              }
+            }
+          },
+          "required": [
+            "result_sets"
+          ]
+        }
+      },
+      "inherit": [
+        "/filters",
+        "/metadata",
+        {
+          "source": {
+            "side": "context",
+            "path": "/inference/retrieval/hydrated_fields"
+          },
+          "target": "/result_sets/*/items/*/chunk/fields"
+        }
+      ],
+      "schema_bindings": [
+        {
+          "path": "/items/properties/result_sets/items/properties/key/enum",
+          "value": {
+            "scope": "context",
+            "path": "/inference/retrieval/result_set_keys"
+          }
+        },
+        {
+          "path": "/items/properties/result_sets/items/properties/items/maxItems",
+          "value": {
+            "scope": "config",
+            "path": "/per_route_k"
+          }
+        }
+      ]
+    }
+  },
+  "option_sources": [
+    {
+      "id": "fulltext",
+      "target": "/fulltext_fields/*",
+      "kind": "index_fields",
+      "source": {
+        "side": "context",
+        "path": "/inference/index_binding/fulltext_fields"
+      }
+    },
+    {
+      "id": "vectors",
+      "target": "/vector_fields/*",
+      "kind": "vectors",
+      "source": {
+        "side": "context",
+        "path": "/inference/index_binding/vector_bindings"
+      }
+    },
+    {
+      "id": "filters",
+      "target": "/filters/*/field",
+      "kind": "index_fields",
+      "source": {
+        "side": "context",
+        "path": "/inference/index_binding/filter_fields"
+      }
+    }
+  ],
+  "capabilities": {
+    "requires": [
+      {
+        "name": "index_binding",
+        "version": "0.2"
+      }
+    ]
+  },
+  "rules": [
+    {
+      "id": "compatible-index-format",
+      "target": "/output_mode",
+      "kind": "constraint",
+      "code": "INDEX_FORMAT_UNSUPPORTED",
+      "message": "此 Retrieval 範例只支援已登錄的 ES／Local 索引格式。",
+      "assert": {
+        "op": "in",
+        "left": {
+          "scope": "context",
+          "path": "/inference/index_binding/artifact_type"
+        },
+        "right": {
+          "value": [
+            "builtin.elasticsearch/v1",
+            "builtin.local_search/v1"
+          ]
+        }
+      }
+    }
+  ]
+}

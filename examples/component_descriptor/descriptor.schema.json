@@ -339,15 +339,64 @@
         "inherit": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/Path"
+            "oneOf": [
+              {
+                "$ref": "#/$defs/Path"
+              },
+              {
+                "$ref": "#/$defs/ContextInheritance"
+              }
+            ]
           },
           "minItems": 0,
           "uniqueItems": true
+        },
+        "schema_bindings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Binding"
+          },
+          "minItems": 1
         }
       },
       "required": [
         "contract_ref",
         "shape"
+      ],
+      "additionalProperties": false,
+      "dependentRequired": {
+        "schema_bindings": [
+          "constraints"
+        ]
+      }
+    },
+    "ContextInheritance": {
+      "type": "object",
+      "description": "Inherit a declared object container from a registered Engine fact; never read runtime payloads. Output only.",
+      "properties": {
+        "source": {
+          "type": "object",
+          "properties": {
+            "side": {
+              "const": "context"
+            },
+            "path": {
+              "$ref": "#/$defs/Path"
+            }
+          },
+          "required": [
+            "side",
+            "path"
+          ],
+          "additionalProperties": false
+        },
+        "target": {
+          "$ref": "#/$defs/Path"
+        }
+      },
+      "required": [
+        "source",
+        "target"
       ],
       "additionalProperties": false
     },

@@ -24,6 +24,7 @@
 - [data_rules：兩個操作表達六類能力](#src-25-5-data_rules兩個操作表達六類能力)
 - [Embedding A→B 完整比對](#src-25-6-embedding-ab-完整比對)
 - [Parser 與其他案例](#src-25-7-parser-與其他案例)
+- [Inference：三個模組的 Descriptor 驗證](#inference-descriptor-walkthrough)
 - [驗證層次與本輪實際證據](#src-25-8-驗證層次與本輪實際證據)
 - [需要決策的項目與建議](#src-25-9-需要決策的項目與建議)
 - [標準依據與遷移](#src-25-10-標準依據與遷移)
@@ -509,7 +510,8 @@ UI 顯示 `[Chunking] 重疊 Token 數必須小於 Chunk Token 上限。`，點�
 - modules 必須在固定 Pipeline 中連續且順序正確，不重複宣告 start／end。Engine 檢查邊界與既有 A 相容，不允許 Parser 宣告隨意改成 QueryContext。
 - shape=direct 表示直接使用該 Contract；shape=list 表示該 Contract 的清單。若 Contract 本身就是 QueryContext[]，用 direct，避免多包一層。
 - contract_ref 是核可 Contract Registry 的固定識別。共用檔現有 $id 直接沿用；沒有 $id 的 IngestionDocument 在 fixture 使用日期別名，**沒有改寫 A 或發布新共用版本**。
-- io.constraints 是附加資料限制；io.output.inherit 複製同名容器的已知輸入規格，例如 Embedding 保留 fields／metadata／既有 vectors。input 不使用 inherit。
+- `io.constraints` 是附加資料限制。Inference 範例在 I/O 邊界新增候選 `schema_bindings`，沿用欄位規則的 keyword 白名單，可細化整個清單或內層清單的限制。
+- `io.output.inherit` 的字串形式沿用同名輸入規格，例如 Embedding 保留 fields／metadata／既有 vectors。Inference 範例新增候選物件形式，從已登錄的 Engine 欄位規格繼承到指定輸出路徑。input 不使用 inherit。
 - inherit／copy 宣告的是 Schema 保留，不替 Component 執行資料複製；資料／識別／metadata 的實際傳遞仍須遵守 A。異質輸入只繼承共同保證，不以聯集捏造每筆都有的欄位。
 - Remote 由一個 operation 推導 B，只公開區段的 Input／Output；不要求內部中間物件。Local Factory／Remote Manifest 的接線放 Registry／C，不在 Descriptor 填 Python import 或服務 URL。
 - Indexing 的業務結果／逐項回執包裝仍待 A 的 SDK 核定；不把單一 IndexBinding Schema 冒充所有工作回傳資訊。
@@ -638,6 +640,50 @@ UI 與動態來源分別宣告：
 
 模板內引用欄位的檢查、來源資料限制與 Profile 相容性是語意能力，不因輸出欄位宣告為 string 就自動完成。內部順序建議先取得已知／衍生 fields，再推向量與下游選項；不得用輸出向量反過來生成自己的來源欄位，循環拒絕。具體分階段處理見 DS-05。
 
+<a id="inference-descriptor-walkthrough"></a>
+## Inference：三個模組的 Descriptor 驗證
+
+**三步的公開輸入和輸出仍是 `QueryContext[]`。** Config Schema 描述使用者可以填什麼，`option_sources` 再依實際可用資源與上游資料規格限制選項。Meta-schema 驗 Developer 的宣告格式；Engine 解析當前 Config、索引能力及資料規格，最後驗證實際輸出。以下使用[離線測資](../examples/component_descriptor/inference.fixture.json)，不凍結正式欄位拼字、Provider API 或 Q-014 的融合預設。
+
+| 步驟 | 設定與來源 | 輸出規格如何改變 |
+|---|---|---|
+| [Query Transformation](../examples/component_descriptor/query_transformation.descriptor.json) | `count=2`、`include_original=true`、Prompt，並從可用 LLM Profile 選 `llm_ref`。 | Provider 私有輸出驗 `{queries: string[]}` 恰好 2 筆；Engine 再加原始問題，讓公開 `QueryContext[]` 恰好 3 筆。每筆沿用 `ori_query`、`filters`、`metadata`，還沒有搜尋結果。停用時略過；單筆 Rewrite 可用同樣的筆數限制，無須決定是否合併 UI 的兩個方法。 |
+| [Retrieval](../examples/component_descriptor/retrieval.descriptor.json) | 全文從 `IndexBinding.fulltext_fields` 選 `fields.body_text`，向量從 `vector_bindings` 選 `body_vec`，過濾從 `filter_fields` 選 `metadata.department`；Query Encoder 必須符合 Profile 與維度。 | ES 已在後端融合時，每個 Query 只有 `es_hybrid`；Local 分路時有全文和向量兩組 key。每組 `items` 最多 `per_route_k` 筆，零筆合法。輸出還要宣告每個實際命中的 Chunk 保證帶回哪些欄位。 |
+| [Rerank](../examples/component_descriptor/rerank.descriptor.json) | 從當前輸入 `/result_sets/*/items/*/chunk/fields` 選必定存在的文字欄位；範例可選 `body_text` 和 `title`，不可選 `page: integer`。可選原始／當前 Query 受融合時點限制。 | 保留 Chunk 欄位與目前清單 key；每筆保留結果必須有新數字 `score`，排序後每組最多 `Top N` 筆。Top N 取自結果處理計畫，不重複保存為 Rerank Component 的設定。None 略過評分，沿用當前結果。 |
+
+這個例子刻意讓 **`title` 有保存但沒有建搜尋索引**：Retrieval 的全文搜尋不能選它；如果取回的每個 Chunk 都保證有 `title: string`，Rerank 就可以選它。這兩個選單的來源分別是 **IndexBinding** 和 **已解析的 Retrieval 輸出欄位規格**。
+
+現有格式需要兩項小擴充，兩者都在 **Descriptor Meta-schema 草案**內：
+
+1. **邊界上的 `schema_bindings`**：欄位規則原本只能在某個屬性的 Schema 內代入值。Inference 也要對根陣列或內層清單代入 `minItems`、`maxItems`，並依計畫限制 `ResultSet.key` 的 `enum`。例如 Multi-query 輸出對 `io.output.constraints` 代入：
+
+   ```json
+   {
+     "constraints": {"type": "array", "items": {"type": "object"}},
+     "schema_bindings": [
+       {"path": "/minItems", "value": {"scope": "context", "path": "/inference/rewrite/output_count"}},
+       {"path": "/maxItems", "value": {"scope": "context", "path": "/inference/rewrite/output_count"}}
+     ]
+   }
+   ```
+
+   `output_count` 由 Engine 從已驗證的 Config 算出。Bindings 只能寫入宣告 Schema 節點的白名單 keyword，不能改 `$ref` 或任意修改 JSON；解析後用共用契約加上細化結果一起驗證。上述 JSON 只節錄邊界的兩個設定項目。
+
+2. **從可信欄位規格繼承**：Retrieval 的輸入只有 Query，沒有待回傳的 Chunk；沿用「從本步輸入複製」無法得知取回的欄位。新增 `io.output.inherit` 物件形式，讓 Retrieval 引用 Engine 已登錄的 **hydrated fields** 規格：只有目前索引／Adapter 在取回結果時確定提供的欄位，才可以當必填保證。這份規格可從已保存資料的宣告與 Adapter 能力取得，不從命中樣本或任意 RunContext 值推猜。
+
+   ```json
+   {
+     "source": {"side": "context", "path": "/inference/retrieval/hydrated_fields"},
+     "target": "/result_sets/*/items/*/chunk/fields"
+   }
+   ```
+
+`inherit.target` 和欄位選項的資料路徑以**一筆 QueryContext**為起點；`schema_bindings.path` 則以**整份 constraints Schema**為起點，所以指到陣列元素時會寫 `/items/...`。`*` 是平台的資料路徑模式，只用於需要展開的資料容器，不用在 Schema 綁定的 JSON Pointer。
+
+**跨 Query 融合前後都能沿用相同共用契約。** 若先融合再 Rerank，下游讀的是融合後的有效規格；沒有唯一改寫問題時，`query_source=current` 不可用。若先逐 Query Rerank，仍可用各自的 Query，再由後置融合依自己的 Top N 取上限。排序、key 唯一性、分數可比性、Profile 相容、filters／metadata 值保留，以及 Rank-only 可做 RRF 但不可做 Sum Score，仍由 Engine／Adapter 檢查，無須加入新的業務欄位。
+
+離線測試包含 ES Hybrid、Local 分路、跨 Query 融合放在 Rerank 前／後，也驗證 `title` 改名或變成選填後舊 Rerank 選擇會失效。尚未執行模型、索引、通用 Descriptor 編譯器或 UI；正式 Provider 降級與 Fusion 計畫仍沿用既有待決事項。
+
 <a id="src-25-8-驗證層次與本輪實際證據"></a>
 ## 驗證層次與本輪實際證據
 
@@ -645,8 +691,8 @@ UI 與動態來源分別宣告：
 |---|---|---|
 | 描述結構 | 必填、型別、已知 action／widget／規則、未知欄位 | 新候選 Schema／正反例可離線驗證 |
 | Embedded Schema 與靜態引用 | Draft、支援子集、受控 $ref、參數／UI 路徑與來源 ID | 離線驗證部分路徑／型別／引用；不作完整前端支援承諾 |
-| Config／細化語意 | 唯一名稱、條件、copy、Profile、衍生順序、分支保證、無循環 | fixture 驗部分約束；**不執行完整 data_rules 解析** |
-| 預期 I/O Schema／樣本 | 共用 Contract＋細節可驗證樣本；明顯錯誤被拒絕 | expected_* 是人工明列；驗證相符不證明解析規則與結果完全等價 |
+| Config／細化語意 | 唯一名稱、條件、copy、Profile、衍生順序、分支保證、無循環 | Ingestion fixture 驗部分約束；Inference 試作驗邊界綁定、欄位繼承與選項，**不執行完整 data_rules 解析** |
+| 預期 I/O Schema／樣本 | 共用 Contract＋細節可驗證樣本；明顯錯誤被拒絕 | Ingestion expected_* 是人工明列；Inference 由受限離線程式解析其 Descriptor 範例並驗證串接資料 |
 | Runtime／UI | 真正 Parser／Tokenizer／模型、服務、相依 Picker、版本回應與部署 | 未實作；UI 記 UIB-024，使用者要求修改時才做 |
 
 離線指令與限制見 [範例 README](../examples/component_descriptor/README.md)。本稿不修改共用 schemas/、Prototype 或 Runtime。完整 Registry 還要校驗六類規則不能放寬 A、多 Parser／多任務各分支可用性、能力配對及未知必要 UI feature；不以本輪測試關閉 Q-ID。
@@ -660,9 +706,9 @@ UI 與動態來源分別宣告：
 |---|---|---|---|
 | DS-01 | 共同包裝與必填範圍 | 採 [Descriptor 候選相關章節](#src-25-2-descriptor-共同骨架) 核心必填；有相關功能才交 resources／rules 等，七項交付仍用審查清單補齊 | 固定 Parser 不必交空 UI／資源欄位；把所有欄位必填會增加最小 Component 負擔 |
 | DS-02 | 單／跨 Module 範圍 | scope.pipeline＋有序 modules，檢查連續與 A 邊界 | [parsing,chunking,embedding] 只公開兩端；不重填 start/end 或任意 DAG |
-| DS-03 | I/O 引用與清單包裝 | 固定 Contract Registry 識別＋shape=direct/list；附加 constraints，沿用 A | QueryContext[] 已是 List 用 direct；ParsedDocument 單型別＋list。Module-specific Wrapper／Indexing 回執尚需 A 收斂 |
-| DS-04 | 六類規則如何編碼 | declare／copy＋for_each／when／schema_bindings；先用本稿案例檢查可讀性 | 另一選擇是 rename/map/vector 等多個專用 action，更直觀但規格與轉換分支較多；bindings 必須限定 keyword，不能任意 Patch |
-| DS-05 | 繼承、內部衍生與順序 | output.inherit＋有序資料規則；copy 只取已知來源，先衍生 fields 再映射 vectors，循環拒絕 | Embedding 模板可選 embedding_text；來源非保證時標 unresolved／拒絕，不能把多任務欄位聯集當全體都有 |
+| DS-03 | I/O 引用與清單包裝 | 固定 Contract Registry 識別＋shape=direct/list；附加 constraints，沿用 A | QueryContext[] 已是 List 用 direct；ParsedDocument 單型別＋list。Inference 草案可用邊界 bindings 限制筆數或 key；Indexing 回執尚需 A 收斂 |
+| DS-04 | 六類規則如何編碼 | declare／copy＋for_each／when／schema_bindings；邊界沿用同一 binding 語法與白名單 | 不必為推論新增 Top N 或 ResultSet 專屬 action；排序、評分與去重由既有執行責任處理 |
+| DS-05 | 繼承、內部衍生與順序 | output.inherit＋有序資料規則；copy 只取已知來源，先衍生 fields 再映射 vectors，循環拒絕 | Retrieval 可從登錄的欄位規格繼承；Embedding 模板可選 embedding_text。來源非保證時標 unresolved／拒絕 |
 | DS-06 | Embedded Schema 子集／引用政策 | Draft 2020-12，Schema 物件、已核定 keyword、只允許本地／註冊引用；Engine 統一 default／正規化 | jsonschema 接受某 keyword 不代表 Builder 支援；additionalProperties／nullable／default 的精確政策仍需逐項核定 |
 | DS-07 | 可重複 A→B 表單與路徑 | array＋inline 排列，子欄位用 /mappings/*/source_field 指向 Picker；* 是平台模式 | 不為 Embedding 特製一個業務 widget；如要 mapping_table 專用控制項需新增必要 feature／Renderer |
 | DS-08 | 一般約束／名稱唯一／UI 適用性 | 延用受限條件式，新增明確 unique_by；與 Config Schema 條件必填一致 | 同名向量兩筆來源不同仍拒絕；uniqueItems 不能代替某個欄位的唯一性 |
@@ -685,4 +731,4 @@ JSON Schema 原生的 [$ref／$defs](https://json-schema.org/understanding-json-
 
 本手冊的 Config keyword、UI widget 與條件語意是規劃／支援需求；不是所有 JSON Schema 都已能自動呈現。舊稿提到的 option_sources 物件、target.kind、source_field／tokenizer_ref 固定例子已由這份整合候選取代。候選用 option_sources 清單、字串路徑模式、scope.modules；是否接受此包裝由 DS 清單決定。
 
-未知必要規則／控制項不可忽略；解析規格、目錄可見、服務連通及資料可查各自回報。範例中的 expected Schema 為人工明列，離線驗證不等於完成細化編譯器／Registry／Renderer。UI 變更統一列 UIB-024。
+未知必要規則／控制項不可忽略；解析規格、目錄可見、服務連通及資料可查各自回報。Ingestion 的 expected Schema 為人工明列，Inference 則有受限的離線解析；兩者都不等於完成正式細化編譯器／Registry／Renderer。UI 變更統一列 UIB-024。

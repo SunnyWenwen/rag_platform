@@ -1,0 +1,157 @@
+{
+  "descriptor_version": "component-descriptor/0.1-draft",
+  "component_id": "example.inference.multi_query",
+  "implementation_version": "1.0.0-fixture",
+  "title": "Multi-query",
+  "description": "離線 Inference 契約範例；參數拼字與能力名稱僅供驗證草案。",
+  "scope": {
+    "pipeline": "inference",
+    "modules": [
+      "query_transformation"
+    ]
+  },
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "count": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "include_original": {
+        "type": "boolean"
+      },
+      "prompt": {
+        "type": "string",
+        "minLength": 1
+      },
+      "llm_ref": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "required": [
+      "count",
+      "include_original",
+      "prompt",
+      "llm_ref"
+    ],
+    "additionalProperties": false
+  },
+  "io": {
+    "input": {
+      "contract_ref": "https://rag-builder.example.invalid/schemas/query-context-list-0.3-draft.schema.json",
+      "shape": "direct",
+      "constraints": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "ori_query": {
+              "type": "string",
+              "minLength": 1
+            },
+            "query": {
+              "type": "string",
+              "minLength": 1
+            },
+            "result_sets": {
+              "type": "array",
+              "items": {},
+              "maxItems": 0
+            },
+            "filters": {
+              "type": "array",
+              "items": {}
+            },
+            "metadata": {
+              "type": "object"
+            }
+          }
+        },
+        "minItems": 1,
+        "maxItems": 1
+      }
+    },
+    "output": {
+      "contract_ref": "https://rag-builder.example.invalid/schemas/query-context-list-0.3-draft.schema.json",
+      "shape": "direct",
+      "constraints": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "ori_query": {
+              "type": "string",
+              "minLength": 1
+            },
+            "query": {
+              "type": "string",
+              "minLength": 1
+            },
+            "result_sets": {
+              "type": "array",
+              "items": {},
+              "maxItems": 0
+            },
+            "filters": {
+              "type": "array",
+              "items": {}
+            },
+            "metadata": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "inherit": [
+        "/filters",
+        "/metadata"
+      ],
+      "schema_bindings": [
+        {
+          "path": "/minItems",
+          "value": {
+            "scope": "context",
+            "path": "/inference/rewrite/output_count"
+          }
+        },
+        {
+          "path": "/maxItems",
+          "value": {
+            "scope": "context",
+            "path": "/inference/rewrite/output_count"
+          }
+        }
+      ]
+    }
+  },
+  "option_sources": [
+    {
+      "id": "llm",
+      "target": "/llm_ref",
+      "kind": "llm_profiles",
+      "source": {
+        "side": "context",
+        "path": "/inference/llm_profiles"
+      }
+    }
+  ],
+  "resources": [
+    {
+      "id": "llm",
+      "kind": "llm",
+      "service_parameter": "/llm_ref"
+    }
+  ],
+  "ui_hints": {
+    "fields": {
+      "/prompt": {
+        "widget": "textarea"
+      },
+      "/llm_ref": {
+        "widget": "service_picker",
+        "option_source": "llm"
+      }
+    }
+  }
+}

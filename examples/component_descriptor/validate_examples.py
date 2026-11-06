@@ -15,6 +15,10 @@ HERE = Path(__file__).resolve().parent
 SCHEMA = json.loads((HERE / "descriptor.schema.json").read_text())
 CATALOG = json.loads((HERE / "catalog.fixture.json").read_text())
 CASES = ["parser", "chunker", "embedding", "embedding_template", "remote_segment"]
+INGESTION_DOCUMENT = "urn:retrieval-builder:fixture:ingestion-document:2026-11-05"
+PARSED_DOCUMENT = "urn:rag-builder:parsed-document:0.2-draft"
+CHUNK = "urn:rag-builder:chunk:0.2-draft"
+QUERY_CONTEXTS = "https://rag-builder.example.invalid/schemas/query-context-list-0.3-draft.schema.json"
 ORDER = {
     "ingestion": ["import", "parsing", "chunking", "embedding", "indexing"],
     "inference": ["query_transformation", "retrieval", "rerank"],
@@ -110,6 +114,42 @@ def inspect_values(value, config_schema, item_schema=None):
             inspect_values(child, config_schema, item_schema)
 
 
+def binding_parent(schema, path):
+    """Resolve a bound keyword inside a declared Schema node, never inside data."""
+    parts = tokens(path)
+    require(parts and parts[-1] in BIND_KEYWORDS, "forbidden schema binding keyword")
+    node = schema
+    i = 0
+    while i < len(parts) - 1:
+        key = parts[i]
+        require(isinstance(node, dict), "schema binding parent absent")
+        if key in {"properties", "$defs", "allOf"} and i + 1 < len(parts) - 1:
+            name = parts[i + 1]
+            parent = node.get(key)
+            if key == "allOf":
+                require(isinstance(parent, list) and name.isdigit() and int(name) < len(parent),
+                        "schema binding parent absent")
+                node = parent[int(name)]
+            else:
+                require(isinstance(parent, dict), "schema binding parent absent")
+                node = parent.get(name)
+            i += 2
+        elif key in {"items", "additionalProperties", "if", "then", "else"}:
+            node = node.get(key)
+            i += 1
+        else:
+            raise ValueError("schema binding must point to a declared Schema node")
+    require(isinstance(node, dict), "schema binding parent absent")
+    return node, parts[-1]
+
+
+def inspect_bindings(schema, bindings):
+    paths = [binding["path"] for binding in bindings]
+    require(len(paths) == len(set(paths)), "duplicate schema binding path")
+    for path in paths:
+        binding_parent(schema, path)
+
+
 def validate_descriptor(descriptor):
     Draft202012Validator(SCHEMA).validate(descriptor)
     scope = descriptor["scope"]
@@ -126,10 +166,19 @@ def validate_descriptor(descriptor):
         require(side == "output" or not boundary.get("inherit"), "input cannot inherit itself")
         if "constraints" in boundary:
             inspect_schema(boundary["constraints"])
-    # Only the four ingestion boundary types represented by these examples.
-    ing, parsed, chunk = list(CATALOG["contracts"])
-    inputs = {"parsing": (ing, "direct"), "chunking": (parsed, "list"), "embedding": (chunk, "list")}
-    outputs = {"parsing": (parsed, "list"), "chunking": (chunk, "list"), "embedding": (chunk, "list")}
+        bindings = boundary.get("schema_bindings", [])
+        inspect_values(bindings, config_schema)
+        inspect_bindings(boundary.get("constraints", {}), bindings)
+        for rule in boundary.get("inherit", []):
+            if isinstance(rule, dict):
+                require(rule["source"]["path"] in CATALOG.get("inference_context_inherit", []),
+                        "unregistered Context inheritance source")
+                require(bool(tokens(rule["target"])), "empty Context inheritance target")
+    inference = {name: (QUERY_CONTEXTS, "direct") for name in ORDER["inference"]}
+    inputs = {"parsing": (INGESTION_DOCUMENT, "direct"), "chunking": (PARSED_DOCUMENT, "list"),
+              "embedding": (CHUNK, "list"), **inference}
+    outputs = {"parsing": (PARSED_DOCUMENT, "list"), "chunking": (CHUNK, "list"),
+               "embedding": (CHUNK, "list"), **inference}
     for side, expected in [("input", inputs.get(scope["modules"][0])),
                            ("output", outputs.get(scope["modules"][-1]))]:
         if expected:
@@ -171,11 +220,7 @@ def validate_descriptor(descriptor):
         inspect_values(rule, config_schema, item_schema)
         if "schema" in rule:
             inspect_schema(rule["schema"])
-        for binding in rule.get("schema_bindings", []):
-            parts = tokens(binding["path"])
-            require(parts and parts[-1] in BIND_KEYWORDS, "forbidden schema binding keyword")
-            parent = "/" + "/".join(binding["path"][1:].split("/")[:-1]) if len(parts) > 1 else ""
-            require(isinstance(get(rule["schema"], parent), dict), "schema binding parent absent")
+        inspect_bindings(rule.get("schema", {}), rule.get("schema_bindings", []))
     for rule in descriptor.get("rules", []):
         config_node(config_schema, rule["target"])
         item_schema = None
@@ -190,31 +235,32 @@ def validate_descriptor(descriptor):
             config_node(node["items"], rule["item_path"])
 
 
-def value_of(expr, config, item):
+def value_of(expr, config, item, facts=None):
     if "value" in expr:
         return expr["value"]
-    source = {"config": config, "item": item, "context": CATALOG["facts"]}[expr["scope"]]
+    source = {"config": config, "item": item,
+              "context": CATALOG["facts"] if facts is None else facts}[expr["scope"]]
     return get(source, expr["path"])
 
 
-def predicate(expr, config, item):
+def predicate(expr, config, item, facts=None):
     if "all" in expr:
-        return all(predicate(p, config, item) for p in expr["all"])
+        return all(predicate(p, config, item, facts) for p in expr["all"])
     if "any" in expr:
-        return any(predicate(p, config, item) for p in expr["any"])
+        return any(predicate(p, config, item, facts) for p in expr["any"])
     if "not" in expr:
-        return not predicate(expr["not"], config, item)
-    a = value_of(expr["left"], config, item)
+        return not predicate(expr["not"], config, item, facts)
+    a = value_of(expr["left"], config, item, facts)
     if expr["op"] == "exists":
         return a is not MISSING
-    b = value_of(expr["right"], config, item)
+    b = value_of(expr["right"], config, item, facts)
     require(a is not MISSING and b is not MISSING, "unresolved value")
     return {"eq": lambda: a == b, "ne": lambda: a != b, "lt": lambda: a < b,
             "lte": lambda: a <= b, "gt": lambda: a > b, "gte": lambda: a >= b,
             "in": lambda: a in b, "contains": lambda: b in a}[expr["op"]]()
 
 
-def validate_config(descriptor, config):
+def validate_config(descriptor, config, facts=None):
     Draft202012Validator(descriptor["config_schema"]).validate(config)
     for rule in descriptor.get("rules", []):
         if rule["kind"] == "unique_by":
@@ -224,22 +270,22 @@ def validate_config(descriptor, config):
         elif rule["kind"] == "constraint":
             items = get(config, rule["for_each"]) if "for_each" in rule else [None]
             for item in items:
-                require(predicate(rule["assert"], config, item), rule["code"])
+                require(predicate(rule["assert"], config, item, facts), rule["code"])
     # Check names/known binding values only, not schema construction or copy semantics.
     names = set()
     for rule in descriptor.get("data_rules", []):
         items = get(config, rule["for_each"]) if "for_each" in rule else [None]
         for item in items:
-            if "when" in rule and not predicate(rule["when"], config, item):
+            if "when" in rule and not predicate(rule["when"], config, item, facts):
                 continue
-            name = value_of(rule["name"], config, item)
+            name = value_of(rule["name"], config, item, facts)
             require(isinstance(name, str) and bool(name.strip()), "invalid field name")
             if rule["side"] == "output":
                 key = (rule["target"], name)
                 require(key not in names, "duplicate output field")
                 names.add(key)
             for binding in rule.get("schema_bindings", []):
-                require(value_of(binding["value"], config, item) is not MISSING, "unresolved schema binding")
+                require(value_of(binding["value"], config, item, facts) is not MISSING, "unresolved schema binding")
 
 
 def registry():
