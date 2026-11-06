@@ -8,6 +8,7 @@
 - [第一版純 Descriptor 可表達的規則](#src-24-4-第一版純-descriptor-可表達的規則)
 - [第一版的邊界與未知欄位](#src-24-5-第一版的邊界與未知欄位)
 - [沿 Pipeline 推導設定選項](#src-24-6-沿-pipeline-推導設定選項)
+  - [說明範例：Chunking → Embedding 的 Schema 相依](#chunking-embedding-schema-walkthrough)
 - [Ingestion API 的驗證與 document_schema 收斂](#src-24-8-ingestion-api-的驗證與-document_schema-收斂)
 - [目的與已確認行為](#src-12-1-目的與已確認行為)
 - [Config Schema 的第一版支援範圍](#src-12-5-config-schema-的第一版支援範圍)
@@ -126,6 +127,84 @@ Engine 由前往後驗證 Config、解析當前 I/O 資料規格、檢查接線�
 多 Parser 必須保留各 profile／分支的輸出宣告；共用 Chunk 任務所需的切分／copy 欄位須在所有會收到的 Units／分支可取得，不能只取候選聯集就宣稱合法。進階多 Chunk 任務各自推導，輸出相加；多結果形狀須標示差異／可用性，不把某任務的欄位誤當每個 Chunk 都有。
 
 Remote 連續區段只在公開邊界交接規格，平台不要求它回報所有內部 Module 的中間物件。區段在 Chunk 邊界提供資料時，下一個 Module 參考該邊界的 Chunk Schema，不捏造不存在的 ParsedDocument。
+
+<a id="chunking-embedding-schema-walkthrough"></a>
+### 說明範例：Chunking → Embedding 的 Schema 相依
+
+**前一步的設定會決定它產出哪些欄位，這些欄位又會決定下一步能怎麼設定。** 本例以 Embedding 為主：Chunking 將文字切片命名為 `body_text`，並複製 `title` 和 `page`。接著看 Engine 如何判定哪些欄位可做 Embedding，以及使用者選完之後如何推導輸出規格。以下是設定與契約的說明範例；JSON 節錄省略無關欄位，不新增正式協定。
+
+```mermaid
+flowchart TD
+    M["① Config Meta-schema｜Admin"] -->|規範寫法| S["② Config Schema（Embedding）｜Developer"]
+    S --> R["④ 有效設定規格（Embedding）｜Engine、UI"]
+    I["③ Input Data Schema（Embedding，來源：Chunking 輸出）｜Engine"] -->|提供欄位、型別與必填性| R
+    R -->|可選 body_text、title| C["⑤ Config（Embedding）｜User、UI、Engine"]
+    C -->|提供實際選擇| O["⑧ Output Data Schema（Embedding）｜Engine"]
+    I -->|提供要繼承的欄位規格| O
+    A["⑦ 共用 Data Schema（Chunk）｜Admin"] -->|供推導規則引用| D["⑥ Output Data Schema 推導規則（Embedding）｜Developer"]
+    D -->|指定如何繼承與新增向量| O
+    O -->|提供 body_vec 的名稱、Profile 與維度| N["⑨ 可用輸入規格（Indexing）｜Engine"]
+```
+
+| 節點 | 在這個例子中的責任與內容 |
+|---|---|
+| ① Config Meta-schema | Admin 規定 Developer 如何寫 Config Schema，例如用 `properties`、`required` 和 `items` 描述物件與陣列。 |
+| ② Config Schema（Embedding） | Developer 定義 `mappings` 是陣列，每列的 `source_field`、`output_name` 都是必填字串；此時還沒有特定 Pipeline 的欄位清單。 |
+| ③ Input Data Schema（Embedding） | Engine 取得 Chunking 當前的輸出規格：`fields.body_text` 和 `fields.title` 是字串，`fields.page` 是整數，三者皆必填。Embedding 若另有必填輸入，Engine 也會檢查上游是否提供。 |
+| ④ 有效設定規格（Embedding） | Developer 以 `option_sources` 宣告：`/mappings/*/source_field` 從輸入的 `/fields` 取保證存在的字串欄位。Engine 因此解析出 `body_text`、`title` 兩個可選值，UI 顯示 `page` 已停用及原因。Developer 原始的 ② 維持不變。 |
+| ⑤ Config（Embedding） | User 在 UI 選 `body_text` 並把輸出命名為 `body_vec`。Engine 使用 ④ 驗證；直接送 API 或 Python 設定也適用同一規則。 |
+| ⑥ Output Data Schema 推導規則（Embedding） | Developer 宣告繼承輸入欄位，並逐筆讀取 `mappings`：用 `output_name` 決定 `/vectors` 下的名稱，用 `source_field` 和所選 Profile 約束向量物件。 |
+| ⑦ 共用 Data Schema（Chunk） | Admin 定義所有 Chunk 都要遵守的結構，以及 DenseVector 的 `values`、`source_field`、`embedding_profile_id` 等欄位。向量名稱和具體維度留給設定及 Profile 決定。 |
+| ⑧ Output Data Schema（Embedding） | Engine 保留 ③ 的三個原欄位，依 ⑥ 把 ⑤ 的設定值帶入，並套用 ⑦ 的契約。結果多了 `vectors.body_vec`，來源限定為 `body_text`，維度由可信 Profile 提供。 |
+| ⑨ 可用輸入規格（Indexing） | Indexing 使用 ⑧ 檢查自己的輸入需求，並把 `body_vec` 列為符合條件的向量索引候選；此時不必先執行 Ingestion。 |
+
+**③ 的欄位規格節錄：** 由 Chunking 的有效設定推導，再作為 Embedding 的可用輸入規格。
+
+```json
+{
+  "properties": {
+    "fields": {
+      "type": "object",
+      "properties": {
+        "body_text": {"type": "string"},
+        "title": {"type": "string"},
+        "page": {"type": "integer"}
+      },
+      "required": ["body_text", "title", "page"]
+    }
+  }
+}
+```
+
+**⑤ 的實際設定：** 使用者選的是欄位與 Profile，不需要手寫輸出 Schema。
+
+```json
+{
+  "profile_id": "example.embedding/v1",
+  "service_ref": "embedding.main",
+  "mappings": [{"source_field": "body_text", "output_name": "body_vec"}]
+}
+```
+
+**⑥ 如何使用 ③、⑤ 和 ⑦：** `io.output.inherit` 宣告要保留 `/fields`、`/metadata` 和既有 `/vectors` 的規格；③ 才是 `title`、`page` 等欄位的實際規格來源。這些欄位仍會保留，即使 ⑤ 只選 `body_text` 算向量。繼承宣告讓 Engine 知道輸出應保留什麼；執行時仍由 Embedding 實作傳遞原資料。⑥ 透過 `io.output.contract_ref` 引用 ⑦ 的 Chunk 契約，個別向量的宣告也可用 `$ref` 引用其中的 DenseVector。⑦ 因此可以獨立共用，不需要複製到每份規則裡。
+
+⑥ 稱為「**推導規則**」，因為它說明如何把 ⑤ 代入輸出規格。**Descriptor Meta-schema** 才規範 Developer 可以怎麼寫這些規則；**Draft** 只標示規格尚未定案。具體 `data_rules` 語法見 [Embedding A→B 完整比對](#src-25-6-embedding-ab-完整比對)。
+
+**⑧ 的 `vectors.body_vec` Schema 節錄：** 這裡的 3 維來自測試 Profile，不是使用者在映射列指定的值。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "source_field": {"type": "string", "const": "body_text"},
+    "embedding_profile_id": {"type": "string", "const": "example.embedding/v1"},
+    "values": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}
+  },
+  "required": ["source_field", "embedding_profile_id", "values"]
+}
+```
+
+**報告時只改一個值：** 把 Chunking 的輸出名稱從 `body_text` 改成 `content`。② 沒變，④ 的候選卻變了；Engine 應保留 ⑤ 原本的選擇，在 `/mappings/0/source_field` 標出失效原因並阻止套用。修正來源為 `content` 後，⑧ 的來源限制會更新；只要向量仍命名為 `body_vec`，⑨ 的索引欄位選擇就不必改名。這正是複雜度所在：Engine 要重新推導受影響的規格，判斷哪些引用失效、哪些仍成立，讓 UI 和 API 在執行前得到同樣的判斷。
 
 <a id="src-24-8-ingestion-api-的驗證與-document_schema-收斂"></a>
 ## Ingestion API 的驗證與 document_schema 收斂
