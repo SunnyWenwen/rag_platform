@@ -9,6 +9,7 @@
 - [第一版的邊界與未知欄位](#src-24-5-第一版的邊界與未知欄位)
 - [沿 Pipeline 推導設定選項](#src-24-6-沿-pipeline-推導設定選項)
   - [說明範例：Chunking → Embedding 的 Schema 相依](#chunking-embedding-schema-walkthrough)
+    - [③ 與 ⑧：完整 Data Schema 對照](#embedding-input-output-schema-comparison)
 - [Ingestion API 的驗證與 document_schema 收斂](#src-24-8-ingestion-api-的驗證與-document_schema-收斂)
 - [目的與已確認行為](#src-12-1-目的與已確認行為)
 - [Config Schema 的第一版支援範圍](#src-12-5-config-schema-的第一版支援範圍)
@@ -131,7 +132,7 @@ Remote 連續區段只在公開邊界交接規格，平台不要求它回報所�
 <a id="chunking-embedding-schema-walkthrough"></a>
 ### 說明範例：Chunking → Embedding 的 Schema 相依
 
-**前一步的設定會決定它產出哪些欄位，這些欄位又會決定下一步能怎麼設定。** 本例以 Embedding 為主：Chunking 將文字切片命名為 `body_text`，並複製 `title` 和 `page`。接著看 Engine 如何判定哪些欄位可做 Embedding，以及使用者選完之後如何推導輸出規格。以下是設定與契約的說明範例；JSON 節錄省略無關欄位，不新增正式協定。
+**前一步的設定會決定它產出哪些欄位，這些欄位又會決定下一步能怎麼設定。** 本例以 Embedding 為主：Chunking 將文字切片命名為 `body_text`，並複製 `title` 和 `page`。接著看 Engine 如何判定哪些欄位可做 Embedding，以及使用者選完之後如何推導輸出規格。以下是設定與契約的說明範例，不新增正式協定。
 
 ```mermaid
 flowchart TD
@@ -158,24 +159,6 @@ flowchart TD
 | ⑧ Output Data Schema（Embedding） | Engine 保留 ③ 的三個原欄位，依 ⑥ 把 ⑤ 的設定值帶入，並套用 ⑦ 的契約。結果多了 `vectors.body_vec`，來源限定為 `body_text`，維度由可信 Profile 提供。 |
 | ⑨ 可用輸入規格（Indexing） | Indexing 使用 ⑧ 檢查自己的輸入需求，並把 `body_vec` 列為符合條件的向量索引候選；此時不必先執行 Ingestion。 |
 
-**③ 的欄位規格節錄：** 由 Chunking 的有效設定推導，再作為 Embedding 的可用輸入規格。
-
-```json
-{
-  "properties": {
-    "fields": {
-      "type": "object",
-      "properties": {
-        "body_text": {"type": "string"},
-        "title": {"type": "string"},
-        "page": {"type": "integer"}
-      },
-      "required": ["body_text", "title", "page"]
-    }
-  }
-}
-```
-
 **⑤ 的實際設定：** 使用者選的是欄位與 Profile，不需要手寫輸出 Schema。
 
 ```json
@@ -190,17 +173,99 @@ flowchart TD
 
 ⑥ 稱為「**推導規則**」，因為它說明如何把 ⑤ 代入輸出規格。**Descriptor Meta-schema** 才規範 Developer 可以怎麼寫這些規則；**Draft** 只標示規格尚未定案。具體 `data_rules` 語法見 [Embedding A→B 完整比對](#src-25-6-embedding-ab-完整比對)。
 
-**⑧ 的 `vectors.body_vec` Schema 節錄：** 這裡的 3 維來自測試 Profile，不是使用者在映射列指定的值。
+<a id="embedding-input-output-schema-comparison"></a>
+#### ③ 與 ⑧：完整 Data Schema 對照
+
+兩份 Schema 都從 `Chunk[]` 開始，並列出每筆 Chunk 的六個外層欄位。`$ref` 都指向同一份[共用 Chunk Schema](../schemas/chunk.schema.json)，因此兩份範例都沿用共用契約的限制。`allOf` 另一項補充本例保證的內容；**兩份 Schema 唯一變動的是 `items.allOf[1].properties.vectors`。**
+
+| 路徑 | ③ Embedding 輸入 | ⑧ Embedding 輸出 |
+|---|---|---|
+| `fields` | 必須有 `body_text`、`title`、`page` | 保留同樣的欄位與型別，包含沒用來算向量的 `page` |
+| `metadata` | 必須有這個物件，可含共用契約允許的資訊 | 沿用同樣的規格 |
+| `vectors` | 必須是空物件：本例直接接在 Chunking 之後 | 必須包含 `body_vec`；來源是 `body_text`、維度為 3 |
+
+**③ Input Data Schema（Embedding，來源：Chunking 輸出）**
 
 ```json
 {
-  "type": "object",
-  "properties": {
-    "source_field": {"type": "string", "const": "body_text"},
-    "embedding_profile_id": {"type": "string", "const": "example.embedding/v1"},
-    "values": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}
-  },
-  "required": ["source_field", "embedding_profile_id", "values"]
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "array",
+  "items": {
+    "allOf": [
+      {"$ref": "urn:rag-builder:chunk:0.2-draft"},
+      {
+        "type": "object",
+        "properties": {
+          "chunk_id": {"type": "string", "minLength": 1},
+          "document_id": {"type": "string", "minLength": 1},
+          "source_revision": {"type": "string", "minLength": 1},
+          "fields": {
+            "type": "object",
+            "properties": {
+              "body_text": {"type": "string"},
+              "title": {"type": "string"},
+              "page": {"type": "integer"}
+            },
+            "required": ["body_text", "title", "page"]
+          },
+          "metadata": {"type": "object"},
+          "vectors": {"type": "object", "maxProperties": 0}
+        },
+        "required": ["chunk_id", "document_id", "source_revision", "fields", "metadata", "vectors"]
+      }
+    ]
+  }
+}
+```
+
+**⑧ Output Data Schema（Embedding）**
+
+`body_vec` 和 `body_text` 來自 ⑤ 的映射；3 維來自測試 Profile。`required` 宣告本次必須產生的向量；共用契約仍支援其他流程中的既有向量。
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "array",
+  "items": {
+    "allOf": [
+      {"$ref": "urn:rag-builder:chunk:0.2-draft"},
+      {
+        "type": "object",
+        "properties": {
+          "chunk_id": {"type": "string", "minLength": 1},
+          "document_id": {"type": "string", "minLength": 1},
+          "source_revision": {"type": "string", "minLength": 1},
+          "fields": {
+            "type": "object",
+            "properties": {
+              "body_text": {"type": "string"},
+              "title": {"type": "string"},
+              "page": {"type": "integer"}
+            },
+            "required": ["body_text", "title", "page"]
+          },
+          "metadata": {"type": "object"},
+          "vectors": {
+            "type": "object",
+            "properties": {
+              "body_vec": {
+                "$ref": "urn:rag-builder:chunk:0.2-draft#/$defs/DenseVector",
+                "type": "object",
+                "properties": {
+                  "source_field": {"type": "string", "const": "body_text"},
+                  "embedding_profile_id": {"type": "string", "const": "example.embedding/v1"},
+                  "values": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}
+                },
+                "required": ["source_field", "embedding_profile_id", "values"]
+              }
+            },
+            "required": ["body_vec"]
+          }
+        },
+        "required": ["chunk_id", "document_id", "source_revision", "fields", "metadata", "vectors"]
+      }
+    ]
+  }
 }
 ```
 
