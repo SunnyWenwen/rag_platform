@@ -1,4 +1,4 @@
-"""Validate and render report examples into docs 13/14 from canonical JSON.
+"""Validate and render report examples into the consolidated data-contract manual from canonical JSON.
 
 Requires examples/parsed_document/requirements.txt. This only updates marked
 example blocks; it does not execute an API, Parser, Chunker, or resource fetch.
@@ -74,11 +74,11 @@ def main():
 
     text13 = '以下是符合目前 IngestionDocument 外層 Schema 的單筆例子，與 Parser Input 使用同一份契約。例子由 [共用資料來源及產生工具](../examples/contracts/render_classification_examples.py) 驗證／產生，資料見 [report_cases.json](../examples/contracts/report_cases.json)；此處驗證資料形狀，尚未執行 API。\n\n'
     for heading, description, key in [
-        ('#### 0.2.1 content：直接傳文字', '只有文件 ID 與內容即可表達最簡單情境；相容 Parser 產生 ParsedDocument。', 'text'),
-        ('#### 0.2.2 content：直接傳多欄位 JSON', '這是一筆文件的原文、標題與既有摘要；metadata 另外保存部門。CSV 映射後也可形成這種單筆資料。', 'record'),
-        ('#### 0.2.3 base64：傳送編碼後的檔案內容', '用短文字檔示範 Base64，實際可解碼為「清潔前先斷電。」。PDF／PPTX／Excel 使用相同傳輸欄位，須填入完整檔案內容、正確 media_type 並有相容 Parser。', 'base64'),
-        ('#### 0.2.4 uri：取得 URL 指向的檔案', '只傳資源位置，由共用能力取得 PDF，再交給相容 Parser；這個示意網址未進行下載／連線驗證。', 'uri'),
-        ('#### 0.2.5 content：上游已整理好的 Units', 'content.units 是平面的內容單位列表，由相容 Adapter 驗證後與外層 ID／版本／metadata 組成 ParsedDocument。schema_id 是需註冊的示意識別；不是任何 Parser 都自動支援。', 'preparsed'),
+        ('#### content：直接傳文字', '只有文件 ID 與內容即可表達最簡單情境；相容 Parser 產生 ParsedDocument。', 'text'),
+        ('#### content：直接傳多欄位 JSON', '這是一筆文件的原文、標題與既有摘要；metadata 另外保存部門。CSV 映射後也可形成這種單筆資料。', 'record'),
+        ('#### base64：傳送編碼後的檔案內容', '用短文字檔示範 Base64，實際可解碼為「清潔前先斷電。」。PDF／PPTX／Excel 使用相同傳輸欄位，須填入完整檔案內容、正確 media_type 並有相容 Parser。', 'base64'),
+        ('#### uri：取得 URL 指向的檔案', '只傳資源位置，由共用能力取得 PDF，再交給相容 Parser；這個示意網址未進行下載／連線驗證。', 'uri'),
+        ('#### content：上游已整理好的 Units', 'content.units 是平面的內容單位列表，由相容 Adapter 驗證後與外層 ID／版本／metadata 組成 ParsedDocument。schema_id 是需註冊的示意識別；不是任何 Parser 都自動支援。', 'preparsed'),
     ]:
         text13 += example(heading, description, ingestion[key]) + '\n'
     text13 += '上述五例都符合共同外層；media_type／schema_id 能省略的條件仍依正文。對應的 Parser／服務能力必須另外具備，範例通過 Schema 不代表 Runtime 已實作。'
@@ -87,9 +87,9 @@ def main():
     labels = ['純文字／紀錄：一個 Unit', '多頁／章節：獨立 Units，保留 Markdown 標題',
               '表格：逐列補齊語意', '圖片：描述文字與來源 URI', '既有 Docling 官方文字摘錄：重新包裝成一個 Unit']
     for i, (label, value) in enumerate(zip(labels, parsed_examples), 1):
-        text14 += example(f'#### 0.1.{i} {label}', '資料形狀範例；不代表已執行正式 Parser 或 Chunker。', value) + '\n'
-    replace_section(ROOT / 'docs/13_ingestion_parser_input_contract.md', 'ingestion', text13)
-    replace_section(ROOT / 'docs/14_parsed_document_contract.md', 'parsed', text14)
+        text14 += example(f'#### {label}', '資料形狀範例；不代表已執行正式 Parser 或 Chunker。', value) + '\n'
+    replace_section(ROOT / 'docs/02_data_contracts.md', 'ingestion', text13)
+    replace_section(ROOT / 'docs/02_data_contracts.md', 'parsed', text14)
     print(json.dumps({'ingestion_examples': len(ingestion), 'parsed_examples': len(parsed_examples),
                       'preparsed_reconstruction': True}))
 

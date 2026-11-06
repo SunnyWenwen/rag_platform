@@ -1,6 +1,6 @@
 # UI Backlog 的逐輪整理說明
 
-> 從現行待辦移出的過程說明；所有未完成 checkbox 仍保留在 [10](../../10_ui_adjustment_backlog.md)。
+> 從現行待辦移出的過程說明；所有未完成 checkbox 仍保留在 [10](../../07_builder_ui.md)。
 
 來源：[原始檔案](https://github.com/SunnyWenwen/rag_platform/blob/a27e9cdba06c5ada210b00e09de629b53fe7bae1/docs/10_ui_adjustment_backlog.md)；歸檔日期：2026-11-05。
 

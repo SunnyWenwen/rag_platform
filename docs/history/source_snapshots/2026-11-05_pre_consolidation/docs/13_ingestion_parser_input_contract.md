@@ -1,12 +1,14 @@
+> 歷史來源快照：docs/13_ingestion_parser_input_contract.md；來源 commit 916734ac0bbe0631a205bfd52626ce332aa7beb2。2026-11-05 整合後不再作現行規格；相對連結固定到來源版本。現行入口：[README](https://github.com/SunnyWenwen/rag_platform/blob/docs/rag-system-factory/README.md)。
+
 # Ingestion API／Parser 共用輸入 Contract
 
-> 2026-11-05 D-58：Runtime POST /v1/ingestions 統一接收非空 IngestionDocument[]，單筆也包 List；**每個 item 與 Parser input 共用本文件的單筆 Schema**。HTTP 批次容器不傳入 Parser；本文單物件範例仍是文件 item，不是完整 HTTP body，完整提交見 [21](21_runtime_ingestion_inference_api_inventory.md)。
+> 2026-11-05 D-58：Runtime POST /v1/ingestions 統一接收非空 IngestionDocument[]，單筆也包 List；**每個 item 與 Parser input 共用本文件的單筆 Schema**。HTTP 批次容器不傳入 Parser；本文單物件範例仍是文件 item，不是完整 HTTP body，完整提交見 [21](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/21_runtime_ingestion_inference_api_inventory.md)。
 
-> 2026-11-03 D-52：API／Parser Input 的根結構不變；合法 metadata 可含 Component 支援的文件層處理提示，例如 chunking_mode=passthrough。須符合共用 Contract 及適用 Component 的 metadata 細節宣告／設定，由對應 Component 說明讀取與預設行為（D-67 不再獨立頂層 document_schema），不是全域覆寫 Config 的入口；_rag 追溯由輸出 Component 選填。見 [15 §4.1](15_chunk_contract.md)。
+> 2026-11-03 D-52：API／Parser Input 的根結構不變；合法 metadata 可含 Component 支援的文件層處理提示，例如 chunking_mode=passthrough。須符合共用 Contract 及適用 Component 的 metadata 細節宣告／設定，由對應 Component 說明讀取與預設行為（D-67 不再獨立頂層 document_schema），不是全域覆寫 Config 的入口；_rag 追溯由輸出 Component 選填。見 [15 §4.1](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/15_chunk_contract.md)。
 
 > 2026-10-29（Asia/Taipei）· 共用輸入 Schema 與語意已確認（D-44／D-45）；尚未實作 API／SDK；批次容器已由 D-58 確認非空 List，版本生成與執行細節另議。
 >
-> 本文記錄 JSON-only、扁平輸入、多 Parser 自動路由，以及使用者確認「Ingestion API 與 Parser Input 使用相同 Schema」。共同物件稱 IngestionDocument；不另設另一份公開 ParserInput。解析後輸出依 [14 ParsedDocument](14_parsed_document_contract.md)，切分後依 [15 Chunk](15_chunk_contract.md)；三者各有共用 Schema，不混用輸入與輸出欄位。
+> 本文記錄 JSON-only、扁平輸入、多 Parser 自動路由，以及使用者確認「Ingestion API 與 Parser Input 使用相同 Schema」。共同物件稱 IngestionDocument；不另設另一份公開 ParserInput。解析後輸出依 [14 ParsedDocument](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/14_parsed_document_contract.md)，切分後依 [15 Chunk](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/15_chunk_contract.md)；三者各有共用 Schema，不混用輸入與輸出欄位。
 
 ## 0. 情境整理與分類總覽（報告摘要）
 
@@ -37,7 +39,7 @@
 
 <!-- classification-examples:ingestion:start -->
 
-以下是符合目前 IngestionDocument 外層 Schema 的單筆例子，與 Parser Input 使用同一份契約。例子由 [共用資料來源及產生工具](../examples/contracts/render_classification_examples.py) 驗證／產生，資料見 [report_cases.json](../examples/contracts/report_cases.json)；此處驗證資料形狀，尚未執行 API。
+以下是符合目前 IngestionDocument 外層 Schema 的單筆例子，與 Parser Input 使用同一份契約。例子由 [共用資料來源及產生工具](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/contracts/render_classification_examples.py) 驗證／產生，資料見 [report_cases.json](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/contracts/report_cases.json)；此處驗證資料形狀，尚未執行 API。
 
 #### 0.2.1 content：直接傳文字
 
@@ -115,7 +117,7 @@ content.units 是平面的內容單位列表，由相容 Adapter 驗證後與外
 |---|---|
 | Retrieval Builder／自行部署的呼叫端 | 提供方便的上傳／映射／檔案傳輸轉換；組成 JSON |
 | Engine 的共用入口／SDK 資源能力 | 驗證共同外層、授權取得內容、解碼及必要限制；路由到已設定的 Parser |
-| Parser／Adapter | 理解來源或轉換已解析資料，產出統一 ParsedDocument，詳見 [14 的情境與結構分類](14_parsed_document_contract.md#0-情境與分類結果報告摘要) |
+| Parser／Adapter | 理解來源或轉換已解析資料，產出統一 ParsedDocument，詳見 [14 的情境與結構分類](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/14_parsed_document_contract.md#0-情境與分類結果報告摘要) |
 
 JSON-only、扁平輸入、三種來源、API／Parser 共用契約與多 Parser 路由方向已確認；API／SDK 尚未實作，實際格式需有相容 Component 才可執行。單筆外層 Schema 與 D-58 的 List 接收格式已確認；D-64 的 Runtime 初始大小／文件數限制已集中在 22；來源版本生成、逐 Provider／Client 限制與正式供應者支援仍依正文核定。直接匯入最終 Chunk／vectors 另外討論，不混入「上游已解析」的支援承諾。
 
@@ -131,7 +133,7 @@ JSON-only、扁平輸入、三種來源、API／Parser 共用契約與多 Parser
 
 ## 2. 單筆文件 JSON Schema
 
-機器可讀共同定義：[ingestion_document.schema.json](../schemas/ingestion_document.schema.json)。它是 API 與 Parser Input 的同一份外層 Schema；單位是單筆文件，不是整個批次或 HTTP 回應。最小 List item／Parser Input 為（完整 HTTP body 需包成 [此物件]）：
+機器可讀共同定義：[ingestion_document.schema.json](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/schemas/ingestion_document.schema.json)。它是 API 與 Parser Input 的同一份外層 Schema；單位是單筆文件，不是整個批次或 HTTP 回應。最小 List item／Parser Input 為（完整 HTTP body 需包成 [此物件]）：
 
 ```json
 {
@@ -156,7 +158,7 @@ JSON-only、扁平輸入、三種來源、API／Parser 共用契約與多 Parser
 
 JSON Schema 中沒有 default 副作用；metadata={} 是平台正規化行為。contentEncoding／format 不能取代實際 Base64 解碼、URI 協定及存取檢查。共同 Schema 通過，只代表外層合法，不代表內容可被 Parser 處理。
 
-D-67：Parser 的 Descriptor／Manifest 宣告共用 Input／Output 引用與固定或依 Config 細化的資料規格，見 [24](24_component_io_schema_refinement.md)。API 仍直接交相同 IngestionDocument，不新增 ParserInput。接收時可判定的路由／內容欄位可加入 202 前整批快速預檢；需下載、解碼、辨識或解析才可確認的檢查仍在背景工作，202 不表示解析成功。輸出驗 ParsedDocument 共用 Contract＋當前資料細節；不要求 User 再填一份全域 document_schema。
+D-67：Parser 的 Descriptor／Manifest 宣告共用 Input／Output 引用與固定或依 Config 細化的資料規格，見 [24](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/24_component_io_schema_refinement.md)。API 仍直接交相同 IngestionDocument，不新增 ParserInput。接收時可判定的路由／內容欄位可加入 202 前整批快速預檢；需下載、解碼、辨識或解析才可確認的檢查仍在背景工作，202 不表示解析成功。輸出驗 ParsedDocument 共用 Contract＋當前資料細節；不要求 User 再填一份全域 document_schema。
 
 
 D-58 已確認一支 POST /v1/ingestions，body 為非空 IngestionDocument[]，單筆亦一元素 List；整批預檢通過才 202，執行逐文件結果、Run 可 partial。每筆使用本共用 Schema；完整回應／錯誤 OpenAPI 仍待整理，見 21。
@@ -252,13 +254,13 @@ document_id、source_revision 及有效 metadata 持續傳遞；省略版本的�
 
 Parser 宣告可接受的 media_type、schema 及必要資源；多個 Parser 的啟用不代表每筆都執行全部，也不保證混合模態的聯合理解。相同格式只有一個可用實例時自動選用；有重疊時需明確預設／profile。格式副檔名僅為提示，不取代實際驗證。
 
-ParsedDocument 使用唯一的平面 units 格式；Chunker 檢查指定字串欄位、Markdown 格式與 Tokenizer 能力，不再依 text-spans／page-blocks 配對或路由。Parser 負責將結構整理成可獨立切分的 Units；不支援的來源由 Parser 明確拒絕。詳見 [14](14_parsed_document_contract.md)。
+ParsedDocument 使用唯一的平面 units 格式；Chunker 檢查指定字串欄位、Markdown 格式與 Tokenizer 能力，不再依 text-spans／page-blocks 配對或路由。Parser 負責將結構整理成可獨立切分的 Units；不支援的來源由 Parser 明確拒絕。詳見 [14](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/14_parsed_document_contract.md)。
 
 ## 6. 驗證邊界與待決事項
 
 - API／Parser 先驗同一份 IngestionDocument 外層，再驗相容 Component 的 content／實際格式限制；支援 JSON object 不代表可匯入任意內容、Chunk 或向量。
-- Parser 輸出依 [14](14_parsed_document_contract.md) 的四鍵 Units Schema 與語意驗證；Chunker 輸出依 [15](15_chunk_contract.md) 的六鍵 Schema、來源／任務／向量規則。資料形狀符合仍須檢查 Component 能力相容。
+- Parser 輸出依 [14](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/14_parsed_document_contract.md) 的四鍵 Units Schema 與語意驗證；Chunker 輸出依 [15](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/15_chunk_contract.md) 的六鍵 Schema、來源／任務／向量規則。資料形狀符合仍須檢查 Component 能力相容。
 - Builder 將文件／CSV 轉成共同 JSON；是否提供暫存 URI、格式轉換範圍、存取與清理見 Q-016／Q-019。
 - 剩餘待決：schema_id／profile 命名與版本、路由衝突的精確政策、輸入／解碼／下載大小與逾時、批次 envelope、回應／錯誤碼、ID／版本省略政策及正式 SDK。已確認的共同外層不重開。
-- UI 遷移記 [UIB-011](10_ui_adjustment_backlog.md#uib-011-ingestion-parser-routing)；ParsedDocument／Chunk 預覽另見 UIB-012／013，本次不修改 Prototype。
+- UI 遷移記 [UIB-011](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/10_ui_adjustment_backlog.md#uib-011-ingestion-parser-routing)；ParsedDocument／Chunk 預覽另見 UIB-012／013，本次不修改 Prototype。
 

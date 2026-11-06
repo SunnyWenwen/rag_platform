@@ -1,12 +1,14 @@
+> 歷史來源快照：docs/25_component_descriptor_schema_draft.md；來源 commit 916734ac0bbe0631a205bfd52626ce332aa7beb2。2026-11-05 整合後不再作現行規格；相對連結固定到來源版本。現行入口：[README](https://github.com/SunnyWenwen/rag_platform/blob/docs/rag-system-factory/README.md)。
+
 # 25 — B：Component Descriptor Schema 初版與待決策項目
 
-2026-11-05｜**格式候選稿，尚未核定或發布正式 SDK／Meta-schema。**沿用 D-67 已確認的六類宣告能力；本次提出具體包裝、規則、範例及待決策事項，不將新鍵名視為已通過決策。背景：[20 B 大盤](20_contract_inventory_responsibility_matrix.md)、[24 已確認行為](24_component_io_schema_refinement.md)、[12 表單／相依規劃](12_component_schema_ui_contract.md)。
+2026-11-05｜**格式候選稿，尚未核定或發布正式 SDK／Meta-schema。**沿用 D-67 已確認的六類宣告能力；本次提出具體包裝、規則、範例及待決策事項，不將新鍵名視為已通過決策。背景：[20 B 大盤](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/20_contract_inventory_responsibility_matrix.md)、[24 已確認行為](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/24_component_io_schema_refinement.md)、[12 表單／相依規劃](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/12_component_schema_ui_contract.md)。
 
 ## 1. 討論順序與本稿交付
 
-先核定 B 的核心描述、I/O 細化與選項語意，再完成 [23 System Config](23_system_config_schema_draft.md) 的整合表示。D 的 component_id／implementation_version／parameters 骨架可保留，不必等所有 Component 都開發完。第一批用 Parser、Chunker、Embedding 與 Remote 區段驗證格式。
+先核定 B 的核心描述、I/O 細化與選項語意，再完成 [23 System Config](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/23_system_config_schema_draft.md) 的整合表示。D 的 component_id／implementation_version／parameters 骨架可保留，不必等所有 Component 都開發完。第一批用 Parser、Chunker、Embedding 與 Remote 區段驗證格式。
 
-本次提供 [descriptor.schema.json](../examples/component_descriptor/descriptor.schema.json)、[範例入口](../examples/component_descriptor/README.md)及五組完整對照。Schema 檢查包裝，Engine 還要檢查 Schema 支援子集、路徑、來源、能力、I/O 接線與執行資料；格式合法不等於已可執行。
+本次提供 [descriptor.schema.json](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/component_descriptor/descriptor.schema.json)、[範例入口](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/component_descriptor/README.md)及五組完整對照。Schema 檢查包裝，Engine 還要檢查 Schema 支援子集、路徑、來源、能力、I/O 接線與執行資料；格式合法不等於已可執行。
 
 | 交付 | 現行狀態 |
 |---|---|
@@ -121,7 +123,7 @@ schema_bindings 是候選的有限 Schema 建構操作，不是任意 JSON Patch
 
 ## 6. Embedding A→B 完整比對
 
-完整宣告：[embedding.descriptor.json](../examples/component_descriptor/embedding.descriptor.json)。User Config：[embedding.config.json](../examples/component_descriptor/embedding.config.json)。
+完整宣告：[embedding.descriptor.json](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/component_descriptor/embedding.descriptor.json)。User Config：[embedding.config.json](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/component_descriptor/embedding.config.json)。
 
 ```json
 {
@@ -179,7 +181,7 @@ UI 與動態來源分別宣告：
 }
 ```
 
-這段省略完整檔的 Profile／values 欄位限制，僅示範來源綁定。完整檔另外綁定 embedding_profile_id 與已知維度；[預期輸出 Schema](../examples/component_descriptor/embedding.expected_output.schema.json) 因而要求 vectors.text／vectors.summary_vector，來源分別為 text／summary。維度來自 fixture 的可信 Profile=3，不從 User 資料或服務地址猜測。
+這段省略完整檔的 Profile／values 欄位限制，僅示範來源綁定。完整檔另外綁定 embedding_profile_id 與已知維度；[預期輸出 Schema](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/component_descriptor/embedding.expected_output.schema.json) 因而要求 vectors.text／vectors.summary_vector，來源分別為 text／summary。維度來自 fixture 的可信 Profile=3，不從 User 資料或服務地址猜測。
 
 輸出名稱重複由 rules.unique_by 檢查；與已有向量／其他規則的衝突還要共用語意驗證，不能因陣列元素不完全相同就當 uniqueItems 足夠。服務／Profile 引用由 resources 對應 E，不在映射列重填 URL／Secret。
 
@@ -187,10 +189,10 @@ UI 與動態來源分別宣告：
 
 | 案例 | Descriptor／Config | 可檢查的例子 |
 |---|---|---|
-| Parser | [宣告](../examples/component_descriptor/parser.descriptor.json)／[設定](../examples/component_descriptor/parser.config.json) | content.body→Unit.text；title 保留；include_page=true 加上輸入／輸出 page:integer |
-| Chunker | [宣告](../examples/component_descriptor/chunker.descriptor.json)／[設定](../examples/component_descriptor/chunker.config.json) | text 切分、title 複製、原文 original_text、overlap < max_tokens；原文 Chunk 筆數不改欄位型別 |
-| Embedding 模板 | [宣告](../examples/component_descriptor/embedding_template.descriptor.json)／[設定](../examples/component_descriptor/embedding_template.config.json) | 先宣告 fields.embedding_text，再映射為 vectors.text；來源 Picker 包含已知衍生欄位 |
-| Remote 連續區段 | [宣告](../examples/component_descriptor/remote_segment.descriptor.json)／[設定](../examples/component_descriptor/remote_segment.config.json) | Parsing～Embedding、IngestionDocument→Chunk[]、parameters={}；內部資料不公開 |
+| Parser | [宣告](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/component_descriptor/parser.descriptor.json)／[設定](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/component_descriptor/parser.config.json) | content.body→Unit.text；title 保留；include_page=true 加上輸入／輸出 page:integer |
+| Chunker | [宣告](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/component_descriptor/chunker.descriptor.json)／[設定](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/component_descriptor/chunker.config.json) | text 切分、title 複製、原文 original_text、overlap < max_tokens；原文 Chunk 筆數不改欄位型別 |
+| Embedding 模板 | [宣告](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/component_descriptor/embedding_template.descriptor.json)／[設定](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/component_descriptor/embedding_template.config.json) | 先宣告 fields.embedding_text，再映射為 vectors.text；來源 Picker 包含已知衍生欄位 |
+| Remote 連續區段 | [宣告](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/component_descriptor/remote_segment.descriptor.json)／[設定](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/component_descriptor/remote_segment.config.json) | Parsing～Embedding、IngestionDocument→Chunk[]、parameters={}；內部資料不公開 |
 
 每組另外提供 input、output、expected_input.schema、expected_output.schema。Parser 的輸入細節供 Ingestion 可完成的接收預檢，仍保留非空 IngestionDocument[] API、單筆 Parser Input 與背景內容驗證；不新增頂層 document_schema。
 
@@ -206,7 +208,7 @@ UI 與動態來源分別宣告：
 | 預期 I/O Schema／樣本 | 共用 Contract＋細節可驗證樣本；明顯錯誤被拒絕 | expected_* 是人工明列；驗證相符不證明解析規則與結果完全等價 |
 | Runtime／UI | 真正 Parser／Tokenizer／模型、服務、相依 Picker、版本回應與部署 | 未實作；UI 記 UIB-021，使用者要求修改時才做 |
 
-離線指令與限制見 [範例 README](../examples/component_descriptor/README.md)。本稿不修改共用 schemas/、Prototype 或 Runtime。完整 Registry 還要校驗六類規則不能放寬 A、多 Parser／多任務各分支可用性、能力配對及未知必要 UI feature；不以本輪測試關閉 Q-ID。
+離線指令與限制見 [範例 README](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/component_descriptor/README.md)。本稿不修改共用 schemas/、Prototype 或 Runtime。完整 Registry 還要校驗六類規則不能放寬 A、多 Parser／多任務各分支可用性、能力配對及未知必要 UI feature；不以本輪測試關閉 Q-ID。
 
 ## 9. 需要決策的項目與建議
 

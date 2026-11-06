@@ -1,6 +1,6 @@
 # Component Descriptor 0.1 討論範例
 
-主文件：[25 Descriptor Schema 初版](../../docs/25_component_descriptor_schema_draft.md)；已確認行為：[24](../../docs/24_component_io_schema_refinement.md)。**本目錄是待 review 的格式與離線測資，不是正式 SDK／Registry／解析器。**所有 example.* ID、Profile、Feature 與服務引用都是 fixture。
+主文件：[25 Descriptor Schema 初版](../../docs/04_component_descriptor.md)；已確認行為：[24](../../docs/04_component_descriptor.md)。**本目錄是待 review 的格式與離線測資，不是正式 SDK／Registry／解析器。**所有 example.* ID、Profile、Feature 與服務引用都是 fixture。
 
 - descriptor.schema.json：B 的共同包裝及有限宣告語法；只靠這份 Schema 不能判定完整語意合法。
 - catalog.fixture.json：離線共用 Contract 與可信 Profile 資訊；既有共用資料 Schema 未修改。

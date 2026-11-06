@@ -1,14 +1,16 @@
+> 歷史來源快照：docs/12_component_schema_ui_contract.md；來源 commit 916734ac0bbe0631a205bfd52626ce332aa7beb2。2026-11-05 整合後不再作現行規格；相對連結固定到來源版本。現行入口：[README](https://github.com/SunnyWenwen/rag_platform/blob/docs/rag-system-factory/README.md)。
+
 # Component 設定 Schema、動態表單與相依規則
 
-> 2026-11-05：具體 Descriptor Schema／六類規則的整合候選改由 [25](25_component_descriptor_schema_draft.md) 討論，附機器 Schema、五組範例與 DS 決策。本文件保留已確認互動行為與舊語法背景；舊 component-ui-0.1-draft／單 module_type 片段不能與新候選混用，尚未發布遷移器。
+> 2026-11-05：具體 Descriptor Schema／六類規則的整合候選改由 [25](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/25_component_descriptor_schema_draft.md) 討論，附機器 Schema、五組範例與 DS 決策。本文件保留已確認互動行為與舊語法背景；舊 component-ui-0.1-draft／單 module_type 片段不能與新候選混用，尚未發布遷移器。
 
-> 2026-11-05 D-67：B 新增 Component I/O 資料細節、依 Config 細化的六類宣告能力，以及沿 Pipeline 的相依驗證，完整結論見 [24](24_component_io_schema_refinement.md)。既有 UI hints／option_sources／rules 的具體語法與單 module_type 範例仍是候選，不因行為確認就視為 Meta-schema 已凍結。Remote 連續區段由 Manifest 推導 Descriptor，單 Module 範例不取代其公開邊界。
+> 2026-11-05 D-67：B 新增 Component I/O 資料細節、依 Config 細化的六類宣告能力，以及沿 Pipeline 的相依驗證，完整結論見 [24](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/24_component_io_schema_refinement.md)。既有 UI hints／option_sources／rules 的具體語法與單 module_type 範例仍是候選，不因行為確認就視為 Meta-schema 已凍結。Remote 連續區段由 Manifest 推導 Descriptor，單 Module 範例不取代其公開邊界。
 
 日期：2026-10-28。狀態：**D-42 已確認規劃方向與操作行為；`component-ui-0.1-draft` 為待 M0 核定的介面草案，尚未實作。**
 
-2026-10-29 D-43 命名更新：本文的 Component、component_id、BaseComponent、目錄 components 與規則 target.kind=component 取代舊擴充單位名稱；Descriptor 草案現稱 component-ui-0.1-draft，未改既有規則／I/O 語意。舊名對照見 [03 §3.8](../03_architecture_proposal.md#component-terminology-migration)，不表示已發布相容轉換 API。
+2026-10-29 D-43 命名更新：本文的 Component、component_id、BaseComponent、目錄 components 與規則 target.kind=component 取代舊擴充單位名稱；Descriptor 草案現稱 component-ui-0.1-draft，未改既有規則／I/O 語意。舊名對照見 [03 §3.8](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/03_architecture_proposal.md#component-terminology-migration)，不表示已發布相容轉換 API。
 
-本文件細化 [04 Engine 規格](04_module_components_io_contracts.md) 與 [11 Component 開發指南](11_component_developer_guide.md) 的設定描述機制；決策狀態以 [08](08_implementation_plan.md) 為準。UI 實作統一追蹤 [10 UIB-010](10_ui_adjustment_backlog.md#uib-010-component-catalog)，不修改目前 Prototype。
+本文件細化 [04 Engine 規格](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/04_module_components_io_contracts.md) 與 [11 Component 開發指南](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/11_component_developer_guide.md) 的設定描述機制；決策狀態以 [08](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/08_implementation_plan.md) 為準。UI 實作統一追蹤 [10 UIB-010](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/10_ui_adjustment_backlog.md#uib-010-component-catalog)，不修改目前 Prototype。
 
 ## 1. 目的與已確認行為
 
@@ -32,9 +34,9 @@ Module Developer 宣告 Component 的參數、顯示需求及相依能力；Engi
 | Component Config Schema | 特定方法的參數、型別、必填、預設值與限制 | Component 的 `config_type`；Engine 驗證 |
 | UI hints | 同一參數如何呈現、順序、進階區與控制項需求 | Component 宣告；Builder 轉換成前端控制項 |
 
-上述為 I/O、設定及顯示三類描述，並非三份 Ingestion 資料 Schema。另以能力、選項來源及相依規則描述可組裝條件；不能以 UI hints 改變 I/O Contract，或讓隱藏欄位跳過必要驗證。ParsedDocument／Chunk 已有 [14](14_parsed_document_contract.md)／[15](15_chunk_contract.md) 可驗證草案，正式凍結仍見 [Q-002](08_implementation_plan.md#q-002)。D-47 的 Chunking 預設直接使用 text，split／copy／多任務選項只在進階顯示；共用有效 Config 仍由 Engine 解析，隱藏欄位不免除必要驗證。
+上述為 I/O、設定及顯示三類描述，並非三份 Ingestion 資料 Schema。另以能力、選項來源及相依規則描述可組裝條件；不能以 UI hints 改變 I/O Contract，或讓隱藏欄位跳過必要驗證。ParsedDocument／Chunk 已有 [14](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/14_parsed_document_contract.md)／[15](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/15_chunk_contract.md) 可驗證草案，正式凍結仍見 [Q-002](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/08_implementation_plan.md#q-002)。D-47 的 Chunking 預設直接使用 text，split／copy／多任務選項只在進階顯示；共用有效 Config 仍由 Engine 解析，隱藏欄位不免除必要驗證。
 
-`rag_engine` 管理 SDK、Registry、Component 宣告、Config 編譯與驗證；`rag_platform` 經 Runtime API 取得資料並呈現表單，不安裝所有 Component packages。AI 助手／Python／CLI 使用同一 Engine 規則。Component 目錄／驗證 API 邊界見 [07 §5.8](07_backend_runtime_integration.md#runtime-capability-contract)。
+`rag_engine` 管理 SDK、Registry、Component 宣告、Config 編譯與驗證；`rag_platform` 經 Runtime API 取得資料並呈現表單，不安裝所有 Component packages。AI 助手／Python／CLI 使用同一 Engine 規則。Component 目錄／驗證 API 邊界見 [07 §5.8](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/07_backend_runtime_integration.md#runtime-capability-contract)。
 
 <a id="component-descriptor"></a>
 
@@ -64,7 +66,7 @@ Descriptor Schema 的範圍包含 Config Schema、共用 I/O Contract 引用、�
 
 第一版支援固定欄位／型別、參數命名、映射清單、上游欄位選擇／複製、布林／固定選項分支，以及固定型別衍生欄位。Config Schema 不會自動推導 Data Schema；Developer 必須宣告規格與對應關係。共用外層與所有既有限制不變，fields／vectors 可有動態名稱。資料筆數與內容變動不等於 Schema 變動。
 
-上游 Output Data Schema 是下游設定的選項／適用性來源，不自動新增下游未宣告的參數。Engine 同時驗證各 Component 的設定與接線，User 不再另維護頂層 document_schema。六類規則、未知／複雜資料邊界、多 Parser／多任務、API 驗證及待建立的驗收案例統一見 [24](24_component_io_schema_refinement.md)，避免兩份規則各自演變。
+上游 Output Data Schema 是下游設定的選項／適用性來源，不自動新增下游未宣告的參數。Engine 同時驗證各 Component 的設定與接線，User 不再另維護頂層 document_schema。六類規則、未知／複雜資料邊界、多 Parser／多任務、API 驗證及待建立的驗收案例統一見 [24](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/24_component_io_schema_refinement.md)，避免兩份規則各自演變。
 
 ## 4. SDK：宣告設定型別，父類別輸出 Schema
 
@@ -379,9 +381,9 @@ Inference 的資料 contract_ref 同步 query-context-list/0.3-draft；Query Tra
 
 ## 2026-11-04 D-55：Indexing／Retrieval 交接
 
-每 System 一組邏輯索引，IndexBinding 只有 artifact_type／target／fulltext_fields／filter_fields／vector_bindings，省略 index_ref。Indexing 提供，Engine 驗證與管理；Retrieval 須宣告支援格式／版本，並只搜尋 Binding 宣告且相容的能力。target 依受控註冊的格式 Schema 驗證；Developer 還需共同儲存／讀取規格與 SDK／範例才能開發。完整定義見 [19 IndexBinding 與索引格式契約](19_index_binding_artifact_contract.md)。
+每 System 一組邏輯索引，IndexBinding 只有 artifact_type／target／fulltext_fields／filter_fields／vector_bindings，省略 index_ref。Indexing 提供，Engine 驗證與管理；Retrieval 須宣告支援格式／版本，並只搜尋 Binding 宣告且相容的能力。target 依受控註冊的格式 Schema 驗證；Developer 還需共同儲存／讀取規格與 SDK／範例才能開發。完整定義見 [19 IndexBinding 與索引格式契約](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/19_index_binding_artifact_contract.md)。
 
 Component Config 是處理參數；RunContext 是 Engine 準備的必要資源／Binding 引用，實際 Client／索引物件不放業務 JSON。searchable 不在 Binding，Runtime 管就緒；格式版本與 Component 版本、資料發布版本分開。內建 ES target 有 collection，Local target 可空並使用 System 唯一資源。首版不新增多組選擇；UI 差異只記 backlog。正式 SDK、後端讀寫布局、Remote 協定及更新／發布政策仍需後續核定／實作。
 
 
-整合設定初版見 [23](23_system_config_schema_draft.md)。Config 保存 component_id／implementation_version／parameters；Registry 取得本文件所述的 Descriptor.config_schema，再驗證所選參數。[D-66 catalog.fixture.json](history/superseded/system_config_d66/catalog.fixture.json) 是已歸檔的舊離線測試資料，並非已核定 Descriptor／Manifest Meta-schema；動態 UI hints／option_sources／rules 的具體格式仍照本文件頂端狀態另行討論。
+整合設定初版見 [23](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/23_system_config_schema_draft.md)。Config 保存 component_id／implementation_version／parameters；Registry 取得本文件所述的 Descriptor.config_schema，再驗證所選參數。[D-66 catalog.fixture.json](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/superseded/system_config_d66/catalog.fixture.json) 是已歸檔的舊離線測試資料，並非已核定 Descriptor／Manifest Meta-schema；動態 UI hints／option_sources／rules 的具體格式仍照本文件頂端狀態另行討論。

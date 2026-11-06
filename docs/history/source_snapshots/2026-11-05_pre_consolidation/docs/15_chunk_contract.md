@@ -1,3 +1,5 @@
+> 歷史來源快照：docs/15_chunk_contract.md；來源 commit 916734ac0bbe0631a205bfd52626ce332aa7beb2。2026-11-05 整合後不再作現行規格；相對連結固定到來源版本。現行入口：[README](https://github.com/SunnyWenwen/rag_platform/blob/docs/rag-system-factory/README.md)。
+
 # 15 — Chunk Contract
 
 更新：2026-11-03（D-52：KISS、追溯選填及 metadata 處理提示）。Chunk **0.2-draft** 保持六個頂層鍵；來源追溯改用 ParsedDocument.units 的位置。舊 0.1 SourceRef 不默默相容。
@@ -185,7 +187,7 @@
 
 ## 1. 共用物件
 
-[Schema](../schemas/chunk.schema.json)、[案例](../examples/chunk/cases.json)、[參考驗證](../examples/chunk/contract.py) 共用同一契約。參考工具只組裝已給定切片，不是 Fixed-size／Recursive／Header-aware 的正式實作。
+[Schema](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/schemas/chunk.schema.json)、[案例](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/chunk/cases.json)、[參考驗證](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/chunk/contract.py) 共用同一契約。參考工具只組裝已給定切片，不是 Fixed-size／Recursive／Header-aware 的正式實作。
 
 | 必要頂層欄位 | 內容 |
 |---|---|
@@ -239,7 +241,7 @@ metadata = {
 }
 ```
 
-chunking_mode 是示範 Component 約定，不是所有 Component 必須認識的全域保留 key。Developer 說明會讀取哪些 key、型別、允許值、未提供時的預設及不支援值的處理；使用者資料也須通過共用 Contract 及適用 Component 的 metadata 資料規格／設定（若採拒絕未知欄位，需宣告此 string 欄位）；D-67 不再要求獨立頂層 document_schema，見 [24](24_component_io_schema_refinement.md)。Parser 保留／產生合法提示，Chunker 讀取它，不新增三份共用物件的根欄位。
+chunking_mode 是示範 Component 約定，不是所有 Component 必須認識的全域保留 key。Developer 說明會讀取哪些 key、型別、允許值、未提供時的預設及不支援值的處理；使用者資料也須通過共用 Contract 及適用 Component 的 metadata 資料規格／設定（若採拒絕未知欄位，需宣告此 string 欄位）；D-67 不再要求獨立頂層 document_schema，見 [24](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/24_component_io_schema_refinement.md)。Parser 保留／產生合法提示，Chunker 讀取它，不新增三份共用物件的根欄位。
 
 支援本約定的 Chunker 可直接 `document.metadata.get("chunking_mode", "split")`：缺省正常切分；passthrough 時每 Unit／文字任務完整轉成一筆 Chunk，仍建立 chunk_id、依設定 copy 欄位、繼承 metadata、初始化 vectors={}。不跨 Unit 合併，三個 Units 的單一任務得到三筆，不是整份文件一筆；有多任務仍依任務規則串接。提示不支援時依該 Component 的已宣告行為處理，不能讓平台憑空保證所有 Chunker 都會遵守。
 
@@ -287,9 +289,9 @@ chunk_id 仍為必要非空識別，輸出清單內不可重複。可由 Compone
 
 基本畫面不顯示 split/copy 欄位選擇，直接使用 text。進階才顯示新增任務、來源／輸出映射、附帶欄位與完整原文保留。metadata 繼承保留；source_refs、fingerprint、ordinal 不提供一般必填選項，只在 Component 有提供時唯讀顯示，缺少不當錯誤。Component 支援的 metadata 提示需說明用途／預設，無須新增通用規則表單。
 
-錯誤標示 `[Chunking]` 與具體任務／unit_index／欄位；映射重名、來源不存在、型別／文字格式不合、欄位變更造成失效，皆保留選擇並阻止套用。僅展開進階不改有效設定；手動／AI／Edit／匯出使用相同有效計畫。對應事項集中於 [UIB-013](10_ui_adjustment_backlog.md#uib-013-chunk-contract)，v0.12 已有模擬 UI；真實 Tokenizer／Chunker 待 Engine。
+錯誤標示 `[Chunking]` 與具體任務／unit_index／欄位；映射重名、來源不存在、型別／文字格式不合、欄位變更造成失效，皆保留選擇並阻止套用。僅展開進階不改有效設定；手動／AI／Edit／匯出使用相同有效計畫。對應事項集中於 [UIB-013](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/10_ui_adjustment_backlog.md#uib-013-chunk-contract)，v0.12 已有模擬 UI；真實 Tokenizer／Chunker 待 Engine。
 
-Component Developer 仍由 [11](11_component_developer_guide.md) 的流程開發，遵守 ParsedDocument → Chunk 清單的公開邊界；宣告文字格式與 Unit 欄位能力，不能因一般 UI 隱藏欄位就只接受硬編碼 text。Config Schema／UI hints 見 [12](12_component_schema_ui_contract.md)。Runtime 的權限、Context、Batch／Async 與正式類別簽名不由本資料草案代替。
+Component Developer 仍由 [11](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/11_component_developer_guide.md) 的流程開發，遵守 ParsedDocument → Chunk 清單的公開邊界；宣告文字格式與 Unit 欄位能力，不能因一般 UI 隱藏欄位就只接受硬編碼 text。Config Schema／UI hints 見 [12](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/12_component_schema_ui_contract.md)。Runtime 的權限、Context、Batch／Async 與正式類別簽名不由本資料草案代替。
 
 第一版必要切分任務不得默默產生零個 Chunk 後回成功；錯誤顯示來源欄位與 task_id。這是 2026-10-30 後續確認的目標規則，現有參考工具不等於正式 Ingestion／Tokenizer 驗收；批次失敗／提交仍由 Q-009 核定。
 

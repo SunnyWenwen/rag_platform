@@ -1,3 +1,5 @@
+> 歷史來源快照：docs/09_inference_contract_ui_plan.md；來源 commit 916734ac0bbe0631a205bfd52626ce332aa7beb2。2026-11-05 整合後不再作現行規格；相對連結固定到來源版本。現行入口：[README](https://github.com/SunnyWenwen/rag_platform/blob/docs/rag-system-factory/README.md)。
+
 # Inference Contract 與 UI 設定對照
 
 > 文件同步：2026-10-31。結果處理語意與 UI 方向已確認；正式 Config／SDK 及真實搜尋執行仍待核定／開發。
@@ -6,7 +8,7 @@
 
 Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root array），沒有 InferenceState 外框。QueryContext 固定 ori_query、query，並提供預設空值的 filters、result_sets、metadata。ResultSet 只有 key／items；ResultItem 只有 chunk／選填 score。只傳目前有效資料，處理後替換；歷史與診斷寫 Logs。items 順序就是排名，RRF 使用陣列位置。數值 score 經 Adapter 統一為越大越好，Sum Score 仍需驗證完整分數及可比性。
 
-共用 [Inference Schema](../schemas/inference_context.schema.json) 直接引用 [Chunk Schema](../schemas/chunk.schema.json)。範例／驗證見 [17](17_pydantic_contracts_draft.md)、資料語意見 [05 §4.6](05_data_contracts_search_design.md#query-context-contract)。filters、metadata 隨 Rewrite 複製；跨 Query 僅限同一請求與相同 filters，本版 metadata 不同則拒絕合併。
+共用 [Inference Schema](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/schemas/inference_context.schema.json) 直接引用 [Chunk Schema](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/schemas/chunk.schema.json)。範例／驗證見 [17](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/17_pydantic_contracts_draft.md)、資料語意見 [05 §4.6](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/05_data_contracts_search_design.md#query-context-contract)。filters、metadata 隨 Rewrite 複製；跨 Query 僅限同一請求與相同 filters，本版 metadata 不同則拒絕合併。
 
 ## 2. 三種操作與資料邊界
 
@@ -72,11 +74,11 @@ API 回傳最終有效清單。D-52：Chunk.metadata._rag.source_refs 為選填�
 | 多 Query＋Local 多路 | 每 Query 有全文／向量清單 | 各 Query 內融合 → 跨 Query 融合 → 合併 Top N → Rerank → Top 3 |
 | 先逐 Query 評分 | 各 Query 內已完成融合 | Retrieval 後合併 Top N → 每 Query Rerank／Top N → 跨 Query RRF → 後置合併 Top N |
 
-前三個採預設時機；第四個展示進階配置。這些案例不限制合法計畫只能選固定模板；實際支援能力由 Registry／Adapter 驗證。完整資料與 Python 範例見 [05 §4.6](05_data_contracts_search_design.md#inference-state-draft)。
+前三個採預設時機；第四個展示進階配置。這些案例不限制合法計畫只能選固定模板；實際支援能力由 Registry／Adapter 驗證。完整資料與 Python 範例見 [05 §4.6](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/05_data_contracts_search_design.md#inference-state-draft)。
 
 ## 5. 實作狀態與驗收
 
-Prototype v0.12 已同步 QueryContext[]／filters／metadata，並保留兩層時機、四處上限、卡控與清單數預覽，見 [10 §6](10_ui_adjustment_backlog.md#6-v09-實作細節展示預設與限制)；尚無真實 Engine 搜尋／融合。平面 Units 已同步；Remote、模板與原文 Chunk 的模擬能力及正式整合限制見 10。
+Prototype v0.12 已同步 QueryContext[]／filters／metadata，並保留兩層時機、四處上限、卡控與清單數預覽，見 [10 §6](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/10_ui_adjustment_backlog.md#6-v09-實作細節展示預設與限制)；尚無真實 Engine 搜尋／融合。平面 Units 已同步；Remote、模板與原文 Chunk 的模擬能力及正式整合限制見 10。
 
 正式驗收須涵蓋：Chunk 共用格式與可取回欄位、當前 Query／ResultSet key 與分數正確性、ES 已融合邊界、兩個時機與四處上限、空結果、None 與文件去重、非法相依拒絕及有效計畫與執行結果一致。Q-002／Q-003／Q-011／Q-014 保留正式 Config、Adapter、同分與分數細節；未以 UI 展示當作後端驗收。
 

@@ -1,6 +1,6 @@
 # 完整 Library 目錄與三種 Retrieval System 配置
 
-> 2026-11-02 D-51 補充：圖中 Remote API Component 是單 Module 範例；新確認的 Remote Pipeline 也可承接連續多 Module，透過 Manifest 註冊供 User 選用。組裝、部署與資料責任見 [18](../docs/18_remote_service_pipeline_integration.md)。2026-11-03 D-54：推論接線已同步 QueryContext[]，原有完整 Component 目錄與 A／B／C 版面保留。
+> 2026-11-02 D-51 補充：圖中 Remote API Component 是單 Module 範例；新確認的 Remote Pipeline 也可承接連續多 Module，透過 Manifest 註冊供 User 選用。組裝、部署與資料責任見 [18](../docs/03_engine_and_components.md)。2026-11-03 D-54：推論接線已同步 QueryContext[]，原有完整 Component 目錄與 A／B／C 版面保留。
 
 2026-11-02｜目標設計示例，非已交付能力。
 
@@ -22,7 +22,7 @@
 | B | 有使用到 Developer 在 Library 開發的 Component | Structured JSON | **XXX_component（Local）** | Local Search | Multi-query | Rerank API |
 | C | 在某個 Module 有使用 Remote API 來連結 Developer 提供的 Service | **Remote API Component** | Header-aware | Elasticsearch | Rewrite | Rerank API |
 
-C 的例子假設遠端 Parser 產出相容、保留 Markdown 標題的 Unit.text，才能使用 Header-aware；共同物件形狀不免除格式與語意驗證。Local／Remote Parser 的實際教學程式見 [16](../docs/16_parser_component_development_examples.md)。
+C 的例子假設遠端 Parser 產出相容、保留 Markdown 標題的 Unit.text，才能使用 Header-aware；共同物件形狀不免除格式與語意驗證。Local／Remote Parser 的實際教學程式見 [16](../docs/03_engine_and_components.md)。
 
 ## 邊界與連線
 
@@ -41,7 +41,7 @@ Developer 的 Local Component 沿原有 PR／測試／Runtime Image 交付；Rem
 
 ## Library 內 Module 之間的 Contract 名稱
 
-圖中 `[]` 表示清單；線上標示相鄰 Module 的主要業務資料，引用 [04 §3.1](../docs/04_module_components_io_contracts.md#31-io-接線)，不另定新物件或 HTTP Envelope。
+圖中 `[]` 表示清單；線上標示相鄰 Module 的主要業務資料，引用 [04 §3.1](../docs/03_engine_and_components.md#src-04-31-io-接線)，不另定新物件或 HTTP Envelope。
 
 | 連線 | 標示 | 說明 |
 |---|---|---|
@@ -57,4 +57,4 @@ Developer 的 Local Component 沿原有 PR／測試／Runtime Image 交付；Rem
 推論三模組業務輸入輸出直接使用 list[QueryContext]；result_sets 巢狀在 context 內，不另外傳獨立 ResultSet[]。目前結果被替換，歷史與診斷寫 Logs；Chunk._rag 選填追溯不受影響。本地 Parser 教學可用 ModuleResult，但不加在推論 HTTP body 外。A／B／C 與 Remote Parsing 範例版面保留。
 
 
-D-62／D-66 解讀：圖中的 System／Component 實例是邏輯配置與資料作用範圍，不要求逐 Config 建立專屬 Flow、API service 或 Pod。Builder 的實際模式採共用 Executor／固定 Config 快照，Remote Image 的額外服務仍依 18 部署。配置格式與圖說校對見 [23](../docs/23_system_config_schema_draft.md)／[24](../docs/history/reviews/2026-11-05_spec_alignment_review.md)，不把示意圖當成已完成執行架構。
+D-62／D-66 解讀：圖中的 System／Component 實例是邏輯配置與資料作用範圍，不要求逐 Config 建立專屬 Flow、API service 或 Pod。Builder 的實際模式採共用 Executor／固定 Config 快照，Remote Image 的額外服務仍依 18 部署。配置格式與圖說校對見 [23](../docs/05_system_config.md)／[24](../docs/history/reviews/2026-11-05_spec_alignment_review.md)，不把示意圖當成已完成執行架構。

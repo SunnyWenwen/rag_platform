@@ -1,6 +1,6 @@
 # Prototype v0.12 歷史驗證紀錄
 
-> 這是當時的模擬原型／契約驗證結果，不代表現在已交付 Engine／模型／DB／部署。現行狀態與待辦見 [10](../../10_ui_adjustment_backlog.md)。
+> 這是當時的模擬原型／契約驗證結果，不代表現在已交付 Engine／模型／DB／部署。現行狀態與待辦見 [10](../../07_builder_ui.md)。
 
 來源：[原始檔案](https://github.com/SunnyWenwen/rag_platform/blob/a27e9cdba06c5ada210b00e09de629b53fe7bae1/docs/10_ui_adjustment_backlog.md)；歸檔日期：2026-11-05。
 

@@ -22,7 +22,7 @@ def main():
     root_path = Path(__file__).resolve().parents[2]
     (root_path/'schemas/index_binding.schema.json').write_text(json.dumps(binding,ensure_ascii=False,indent=2)+'\n')
     artifacts=[{'artifact_type':key,'target_schema':model.model_json_schema(),
-                'spec_ref':'docs/19_index_binding_artifact_contract.md'} for key,model in BUILTIN_TARGET_MODELS.items()]
+                'spec_ref':'docs/02_data_contracts.md'} for key,model in BUILTIN_TARGET_MODELS.items()]
     (Path(__file__).with_name('artifact_definitions.json')).write_text(json.dumps(artifacts,ensure_ascii=False,indent=2)+'\n')
     root = TypeAdapter(list[QueryContext]).json_schema()
     root.update({'$schema':'https://json-schema.org/draft/2020-12/schema',

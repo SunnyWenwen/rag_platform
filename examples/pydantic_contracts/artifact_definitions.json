@@ -16,7 +16,7 @@
       "title": "ElasticsearchTarget",
       "type": "object"
     },
-    "spec_ref": "docs/19_index_binding_artifact_contract.md"
+    "spec_ref": "docs/02_data_contracts.md"
   },
   {
     "artifact_type": "builtin.local_search/v1",
@@ -26,6 +26,6 @@
       "title": "LocalSearchTarget",
       "type": "object"
     },
-    "spec_ref": "docs/19_index_binding_artifact_contract.md"
+    "spec_ref": "docs/02_data_contracts.md"
   }
 ]

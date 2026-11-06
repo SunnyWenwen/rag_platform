@@ -1,6 +1,8 @@
+> 歷史來源快照：docs/18_remote_service_pipeline_integration.md；來源 commit 916734ac0bbe0631a205bfd52626ce332aa7beb2。2026-11-05 整合後不再作現行規格；相對連結固定到來源版本。現行入口：[README](https://github.com/SunnyWenwen/rag_platform/blob/docs/rag-system-factory/README.md)。
+
 # 18 — Remote Service／Pipeline 註冊與部署
 
-> 2026-11-04 盤點定位：本文對應 [20 的 C：Remote Service 定義](20_contract_inventory_responsibility_matrix.md)，環境實際綁定歸 E。Remote 目錄資訊以 Manifest 為來源推導／適配成 B，避免 Developer 重複手寫宣告；精確格式仍待定。本文 DEV 指 Builder DEV（平台提供的開發／測試環境），FTEST／ENT 是使用單位的目標部署環境；不是 Developer 本機環境。
+> 2026-11-04 盤點定位：本文對應 [20 的 C：Remote Service 定義](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/20_contract_inventory_responsibility_matrix.md)，環境實際綁定歸 E。Remote 目錄資訊以 Manifest 為來源推導／適配成 B，避免 Developer 重複手寫宣告；精確格式仍待定。本文 DEV 指 Builder DEV（平台提供的開發／測試環境），FTEST／ENT 是使用單位的目標部署環境；不是 Developer 本機環境。
 
 2026-11-02｜已確認的產品方向與整合規劃。Manifest 正式 Schema、HTTP 傳參、SDK／部署控制介面尚待核定；本文件不代表相關後端功能已實作。2026-11-03 Prototype v0.12 已加入模擬目錄／表單／鎖定／Export；Inference 邊界同步 D-54 的 QueryContext[]。
 
@@ -18,7 +20,7 @@ Developer 可能不提供原始碼，而是交付既有 API 或 Image；既有�
 
 ## 2. 整段的輸入輸出與組裝
 
-D-67：Remote Manifest 也須提供固定或依 Config 細化的公開邊界資料規格／規則，由平台推導成 B，完整責任與首版能力見 [24](24_component_io_schema_refinement.md)。不提供 Source Code 不影響此要求，也不要求額外公開中間 Module 物件；第一版不因此新增任意規格解析程式或 Remote schema endpoint，正式 Manifest 語法仍待核定。
+D-67：Remote Manifest 也須提供固定或依 Config 細化的公開邊界資料規格／規則，由平台推導成 B，完整責任與首版能力見 [24](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/24_component_io_schema_refinement.md)。不提供 Source Code 不影響此要求，也不要求額外公開中間 Module 物件；第一版不因此新增任意規格解析程式或 Remote schema endpoint，正式 Manifest 語法仍待核定。
 
 常見例子：文件處理服務承接 **Parsing → Chunking → Embedding**。
 
@@ -102,7 +104,7 @@ Export 不搬移 Image 本體、真實 Secret、原始文件、Chunk／vectors �
 
 驗收至少包含：連續範圍／重疊卡控、相容索引讀寫配對、輸出語意、只執行一次、固定服務無參數表單、失效服務引用保留並定位、Image 實例與資料分離、External 固定資料提示、健康／失敗與清理、兩種 Export 內容差異。不得拿 Mock 當真實部署證據。Trace 預設記整段呼叫的耗時／結果；中間 Module 診斷為選配，不保證各步可單獨替換或計分。
 
-UI 模擬流程已實作，真實服務管理尚未實作，見 [10 UIB-016](10_ui_adjustment_backlog.md#uib-016-remote-service-pipeline)。開發計畫與未決細節見 [08 D-51／Q-028](08_implementation_plan.md#q-028)，設定描述沿用 [12](12_component_schema_ui_contract.md)，部署責任見 [07](07_backend_runtime_integration.md#remote-service-deployment)。
+UI 模擬流程已實作，真實服務管理尚未實作，見 [10 UIB-016](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/10_ui_adjustment_backlog.md#uib-016-remote-service-pipeline)。開發計畫與未決細節見 [08 D-51／Q-028](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/08_implementation_plan.md#q-028)，設定描述沿用 [12](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/12_component_schema_ui_contract.md)，部署責任見 [07](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/07_backend_runtime_integration.md#remote-service-deployment)。
 
 
 
@@ -114,14 +116,14 @@ v0.12 的 Service Manifest／健康狀態／Image／Endpoint／資料綁定僅�
 
 ## 2026-11-04 D-55：Indexing／Retrieval 交接
 
-每 System 一組邏輯索引，IndexBinding 只有 artifact_type／target／fulltext_fields／filter_fields／vector_bindings，省略 index_ref。Indexing 提供，Engine 驗證與管理；Retrieval 須宣告支援格式／版本，並只搜尋 Binding 宣告且相容的能力。target 依受控註冊的格式 Schema 驗證；Developer 還需共同儲存／讀取規格與 SDK／範例才能開發。完整定義見 [19 IndexBinding 與索引格式契約](19_index_binding_artifact_contract.md)。
+每 System 一組邏輯索引，IndexBinding 只有 artifact_type／target／fulltext_fields／filter_fields／vector_bindings，省略 index_ref。Indexing 提供，Engine 驗證與管理；Retrieval 須宣告支援格式／版本，並只搜尋 Binding 宣告且相容的能力。target 依受控註冊的格式 Schema 驗證；Developer 還需共同儲存／讀取規格與 SDK／範例才能開發。完整定義見 [19 IndexBinding 與索引格式契約](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/19_index_binding_artifact_contract.md)。
 
 Component Config 是處理參數；RunContext 是 Engine 準備的必要資源／Binding 引用，實際 Client／索引物件不放業務 JSON。searchable 不在 Binding，Runtime 管就緒；格式版本與 Component 版本、資料發布版本分開。內建 ES target 有 collection，Local target 可空並使用 System 唯一資源。首版不新增多組選擇；UI 差異只記 backlog。正式 SDK、後端讀寫布局、Remote 協定及更新／發布政策仍需後續核定／實作。
 
 
 ## 2026-11-05 D-58：文件管理能力配套
 
-Runtime 提供文件存在、文件摘要清單與 retire 直接刪除能力；D-65 清單回 documents[]／next_cursor，每筆 document_id／source_revisions[]，從實際儲存去重彙整，不推定最新成功版本，見 [21 §9](21_runtime_ingestion_inference_api_inventory.md)。資料由平台直接管理時走相容 storage／index adapter；若包含 Indexing／Retrieval 的私有 Remote Service 管理資料，需宣告可完成上述操作的 operation 或受控存取方式，不能假設只有 ingest/query 就能管理文件。
+Runtime 提供文件存在、文件摘要清單與 retire 直接刪除能力；D-65 清單回 documents[]／next_cursor，每筆 document_id／source_revisions[]，從實際儲存去重彙整，不推定最新成功版本，見 [21 §9](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/21_runtime_ingestion_inference_api_inventory.md)。資料由平台直接管理時走相容 storage／index adapter；若包含 Indexing／Retrieval 的私有 Remote Service 管理資料，需宣告可完成上述操作的 operation 或受控存取方式，不能假設只有 ingest/query 就能管理文件。
 
 無狀態 Parser／Embedding／Rerank 服務不因此多交付資料管理端點。Manifest／Artifact／SDK 的具體欄位與操作規格仍待定，沒有加入新 Pipeline Module、IndexBinding 根鍵、data_space_id 或取消功能。不支援管理操作時明確回報／卡控，不回空清單、false 或成功刪除冒充支援。
 
@@ -129,4 +131,4 @@ Runtime 提供文件存在、文件摘要清單與 retire 直接刪除能力；D
 D-61：FTEST／ENT 的一 Pod＋一 API service＋一份 Config 指主 Runtime 的初期基準。選用 Remote Image 仍另外部署必要遠端服務；External 仍由 Developer 維運，沒有取消 D-51 的三種模式。Builder 共用 API service 數不隨 UI Config 數量線性增加；D-62 採共用 Flow，Component／索引資源與 Remote 服務需求仍按其狀態及模式管理；Remote 接管步驟只呼叫一次，本地逐次 Config 不會自動變成遠端 HTTP payload，正式傳參協定仍待 Q-028。
 
 
-System Config 的 segments 候選表示見 [23](23_system_config_schema_draft.md)，覆蓋範圍由核可 Descriptor／Manifest 推導，避免在每份 User Config 重複手寫整份服務宣告。這是待議的具體包裝，不凍結 Manifest／operation／啟動與 per-call 參數協定；傳輸仍不附完整 Context／Config／Secret。
+System Config 的 segments 候選表示見 [23](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/23_system_config_schema_draft.md)，覆蓋範圍由核可 Descriptor／Manifest 推導，避免在每份 User Config 重複手寫整份服務宣告。這是待議的具體包裝，不凍結 Manifest／operation／啟動與 per-call 參數協定；傳輸仍不附完整 Context／Config／Secret。

@@ -1,3 +1,5 @@
+> 歷史來源快照：docs/20_contract_inventory_responsibility_matrix.md；來源 commit 916734ac0bbe0631a205bfd52626ce332aa7beb2。2026-11-05 整合後不再作現行規格；相對連結固定到來源版本。現行入口：[README](https://github.com/SunnyWenwen/rag_platform/blob/docs/rag-system-factory/README.md)。
+
 # 20 — Retrieval 契約、設定與責任總盤點
 
 更新日期：2026-11-05。
@@ -47,7 +49,7 @@
 | 契約群組 | 包含的子項目與內容 | Admin／平台開發者制定 | Developer 閱讀／遵守 | Developer 交付 | Builder User 操作 | Library 使用 | Builder 使用 | Deploy 使用 | 關係與邊界 |
 |---|---|---|---|---|---|---|---|---|---|
 | **A. Engine 執行契約** | **資料**：IngestionDocument、ParsedDocument、Chunk、QueryContext、ResultSet 等。<br><br>**執行**：Module／連續區段 I/O、Local 執行介面、Context。<br><br>**索引**：IndexBinding、Artifact Definition。 | 共用資料 Schema、I/O 語意、SDK 執行介面、Context 取得規則；Artifact Definition 格式及相容性規則。 | 自己涵蓋區段的 I/O 與語意。<br><br>**Local**：另看 SDK 介面／必要的 Context 用法。<br><br>**涉及索引**：另看 Binding 與支援的格式。 | 符合契約的實作、輸入輸出範例、契約測試。<br><br>**引入新／未註冊索引格式時**：提供 Artifact Definition（target Schema、讀寫語意、能力限制）及相容 Retrieval／Adapter；沿用已註冊格式則宣告支援。 | — | 執行並傳遞資料、提供 Context、驗證 I/O 與索引相容性。 | 使用測試 API 對外的輸入／輸出格式；不承擔所有內部 SDK 介面。 | — | **B／C 引用 A。**跨 Module 的 Component 遵守核定區段邊界，不強迫回傳所有中間物件。<br><br>IndexBinding 是執行資料；Artifact Definition 是可共用的索引格式規格，屬 A 的擴充規格，不必每個 Component 各寫一份。 |
-| **B. Component 定義** | **Descriptor**：識別、版本、涵蓋範圍、共用 I/O 引用、能力／資源。<br><br>**Config Schema**：參數與限制。<br><br>**I/O Data Schema／規則**：固定資料細節、依 Config 細化、上游選項來源與相依條件；六類能力見 [24](24_component_io_schema_refinement.md)。<br><br>UI 提示／呈現語法仍待定。 | Descriptor Schema、Schema 採用規範／必要 Meta-schema、有限細化規則與相依語意；定義不改變 A 的邊界。 | 設定／I/O 宣告、規則支援範圍、能力與資源要求。 | **Local**：Component、Config Schema、I/O 細節／規則及測試，可由 SDK 產出。<br><br>**Remote**：以 C 為來源推導／適配等價描述，避免手寫兩份。 | — | 驗證參數，依 Config／上游規格推導 I/O 與候選，檢查接線；經 Registry 取得實作或 Adapter。 | 產生表單、顯示當前資料規格／選項與相依原因；正式解析器／Registry 尚未實作。 | — | **B 宣告規格，D 提供設定值，A 限制共用格式。**<br><br>細化支援方向已確認，具體 Descriptor／規則鍵名與解析 API 未凍結。任意程式或即時資料決定的規格不屬首版純宣告。 |
+| **B. Component 定義** | **Descriptor**：識別、版本、涵蓋範圍、共用 I/O 引用、能力／資源。<br><br>**Config Schema**：參數與限制。<br><br>**I/O Data Schema／規則**：固定資料細節、依 Config 細化、上游選項來源與相依條件；六類能力見 [24](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/24_component_io_schema_refinement.md)。<br><br>UI 提示／呈現語法仍待定。 | Descriptor Schema、Schema 採用規範／必要 Meta-schema、有限細化規則與相依語意；定義不改變 A 的邊界。 | 設定／I/O 宣告、規則支援範圍、能力與資源要求。 | **Local**：Component、Config Schema、I/O 細節／規則及測試，可由 SDK 產出。<br><br>**Remote**：以 C 為來源推導／適配等價描述，避免手寫兩份。 | — | 驗證參數，依 Config／上游規格推導 I/O 與候選，檢查接線；經 Registry 取得實作或 Adapter。 | 產生表單、顯示當前資料規格／選項與相依原因；正式解析器／Registry 尚未實作。 | — | **B 宣告規格，D 提供設定值，A 限制共用格式。**<br><br>細化支援方向已確認，具體 Descriptor／規則鍵名與解析 API 未凍結。任意程式或即時資料決定的規格不屬首版純宣告。 |
 | **C. Remote Service 定義** | **Manifest**：服務識別、operations、參數、呼叫資訊、部署／連線需求。<br><br>**Image 分支**：image、啟動／部署描述。<br><br>**External 分支**：既有服務連線及認證綁定需求。 | Manifest Schema、operation 規則、Remote HTTP 請求／回應／參數協定、Image／External 必要資訊；具體格式待定。 | **Remote Developer 才需閱讀**：Manifest、呼叫協定與 operation 的 A 邊界契約；依部署模式看對應交付規格。 | Manifest、可呼叫的服務、API 範例與契約測試。<br><br>**Image**：另附 image 與啟動／部署資訊。<br><br>**External**：由 Developer 部署，交接可用服務及環境連線資訊；環境實際值歸 E。 | — | Adapter 依 operation 呼叫服務，驗證並轉交符合 A 的業務資料。 | 登錄服務、推導 B 的選項；管理 Builder DEV 測試所需的服務啟動或連線。 | **Image**：產生／使用服務部署設定。<br><br>**External**：只綁定既有服務，不部署該服務。 | **operation 導出 B，I/O 遵守 A，環境需求由 E 滿足。**兩種 Remote 模式都可有多個 operation；一個 operation 可涵蓋連續多 Module。<br><br>僅宣告平台需提供／部署／驗證的依賴；Developer 內部自行管理的服務不必全部公開。 |
 | **D. System 組裝設定** | **System Config**：Component 選用／版本、參數值、流程、結果處理與邏輯資源引用。<br><br>資料欄位相關設定由所選 Component 開放，不再獨立頂層 document_schema。 | System Config Schema、組裝／相容規則、有效設定的解析與版本包裝。 | 閱讀 Component 選用、參數及資源引用方式。 | 整合範例 Config／測資，展示接上前後段；正式 SDK 前明示草案／離線狀態。 | **主要操作位置**：選 Component、填參數，必要時在 Parser 設定欄位定義／映射。 | 取得 B／C，依參數推導 I/O／相依，驗證後執行。 | 編輯、驗證、測試 Config；顯示推導資料規格與錯誤。 | 將 Config 提供給目標 Runtime。 | **D 保存使用值；資料規格由 B／C＋D 推導。**<br><br>解析規格可作結果／快照，不要求 User 重複手填；不複製完整 Descriptor、Manifest 或 Live Client。 |
 | **E. 環境與資源綁定** | Builder DEV／FTEST／ENT 的 Endpoint、Secret 引用、DB／實體索引目標、儲存與部署資源設定。<br><br>涵蓋平台測試資源、自備 DB／模型 API 與 Remote Service 的環境值。 | 環境綁定 Schema、資源類型、Secret 引用、部署／驗證規則；管理平台可提供的資源。 | **需要平台資源或協助部署時**，閱讀綁定與部署規格。 | 必要的綁定範例及部署／連線交接資訊。<br><br>資源「需求」已寫在 B／C，E 示範如何滿足，不重複定義需求。 | 選用資源；自備資源或兼任部署者時補設定。 | 解析綁定、初始化 Client 等資源，透過 A 的 Context 提供。 | 提供 Builder DEV 資源選擇與必要設定介面。 | 注入連線、Secret 引用、儲存及部署資源。 | **E 滿足 B／C 需求，與 D 一起建立可執行 System。**<br><br>同版 D 可搭配不同 E，但需相同邏輯能力。Live Client／索引物件留在 Runtime 程序中，由 Engine 管理生命週期。 |
@@ -66,7 +68,7 @@ Config Schema 是 B 的內含／引用規格，Component Config 是 D 的子內�
 
 Indexing 提供該 System 的 IndexBinding，Engine 驗證、管理，Retrieval 經 Context 取得。一般 User 不編寫 Binding。Artifact Definition 說明索引格式、target 形狀與讀寫語意；Binding 本身不能取代這份規格。
 
-第一版每 System 一組邏輯索引，不新增 index_ref 或 searchable；Runtime 管理就緒狀態。Artifact Definition 可被多個 Indexing／Retrieval 共用；新／未註冊格式需註冊，相同既有格式只需宣告支援。精確定義沿用 [19](19_index_binding_artifact_contract.md)。
+第一版每 System 一組邏輯索引，不新增 index_ref 或 searchable；Runtime 管理就緒狀態。Artifact Definition 可被多個 Indexing／Retrieval 共用；新／未註冊格式需註冊，相同既有格式只需宣告支援。精確定義沿用 [19](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/19_index_binding_artifact_contract.md)。
 
 ### 4.3 C 的服務、operation 與 B 的選項
 
@@ -74,7 +76,7 @@ Indexing 提供該 System 的 IndexBinding，Engine 驗證、管理，Retrieval 
 
 Manifest 供平台建立可選的 Component 描述；User 在 D 選用，Library 的 Adapter 依服務操作規格呼叫。固定設定的 External Service 可以沒有可調參數，UI 顯示固定能力與限制；若目錄需要 Config Schema，以合法空物件 Schema 表達即可。
 
-延續 [18](18_remote_service_pipeline_integration.md)：Remote Image 第一版每 System 使用獨立服務實例／必要資料綁定；External 由 Developer 維運，沿用既有資料空間，多個 System 可能共用資料。第一版不加入 data_space_id 或 shared 開關。
+延續 [18](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/18_remote_service_pipeline_integration.md)：Remote Image 第一版每 System 使用獨立服務實例／必要資料綁定；External 由 Developer 維運，沿用既有資料空間，多個 System 可能共用資料。第一版不加入 data_space_id 或 shared 開關。
 
 ### 4.4 涵蓋範圍與執行模式是兩個維度
 
@@ -88,30 +90,30 @@ Local／Remote 是執行模式；單 Module／連續多 Module 是涵蓋範圍�
 
 Parser 的 Output Data Schema 決定 Chunker 可用的來源；Chunker 決定 fields，Embedding 決定 vectors，Indexing 決定 Retrieval 可用能力。動態的是設定選項與適用性，不是任意新增 Developer 未宣告的設定。設定階段可組裝與執行期實際資料／IndexBinding 就緒分開驗證。
 
-「Pipeline 的 Schema 推導／細化與相依驗證」及首版六類純宣告規則完整見 [24](24_component_io_schema_refinement.md)；12 保留表單／問題定位與相依草案。**支援方向已確認，但正式 Meta-schema／UI 描述語法仍待核定。**Local 與 Remote 相同；瀏覽器只收可序列化規格與選項，不取得 Live Client、Secret 或完整 RunContext。
+「Pipeline 的 Schema 推導／細化與相依驗證」及首版六類純宣告規則完整見 [24](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/24_component_io_schema_refinement.md)；12 保留表單／問題定位與相依草案。**支援方向已確認，但正式 Meta-schema／UI 描述語法仍待核定。**Local 與 Remote 相同；瀏覽器只收可序列化規格與選項，不取得 Live Client、Secret 或完整 RunContext。
 
 ## 5. Developer 依開發模式閱讀與交付
 
-1. **Local Component**：從 [11 開發指南](11_component_developer_guide.md) 閱讀 SDK 規劃，接著看 A 中涵蓋範圍的 I/O 與資料契約，再看 B 的設定／能力宣告。交付實作、宣告、測試及 D 的範例；需要資源才補 E。
+1. **Local Component**：從 [11 開發指南](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/11_component_developer_guide.md) 閱讀 SDK 規劃，接著看 A 中涵蓋範圍的 I/O 與資料契約，再看 B 的設定／能力宣告。交付實作、宣告、測試及 D 的範例；需要資源才補 E。
 2. **Remote External Service**：看 A 的業務邊界與 C 的服務協定規劃，交付服務、Manifest、測試、D 的範例及必要的 E 連線交接。服務內部語言／框架自行選擇，不強制繼承 Local ABC 或採用 FastAPI；既有 API 不符契約時仍須適配。
 3. **Remote Image Service**：在上述 Remote 內容上，另交付 image、啟動／健康檢查／設定注入／必要資源與儲存綁定資訊，供 Builder DEV 管理及目標環境部署。精確必要欄位留 C 的 Schema 討論。
-4. **新增索引格式**：額外閱讀 [19](19_index_binding_artifact_contract.md)，交付 Artifact Definition 及可相容讀取的 Retrieval／Adapter；沿用格式則引用既有定義。
+4. **新增索引格式**：額外閱讀 [19](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/19_index_binding_artifact_contract.md)，交付 Artifact Definition 及可相容讀取的 Retrieval／Adapter；沿用格式則引用既有定義。
 
-Parser 的具體教學入口是 [16](16_parser_component_development_examples.md)，涵蓋 IngestionDocument → ParsedDocument、Local ABC 與 Remote API 示範。它是可執行的教學範例，不等於正式 SDK／完整 Remote 協定已發布。
+Parser 的具體教學入口是 [16](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/16_parser_component_development_examples.md)，涵蓋 IngestionDocument → ParsedDocument、Local ABC 與 Remote API 示範。它是可執行的教學範例，不等於正式 SDK／完整 Remote 協定已發布。
 
-上述精簡閱讀路線保留 [11 的交付要求](11_component_developer_guide.md)：除了程式與 Schema，還需按適用範圍說明版本相容、能力／資源、維護者、變更影響、範例及測試。選填的 _rag 追溯不因這張表變成強制實作。
+上述精簡閱讀路線保留 [11 的交付要求](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/11_component_developer_guide.md)：除了程式與 Schema，還需按適用範圍說明版本相容、能力／資源、維護者、變更影響、範例及測試。選填的 _rag 追溯不因這張表變成強制實作。
 
 ## 6. 既有規格位置與待定事項
 
-2026-11-05 整合討論稿：[23 System Config Schema 初版](23_system_config_schema_draft.md)提供 D 的現行討論骨架，D-67 的 B 資料規格與相依細化見 [24](24_component_io_schema_refinement.md)。D-66 舊機器稿／五案例已歸檔，其他 SC 具體表示仍待核定；前輪校對過程見 [歷史報告](history/reviews/2026-11-05_spec_alignment_review.md)。
+2026-11-05 整合討論稿：[23 System Config Schema 初版](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/23_system_config_schema_draft.md)提供 D 的現行討論骨架，D-67 的 B 資料規格與相依細化見 [24](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/24_component_io_schema_refinement.md)。D-66 舊機器稿／五案例已歸檔，其他 SC 具體表示仍待核定；前輪校對過程見 [歷史報告](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/reviews/2026-11-05_spec_alignment_review.md)。
 
 ### 6.1 精確定義的閱讀入口
 
-- **A**：[04 Module I/O](04_module_components_io_contracts.md)、[13 IngestionDocument](13_ingestion_parser_input_contract.md)、[14 ParsedDocument](14_parsed_document_contract.md)、[15 Chunk](15_chunk_contract.md)、[17 Pydantic 範例](17_pydantic_contracts_draft.md)、[19 IndexBinding／Artifact](19_index_binding_artifact_contract.md)。Inference 沿用 QueryContext[]，不恢復 InferenceState wrapper。
-- **B**：[11 開發指南](11_component_developer_guide.md)、[12 設定描述草案](12_component_schema_ui_contract.md)、[24 I/O 細化與相依驗證](24_component_io_schema_refinement.md)、[25 Descriptor Schema 初版／DS 決策](25_component_descriptor_schema_draft.md)。
-- **C**：[18 Remote Service／Pipeline](18_remote_service_pipeline_integration.md)、[16 Parser 開發範例](16_parser_component_development_examples.md)。
-- **D**：[05 資料／Config](05_data_contracts_search_design.md)、[06 UI 規格](06_ui_development_spec.md)。
-- **E**：[03 正式名詞與環境邊界](../03_architecture_proposal.md)、[07 Backend／Runtime／Export](07_backend_runtime_integration.md)、[18 Remote 部署](18_remote_service_pipeline_integration.md)。
+- **A**：[04 Module I/O](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/04_module_components_io_contracts.md)、[13 IngestionDocument](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/13_ingestion_parser_input_contract.md)、[14 ParsedDocument](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/14_parsed_document_contract.md)、[15 Chunk](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/15_chunk_contract.md)、[17 Pydantic 範例](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/17_pydantic_contracts_draft.md)、[19 IndexBinding／Artifact](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/19_index_binding_artifact_contract.md)。Inference 沿用 QueryContext[]，不恢復 InferenceState wrapper。
+- **B**：[11 開發指南](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/11_component_developer_guide.md)、[12 設定描述草案](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/12_component_schema_ui_contract.md)、[24 I/O 細化與相依驗證](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/24_component_io_schema_refinement.md)、[25 Descriptor Schema 初版／DS 決策](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/25_component_descriptor_schema_draft.md)。
+- **C**：[18 Remote Service／Pipeline](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/18_remote_service_pipeline_integration.md)、[16 Parser 開發範例](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/16_parser_component_development_examples.md)。
+- **D**：[05 資料／Config](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/05_data_contracts_search_design.md)、[06 UI 規格](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/06_ui_development_spec.md)。
+- **E**：[03 正式名詞與環境邊界](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/03_architecture_proposal.md)、[07 Backend／Runtime／Export](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/07_backend_runtime_integration.md)、[18 Remote 部署](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/18_remote_service_pipeline_integration.md)。
 
 ### 6.2 此次盤點未直接定案的內容
 
@@ -121,18 +123,18 @@ Parser 的具體教學入口是 [16](16_parser_component_development_examples.md
 - **D**：完整 System Config、引用／版本包裝、推導資料規格的快照與動態相容性驗證；不恢復已取消的獨立頂層 document_schema，追蹤 Q-002／Q-015。
 - **E**：綁定實體格式、資源／Secret 管理與部署生命週期；追蹤 Q-017／Q-020／Q-021。
 
-決策狀態由 [08](08_implementation_plan.md) 維護。本次總盤點沒有將整個 Q-ID 關閉，也未新增 UI 實作承諾。後續若核定具體 UI 變更，仍先記入 [10 UI Backlog](10_ui_adjustment_backlog.md)，收到改 UI 指示後再實作。
+決策狀態由 [08](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/08_implementation_plan.md) 維護。本次總盤點沒有將整個 Q-ID 關閉，也未新增 UI 實作承諾。後續若核定具體 UI 變更，仍先記入 [10 UI Backlog](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/10_ui_adjustment_backlog.md)，收到改 UI 指示後再實作。
 
 
 ## 7. 2026-11-05 已確認補充：版本、登錄與 Runtime 控制
 
 - **A**：同 System／document_id 完整覆寫，文件級成功／失敗；文件完整成功才記 completed，失敗清理／保留舊版仍需實作，不續跑半份資料；D-60 不鎖 Query，更新期間允許暫時新舊混合。具體提交／Remote 崩潰一致性仍須實作驗證。
 - **B／C**：Component 有實作版本，System 固定選用、不自動升級；Admin 手動審核登錄／發布。Local 須在目標 Runtime 有程式／依賴；Remote 須有相容 Adapter／操作邊界與可用服務。動態 UI Meta-schema 仍暫緩，不因確認管理方式而凍結 Descriptor／Manifest。
-- **D／E**：D 保存流程／演算法參數／版本選用；D-64 已確認 Queue／併發／Rate／Deadline／狀態保存等 Runtime 控制歸 E，由 Admin／部署管理者提供。初始預設、單位與作用範圍集中在 [22](22_runtime_settings_catalog.md)，正式參數路徑／機器 Schema 與載入方式仍待核定。Builder DEV 與獨立 Runtime 共用控制實作；User／Workspace 額外平台配額另議，不透過單次業務 body 覆寫。
+- **D／E**：D 保存流程／演算法參數／版本選用；D-64 已確認 Queue／併發／Rate／Deadline／狀態保存等 Runtime 控制歸 E，由 Admin／部署管理者提供。初始預設、單位與作用範圍集中在 [22](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/22_runtime_settings_catalog.md)，正式參數路徑／機器 Schema 與載入方式仍待核定。Builder DEV 與獨立 Runtime 共用控制實作；User／Workspace 額外平台配額另議，不透過單次業務 body 覆寫。
 - **Runtime 管理資料**：有上限 Queue，文件執行併發預設 1 可調；同文件 queued／running 拒絕重複提交。202 後提供 run_id／document_id 查詢，文件最新狀態另存記憶體，不改共用業務 DTO。
 - **重啟政策**：不保留／恢復 Queue／Run／文件狀態；無紀錄查 unknown，不由已儲存文件推定最近一次完成。索引持久化／Remote 副作用與工作紀錄分開看待。
 
-上述方向記 D-56；[21 API 盤點](21_runtime_ingestion_inference_api_inventory.md) 更新為 7 支業務＋2 支 Health 清單及 API-D01～07。後續 D-57 已確認整批接收預檢、Run partial／未知紀錄 HTTP 200，retire 能力納入、工作取消暫緩；D-58 已確認統一 List、文件存在／ID 清單與 retire 直接刪除；D-64 已進一步確認 retire 結果／錯誤核心格式、可信 System 路由與 Runtime 初始預設；D-65 確認文件摘要為 documents[]＋next_cursor，每筆 document_id／source_revisions[]，從實際 Chunk 去重彙整；精確分頁參數、完整 OpenAPI 與後端清理仍待整理。不是新增已實作的契約或已發布 API。
+上述方向記 D-56；[21 API 盤點](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/21_runtime_ingestion_inference_api_inventory.md) 更新為 7 支業務＋2 支 Health 清單及 API-D01～07。後續 D-57 已確認整批接收預檢、Run partial／未知紀錄 HTTP 200，retire 能力納入、工作取消暫緩；D-58 已確認統一 List、文件存在／ID 清單與 retire 直接刪除；D-64 已進一步確認 retire 結果／錯誤核心格式、可信 System 路由與 Runtime 初始預設；D-65 確認文件摘要為 documents[]＋next_cursor，每筆 document_id／source_revisions[]，從實際 Chunk 去重彙整；精確分頁參數、完整 OpenAPI 與後端清理仍待整理。不是新增已實作的契約或已發布 API。
 
 
 D-58 補充：**Runtime 工作狀態**與**文件資料管理**分開。前者重啟為 unknown；後者讀取實際儲存的文件存在／ID 清單，retire 真正刪除資料。屬 A 的 storage／index 管理能力與 C 的 Remote 配套；HTTP 經 Runtime 提供，Builder UI 另行規劃，不新增 Module 或強制保存 ParsedDocument。

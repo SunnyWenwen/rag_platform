@@ -1,12 +1,14 @@
+> 歷史來源快照：docs/04_module_components_io_contracts.md；來源 commit 916734ac0bbe0631a205bfd52626ce332aa7beb2。2026-11-05 整合後不再作現行規格；相對連結固定到來源版本。現行入口：[README](https://github.com/SunnyWenwen/rag_platform/blob/docs/rag-system-factory/README.md)。
+
 # Retrieval Engine Library — 組裝、執行與模組開發規格
 
-> 2026-11-02 D-51：[18 Remote Service／Pipeline](18_remote_service_pipeline_integration.md) 補充連續多 Module 的遠端替換、Manifest 註冊及部署模式。以下單 Module I/O／ABC 與共用資料 Schema 維持原定義；Remote Pipeline 不另造中間資料型別。
+> 2026-11-02 D-51：[18 Remote Service／Pipeline](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/18_remote_service_pipeline_integration.md) 補充連續多 Module 的遠端替換、Manifest 註冊及部署模式。以下單 Module I/O／ABC 與共用資料 Schema 維持原定義；Remote Pipeline 不另造中間資料型別。
 
 > 文件同步：2026-10-31 · 開發規格草案（正式 SDK／Config 尚未凍結）
 >
-> 本文涵蓋可獨立執行的 Engine 與各模組；正式名詞定義見 [03 §3](../03_architecture_proposal.md#terminology)，共用資料／Config 結構見 05。既有產品語意為已確認方向，新增 SDK、Registry 形狀、執行政策為建議，須經對應 Q-ID 核定。本次未新增 Engine 程式。
+> 本文涵蓋可獨立執行的 Engine 與各模組；正式名詞定義見 [03 §3](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/03_architecture_proposal.md#terminology)，共用資料／Config 結構見 05。既有產品語意為已確認方向，新增 SDK、Registry 形狀、執行政策為建議，須經對應 Q-ID 核定。本次未新增 Engine 程式。
 
-> 2026-10-28 補充 Module Developer 擴充規劃：本文負責 Engine 必須提供的機制與限制；[11 Component 開發指南](11_component_developer_guide.md) 負責開發、測試與交付流程。開放 Component 開發是需求方向，以下公開介面、套件結構及載入方式仍為設計草案；三份共用資料以 13～15 及 schemas/ 為現行草案基準，正式 SDK／版本凍結仍待 Q-002。
+> 2026-10-28 補充 Module Developer 擴充規劃：本文負責 Engine 必須提供的機制與限制；[11 Component 開發指南](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/11_component_developer_guide.md) 負責開發、測試與交付流程。開放 Component 開發是需求方向，以下公開介面、套件結構及載入方式仍為設計草案；三份共用資料以 13～15 及 schemas/ 為現行草案基準，正式 SDK／版本凍結仍待 Q-002。
 
 ## 1. 目標與依賴邊界
 
@@ -17,7 +19,7 @@ Inference 基線：Query Transformation → Retrieval／Fusion → Rerank → �
 Evaluation：重用相同檢索入口的評估邏輯，任務排程與報告儲存由 07 負責。
 
 - 固定 Pipeline，不要求使用者建 DAG。
-- Config、業務 Payload、可信 RunContext 分開；資料結構見 [05](05_data_contracts_search_design.md)。
+- Config、業務 Payload、可信 RunContext 分開；資料結構見 [05](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/05_data_contracts_search_design.md)。
 - LangChain 物件只在 Adapter 內轉換，不作持久化／跨模組 Contract。
 - 不同框架／自訂 Function 或 Class 透過相同 Contract 包裝。
 - 純全文可跳過 Embedding；None 模組回傳相同語意的 pass-through 結果。
@@ -30,7 +32,7 @@ Evaluation：重用相同檢索入口的評估邏輯，任務排程與報告儲�
 | `rag-engine`（暫名） | Registry、相容性驗證、Pipeline 組裝、生命週期、執行政策與資源管理 | 使用 SDK 契約，載入已安裝且核可的 Component package |
 | rag_engine 內的 Component package | 實作一個或多個 Module 的 Component，附設定、能力宣告、測試與說明 | 依賴 SDK 公開介面及自身必要套件；不依賴 Builder 或 Engine 私有類別 |
 
-內建與開發者提供的 Component 應遵循相同公開契約與語意檢查，不能以內建方法的私有捷徑作為唯一可行用法。2026-10-28 已確認：SDK、Engine、本地 Components／Remote Adapters 與 Runtime API 同放 `rag_engine` repo，Builder 前後端放 `rag_platform`，見 [03 §3.7](../03_architecture_proposal.md#repository-boundaries)。Module Developer 在 components 目錄提交 PR，不要求另建 Component repo；同一 package 可包含成對的 Indexing／Retrieval。套件邊界仍保留，精確名稱／目錄由 Q-001 核定。
+內建與開發者提供的 Component 應遵循相同公開契約與語意檢查，不能以內建方法的私有捷徑作為唯一可行用法。2026-10-28 已確認：SDK、Engine、本地 Components／Remote Adapters 與 Runtime API 同放 `rag_engine` repo，Builder 前後端放 `rag_platform`，見 [03 §3.7](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/03_architecture_proposal.md#repository-boundaries)。Module Developer 在 components 目錄提交 PR，不要求另建 Component repo；同一 package 可包含成對的 Indexing／Retrieval。套件邊界仍保留，精確名稱／目錄由 Q-001 核定。
 
 SDK 的「獨立」是可安裝、可依賴的公開邊界；不表示 Component 的完整 Engine 整合測試不需要 Engine。單一 Component 測試可用 SDK 測試工具與資源替身，整合測試使用同一交付版本中的相容 Engine。Engine 與 Component packages 共同納入完整 Runtime Image；不以拆出另一個 Components 服務作為首期執行模型。
 
@@ -64,7 +66,7 @@ D-62 已確認 B：共用 Flow／Executor，每次執行傳入已驗證 Config �
 
 ### 2.2 編譯與初始化流程
 
-D-61／D-62：下列流程準備一份 System Config 的有效快照及必要資源，不要求為其建立專屬 Flow。Builder 共用 API service／Executor，請求開始時由可信路由選定配置；FTEST／ENT 啟動載入單份配置，執行仍使用同一 Executor，見 [03 模式對照](../03_architecture_proposal.md#runtime-deployment-modes)。
+D-61／D-62：下列流程準備一份 System Config 的有效快照及必要資源，不要求為其建立專屬 Flow。Builder 共用 API service／Executor，請求開始時由可信路由選定配置；FTEST／ENT 啟動載入單份配置，執行仍使用同一 Executor，見 [03 模式對照](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/03_architecture_proposal.md#runtime-deployment-modes)。
 
 1. 讀取 YAML／JSON，驗證 Contract 版本及未知欄位；安全解析，不執行設定內的程式碼。
 2. 將 UI Draft 編譯成 Effective Config，排除未啟用方法／服務草稿。
@@ -106,7 +108,7 @@ async def execute_ingestion(data, snapshot, context):
 
 建議每個註冊 Component 提供 module_type、component_id、implementation_version、input_schema、output_schema、config_schema、requires、provides、supports 及 factory。由 Engine 編譯器串接，不由 Builder 寫另一套組裝流程。
 
-依 [D-43 命名對照](../03_architecture_proposal.md#component-terminology-migration)，擴充單位統一使用 Component／component_id。早期 Registry 草案曾以 module_id、後以 method_id 表示具體實作；目前 module_type 表示職責，例如 chunking，component_id 表示具體元件，例如 team_a.chunking.custom，Python class 名稱只是實作符號。同一 Component 可在執行時接收不同參數，不需要因此新增 component_id 或必然建立新實例；有狀態／特定資源需求時仍可建立多個 Component Instance，node_ref 另辨識配置位置。正式 Config 結構、舊別名與遷移仍由 Q-002 核定，本輪沒有修改 Prototype／公開 I/O Schema。
+依 [D-43 命名對照](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/03_architecture_proposal.md#component-terminology-migration)，擴充單位統一使用 Component／component_id。早期 Registry 草案曾以 module_id、後以 method_id 表示具體實作；目前 module_type 表示職責，例如 chunking，component_id 表示具體元件，例如 team_a.chunking.custom，Python class 名稱只是實作符號。同一 Component 可在執行時接收不同參數，不需要因此新增 component_id 或必然建立新實例；有狀態／特定資源需求時仍可建立多個 Component Instance，node_ref 另辨識配置位置。正式 Config 結構、舊別名與遷移仍由 Q-002 核定，本輪沒有修改 Prototype／公開 I/O Schema。
 
 ```yaml
 component_id: company.chunking.recursive
@@ -139,11 +141,11 @@ Local 仍依 §2.3～2.4 載入 package；Remote 實作可保留在 Developer �
 
 Remote Pipeline 宣告同一 Pipeline 中連續範圍、邊界 Contract 與 requires／provides；有效計畫僅保留一次遠端節點，跳過接管的本地步驟，拒絕重疊或不相容接線。例：IngestionDocument → 遠端 Parsing／Chunking／Embedding → Chunk[] → 本地 Indexing。輸出仍須符合原有 metadata／來源／向量語意，不要求傳中間 ParsedDocument。涵蓋 Indexing 時需相容的 Retrieval 與可信索引綁定；精確返回／傳參協定尚待核定，不能據此假定任意成對服務都相容。
 
-API 只傳可序列化且已核定的業務資料及明確支援的參數，不傳完整 RunContext；第一版不傳 data_space_id。計畫驗證、呼叫錯誤／版本與整段 Trace 由 Engine／Adapter 處理，部署則由 07 管理。詳細邊界、固定服務及驗收見 [18](18_remote_service_pipeline_integration.md)。
+API 只傳可序列化且已核定的業務資料及明確支援的參數，不傳完整 RunContext；第一版不傳 data_space_id。計畫驗證、呼叫錯誤／版本與整段 Trace 由 Engine／Adapter 處理，部署則由 07 管理。詳細邊界、固定服務及驗收見 [18](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/18_remote_service_pipeline_integration.md)。
 
 ### 2.6 KISS：選填追溯與 metadata 提示（D-52）
 
-Component 只需滿足共用 I/O 及自身功能語意，不強制實作 _rag；有提供標準追溯時才驗證。metadata 可攜帶 Component 明確支援的文件層提示；例如 Chunker 讀 chunking_mode 決定 split／passthrough，缺省 split，不需另設通用規則引擎。不支援提示的 Component 不會自動獲得該邏輯。Config、業務提示及可信 Context 仍分開，授權／Secret 不由 metadata 控制。詳見 [15 §4.1](15_chunk_contract.md)。
+Component 只需滿足共用 I/O 及自身功能語意，不強制實作 _rag；有提供標準追溯時才驗證。metadata 可攜帶 Component 明確支援的文件層提示；例如 Chunker 讀 chunking_mode 決定 split／passthrough，缺省 split，不需另設通用規則引擎。不支援提示的 Component 不會自動獲得該邏輯。Config、業務提示及可信 Context 仍分開，授權／Secret 不由 metadata 控制。詳見 [15 §4.1](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/15_chunk_contract.md)。
 
 ## 3. 共用執行政策
 
@@ -170,7 +172,7 @@ Ingestion 本地教學可用 ModuleResult[T] 包裝成功資料；推論三模�
 ### 3.2 錯誤、重試與觀測
 
 - 結果必須能對應輸入的成功／失敗／skipped 項目。空檢索為成功，索引或 Provider 故障為失敗。
-- D-56 已確認以 document_id 完整替換、逐文件成功／失敗；未完整成功不得標 completed，失敗清理／保留舊版由 backend 落實。D-60 不加平台 Query 讀寫鎖，允許更新中讀到暫時新舊混合，不保證原子可見性。Run partial 彙總方向已確認，精確 Envelope 及實體提交機制仍待整理，見 [21](21_runtime_ingestion_inference_api_inventory.md)。
+- D-56 已確認以 document_id 完整替換、逐文件成功／失敗；未完整成功不得標 completed，失敗清理／保留舊版由 backend 落實。D-60 不加平台 Query 讀寫鎖，允許更新中讀到暫時新舊混合，不保證原子可見性。Run partial 彙總方向已確認，精確 Envelope 及實體提交機制仍待整理，見 [21](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/21_runtime_ingestion_inference_api_inventory.md)。
 - 重試由共用政策管理；HTTP 重送與內部重試不能形成無界倍增。僅在可安全重試且暫時性錯誤時啟用。
 - Indexing／資產提交具副作用，未知寫入不自動重試；具體冪等／版本控制待 Q-008／Q-017。第一版不保存續跑 checkpoint，不以讀取成功宣稱提交已完成。
 - 每個本地模組／單 Module 遠端呼叫記錄 System／Config／Run／Trace、耗時、數量及標準錯誤；Remote Pipeline 預設以整段呼叫記錄，內部各步診斷為選配。不記錄真實 Secret，未知用量不填 0。
@@ -184,7 +186,7 @@ D-56 已確認不做斷點續跑、Runtime 重啟不恢復工作／記憶體狀�
 
 **目的與邊界**：Engine 接收扁平 JSON，驗證共用 IngestionDocument，並提供共同的內容取得能力；文件／CSV 上傳轉換由 Builder 或呼叫端處理，不提供 Engine multipart，不做 PDF／OCR 語意解析或 Embedding。
 
-**Config／I/O**：[13](13_ingestion_parser_input_contract.md) 記錄 API／Parser 共用的 IngestionDocument 與 [同一份 JSON Schema](../schemas/ingestion_document.schema.json)。content／base64／uri 三選一，文件 ID、版本與 metadata 持續傳遞；SDK resolver 共用 URI 取得與 Base64 解碼，不另建 ParserInput envelope。D-58 的 Runtime body 為非空 IngestionDocument[]，每份 item 與 Parser input 相同；D-64 已確認的 Runtime body／來源大小與文件 Deadline 初始預設集中見 [22](22_runtime_settings_catalog.md)；原始資源保存與逐模型／Client timeout 仍另行核定。
+**Config／I/O**：[13](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/13_ingestion_parser_input_contract.md) 記錄 API／Parser 共用的 IngestionDocument 與 [同一份 JSON Schema](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/schemas/ingestion_document.schema.json)。content／base64／uri 三選一，文件 ID、版本與 metadata 持續傳遞；SDK resolver 共用 URI 取得與 Base64 解碼，不另建 ParserInput envelope。D-58 的 Runtime body 為非空 IngestionDocument[]，每份 item 與 Parser input 相同；D-64 已確認的 Runtime body／來源大小與文件 Deadline 初始預設集中見 [22](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/22_runtime_settings_catalog.md)；原始資源保存與逐模型／Client timeout 仍另行核定。
 
 **驗收方向**：相同內容經 inline／Base64／URI 後，在相容格式下具有相同解析語意；Builder CSV 映射一次後與直接 JSON 得到一致結果；不丟失身分／metadata，不接受未授權來源。外層多重來源、格式／內容不符及超限須明確失敗。
 
@@ -196,17 +198,17 @@ D-56 已確認不做斷點續跑、Runtime 重啟不恢復工作／記憶體狀�
 
 **輸入與路由**：與 API 共用 IngestionDocument（content／base64／uri 三選一）；由 Component 支援的格式與 profile 派送，歧義需明確解決。Builder CSV 每列先映射一份 IngestionDocument，再組成 Runtime List body，Parser 逐文件正規化，不要求重複設定相同欄位映射。
 
-**輸出與驗證**：以 [14](14_parsed_document_contract.md)／[Schema](../schemas/parsed_document.schema.json) 驗證。text-spans／page-blocks 等上游結構由 Parser 內部處理，不再作 Chunker 的輸入分類。表格整理成逐列語意文字或 Markdown；圖片需具備 OCR／描述能力。Header-aware 需要 Unit 文字保留 Markdown 標題。來源欄位可附 page／slide／sheet 等；不得捏造位置或把無內容當成功。
+**輸出與驗證**：以 [14](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/14_parsed_document_contract.md)／[Schema](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/schemas/parsed_document.schema.json) 驗證。text-spans／page-blocks 等上游結構由 Parser 內部處理，不再作 Chunker 的輸入分類。表格整理成逐列語意文字或 Markdown；圖片需具備 OCR／描述能力。Header-aware 需要 Unit 文字保留 Markdown 標題。來源欄位可附 page／slide／sheet 等；不得捏造位置或把無內容當成功。
 
-**供應者相容性**：Docling／MinerU／MarkItDown／PyMuPDF4LLM 的新版映射方向與驗證限制見 [14 §5](14_parsed_document_contract.md#5-parser-相容性與驗證範圍)。舊結構契約的通過報告不當成 units 新契約驗收；正式 Component 及解析品質需另驗證。
+**供應者相容性**：Docling／MinerU／MarkItDown／PyMuPDF4LLM 的新版映射方向與驗證限制見 [14 §5](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/14_parsed_document_contract.md#5-parser-相容性與驗證範圍)。舊結構契約的通過報告不當成 units 新契約驗收；正式 Component 及解析品質需另驗證。
 
 **待決**：Q-002、Q-005、Q-006、Q-007；新格式能力同步 Registry／UI，原型變更先記 UIB-011／012。
 
 ### 4.3 Chunking
 
-**Output 草案（2026-10-30，D-47）**：[15](15_chunk_contract.md) 與 [Chunk Schema](../schemas/chunk.schema.json) 是六鍵輸出的共用定義。Chunker 輸出六鍵，vectors={}；_rag／source_refs／fingerprint／ordinal 由 Component 選擇是否提供，不能因缺少追溯拒收。多欄位 2＋3 得 5 個 Chunk；選用參考 ID／序號 helper 時才依其穩定順序規則驗證。參考測試只驗已提供的切片／資料，不代替真實 Chunker 演算法與 Tokenizer 驗收。UI 待辦 UIB-013。
+**Output 草案（2026-10-30，D-47）**：[15](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/15_chunk_contract.md) 與 [Chunk Schema](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/schemas/chunk.schema.json) 是六鍵輸出的共用定義。Chunker 輸出六鍵，vectors={}；_rag／source_refs／fingerprint／ordinal 由 Component 選擇是否提供，不能因缺少追溯拒收。多欄位 2＋3 得 5 個 Chunk；選用參考 ID／序號 helper 時才依其穩定順序規則驗證。參考測試只驗已提供的切片／資料，不代替真實 Chunker 演算法與 Tokenizer 驗收。UI 待辦 UIB-013。
 
-**資料／能力補充（2026-11-02）**：Input 引用 [ParsedDocument 0.2 Schema](../schemas/parsed_document.schema.json)。每個任務選一個 Chunker，逐一處理所有 Units，不跨 Unit 合併或 overlap；移除依 structure 類型選 Chunker 的 Router。進階多欄位任務各自輸出後串接，不交叉配對。欄位／Markdown 格式／Tokenizer 能力仍需檢查，UI 遷移見 UIB-014。
+**資料／能力補充（2026-11-02）**：Input 引用 [ParsedDocument 0.2 Schema](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/schemas/parsed_document.schema.json)。每個任務選一個 Chunker，逐一處理所有 Units，不跨 Unit 合併或 overlap；移除依 structure 類型選 Chunker 的 Router。進階多欄位任務各自輸出後串接，不交叉配對。欄位／Markdown 格式／Tokenizer 能力仍需檢查，UI 遷移見 UIB-014。
 
 **目的與方法**：Fixed-size／Recursive／Header-aware；預設直接切 units[i].text 並寫回 text，不顯示欄位選單、不自動複製其他 fields。進階才設定有序任務，每個任務一個 split_field／output_field＋明確 copy 映射；同來源可切分且完整複製，但輸出名稱不能衝突。metadata 預設全部繼承，不再逐欄勾選。三種方法均以 Token 計量，沿用指定 Tokenizer／revision。2026-10-16 新增的「fix chunk」統一稱 **Fixed-size Chunking（固定 Token 視窗）**；方法已列入需求；Prototype v0.10 有設定展示，正式 Engine／Tokenizer 尚未實作。
 
@@ -233,7 +235,7 @@ Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一�
 
 **待決**：Q-004、Q-005、Q-007；Token 精確計數、切分 fallback 與 overlap 邊界需測試材料。
 
-D-53 真實 Engine 功能待實作，Prototype v0.12 已有控制與教學預覽：預設 Chunker 可選擇另留每 Unit／任務的完整原文 Chunk，預設關閉；已有相同完整切片則不重複新增。它與 copy 原文欄位獨立，不跨 Unit 合併，新增結果仍走 Embedding／Indexing 與模型上限檢查。行為與例子見 [15 §9.2](15_chunk_contract.md#include-original-chunk)。
+D-53 真實 Engine 功能待實作，Prototype v0.12 已有控制與教學預覽：預設 Chunker 可選擇另留每 Unit／任務的完整原文 Chunk，預設關閉；已有相同完整切片則不重複新增。它與 copy 原文欄位獨立，不跨 Unit 合併，新增結果仍走 Embedding／Indexing 與模型上限檢查。行為與例子見 [15 §9.2](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/15_chunk_contract.md#include-original-chunk)。
 
 ### 4.4 Embedding
 
@@ -363,7 +365,7 @@ result = Result.model_validate({"queries": [
 6. 按四個已確認位置取上限：搜尋 Top K、Retrieval 後合併 Top N、模型評分後 Top N、Reranker 後合併 Top N。每個上限只作用於該步輸出的各清單；逐 Query Rerank 後才跨 Query 融合時，不能提前攤平成全域清單。
 7. 在 Rerank／檢索結果消費端 使用候選前批次取回所需 fields／metadata，保留各路排序與身分；vectors 可省為 {}，下游無須知道 MongoDB 或 FAISS。
 
-**實作狀態**：Prototype v0.9 已提供 [10](10_ui_adjustment_backlog.md) 的兩層時點 UI 與有效計畫推導；未實作真正的搜尋／融合。單一路是否略過融合仍依有效計畫判斷，文件分組不以清單數量為必要條件。
+**實作狀態**：Prototype v0.9 已提供 [10](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/10_ui_adjustment_backlog.md) 的兩層時點 UI 與有效計畫推導；未實作真正的搜尋／融合。單一路是否略過融合仍依有效計畫判斷，文件分組不以清單數量為必要條件。
 
 已確認的 UI 範圍：同一 Query 多路合併、跨 Query 合併，各自可在 Retrieval 後或 Reranker 後執行；兩者新建預設勾選且在 Retrieval 後。先逐 Query Sum Score、再跨 Query RRF 是可表達情境。具體分數方法、正式配置 Schema 與 Adapter 支援仍由 Q-014 核定，原型展示初值不等同新增產品決策。
 
@@ -410,7 +412,7 @@ Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root ar
 
 **驗收**：不生成新 chunk_id；重新 rank；保留原 Retrieval Trace。串接 Timeout／錯誤時不假裝 Rerank=None。
 
-**與最新結果操作的對齊**：Rerank 是「新模型算分」的一種方法；模型輸出經共用排序與 Top N，名次由 items 陣列位置表示，不新增 rank 欄位。Top N 保留為可獨立描述的操作能力，但最新 UI 不要求獨立卡片，而是動作的收尾參數；v0.9 的 Reranker 輸出 Top N 預設 3，見 [10](10_ui_adjustment_backlog.md)。原型 API 說明要求 top_n 等於輸入 documents 數、回應完整評分，再由平台依 UI 上限截斷；正式 Adapter 的完整覆蓋驗證與服務上限仍待 Q-003／Q-014，不能默默依服務預設值少回候選。
+**與最新結果操作的對齊**：Rerank 是「新模型算分」的一種方法；模型輸出經共用排序與 Top N，名次由 items 陣列位置表示，不新增 rank 欄位。Top N 保留為可獨立描述的操作能力，但最新 UI 不要求獨立卡片，而是動作的收尾參數；v0.9 的 Reranker 輸出 Top N 預設 3，見 [10](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/10_ui_adjustment_backlog.md)。原型 API 說明要求 top_n 等於輸入 documents 數、回應完整評分，再由平台依 UI 上限截斷；正式 Adapter 的完整覆蓋驗證與服務上限仍待 Q-003／Q-014，不能默默依服務預設值少回候選。
 
 **待決**：Q-003、Q-014、Q-017、Q-023；內容欄位分隔、輸入極限、全候選評分與服務回傳缺項政策需核定。
 
@@ -445,7 +447,7 @@ Module Developer 可針對各 Module 實作 Component；不再只把 Chunking／
 
 同一 Module 的公開 I/O 與語意由平台維護，Component 必須相容；Component 自身 Config 可以不同。可使用契約明定的擴充欄位或具名稱／版本的能力宣告，不能自行增改必要頂層 key、把字典任意形狀視為相容，或要求下游默默猜測結構。公開契約可經版本化演進，並非永遠不能改。
 
-IngestionDocument／ParsedDocument／Chunk 的現行草案分別引用 13／14／15 與 schemas/。ParsedDocument 已收斂為四鍵外層與平面 units，Chunk 以 unit_index 追溯來源；正式版本／SDK 及細節凍結見 [Q-002](08_implementation_plan.md#parsed-document-schema-pending)。不新增直接匯入 Chunk／vectors 的入口。Inference 沿用 05 的 query-context-list/0.3-draft，ResultItem 直接引用共用 Chunk，不另立第二套型別。
+IngestionDocument／ParsedDocument／Chunk 的現行草案分別引用 13／14／15 與 schemas/。ParsedDocument 已收斂為四鍵外層與平面 units，Chunk 以 unit_index 追溯來源；正式版本／SDK 及細節凍結見 [Q-002](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/08_implementation_plan.md#parsed-document-schema-pending)。不新增直接匯入 Chunk／vectors 的入口。Inference 沿用 05 的 query-context-list/0.3-draft，ResultItem 直接引用共用 Chunk，不另立第二套型別。
 
 ### 7.2 Component 必須宣告與配合的行為
 
@@ -485,17 +487,17 @@ Builder 與 AI 助手使用目標 Engine／Runtime 實際支援且核可的 Comp
 
 rag_platform 與 rag_engine 的服務邊界由 Runtime API／Component 目錄承接，接口細節見 07。若 API／Config Schema 相容且既有表單可呈現，新 Component 經 Runtime 更新即可提供 Builder 選用；若修改了不相容接口或需要新增 UI 控制項，仍需協調 Builder 更新。套件集中於同 repo 不代表任何 Runtime 改動都免重新部署；採用新版的方法／Engine 必須經相容測試並部署該 Runtime Image。
 
-基本設定可依 Config Schema 產生表單，跨模組連動仍需能力規則與顯示資訊；不能承諾任何自訂 UI 都只靠 JSON Schema 自動產生。實際表單／版本呈現列於 [10 UIB-010](10_ui_adjustment_backlog.md#uib-010-component-catalog)，本輪不修改 Prototype。
+基本設定可依 Config Schema 產生表單，跨模組連動仍需能力規則與顯示資訊；不能承諾任何自訂 UI 都只靠 JSON Schema 自動產生。實際表單／版本呈現列於 [10 UIB-010](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/10_ui_adjustment_backlog.md#uib-010-component-catalog)，本輪不修改 Prototype。
 
 DEV 與 FTEST／ENT 維持相同方法選擇／解析版本與邏輯 Config，環境服務綁定分開；交付需驗證目標 Image 包含所需方法與相依套件。僅匯出 YAML 不會自動交付 Component 程式。更新 Component 後重測／重建的判斷依 Q-015，不以版本號單獨認定索引相容。
 
-開發者實作步驟、Python 介面示意與交付檢查見 [11](11_component_developer_guide.md)；決策狀態以 [08 Q-022](08_implementation_plan.md#q-022) 為準。
+開發者實作步驟、Python 介面示意與交付檢查見 [11](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/11_component_developer_guide.md)；決策狀態以 [08 Q-022](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/08_implementation_plan.md#q-022) 為準。
 
 ### 7.6 設定描述與動態表單（D-42）
 
-D-67 的 B 宣告能力見 [24](24_component_io_schema_refinement.md)：固定／依 Config 細化的 I/O 資料細節與六類規則、沿 Pipeline 推導選項及相依驗證。A 的共用 Contract／Module 邊界不變；D 不再獨立頂層 document_schema。這是已確認方向，Descriptor／Manifest 的正式鍵名及共用解析器仍待實作。
+D-67 的 B 宣告能力見 [24](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/24_component_io_schema_refinement.md)：固定／依 Config 細化的 I/O 資料細節與六類規則、沿 Pipeline 推導選項及相依驗證。A 的共用 Contract／Module 邊界不變；D 不再獨立頂層 document_schema。這是已確認方向，Descriptor／Manifest 的正式鍵名及共用解析器仍待實作。
 
-2026-10-28 已確認依 Schema／UI hints／相依規則規劃 Component 設定。具體描述與驗收案例集中於 [12](12_component_schema_ui_contract.md)，不在本文件另建第二套欄位定義；`component-ui-0.1-draft` 尚未凍結為正式 SDK／HTTP 契約。
+2026-10-28 已確認依 Schema／UI hints／相依規則規劃 Component 設定。具體描述與驗收案例集中於 [12](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/12_component_schema_ui_contract.md)，不在本文件另建第二套欄位定義；`component-ui-0.1-draft` 尚未凍結為正式 SDK／HTTP 契約。
 
 - Component 宣告 `config_type`，共用父類別提供 Schema 輸出，Registry 強制檢查；不要求每個 Component 重寫產生 Schema 的 abstract method。UI hints 可使用預設值，特殊控制項明確宣告必要功能。
 - Config Schema、動態選項／能力與跨欄位規則共同參與 Engine 驗證，UI／AI／Python／HTTP 不能各自維護不同的有效性規則。Config Schema 與 Module I/O Contract 分開；三份資料的既定語意及現行 Schema 由 13～15 維護，正式 SDK／版本凍結仍見 Q-002。
@@ -506,11 +508,11 @@ D-67 的 B 宣告能力見 [24](24_component_io_schema_refinement.md)：固定�
 
 | 範圍 | 問題 |
 |---|---|
-| Engine SDK／Config／版本 | [Q-001](08_implementation_plan.md#q-001)、[Q-002](08_implementation_plan.md#q-002) |
-| 模型、Token、Parser | [Q-003](08_implementation_plan.md#q-003)、[Q-004](08_implementation_plan.md#q-004)、[Q-005](08_implementation_plan.md#q-005) |
-| ID、更新、提交與查詢一致性 | [Q-007](08_implementation_plan.md#q-007)～Q-010 |
-| BM25／FAISS、MongoDB、filter、fusion | [Q-011](08_implementation_plan.md#q-011)～Q-014 |
-| 重試、評估、客製化、Fallback | [Q-017](08_implementation_plan.md#q-017)、[Q-018](08_implementation_plan.md#q-018)、[Q-022](08_implementation_plan.md#q-022)、[Q-023](08_implementation_plan.md#q-023) |
+| Engine SDK／Config／版本 | [Q-001](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/08_implementation_plan.md#q-001)、[Q-002](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/08_implementation_plan.md#q-002) |
+| 模型、Token、Parser | [Q-003](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/08_implementation_plan.md#q-003)、[Q-004](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/08_implementation_plan.md#q-004)、[Q-005](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/08_implementation_plan.md#q-005) |
+| ID、更新、提交與查詢一致性 | [Q-007](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/08_implementation_plan.md#q-007)～Q-010 |
+| BM25／FAISS、MongoDB、filter、fusion | [Q-011](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/08_implementation_plan.md#q-011)～Q-014 |
+| 重試、評估、客製化、Fallback | [Q-017](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/08_implementation_plan.md#q-017)、[Q-018](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/08_implementation_plan.md#q-018)、[Q-022](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/08_implementation_plan.md#q-022)、[Q-023](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/08_implementation_plan.md#q-023) |
 
 ## 9. Engine 完成條件
 
@@ -522,7 +524,7 @@ D-67 的 B 宣告能力見 [24](24_component_io_schema_refinement.md)：固定�
 - 重複識別、缺失套件、不相容版本／結構／artifact、違反語意的輸出均可定位失敗；Image／方法版本可追溯，升級不默默改變既有 System。
 - 尚未核定能力回報不支援，不以 Mock 或靜默 fallback 代表完成。
 
-開發階段與驗收資料見 [08](08_implementation_plan.md)。
+開發階段與驗收資料見 [08](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/08_implementation_plan.md)。
 
 
 
@@ -530,9 +532,9 @@ D-67 的 B 宣告能力見 [24](24_component_io_schema_refinement.md)：固定�
 
 ## 2026-11-04 D-55：Indexing／Retrieval 交接
 
-每 System 一組邏輯索引，IndexBinding 只有 artifact_type／target／fulltext_fields／filter_fields／vector_bindings，省略 index_ref。Indexing 提供，Engine 驗證與管理；Retrieval 須宣告支援格式／版本，並只搜尋 Binding 宣告且相容的能力。target 依受控註冊的格式 Schema 驗證；Developer 還需共同儲存／讀取規格與 SDK／範例才能開發。完整定義見 [19 IndexBinding 與索引格式契約](19_index_binding_artifact_contract.md)。
+每 System 一組邏輯索引，IndexBinding 只有 artifact_type／target／fulltext_fields／filter_fields／vector_bindings，省略 index_ref。Indexing 提供，Engine 驗證與管理；Retrieval 須宣告支援格式／版本，並只搜尋 Binding 宣告且相容的能力。target 依受控註冊的格式 Schema 驗證；Developer 還需共同儲存／讀取規格與 SDK／範例才能開發。完整定義見 [19 IndexBinding 與索引格式契約](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/19_index_binding_artifact_contract.md)。
 
 Component Config 是處理參數；RunContext 是 Engine 準備的必要資源／Binding 引用，實際 Client／索引物件不放業務 JSON。searchable 不在 Binding，Runtime 管就緒；格式版本與 Component 版本、資料發布版本分開。內建 ES target 有 collection，Local target 可空並使用 System 唯一資源。首版不新增多組選擇；UI 差異只記 backlog。正式 SDK、後端讀寫布局、Remote 協定及更新／發布政策仍需後續核定／實作。
 
 
-整合設定的候選形狀見 [23](23_system_config_schema_draft.md)；它不凍結 Descriptor／Manifest／SDK，也不等同已交付 Engine。Component 識別與參數、計畫及 E 的資源／限制需分層驗證；審閱差異見 [24](history/reviews/2026-11-05_spec_alignment_review.md)。
+整合設定的候選形狀見 [23](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/23_system_config_schema_draft.md)；它不凍結 Descriptor／Manifest／SDK，也不等同已交付 Engine。Component 識別與參數、計畫及 E 的資源／限制需分層驗證；審閱差異見 [24](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/reviews/2026-11-05_spec_alignment_review.md)。

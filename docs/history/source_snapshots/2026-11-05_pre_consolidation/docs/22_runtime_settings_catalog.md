@@ -1,6 +1,8 @@
+> 歷史來源快照：docs/22_runtime_settings_catalog.md；來源 commit 916734ac0bbe0631a205bfd52626ce332aa7beb2。2026-11-05 整合後不再作現行規格；相對連結固定到來源版本。現行入口：[README](https://github.com/SunnyWenwen/rag_platform/blob/docs/rag-system-factory/README.md)。
+
 # 22 — Runtime 可調參數清單
 
-更新日期：2026-11-05。決策依據：[08 D-64／D-65](08_implementation_plan.md)；API 行為引用 [21](21_runtime_ingestion_inference_api_inventory.md)，A～E 責任引用 [20](20_contract_inventory_responsibility_matrix.md)。
+更新日期：2026-11-05。決策依據：[08 D-64／D-65](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/08_implementation_plan.md)；API 行為引用 [21](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/21_runtime_ingestion_inference_api_inventory.md)，A～E 責任引用 [20](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/20_contract_inventory_responsibility_matrix.md)。
 
 ## 1. 範圍與管理方式
 
@@ -59,7 +61,7 @@ D-65 已確認摘要回應為 documents[]＋next_cursor，每筆 document_id＋s
 | Cursor | Runtime 產生、綁定目標 System；最後一頁 next_cursor=null | 待確認 |
 | 清單一致性 | 不加快照；分頁途中更新資料可能改變清單 | 待確認 |
 
-分頁分批取得文件摘要清單，不改變 Ingestion Batch、Parser Units、Chunking 或 Retrieval Top N。例如已有 250 份文件，每頁 100 份時，依序取得 100、100、50 筆摘要；一份文件即使有多個 Chunk 或來源版本，也只列一次，各版列在該筆 source_revisions。API／來源與候選格式見 [21 §9.3](21_runtime_ingestion_inference_api_inventory.md)。
+分頁分批取得文件摘要清單，不改變 Ingestion Batch、Parser Units、Chunking 或 Retrieval Top N。例如已有 250 份文件，每頁 100 份時，依序取得 100、100、50 筆摘要；一份文件即使有多個 Chunk 或來源版本，也只列一次，各版列在該筆 source_revisions。API／來源與候選格式見 [21 §9.3](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/21_runtime_ingestion_inference_api_inventory.md)。
 
 ## 5. 文件維護與驗收待辦
 

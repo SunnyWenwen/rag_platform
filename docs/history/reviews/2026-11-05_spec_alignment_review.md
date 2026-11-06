@@ -1,10 +1,10 @@
 # 24 — 已確認決策與規格交叉校對
 
-> 歷史校對紀錄，供後續查驗。現行規格由 [08](../../08_implementation_plan.md)及 [23](../../23_system_config_schema_draft.md)維護。
+> 歷史校對紀錄，供後續查驗。現行規格由 [08](../../08_plan_and_decisions.md)及 [23](../../05_system_config.md)維護。
 
 來源：[原始檔案](https://github.com/SunnyWenwen/rag_platform/blob/a27e9cdba06c5ada210b00e09de629b53fe7bae1/docs/24_spec_alignment_review.md)；歸檔日期：2026-11-05。
 
-2026-11-05｜比對基準：D-49～D-65、目前對話及分支 docs/rag-system-factory 的既有文件／共用 Schema／範例。目的為先拉齊既有結論，再提出 [23 System Config 初版](../../23_system_config_schema_draft.md)；本報告不核定 SC 選項。
+2026-11-05｜比對基準：D-49～D-65、目前對話及分支 docs/rag-system-factory 的既有文件／共用 Schema／範例。目的為先拉齊既有結論，再提出 [23 System Config 初版](../../05_system_config.md)；本報告不核定 SC 選項。
 
 ## 1. 已修正的漏更新與歧義
 

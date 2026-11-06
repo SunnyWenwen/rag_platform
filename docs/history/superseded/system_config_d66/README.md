@@ -4,7 +4,7 @@
 
 D-67 已取消獨立頂層 document_schema，改由 Component 宣告＋Config 推導 I/O 細節。本目錄保留舊 Schema、五案例、Fixture、環境範例與驗證器作查驗；**不是現行 System Config／Descriptor 格式**。除本 README 的說明／連結／執行路徑外，其餘來源檔內容原樣保留。
 
-現行結論：[23 System Config 討論稿](../../../23_system_config_schema_draft.md)、[24 B：I/O 資料規格](../../../24_component_io_schema_refinement.md)。本目錄測試通過僅代表 D-66 舊候選，不表示 D-67 的推導／UI／Runtime 功能已實作。
+現行結論：[23 System Config 討論稿](../../../05_system_config.md)、[24 B：I/O 資料規格](../../../04_component_descriptor.md)。本目錄測試通過僅代表 D-66 舊候選，不表示 D-67 的推導／UI／Runtime 功能已實作。
 
 [e89d5dd]: https://github.com/SunnyWenwen/rag_platform/tree/e89d5ddcdd72b79e3cde651ab0411c883919467c/examples/system_config
 

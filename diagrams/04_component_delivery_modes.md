@@ -1,6 +1,6 @@
 # Retrieval Component 的三種交付模式
 
-> 2026-11-02 D-51 補充：本圖保留原三種交付模式視覺；Remote 也可涵蓋連續多個 Module。Developer 以 Service Manifest 註冊，User 選服務；DEV Image 由平台每 System 啟動獨立實例並自動解析 Endpoint，External 由 Developer 部署維運。完整生命週期、固定資料空間與 Export 差異見 [18](../docs/18_remote_service_pipeline_integration.md)。本次未重畫 PNG／SVG。
+> 2026-11-02 D-51 補充：本圖保留原三種交付模式視覺；Remote 也可涵蓋連續多個 Module。Developer 以 Service Manifest 註冊，User 選服務；DEV Image 由平台每 System 啟動獨立實例並自動解析 Endpoint，External 由 Developer 部署維運。完整生命週期、固定資料空間與 Export 差異見 [18](../docs/03_engine_and_components.md)。本次未重畫 PNG／SVG。
 
 2026-11-02 討論方案示意。Remote API 的正式 HTTP Contract、Deployment Descriptor、DEV 部署／Export 整合尚待規格與實作；本圖不是已交付功能清單。
 
@@ -26,8 +26,8 @@
 
 ## 搭配開發範例介紹
 
-先用本圖說明三種交付模式，再讀 [16 Parser 開發範例](../docs/16_parser_component_development_examples.md)：同一組 IngestionDocument／ParsedDocument，對照 Local ABC 實作與 Remote API／Adapter。開發方式分兩種；Image Deployment／External Endpoint 共用 Remote API 開發契約。
+先用本圖說明三種交付模式，再讀 [16 Parser 開發範例](../docs/03_engine_and_components.md)：同一組 IngestionDocument／ParsedDocument，對照 Local ABC 實作與 Remote API／Adapter。開發方式分兩種；Image Deployment／External Endpoint 共用 Remote API 開發契約。
 
 
 
-D-62／D-66 解讀：圖中的 System／Component 實例是邏輯配置與資料作用範圍，不要求逐 Config 建立專屬 Flow、API service 或 Pod。Builder 的實際模式採共用 Executor／固定 Config 快照，Remote Image 的額外服務仍依 18 部署。配置格式與圖說校對見 [23](../docs/23_system_config_schema_draft.md)／[24](../docs/history/reviews/2026-11-05_spec_alignment_review.md)，不把示意圖當成已完成執行架構。
+D-62／D-66 解讀：圖中的 System／Component 實例是邏輯配置與資料作用範圍，不要求逐 Config 建立專屬 Flow、API service 或 Pod。Builder 的實際模式採共用 Executor／固定 Config 快照，Remote Image 的額外服務仍依 18 部署。配置格式與圖說校對見 [23](../docs/05_system_config.md)／[24](../docs/history/reviews/2026-11-05_spec_alignment_review.md)，不把示意圖當成已完成執行架構。

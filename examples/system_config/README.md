@@ -1,6 +1,6 @@
 # System Config 範例狀態
 
-現行規劃：[23 System Config 討論稿](../../docs/23_system_config_schema_draft.md)、[24 Component I/O 資料規格](../../docs/24_component_io_schema_refinement.md)。
+現行規劃：[23 System Config 討論稿](../../docs/05_system_config.md)、[24 Component I/O 資料規格](../../docs/04_component_descriptor.md)。
 
 2026-11-05 D-67：取消獨立頂層 document_schema，由 Component 宣告＋Config 提供 I/O 細節及下游相依選項。正式 Descriptor 規則與更新後的機器 Schema 尚未定稿；目前不提供看似已支援的新格式。
 

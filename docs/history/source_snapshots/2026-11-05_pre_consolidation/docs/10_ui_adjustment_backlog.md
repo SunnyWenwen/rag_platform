@@ -1,6 +1,8 @@
+> 歷史來源快照：docs/10_ui_adjustment_backlog.md；來源 commit 916734ac0bbe0631a205bfd52626ce332aa7beb2。2026-11-05 整合後不再作現行規格；相對連結固定到來源版本。現行入口：[README](https://github.com/SunnyWenwen/rag_platform/blob/docs/rag-system-factory/README.md)。
+
 # 10 — UI Prototype 狀態與調整 Backlog
 
-2026-11-03｜Prototype v0.12。這份清單以目前程式及測試為準，取代舊 Generation／歷史推論物件的 UI 待辦。主檔：[01_ui_prototype.html](../01_ui_prototype.html)。
+2026-11-03｜Prototype v0.12。這份清單以目前程式及測試為準，取代舊 Generation／歷史推論物件的 UI 待辦。主檔：[01_ui_prototype.html](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/01_ui_prototype.html)。
 
 ## 1. 已完成的原型能力
 
@@ -95,7 +97,7 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 
 ## 7. 驗證與剩餘整合
 
-現行驗收要求與未完成整合如下；歷次瀏覽器／契約驗證結果見 [歷史驗證紀錄](history/validation/2026-11-03_prototype_v0.12.md)。
+現行驗收要求與未完成整合如下；歷次瀏覽器／契約驗證結果見 [歷史驗證紀錄](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/validation/2026-11-03_prototype_v0.12.md)。
 
 - [ ] 真實 SDK／Config Schema／Registry 與 12 的完整動態 UI 協定。
 - [ ] 真實 Tokenizer、Parser／Resolver、多 Parser 路由、Embedding／ES／Rerank API 與品質驗收。
@@ -164,12 +166,12 @@ Image Export 示意附每 System 的 Deployment／Service／參數 ConfigMap／�
 - [ ] UI Draft 保留停用選擇；Engine 編譯出有效參數／引用並做共同驗證，錯誤仍以 Module／欄位定位。具體正規化與 Hash 依 23 的 SC-08 討論。
 - [ ] Runtime 限制、URL／Secret／實體目標在 E 的資源／部署區處理，模型語意與演算法參數留 D；不增加每次 Request 任意覆寫或一般 User 的 Admin 控制頁。
 
-分頁精確參數、實際文件管理面板位置及 System Config 遷移仍依 21～23／SC 決策；原型未接通真實服務。需求先記待辦，收到改 UI 指示後再實作。逐輪文件整理說明見 [歷史 UI 記錄](history/changes/ui_backlog_notes.md)。
+分頁精確參數、實際文件管理面板位置及 System Config 遷移仍依 21～23／SC 決策；原型未接通真實服務。需求先記待辦，收到改 UI 指示後再實作。逐輪文件整理說明見 [歷史 UI 記錄](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/changes/ui_backlog_notes.md)。
 
 <a id="uib-021-io-schema-refinement"></a>
 ## UIB-021：Descriptor 驅動 I/O 規格與逐層相依（D-67）
 
-2026-11-05｜**待實作，本輪不改 Prototype。**責任與六類宣告能力以 [24](24_component_io_schema_refinement.md) 為準；[25](25_component_descriptor_schema_draft.md) 提供可重複 A→B 表單／路徑等具體候選，尚未核定 Meta-schema／API，不以離線範例當正式 Renderer。
+2026-11-05｜**待實作，本輪不改 Prototype。**責任與六類宣告能力以 [24](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/24_component_io_schema_refinement.md) 為準；[25](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/25_component_descriptor_schema_draft.md) 提供可重複 A→B 表單／路徑等具體候選，尚未核定 Meta-schema／API，不以離線範例當正式 Renderer。
 
 - [ ] Create／Edit 取消要求先填獨立全域 Document Schema；在 Parser 設定顯示當前輸入／輸出欄位摘要。
 - [ ] 僅在 Parser 開放此能力時顯示資料欄位定義／映射與 metadata 限制；固定輸出不重複填寫。

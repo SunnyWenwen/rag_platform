@@ -1,10 +1,12 @@
+> 歷史來源快照：docs/16_parser_component_development_examples.md；來源 commit 916734ac0bbe0631a205bfd52626ce332aa7beb2。2026-11-05 整合後不再作現行規格；相對連結固定到來源版本。現行入口：[README](https://github.com/SunnyWenwen/rag_platform/blob/docs/rag-system-factory/README.md)。
+
 # 16 — Parser 開發模式：Local Component 與 Remote API
 
-> 2026-11-05 D-58：公開 Runtime Ingestion body 統一為 IngestionDocument[]；本篇 Remote Parser operation 的 HTTP body 仍是一份 IngestionDocument，由 Runtime／Adapter 逐筆呼叫，範例程式不改成批次 API。API item 與 Parser 共用 Schema，文件管理另見 [21](21_runtime_ingestion_inference_api_inventory.md)。
+> 2026-11-05 D-58：公開 Runtime Ingestion body 統一為 IngestionDocument[]；本篇 Remote Parser operation 的 HTTP body 仍是一份 IngestionDocument，由 Runtime／Adapter 逐筆呼叫，範例程式不改成批次 API。API item 與 Parser 共用 Schema，文件管理另見 [21](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/21_runtime_ingestion_inference_api_inventory.md)。
 
-> 2026-11-02 D-51：本篇維持無參數、單 Parser 的可執行教學；產品端由 Developer 提供 Manifest 註冊服務，Builder User 不手填 API。Adapter 的 endpoint 由部署綁定注入。連續多 Module、Image／External 及固定資料責任見 [18](18_remote_service_pipeline_integration.md)，不因新方向改寫本例 HTTP body。
+> 2026-11-02 D-51：本篇維持無參數、單 Parser 的可執行教學；產品端由 Developer 提供 Manifest 註冊服務，Builder User 不手填 API。Adapter 的 endpoint 由部署綁定注入。連續多 Module、Image／External 及固定資料責任見 [18](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/18_remote_service_pipeline_integration.md)，不因新方向改寫本例 HTTP body。
 
-2026-11-02｜可執行的教學草案，非已發布 SDK。搭配 [04 三種交付模式](../diagrams/04_component_delivery_modes.md)／[比較圖](../diagrams/04_component_delivery_modes.png) 介紹。
+2026-11-02｜可執行的教學草案，非已發布 SDK。搭配 [04 三種交付模式](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/diagrams/04_component_delivery_modes.md)／[比較圖](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/diagrams/04_component_delivery_modes.png) 介紹。
 
 ## 1. 先分清楚「開發」與「交付」
 
@@ -19,7 +21,7 @@ Remote 的兩種交付方式使用相同 API：Image 模式附部署描述，由
 
 ## 2. 共用 Pydantic Contract：先給一版具體型別
 
-形狀來源仍是 [IngestionDocument JSON Schema](../schemas/ingestion_document.schema.json)／[13 說明](13_ingestion_parser_input_contract.md)，以及 [ParsedDocument 0.2 JSON Schema](../schemas/parsed_document.schema.json)／[14 說明](14_parsed_document_contract.md)。這裡不修改共同 Schema，提供對應的 [contracts.py](../examples/component_development/contracts.py) 供示範使用。
+形狀來源仍是 [IngestionDocument JSON Schema](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/schemas/ingestion_document.schema.json)／[13 說明](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/13_ingestion_parser_input_contract.md)，以及 [ParsedDocument 0.2 JSON Schema](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/schemas/parsed_document.schema.json)／[14 說明](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/14_parsed_document_contract.md)。這裡不修改共同 Schema，提供對應的 [contracts.py](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/component_development/contracts.py) 供示範使用。
 
 以下為**欄位視圖，省略完整驗證器與設定**；可執行版本以 contracts.py 為準：
 
@@ -57,7 +59,7 @@ class ParsedDocument(BaseModel):
 
 Parser Input 仍是 IngestionDocument；text 是 **一個 str**，不是預先切好的 page array。本例用獨立一行的 `=== PAGE N ===` 明確表示頁面邊界，方便示範 Parser 如何辨識頁面。這是本示範 Parser 的文字格式約定，不是平台共用 Schema 的新規定，也不代表所有 PDF 匯出的文字都有這種標記。
 
-完整 [輸入 JSON](../examples/component_development/multi_page_input.json)：
+完整 [輸入 JSON](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/component_development/multi_page_input.json)：
 
 ```json
 {
@@ -90,7 +92,7 @@ Parser Input 仍是 IngestionDocument；text 是 **一個 str**，不是預先�
 若環境粉塵較多，請提高檢查頻率。
 ```
 
-輸出仍為 **list[ParsedDocument]**；一份文件內有兩個 Unit，並不是拆成兩份文件。完整 [輸出 JSON](../examples/component_development/multi_page_output.json)：
+輸出仍為 **list[ParsedDocument]**；一份文件內有兩個 Unit，並不是拆成兩份文件。完整 [輸出 JSON](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/component_development/multi_page_output.json)：
 
 ```json
 [
@@ -129,9 +131,9 @@ Parser Input 仍是 IngestionDocument；text 是 **一個 str**，不是預先�
 
 ## 3. Local Developer：實作 Parser ABC
 
-D-62 已確認正式執行方向為共用 Flow，Component 每次接收 input／本次 config／Context，見 [04 §2.2.1](04_module_components_io_contracts.md#shared-flow-execution)。本文件及可執行教學檔暫保留無演算法參數的 run(data, context) 介面，用來驗證 Parser 邏輯與 HTTP I/O，不是新 SDK 的最終簽名；後續 SDK 整合時再同步更新。Remote 服務不因本地傳入 config 就自動新增 HTTP 欄位。
+D-62 已確認正式執行方向為共用 Flow，Component 每次接收 input／本次 config／Context，見 [04 §2.2.1](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/04_module_components_io_contracts.md#shared-flow-execution)。本文件及可執行教學檔暫保留無演算法參數的 run(data, context) 介面，用來驗證 Parser 邏輯與 HTTP I/O，不是新 SDK 的最終簽名；後續 SDK 整合時再同步更新。Remote 服務不因本地傳入 config 就自動新增 HTTP 欄位。
 
-[local_component.py](../examples/component_development/local_component.py) 定義下面的教學介面：
+[local_component.py](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/component_development/local_component.py) 定義下面的教學介面：
 
 ```python
 class ParserComponent(ABC):
@@ -164,15 +166,15 @@ class StructuredJsonParser(ParserComponent):
         return ModuleResult(data=documents)
 ```
 
-parse_structured_json() 辨識 text 中的示範分頁標記，產生多個 Unit；未分頁則保留單一 Unit。此處按頁辨識內容單位，不是依 Token 長度切 Chunk，且不跨頁合併。演算法示意在 [parser_logic.py](../examples/component_development/parser_logic.py)，與共用型別分開。
+parse_structured_json() 辨識 text 中的示範分頁標記，產生多個 Unit；未分頁則保留單一 Unit。此處按頁辨識內容單位，不是依 Token 長度切 Chunk，且不跨頁合併。演算法示意在 [parser_logic.py](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/component_development/parser_logic.py)，與共用型別分開。
 
-Engine 取 ModuleResult.data 傳下游；ModuleResult 是本地 SDK 包裝，不是 ParsedDocument 的根欄位。示範 RunContext 只有 request_id；正式受控資源、metrics／errors、初始化及清理介面仍依 [04](04_module_components_io_contracts.md)／[11](11_component_developer_guide.md) 凍結，不把本教學 dataclass 當完整 SDK。
+Engine 取 ModuleResult.data 傳下游；ModuleResult 是本地 SDK 包裝，不是 ParsedDocument 的根欄位。示範 RunContext 只有 request_id；正式受控資源、metrics／errors、初始化及清理介面仍依 [04](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/04_module_components_io_contracts.md)／[11](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/11_component_developer_guide.md) 凍結，不把本教學 dataclass 當完整 SDK。
 
 ## 4. Remote Developer：實作 API，不需要 Component ABC
 
 Remote Developer 可只取 contracts.py，或使用等價的 JSON Schema 自行實作。FastAPI 是**選用範本**，不強制框架或語言。
 
-[remote_service.py](../examples/component_development/remote_service.py)：
+[remote_service.py](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/component_development/remote_service.py)：
 
 ```python
 from fastapi import FastAPI, HTTPException
@@ -193,7 +195,7 @@ async def parse(data: IngestionDocument) -> list[ParsedDocument]:
 
 ### Retrieval Builder 提供的 Remote API Adapter
 
-[remote_adapter.py](../examples/component_development/remote_adapter.py) 仍實作本地 Parser ABC，讓 Engine 使用相同呼叫方式：
+[remote_adapter.py](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/component_development/remote_adapter.py) 仍實作本地 Parser ABC，讓 Engine 使用相同呼叫方式：
 
 ```python
 OUTPUT = TypeAdapter(list[ParsedDocument])
@@ -232,7 +234,7 @@ API Input／Output 不轉成另一套文件物件；HTTP 序列化／還原由 A
 
 ### 5.1 metadata 處理提示與選填追溯（D-52）
 
-上述禁止任意 Config 傳輸，不禁止 Component 明確支援的文件層 metadata 提示。Parser 可保存合法提示，後續 Component 依自身宣告讀取；例如支援 chunking_mode 的 Chunker 可保留整個 Unit，缺省正常切分，不需通用規則引擎。_rag 追溯由輸出 Component 選擇是否提供；本 Parser 教學與 HTTP body 不因此改寫，見 [15 §4.1](15_chunk_contract.md)。
+上述禁止任意 Config 傳輸，不禁止 Component 明確支援的文件層 metadata 提示。Parser 可保存合法提示，後續 Component 依自身宣告讀取；例如支援 chunking_mode 的 Chunker 可保留整個 Unit，缺省正常切分，不需通用規則引擎。_rag 追溯由輸出 Component 選擇是否提供；本 Parser 教學與 HTTP body 不因此改寫，見 [15 §4.1](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/15_chunk_contract.md)。
 
 ## 6. 如何重現
 
@@ -254,7 +256,7 @@ python -m venv .venv-demo
 
 ## 延伸：03 圖全部 Contract 的 Pydantic 草案
 
-本篇的 Parser 教學維持原樣；需要一起檢視 Chunk／IndexBinding／QueryContext／ResultSet 時，見 [17 Pydantic Contract 草案](17_pydantic_contracts_draft.md)。該集合是獨立可執行草案，尚未合併成正式 SDK；IndexBinding 已依 D-55／19 確認輕量交接，正式 SDK／實體索引布局仍需完成。
+本篇的 Parser 教學維持原樣；需要一起檢視 Chunk／IndexBinding／QueryContext／ResultSet 時，見 [17 Pydantic Contract 草案](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/17_pydantic_contracts_draft.md)。該集合是獨立可執行草案，尚未合併成正式 SDK；IndexBinding 已依 D-55／19 確認輕量交接，正式 SDK／實體索引布局仍需完成。
 
 
 

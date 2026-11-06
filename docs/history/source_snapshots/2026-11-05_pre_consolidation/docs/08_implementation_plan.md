@@ -1,3 +1,5 @@
+> 歷史來源快照：docs/08_implementation_plan.md；來源 commit 916734ac0bbe0631a205bfd52626ce332aa7beb2。2026-11-05 整合後不再作現行規格；相對連結固定到來源版本。現行入口：[README](https://github.com/SunnyWenwen/rag_platform/blob/docs/rag-system-factory/README.md)。
+
 # Retrieval Builder — 開發計畫、驗收與決策追蹤
 
 > 文件同步：2026-11-05 · 開發規格草案（正式 SDK／Config 尚未凍結）
@@ -18,11 +20,11 @@
 
 現行資料以 IngestionDocument／ParsedDocument／Chunk 三份 Schema 及 13～15 為準；05 為總覽，04／06／07 對齊執行、UI 與 API 邊界。Prototype 與目標規格差異用 backlog／migration 追蹤，原型測試通過不代表 Engine／API 已完成。
 
-**2026-10-16 起的工作方式**：使用者要求後續調整先更新文件；Prototype 所需變更統一記於 [10 UI Backlog](10_ui_adjustment_backlog.md#ui-backlog-pending)，待使用者明確要求修改 UI 再實作。文件提交不代表同步開發原型、Engine 或服務。規劃文件仍依既有要求提交目前分支。
+**2026-10-16 起的工作方式**：使用者要求後續調整先更新文件；Prototype 所需變更統一記於 [10 UI Backlog](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/10_ui_adjustment_backlog.md#ui-backlog-pending)，待使用者明確要求修改 UI 再實作。文件提交不代表同步開發原型、Engine 或服務。規劃文件仍依既有要求提交目前分支。
 
 ## 2. 文件責任與建議閱讀順序
 
-先讀 [03](../03_architecture_proposal.md)，以 [§3 名詞定義](../03_architecture_proposal.md#terminology) 統一概念與責任邊界，再讀本計畫；實作依序讀 [05 契約](05_data_contracts_search_design.md)、[04 Engine](04_module_components_io_contracts.md)、[07 整合](07_backend_runtime_integration.md)、[06 UI](06_ui_development_spec.md)。
+先讀 [03](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/03_architecture_proposal.md)，以 [§3 名詞定義](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/03_architecture_proposal.md#terminology) 統一概念與責任邊界，再讀本計畫；實作依序讀 [05 契約](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/05_data_contracts_search_design.md)、[04 Engine](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/04_module_components_io_contracts.md)、[07 整合](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/07_backend_runtime_integration.md)、[06 UI](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/06_ui_development_spec.md)。
 
 | 權威範圍 | 文件 |
 |---|---|
@@ -41,7 +43,7 @@
 
 ## 3. 已確認方向與保留基線
 
-現行結論集中如下；D-ID 用來追查來源，不要求閱讀歷次討論才能實作。完整原始決策表、當時提案及逐輪變更見 [歷史決策紀錄](history/decisions/decision_history.md)。公共 Contract 的精確形狀以主責文件／Schema 為準。
+現行結論集中如下；D-ID 用來追查來源，不要求閱讀歷次討論才能實作。完整原始決策表、當時提案及逐輪變更見 [歷史決策紀錄](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/decisions/decision_history.md)。公共 Contract 的精確形狀以主責文件／Schema 為準。
 
 | 主題 | 現行結論 | 來源／主責 |
 |---|---|---|
@@ -138,7 +140,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 
 兩個 repo 的分工已依 D-41 確認；精確內部目錄與建置工具仍可逐步核定。正式動工前的優先順序是：共用契約／最小 SDK（Q-002）→ 同 repo 可安裝範本與載入細節（Q-001／Q-022）→ 進共享 DEV 的發布與信任政策（Q-022）→ 既有 System 升級及交付鎖定（Q-015／Q-021）。不要求所有 Q-ID 一次決完。
 
-D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor／Schema 子集、規則語意及 fixtures；M1 做共用 Schema 輸出／Registry／設定驗證，M2 擴充各方法能力；M3 提供目錄、Context／動態候選與驗證 API，M4 助手重用，M5 完成動態表單與 SUI-01～14 互動驗收。可用方法、有效 Config 與服務／資料就緒分開檢查；不依 Schema 文件存在就宣告 API 或 UI 已完成。
+D-42 補充：M0 以 [12](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/12_component_schema_ui_contract.md) 核定 Descriptor／Schema 子集、規則語意及 fixtures；M1 做共用 Schema 輸出／Registry／設定驗證，M2 擴充各方法能力；M3 提供目錄、Context／動態候選與驗證 API，M4 助手重用，M5 完成動態表單與 SUI-01～14 互動驗收。可用方法、有效 Config 與服務／資料就緒分開檢查；不依 Schema 文件存在就宣告 API 或 UI 已完成。
 
 ## 5. 驗收材料與完成定義
 
@@ -188,12 +190,12 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 <a id="q-002"></a>
 ### Q-002 共用 Schema、Config、SDK 與版本凍結
 
-- 2026-11-05 Descriptor 格式候選：[25](25_component_descriptor_schema_draft.md)／examples/component_descriptor 提供機器 Schema、五組 Descriptor＋Config＋預期 I/O Schema／資料與 DS-01～DS-13。使用者授權提出初版，尚未核定具體鍵名／規則；先審 B 核心再完成 D，不以離線結構／樣本驗證取代完整細化解析器、UI 或 Runtime。
+- 2026-11-05 Descriptor 格式候選：[25](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/25_component_descriptor_schema_draft.md)／examples/component_descriptor 提供機器 Schema、五組 Descriptor＋Config＋預期 I/O Schema／資料與 DS-01～DS-13。使用者授權提出初版，尚未核定具體鍵名／規則；先審 B 核心再完成 D，不以離線結構／樣本驗證取代完整細化解析器、UI 或 Runtime。
 
 - 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System；Local Search 持久化模式隨 Config 跨環境固定（D-33）；全部 Chunk.fields／metadata 保存與合法 metadata 全繼承（D-39）。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile；QueryContext[]／ResultSet 業務欄位已依 D-54 確認。仍待核定的是舊保存／繼承投影、原型短名稱／匯出標籤 migration。
 - D-62 已確認 B：共用 Flow／Executor，依固定 Config 快照在各 Module 選 Component，並傳入 input／本次 config／Context；不強制所有實例共用。精確 SDK 簽名及 Resolver／資源作用域仍待凍結。
 - 2026-10-28 補充：Component SDK 的 Module-specific I/O 包裝、run／初始化／釋放簽名、RunContext、Registry／Factory 與 Config Schema 介面待凍結；Registry 草案改稱 component_id，不直接改寫既有 Config。精確方法／版本引用、舊 module_id 別名與遷移須一致驗證；11 的 Python 程式只作介面示意。
-- [23 System Config 討論稿](23_system_config_schema_draft.md) 依 D-67 取消頂層 document_schema，資料細節由 B／C＋D 提供；首版六類宣告與相依推導見 [24](24_component_io_schema_refinement.md)。規則語法／SDK／解析 API 仍待凍結；D-66 舊機器稿及五案例已歸 [歷史快照](history/superseded/system_config_d66/README.md)，不作新功能驗收。前輪校對過程見 [歷史報告](history/reviews/2026-11-05_spec_alignment_review.md)。
+- [23 System Config 討論稿](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/23_system_config_schema_draft.md) 依 D-67 取消頂層 document_schema，資料細節由 B／C＋D 提供；首版六類宣告與相依推導見 [24](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/24_component_io_schema_refinement.md)。規則語法／SDK／解析 API 仍待凍結；D-66 舊機器稿及五案例已歸 [歷史快照](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/superseded/system_config_d66/README.md)，不作新功能驗收。前輪校對過程見 [歷史報告](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/reviews/2026-11-05_spec_alignment_review.md)。
 - 建議：先核定最小完整 Config＋單一公開 Engine interface；Pydantic 匯出 JSON Schema，UI 使用相同來源。用完整欄位路徑；未知別名拒絕。
 - 替代：直接沿用 Prototype 全部短名稱；需補齊其缺少型別與執行語意。
 - 負責角色：Engine＋Backend＋Frontend；阻擋 M0 契約凍結。
@@ -204,17 +206,17 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 
 - 已確認 D-49：四個頂層鍵 document_id／source_revision／units／metadata；Units 為平面列表，不包 fields、不強制 unit_id。移除 structure 及依結構選 Chunker 的路由。
 - Parser 負責解析／展平／決定獨立單位；Chunker 每筆內 Fixed-size／Recursive／Header-aware，不跨筆合併／overlap。預設 text，進階明確選字串欄位；Header-aware 使用當筆 Markdown 標題。
-- D-52：Chunk 來源若有提供，採 unit_index＋field＋文字範圍；metadata 全繼承，Unit 其他欄位依 copy 帶入。Schema、範例與來源追溯同步升版，見 [14](14_parsed_document_contract.md)、[15](15_chunk_contract.md)。
+- D-52：Chunk 來源若有提供，採 unit_index＋field＋文字範圍；metadata 全繼承，Unit 其他欄位依 copy 帶入。Schema、範例與來源追溯同步升版，見 [14](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/14_parsed_document_contract.md)、[15](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/15_chunk_contract.md)。
 - API／Parser Input 仍共用 IngestionDocument，content／base64／uri 不變；上游已解析 Units 經對應 Adapter 驗證，不新增直接 Chunk 輸入。
 - 仍待：正式 SDK／發布版、Parser 空內容與表格／圖片政策、Tokenizer／Header-aware 細節、Parser 變更下的 revision／重建與舊資料遷移。UI 調整登錄 UIB-014，未改 Prototype。
 
 <a id="chunk-schema-pending"></a>
 #### Chunk 實際 Schema（2026-11-02 更新為 0.2 單位追溯）
 
-- 已確認 D-47：六鍵外層、預設 text 免選欄位、進階多任務／copy、2＋3 結果串接、metadata 追溯與向量 Profile／來源資訊；精確資料見 [15](15_chunk_contract.md) 與 [JSON Schema](../schemas/chunk.schema.json)。
+- 已確認 D-47：六鍵外層、預設 text 免選欄位、進階多任務／copy、2＋3 結果串接、metadata 追溯與向量 Profile／來源資訊；精確資料見 [15](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/15_chunk_contract.md) 與 [JSON Schema](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/schemas/chunk.schema.json)。
 - D-52：source_refs／chunking、fingerprint／全域序號為選用；保留其標準形狀與參考 ID helper，不當所有 Component 的必填驗收。DenseVector 規則不變；既有 Inference 改引用同一份 Chunk，不重寫向量定義。
 - 正式鍵名／nullable／自訂轉換、異質任務下游欄位適用條件、舊向量陣列遷移、跨語言 canonicalization 與 SDK 仍需審閱。身份 Hash 不解決索引原子提交；Q-007～Q-010／Q-015 保持有待決細節。
-- Prototype v0.12 已有 [UIB-013／014](10_ui_adjustment_backlog.md#uib-013-chunk-contract) 的任務／平面 Units 配置與預覽；真實 Tokenizer／Chunker／DB 未交付，資料測試不代替其驗收。
+- Prototype v0.12 已有 [UIB-013／014](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/10_ui_adjustment_backlog.md#uib-013-chunk-contract) 的任務／平面 Units 配置與預覽；真實 Tokenizer／Chunker／DB 未交付，資料測試不代替其驗收。
 
 - 2026-10-30 後續 D-48：多任務預設輸出 text；必要切分欄位缺失／型別錯誤／全空白、必要任務零產出及明確 copy 欄位缺失報錯。D-53 已確認由預設 Embedding Component 提供選用模板組合，不新增 Module；正式設定 Schema 未凍結、尚未實作，見 15 §9。
 
@@ -380,7 +382,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 
 - D-60：Runtime API 暫採 HTTP Basic Auth，一組帳密可操作該 service 全部對外 API（含對外 Health），不做首期角色／逐 API 授權；Builder 登入延後。OpenAPI Security Scheme、驗證位置、Secret／Probe 配置與內部路由的具體部署保護仍待細化，不另加匿名 API 例外。
 
-- 2026-11-05：[21](21_runtime_ingestion_inference_api_inventory.md) 盤點更新為 7 支業務＋2 支 Health：D-58 確認統一 List、文件存在／ID 清單與 retire 直接刪除；每筆 IngestionDocument／Query 契約不變。D-57 的整批預檢、Run partial／未知紀錄 HTTP 200 延續；精確文件管理 Path／Envelope／分頁／刪除執行、認證與錯誤仍待整理。
+- 2026-11-05：[21](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/21_runtime_ingestion_inference_api_inventory.md) 盤點更新為 7 支業務＋2 支 Health：D-58 確認統一 List、文件存在／ID 清單與 retire 直接刪除；每筆 IngestionDocument／Query 契約不變。D-57 的整批預檢、Run partial／未知紀錄 HTTP 200 延續；精確文件管理 Path／Envelope／分頁／刪除執行、認證與錯誤仍待整理。
 
 - 仍待：完整 CRUD／助手／管理 API、OpenAPI／完整錯誤碼、檔案 manifest、冪等鍵、內部路由的部署保護、Header／認證接線及暴露 Trace。D-64 已確認核心回應／錯誤、retire 結果、System 路由方向與 22 的初始限制，不再把這些全部視為未決。
 - D-41 補充：Builder 與 Runtime 透過 API／Component 目錄合作；需核定目標 Runtime 版本識別、Config Schema／能力目錄、完整 Config 驗證、快取失效與接口相容政策。能力範圍見 07 §5.8，精確端點與 Envelope 仍 OPEN。
@@ -493,7 +495,7 @@ D-42 補充：M0 以 [12](12_component_schema_ui_contract.md) 核定 Descriptor�
 - 負責角色：Platform／Engine／Backend／Frontend Developer、Remote Developer 與部署管理者。
 - 分階段：M0 核定宣告與協定；M1～M2 編譯／Adapter／範圍驗證；M3 目錄與管理整合；M5 UI／DEV 部署；M7 Remote Image YAML 與 External 綁定交付。不改 M0～M7 原有順序，不聲稱本輪已完成這些能力。
 - 驗收：依 18 §7 及 UIB-016，包括只呼叫一次、輸出語意、索引讀寫配對、固定服務無表單、實例／儲存隔離及 Export 差異。
-- 狀態：產品方向已確認，精確格式及控制介面 OPEN；主責文件 [18](18_remote_service_pipeline_integration.md)。
+- 狀態：產品方向已確認，精確格式及控制介面 OPEN；主責文件 [18](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/18_remote_service_pipeline_integration.md)。
 
 ## 7. 優先討論順序
 
@@ -543,4 +545,4 @@ Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract�
 - Prototype v0.12：現行原型完成／提案／後端待辦以 10 §1～7 為準。不可再把 UIB-001～013 全列未實作；多項已完成模擬，UIB-007／008 仍未核定，UIB-021～023 等累積項仍待改 UI／正式整合。
 - 優先決策：正式共用契約／SDK、模型與 Tokenizer、ID／更新／發布政策，再按 M0～M7 推進。D-53 的 Chunk 後模板組合與額外原文 Chunk 已確認需求，尚待實作及凍結具體設定格式，見 15 §9。
 
-歷史決策來源、過時提案、驗證及校對過程集中於 [history/](history/README.md)，包括 D-01～D-66 的來源與演變。Q-001～Q-028 及 SC-01～SC-10 仍是現行待決／討論項目；文件歸檔不代表功能驗收完成。
+歷史決策來源、過時提案、驗證及校對過程集中於 [history/](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/README.md)，包括 D-01～D-66 的來源與演變。Q-001～Q-028 及 SC-01～SC-10 仍是現行待決／討論項目；文件歸檔不代表功能驗收完成。

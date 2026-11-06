@@ -1,3 +1,5 @@
+> 歷史來源快照：docs/14_parsed_document_contract.md；來源 commit 916734ac0bbe0631a205bfd52626ce332aa7beb2。2026-11-05 整合後不再作現行規格；相對連結固定到來源版本。現行入口：[README](https://github.com/SunnyWenwen/rag_platform/blob/docs/rag-system-factory/README.md)。
+
 # 14 — ParsedDocument：Parser／Chunker 共用契約
 
 更新：2026-11-02。現行草案為 **0.2-draft**；採用已確認的平面 `units` 設計，取代 0.1 的 `fields`＋`structure`。正式 SDK／版本發布仍由 M0 凍結。
@@ -103,7 +105,7 @@
 
 ## 1. 唯一共用 Schema
 
-[JSON Schema](../schemas/parsed_document.schema.json) 是形狀來源；[validate.py](../examples/parsed_document/validate.py) 檢查補充語意。
+[JSON Schema](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/schemas/parsed_document.schema.json) 是形狀來源；[validate.py](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/parsed_document/validate.py) 檢查補充語意。
 
 | 頂層欄位 | 型別 | 規則 |
 |---|---|---|
@@ -132,7 +134,7 @@ Header-aware 讀取 Unit 中的 Markdown #／##，不要求 heading Block。Pars
 
 ### 2.1 metadata 的描述與處理提示（D-52）
 
-ParsedDocument.metadata 可攜帶合法附帶資訊，或由下游 Component 明確支援的文件層提示，例如 chunking_mode=passthrough；Parser 依自身規則保存／產生，Chunker 按約定讀取。Unit 仍是平面內容物件，不新增根層 processing／options。metadata 的型別與允許鍵仍受共用 Contract 及適用 Component 的資料規格／參數驗證；D-67 不再要求頂層 document_schema，細節見 [24](24_component_io_schema_refinement.md)；模型、連線及 Secret 不因而搬進 metadata。詳細缺省與 passthrough 語意見 [15 §4.1](15_chunk_contract.md)。
+ParsedDocument.metadata 可攜帶合法附帶資訊，或由下游 Component 明確支援的文件層提示，例如 chunking_mode=passthrough；Parser 依自身規則保存／產生，Chunker 按約定讀取。Unit 仍是平面內容物件，不新增根層 processing／options。metadata 的型別與允許鍵仍受共用 Contract 及適用 Component 的資料規格／參數驗證；D-67 不再要求頂層 document_schema，細節見 [24](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/24_component_io_schema_refinement.md)；模型、連線及 Secret 不因而搬進 metadata。詳細缺省與 passthrough 語意見 [15 §4.1](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/15_chunk_contract.md)。
 
 ## 3. 來源追溯與欄位傳遞
 
@@ -159,9 +161,9 @@ page、slide、sheet、section_title、image_uri 等自訂來源欄位不會因�
 | MarkItDown | Markdown 整份一個 Unit，或 Parser 先整理成數個 Units | 不再需要產生 text-spans；新版實際解析整合待驗證 |
 | PyMuPDF4LLM | Markdown 一個 Unit，或逐頁文字各成 Unit；Layout 資訊在 Parser 內處理 | 新版空白頁／跨頁／表格策略與整合待驗證 |
 
-這是來源表示的設計對照，不是供應者直接輸出本 Schema 的承諾。0.1 的舊規格／官方測資對照已歸檔至 [歷史 ParsedDocument 0.1](history/superseded/parsed_document_0.1.md)，供查驗、不作新版驗收證據；[固定測資清單](../examples/parsed_document/provider_cases.json) 仍供後續重驗。
+這是來源表示的設計對照，不是供應者直接輸出本 Schema 的承諾。0.1 的舊規格／官方測資對照已歸檔至 [歷史 ParsedDocument 0.1](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/superseded/parsed_document_0.1.md)，供查驗、不作新版驗收證據；[固定測資清單](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/parsed_document/provider_cases.json) 仍供後續重驗。
 
-本次本地驗證是 [test_contract.py](../examples/parsed_document/test_contract.py) 的新正負案例及 [Docling 摘錄](../examples/parsed_document/docling_report_excerpt.json)，未執行外部模型或重新量測解析品質。
+本次本地驗證是 [test_contract.py](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/parsed_document/test_contract.py) 的新正負案例及 [Docling 摘錄](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/parsed_document/docling_report_excerpt.json)，未執行外部模型或重新量測解析品質。
 
 ## 6. 遷移與 UI
 
@@ -169,5 +171,5 @@ page、slide、sheet、section_title、image_uri 等自訂來源欄位不會因�
 
 Parser／展平策略改動可能改變 Unit 順序、切片及索引，需重新 Ingestion。相同 source_revision 下 Parser 版本變化的 identity／發布政策仍在 Q-007／Q-008，不以 unit_index 解決版本衝突。
 
-UI 預覽、欄位候選、Header-aware 條件與舊結構路由移除列入 [UIB-014](10_ui_adjustment_backlog.md#uib-014-flat-units)，本次不改 Prototype。
+UI 預覽、欄位候選、Header-aware 條件與舊結構路由移除列入 [UIB-014](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/10_ui_adjustment_backlog.md#uib-014-flat-units)，本次不改 Prototype。
 

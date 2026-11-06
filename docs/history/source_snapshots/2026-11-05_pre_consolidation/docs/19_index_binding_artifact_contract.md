@@ -1,3 +1,5 @@
+> 歷史來源快照：docs/19_index_binding_artifact_contract.md；來源 commit 916734ac0bbe0631a205bfd52626ce332aa7beb2。2026-11-05 整合後不再作現行規格；相對連結固定到來源版本。現行入口：[README](https://github.com/SunnyWenwen/rag_platform/blob/docs/rag-system-factory/README.md)。
+
 # 19 — IndexBinding 與索引格式契約
 
 2026-11-04｜D-55 已確認的開發基準。Model／範例可驗證；正式 SDK、Engine Registry、實體索引讀寫與部署尚未交付。
@@ -34,7 +36,7 @@ class IndexBinding(BaseModel):
     vector_bindings: dict[str, VectorIndexBinding] = Field(default_factory=dict)
 ```
 
-完整嚴格 Model 見 examples/pydantic_contracts/models.py；共用機器 Schema 見 [index_binding.schema.json](../schemas/index_binding.schema.json)。識別／路徑字串非空、維度正整數，欄位清單不重複，未知外層欄位拒絕。artifact_type 必填；其餘四欄可省略，預設為空 object／清單。target 只能含 JSON 資料，不能放 Client、Python class 或任意 import。
+完整嚴格 Model 見 examples/pydantic_contracts/models.py；共用機器 Schema 見 [index_binding.schema.json](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/schemas/index_binding.schema.json)。識別／路徑字串非空、維度正整數，欄位清單不重複，未知外層欄位拒絕。artifact_type 必填；其餘四欄可省略，預設為空 object／清單。target 只能含 JSON 資料，不能放 Client、Python class 或任意 import。
 
 | 欄位 | 語意 |
 |---|---|
@@ -63,7 +65,7 @@ artifact_type 對應一份受控註冊的「索引格式定義」，包含 targe
 
 Developer 可沿用既有格式只開發 Retrieval；若產出新格式，須提供格式規格／Schema，並提供相容 Retrieval 或 Adapter。註冊資料不載入任意前端程式或 import 指令。配套包含：共用 Model、格式規格、Retrieval 範本／資源取得說明及契約／整合測試。
 
-[artifact_definitions.json](../examples/pydantic_contracts/artifact_definitions.json) 示範兩種格式的 target Schema；它不是已定案的 Manifest Meta-schema 或 Registry API。validate_binding_format 是離線註冊／配對驗證參考，不是已交付 Engine。
+[artifact_definitions.json](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/pydantic_contracts/artifact_definitions.json) 示範兩種格式的 target Schema；它不是已定案的 Manifest Meta-schema 或 Registry API。validate_binding_format 是離線註冊／配對驗證參考，不是已交付 Engine。
 
 ## 4. 範例
 
@@ -107,7 +109,7 @@ Document 管理使用同一 System 的儲存／索引範圍，不新增第二組
 
 預設保存的是 Chunk，document_id 不是 chunk_id／ES _id 的別名；不能只刪掉單一同名 Chunk 就宣稱文件已退役。Runtime 的工作狀態不是文件目錄；清單／存在查詢讀取實際後端，失敗需回錯誤。
 
-新格式／相容 Adapter／私有 Remote 需說明三種管理操作的支援方式與測試，精確介面／能力宣告待 SDK／Manifest 核定；不增加 IndexBinding 根鍵或一般 User 要填的管理參數。API 與語意見 [21 §9](21_runtime_ingestion_inference_api_inventory.md)。
+新格式／相容 Adapter／私有 Remote 需說明三種管理操作的支援方式與測試，精確介面／能力宣告待 SDK／Manifest 核定；不增加 IndexBinding 根鍵或一般 User 要填的管理參數。API 與語意見 [21 §9](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/21_runtime_ingestion_inference_api_inventory.md)。
 
 
 D-60：平台不加「寫入時阻擋 Query」的讀寫鎖／全索引快照，接受更新中查到暫時新舊混合。此規則也適用文件存在／ID 清單的當前可見資料；工作成功／失敗與資料存在分開。retire 完成後新的讀取應反映刪除，但已取候選的在途 Query 可仍回舊資料。實體 backend 可見性／錯誤清理需驗證，不新增 Binding 狀態鍵。
@@ -115,6 +117,6 @@ D-60：平台不加「寫入時阻擋 Query」的讀寫鎖／全索引快照，�
 
 ### D-65：文件摘要的儲存管理能力
 
-Runtime 文件清單回傳 documents[]，每筆 document_id＋source_revisions[]，完整定義引用 [21 §9.3](21_runtime_ingestion_inference_api_inventory.md)。Storage／Index Adapter 從實際 Chunk 去重彙整，不以工作完成紀錄代替，也不任取某個 Chunk 的版本充當文件最新版本。私有 Remote Indexing／儲存服務需有等價受控管理操作；完整 SDK／HTTP 操作格式仍待 Q-028，不要求無狀態 Parser／Embedding／Rerank 實作。
+Runtime 文件清單回傳 documents[]，每筆 document_id＋source_revisions[]，完整定義引用 [21 §9.3](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/21_runtime_ingestion_inference_api_inventory.md)。Storage／Index Adapter 從實際 Chunk 去重彙整，不以工作完成紀錄代替，也不任取某個 Chunk 的版本充當文件最新版本。私有 Remote Indexing／儲存服務需有等價受控管理操作；完整 SDK／HTTP 操作格式仍待 Q-028，不要求無狀態 Parser／Embedding／Rerank 實作。
 
 source_revisions 是 API 摘要，不把 Chunk.source_revision 改為陣列、不新增 IndexBinding 根鍵或 Pipeline Module，也不要求持久保存 ParsedDocument。ES 聚合或 Local 對照必須能完整列出該文件實際存在的版本，不能將 backend 預設截斷的子聚合當成完整清單；具體讀取與容量實作待驗證。

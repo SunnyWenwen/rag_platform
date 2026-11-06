@@ -1,10 +1,12 @@
+> 歷史來源快照：docs/23_system_config_schema_draft.md；來源 commit 916734ac0bbe0631a205bfd52626ce332aa7beb2。2026-11-05 整合後不再作現行規格；相對連結固定到來源版本。現行入口：[README](https://github.com/SunnyWenwen/rag_platform/blob/docs/rag-system-factory/README.md)。
+
 # 23 — System Config Schema 初版與待討論決策
 
-2026-11-05｜**整合討論稿，尚未核定全部欄位名稱／包裝或發布正式 SDK。**D-67 已確認移除獨立頂層 document_schema，I/O 細節由 Component 宣告＋Config 推導，見 [24](24_component_io_schema_refinement.md)。前次校對已歸檔至 [歷史校對紀錄](history/reviews/2026-11-05_spec_alignment_review.md)，目前設定討論依本稿進行；已確認的語意沿用 D-49～D-65。D-66 可驗證結構稿／五案例已移入 [歷史草案](history/superseded/system_config_d66/README.md)，保留舊格式查驗；新 Descriptor 規則尚未核定，因此尚無對應的新機器 Schema，不替換 schemas/ 的共用資料契約。
+2026-11-05｜**整合討論稿，尚未核定全部欄位名稱／包裝或發布正式 SDK。**D-67 已確認移除獨立頂層 document_schema，I/O 細節由 Component 宣告＋Config 推導，見 [24](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/24_component_io_schema_refinement.md)。前次校對已歸檔至 [歷史校對紀錄](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/reviews/2026-11-05_spec_alignment_review.md)，目前設定討論依本稿進行；已確認的語意沿用 D-49～D-65。D-66 可驗證結構稿／五案例已移入 [歷史草案](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/superseded/system_config_d66/README.md)，保留舊格式查驗；新 Descriptor 規則尚未核定，因此尚無對應的新機器 Schema，不替換 schemas/ 的共用資料契約。
 
 ## 1. 這次要定義什麼
 
-System Config 是 [20 的 D](20_contract_inventory_responsibility_matrix.md)：保存某個 Retrieval System 的 Component 選擇、版本、參數、資料欄位、邏輯引用與處理計畫。Component Developer 提供的 B／C 定義可選項與限制，E 解決特定環境的連線／資源。
+System Config 是 [20 的 D](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/20_contract_inventory_responsibility_matrix.md)：保存某個 Retrieval System 的 Component 選擇、版本、參數、資料欄位、邏輯引用與處理計畫。Component Developer 提供的 B／C 定義可選項與限制，E 解決特定環境的連線／資源。
 
 | 層次 | 放什麼 | 本稿如何使用 |
 |---|---|---|
@@ -12,13 +14,13 @@ System Config 是 [20 的 D](20_contract_inventory_responsibility_matrix.md)：�
 | B Component Descriptor | 識別／版本、config_schema、I/O 與能力 | 用 component_id＋implementation_version 查 Registry，再驗證 parameters |
 | C Remote Manifest | 服務操作、邊界／涵蓋範圍、參數及部署需求 | 由核可 Manifest 推導可選 Component；Config 只保存引用及開放值 |
 | **D System Config** | 下面的共同骨架、所選參數與邏輯引用 | User／Builder／AI／Python 共用相同輸入與驗證 |
-| E 環境設定 | URL、Secret 引用、實體索引目標、Image／部署與 Runtime 限制 | 與 D 一起準備可執行資源；[22](22_runtime_settings_catalog.md) 管可調控制項 |
+| E 環境設定 | URL、Secret 引用、實體索引目標、Image／部署與 Runtime 限制 | 與 D 一起準備可執行資源；[22](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/22_runtime_settings_catalog.md) 管可調控制項 |
 
 System ID、Workspace／顯示名稱、Config Revision、Runtime Image 引用屬可信管理／交付包裝；建議不重複放入 D。Component 版本仍在 D，因為它決定處理語意。省略 source_revision 的生成規則與索引失敗清理仍屬既有 Q-007～Q-010，這份 Config 草案不代為定案。
 
 ## 2. 共同骨架初版
 
-共同骨架以本節文字稿繼續討論。舊 [D-66 system_config.schema.json](history/superseded/system_config_d66/system_config.schema.json) 含已取消的 document_schema，僅供歷史對照；不以它驗證新設計。Component I/O 細化規則與剩餘 SC 決策確定後，再同步機器 Schema／案例。
+共同骨架以本節文字稿繼續討論。舊 [D-66 system_config.schema.json](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/superseded/system_config_d66/system_config.schema.json) 含已取消的 document_schema，僅供歷史對照；不以它驗證新設計。Component I/O 細化規則與剩餘 SC 決策確定後，再同步機器 Schema／案例。
 
 | 候選位置 | 初版內容 | 規則／待議處 |
 |---|---|---|
@@ -95,13 +97,13 @@ ES 內部 sum_score／RRF 是 Retrieval 元件的參數，平台 processing 是�
 
 | 案例 | 歷史檔案 | 需繼續覆蓋的情境 |
 |---|---|---|
-| Local Memory | [local_memory.json](history/superseded/system_config_d66/local_memory.json) | Structured JSON→Recursive→Embedding API→Local Search；BM25＋向量、預設融合；無 Rewrite／Rerank |
-| Remote Parser | [remote_parser.json](history/superseded/system_config_d66/remote_parser.json) | 只換 Parsing 元件，其餘設定相同；無私有 URL／Header 混入 D |
-| Remote 多 Module | [remote_segment.json](history/superseded/system_config_d66/remote_segment.json) | 一個元件涵蓋 Parsing～Embedding，三個本地 slot 省略，接 Local Indexing；只呼叫一次 |
-| 多欄位與模型處理 | [advanced_fields.json](history/superseded/system_config_d66/advanced_fields.json) | text／faq 任務結果相加、copy title／summary、原文 Chunk、Embedding 模板／多向量、Multi-query、Rerank／Top 3、document_id 代表 |
-| Elasticsearch Hybrid | [es_hybrid.json](history/superseded/system_config_d66/es_hybrid.json) | 索引／檢索格式配對、ES 內部 Sum Score 與平台 RRF 的邊界 |
+| Local Memory | [local_memory.json](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/superseded/system_config_d66/local_memory.json) | Structured JSON→Recursive→Embedding API→Local Search；BM25＋向量、預設融合；無 Rewrite／Rerank |
+| Remote Parser | [remote_parser.json](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/superseded/system_config_d66/remote_parser.json) | 只換 Parsing 元件，其餘設定相同；無私有 URL／Header 混入 D |
+| Remote 多 Module | [remote_segment.json](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/superseded/system_config_d66/remote_segment.json) | 一個元件涵蓋 Parsing～Embedding，三個本地 slot 省略，接 Local Indexing；只呼叫一次 |
+| 多欄位與模型處理 | [advanced_fields.json](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/superseded/system_config_d66/advanced_fields.json) | text／faq 任務結果相加、copy title／summary、原文 Chunk、Embedding 模板／多向量、Multi-query、Rerank／Top 3、document_id 代表 |
+| Elasticsearch Hybrid | [es_hybrid.json](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/superseded/system_config_d66/es_hybrid.json) | 索引／檢索格式配對、ES 內部 Sum Score 與平台 RRF 的邊界 |
 
-[environment.example.json](history/superseded/system_config_d66/environment.example.json) 示範 E 的服務 URL／Secret 引用、Remote 綁定與 Runtime 限制；所有地址為 example.invalid、沒有真實 Secret。它也是 D-66 對照材料，不是已定案 E Schema 或部署 YAML。Remote Image 仍依 18／Manifest 產生額外部署描述，External 僅提供連線；D 不自行增加 URL、Image 或 data_space_id。
+[environment.example.json](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/superseded/system_config_d66/environment.example.json) 示範 E 的服務 URL／Secret 引用、Remote 綁定與 Runtime 限制；所有地址為 example.invalid、沒有真實 Secret。它也是 D-66 對照材料，不是已定案 E Schema 或部署 YAML。Remote Image 仍依 18／Manifest 產生額外部署描述，External 僅提供連線；D 不自行增加 URL、Image 或 data_space_id。
 
 單位與欄位路徑保持既有責任：Chunking split_field／copy source 是 Unit key；Embedding source_field 是 Chunk.fields 的 key；搜尋／Filter／Rerank 以 fields.text／vectors.text／metadata.department 明確引用容器。衍生模板只寫在支援該能力的 Embedding Component 參數中，不新增通用處理 Module。
 
@@ -114,11 +116,11 @@ ES 內部 sum_score／RRF 是 Retrieval 元件的參數，平台 processing 是�
 
 JSON Schema 的 default 是描述，不會自動填值；Engine 正規化仍需共同實作並保存解析後值。不要讓 Builder、AI、Python 各自套不同預設，也不要把未知／失效引用靜默換掉。
 
-D-66 舊版離線 [validate_examples.py](history/superseded/system_config_d66/validate_examples.py) 當時已驗證五個正例及 19 個反例；這不是新 D-67 宣告規則／解析器的驗收。舊檢查涵蓋未知元件／參數、overlap、缺 Module／覆蓋重疊、欄位／向量、模板、LLM 引用、索引格式與 E 引用。它使用 [catalog.fixture.json](history/superseded/system_config_d66/catalog.fixture.json)，只驗證固定案例；不是完整 Registry、Router／能力推導、UI Renderer、實際編碼、索引寫入或部署器。平台 Sum Score 比分／轉換等未驗證語意會明示超出 fixture 範圍。
+D-66 舊版離線 [validate_examples.py](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/superseded/system_config_d66/validate_examples.py) 當時已驗證五個正例及 19 個反例；這不是新 D-67 宣告規則／解析器的驗收。舊檢查涵蓋未知元件／參數、overlap、缺 Module／覆蓋重疊、欄位／向量、模板、LLM 引用、索引格式與 E 引用。它使用 [catalog.fixture.json](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/superseded/system_config_d66/catalog.fixture.json)，只驗證固定案例；不是完整 Registry、Router／能力推導、UI Renderer、實際編碼、索引寫入或部署器。平台 Sum Score 比分／轉換等未驗證語意會明示超出 fixture 範圍。
 
 ## 5. 需要討論的選擇與建議
 
-討論順序調整：先審閱 [25 B Descriptor Schema 初版](25_component_descriptor_schema_draft.md) 的設定／I/O／選項規則，再回來完成 D 的 SC 決策；不必先實作全部 Component。System 選用仍以 ID／版本／parameters 為骨架，不把整份 Descriptor 內嵌 D。
+討論順序調整：先審閱 [25 B Descriptor Schema 初版](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/25_component_descriptor_schema_draft.md) 的設定／I/O／選項規則，再回來完成 D 的 SC 決策；不必先實作全部 Component。System 選用仍以 ID／版本／parameters 為骨架，不把整份 Descriptor 內嵌 D。
 
 以下除 SC-03 的 D-67 已確認方向外，具體表示仍待核定；共同既有語意沿用已確認決策。SC-07 的獨立 processing 層亦未定案，須與 Component 實作／參數責任一起審閱。
 

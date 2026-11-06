@@ -1,6 +1,6 @@
 # 歷史決策來源與逐輪討論
 
-> 這是當時的紀錄，包含被後續決策取代的提案與狀態；現行結論以 [08](../../08_implementation_plan.md)及各主責規格為準。
+> 這是當時的紀錄，包含被後續決策取代的提案與狀態；現行結論以 [08](../../08_plan_and_decisions.md)及各主責規格為準。
 
 來源：[原始檔案](https://github.com/SunnyWenwen/rag_platform/blob/a27e9cdba06c5ada210b00e09de629b53fe7bae1/docs/08_implementation_plan.md)；歸檔日期：2026-11-05。
 
@@ -101,7 +101,7 @@ Prototype 仍為 v0.12，D-55 的必要調整記入 UIB-021；本輪未修改 UI
 
 Builder DEV 與 FTEST／ENT 共用 Runtime Queue／Inference 流量控制，環境上限先建議放 E（D-57 將管理者與存放位置暫緩）；Runtime 有總量控制，Builder 可另設平台配額。不新增每 System Pod 要求。202 接受後查 Run／文件狀態；Queue／Run／文件紀錄留記憶體，Runtime 重啟不保留／恢復；無紀錄或結果未確認為 unknown，不能由舊索引反推最近一次成功，也不保證 Remote 副作用回滾。
 
-最小 API 盤點與可討論子項集中 [21](../../21_runtime_ingestion_inference_api_inventory.md)；新增 Batch 包裝、路徑、Run partial、HTTP／錯誤／保留值仍是提案。Q-008～010／Q-017／Q-019／Q-020 只收斂以上方向，索引提交／崩潰一致性、Config／資料版本、未知重試、認證及精確格式仍 OPEN。
+最小 API 盤點與可討論子項集中 [21](../../06_runtime_api_and_deployment.md)；新增 Batch 包裝、路徑、Run partial、HTTP／錯誤／保留值仍是提案。Q-008～010／Q-017／Q-019／Q-020 只收斂以上方向，索引提交／崩潰一致性、Config／資料版本、未知重試、認證及精確格式仍 OPEN。
 
 UI 待辦記 UIB-022；Prototype v0.12、共用資料 Schema 與示例程式均未修改，未宣稱真實 Runtime／Queue／限流已完成。
 
@@ -214,7 +214,7 @@ Config 及索引／Profile 相容檢查仍要執行，更新語意可能要求�
 - Retire 同步確認刪除完成回 HTTP 200，body 為 document_id＋result，實際刪除為 deleted、確認原本不存在為 not_found。同文件 queued／running 回 409，不取消工作；後端失敗、部分刪除或結果不明不得回成功或 not_found。取代早期 204 提案，詳細後端／Remote 清理協定仍待 API-D03／05。
 - 覆寫失敗記在 Runtime 記憶體，Run／文件工作狀態 API 可查 failed＋Module／錯誤；重啟／到期無紀錄為 unknown。這不是磁碟／DB 工作歷史，也不表示舊資料自動回復；資料存在與工作成功分開。
 - A 的回應核心欄位採用 21 範例：接收 run_id／status／config_revision／documents，文件狀態 document_id／run_id／status／module／updated_at／error，Run 另含 counts／documents。Query 仍直接回 QueryContext[]。HTTP 錯誤外框 error，核心 code／message／module；輸入驗證另附 JSON Pointer path，狀態 error 使用相同核心。正式型別／完整錯誤碼／Header／多錯誤包裝仍待 OpenAPI。
-- C 的初始預設及做法確認，集中記錄於新 [22](../../22_runtime_settings_catalog.md)：文件數／body／來源大小、每 System 與 Runtime 總量 Queue／併發、Query Rate／Deadline、終態工作保存時間／數量。歸 E 的 Runtime 環境設定，Admin／部署管理者提供；一般 Builder User 不透過每次業務請求覆寫。候選參數名稱與正式機器 Schema／載入方式仍需實作規格，沒有新增 Admin UI。
+- C 的初始預設及做法確認，集中記錄於新 [22](../../06_runtime_api_and_deployment.md)：文件數／body／來源大小、每 System 與 Runtime 總量 Queue／併發、Query Rate／Deadline、終態工作保存時間／數量。歸 E 的 Runtime 環境設定，Admin／部署管理者提供；一般 Builder User 不透過每次業務請求覆寫。候選參數名稱與正式機器 Schema／載入方式仍需實作規格，沒有新增 Admin UI。
 - D 採可信 Backend → Runtime 的受保護內部 System 路由。S1 表示穩定 system_id，不是顯示名稱、Config Revision、document_id 或索引名稱。Builder 業務路由前綴 /api/systems/{system_id}，Runtime 內部前綴 /internal/systems/{system_id}/v1，Runtime 依已註冊 System 取得有效快照；FTEST／ENT 單 System 仍用 /v1。Health 屬 service 級不逐 System 複製。內部路由須可信存取／認證，不能因可傳 Header 就當作可信；Builder 登入與實際網路／Probe 配置另議。
 
 API 維持 7 支業務＋2 支 Health。B 的分頁只分批取得唯一 document_id 清單，不是切 Chunk；說明與待確認項見 21 §9.3／22 §4。本輪同步 Markdown 與既有 UI Backlog，未修改 Prototype、Runtime 程式、教學程式或共用資料 Schema。
@@ -246,7 +246,7 @@ SC-01～SC-10 保留具體格式、Profile、Remote 範圍／操作、參數正�
 <a id="d-67"></a>
 ## 2026-11-05 D-67：B 的 I/O 資料規格與逐層相依
 
-來源：使用者確認第一版純 Descriptor 規則範圍，持續釐清 Parser Output 對 Chunker 設定的連動，並要求盤點既有紀錄及補入 B。現行結論見 [24](../../24_component_io_schema_refinement.md)、[12](../../12_component_schema_ui_contract.md)、[20](../../20_contract_inventory_responsibility_matrix.md)。
+來源：使用者確認第一版純 Descriptor 規則範圍，持續釐清 Parser Output 對 Chunker 設定的連動，並要求盤點既有紀錄及補入 B。現行結論見 [24](../../04_component_descriptor.md)、[12](../../04_component_descriptor.md)、[20](../../01_architecture.md)。
 
 - B 提供 Config Schema、共用 I/O Contract 引用、固定或依 Config 細化的資料細節、選項來源與相依條件。A 外層／限制不變，Local／Remote 等價。
 - 首版六類宣告：固定欄位／型別、參數命名、映射清單、上游選擇／copy、布林／固定選項分支、固定型別衍生欄位。Engine 通用解析器處理，不要求逐 Component 自寫 Schema 解析函式。
@@ -260,6 +260,6 @@ D-66 含 document_schema 的舊 Schema／五案例／Fixture／驗證器移至 [
 <a id="d-68"></a>
 ## 2026-11-05 D-68：先提出 Descriptor Schema 候選再整合 System Config
 
-來源：使用者要求依目前功能先提出 Descriptor Schema 初版、列出待決項目並給範例。交付 [25 初版](../../25_component_descriptor_schema_draft.md)及 [離線範例](../../../examples/component_descriptor/README.md)，以 Parser／Chunker／Embedding／模板／Remote 區段對照 Descriptor、Config、資料及人工明列的預期 I/O Schema。
+來源：使用者要求依目前功能先提出 Descriptor Schema 初版、列出待決項目並給範例。交付 [25 初版](../../04_component_descriptor.md)及 [離線範例](../../../examples/component_descriptor/README.md)，以 Parser／Chunker／Embedding／模板／Remote 區段對照 Descriptor、Config、資料及人工明列的預期 I/O Schema。
 
 本次授權的是草案／範例整理；DS-01～DS-13 的包裝、語法、版本與解析介面未核定，不覆寫 D-67 上位行為。離線結構、部分路徑／約束與樣本檢查不代表 data_rules 編譯、Registry、UI、服務或部署已實作。UI 仍追蹤 UIB-021；D 的其他 SC 決策仍 OPEN。

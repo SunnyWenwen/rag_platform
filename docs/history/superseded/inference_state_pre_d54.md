@@ -1,6 +1,6 @@
 # Inference Contract 與 UI 設定對照
 
-> 已被取代的規格快照，僅供查驗。現行定義見 [09_inference_contract_ui_plan.md](../../09_inference_contract_ui_plan.md)；本檔原有相對連結固定指向原始 commit，避免把舊格式誤當現行範例。
+> 已被取代的規格快照，僅供查驗。現行定義見 [09_inference_contract_ui_plan.md](../../07_builder_ui.md)；本檔原有相對連結固定指向原始 commit，避免把舊格式誤當現行範例。
 
 來源：[原始檔案](https://github.com/SunnyWenwen/rag_platform/blob/2e1a3863e8c0217246c1869ffa131434c0983338/docs/09_inference_contract_ui_plan.md)；歸檔日期：2026-11-05。
 

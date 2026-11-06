@@ -1,10 +1,12 @@
+> 歷史來源快照：docs/24_component_io_schema_refinement.md；來源 commit 916734ac0bbe0631a205bfd52626ce332aa7beb2。2026-11-05 整合後不再作現行規格；相對連結固定到來源版本。現行入口：[README](https://github.com/SunnyWenwen/rag_platform/blob/docs/rag-system-factory/README.md)。
+
 # 24 — B：Component I/O 資料規格、Schema 細化與相依驗證
 
-2026-11-05｜D-67：**責任邊界、第一版宣告能力與處理行為已確認；Descriptor／Manifest Meta-schema、規則鍵名及解析 API 尚未定稿或實作。**本文件整理現行結論；討論來源見 [歷史決策](history/decisions/decision_history.md#d-67)。
+2026-11-05｜D-67：**責任邊界、第一版宣告能力與處理行為已確認；Descriptor／Manifest Meta-schema、規則鍵名及解析 API 尚未定稿或實作。**本文件整理現行結論；討論來源見 [歷史決策](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/history/decisions/decision_history.md#d-67)。
 
 ## 1. 所屬範疇與閱讀入口
 
-本議題主要屬 [20 的 B：Component 定義](20_contract_inventory_responsibility_matrix.md)。[12](12_component_schema_ui_contract.md) 已有 Config Schema、UI hints、option_sources、rules 與失效選擇卡控；本文件補齊先前未完整記錄的「Component 如何依 Config 提供 I/O 資料規格」，以及資料規格如何沿 Pipeline 成為下游設定的依據。
+本議題主要屬 [20 的 B：Component 定義](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/20_contract_inventory_responsibility_matrix.md)。[12](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/12_component_schema_ui_contract.md) 已有 Config Schema、UI hints、option_sources、rules 與失效選擇卡控；本文件補齊先前未完整記錄的「Component 如何依 Config 提供 I/O 資料規格」，以及資料規格如何沿 Pipeline 成為下游設定的依據。
 
 | 群組 | 本議題的責任 |
 |---|---|
@@ -136,14 +138,14 @@ Developer 需交付：共用 Contract／版本引用、Config Schema、固定或
 | Remote 單 Module／連續區段 | 相同公開邊界規則，內部處理不要求交付中間物件 |
 | Config 合法但實際資料或 Remote 回傳違規 | 工作階段失敗可查；不因描述合法跳過執行資料驗證 |
 
-這是待建立的驗收清單，不是已通過的新解析器測試；UI 變更集中在 [10 UIB-021](10_ui_adjustment_backlog.md#uib-021-io-schema-refinement)，使用者要求改 UI 時才實作。
+這是待建立的驗收清單，不是已通過的新解析器測試；UI 變更集中在 [10 UIB-021](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/10_ui_adjustment_backlog.md#uib-021-io-schema-refinement)，使用者要求改 UI 時才實作。
 
 ## 10. 仍待核定的格式細節
 
-具體初版已整理為 [25 Descriptor Schema 討論稿](25_component_descriptor_schema_draft.md)，包含五組對照、機器結構稿及 DS-01～DS-13。以下細節已有候選表示，仍需 review，不視為已核定。
+具體初版已整理為 [25 Descriptor Schema 討論稿](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/25_component_descriptor_schema_draft.md)，包含五組對照、機器結構稿及 DS-01～DS-13。以下細節已有候選表示，仍需 review，不視為已核定。
 
 - Descriptor／Manifest 的固定 I/O、共用 Contract 引用、變動規則與 option_sources 的正式鍵名／Meta-schema；沿用版本及未知必要語意拒絕政策。
 - 六類規則的精確語法、型別／required／default／nullable／額外欄位政策，以及與既有 12 rules 的整合；不能把「支援方向」當作所有 JSON Schema keyword 都可自動呈現。
 - Engine 解析結果與來源／版本的回傳格式、錯誤定位、快取／失效及 Runtime API；不先凍結 resolve_io_schema 簽名或新增 Remote 端點。
 - 未知資料欄位由 Sample 建議／User 確認的流程；複雜自訂規格解析另案。
-- [23](23_system_config_schema_draft.md) 其餘 SC 選項，包含 Fusion／Top N 的參數位置、Profile、正規化與 Export 包裝，維持待議；本決策不代為定案。
+- [23](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/23_system_config_schema_draft.md) 其餘 SC 選項，包含 Fusion／Top N 的參數位置、Profile、正規化與 Export 包裝，維持待議；本決策不代為定案。

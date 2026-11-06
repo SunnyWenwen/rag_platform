@@ -1,3 +1,5 @@
+> 歷史來源快照：docs/17_pydantic_contracts_draft.md；來源 commit 916734ac0bbe0631a205bfd52626ce332aa7beb2。2026-11-05 整合後不再作現行規格；相對連結固定到來源版本。現行入口：[README](https://github.com/SunnyWenwen/rag_platform/blob/docs/rag-system-factory/README.md)。
+
 # 17 — Pydantic Contract 與連續範例
 
 2026-11-03｜D-54：簡化 QueryContext 已確認；同日同步 JSON Schema、Model、例子及 Prototype v0.12。這是可執行開發草案，尚非已發布 SDK。2026-11-04 D-55：IndexBinding 已確認為輕量單組描述，見 19；正式 SDK 仍未發布。
@@ -12,9 +14,9 @@
 | Query Transformation → Retrieval → Rerank → API | list[QueryContext] | 本版確認；result_sets 放在 context 內，沒有另外的外框 |
 | Indexing → Retrieval 資源綁定 | IndexBinding | D-55 單組五鍵 Contract；狀態／資源由 Runtime 管理 |
 
-[models.py](../examples/pydantic_contracts/models.py) 為完整可執行定義；下方是易讀欄位視圖，省略驗證函式。Model 嚴格拒絕未知 key，JSON 值須有限。共用 JSON Schema 及 13～15 定義 Ingestion 語意；Inference 見 [05 §4.6](05_data_contracts_search_design.md#query-context-contract)。
+[models.py](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/pydantic_contracts/models.py) 為完整可執行定義；下方是易讀欄位視圖，省略驗證函式。Model 嚴格拒絕未知 key，JSON 值須有限。共用 JSON Schema 及 13～15 定義 Ingestion 語意；Inference 見 [05 §4.6](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/05_data_contracts_search_design.md#query-context-contract)。
 
-[pydantic_contracts.schema.json](../examples/pydantic_contracts/pydantic_contracts.schema.json) 是 $defs 目錄，不是所有 payload 共用的 root。Inference root schema 是 [inference_context.schema.json](../schemas/inference_context.schema.json) 的 array。
+[pydantic_contracts.schema.json](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/pydantic_contracts/pydantic_contracts.schema.json) 是 $defs 目錄，不是所有 payload 共用的 root。Inference root schema 是 [inference_context.schema.json](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/schemas/inference_context.schema.json) 的 array。
 
 ## 2. 逐型別範例
 
@@ -337,7 +339,7 @@ vector_binding = VectorIndexBinding(
 
 ### 2.13 IndexBinding
 
-D-55 已確認。每 System 一組，無 index_ref／searchable；target 按 artifact_type 對應 Schema 驗證，Retrieval 須宣告相容格式，且只可搜尋宣告能力。完整語意與 ES／Local／客製配套見 [19 IndexBinding 與索引格式契約](19_index_binding_artifact_contract.md)。
+D-55 已確認。每 System 一組，無 index_ref／searchable；target 按 artifact_type 對應 Schema 驗證，Retrieval 須宣告相容格式，且只可搜尋宣告能力。完整語意與 ES／Local／客製配套見 [19 IndexBinding 與索引格式契約](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/docs/19_index_binding_artifact_contract.md)。
 
 ```python
 class IndexBinding(BaseModel):
@@ -406,4 +408,4 @@ python examples/pydantic_contracts/test_models.py
 python examples/inference/python_example.py
 ```
 
-[examples.json](../examples/pydantic_contracts/examples.json) 提供 14 個型別例子、三筆 Chunk、QueryContext[] 與 Parser 成功包裝。五組完整推論快照見 examples/inference。DTO 型別檢查不代替業務規則：索引可用性、授權、向量 Profile、分數可比性、模型上限仍需 Runtime／Adapter 驗證。正式 SDK 版本與錯誤政策由 08 追蹤。
+[examples.json](https://github.com/SunnyWenwen/rag_platform/blob/916734ac0bbe0631a205bfd52626ce332aa7beb2/examples/pydantic_contracts/examples.json) 提供 14 個型別例子、三筆 Chunk、QueryContext[] 與 Parser 成功包裝。五組完整推論快照見 examples/inference。DTO 型別檢查不代替業務規則：索引可用性、授權、向量 Profile、分數可比性、模型上限仍需 Runtime／Adapter 驗證。正式 SDK 版本與錯誤政策由 08 追蹤。
