@@ -28,12 +28,12 @@ const $=id=>document.getElementById(id),clone=x=>structuredClone(x),esc=s=>Strin
 const groups=['Customer Support','Engineering','Operations'];
 const modules=[['import','Import','Ingestion 入口 · 原始欄位與待解析來源'],['parsing','Parsing','內容解析與 Schema 驗證'],['chunking','Chunking','Token 邊界與欄位繼承'],['embedding','Embedding','structdata → vectors'],['indexing','Indexing','儲存與搜尋索引'],['transform','Query Transformation','產生檢索問題'],['retrieval','Retrieval','選擇搜尋欄位'],['rerank','Rerank','候選內容重新排序']];
 const service=(model='')=>({mode:'DEV test use',url:'',auth:'None',secret_ref:'',header:'X-API-Key',model,timeout:30});
-function defaults(){return {remote_apis:{},llms:[{id:'llm-default',name:'Default LLM',...service('demo-chat')}],import:{entries:['upload','api'],csv_mapping:{},source:'structdata',fields:[schemaField('text','string',true)]},parsing:{output_fields:[schemaField('text','string',true)],routes:{pdf:'文字擷取',office:'文件解析',image:'OCR',text:'純文字',json:'JSON 正規化'}},chunking:{preserve_original:false,include_original_chunk:false,method:'Recursive',unit:'tokens',size:512,overlap:64,tokenizer_mode:'沿用 Embedding',tokenizer:'BAAI/bge-m3',tokenizer_revision:'main',separators:['\n\n','\n','。','！','？','；',' ',''],keep_separator:true,levels:[1,2,3],split:'text',output_field:'text',copy:[],metadata:[]},embedding:{...service('bge-m3'),composition:{enabled:false,output_field:'embedding_text',template:'標題：{{structdata.title}}\n內容：{{structdata.text}}'},dimension:1024,tokenizer:'BAAI/bge-m3',tokenizer_revision:'main',max_tokens:8192,batch_size:16,mappings:[{source:'text',output:'text'}]},indexing:{metadata_fields:[],backend:'Elasticsearch',es:service(),persistence:'Memory',mongo:{...service(),database:'rag',collection:'chunks'},metric:'cosine',stored:['text'],vectors:['text'],fulltext:['text'],filters:[]},transform:{method:'None',include_original:true,count:3,llm_ref:'llm-default',rewrite_prompt:'請將以下問題改寫成適合文件檢索的問題，保留原意，只輸出改寫結果。\n問題：{{query}}',multi_prompt:'請為以下問題產生 {{count}} 個不同表述的檢索問題，保留原意，每行一個，不加編號或說明。\n問題：{{query}}'},retrieval:{vectors:['text'],fulltext:['text'],per_route_k:10,output_mode:'backend_fused',processing:processingDefaults(),filters:[],fusion:'Sum Score',score_weights:{fulltext:1,vector:1},rrf_k:60},rerank:{...service('demo-reranker'),top_n:3,content:['text'],query_source:'original'}};}
+function defaults(){return {remote_apis:{},llms:[{id:'llm-default',name:'Default LLM',...service('demo-chat')}],import:{entries:['upload','api'],csv_mapping:{},source:'structdata',fields:[schemaField('text','string',true)]},parsing:{file_parser:'pdf'},chunking:{preserve_original:false,include_original_chunk:false,method:'Recursive',unit:'tokens',size:512,overlap:64,tokenizer_mode:'沿用 Embedding',tokenizer:'BAAI/bge-m3',tokenizer_revision:'main',separators:['\n\n','\n','。','！','？','；',' ',''],keep_separator:true,levels:[1,2,3],split:'text',output_field:'text',copy:[],metadata:[]},embedding:{...service('bge-m3'),composition:{enabled:false,output_field:'embedding_text',template:'標題：{{structdata.title}}\n內容：{{structdata.text}}'},dimension:1024,tokenizer:'BAAI/bge-m3',tokenizer_revision:'main',max_tokens:8192,batch_size:16,mappings:[{source:'text',output:'text'}]},indexing:{metadata_fields:[],backend:'Elasticsearch',es:service(),persistence:'Memory',mongo:{...service(),database:'rag',collection:'chunks'},metric:'cosine',stored:['text'],vectors:['text'],fulltext:['text'],filters:[]},transform:{method:'None',include_original:true,count:3,llm_ref:'llm-default',rewrite_prompt:'請將以下問題改寫成適合文件檢索的問題，保留原意，只輸出改寫結果。\n問題：{{query}}',multi_prompt:'請為以下問題產生 {{count}} 個不同表述的檢索問題，保留原意，每行一個，不加編號或說明。\n問題：{{query}}'},retrieval:{vectors:['text'],fulltext:['text'],per_route_k:10,output_mode:'backend_fused',processing:processingDefaults(),filters:[],fusion:'Sum Score',score_weights:{fulltext:1,vector:1},rrf_k:60},rerank:{...service('demo-reranker'),top_n:3,content:['text'],query_source:'original'}};}
 const blockedKeys=['__proto__','prototype','constructor'];
 const reservedMetadata=['tenant_id','system_id','access_policy_ref','locations','_system','source_uri','_rag'];
 function schemaField(name,type='string',required=false,default_json=''){return {name,type,required,default_json};}
 function exampleConfig(){const c=defaults();c.import.fields.push(schemaField('summary','string',true),schemaField('title','string',true));c.chunking.copy=['summary','title'];c.embedding.mappings.push({source:'summary',output:'summary_vector'});c.indexing.vectors=['text','summary_vector'];c.indexing.metadata_fields=[{path:'metadata.department',type:'string'}];c.indexing.filters=['metadata.department'];c.retrieval.vectors=[...c.indexing.vectors];return c;}
-function exampleValue(f){if(f.default_json.trim()){try{return JSON.parse(f.default_json);}catch{}}return ['number','integer'].includes(f.type)?1:f.type==='boolean'?true:f.type==='array'?['示例']:({text:'設備每月需清潔散熱孔。',summary:'每月清潔保養。',title:'設備保養規範',department:'manufacturing'})[f.name]||'示例內容';}
+function exampleValue(f){if(f.default_json.trim()){try{return JSON.parse(f.default_json);}catch{}}return ['number','integer'].includes(f.type)?1:f.type==='boolean'?true:f.type==='array'?['示例']:({text:'設備每月需清潔散熱孔。',summary:'每月清潔保養。',title:'設備保養規範',contenttext:'設備保養前須先斷電，並定期清潔散熱孔。',department:'manufacturing'})[f.name]||'示例內容';}
 
 function matchesType(value,type){return type==='string'?typeof value==='string':type==='number'?typeof value==='number'&&Number.isFinite(value):type==='integer'?Number.isInteger(value):type==='boolean'?typeof value==='boolean':type==='array'?Array.isArray(value):false;}
 let ioDetailsOpen=false,chunkSourcesOpen=false;
@@ -87,7 +87,7 @@ function resetHelper(){compositionAdvancedOpen=false;chunkExtrasOpen=false;resul
 function openCreate(){taskDraftError='';editId=null;draftId=crypto.randomUUID().slice(0,8);config=defaults();$('systemName').value='';$('createTitle').textContent='Create Retrieval System';$('createButton').textContent='Create Retrieval System';$('createGroup').textContent=groups[group];resetHelper();selectMod('import');$('createDialog').showModal();}
 function openEdit(id){const s=systems.find(x=>x.id===id);editId=id;draftId=id;config=clone(s.config);$('systemName').value=s.name;$('createTitle').textContent='Edit Config';$('createButton').textContent='Save Changes';$('createGroup').textContent=groups[s.group]+' / v'+s.revision;resetHelper();pendingCSV=s.pendingCSV?clone(s.pendingCSV):null;selectMod('import');$('createDialog').showModal();}
 function nodes(){$('remoteGuide').hidden=!remote(config,'parsing')&&!remote(config,'chunking');for(const [id,items] of [['ingestnodes',modules.slice(0,5)],['querynodes',modules.slice(5)]])$(id).innerHTML=items.map(m=>`<button class="module ${selected===m[0]?'selected':''}" onclick="selectMod('${m[0]}')"><strong>${m[1]}</strong><small>${esc(summary(m[0]))}</small></button>`).join('');}
-function summary(id){const owner=managedBy(config,id);if(owner)return '由 '+moduleLabel(owner)+' Remote API 涵蓋';if(remote(config,id))return 'Remote API · 自帶服務';return ({import:'入口 Data Schema',parsing:config.import.source==='structdata'?'直接傳遞 structdata':'依來源格式解析',chunking:config.chunking.method,embedding:config.embedding.mode,indexing:config.indexing.backend,transform:config.transform.method,retrieval:mode(config),rerank:config.rerank.mode})[id];}
+function summary(id){const owner=managedBy(config,id);if(owner)return '由 '+moduleLabel(owner)+' Remote API 涵蓋';if(remote(config,id))return 'Remote API · 自帶服務';return ({import:'入口 Data Schema',parsing:config.import.source==='structdata'?'直接傳遞 structdata':activeFileParser(config)?.label||'選擇解析方法',chunking:config.chunking.method,embedding:config.embedding.mode,indexing:config.indexing.backend,transform:config.transform.method,retrieval:mode(config),rerank:config.rerank.mode})[id];}
 function mode(c){return c.retrieval.vectors.length&&c.retrieval.fulltext.length?'Hybrid':c.retrieval.vectors.length?'Vector':c.retrieval.fulltext.length?'Full-text':'未選搜尋欄位';}
 function get(path,c=config){return path.split('.').reduce((v,k)=>v[k],c);}
 function put(path,v,c=config){const a=path.split('.'),k=a.pop();a.reduce((v,k)=>v[k],c)[k]=v;}
@@ -319,15 +319,7 @@ function openValidationIssue(index){
 
 function selectMod(id){if($('resultAdvanced'))resultAdvancedOpen=$('resultAdvanced').open===true;if($('rerankAdvanced'))rerankAdvancedOpen=$('rerankAdvanced').open===true;selected=id;nodes();if(id==='llms'){renderLLMs();valid();return;}const m=modules.find(x=>x[0]===id);$('modtitle').textContent=m[1];$('moddesc').textContent=m[2];let h='';
 if(id==='import')h=sourceForm();
-if(id==='parsing'){
- h=config.import.source==='structdata'?'<div class="notice">入口已提供 structdata。內建流程直接把欄位交給 Chunking。</div>':'<p class="rule">依 content.media_type 選擇內建 Parser。已整理的 structdata 欄位由設定決定是否保留；原型可預覽契約。</p>';
- if(config.import.source!=='structdata'){
-  h+=fieldEditor('parsing.output_fields','內建 Parser · 輸出 structdata 欄位');
-  h+='<details><summary>內建檔案解析方式</summary>';
-  for(const [key,title] of Object.entries({pdf:'PDF',office:'Office（Word／PowerPoint／Excel）',image:'圖片',text:'TXT／Markdown',json:'巢狀 JSON'}))h+=select('parsing.routes.'+key,title,key==='pdf'?['文字擷取','OCR']:[config.parsing.routes[key]]);
-  h+='<p class="rule">檔案解析能力為設定示意。本頁只做資料與契約檢查。</p></details>';
- }
-}
+if(id==='parsing')h=builtinParserForm(config);
 if(id==='chunking'){h=select('chunking.method','切分方法',['Fixed-size','Recursive','Header-aware'])+'<div class="rule">長度單位固定為 Tokens；上限與實際長度不同，Overlap 為目標值。</div>'+input('chunking.size','Chunk Size（Tokens）','number')+input('chunking.overlap','Overlap（Tokens）','number')+select('chunking.tokenizer_mode','Tokenizer 來源',['沿用 Embedding','自行指定']);if(config.chunking.tokenizer_mode==='自行指定')h+=input('chunking.tokenizer','Tokenizer ID')+input('chunking.tokenizer_revision','Tokenizer revision');else h+=`<div class="notice">${esc(tokenizer().id)} @ ${esc(tokenizer().revision)}<br>與 Embedding 設定連動；更換 Tokenizer 需重新切分。</div>`;
 if(config.chunking.method==='Header-aware')h+=pick('chunking.levels','章節切分層級',[1,2,3,4,5,6],'H')+'<p class="rule">先依章節切分；超長章節使用下方 Recursive 規則。針對 Unit 的 Markdown text 判讀 # 標題，不要求 Parser 產生 heading Blocks。</p>';
 if(config.chunking.method!=='Fixed-size')h+='<details><summary>進階：Recursive 分隔符</summary>'+label('依優先順序排列（JSON）',`<textarea class="control" rows="4" data-separators aria-label="分隔符 JSON">${esc(JSON.stringify(config.chunking.separators))}</textarea>`,'最後的空字串代表必要時按字元細切；Token 計量仍使用指定 Tokenizer。')+flag('chunking.keep_separator','保留分隔符')+'</details>';h+='<details id="chunkSources" '+(chunkSourcesOpen?'open':'')+'><summary>進階：切分來源與完整欄位複製</summary>'+(config.chunking.tasks?'<p class="rule">目前使用多任務，下方任務各自設定來源與輸出。</p>':resolvedSelect('chunking.split','主要切分欄位',parsedFields(config),'string')+input('chunking.output_field','切片輸出欄位','text','預設 text；改名會影響 Embedding 與 Indexing。')+resolvedPick('chunking.copy','複製完整欄位',parsedFields(config),'structdata.'))+'</details><p class="rule">預設逐 Unit 切 structdata.text → structdata.text；不跨 Unit 合併／overlap，metadata 全部繼承。來源追溯由模組依設定提供，缺少 _rag 不阻擋。</p>'; }
@@ -411,7 +403,7 @@ function templateVars(t){return [...t.matchAll(/{{\s*([^{}]+?)\s*}}/g)].map(x=>x
 
 function syncStored(c){c.indexing.stored=outputFields(c);}
 function validateBuiltin(c){syncStored(c);const e=[],add=(m,t)=>e.push('['+m+'] '+t),check=(a,b,m,t)=>a.forEach(v=>{if(!b.includes(v))add(m,t+'：'+v+' 不在上游，請修正。')}),cf=outputFields(c),vs=c.embedding.mappings.map(x=>x.output),unique=a=>new Set(a).size===a.length,ident=/^[A-Za-z_][A-Za-z0-9_]*$/;
-if(Object.hasOwn(c,'generation')||Object.hasOwn(c.parsing,'headings'))add('Config','舊 Generation／結構設定需明確遷移；不執行或靜默丟棄。');e.push(...schemaFieldErrors(c.import.fields,'Import'));if(c.import.source!=='structdata'&&!remote(c,'parsing'))e.push(...schemaFieldErrors(c.parsing.output_fields,'Parsing'));e.push(...taskErrors(c));if(taskDraftError)e.push(taskDraftError);if(!c.chunking.tasks){if(c.chunking.copy.includes(c.chunking.split))add('Chunking','同來源完整複製需在進階任務映射為 original_text 等不同名稱。');}if(c.chunking.method==='Header-aware'&&!c.chunking.levels.length)add('Chunking','Header-aware 需至少一個 Markdown 標題層級。');if(!['Fixed-size','Recursive','Header-aware'].includes(c.chunking.method))add('Chunking','不支援的切分方法。');if(!tokenizer(c).id.trim()||!tokenizer(c).revision.trim())add('Chunking','Tokenizer ID／revision 不可空白。');
+if(Object.hasOwn(c,'generation')||Object.hasOwn(c.parsing,'headings'))add('Config','舊 Generation／結構設定需明確遷移；不執行或靜默丟棄。');e.push(...schemaFieldErrors(c.import.fields,'Import'));e.push(...builtinParsingErrors(c));e.push(...taskErrors(c));if(taskDraftError)e.push(taskDraftError);if(!c.chunking.tasks){if(c.chunking.copy.includes(c.chunking.split))add('Chunking','同來源完整複製需在進階任務映射為 original_text 等不同名稱。');}if(c.chunking.method==='Header-aware'&&!c.chunking.levels.length)add('Chunking','Header-aware 需至少一個 Markdown 標題層級。');if(!['Fixed-size','Recursive','Header-aware'].includes(c.chunking.method))add('Chunking','不支援的切分方法。');if(!tokenizer(c).id.trim()||!tokenizer(c).revision.trim())add('Chunking','Tokenizer ID／revision 不可空白。');
 if(!unique(vs)||vs.some(x=>!ident.test(x)))add('Embedding','向量名稱必須有效且唯一。');check(c.indexing.stored,cf,'Indexing','儲存欄位');check(c.indexing.vectors,usableVectorNames(c),'Indexing','向量索引');check(c.indexing.fulltext,c.indexing.stored,'Indexing','全文索引');check(c.indexing.filters,filterCandidates(c),'Indexing','過濾欄位');e.push(...filterErrors(c,c.retrieval.filters));e.push(...fusionErrors(c),...resultErrors(c));check(c.retrieval.vectors,c.indexing.vectors.filter(v=>usableVectorNames(c).includes(v)),'Retrieval','向量欄位');check(c.retrieval.fulltext,c.indexing.fulltext.filter(v=>fieldIsText(c,v)),'Retrieval','全文欄位');if(!c.retrieval.vectors.length&&!c.retrieval.fulltext.length)add('Retrieval','請選擇至少一個搜尋欄位。');
 if(c.embedding.mappings.length){e.push(...serviceErrors(c.embedding,'Embedding API','Embedding'));if(!c.embedding.tokenizer.trim()||!c.embedding.tokenizer_revision.trim())add('Embedding','Tokenizer 資訊不可空白。');if(c.chunking.tokenizer_mode==='沿用 Embedding'&&c.chunking.size>=c.embedding.max_tokens)add('Chunking','Chunk Size 須小於模型上限，預留特殊 Token／前綴空間。');}
 if(c.indexing.backend==='Elasticsearch')e.push(...serviceErrors(c.indexing.es,'Elasticsearch','Indexing'));else if(c.indexing.persistence==='MongoDB'){e.push(...serviceErrors(c.indexing.mongo,'MongoDB','Indexing'));if(c.indexing.mongo.mode!=='DEV test use'&&!c.indexing.mongo.database.trim())add('Indexing','MongoDB Database 不可空白。');}
@@ -475,9 +467,10 @@ function showOperationApi(type){
   if(isIngest){h+='<p class="rule">document_id 是文件的穩定識別。source_revision 是來源版本；Config Revision 是設定版本。入口依目前的 Data Schema 驗證。</p>'+block('Parsing／Remote API 輸出（示例 Data[]）',a.parsed);}else{h+='<p class="rule">filters 可省略或為 []。僅接受 Indexing 已啟用的欄位，eq／in 的值須符合索引型別。所有條件與系統預設及後端權限全部 AND。</p>'+block('系統預設 filters（與本次請求全部 AND）',s.config.retrieval.filters);}
   h+=block('cURL · 先將上述 JSON 存成檔案',curl);
   if(isIngest){
-    h+=block('URI 文件（需相容 Parser）',{document_id:'pdf-001',content:{uri:'https://storage.example.com/report.pdf',media_type:'application/pdf'}});
-    h+=block('Base64 文件（需相容 Parser，示意非有效 PDF）',{document_id:'pdf-002',content:{base64:'JVBERi0xLjcKJSVFT0YK',media_type:'application/pdf'}});
-    h+='<p class="rule">Engine 接受 JSON。content.uri 與 content.base64 二選一；此原型僅顯示來源契約。</p>';
+    if(a.request.content){
+      h+=block('Base64 來源（內容為示意）',{...a.request,content:{base64:'SGVsbG8=',media_type:a.request.content.media_type}});
+      h+='<p class="rule">Engine 接受 JSON。content.uri 與 content.base64 二選一；此原型僅顯示來源契約。</p>';
+    }
     h+=block('202 Accepted · 已接收，尚未完成 Ingestion',a.response);
     h+=block('查詢匯入進度',['GET {BASE_URL}/v1/ingestions/{run_id}','Authorization: Bearer <RUNTIME_TOKEN>'].join('\n'));
     h+=block('200 OK · 完成狀態範例',a.status);
@@ -586,8 +579,10 @@ function schemaFieldErrors(fields,label){
  return errors;
 }
 function sourceForm(){
+ const parser=activeFileParser(config);
  return '<p class="rule">在入口定義原始 <code>structdata</code> 欄位。待 Parser 解析的文件或 JSON 以 <code>content</code> 帶入。</p>'+
   choice('import.source','入口資料形式',[{value:'structdata',label:'已整理欄位（structdata）'},{value:'content',label:'待解析來源（content，可附 structdata）'}])+
+  (parser?'<p class="rule">所選 Parser 接受 <code>'+esc(parser.mediaTypes.join('、'))+'</code>。</p>':'')+
   fieldEditor('import.fields','入口 Data Schema · structdata')+
   '<p class="rule">structdata 限一層。metadata 可含巢狀資料，選作索引時再指定型別。</p>'+
   '<h4>Ingestion Request 範例</h4><p class="rule"><code>POST /v1/ingestions</code> · 下方 JSON 是依入口設定產生的單筆 Data。</p>'+
@@ -596,6 +591,32 @@ function sourceForm(){
 }
 function propertiesFor(fields){return Object.fromEntries(fields.map(f=>[f.name,{type:f.type}]));}
 function fieldSchema(fields){return {type:'object',properties:propertiesFor(fields),required:fields.filter(f=>f.required).map(f=>f.name),additionalProperties:false};}
+const fileParsers=[
+ {value:'pdf',label:'PDF · 文字擷取',filename:'manual.pdf',mediaTypes:['application/pdf']},
+ {value:'pdf_ocr',label:'PDF · OCR',filename:'scan.pdf',mediaTypes:['application/pdf']},
+ {value:'office',label:'Office · Word／PowerPoint／Excel',filename:'manual.docx',mediaTypes:['application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']},
+ {value:'image',label:'圖片 · OCR',filename:'manual.png',mediaTypes:['image/png','image/jpeg']},
+ {value:'text',label:'TXT／Markdown · 純文字',filename:'manual.txt',mediaTypes:['text/plain','text/markdown']},
+ {value:'json',label:'巢狀 JSON · 文字擷取',filename:'manual.json',mediaTypes:['application/json']}
+];
+const parserTextField='contenttext';
+function activeFileParser(c){
+ return c.import.source==='content'&&!remote(c,'parsing')?fileParsers.find(parser=>parser.value===c.parsing.file_parser):null;
+}
+function builtinParsingErrors(c){
+ if(c.import.source!=='content'||remote(c,'parsing'))return [];
+ if(!activeFileParser(c))return ['[Parsing] 請選擇一個內建檔案解析方法。'];
+ return c.import.fields.some(field=>field.name===parserTextField)?['[Parsing] structdata.'+parserTextField+' 由內建 Parser 產生，請從 Import 移除同名欄位。']:[];
+}
+function builtinParserForm(c){
+ if(c.import.source==='structdata')return '<div class="notice">入口已提供 structdata。內建流程直接把欄位交給 Chunking。</div>';
+ const parser=activeFileParser(c);
+ return choice('parsing.file_parser','內建檔案解析方法',fileParsers,{hint:'每個 System 選一個方法，Import 依此接受對應的檔案格式。'})+
+  (parser?'<p class="rule">接受格式 <code>'+esc(parser.mediaTypes.join('、'))+'</code>。</p>':'')+
+  '<div class="notice">保留入口的 structdata 欄位，解析成功後新增 <strong>structdata.'+parserTextField+'</strong>（必填字串），用來帶出文件文字。</div>'+
+  '<details open><summary>解析輸出範例 · Data[]</summary>'+jsonPreview(exampleDocument(c))+'</details>'+
+  '<p class="rule">範例使用示意文字。本頁只做設定與契約驗證。</p>';
+}
 const sourceContentSchema={type:'object',properties:{uri:{type:'string',minLength:1},base64:{type:'string',minLength:1},media_type:{type:'string',minLength:1}},required:['media_type'],oneOf:[{required:['uri']},{required:['base64']}],additionalProperties:false};
 function dataSchema(fields,{source=null,chunk=false}={}){
  const str={type:'string',minLength:1};
@@ -610,10 +631,19 @@ function dataSchema(fields,{source=null,chunk=false}={}){
  required.push('source_revision','structdata');if(chunk)required.push('data_id');
  return {type:'object',properties,required,additionalProperties:false};
 }
-function ingestSchema(c){return dataSchema(c.import.fields,{source:c.import.source});}
+function ingestSchema(c){
+ const schema=dataSchema(c.import.fields,{source:c.import.source}),parser=activeFileParser(c);
+ if(parser){
+  const content=clone(sourceContentSchema);
+  content.properties.media_type.enum=[...parser.mediaTypes];
+  schema.properties.content=content;
+ }
+ return schema;
+}
 function schemaIssues(value,schema,path){
  if(schema.type&&!matchesType(value,schema.type)&&!(schema.type==='object'&&objectValue(value)))return [path+' 需為 '+schema.type+'。'];
  const issues=[];
+ if(schema.enum&&!schema.enum.includes(value))issues.push(path+' 需為所選 Parser 支援的格式：'+schema.enum.join('、')+'。');
  if(typeof value==='string'&&schema.minLength&&!value.trim())issues.push(path+' 不可空白。');
  if(Array.isArray(value)){
   if(value.length<(schema.minItems||0))issues.push(path+' 至少需要 '+schema.minItems+' 筆。');
@@ -642,7 +672,10 @@ function sampleData(c,fields,{parsed=false,chunk=false}={}){
 }
 function exampleIngestion(c){
  const data=sampleData(c,c.import.fields);
- if(c.import.source!=='structdata')data.content={uri:'https://files.example.invalid/manual.pdf',media_type:'application/pdf'};
+ if(c.import.source==='content'){
+  const parser=activeFileParser(c);
+  data.content={uri:'https://files.example.invalid/'+(parser?.filename||'manual.pdf'),media_type:parser?.mediaTypes[0]||'application/pdf'};
+ }
  if(!c.import.fields.length&&c.import.source!=='structdata')delete data.structdata;
  return data;
 }
@@ -737,7 +770,8 @@ function fieldReason(f,expected=null){return !f?'上游未提供':f.reason||(!f.
 function parsedFields(c){
  const api=remote(c,'parsing');
  if(api)return api.output_fields;
- return c.import.source==='structdata'?c.import.fields:c.parsing.output_fields;
+ if(!activeFileParser(c)||c.import.fields.some(field=>field.name===parserTextField))return c.import.fields;
+ return [...c.import.fields,schemaField(parserTextField,'string',true)];
 }
 function rawChunkSpec(c){
  const api=remote(c,managedBy(c,'chunking')||'chunking');
