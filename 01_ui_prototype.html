@@ -590,6 +590,8 @@ function sourceForm(){
   choice('import.source','入口資料形式',[{value:'structdata',label:'已整理欄位（structdata）'},{value:'content',label:'待解析來源（content，可附 structdata）'}])+
   fieldEditor('import.fields','入口 Data Schema · structdata')+
   '<p class="rule">structdata 限一層。metadata 可含巢狀資料，選作索引時再指定型別。</p>'+
+  '<h4>Ingestion Request 範例</h4><p class="rule"><code>POST /v1/ingestions</code> · 下方 JSON 是依入口設定產生的單筆 Data。</p>'+
+  jsonPreview(exampleIngestion(config))+
   '<details><summary>查看入口 JSON Schema</summary>'+jsonPreview(ingestSchema(config))+'</details>';
 }
 function propertiesFor(fields){return Object.fromEntries(fields.map(f=>[f.name,{type:f.type}]));}
