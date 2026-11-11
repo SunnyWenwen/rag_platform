@@ -393,7 +393,10 @@ function filterForm(){
   return h+'<p class="rule">空清單代表不加業務過濾。API 的 filters 可附加條件，與此處及後端權限限制全部 AND；不覆蓋預設條件。改詞值只影響 Inference，不需重新 Ingestion。</p>';
 }
 function queryFilterState(c,text){try{const filters=text.trim()?JSON.parse(text):[];return {filters,errors:filterErrors(c,filters,'本次查詢 filters')};}catch{return {filters:[],errors:['[Retrieval] 本次查詢 filters 必須是有效 JSON 陣列。']};}}
-function queryFilterForm(){return '<details><summary>本次查詢附加過濾（選填）</summary><label class="label" for="queryFilters">filters（JSON 條件陣列）</label><textarea class="control" id="queryFilters" rows="5">[]</textarea><p class="rule">可用欄位：'+esc(active.config.indexing.filters.join('、')||'尚未啟用')+'。條件格式可查看 API 說明；與系統預設及參數條件全部 AND。</p><label class="label">系統預設條件（唯讀）</label>'+jsonPreview(active.config.retrieval.filters)+'</details><p class="invalid" id="queryFilterValidation" role="status"></p>';}
+function queryFilterForm(){
+ const c=active.config,builtin=usesPlatformRetrieval(c);
+ return '<details><summary>'+(builtin?'本次查詢附加過濾（選填）':'本次 QueryContext.filters（選填）')+'</summary><label class="label" for="queryFilters">filters（JSON 條件陣列）</label><textarea class="control" id="queryFilters" rows="5">[]</textarea><p class="rule">可用欄位：'+esc(c.indexing.filters.join('、')||'尚未啟用')+'。'+(builtin?'條件格式可查看 API 說明；與系統預設及參數條件全部 AND。':'此欄位隨 QueryContext 傳給 Remote API。服務的自訂過濾參數可透過 parameters 傳入。')+'</p>'+(builtin?'<label class="label">系統預設條件（唯讀）</label>'+jsonPreview(c.retrieval.filters):'')+'</details><p class="invalid" id="queryFilterValidation" role="status"></p>';
+}
 $('operationBody').addEventListener('input',e=>{if(['question','queryParameters','queryFilters','queryMetadata'].includes(e.target.id))updateInferenceInput();});
 function filterExample(field,c=active?.config||config){const values={'document_id':'doc-example-1','source_revision':'v1','data_id':'doc-example-1:chunk-1','metadata.department':'設備工程','structdata.title':'設備保養規範','structdata.text':'設備每月需清潔散熱孔。'};const type=filterType(c,field);return type==='integer'||type==='number'?7:type==='boolean'?true:values[field]||'設備工程';}
 function queryCount(c){return c.transform.method==='None'?1:(c.transform.method==='Rewrite'?1:c.transform.count)+(c.transform.include_original?1:0);}
@@ -475,7 +478,7 @@ function showOperationApi(type){
   h+='<p class="rule">BASE_URL 範例：'+base+'。認證依部署 Gateway 設定；RUNTIME_TOKEN 是呼叫 Retrieval Runtime 的憑證，與 LLM／DB Secret 分開。此 Runtime 已綁定 Config，不在請求中另外指定 System ID。</p>';
   h+=block('JSON Request · '+(isIngest?'document.json':'query.json'),a.request);
   h+='<p class="rule">'+(isIngest?'已整理欄位進 structdata，待解析來源進 content。選填的 parameters 與 Data 分開處理，供本次匯入流程引用。':'query 是使用者的原始問題；Rewrite／Retrieval／Rerank 由此 System 的 Config 決定。')+'</p>';
-  if(isIngest){h+='<p class="rule">document_id 是文件的穩定識別。source_revision 是來源版本；Config Revision 是設定版本。入口依目前的 Data Schema 驗證。</p>'+block('Parsing／Remote API 輸出（示例 Data[]）',a.parsed);if(s.config.import.parameters.length)h+=block('匯入 parameters JSON Schema',importParameterSchema(s.config));}else{h+='<p class="rule">filters 可省略或為 []。僅接受 Indexing 已啟用的欄位，eq／in 的值須符合索引型別。參數條件、附加 filters、系統預設及後端權限全部 AND。</p>'+block('系統預設 filters（與本次請求全部 AND）',s.config.retrieval.filters);if(s.config.inference_input.parameters.length)h+=block('parameters JSON Schema',inferenceParameterSchema(s.config));}
+  if(isIngest){h+='<p class="rule">document_id 是文件的穩定識別。source_revision 是來源版本；Config Revision 是設定版本。入口依目前的 Data Schema 驗證。</p>'+block('Parsing／Remote API 輸出（示例 Data[]）',a.parsed);if(s.config.import.parameters.length)h+=block('匯入 parameters JSON Schema',importParameterSchema(s.config));}else{h+=usesPlatformRetrieval(s.config)?'<p class="rule">filters 可省略或為 []。僅接受 Indexing 已啟用的欄位，eq／in 的值須符合索引型別。參數條件、附加 filters、系統預設及後端權限全部 AND。</p>'+block('系統預設 filters（與本次請求全部 AND）',s.config.retrieval.filters):'<p class="rule">filters 是 QueryContext 的共用欄位，可省略或為 []。Remote API 的服務參數依 parameters JSON 設定傳送。</p>';if(s.config.inference_input.parameters.length)h+=block('parameters JSON Schema',inferenceParameterSchema(s.config));}
   h+=block('cURL · 先將上述 JSON 存成檔案',curl);
   if(isIngest){
     if(a.request.content){
@@ -603,10 +606,11 @@ function parameterObjectSchema(definitions,shape){
  return {type:'object',properties,required:declared.filter(p=>p.required).map(p=>p.name),additionalProperties:false};
 }
 function inferenceParameterSchema(c){
+ const settings=retrievalInputSettings(c);
  return parameterObjectSchema(c.inference_input.parameters,p=>{
   const schema=p.type==='secret_ref'?{type:'string',pattern:secretRefPattern.source}:{type:p.type};
-  if(p.name===referencedParameter(c.retrieval.top_k_ref)&&p.type==='integer')schema.minimum=1;
-  if(p.name===referencedParameter(c.retrieval.filters_ref)&&p.type==='array'){
+  if(p.name===referencedParameter(settings.top_k_ref)&&p.type==='integer')schema.minimum=1;
+  if(p.name===referencedParameter(settings.filters_ref)&&p.type==='array'){
    const fields=c.indexing.filters.filter(field=>filterCandidates(c).includes(field));
    schema.items={type:'object',required:['field','operator','value'],properties:{field:{type:'string',...(fields.length?{enum:fields}:{})},operator:{enum:['eq','in']},value:{}}};
   }
@@ -654,8 +658,8 @@ function resolveParameters(definitions,provided,label,{checkRequired=true}={}){
 }
 function resolveInference(c,provided,options){
  const {parameters,errors}=resolveParameters(c.inference_input.parameters,provided,'Inference Input',options);
- const topKName=referencedParameter(c.retrieval.top_k_ref),filtersName=referencedParameter(c.retrieval.filters_ref);
- const topK=topKName&&Object.hasOwn(parameters,topKName)?parameters[topKName]:c.retrieval.per_route_k;
+ const settings=retrievalInputSettings(c),topKName=referencedParameter(settings.top_k_ref),filtersName=referencedParameter(settings.filters_ref);
+ const topK=topKName&&Object.hasOwn(parameters,topKName)?parameters[topKName]:settings.per_route_k;
  const filters=filtersName&&Object.hasOwn(parameters,filtersName)?parameters[filtersName]:[];
  if(usesPlatformRetrieval(c)&&(!Number.isSafeInteger(topK)||topK<1))errors.push('[Retrieval／搜尋 Top K] Top K 必須為正整數。');
  errors.push(...filterErrors(c,filters,'參數 filters'));
@@ -676,10 +680,11 @@ function importParameterErrors(c){
 }
 function inferenceConfigErrors(c){
  const errors=parameterDefinitionErrors(c.inference_input.parameters,inferenceParameterTypes,'Inference Input');
- for(const [ref,type,label] of [[c.retrieval.top_k_ref,'integer','搜尋 Top K'],[c.retrieval.filters_ref,'array','過濾條件']]){
+ const settings=retrievalInputSettings(c);
+ for(const [ref,type,label] of [[settings.top_k_ref,'integer','搜尋 Top K'],[settings.filters_ref,'array','過濾條件']]){
   if((type!=='integer'||usesPlatformRetrieval(c))&&ref&&!c.inference_input.parameters.some(p=>p.name===referencedParameter(ref)&&p.type===type))errors.push('[Retrieval／'+label+'] '+ref+' 需引用已宣告的 '+type+' 參數。');
  }
- return [...errors,...resolveInference(c,{}, {checkRequired:false}).errors,...filterErrors(c,c.retrieval.filters,'系統預設 filters')];
+ return [...errors,...resolveInference(c,{}, {checkRequired:false}).errors,...filterErrors(c,settings.filters,'系統預設 filters')];
 }
 function sampleFilter(c){
  const field=c.indexing.filters.find(value=>filterCandidates(c).includes(value));
@@ -692,17 +697,17 @@ function exampleParameterValue(p){
 }
 function exampleInferenceParameters(c){
  return Object.fromEntries(c.inference_input.parameters.filter(p=>validFieldName(p.name)).map(p=>{
-  if(p.name===referencedParameter(c.retrieval.top_k_ref)&&p.type==='integer')return [p.name,5];
-  if(p.name===referencedParameter(c.retrieval.filters_ref)&&p.type==='array')return [p.name,sampleFilter(c)];
+  if(p.name===referencedParameter(retrievalInputSettings(c).top_k_ref)&&p.type==='integer')return [p.name,5];
+  if(p.name===referencedParameter(retrievalInputSettings(c).filters_ref)&&p.type==='array')return [p.name,sampleFilter(c)];
   return [p.name,exampleParameterValue(p)];
  }));
 }
 function inferenceRequestExample(c){
- return {query:'設備多久需要保養？',...(c.inference_input.parameters.length?{parameters:exampleInferenceParameters(c)}:{}),filters:c.retrieval.filters_ref?[]:sampleFilter(c),metadata:{language:'zh-TW'}};
+ return {query:'設備多久需要保養？',...(c.inference_input.parameters.length?{parameters:exampleInferenceParameters(c)}:{}),filters:retrievalInputSettings(c).filters_ref?[]:sampleFilter(c),metadata:{language:'zh-TW'}};
 }
 function inferenceParametersForm(c){
  if(!c.inference_input.parameters.length)return '';
- return '<label class="label" for="queryParameters">parameters（JSON object）</label><textarea class="control" id="queryParameters" rows="5">{}</textarea><button class="btn" onclick="loadInferenceParameterExample()">帶入參數範例</button><p class="rule">選填參數未提供時使用宣告的預設值。過濾條件與本次附加及系統預設條件全部 AND。</p>';
+ return '<label class="label" for="queryParameters">parameters（JSON object）</label><textarea class="control" id="queryParameters" rows="5">{}</textarea><button class="btn" onclick="loadInferenceParameterExample()">帶入參數範例</button><p class="rule">選填參數未提供時使用宣告的預設值。'+(usesPlatformRetrieval(c)?'過濾條件與本次附加及系統預設條件全部 AND。':'Remote API 依 parameters JSON 的引用取得參數。')+'</p>';
 }
 function loadInferenceParameterExample(){
  $('queryParameters').value=JSON.stringify(exampleInferenceParameters(active.config),null,2);
@@ -720,7 +725,7 @@ function updateInferenceInput(){
  const state=inferenceInputState(),c=active.config,query=$('question').value.trim();
  $('queryFilterValidation').textContent=state.errors.join('\n');
  $('inferenceRun').disabled=!!state.errors.length||!inferenceReady(active);
- $('effectiveInferenceInput').textContent=state.errors.length?'請先修正 Inference 輸入。':JSON.stringify({parameters:state.parameters,...(usesPlatformRetrieval(c)?{top_k:state.topK}:{}),filters:[...c.retrieval.filters,...state.filters],...(query&&!coveredByRemote(c,'transform')&&c.transform.method!=='None'?{query_prompt:renderQueryPrompt(c,query,state.parameters)}:{}),remote_apis:inferenceRemotePlan(c,state.parameters)},null,2);
+ $('effectiveInferenceInput').textContent=state.errors.length?'請先修正 Inference 輸入。':JSON.stringify({parameters:state.parameters,...(usesPlatformRetrieval(c)?{top_k:state.topK}:{}),filters:[...retrievalInputSettings(c).filters,...state.filters],...(query&&!coveredByRemote(c,'transform')&&c.transform.method!=='None'?{query_prompt:renderQueryPrompt(c,query,state.parameters)}:{}),remote_apis:inferenceRemotePlan(c,state.parameters)},null,2);
 }
 function renderQueryPrompt(c,query,parameters){
  const settings=c.transform;
@@ -1010,6 +1015,7 @@ function remoteScope(c,module){const scope=remote(c,module)?.scope||module;retur
 function managedBy(c,module){return remoteModules.find(owner=>owner!==module&&remote(c,owner)&&remoteScope(c,owner).includes(module))||null;}
 function coveredByRemote(c,module){return !!remote(c,module)||!!managedBy(c,module);}
 function usesPlatformRetrieval(c){return !coveredByRemote(c,'retrieval');}
+function retrievalInputSettings(c){return usesPlatformRetrieval(c)?c.retrieval:{top_k_ref:'',per_route_k:null,filters_ref:'',filters:[]};}
 function inferenceReady(system){return !usesPlatformRetrieval(system.config)||system.docs>0&&!system.needsIngest;}
 function moduleLabel(id){return modules.find(m=>m[0]===id)?.[1]||id;}
 function chooseComponent(module,mode){
@@ -1041,7 +1047,7 @@ function queryContextSchema(c){
  const resultSet={type:'object',properties:{key:str,items:{type:'array',items:item}},required:['key','items'],additionalProperties:false};
  return {type:'array',minItems:1,items:{type:'object',properties:{ori_query:str,query:str,filters:{type:'array',items:filter},result_sets:{type:'array',items:resultSet},metadata:{type:'object'}},required:['ori_query','query','filters','result_sets','metadata'],additionalProperties:false}};
 }
-function initialQueryContexts(c,query,filters=[],metadata={}){return [{ori_query:query,query,filters:clone([...c.retrieval.filters,...filters]),result_sets:[],metadata:clone(metadata)}];}
+function initialQueryContexts(c,query,filters=[],metadata={}){return [{ori_query:query,query,filters:clone([...retrievalInputSettings(c).filters,...filters]),result_sets:[],metadata:clone(metadata)}];}
 function exampleQueryContexts(c,module){
  const request=inferenceRequestExample(c),resolved=resolveInference(c,request.parameters||{}),initial=initialQueryContexts(c,request.query,[...request.filters,...resolved.filters],request.metadata);
  if(module==='rerank')initial[0].result_sets=[{key:'remote-search',items:[{data:{...sampleData(c,embeddedFields(c),{chunk:true}),vectors:{}},score:0.7}]}];
@@ -1117,7 +1123,7 @@ function componentForm(module){
  const path='remote_apis.'+module,b=remoteBoundary(config,module),scope=remoteScope(config,module).map(moduleLabel).join(' → '),stage=inference?'Inference Input':'Import';
  h+=remoteScopeChoice(module)+'<p class="rule">由 User 提供並維護服務。平台以 POST 呼叫 <strong>'+esc(scope)+'</strong> 的邊界。</p>';
  if(inference)h+=inferenceContractPanel(config);
- if(remoteScope(config,module).includes('retrieval'))h+='<div class="notice">此 Remote API 可搜尋自有資料來源，Inference 無須先完成平台 Ingestion。回傳 data 需符合上方 System Data Schema，資料來源與索引由服務自行管理。</div><p class="rule">服務需套用 QueryContext.filters 與自身權限限制，再執行 Top K。平台可檢查欄位、型別與回傳契約；實際檢索及權限行為由服務實作。</p>'+'<p class="rule">Top K 等服務參數請在下方 parameters JSON 明確設定，例如 <code>{&quot;top_k&quot;: &quot;{{params.top_k}}&quot;}</code>。平台依此宣告傳送參數。</p>'+inferenceParameterChoice('retrieval.filters_ref','查詢過濾參數','array','未綁定','條件由平台整合進 QueryContext.filters。')+filterForm();
+ if(remoteScope(config,module).includes('retrieval'))h+='<div class="notice">此 Remote API 可搜尋自有資料來源，Inference 無須先完成平台 Ingestion。回傳 data 依 System Data Schema 驗證，檢索與排序由服務實作。</div><p class="rule">服務所需參數在下方 parameters JSON 設定，可引用 Inference Input 宣告的 <code>{{params.name}}</code>。</p>';
  h+=input(path+'.endpoint','Remote API Endpoint','url','填完整的 HTTPS URL，包含 API 路徑。')+
   select(path+'.auth','Remote API 認證',['None','Bearer'])+(api.auth==='Bearer'?input(path+'.secret_ref','Secret reference 或 '+stage+' 參數','text','可填 secret-name/key，或引用 {{params.remote_api_secret_ref}}。'):'')+
   textarea(path+'.parameters_json','parameters（JSON object）','可在 JSON 的值填入完整 {{params.name}}。一般參數保留原型別，Secret 引用只用於認證。')+
@@ -1161,7 +1167,7 @@ function loadInferenceRemoteDemo(combined=true){
  config.inference_input.parameters=[schemaField('top_k','integer',false,'8'),schemaField('filters','array',false,'[]'),schemaField('remote_api_secret_ref','secret_ref',true)];
  config.retrieval.top_k_ref=parameterRef('top_k');config.retrieval.filters_ref=parameterRef('filters');
  const module=combined?'transform':'retrieval';
- config.remote_apis[module]={scope:combined?'transform_retrieval_rerank':'retrieval',endpoint:'https://search-service.example.invalid/'+(combined?'query-pipeline':'search'),auth:'Bearer',secret_ref:parameterRef('remote_api_secret_ref'),parameters_json:JSON.stringify({top_k:parameterRef('top_k')},null,2)};
+ config.remote_apis[module]={scope:combined?'transform_retrieval_rerank':'retrieval',endpoint:'https://search-service.example.invalid/'+(combined?'query-pipeline':'search'),auth:'Bearer',secret_ref:parameterRef('remote_api_secret_ref'),parameters_json:JSON.stringify({top_k:parameterRef('top_k'),filters:parameterRef('filters')},null,2)};
  selectMod(module);
 }
 function loadRemoteDemo(scope='parsing_chunking'){
@@ -1270,7 +1276,7 @@ function queryMetadataState(text){try{const metadata=text.trim()?JSON.parse(text
 function mockRetrieval(c,query,filters=[],metadata={},topK=c.retrieval.per_route_k){
  const chunks=previewChunks(c,exampleDocument(c)),plan=resultPlan(c,topK),groups=new Map();
  for(const g of plan.final){const current=g.queries.length===1&&g.queries[0]!=='original'?'示意改寫 '+g.queries.join('+')+'：'+query:query;if(!groups.has(current))groups.set(current,[]);groups.get(current).push({key:g.routes.length>1?'merged':g.routes[0]||'merged',items:chunks.slice(0,Math.min(3,g.upper)).map((chunk,j)=>({data:{...chunk,vectors:{}},score:0.9-j*0.1}))});}
- return [...groups].map(([current,result_sets])=>({ori_query:query,query:current,filters:clone([...c.retrieval.filters,...filters]),result_sets,metadata:clone(metadata)}));
+ return [...groups].map(([current,result_sets])=>({ori_query:query,query:current,filters:clone([...retrievalInputSettings(c).filters,...filters]),result_sets,metadata:clone(metadata)}));
 }
 function validate(c){
  const types=[];
@@ -1282,7 +1288,7 @@ function validate(c){
  const custom=new Set(remoteModules.filter(module=>remote(c,module)||managedBy(c,module)).map(moduleLabel)),builtin=builtinConfiguration(c);
  return [...new Set([...types,...validateBuiltin(builtin).filter(message=>!custom.has(message.match(/^\[([^／\]]+)/)?.[1])),...remoteErrors(c),...metadataErrors(c),...compositionErrors(c),...inferenceConfigErrors(c),...importParameterErrors(c)])];
 }
-function builtinConfiguration(raw){const c=clone(raw);if(coveredByRemote(raw,'transform')){c.transform.method='None';c.llms=[];}if(coveredByRemote(raw,'rerank'))c.rerank.mode='None';return c;}
+function builtinConfiguration(raw){const c=clone(raw);if(coveredByRemote(raw,'transform')){c.transform.method='None';c.llms=[];}if(coveredByRemote(raw,'rerank'))c.rerank.mode='None';if(!usesPlatformRetrieval(raw))c.retrieval=clone(defaults().retrieval);return c;}
 function effectiveConfig(raw){
  const c=effectiveBuiltin(builtinConfiguration(raw));delete c.remote_apis;
  c.inference_input={parameters_schema:inferenceParameterSchema(raw)};
@@ -1292,7 +1298,7 @@ function effectiveConfig(raw){
  if(!compositionOn(raw))delete c.embedding.composition;
  if(coveredByRemote(raw,'transform'))c.llms=[];
  c.inference_input.output_contract='QueryContext[]';c.inference_input.output_schema=queryContextSchema(raw);
- c.inference_input.retrieval_parameters={...(usesPlatformRetrieval(raw)?{top_k_ref:raw.retrieval.top_k_ref,fixed_top_k:raw.retrieval.per_route_k}:{}),filters_ref:raw.retrieval.filters_ref,default_filters:clone(raw.retrieval.filters)};
+ if(usesPlatformRetrieval(raw))c.inference_input.retrieval_parameters={top_k_ref:raw.retrieval.top_k_ref,fixed_top_k:raw.retrieval.per_route_k,filters_ref:raw.retrieval.filters_ref,default_filters:clone(raw.retrieval.filters)};
  for(const binding of remoteBindings(raw)){c[binding.module]={method:'remote_api',...binding};for(const covered of binding.covers.slice(1))c[covered]={managed_by:binding.module};}
  return c;
 }
