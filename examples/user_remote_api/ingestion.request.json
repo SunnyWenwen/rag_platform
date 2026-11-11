@@ -1,0 +1,30 @@
+{
+  "documents": [
+    {
+      "document_id": "manual-001",
+      "source_revision": "v1",
+      "structdata": {
+        "title": "設備維護"
+      },
+      "content": {
+        "media_type": "application/pdf",
+        "uri": "https://files.example.invalid/manual.pdf"
+      }
+    },
+    {
+      "document_id": "manual-002",
+      "source_revision": "v1",
+      "structdata": {
+        "title": "設備維護"
+      },
+      "content": {
+        "media_type": "application/pdf",
+        "uri": "https://files.example.invalid/manual-2.pdf"
+      }
+    }
+  ],
+  "parameters": {
+    "language": "zh-TW",
+    "remote_secret_ref": "parser/api-token"
+  }
+}

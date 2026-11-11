@@ -1,0 +1,14 @@
+{
+  "input": [
+    {
+      "ori_query": "如何保養設備？",
+      "query": "如何保養設備？",
+      "filters": [],
+      "result_sets": [],
+      "metadata": {}
+    }
+  ],
+  "parameters": {
+    "top_k": 5
+  }
+}

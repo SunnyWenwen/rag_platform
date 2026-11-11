@@ -1,129 +1,142 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="2360" height="1620" viewBox="0 0 2360 1620" role="img" aria-labelledby="title desc">
-<title id="title">Retrieval Builder 測試平台、共用 Library 與 Local／Remote 開發流程</title>
-<desc id="desc">Build 到 Deploy 六步在同一水平；1～5 在測試平台框內，6 在框外。Remote Developer 提供 Manifest 註冊能力，Library 透過 Remote API Adapter 呼叫獨立 Service；遠端實作不包進 Library。上方為 Retrieval Builder User 的測試區塊，Build 產出 Config，Config 與共用 Engine 建立測試 System。框外的 YAML 部署與共用 Engine 建立 k8s System。中間為 Retrieval Engine Library，提供可選 Module／Component 的連線直接指向 Build。下方為 Retrieval Engine Developer 的開發區塊，依序下載 repo／確認開發 contract、開發 Component、測試與 PR 審查、發布並更新 Retrieval Engine Library；角色名稱標示於區塊標題。實線為操作流程與發布，虛線為設定、產出及共用能力。</desc>
-<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 Z" fill="#66788b" /></marker></defs>
-<style>
-text{font-family:'Noto Sans CJK TC','Noto Sans TC','Microsoft JhengHei',sans-serif;font-weight:400;text-anchor:middle;dominant-baseline:central;fill:#143054}
-.step rect{fill:#e9f2ff;stroke:#6086c8}.object rect{fill:#ecf8f2;stroke:#599d85}.object text{fill:#153f32}
-.deploy rect{fill:#fff5e5;stroke:#cf9b4a}.deploy text{fill:#624516}.engine rect{fill:#eee9fa;stroke:#9380bf}.engine text{fill:#443267}
-.node rect{stroke-width:1.8}.edge{fill:none;stroke:#60768e;stroke-width:2;marker-end:url(#arrow)}
-.relation{stroke:#66788b;stroke-dasharray:7 7}.edge-label{fill:#485d71;stroke:white;stroke-width:11;stroke-linejoin:round;paint-order:stroke fill}
-.frame-title{font-size:26;text-anchor:start;font-weight:500}.note{font-size:18;fill:#66788b}
-</style><rect width="2360" height="1620" fill="white" />
-<g id="BUILDER" class="frame"><rect x="30" y="35" width="1700" height="700" rx="12" fill="#f7faff" stroke="#9aafc9" stroke-width="1.8" /><text class="frame-title" x="55" y="65" style="stroke:none">Retrieval Builder 測試平台 (for Retrieval Builder User)</text></g>
-<g id="ENGINE" class="frame"><rect x="30" y="830" width="1700" height="180" rx="12" fill="#f7f4fc" stroke="#b5a4d0" stroke-width="1.8" /><text class="frame-title" x="55" y="860" style="stroke:none">Retrieval Engine Library</text></g>
-<g id="DEVELOPMENT" class="frame"><rect x="30" y="1110" width="2250" height="450" rx="12" fill="#faf8fd" stroke="#b5a4d0" stroke-width="1.8" /><text class="frame-title" x="55" y="1140" style="stroke:none">Retrieval Engine Component 開發（for Retrieval Engine Developer）</text></g>
-<path id="edge-B-I" data-source="B" data-target="I" data-label="" class="edge" d="M300,352 L360,352" />
-<path id="edge-I-Q" data-source="I" data-target="Q" data-label="" class="edge" d="M600,352 L660,352" />
-<path id="edge-Q-E" data-source="Q" data-target="E" data-label="" class="edge" d="M900,352 L960,352" />
-<path id="edge-E-X" data-source="E" data-target="X" data-label="準備部署到 k8s" class="edge" d="M1200,352 L1460,352" />
-<path id="edge-E-C" data-source="E" data-target="C" data-label="驗證不達標，需調整" class="edge" d="M1140,310 L1140,185" />
-<path id="edge-C-I" data-source="C" data-target="I" data-label="調整 Ingestion 設定，需重新 Ingestion" class="edge" d="M1020,125 L480,125 L480,310" />
-<path id="edge-C-Q" data-source="C" data-target="Q" data-label="只調整 Inference 設定，不需重新 Ingestion" class="edge" d="M1020,170 L780,170 L780,310" />
-<path id="edge-B-F" data-source="B" data-target="F" data-label="產出" class="edge relation" d="M180,395 L180,520" />
-<path id="edge-C-F" data-source="C" data-target="F" data-label="更新設定" class="edge relation" d="M1140,100 L1140,90 L330,90 L330,342 Q346,352 330,362 L330,560 L290,560" />
-<path id="edge-F-S" data-source="F" data-target="S" data-label="套用 Config" class="edge relation" d="M290,580 L365,580 L365,660 L420,660" />
-<path id="edge-I-S" data-source="I" data-target="S" data-label="建立 Chunks / Indexes" class="edge relation" d="M480,395 L480,610" />
-<path id="edge-Q-S" data-source="Q" data-target="S" data-label="查詢" class="edge relation" d="M780,395 L780,610" />
-<path id="edge-E-S" data-source="E" data-target="S" data-label="評估" class="edge relation" d="M1080,520 L860,520 L860,610" />
-<path id="edge-E-R" data-source="E" data-target="R" data-label="產出" class="edge relation" d="M1080,395 L1080,620" />
-<path id="edge-X-Y" data-source="X" data-target="Y" data-label="產出" class="edge relation" d="M1580,395 L1580,620" />
-<path id="edge-X-D" data-source="X" data-target="D" data-label="使用匯出的 YAML" class="edge" d="M1700,352 L1900,352" />
-<path id="edge-D-K" data-source="D" data-target="K" data-label="部署" class="edge relation" d="M2080,395 L2080,620" />
-<path id="edge-Y-K" data-source="Y" data-target="K" data-label="套用 YAML" class="edge relation" d="M1700,660 L1900,660" />
-<path id="edge-GE-S" data-source="GE" data-target="S" data-label="依 Config 建立" class="edge relation" d="M1000,865 L1000,785 L660,785 L660,710" />
-<path id="edge-GE-K" data-source="GE" data-target="K" data-label="Library 執行核心（由 Platform Image 封裝）" class="edge relation" d="M1360,865 L1360,785 L2080,785 L2080,700" />
-<path id="edge-GE-B" data-source="GE" data-target="B" data-label="提供可選 Module／Component" class="edge relation" d="M850,920 L42,920 L42,352 L60,352" />
-<path id="edge-DEV4-GE" data-source="DEV4" data-target="GE" data-label="更新 Retrieval Engine Library" class="edge" d="M1985,1185 L1985,1055 L1210,1055 L1210,965" />
-<circle cx="1080" cy="520" r="3" fill="#66788b" />
-<g id="B" class="node step" data-label="1. Build（設定 Config）"><rect x="60" y="310" width="240" height="85" rx="10" />
-<text x="180.0" y="337.0" font-size="23" style="stroke:none">1. Build</text>
-<text x="180.0" y="368.0" font-size="19" style="stroke:none">設定 Config</text>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.42.4 (0)
+ -->
+<!-- Pages: 1 -->
+<svg width="1119pt" height="1137pt"
+ viewBox="0.00 0.00 537.00 546.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(2.08 2.08) rotate(0) translate(18 528)">
+<polygon fill="white" stroke="transparent" points="-18,18 -18,-528 519,-528 519,18 -18,18"/>
+<!-- U -->
+<g id="node1" class="node">
+<title>U</title>
+<path fill="#f8fafc" stroke="#cbd5e1" d="M190.5,-431C190.5,-431 160.5,-431 160.5,-431 154.5,-431 148.5,-425 148.5,-419 148.5,-419 148.5,-407 148.5,-407 148.5,-401 154.5,-395 160.5,-395 160.5,-395 190.5,-395 190.5,-395 196.5,-395 202.5,-401 202.5,-407 202.5,-407 202.5,-419 202.5,-419 202.5,-425 196.5,-431 190.5,-431"/>
+<text text-anchor="middle" x="175.5" y="-409.9" font-family="Noto Sans CJK TC" font-size="12.00" fill="#0f172a">User</text>
 </g>
-<g id="I" class="node step" data-label="2. Ingestion"><rect x="360" y="310" width="240" height="85" rx="10" />
-<text x="480.0" y="352.5" font-size="23" style="stroke:none">2. Ingestion</text>
+<!-- B -->
+<g id="node4" class="node">
+<title>B</title>
+<path fill="#f8fafc" stroke="#cbd5e1" d="M298,-352C298,-352 129,-352 129,-352 123,-352 117,-346 117,-340 117,-340 117,-328 117,-328 117,-322 123,-316 129,-316 129,-316 298,-316 298,-316 304,-316 310,-322 310,-328 310,-328 310,-340 310,-340 310,-346 304,-352 298,-352"/>
+<text text-anchor="middle" x="213.5" y="-330.9" font-family="Noto Sans CJK TC" font-size="12.00" fill="#0f172a">Builder · Workspace / System</text>
 </g>
-<g id="Q" class="node step" data-label="3. Inference"><rect x="660" y="310" width="240" height="85" rx="10" />
-<text x="780.0" y="352.5" font-size="23" style="stroke:none">3. Inference</text>
+<!-- U&#45;&gt;B -->
+<g id="edge2" class="edge">
+<title>U&#45;&gt;B</title>
+<path fill="none" stroke="#64748b" d="M179.07,-394.74C181.17,-386.39 184.26,-376.39 188.5,-368 190.15,-364.72 192.14,-361.44 194.27,-358.29"/>
+<polygon fill="#64748b" stroke="#64748b" points="196.61,-359.35 198.76,-352.03 192.51,-356.41 196.61,-359.35"/>
+<text text-anchor="middle" x="213" y="-371" font-family="Noto Sans CJK TC" font-size="10.00" fill="#334155">建立或編輯</text>
 </g>
-<g id="E" class="node step" data-label="4. Evaluation"><rect x="960" y="310" width="240" height="85" rx="10" />
-<text x="1080.0" y="352.5" font-size="23" style="stroke:none">4. Evaluation</text>
+<!-- A -->
+<g id="node2" class="node">
+<title>A</title>
+<path fill="#f8fafc" stroke="#cbd5e1" d="M294,-510C294,-510 261,-510 261,-510 255,-510 249,-504 249,-498 249,-498 249,-486 249,-486 249,-480 255,-474 261,-474 261,-474 294,-474 294,-474 300,-474 306,-480 306,-486 306,-486 306,-498 306,-498 306,-504 300,-510 294,-510"/>
+<text text-anchor="middle" x="277.5" y="-488.9" font-family="Noto Sans CJK TC" font-size="12.00" fill="#0f172a">Admin</text>
 </g>
-<g id="X" class="node step" data-label="5. Export YAML"><rect x="1460" y="310" width="240" height="85" rx="10" />
-<text x="1580.0" y="352.5" font-size="23" style="stroke:none">5. Export YAML</text>
+<!-- T -->
+<g id="node3" class="node">
+<title>T</title>
+<path fill="#f8fafc" stroke="#cbd5e1" d="M318,-431C318,-431 237,-431 237,-431 231,-431 225,-425 225,-419 225,-419 225,-407 225,-407 225,-401 231,-395 237,-395 237,-395 318,-395 318,-395 324,-395 330,-401 330,-407 330,-407 330,-419 330,-419 330,-425 324,-431 318,-431"/>
+<text text-anchor="middle" x="277.5" y="-409.9" font-family="Noto Sans CJK TC" font-size="12.00" fill="#0f172a">全域版本化模板</text>
 </g>
-<g id="C" class="node step" data-label="修改 Config"><rect x="1020" y="100" width="240" height="85" rx="10" />
-<text x="1140.0" y="142.5" font-size="24" style="stroke:none">修改 Config</text>
+<!-- A&#45;&gt;T -->
+<g id="edge1" class="edge">
+<title>A&#45;&gt;T</title>
+<path fill="none" stroke="#64748b" d="M277.5,-473.91C277.5,-463.44 277.5,-449.88 277.5,-438.31"/>
+<polygon fill="#64748b" stroke="#64748b" points="280.02,-438.24 277.5,-431.04 274.98,-438.24 280.02,-438.24"/>
+<text text-anchor="middle" x="287.5" y="-450" font-family="Noto Sans CJK TC" font-size="10.00" fill="#334155">維護</text>
 </g>
-<g id="F" class="node object" data-label="Config"><rect x="90" y="520" width="200" height="80" rx="10" />
-<text x="190.0" y="560.0" font-size="25" style="stroke:none">Config</text>
+<!-- T&#45;&gt;B -->
+<g id="edge3" class="edge">
+<title>T&#45;&gt;B</title>
+<path fill="none" stroke="#64748b" d="M263.3,-394.91C254.18,-383.95 242.24,-369.58 232.34,-357.67"/>
+<polygon fill="#64748b" stroke="#64748b" points="234.2,-355.97 227.66,-352.04 230.33,-359.19 234.2,-355.97"/>
+<text text-anchor="middle" x="284" y="-371" font-family="Noto Sans CJK TC" font-size="10.00" fill="#334155">選用並複製版本</text>
 </g>
-<g id="S" class="node object" data-label="Retrieval System for Retrieval Builder 測試"><rect x="420" y="610" width="480" height="100" rx="10" />
-<text x="660.0" y="644.5" font-size="26" style="stroke:none">Retrieval System for</text>
-<text x="660.0" y="675.5" font-size="26" style="stroke:none">Retrieval Builder 測試</text>
+<!-- C -->
+<g id="node5" class="node">
+<title>C</title>
+<path fill="#f8fafc" stroke="#cbd5e1" d="M294,-273C294,-273 133,-273 133,-273 127,-273 121,-267 121,-261 121,-261 121,-249 121,-249 121,-243 127,-237 133,-237 133,-237 294,-237 294,-237 300,-237 306,-243 306,-249 306,-249 306,-261 306,-261 306,-267 300,-273 294,-273"/>
+<text text-anchor="middle" x="213.5" y="-251.9" font-family="Noto Sans CJK TC" font-size="12.00" fill="#0f172a">設定欄位、方法與 Remote API</text>
 </g>
-<g id="R" class="node object" data-label="評估報告"><rect x="980" y="620" width="240" height="80" rx="10" />
-<text x="1100.0" y="660.0" font-size="25" style="stroke:none">評估報告</text>
+<!-- B&#45;&gt;C -->
+<g id="edge4" class="edge">
+<title>B&#45;&gt;C</title>
+<path fill="none" stroke="#64748b" d="M213.5,-315.91C213.5,-305.44 213.5,-291.88 213.5,-280.31"/>
+<polygon fill="#64748b" stroke="#64748b" points="216.02,-280.24 213.5,-273.04 210.98,-280.24 216.02,-280.24"/>
+<text text-anchor="middle" x="233.5" y="-292" font-family="Noto Sans CJK TC" font-size="10.00" fill="#334155">設定草稿</text>
 </g>
-<g id="Y" class="node object" data-label="YAML 設定檔（Config＋部署設定）"><rect x="1460" y="620" width="240" height="80" rx="10" />
-<text x="1580.0" y="644.5" font-size="24" style="stroke:none">YAML 設定檔</text>
-<text x="1580.0" y="675.5" font-size="18" style="stroke:none">Config＋部署設定</text>
+<!-- I -->
+<g id="node6" class="node">
+<title>I</title>
+<path fill="#f8fafc" stroke="#cbd5e1" d="M157,-194C157,-194 12,-194 12,-194 6,-194 0,-188 0,-182 0,-182 0,-170 0,-170 0,-164 6,-158 12,-158 12,-158 157,-158 157,-158 163,-158 169,-164 169,-170 169,-170 169,-182 169,-182 169,-188 163,-194 157,-194"/>
+<text text-anchor="middle" x="84.5" y="-172.9" font-family="Noto Sans CJK TC" font-size="12.00" fill="#0f172a">Ingest · 批次與逐文件工作</text>
 </g>
-<g id="D" class="node deploy" data-label="6. Deploy YAML in FTEST/ENT"><rect x="1900" y="310" width="360" height="85" rx="10" />
-<text x="2080.0" y="337.0" font-size="24" style="stroke:none">6. Deploy YAML</text>
-<text x="2080.0" y="368.0" font-size="22" style="stroke:none">in FTEST/ENT</text>
+<!-- C&#45;&gt;I -->
+<g id="edge5" class="edge">
+<title>C&#45;&gt;I</title>
+<path fill="none" stroke="#64748b" d="M177.02,-236.95C167.28,-232.08 156.86,-226.57 147.5,-221 136,-214.16 123.84,-205.92 113.3,-198.44"/>
+<polygon fill="#64748b" stroke="#64748b" points="114.62,-196.28 107.3,-194.13 111.68,-200.38 114.62,-196.28"/>
+<text text-anchor="middle" x="172" y="-213" font-family="Noto Sans CJK TC" font-size="10.00" fill="#334155">驗證後測試</text>
 </g>
-<g id="K" class="node object" data-label="Retrieval System in k8s"><rect x="1900" y="620" width="360" height="80" rx="10" />
-<text x="2080.0" y="660.0" font-size="26" style="stroke:none">Retrieval System in k8s</text>
+<!-- Q -->
+<g id="node7" class="node">
+<title>Q</title>
+<path fill="#f8fafc" stroke="#cbd5e1" d="M239.5,-115C239.5,-115 85.5,-115 85.5,-115 79.5,-115 73.5,-109 73.5,-103 73.5,-103 73.5,-91 73.5,-91 73.5,-85 79.5,-79 85.5,-79 85.5,-79 239.5,-79 239.5,-79 245.5,-79 251.5,-85 251.5,-91 251.5,-91 251.5,-103 251.5,-103 251.5,-109 245.5,-115 239.5,-115"/>
+<text text-anchor="middle" x="162.5" y="-93.9" font-family="Noto Sans CJK TC" font-size="12.00" fill="#0f172a">Inference · QueryContext[]</text>
 </g>
-<g id="GE" class="node engine" data-label="共用 Retrieval Engine Library（Module／Component）"><rect x="850" y="865" width="660" height="100" rx="10" />
-<text x="1180.0" y="899.5" font-size="28" style="stroke:none">共用 Retrieval Engine Library</text>
-<text x="1180.0" y="930.5" font-size="22" style="stroke:none">Module／Component</text>
+<!-- C&#45;&gt;Q -->
+<g id="edge6" class="edge">
+<title>C&#45;&gt;Q</title>
+<path fill="none" stroke="#64748b" d="M213.55,-236.77C212.99,-212.1 209.49,-165.86 192.5,-131 190.76,-127.43 188.52,-123.97 186.04,-120.72"/>
+<polygon fill="#64748b" stroke="#64748b" points="187.92,-119.04 181.38,-115.1 184.04,-122.25 187.92,-119.04"/>
+<text text-anchor="middle" x="254.5" y="-173.5" font-family="Noto Sans CJK TC" font-size="10.00" fill="#334155">外部資料可直接查詢</text>
 </g>
-
-<text class="edge-label" x="1330" y="330" font-size="20" style="stroke:none">準備部署到 k8s</text>
-<text class="edge-label" x="1160" y="250" font-size="20" style="stroke:none">驗證不達標，需調整</text>
-<text class="edge-label" x="730" y="110" font-size="20" style="stroke:none">調整 Ingestion 設定，需重新 Ingestion</text>
-<text class="edge-label" x="770" y="245" font-size="20" style="stroke:none">只調整 Inference 設定，不需重新 Ingestion</text>
-<text class="edge-label" x="820" y="78" font-size="20" style="stroke:none">更新設定</text>
-<text class="edge-label" x="180" y="465" font-size="21" style="stroke:none">產出</text>
-<text class="edge-label" x="365" y="630" font-size="19" style="stroke:none">套用 Config</text>
-<text class="edge-label" x="480" y="465" font-size="20" style="stroke:none">建立 Chunks / Indexes</text>
-<text class="edge-label" x="780" y="465" font-size="21" style="stroke:none">查詢</text>
-<text class="edge-label" x="950" y="520" font-size="21" style="stroke:none">評估</text>
-<text class="edge-label" x="1080" y="575" font-size="21" style="stroke:none">產出</text>
-<text class="edge-label" x="1580" y="515" font-size="21" style="stroke:none">產出</text>
-<text class="edge-label" x="1800" y="305" font-size="19" style="stroke:none">使用匯出的 YAML</text>
-<text class="edge-label" x="2080" y="510" font-size="21" style="stroke:none">部署</text>
-<text class="edge-label" x="1800" y="640" font-size="20" style="stroke:none">套用 YAML</text>
-<text class="edge-label" x="825" y="785" font-size="22" style="stroke:none">依 Config 建立</text>
-<text class="edge-label" x="1760" y="785" font-size="22" style="stroke:none">Library 執行核心（由 Platform Image 封裝）</text>
-<text class="edge-label" x="450" y="920" font-size="23" style="stroke:none">提供可選 Module／Component</text>
-<text class="edge-label" x="1640" y="1080" font-size="23" style="stroke:none">更新 Retrieval Engine Library</text>
-
-<text class="note" x="1180" y="1595" style="stroke:none">實線：操作流程與發布　 ·　 虛線：設定、產出及共用能力</text>
-<text class="note" x="80" y="1170" style="text-anchor:start;fill:#443267">Local：提供 Component 原始碼</text>
-<path id="edge-DEV1-DEV2" data-source="DEV1" data-target="DEV2" data-label="" class="edge" d="M520,1229 L650,1229" />
-<g id="DEV1" class="node engine" data-label="D1. 下載 repo / 確認開發 contract"><rect x="90" y="1185" width="430" height="88" rx="10" /><text x="305" y="1213" font-size="24" style="stroke:none">D1. 下載 repo /</text><text x="305" y="1248" font-size="22" style="stroke:none">確認開發 contract</text></g>
-<path id="edge-DEV2-DEV3" data-source="DEV2" data-target="DEV3" data-label="" class="edge" d="M1080,1229 L1210,1229" />
-<g id="DEV2" class="node engine" data-label="D2. 開發 Component"><rect x="650" y="1185" width="430" height="88" rx="10" /><text x="865" y="1213" font-size="24" style="stroke:none">D2. 開發 Component</text><text x="865" y="1248" font-size="20" style="stroke:none">邏輯＋Schema＋相依宣告</text></g>
-<path id="edge-DEV3-DEV4" data-source="DEV3" data-target="DEV4" data-label="" class="edge" d="M1640,1229 L1770,1229" />
-<g id="DEV3" class="node engine" data-label="D3. 測試與 PR 審查"><rect x="1210" y="1185" width="430" height="88" rx="10" /><text x="1425" y="1213" font-size="24" style="stroke:none">D3. 測試與 PR 審查</text><text x="1425" y="1248" font-size="20" style="stroke:none">契約／整合測試＋核可</text></g>
-<g id="DEV4" class="node engine" data-label="D4. 發布並更新 Retrieval Engine Library"><rect x="1770" y="1185" width="430" height="88" rx="10" /><text x="1985" y="1213" font-size="18.5" style="stroke:none">D4. 發布並更新 Retrieval Engine Library</text><text x="1985" y="1248" font-size="20" style="stroke:none">完整 Image＋DEV 部署</text></g>
-
-<path id="edge-GE-RS" data-source="GE" data-target="RS" data-label="透過 Remote API Adapter 呼叫" class="edge relation" d="M1510,905 L1830,905" />
-<text class="edge-label" x="1670" y="880" font-size="18">Remote API Adapter 呼叫</text>
-<g id="RS" class="node deploy" data-label="Developer Service（Remote API）"><rect x="1830" y="865" width="430" height="100" rx="10"/><text x="2045" y="898" font-size="24">Developer Service</text><text x="2045" y="933" font-size="22">Remote API</text></g>
-<text class="note" x="2045" y="990">Image 部署 或 Developer 自行部署</text>
-<path id="edge-RDEV4-GE" data-source="RDEV4" data-target="GE" data-label="Manifest 核可註冊，提供可選服務" class="edge" d="M2200,1434 L2310,1434 L2310,1030 L1640,1030 L1640,945 L1510,945" />
-<text class="edge-label" x="1980" y="1032" font-size="21">Manifest 核可註冊，提供可選服務</text>
-<text class="note" x="80" y="1345" style="text-anchor:start;fill:#443267">Remote：提供服務與 Manifest，不必交付私有原始碼</text>
-<g id="RDEV1" class="node engine" data-label="R1. 確認邊界 Contract"><rect x="90" y="1390" width="430" height="88" rx="10"/><text x="305" y="1418" font-size="24">R1. 確認邊界 Contract</text><text x="305" y="1453" font-size="20">單 Module 或連續 Module Pipeline</text></g>
-<path id="edge-RDEV1-RDEV2" data-source="RDEV1" data-target="RDEV2" data-label="" class="edge" d="M520,1434 L650,1434" />
-<g id="RDEV2" class="node engine" data-label="R2. 開發 Remote API"><rect x="650" y="1390" width="430" height="88" rx="10"/><text x="865" y="1418" font-size="24">R2. 開發 Remote API</text><text x="865" y="1453" font-size="20">依輸入／輸出 Contract 實作 Service</text></g>
-<path id="edge-RDEV2-RDEV3" data-source="RDEV2" data-target="RDEV3" data-label="" class="edge" d="M1080,1434 L1210,1434" />
-<g id="RDEV3" class="node engine" data-label="R3. 測試並交付 Service"><rect x="1210" y="1390" width="430" height="88" rx="10"/><text x="1425" y="1418" font-size="24">R3. 測試並交付 Service</text><text x="1425" y="1453" font-size="20">Image 或既有 Endpoint</text></g>
-<path id="edge-RDEV3-RDEV4" data-source="RDEV3" data-target="RDEV4" data-label="" class="edge" d="M1640,1434 L1770,1434" />
-<g id="RDEV4" class="node engine" data-label="R4. 提交 Manifest／註冊"><rect x="1770" y="1390" width="430" height="88" rx="10"/><text x="1985" y="1418" font-size="24">R4. 提交 Manifest／註冊</text><text x="1985" y="1453" font-size="20">I/O、設定 Schema、連線／部署描述</text></g>
-<text class="note" x="1180" y="1525">Builder User 選擇已註冊服務；Manifest 宣告範圍與參數，遠端邏輯由 Service 執行</text>
+<!-- X -->
+<g id="node9" class="node">
+<title>X</title>
+<path fill="#f8fafc" stroke="#cbd5e1" d="M489,-194C489,-194 336,-194 336,-194 330,-194 324,-188 324,-182 324,-182 324,-170 324,-170 324,-164 330,-158 336,-158 336,-158 489,-158 489,-158 495,-158 501,-164 501,-170 501,-170 501,-182 501,-182 501,-188 495,-194 489,-194"/>
+<text text-anchor="middle" x="412.5" y="-172.9" font-family="Noto Sans CJK TC" font-size="12.00" fill="#0f172a">Export · FTEST / ENT YAML</text>
+</g>
+<!-- C&#45;&gt;X -->
+<g id="edge9" class="edge">
+<title>C&#45;&gt;X</title>
+<path fill="none" stroke="#64748b" d="M257.66,-236.91C288.32,-225.05 329.26,-209.21 361.34,-196.8"/>
+<polygon fill="#64748b" stroke="#64748b" points="362.65,-198.99 368.46,-194.04 360.83,-194.29 362.65,-198.99"/>
+<text text-anchor="middle" x="349" y="-213" font-family="Noto Sans CJK TC" font-size="10.00" fill="#334155">已驗證設定</text>
+</g>
+<!-- I&#45;&gt;Q -->
+<g id="edge7" class="edge">
+<title>I&#45;&gt;Q</title>
+<path fill="none" stroke="#64748b" d="M101.81,-157.91C113.02,-146.85 127.73,-132.32 139.87,-120.34"/>
+<polygon fill="#64748b" stroke="#64748b" points="141.88,-121.89 145.24,-115.04 138.34,-118.31 141.88,-121.89"/>
+<text text-anchor="middle" x="158" y="-134" font-family="Noto Sans CJK TC" font-size="10.00" fill="#334155">平台索引就緒</text>
+</g>
+<!-- E -->
+<g id="node8" class="node">
+<title>E</title>
+<path fill="#f8fafc" stroke="#cbd5e1" d="M191,-36C191,-36 134,-36 134,-36 128,-36 122,-30 122,-24 122,-24 122,-12 122,-12 122,-6 128,0 134,0 134,0 191,0 191,0 197,0 203,-6 203,-12 203,-12 203,-24 203,-24 203,-30 197,-36 191,-36"/>
+<text text-anchor="middle" x="162.5" y="-14.9" font-family="Noto Sans CJK TC" font-size="12.00" fill="#0f172a">Evaluation</text>
+</g>
+<!-- Q&#45;&gt;E -->
+<g id="edge8" class="edge">
+<title>Q&#45;&gt;E</title>
+<path fill="none" stroke="#64748b" d="M162.5,-78.91C162.5,-68.44 162.5,-54.88 162.5,-43.31"/>
+<polygon fill="#64748b" stroke="#64748b" points="165.02,-43.24 162.5,-36.04 159.98,-43.24 165.02,-43.24"/>
+<text text-anchor="middle" x="182.5" y="-55" font-family="Noto Sans CJK TC" font-size="10.00" fill="#334155">測試結果</text>
+</g>
+<!-- R -->
+<g id="node10" class="node">
+<title>R</title>
+<path fill="#f8fafc" stroke="#cbd5e1" d="M474.5,-115C474.5,-115 350.5,-115 350.5,-115 344.5,-115 338.5,-109 338.5,-103 338.5,-103 338.5,-91 338.5,-91 338.5,-85 344.5,-79 350.5,-79 350.5,-79 474.5,-79 474.5,-79 480.5,-79 486.5,-85 486.5,-91 486.5,-91 486.5,-103 486.5,-103 486.5,-109 480.5,-115 474.5,-115"/>
+<text text-anchor="middle" x="412.5" y="-93.9" font-family="Noto Sans CJK TC" font-size="12.00" fill="#0f172a">獨立 Retrieval Runtime</text>
+</g>
+<!-- X&#45;&gt;R -->
+<g id="edge10" class="edge">
+<title>X&#45;&gt;R</title>
+<path fill="none" stroke="#64748b" d="M412.5,-157.91C412.5,-147.44 412.5,-133.88 412.5,-122.31"/>
+<polygon fill="#64748b" stroke="#64748b" points="415.02,-122.24 412.5,-115.04 409.98,-122.24 415.02,-122.24"/>
+<text text-anchor="middle" x="442" y="-134" font-family="Noto Sans CJK TC" font-size="10.00" fill="#334155">使用單位部署</text>
+</g>
+</g>
 </svg>

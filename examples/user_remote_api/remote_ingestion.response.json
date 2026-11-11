@@ -1,0 +1,26 @@
+{
+  "output": [
+    {
+      "document_id": "manual-001",
+      "source_revision": "v1",
+      "data_id": "manual-001:chunk-1",
+      "structdata": {
+        "title": "設備維護",
+        "text": "定期清潔散熱孔。"
+      },
+      "metadata": {},
+      "vectors": {
+        "text": {
+          "values": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "embedding_profile_id": "maintenance-embed-v1",
+          "source_field": "text"
+        }
+      }
+    }
+  ]
+}

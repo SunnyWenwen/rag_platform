@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "output": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "allOf": [
+          {
+            "$ref": "https://rag-builder.example/schemas/data.schema.json#/$defs/candidate"
+          },
+          {
+            "properties": {
+              "structdata": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "title",
+                  "text"
+                ],
+                "additionalProperties": false
+              },
+              "vectors": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "allOf": [
+                      {
+                        "$ref": "https://rag-builder.example/schemas/data.schema.json#/$defs/denseVector"
+                      },
+                      {
+                        "properties": {
+                          "values": {
+                            "minItems": 4,
+                            "maxItems": 4
+                          },
+                          "source_field": {
+                            "const": "text"
+                          },
+                          "embedding_profile_id": {
+                            "const": "maintenance-embed-v1"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "text"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "vectors"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "output"
+  ],
+  "additionalProperties": false
+}

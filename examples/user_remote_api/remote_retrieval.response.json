@@ -1,0 +1,30 @@
+{
+  "output": [
+    {
+      "ori_query": "如何保養設備？",
+      "query": "如何保養設備？",
+      "filters": [],
+      "result_sets": [
+        {
+          "key": "external-manuals",
+          "items": [
+            {
+              "data": {
+                "document_id": "external-manual-7",
+                "source_revision": "v1",
+                "data_id": "external-manual-7:chunk-1",
+                "structdata": {
+                  "title": "設備維護",
+                  "text": "定期清潔散熱孔。"
+                },
+                "metadata": {}
+              },
+              "score": 0.91
+            }
+          ]
+        }
+      ],
+      "metadata": {}
+    }
+  ]
+}

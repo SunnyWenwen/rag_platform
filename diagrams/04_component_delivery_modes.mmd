@@ -1,0 +1,18 @@
+flowchart TB
+  A["Admin"]
+  T["全域模板版本"]
+  U["User"]
+  B["System 草稿"]
+  C["有效 Config"]
+  L["平台內建方法"]
+  S["外部 Remote API"]
+  R["Retrieval Runtime"]
+  D["環境 Endpoint / Secret"]
+  A --> |"版本化設定檔"| T
+  T --> |"選用時複製"| B
+  U --> |"編輯欄位與服務"| B
+  B --> |"驗證並儲存"| C
+  C --> |"固定 Revision"| R
+  D --> |"解析環境綁定"| R
+  R --> |"執行內建方法"| L
+  R --> |"依契約 POST"| S

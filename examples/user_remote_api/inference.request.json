@@ -1,0 +1,6 @@
+{
+  "query": "如何保養設備？",
+  "parameters": {
+    "top_k": 5
+  }
+}

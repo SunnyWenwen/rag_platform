@@ -1,112 +1,48 @@
 flowchart TB
-  %% Target architecture; components and integrations are not implemented in the Prototype.
-  %% Terminology: 03_architecture_proposal.md section 3 is authoritative.
-  %% Retrieval Engine Platform groups reusable Engine/Runtime code and its versioned Image.
-  %% It is not a central online service required by DEV or independently deployed Runtimes.
-  %% A Runtime loads the shared code/Image plus Config and environment-specific bindings.
-  %% Retrieval Service labels the System execution instance created by Engine inside a Runtime;
-  %% it is not a new management object, mandatory microservice or Kubernetes Service object.
-  %% Same System/Config Revision keeps the same logical Config across DEV/FTEST/ENT.
-  %% Deployment Settings bind environment URLs, Secrets, data/index targets and resources.
-  %% Code/Image reuse and Config-loading edges are dashed; business requests are solid.
-  %% Config Store edge denotes provenance; Backend delivers validated Config through trusted management.
-  %% Library does not connect to Builder DB. DEV System nodes are logical scopes on a shared Executor.
-  %% Existing tSSO node is a target sketch; Builder login implementation remains deferred.
-  %% tSSO edges show login/authentication, not a proxy for every business request.
-  %% Backend starts/configures Runtime; Runtime internally initializes the System instance.
-  %% Shared/dedicated Runtime allocation and instance multiplicity remain undecided.
-  %% Local Search executes in Engine code; optional MongoDB persists Chunks/vectors.
-  %% Dependencies, Secret Vault and observability remain outside the independent Runtime.
-  %% The FTEST/ENT environment groups Runtime, Vault, dependencies and observability.
-  %% Platform connects directly to both Runtime boundaries to show code reuse.
-  %% Export records the Image reference in YAML; Image-version details are omitted here.
-
-  subgraph PLATFORM["Retrieval Engine Platform｜共用執行框架"]
-    direction TB
-    ENGINE["Retrieval Engine Library｜Config 驗證／模組組裝與執行"]
-    IMAGE["共用 Runtime Image｜Runtime API + Retrieval Engine Library"]
-    ENGINE -->|"封裝"| IMAGE
+  subgraph G0["Builder Control Plane"]
+  B["Builder UI"]
+  C["Builder Backend"]
+  DB["Config Store"]
+  EV["Evaluation Runner"]
   end
-
-  USER["使用者"] -->|"登入"| SSO["tSSO 認證"]
-  SSO -->|"登入成功"| UI
-
-  subgraph DEV["Retrieval Builder｜設定與測試"]
-    direction TB
-    subgraph CP["Retrieval Builder Control Plane"]
-      UI["Retrieval Builder UI (Frontend)"] --> BACKEND["Retrieval Builder Backend"]
-      BACKEND --> META[("Config Store")]
-    end
-
-    BACKEND -->|"上傳／檢索查詢"| DAPI
-    BACKEND --> EVAL["Evaluation Runner"]
-    EVAL -->|"批次檢索查詢"| DAPI
-
-    subgraph SANDBOX["DEV Retrieval Runtime"]
-      DAPI["Runtime API｜Ingest / Query / Status"] --> DSERVICE["Retrieval Service｜System 執行實例"]
-    end
-
-    BACKEND -.->|"建立／設定 Runtime"| SANDBOX
-    META -.->|"載入 Config Revision 與 DEV 部署綁定"| DSERVICE
-
-    DSERVICE --> DOBS["Logs / Metrics / Traces"]
-
-    subgraph DRES["測試依賴｜DEV test use 或自行提供"]
-      DSEARCH[("ES / MongoDB（依後端）")]
-      DMODEL["LLM / Embedding / Rerank API"]
-    end
-    DSERVICE -->|"依後端選用"| DSEARCH
-    DSERVICE --> DMODEL
+  subgraph G1["Builder DEV"]
+  DR["DEV Retrieval Runtime"]
+  DS["System 執行實例"]
+  DD["ES / MongoDB / 模型 / Remote API"]
+  DL["Logs / Metrics / Traces"]
   end
-
-  PLATFORM -.->|"使用共用執行框架"| SANDBOX
-  BACKEND -->|"Export｜補齊目標環境設定"| FILES@{ shape: doc, label: "FTEST/ENT yaml files" }
-  FILES --> DEPLOY["使用單位部署｜自行於 K8s 使用 YAML 進行 CD 部署"]
-
-  APP["應用程式／外部系統"] --> RAPI
-  DEPLOY -->|"以 Image＋Config＋部署設定啟動"| PROD
-
-  subgraph DEPLOYED["自行部署環境｜FTEST / ENT"]
-    direction TB
-    VAULT[("Secret Vault")]
-
-    subgraph PROD["獨立 Retrieval Runtime（API only）"]
-      direction TB
-      RAPI["Runtime API｜Ingest / Query / Status"] --> PSERVICE["Retrieval Service｜System 執行實例"]
-    end
-
-    POBS["Logs / Metrics / Traces"]
-
-    subgraph PRES["部署依賴｜使用單位自行申請或提供"]
-      PSEARCH[("ES / MongoDB（依後端）")]
-      PMODEL["LLM / Embedding / Rerank API"]
-    end
-
-    VAULT -.->|"取得／注入 Secrets"| PSERVICE
-    PSERVICE --> POBS
-    PSERVICE -->|"依後端選用"| PSEARCH
-    PSERVICE --> PMODEL
+  subgraph G2["自行部署 · FTEST / ENT"]
+  PR["獨立 Retrieval Runtime"]
+  PS["System 執行實例"]
+  V["Secret Vault"]
+  PD["ES / MongoDB / 模型 / Remote API"]
+  PL["Logs / Metrics / Traces"]
   end
-
-  PLATFORM -.->|"使用共用執行框架"| PROD
-  FILES -.->|"載入同版 Config 與 FTEST/ENT 部署綁定"| PSERVICE
-
-  classDef platform fill:#fff5e5,stroke:#cf9b4a,color:#624516
-  classDef control fill:#e8f0ff,stroke:#5881c8,color:#163459
-  classDef runtime fill:#ecf8f1,stroke:#58a389,color:#174633
-  classDef resource fill:#f5f4ff,stroke:#8c83c6,color:#372f6b
-  classDef delivery fill:#fff5e5,stroke:#cf9b4a,color:#624516
-  class ENGINE,IMAGE platform
-  class UI,BACKEND,META control
-  class DAPI,DSERVICE,EVAL,RAPI,PSERVICE runtime
-  class SSO,VAULT,DSEARCH,DMODEL,PSEARCH,PMODEL,DOBS,POBS resource
-  class FILES,DEPLOY delivery
-  style PLATFORM fill:#fffaf0,stroke:#cf9b4a
-  style DEV fill:#f7faff,stroke:#9aafc9
-  style CP fill:#eef4fb,stroke:#9aafc9
-  style SANDBOX fill:#f1faf5,stroke:#90b7a3
-  style DRES fill:#f6f3ff,stroke:#b1a3ca
-  style DEPLOYED fill:#f7faff,stroke:#9aafc9
-  style PROD fill:#f5fcf8,stroke:#90b7a3
-  style PRES fill:#f6f3ff,stroke:#b1a3ca
-
+  P["Retrieval Engine Platform · Library / Runtime Image"]
+  U["User"]
+  S["tSSO"]
+  A["Admin"]
+  T["全域模板設定"]
+  Y["匯出 FTEST / ENT YAML"]
+  I["外部應用程式"]
+  U --> |"登入"| S
+  S --> B
+  A --> |"維護"| T
+  T --> |"選用"| B
+  B --> C
+  C --> DB
+  C --> |"設定與測試"| DR
+  C --> EV
+  EV --> |"批次查詢"| DR
+  P --> |"共用執行框架"| DR
+  DR --> |"依 Config 建立"| DS
+  DS --> |"呼叫"| DD
+  DS --> DL
+  C --> |"匯出"| Y
+  Y --> |"使用單位部署"| PR
+  P --> |"共用執行框架"| PR
+  I --> |"業務 API"| PR
+  PR --> |"依 Config 建立"| PS
+  V --> |"注入 Secret"| PS
+  PS --> |"呼叫"| PD
+  PS --> PL

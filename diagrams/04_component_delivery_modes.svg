@@ -1,1 +1,122 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1670" viewBox="0 0 2400 1670" role="img" aria-labelledby="title desc"><title id="title">Retrieval Component 的三種交付模式</title><desc id="desc">Local Component 提供原始碼，整合至 Library 並於 Runtime 內執行。Remote API Image Deployment 提供 Image 及部署描述，由使用單位透過匯出 YAML 部署獨立 API。Remote API External Endpoint 只提供連線與契約，由 Developer 自行部署。三者遵守相同 Module I/O Contract，差異在交付與部署方式。</desc><defs><marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9Z" fill="#607186"/></marker></defs><rect width="2400" height="1670" fill="#f6f8fc"/><style>text{font-family:'Noto Sans CJK TC',sans-serif;dominant-baseline:central;fill:#1e3048}.arrow{fill:none;stroke:#607186;stroke-width:2.6;marker-end:url(#arrow)}</style><text x="70" y="70" style="font-size:46px;fill:#1e3048;text-anchor:start;font-weight:500">Retrieval Component 的三種交付模式</text><text x="72" y="133" style="font-size:29px;fill:#586b81;text-anchor:start;font-weight:400">同一套 Module I/O Contract，三種程式交付與服務部署方式</text><rect x="826" y="185" width="1504" height="49" rx="8" fill="#eaf0fa" stroke="none" stroke-width="2" /><text x="1578" y="209" style="font-size:25px;fill:#365a8c;text-anchor:middle;font-weight:400">Remote API Component｜透過 HTTP 傳入 Module Input、驗證並回傳 Module Output</text><text x="425" y="209" style="font-size:25px;fill:#2b7166;text-anchor:middle;font-weight:400">程序內執行</text><rect x="70" y="255" width="748" height="1265" rx="18" fill="#fff" stroke="#dce3ed" stroke-width="2" /><rect x="70" y="255" width="748" height="9" rx="0" fill="#2d7d70" stroke="none" stroke-width="2" /><text x="100" y="310" style="font-size:29px;fill:#2d7d70;text-anchor:start;font-weight:500">01</text><text x="162" y="310" style="font-size:28px;fill:#2d7d70;text-anchor:start;font-weight:500">Local Component</text><text x="100" y="366" style="font-size:29px;fill:#1e3048;text-anchor:start;font-weight:500">提供 Component 原始碼</text><text x="100" y="432" style="font-size:23px;fill:#617187;text-anchor:start;font-weight:400">執行位置</text><rect x="98" y="478" width="692" height="480" rx="12" fill="#f7fcf9" stroke="#8bb4a6" stroke-width="2" /><text x="120" y="508" style="font-size:23px;fill:#2d6d61;text-anchor:start;font-weight:400">使用單位部署環境</text><rect x="128" y="549" width="632" height="345" rx="10" fill="#e9f5f0" stroke="#89b7aa" stroke-width="2" /><text x="444.0" y="581" style="font-size:26px;fill:#2d7d70;text-anchor:middle;font-weight:400">Retrieval Runtime</text><rect x="170" y="625" width="548" height="84" rx="10" fill="#fff" stroke="#89b7aa" stroke-width="2" /><text x="444.0" y="667.0" style="font-size:26px;fill:#1e3048;text-anchor:middle;font-weight:400">Retrieval Engine Library</text><path class="arrow" d="M444.0 709 L444.0 755"/><rect x="170" y="755" width="548" height="94" rx="10" fill="#e9f5f0" stroke="#89b7aa" stroke-width="2" /><text x="444.0" y="784.5" style="font-size:25px;fill:#1e3048;text-anchor:middle;font-weight:400">Local Component</text><text x="444.0" y="819.5" style="font-size:25px;fill:#1e3048;text-anchor:middle;font-weight:400">與 Library 同程序執行</text><text x="444.0" y="929" style="font-size:24px;fill:#526b62;text-anchor:middle;font-weight:400">沒有額外的 Remote API 服務</text><path d="M100 996 L788 996" stroke="#e1e7ef"/><text x="100" y="1036" style="font-size:23px;fill:#617187;text-anchor:start;font-weight:400">誰部署／維護方法</text><text x="100" y="1074" style="font-size:26px;fill:#2d7d70;text-anchor:start;font-weight:400">使用單位隨 Runtime 部署</text><text x="100" y="1108" style="font-size:26px;fill:#2d7d70;text-anchor:start;font-weight:400">開發者透過 PR／Image 版本交付</text><text x="100" y="1187" style="font-size:23px;fill:#617187;text-anchor:start;font-weight:400">Export YAML 包含</text><text x="100" y="1225" style="font-size:26px;fill:#2d7d70;text-anchor:start;font-weight:400">Runtime＋Config</text><text x="100" y="1259" style="font-size:26px;fill:#2d7d70;text-anchor:start;font-weight:400">Component 已包入 Runtime Image</text><text x="100" y="1338" style="font-size:23px;fill:#617187;text-anchor:start;font-weight:400">Developer 交付物</text><text x="100" y="1376" style="font-size:26px;fill:#2d7d70;text-anchor:start;font-weight:400">Component 原始碼＋設定／契約描述</text><rect x="826" y="255" width="748" height="1265" rx="18" fill="#fff" stroke="#dce3ed" stroke-width="2" /><rect x="826" y="255" width="748" height="9" rx="0" fill="#3e68a2" stroke="none" stroke-width="2" /><text x="856" y="310" style="font-size:29px;fill:#3e68a2;text-anchor:start;font-weight:500">02</text><text x="918" y="310" style="font-size:28px;fill:#3e68a2;text-anchor:start;font-weight:500">Remote API · Image Deployment</text><text x="856" y="366" style="font-size:29px;fill:#1e3048;text-anchor:start;font-weight:500">提供 API Image＋部署描述</text><text x="856" y="432" style="font-size:23px;fill:#617187;text-anchor:start;font-weight:400">執行位置</text><rect x="854" y="478" width="692" height="480" rx="12" fill="#f6f9fe" stroke="#9eb5d5" stroke-width="2" /><text x="876" y="508" style="font-size:23px;fill:#365a8c;text-anchor:start;font-weight:400">使用單位部署環境</text><rect x="884" y="549" width="632" height="155" rx="10" fill="#edf2fb" stroke="#a4b9d7" stroke-width="2" /><text x="1200.0" y="578" style="font-size:26px;fill:#365a8c;text-anchor:middle;font-weight:400">Retrieval Runtime</text><text x="1200.0" y="633" style="font-size:26px;fill:#365a8c;text-anchor:middle;font-weight:400">Library → Remote API Adapter</text><path class="arrow" d="M1200.0 704 L1200.0 819"/><text x="1290.0" y="768" style="font-size:23px;fill:#52647a;text-anchor:middle;font-weight:400">HTTP API</text><rect x="926" y="819" width="548" height="99" rx="10" fill="#eaf0fa" stroke="#91add1" stroke-width="2" /><text x="1200.0" y="851.0" style="font-size:25px;fill:#1e3048;text-anchor:middle;font-weight:400">Remote API Service</text><text x="1200.0" y="886.0" style="font-size:25px;fill:#1e3048;text-anchor:middle;font-weight:400">從 Developer 的 Image 啟動</text><text x="1200.0" y="939" style="font-size:23px;fill:#52647a;text-anchor:middle;font-weight:400">同環境、獨立服務／程序</text><path d="M856 996 L1544 996" stroke="#e1e7ef"/><text x="856" y="1036" style="font-size:23px;fill:#617187;text-anchor:start;font-weight:400">誰部署／維護 API</text><text x="856" y="1074" style="font-size:26px;fill:#3e68a2;text-anchor:start;font-weight:400">使用單位用匯出的 YAML 部署</text><text x="856" y="1108" style="font-size:26px;fill:#3e68a2;text-anchor:start;font-weight:400">Developer 交付服務 Image 版本</text><text x="856" y="1187" style="font-size:23px;fill:#617187;text-anchor:start;font-weight:400">Export YAML 包含</text><text x="856" y="1225" style="font-size:26px;fill:#3e68a2;text-anchor:start;font-weight:400">Runtime＋Config＋Remote API 部署</text><text x="856" y="1259" style="font-size:26px;fill:#3e68a2;text-anchor:start;font-weight:400">含 Service、資源與 Secret 引用</text><text x="856" y="1338" style="font-size:23px;fill:#617187;text-anchor:start;font-weight:400">Developer 交付物</text><text x="856" y="1376" style="font-size:26px;fill:#3e68a2;text-anchor:start;font-weight:400">API Image＋部署描述＋契約資訊</text><text x="856" y="1410" style="font-size:26px;fill:#3e68a2;text-anchor:start;font-weight:400">不需要提供 Component 原始碼</text><rect x="1582" y="255" width="748" height="1265" rx="18" fill="#fff" stroke="#dce3ed" stroke-width="2" /><rect x="1582" y="255" width="748" height="9" rx="0" fill="#93652c" stroke="none" stroke-width="2" /><text x="1612" y="310" style="font-size:29px;fill:#93652c;text-anchor:start;font-weight:500">03</text><text x="1674" y="310" style="font-size:28px;fill:#93652c;text-anchor:start;font-weight:500">Remote API · External Endpoint</text><text x="1612" y="366" style="font-size:29px;fill:#1e3048;text-anchor:start;font-weight:500">提供 API 連線與契約資訊</text><text x="1612" y="432" style="font-size:23px;fill:#617187;text-anchor:start;font-weight:400">執行位置</text><rect x="1610" y="478" width="692" height="273" rx="12" fill="#fbfcff" stroke="#c3cddd" stroke-width="2" /><text x="1632" y="508" style="font-size:23px;fill:#52647a;text-anchor:start;font-weight:400">使用單位部署環境</text><rect x="1640" y="549" width="632" height="155" rx="10" fill="#edf2fb" stroke="#a4b9d7" stroke-width="2" /><text x="1956.0" y="578" style="font-size:26px;fill:#365a8c;text-anchor:middle;font-weight:400">Retrieval Runtime</text><text x="1956.0" y="633" style="font-size:26px;fill:#365a8c;text-anchor:middle;font-weight:400">Library → Remote API Adapter</text><path class="arrow" d="M1956.0 704 L1956.0 802"/><text x="2046.0" y="768" style="font-size:23px;fill:#52647a;text-anchor:middle;font-weight:400">HTTP API</text><rect x="1610" y="802" width="692" height="156" rx="12" fill="#fbf1e4" stroke="#c6a277" stroke-width="2" stroke-dasharray="9 7"/><text x="1956.0" y="854" style="font-size:27px;fill:#93652c;text-anchor:middle;font-weight:400">Developer 自行部署的服務</text><text x="1956.0" y="910" style="font-size:25px;fill:#93652c;text-anchor:middle;font-weight:400">以 URL＋認證連線</text><path d="M1612 996 L2300 996" stroke="#e1e7ef"/><text x="1612" y="1036" style="font-size:23px;fill:#617187;text-anchor:start;font-weight:400">誰部署／維護 API</text><text x="1612" y="1074" style="font-size:26px;fill:#93652c;text-anchor:start;font-weight:400">Developer 自行部署與維運</text><text x="1612" y="1108" style="font-size:26px;fill:#93652c;text-anchor:start;font-weight:400">使用單位只綁定連線</text><text x="1612" y="1187" style="font-size:23px;fill:#617187;text-anchor:start;font-weight:400">Export YAML 包含</text><text x="1612" y="1225" style="font-size:26px;fill:#93652c;text-anchor:start;font-weight:400">Runtime＋Config＋API 連線設定</text><text x="1612" y="1259" style="font-size:26px;fill:#93652c;text-anchor:start;font-weight:400">不產生遠端 API 的部署 YAML</text><text x="1612" y="1338" style="font-size:23px;fill:#617187;text-anchor:start;font-weight:400">Developer 交付物</text><text x="1612" y="1376" style="font-size:26px;fill:#93652c;text-anchor:start;font-weight:400">Endpoint＋認證方式＋契約資訊</text><text x="1612" y="1410" style="font-size:26px;fill:#93652c;text-anchor:start;font-weight:400">不需要交付原始碼或 Image</text><rect x="70" y="1545" width="2260" height="72" rx="10" fill="#eaf0f8" stroke="none" stroke-width="2" /><text x="1200" y="1580" style="font-size:26px;fill:#365170;text-anchor:middle;font-weight:400">共同規則：遵守相同 I/O Contract；演算法參數放 Config；URL／Image／Secret／資源放部署設定。</text><text x="72" y="1642" style="font-size:21px;fill:#708197;text-anchor:start;font-weight:400">討論方案示意｜Remote API 與部署描述尚待正式規格／實作；DEV 測試與 FTEST／ENT 使用相同契約。</text></svg>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.42.4 (0)
+ -->
+<!-- Pages: 1 -->
+<svg width="709pt" height="973pt"
+ viewBox="0.00 0.00 340.50 467.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(2.08 2.08) rotate(0) translate(18 449)">
+<polygon fill="white" stroke="transparent" points="-18,18 -18,-449 322.5,-449 322.5,18 -18,18"/>
+<!-- A -->
+<g id="node1" class="node">
+<title>A</title>
+<path fill="#f8fafc" stroke="#cbd5e1" d="M63,-431C63,-431 30,-431 30,-431 24,-431 18,-425 18,-419 18,-419 18,-407 18,-407 18,-401 24,-395 30,-395 30,-395 63,-395 63,-395 69,-395 75,-401 75,-407 75,-407 75,-419 75,-419 75,-425 69,-431 63,-431"/>
+<text text-anchor="middle" x="46.5" y="-409.9" font-family="Noto Sans CJK TC" font-size="12.00" fill="#0f172a">Admin</text>
+</g>
+<!-- T -->
+<g id="node2" class="node">
+<title>T</title>
+<path fill="#f8fafc" stroke="#cbd5e1" d="M81,-352C81,-352 12,-352 12,-352 6,-352 0,-346 0,-340 0,-340 0,-328 0,-328 0,-322 6,-316 12,-316 12,-316 81,-316 81,-316 87,-316 93,-322 93,-328 93,-328 93,-340 93,-340 93,-346 87,-352 81,-352"/>
+<text text-anchor="middle" x="46.5" y="-330.9" font-family="Noto Sans CJK TC" font-size="12.00" fill="#0f172a">全域模板版本</text>
+</g>
+<!-- A&#45;&gt;T -->
+<g id="edge1" class="edge">
+<title>A&#45;&gt;T</title>
+<path fill="none" stroke="#64748b" d="M46.5,-394.91C46.5,-384.44 46.5,-370.88 46.5,-359.31"/>
+<polygon fill="#64748b" stroke="#64748b" points="49.02,-359.24 46.5,-352.04 43.98,-359.24 49.02,-359.24"/>
+<text text-anchor="middle" x="76" y="-371" font-family="Noto Sans CJK TC" font-size="10.00" fill="#334155">版本化設定檔</text>
+</g>
+<!-- B -->
+<g id="node4" class="node">
+<title>B</title>
+<path fill="#f8fafc" stroke="#cbd5e1" d="M127,-273C127,-273 62,-273 62,-273 56,-273 50,-267 50,-261 50,-261 50,-249 50,-249 50,-243 56,-237 62,-237 62,-237 127,-237 127,-237 133,-237 139,-243 139,-249 139,-249 139,-261 139,-261 139,-267 133,-273 127,-273"/>
+<text text-anchor="middle" x="94.5" y="-251.9" font-family="Noto Sans CJK TC" font-size="12.00" fill="#0f172a">System 草稿</text>
+</g>
+<!-- T&#45;&gt;B -->
+<g id="edge2" class="edge">
+<title>T&#45;&gt;B</title>
+<path fill="none" stroke="#64748b" d="M53.05,-315.72C56.53,-307.36 61.2,-297.36 66.5,-289 68.66,-285.59 71.15,-282.16 73.73,-278.86"/>
+<polygon fill="#64748b" stroke="#64748b" points="75.83,-280.28 78.43,-273.11 71.93,-277.09 75.83,-280.28"/>
+<text text-anchor="middle" x="91" y="-292" font-family="Noto Sans CJK TC" font-size="10.00" fill="#334155">選用時複製</text>
+</g>
+<!-- U -->
+<g id="node3" class="node">
+<title>U</title>
+<path fill="#f8fafc" stroke="#cbd5e1" d="M157.5,-352C157.5,-352 127.5,-352 127.5,-352 121.5,-352 115.5,-346 115.5,-340 115.5,-340 115.5,-328 115.5,-328 115.5,-322 121.5,-316 127.5,-316 127.5,-316 157.5,-316 157.5,-316 163.5,-316 169.5,-322 169.5,-328 169.5,-328 169.5,-340 169.5,-340 169.5,-346 163.5,-352 157.5,-352"/>
+<text text-anchor="middle" x="142.5" y="-330.9" font-family="Noto Sans CJK TC" font-size="12.00" fill="#0f172a">User</text>
+</g>
+<!-- U&#45;&gt;B -->
+<g id="edge3" class="edge">
+<title>U&#45;&gt;B</title>
+<path fill="none" stroke="#64748b" d="M132.59,-315.74C127.83,-307.57 121.97,-297.72 116.5,-289 114.49,-285.8 112.33,-282.46 110.18,-279.18"/>
+<polygon fill="#64748b" stroke="#64748b" points="112.17,-277.62 106.1,-273.01 107.97,-280.41 112.17,-277.62"/>
+<text text-anchor="middle" x="157" y="-292" font-family="Noto Sans CJK TC" font-size="10.00" fill="#334155">編輯欄位與服務</text>
+</g>
+<!-- C -->
+<g id="node5" class="node">
+<title>C</title>
+<path fill="#f8fafc" stroke="#cbd5e1" d="M124.5,-194C124.5,-194 64.5,-194 64.5,-194 58.5,-194 52.5,-188 52.5,-182 52.5,-182 52.5,-170 52.5,-170 52.5,-164 58.5,-158 64.5,-158 64.5,-158 124.5,-158 124.5,-158 130.5,-158 136.5,-164 136.5,-170 136.5,-170 136.5,-182 136.5,-182 136.5,-188 130.5,-194 124.5,-194"/>
+<text text-anchor="middle" x="94.5" y="-172.9" font-family="Noto Sans CJK TC" font-size="12.00" fill="#0f172a">有效 Config</text>
+</g>
+<!-- B&#45;&gt;C -->
+<g id="edge4" class="edge">
+<title>B&#45;&gt;C</title>
+<path fill="none" stroke="#64748b" d="M94.5,-236.91C94.5,-226.44 94.5,-212.88 94.5,-201.31"/>
+<polygon fill="#64748b" stroke="#64748b" points="97.02,-201.24 94.5,-194.04 91.98,-201.24 97.02,-201.24"/>
+<text text-anchor="middle" x="119" y="-213" font-family="Noto Sans CJK TC" font-size="10.00" fill="#334155">驗證並儲存</text>
+</g>
+<!-- R -->
+<g id="node8" class="node">
+<title>R</title>
+<path fill="#f8fafc" stroke="#cbd5e1" d="M212,-115C212,-115 115,-115 115,-115 109,-115 103,-109 103,-103 103,-103 103,-91 103,-91 103,-85 109,-79 115,-79 115,-79 212,-79 212,-79 218,-79 224,-85 224,-91 224,-91 224,-103 224,-103 224,-109 218,-115 212,-115"/>
+<text text-anchor="middle" x="163.5" y="-93.9" font-family="Noto Sans CJK TC" font-size="12.00" fill="#0f172a">Retrieval Runtime</text>
+</g>
+<!-- C&#45;&gt;R -->
+<g id="edge5" class="edge">
+<title>C&#45;&gt;R</title>
+<path fill="none" stroke="#64748b" d="M105.85,-157.63C111.64,-149.26 119.02,-139.26 126.5,-131 129.84,-127.31 133.55,-123.61 137.31,-120.08"/>
+<polygon fill="#64748b" stroke="#64748b" points="139.18,-121.79 142.79,-115.07 135.78,-118.07 139.18,-121.79"/>
+<text text-anchor="middle" x="157" y="-134" font-family="Noto Sans CJK TC" font-size="10.00" fill="#334155">固定 Revision</text>
+</g>
+<!-- L -->
+<g id="node6" class="node">
+<title>L</title>
+<path fill="#f8fafc" stroke="#cbd5e1" d="M136,-36C136,-36 67,-36 67,-36 61,-36 55,-30 55,-24 55,-24 55,-12 55,-12 55,-6 61,0 67,0 67,0 136,0 136,0 142,0 148,-6 148,-12 148,-12 148,-24 148,-24 148,-30 142,-36 136,-36"/>
+<text text-anchor="middle" x="101.5" y="-14.9" font-family="Noto Sans CJK TC" font-size="12.00" fill="#0f172a">平台內建方法</text>
+</g>
+<!-- S -->
+<g id="node7" class="node">
+<title>S</title>
+<path fill="#f8fafc" stroke="#cbd5e1" d="M271,-36C271,-36 182,-36 182,-36 176,-36 170,-30 170,-24 170,-24 170,-12 170,-12 170,-6 176,0 182,0 182,0 271,0 271,0 277,0 283,-6 283,-12 283,-12 283,-24 283,-24 283,-30 277,-36 271,-36"/>
+<text text-anchor="middle" x="226.5" y="-14.9" font-family="Noto Sans CJK TC" font-size="12.00" fill="#0f172a">外部 Remote API</text>
+</g>
+<!-- R&#45;&gt;L -->
+<g id="edge7" class="edge">
+<title>R&#45;&gt;L</title>
+<path fill="none" stroke="#64748b" d="M149.74,-78.91C140.91,-67.95 129.34,-53.58 119.75,-41.67"/>
+<polygon fill="#64748b" stroke="#64748b" points="121.7,-40.07 115.22,-36.04 117.77,-43.23 121.7,-40.07"/>
+<text text-anchor="middle" x="165" y="-55" font-family="Noto Sans CJK TC" font-size="10.00" fill="#334155">執行內建方法</text>
+</g>
+<!-- R&#45;&gt;S -->
+<g id="edge8" class="edge">
+<title>R&#45;&gt;S</title>
+<path fill="none" stroke="#64748b" d="M184.28,-78.77C189.54,-73.94 194.97,-68.49 199.5,-63 204.63,-56.78 209.49,-49.49 213.64,-42.66"/>
+<polygon fill="#64748b" stroke="#64748b" points="216.06,-43.52 217.53,-36.03 211.71,-40.97 216.06,-43.52"/>
+<text text-anchor="middle" x="235.5" y="-55" font-family="Noto Sans CJK TC" font-size="10.00" fill="#334155">依契約 POST</text>
+</g>
+<!-- D -->
+<g id="node9" class="node">
+<title>D</title>
+<path fill="#f8fafc" stroke="#cbd5e1" d="M292.5,-194C292.5,-194 170.5,-194 170.5,-194 164.5,-194 158.5,-188 158.5,-182 158.5,-182 158.5,-170 158.5,-170 158.5,-164 164.5,-158 170.5,-158 170.5,-158 292.5,-158 292.5,-158 298.5,-158 304.5,-164 304.5,-170 304.5,-170 304.5,-182 304.5,-182 304.5,-188 298.5,-194 292.5,-194"/>
+<text text-anchor="middle" x="231.5" y="-172.9" font-family="Noto Sans CJK TC" font-size="12.00" fill="#0f172a">環境 Endpoint / Secret</text>
+</g>
+<!-- D&#45;&gt;R -->
+<g id="edge6" class="edge">
+<title>D&#45;&gt;R</title>
+<path fill="none" stroke="#64748b" d="M216.41,-157.91C206.72,-146.95 194.04,-132.58 183.52,-120.67"/>
+<polygon fill="#64748b" stroke="#64748b" points="185.2,-118.77 178.55,-115.04 181.43,-122.11 185.2,-118.77"/>
+<text text-anchor="middle" x="231" y="-134" font-family="Noto Sans CJK TC" font-size="10.00" fill="#334155">解析環境綁定</text>
+</g>
+</g>
+</svg>
