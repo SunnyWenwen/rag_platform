@@ -18,11 +18,11 @@
 > 目的：讓 coding agent 依同一套規格分階段開發，並持續記錄尚不清楚的問題。本文是決策／待決狀態的權威位置；它不把技術建議自動轉成使用者已核可決策。
 
 <a id="user-remote-api-decision"></a>
-## 2026-11-11 已確認：User Remote API、單一 Data、Admin 模板
+## 2026-11-11 已確認：User Remote API、單一 Document、Admin 模板
 
 - User 直接設定外部 API。Admin 管理全域模板版本，Builder 只提供選用，套用時複製至草稿。平台團隊維護內建方法與 Schema 描述。
-- 採共用 Data。Ingestion 以非空 documents 與選填批次 parameters 接收，Parser 前拆成逐文件工作。
-- Remote Retrieval 的候選遵守 Ingestion 設定推導的有效 System Data Schema。外部資料可直接查詢，無須執行平台 Ingestion 或建立平台索引。
+- 共用資料物件定名為 `Document`。Ingestion 以非空 `documents` 與選填批次 `parameters` 接收，Parser 前拆成逐文件工作。檢索候選放在 `ResultItem.data`。
+- Remote Retrieval 的候選遵守 Ingestion 設定推導的有效 System Document Schema。外部資料可直接查詢，無須執行平台 Ingestion 或建立平台索引。
 - Remote 認證設定支援固定 Secret reference 或參數引用，由 Runtime 在呼叫前解析後注入 Header。
 
 取代 D-40／51 的 Developer 交付、Manifest 目錄與 Remote Image 流程，更新 D-47～49 的外層資料形狀、D-54 的候選資料鍵、D-58 的 Request 封裝及 D-67 的規格來源。保留 D-67 的內建 Schema 細化能力和 D-58 的單端點、整批預檢及逐文件工作。舊來源見[歷史索引](history/superseded/2026-11-11_developer_mode.md)。
@@ -39,7 +39,7 @@
 
 架構、資料、Engine、Runtime 與 UI 手冊 的 Q-ID 連回本文件。每份文件保留自身待討論清單，完整選項／決策只維護一次。沒有核可的問題不能靠空白 TODO 或聊天記憶隱藏。
 
-現行資料以共用 Data Schema 與資料契約手冊為準；05 為總覽，Engine、UI 與 Runtime 手冊 對齊執行、UI 與 API 邊界。Prototype 與目標規格差異用 backlog／migration 追蹤，原型測試通過不代表 Engine／API 已完成。
+現行資料以共用 Document Schema 與資料契約手冊為準；05 為總覽，Engine、UI 與 Runtime 手冊 對齊執行、UI 與 API 邊界。Prototype 與目標規格差異用 backlog／migration 追蹤，原型測試通過不代表 Engine／API 已完成。
 
 **2026-10-16 起的工作方式**：使用者要求後續調整先更新文件；Prototype 所需變更統一記於 [UI Backlog：UI Backlog](07_builder_ui.md#src-10-3-累積需求處理狀態)，待使用者明確要求修改 UI 再實作。文件提交不代表同步開發原型、Engine 或服務。規劃文件仍依既有要求提交目前分支。
 
@@ -69,7 +69,7 @@
 | 產品／範圍 | Retrieval-only；無 Generation，Rewrite／助手仍可用 LLM；Evaluation 保留 M6 | D-50／03、Engine／Component手冊、21 |
 | 管理階層 | Workspace → System；system_id 穩定，名稱／Config Revision／document_id 分開 | D-21／D-31／D-64；03、資料契約手冊、Runtime／部署手冊、21 |
 | 輸入與 Parser | documents 批次提交與共用 parameters，Parser 前逐文件拆分；內建 Parser 單選 | 2026-11-11；02、06 |
-| Data | 各模組共用 Data，以有效 Schema 區分階段，切分後加 data_id | 2026-11-11；02 |
+| Document | 各模組共用 Document，以有效 Schema 區分階段，切分後加 data_id | 2026-11-11；02 |
 | 追溯與 metadata | _rag／來源／fingerprint／ordinal 由 Component 選擇提供；metadata 可有明確支援的處理提示 | D-52；13～17 |
 | Chunk／Embedding 能力 | Fixed-size／Recursive／Header-aware 用 Token；可複製原文欄位、另留原文 Chunk；Embedding 可選模板衍生欄位，兩項新增功能預設關閉 | D-36／48／53；04、15 |
 | 保存／搜尋 | 保存完整 Chunk；全文／向量／Filter 能力分開。ES 或 Local Search；Memory／MongoDB 持久化模式屬邏輯 Config，跨環境不任意切換 | D-09／10／33／39；04、資料契約手冊、19 |
@@ -106,7 +106,7 @@
 | M6 Evaluation | Q-018；Dataset／Runner／指標／報告與版本追蹤 | 可由 SDK／API 及 Builder 使用的評估流程、逐題結果與報告 | 固定測資可重現計算依據；缺標註不造分；報告綁 Config／資料／模型版本，可比較配置差異 |
 | M7 獨立部署交付 | Q-021／Q-027；核心 Runtime 已真實可用，完成目標環境交付 | Runtime Image 版本／Digest、FTEST／ENT Bundle、部署／Secret／資料準備與運維說明 | 新環境無 Builder 可用 YAML 啟動；API Ingest→Query；外部依賴故障可定位；不含測試資料與憑證 |
 
-M1 先驗結構化 Data → 直傳 Parsing → Recursive → Embedding → Local Memory Index → Retrieval。Fixed-size 與其他方法於 M2 擴充。
+M1 先驗結構化 Document → 直傳 Parsing → Recursive → Embedding → Local Memory Index → Retrieval。Fixed-size 與其他方法於 M2 擴充。
 
 Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，不要求每個 Retrieval System 各建一個 Image。匯出通常引用支援該 Config 的 Runtime Image 版本／Digest，另外交付 Config 與部署設定。M6 的評估純邏輯可在 M1／M2 先做，但不能把早期模組測試當作 M6 整體評估已完成。
 
@@ -144,7 +144,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 
 ### 4.3 Remote API 與模板驗收
 
-M0 凍結 Data、批次 Request、Remote I/O、有效參數與候選規則。M1～M2 驗證有效設定、單節點與連續範圍執行。M3 驗證 Runtime 逐文件工作與認證。M5 驗證 Builder 顯示契約及 Admin 模板唯讀選用。M7 驗證外部服務綁定可在獨立 Runtime 使用。
+M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則。M1～M2 驗證有效設定、單節點與連續範圍執行。M3 驗證 Runtime 逐文件工作與認證。M5 驗證 Builder 顯示契約及 Admin 模板唯讀選用。M7 驗證外部服務綁定可在獨立 Runtime 使用。
 
 ## 5. 驗收材料與完成定義
 
@@ -153,7 +153,7 @@ M0 凍結 Data、批次 Request、Remote I/O、有效參數與候選規則。M1�
 | 材料 | 最小內容 |
 |---|---|
 | examples/configs | 完整 Local Memory、ES、Local MongoDB 配置；必要服務／Secret 設定說明 |
-| fixtures | CSV 映射／各階段 Data、已知文字與標題、Fixed-size 的零 overlap／短文／整塊／末塊、Unicode／長文字、合法／無效欄位、同 ID 更新與 Filter 測資 |
+| fixtures | CSV 映射／各階段 Document、已知文字與標題、Fixed-size 的零 overlap／短文／整塊／末塊、Unicode／長文字、合法／無效欄位、同 ID 更新與 Filter 測資 |
 | retrieval fixtures | 固定小向量／詞項與人工路徑排名，可計算 Top-K／RRF／Sum Score／去重 |
 | provider fakes | 合法回應、Timeout、429、缺項、錯誤維度、非法 Rerank index、未知引用 |
 | usage examples | 直接 Engine、HTTP、CSV 映射、工作輪詢、部署後首次 Ingestion |
@@ -196,7 +196,7 @@ M0 凍結 Data、批次 Request、Remote I/O、有效參數與候選規則。M1�
 
 - 平台內部描述規則沿用 D-67 的相依推導，精確 Meta-schema 待核定。舊例見歷史索引。
 
-- 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System；Local Search 持久化模式隨 Config 跨環境固定（D-33）；全部 Data.structdata／metadata 保存與合法 metadata 全繼承（D-39）。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile；QueryContext[]／ResultSet 業務欄位已依 D-54 確認。仍待核定的是舊保存／繼承投影、原型短名稱／匯出標籤 migration。
+- 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System；Local Search 持久化模式隨 Config 跨環境固定（D-33）；全部 Document.structdata／metadata 保存與合法 metadata 全繼承（D-39）。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile；QueryContext[]／ResultSet 業務欄位已依 D-54 確認。仍待核定的是舊保存／繼承投影、原型短名稱／匯出標籤 migration。
 - D-62 已確認選項 B（共用 Flow）：共用 Flow／Executor，依固定 Config 快照在各 Module 選 Component，並傳入 input／本次 config／Context；不強制所有實例共用。精確 SDK 簽名及 Resolver／資源作用域仍待凍結。
 - 2026-10-28 補充：Component SDK 的 Module-specific I/O 包裝、run／初始化／釋放簽名、RunContext、Registry／Factory 與 Config Schema 介面待凍結；Registry 草案改稱 component_id，不直接改寫既有 Config。精確方法／版本引用、舊 module_id 別名與遷移須一致驗證；11 的 Python 程式只作介面示意。
 - [System Config：System Config 討論稿](05_system_config.md#草稿有效設定與部署) 依 D-67 取消頂層 document_schema，資料細節由 B／C＋D 提供；首版六類宣告與相依推導見 [Descriptor](04_component_descriptor.md)。規則語法／SDK／解析 API 仍待凍結；D-66 舊機器稿及五案例已歸 [歷史快照](history/superseded/system_config_d66/README.md)，不作新功能驗收。前輪校對過程見 [歷史報告](history/reviews/2026-11-05_spec_alignment_review.md)。
@@ -205,9 +205,9 @@ M0 凍結 Data、批次 Request、Remote I/O、有效參數與候選規則。M1�
 - 負責角色：Engine＋Backend＋Frontend；阻擋 M0 契約凍結。
 - 決策：未定；更新 Engine／資料契約手冊／Runtime／部署手冊、Schema 及完整範例。
 
-#### Data 與共用契約
+#### Document 與共用契約
 
-現行邊界見 [Data](02_data_contracts.md) 與 [JSON Schema](../schemas/README.md)。Python Runtime 型別封裝與正式 Config 語法仍待核定。原型與離線測試用於契約驗證，真實 Parser、Tokenizer、模型與 DB 另做整合驗收。
+現行邊界見 [Document](02_data_contracts.md) 與 [JSON Schema](../schemas/README.md)。Python Runtime 型別封裝與正式 Config 語法仍待核定。原型與離線測試用於契約驗證，真實 Parser、Tokenizer、模型與 DB 另做整合驗收。
 
 <a id="q-003"></a>
 ### Q-003 模型服務與 Adapter 契約
@@ -234,7 +234,7 @@ M0 凍結 Data、批次 Request、Remote I/O、有效參數與候選規則。M1�
 ### Q-005 Parser／OCR 首批格式
 
 - 不清楚：PDF／PPTX／圖片／TXT／MD 哪些第一期支援；套件／外部 OCR、表格／標題 Schema、加密／損壞處理。
-- 關聯待決：現行 Units 契約的正式版本凍結、Parser 正規化及文字格式能力細節見 [Q-002 子項](#data-與共用契約)；不恢復已移除的 structure 型別或結構路由。
+- 關聯待決：現行 Units 契約的正式版本凍結、Parser 正規化及文字格式能力細節見 [Q-002 子項](#document-與共用契約)；不恢復已移除的 structure 型別或結構路由。
 - 建議：M1 先 Structured JSON，Native text 及其他格式逐一有測資才開放；OCR 服務另驗證。
 - 替代：第一期納入全部格式，需增加品質／成本驗收。
 - 負責角色：產品＋Engine；阻擋 M2 格式能力，不卡 M1 Structured JSON。
@@ -478,13 +478,13 @@ M0 凍結 Data、批次 Request、Remote I/O、有效參數與候選規則。M1�
 |---|---|---|
 | Q-001～Q-028 | 每項保留已確認方向與 OPEN 細節 | 本手冊 |
 | DS-01～DS-13 | 平台內部描述候選，舊 DS 表見歷史 | [Descriptor 決策表](04_component_descriptor.md) |
-| SC-01～SC-10 | D 的具體表示；Import 和有效設定推導 Data，舊 SC 候選見歷史 | [System Config 決策表](05_system_config.md) |
+| SC-01～SC-10 | D 的具體表示；Import 和有效設定推導 Document，舊 SC 候選見歷史 | [System Config 決策表](05_system_config.md) |
 | API-D01～API-D07 | 已確認核心／待完成協定逐列保留 | [Runtime API 狀態表](06_runtime_api_and_deployment.md#src-21-72-決策狀態與剩餘討論) |
 | UIB | 所有 40 個未勾選工作項保留；021 索引、022 工作、023 文件管理、024 Descriptor | [UI Backlog](07_builder_ui.md#ui-backlog-pending) |
 
 ## 7. 優先討論順序
 
-優先對齊批次 Request、Data、Remote I/O 與有效設定，再收斂部署及執行細節。
+優先對齊批次 Request、Document、Remote I/O 與有效設定，再收斂部署及執行細節。
 
 | 建議順序 | 主題／Q-ID | 這輪需要收斂什麼 | 建議產出 |
 |---|---|---|---|

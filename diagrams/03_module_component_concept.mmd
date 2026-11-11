@@ -15,10 +15,10 @@ flowchart TB
   C["System Config · 內建方法或 Remote API"]
   S["外部 Remote API"]
   C --> |"入口 Schema"| I
-  I --> |"單筆 Data"| P
-  P --> |"Data[]"| H
-  H --> |"Data[]"| E
-  E --> |"Data[] + vectors"| X
+  I --> |"單筆 Document"| P
+  P --> |"Document[]"| H
+  H --> |"Document[]"| E
+  E --> |"Document[] + vectors"| X
   C --> |"執行參數"| A
   A --> |"QueryContext[]"| Q
   Q --> |"QueryContext[]"| R

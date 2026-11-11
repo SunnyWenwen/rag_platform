@@ -5,7 +5,7 @@ User 在 Builder 設定、測試及匯出 Retrieval System。System 由 Retrieva
 | 手冊 | 主責 |
 |---|---|
 | [01 架構、名詞與責任](docs/01_architecture.md) | User／Admin、Workspace／System、共用與獨立 Runtime |
-| [02 共用資料契約](docs/02_data_contracts.md) | Data、有效欄位、QueryContext[]、IndexBinding |
+| [02 共用資料契約](docs/02_data_contracts.md) | Document、有效欄位、QueryContext[]、IndexBinding |
 | [03 Engine 與模組](docs/03_engine_and_components.md) | 模組執行、Remote API 及替換範圍 |
 | [04 Schema 推導](docs/04_component_descriptor.md) | 內建描述、上下游相依與 Remote 契約產生 |
 | [05 System Config](docs/05_system_config.md) | 參數、有效設定、模板版本與變更影響 |

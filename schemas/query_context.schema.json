@@ -54,7 +54,7 @@
                 "type": "object",
                 "properties": {
                   "data": {
-                    "$ref": "https://rag-builder.example/schemas/data.schema.json#/$defs/candidate"
+                    "$ref": "https://rag-builder.example/schemas/document.schema.json#/$defs/candidate"
                   },
                   "score": {
                     "type": "number"

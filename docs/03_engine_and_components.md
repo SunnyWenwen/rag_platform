@@ -9,10 +9,10 @@ User 提供已部署的 HTTP 服務並在 System 設定完整 Endpoint、認證�
 
 | Pipeline | 可替換範圍 | 契約 |
 |---|---|---|
-| Ingestion | Parsing、Chunking、Embedding 各自可替換，也可選 Parsing → Chunking、Chunking → Embedding、Parsing → Chunking → Embedding | 從 Parsing 開始時 input 是單筆 Data，其餘為同文件 Data[]。output 為 Data[]。涵蓋 Parsing／Chunking 時宣告輸出 structdata，涵蓋 Embedding 時宣告 vectors。 |
-| Inference | Query Transformation、Retrieval、Rerank 各自可替換，也可選 Transformation → Retrieval、Retrieval → Rerank、Transformation → Retrieval → Rerank | input／output 皆為 QueryContext[]，候選 Data 遵守從 Ingestion 設定推導的 System Schema。 |
+| Ingestion | Parsing、Chunking、Embedding 各自可替換，也可選 Parsing → Chunking、Chunking → Embedding、Parsing → Chunking → Embedding | 從 Parsing 開始時 input 是單筆 Document，其餘為同文件 Document[]。output 為 Document[]。涵蓋 Parsing／Chunking 時宣告輸出 structdata，涵蓋 Embedding 時宣告 vectors。 |
+| Inference | Query Transformation、Retrieval、Rerank 各自可替換，也可選 Transformation → Retrieval、Retrieval → Rerank、Transformation → Retrieval → Rerank | input／output 皆為 QueryContext[]，候選 Document 遵守從 Ingestion 設定推導的 System Schema。 |
 
-區段只執行一次，涵蓋模組由首節點管理，編譯拒絕重疊。Indexing 與 Inference Input 由平台執行。只替換 Embedding 時，輸出保留原 Data 並附上向量。外部 Retrieval 自行執行搜尋及授權，平台無須等 Ingestion／IndexBinding 就緒。未被替換的後段使用驗證過的候選。平台保留內建擴充的能力，由平台團隊維護方法及相容契約。
+區段只執行一次，涵蓋模組由首節點管理，編譯拒絕重疊。Indexing 與 Inference Input 由平台執行。只替換 Embedding 時，輸出保留原 Document 並附上向量。外部 Retrieval 自行執行搜尋及授權，平台無須等 Ingestion／IndexBinding 就緒。未被替換的後段使用驗證過的候選。平台保留內建擴充的能力，由平台團隊維護方法及相容契約。
 
 呼叫前解析 `{{params.name}}` 與固定／動態 Secret reference。實際 Secret 經授權解析後放認證 Header。檢查回應形狀、欄位型別、資料識別、向量維度／Profile 與 Inference 邊界語意。HTTP 錯誤、Timeout、無效 JSON、違反契約及查無候選分別處理。服務失敗的重試依操作冪等性及 Runtime 政策。保留 request ID、模組範圍與錯誤摘要，遮罩憑證。
 
@@ -20,17 +20,17 @@ User 提供已部署的 HTTP 服務並在 System 設定完整 Endpoint、認證�
 
 ### Import
 
-依 Import 設定宣告入口欄位與批次參數。Runtime 驗證整批後，在 Parser 前拆成逐文件工作。每個工作帶單筆 Data 及共用參數快照。CSV 每列映射為一筆 Data。
+依 Import 設定宣告入口欄位與批次參數。Runtime 驗證整批後，在 Parser 前拆成逐文件工作。每個工作帶單筆 Document 及共用參數快照。CSV 每列映射為一筆 Document。
 
 ### Parsing
 
-依 System 選定一種內建檔案解析方法或 Remote。結構化資料可直傳，檔案來源依 content 讀取。內建解析保留原始欄位並新增 contenttext，每個解析單位是一筆 Data。解析輸出需保留 document_id 與來源版本，來源位置選填。
+依 System 選定一種內建檔案解析方法或 Remote。結構化資料可直傳，檔案來源依 content 讀取。內建解析保留原始欄位並新增 contenttext，每個解析單位是一筆 Document。解析輸出需保留 document_id 與來源版本，來源位置選填。
 
 ### Chunking
 
-**契約**：同文件的 Data[] → Data[]，輸出各筆具有 data_id，向量在 Embedding 階段加入。逐 Unit 切分，進階多任務結果串接。_rag 來源位置與 fingerprint 選填。
+**契約**：同文件的 Document[] → Document[]，輸出各筆具有 data_id，向量在 Embedding 階段加入。逐 Unit 切分，進階多任務結果串接。_rag 來源位置與 fingerprint 選填。
 
-**目的與方法**：Fixed-size／Recursive／Header-aware；預設直接切 Data.structdata.text 並寫回 text，不顯示欄位選單、不自動複製其他 fields。進階才設定有序任務，每個任務一個 split_field／output_field＋明確 copy 映射；同來源可切分且完整複製，但輸出名稱不能衝突。metadata 預設全部繼承，不再逐欄勾選。三種方法均以 Token 計量，沿用指定 Tokenizer／revision。2026-10-16 新增的「fix chunk」統一稱 **Fixed-size Chunking（固定 Token 視窗）**；方法已列入需求；Prototype v0.10 有設定展示，正式 Engine／Tokenizer 尚未實作。
+**目的與方法**：Fixed-size／Recursive／Header-aware；預設直接切 Document.structdata.text 並寫回 text，不顯示欄位選單、不自動複製其他 fields。進階才設定有序任務，每個任務一個 split_field／output_field＋明確 copy 映射；同來源可切分且完整複製，但輸出名稱不能衝突。metadata 預設全部繼承，不再逐欄勾選。三種方法均以 Token 計量，沿用指定 Tokenizer／revision。2026-10-16 新增的「fix chunk」統一稱 **Fixed-size Chunking（固定 Token 視窗）**；方法已列入需求；Prototype v0.10 有設定展示，正式 Engine／Tokenizer 尚未實作。
 
 | 方法 | 切分依據 | 有效設定 |
 |---|---|---|
@@ -46,7 +46,7 @@ Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一�
 2. 依所選方法切分：Fixed-size 使用上述固定視窗；Recursive 依 separators 優先序切分，必要時處理過長片段，size 是上限、overlap 是目標值。
 3. Header-aware 先依可靠標題層級切分，再對超長章節 Recursive；標題取自當筆 Markdown；無標題時依 Component 明確策略處理，不跨 Unit 尋找。
 4. 記錄 unit_index 與原 Unit 字串範圍，不從帶 overlap 的文字猜測位置，不跨 Unit 合併。
-5. 從同一 Unit 複製指定欄位到 Data.structdata；文件摘要保持文件摘要。繼承 輸入 Data 中經 Schema 驗證的全部業務 metadata，並保留必要可信來源／ACL；Component 可選擇提供 metadata._rag.source_refs／chunking，輸入不能覆蓋平台保留資訊，完整可信區協定見 Q-006。第一版不新增 metadata 排除表單，有明確需求再規劃。
+5. 從同一 Unit 複製指定欄位到 Document.structdata；文件摘要保持文件摘要。繼承 輸入 Document 中經 Schema 驗證的全部業務 metadata，並保留必要可信來源／ACL；Component 可選擇提供 metadata._rag.source_refs／chunking，輸入不能覆蓋平台保留資訊，完整可信區協定見 Q-006。第一版不新增 metadata 排除表單，有明確需求再規劃。
 6. 由 Component 或 SDK helper 產生必要且唯一的 data_id，初始化 vectors={}。fingerprint／ordinal 的 Hash 規則僅為選用參考工具，不強制所有 Component 實作或輸出，見 [資料契約](02_data_contracts.md)～6。
 
 **驗證／例外**：size 為正整數、overlap 為整數且 `0 ≤ overlap < size`、Tokenizer 可用；涵蓋重複文字、非 BMP 字元、空段及極長無分隔文字。Fixed-size 不啟用 separators／keep_separator／header_levels，也不要求 結構化 heading Blocks；未啟用的方法參數可保留草稿，但不驗證或匯出為有效參數。複製欄位未被主要內容切分，不保證其長度小於 size。
@@ -69,7 +69,7 @@ D-53 真實 Engine 功能待實作，Prototype v0.12 已有控制與教學預覽
 3. 按 Batch Size 呼叫 Embedding Adapter；現有 Prototype 的格式基線為 OpenAI-compatible embeddings。正式首組服務、相容範圍及模型契約仍待 Q-003，不把原型格式當作所有 Embedding API 的通用標準。
 4. 驗證回應 index 對應、數量、維度與有限值；不能因回傳順序錯誤把向量寫給其他 Chunk。
 5. normalization 與 metric 依 Profile 執行；記錄模型／版本／Provider request ID。
-6. 寫回原 Data.vectors 的命名物件（values、embedding_profile_id、source_field），精確格式引用 Data 契約；保留 structdata／metadata。預設 structdata.text → vectors.text，其他映射由進階設定；純全文 Pipeline 不初始化此服務。
+6. 寫回原 Document.vectors 的命名物件（values、embedding_profile_id、source_field），精確格式引用 Document 契約；保留 structdata／metadata。預設 structdata.text → vectors.text，其他映射由進階設定；純全文 Pipeline 不初始化此服務。
 
 **例外**：缺欄位、超長、429／Timeout、批次缺項、維度錯誤與非法數值。截斷或 partial 需明確政策，不能默默處理。
 
@@ -237,7 +237,7 @@ Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root ar
 
 這是平台契約，不是所有模型服務的通用標準。POST 路徑為選定 Base URL 下的 /rerank；其他格式需 Adapter。
 
-**處理**：從選定 ResultSet 的 Data.structdata 取評分內容，保留候選 index 對照；驗證 index 唯一且在範圍內、score 有限，映回相同 Chunk，覆寫目前 score，再排序與取平台設定的 Top N。舊分數不放在業務物件，不改文件／ACL 或生成新候選。None 不評分、不使用其評分後 Top N，但仍執行配置的後置融合；零筆不呼叫服務。服務端 top_n 與平台保留數的邊界如下。
+**處理**：從選定 ResultSet 的 Document.structdata 取評分內容，保留候選 index 對照；驗證 index 唯一且在範圍內、score 有限，映回相同 Chunk，覆寫目前 score，再排序與取平台設定的 Top N。舊分數不放在業務物件，不改文件／ACL 或生成新候選。None 不評分、不使用其評分後 Top N，但仍執行配置的後置融合；零筆不呼叫服務。服務端 top_n 與平台保留數的邊界如下。
 
 **驗收**：不生成新 data_id；重新 rank；保留原 Retrieval Trace。串接 Timeout／錯誤時不假裝 Rerank=None。
 
@@ -248,7 +248,7 @@ Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root ar
 <a id="src-04-54-最終檢索輸出"></a>
 ### 最終檢索輸出
 
-Inference 在完成配置的 Fusion／Rerank／Top N 後，直接回傳 QueryContext[]；各 ResultItem 包含 Data 與選填 score，名次由 items 順序表示，無歷史 lineage。跨 Query 合併停用時保留分組結果，不任意再融合一次。API 包裝見 [Runtime API／部署](06_runtime_api_and_deployment.md#src-07-3-平台管理資料與儲存)，最終結果選擇與版本政策仍由 Q-014／Q-019 核定。
+Inference 在完成配置的 Fusion／Rerank／Top N 後，直接回傳 QueryContext[]；各 ResultItem 包含 Document 與選填 score，名次由 items 順序表示，無歷史 lineage。跨 Query 合併停用時保留分組結果，不任意再融合一次。API 包裝見 [Runtime API／部署](06_runtime_api_and_deployment.md#src-07-3-平台管理資料與儲存)，最終結果選擇與版本政策仍由 Q-014／Q-019 核定。
 
 不呼叫回答生成模型、不建立答案 Prompt／Context Budget，也不回傳模型生成的 answer 或 citations。Embedding、Rewrite 與助手所需服務仍依其各自契約使用。
 
@@ -258,4 +258,4 @@ Inference 在完成配置的 Fusion／Rerank／Top N 後，直接回傳 QueryCon
 <a id="src-04-6-evaluation-邏輯"></a>
 ## Evaluation 與驗收
 
-Evaluation Runner 重用 Inference 契約，依資料集驗證排名、來源與無命中行為。真實模型、解析、索引、吞吐與隔離另做整合驗收。先使用[現行離線範例](../examples/user_remote_api/README.md)驗證 Data 邊界、Remote 參數、候選相依與錯誤案例。
+Evaluation Runner 重用 Inference 契約，依資料集驗證排名、來源與無命中行為。真實模型、解析、索引、吞吐與隔離另做整合驗收。先使用[現行離線範例](../examples/user_remote_api/README.md)驗證 Document 邊界、Remote 參數、候選相依與錯誤案例。

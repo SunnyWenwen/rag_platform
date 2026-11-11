@@ -8,7 +8,7 @@
       "items": {
         "allOf": [
           {
-            "$ref": "https://rag-builder.example/schemas/data.schema.json#/$defs/candidate"
+            "$ref": "https://rag-builder.example/schemas/document.schema.json#/$defs/candidate"
           },
           {
             "properties": {
@@ -34,7 +34,7 @@
                   "text": {
                     "allOf": [
                       {
-                        "$ref": "https://rag-builder.example/schemas/data.schema.json#/$defs/denseVector"
+                        "$ref": "https://rag-builder.example/schemas/document.schema.json#/$defs/denseVector"
                       },
                       {
                         "properties": {

@@ -14,7 +14,7 @@ def read(path):
     return json.loads(path.read_text())
 
 
-SCHEMA_NAMES = ("data", "ingestion_request", "inference_request", "query_context")
+SCHEMA_NAMES = ("document", "ingestion_request", "inference_request", "query_context")
 schemas = {name: read(SCHEMAS / f"{name}.schema.json") for name in SCHEMA_NAMES}
 registry = Registry().with_resources(
     (schema["$id"], Resource.from_contents(schema)) for schema in schemas.values()
@@ -61,7 +61,7 @@ query_check.validate(read(HERE / "remote_retrieval.request.json")["input"])
 contexts = read(HERE / "remote_retrieval.response.json")["output"]
 query_check.validate(contexts)
 candidate = contexts[0]["result_sets"][0]["items"][0]["data"]
-effective_check = validator(read(HERE / "effective_data.schema.json"))
+effective_check = validator(read(HERE / "effective_document.schema.json"))
 effective_check.validate(candidate)
 wrong_field = deepcopy(candidate)
 wrong_field["structdata"]["text"] = 123

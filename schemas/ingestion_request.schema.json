@@ -9,7 +9,7 @@
       "items": {
         "allOf": [
           {
-            "$ref": "https://rag-builder.example/schemas/data.schema.json"
+            "$ref": "https://rag-builder.example/schemas/document.schema.json"
           },
           {
             "anyOf": [

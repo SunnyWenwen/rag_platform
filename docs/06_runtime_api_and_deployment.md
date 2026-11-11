@@ -78,7 +78,7 @@ User 設定已部署的外部服務。Runtime 在執行時依有效環境綁定�
 Backend 儲存前以有效設定比較，依 05 判定影響；UI 與 AI 都不能繞過。Edit 使用獨立草稿，取消不生效。
 
 
-2026-10-16 的內容保存簡化：Indexing 保存全部 Data.structdata／metadata，Chunking 預設繼承全部有效業務 metadata；只選全文／向量／Filter 能力。原型的 indexing.stored／chunking.metadata 是待遷移的舊保存／繼承投影，不能直接套用為新規則。Metadata 全繼承仍保留可信 ACL／來源及 Schema 驗證，Memory／MongoDB 的持久化模式不變；保存內容也不等於全部內容回傳給 API，回傳與授權投影另外處理。
+2026-10-16 的內容保存簡化：Indexing 保存全部 Document.structdata／metadata，Chunking 預設繼承全部有效業務 metadata；只選全文／向量／Filter 能力。原型的 indexing.stored／chunking.metadata 是待遷移的舊保存／繼承投影，不能直接套用為新規則。Metadata 全繼承仍保留可信 ACL／來源及 Schema 驗證，Memory／MongoDB 的持久化模式不變；保存內容也不等於全部內容回傳給 API，回傳與授權投影另外處理。
 
 **D-60 的讀寫範圍與仍待決的版本機制**：
 
@@ -149,12 +149,12 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 - 不保存斷點續跑；重試整份文件。Runtime 重啟不恢復已接受的排隊／執行工作。
 - Runtime 統一管理有上限的 Ingestion Queue、併發、Inference Rate limit／併發與逾時。每 System 的文件執行併發可配置，預設 1；調高前需驗證 Component／共享資源安全，不等於無限制並行。
 - 同一 System 的同一 document_id 已 queued／running 時，拒絕再次提交；終態後才可重新提交覆寫。不同文件可依上限並行；Batch 是文件集合，不是另一種資料契約。
-- Runtime 額外保存文件級工作紀錄於記憶體，不放入 Data，也不從既有索引反推執行狀態；重啟後查不到的狀態為 unknown。
+- Runtime 額外保存文件級工作紀錄於記憶體，不放入 Document，也不從既有索引反推執行狀態；重啟後查不到的狀態為 unknown。
 - 202 表示已接受排隊，不表示解析、Embedding、索引或可搜尋已成功；提交後須可查詢結果。
 - Inference 沿用 query／filters／metadata 輸入，同步回 QueryContext[]；不做 Generation，不因非同步 Ingestion 而新增 InferenceState。
 - D-57：整批接收前預檢通過才入列、回 202；入列後逐文件結果，文件無 partial，Run 可 partial，無紀錄回 200＋unknown。這不是要求完成 Parsing／Embedding／Indexing 才回 202。
 - D-57／D-58：首期需要 retire，已確認為直接刪除該 System／document_id 的儲存資料與搜尋索引，不是保留資料的邏輯停用；後續 D-64 確認同步 200＋deleted／not_found，忙碌文件 409，後端／Remote 清理協定仍待細化。取消 queued／running 文件工作首期不做。
-- D-58：一支 POST /v1/ingestions 接收批次物件，documents 為非空 Data[]；Parser 每次仍接收單份物件，不另開 :batch。
+- D-58：一支 POST /v1/ingestions 接收批次物件，documents 為非空 Document[]；Parser 每次仍接收單份物件，不另開 :batch。
 - D-58：新增文件存在性與全部 document_id 清單的查詢能力，資料來源為該 System 的實際儲存／索引，與 Runtime 工作狀態分開；清單需對 Chunk 的 document_id 去重。
 - D-60：讀寫各自進行，不因 Ingestion／retire 寫入而阻擋 Query，不加共享查詢讀寫鎖／全索引快照；同文件重複 Ingestion 的忙碌拒絕維持。
 - D-60：Runtime API 暫採 HTTP Basic Auth，預設一組帳密可操作該 API service 提供的全部 API，首期不做逐角色／逐 API 權限；Builder 使用者登入另議。
@@ -171,7 +171,7 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 
 | 優先 | Method／Path 草案 | 用途 | Request | 成功回應／狀態 | 主要行為 |
 |---|---|---|---|---|---|
-| P0 | POST /v1/ingestions | 提交一份或多份文件 | 批次物件，documents 為非空 Data[] | 202：run_id、queued、config_revision、文件清單；Location 指向查詢 | 整批預檢通過才入列；不再另開 :batch；每個 item 與 Parser input 同 Schema |
+| P0 | POST /v1/ingestions | 提交一份或多份文件 | 批次物件，documents 為非空 Document[] | 202：run_id、queued、config_revision、文件清單；Location 指向查詢 | 整批預檢通過才入列；不再另開 :batch；每個 item 與 Parser input 同 Schema |
 | P0 | GET /v1/ingestions/{run_id} | 查一次提交及逐文件結果 | run_id | 200：Run 狀態／計數／逐文件結果 | 資料來自 Runtime 記憶體工作紀錄；Run 可 partial |
 | P0 | GET /v1/documents/{document_id}/ingestion-status | 查文件最近一次工作 | document_id | 200：run_id、status、Module、時間／錯誤；無紀錄為 unknown | 工作狀態，不用成功儲存的文件反推 |
 | P0 能力；格式草案 | GET /v1/documents/{document_id}/exists | 查目前文件資料是否存在 | document_id | 200：document_id／exists | 從實際文件儲存／索引讀取；不是工作紀錄是否存在；backend 無法確認時回錯誤 |
@@ -191,7 +191,7 @@ Document 管理細節見 [Runtime API相關章節](#src-21-9-文件資料查詢�
 <a id="src-21-31-已確認單一端點單份也包-list"></a>
 ### 單一端點，批次物件
 
-`POST /v1/ingestions` 接收 `{documents: Data[], parameters?: object}`，documents 非空。整批預檢通過才 202，單份同樣置入 documents。Runtime 在 Parser 前拆成逐文件工作，每次傳入一筆 Data。有效 parameters 隨同一批每筆工作傳遞，Parser 後仍可按同一文件處理 Data[]。
+`POST /v1/ingestions` 接收 `{documents: Document[], parameters?: object}`，documents 非空。整批預檢通過才 202，單份同樣置入 documents。Runtime 在 Parser 前拆成逐文件工作，每次傳入一筆 Document。有效 parameters 隨同一批每筆工作傳遞，Parser 後仍可按同一文件處理 Document[]。
 
 ```json
 {
@@ -203,7 +203,7 @@ Document 管理細節見 [Runtime API相關章節](#src-21-9-文件資料查詢�
 }
 ```
 
-Runtime 驗證 Import 宣告的參數和每筆有效 Data Schema。接收後保留同一 Config 與參數快照。共用 [Request Schema](../schemas/ingestion_request.schema.json) 由 System 欄位再細化。此格式更新 D-58 的根層陣列，保留單一端點、預檢及逐文件工作語意。
+Runtime 驗證 Import 宣告的參數和每筆有效 Document Schema。接收後保留同一 Config 與參數快照。共用 [Request Schema](../schemas/ingestion_request.schema.json) 由 System 欄位再細化。此格式更新 D-58 的根層陣列，保留單一端點、預檢及逐文件工作語意。
 
 <a id="src-21-33-202-回應核心欄位d-64-已確認"></a>
 ### 202 回應核心欄位（D-64 已確認）
@@ -236,7 +236,7 @@ Location: /v1/ingestions/ing-001
 <a id="src-21-41-文件級狀態"></a>
 ### 文件級狀態
 
-**document_id 來自 Request 的每份 Data，不需要先在索引中成功存在。**整批預檢通過、入列時即建立 Run 與每份文件的 queued 紀錄；Worker 更新 running，再記錄 completed／failed。失敗紀錄與成功紀錄同樣保留到終態清理，不只有成功文件才有狀態。
+**document_id 來自 Request 的每份 Document，不需要先在索引中成功存在。**整批預檢通過、入列時即建立 Run 與每份文件的 queued 紀錄；Worker 更新 running，再記錄 completed／failed。失敗紀錄與成功紀錄同樣保留到終態清理，不只有成功文件才有狀態。
 
 | 階段 | Runtime 工作紀錄 | 搜尋資料／判斷 |
 |---|---|---|
@@ -304,7 +304,7 @@ D-57 已確認 Batch 彙總方向：仍有 running 為 running，只有等待且
 }
 ```
 
-counts 指這次接收的 Data 數，不是 Unit／Chunk／模型呼叫次數；大文件不偽造固定完成百分比。分頁／批次大小上限應一起決定，避免無界狀態回應。Run 失去紀錄時建議只回 run_id／status=unknown，不填 0 個文件冒充空 Batch。
+counts 指這次接收的 Document 數，不是 Unit／Chunk／模型呼叫次數；大文件不偽造固定完成百分比。分頁／批次大小上限應一起決定，避免無界狀態回應。Run 失去紀錄時建議只回 run_id／status=unknown，不填 0 個文件冒充空 Batch。
 
 <a id="src-21-43-紀錄的保存與重啟"></a>
 ### 紀錄的保存與重啟
@@ -483,7 +483,7 @@ S1 是 system_id 示意：由 Builder Backend 建立並維護的穩定 Retrieval
 
 這裡的 DB 是該 System 綁定的文件資料／索引後端，可能是 Elasticsearch、Local Memory、MongoDB 配本地搜尋或支援協定的 Remote Service；不要求為了查 ID 新增一個中央 DB。查詢反映目前後端可見的文件資料；若正有更新，依 D-60 可看到更新中的結果，不用工作 completed 當作讀取閘門，也不把「有資料」當成這次工作成功。
 
-預設儲存單位是 Chunk，透過其 document_id 判斷存在與去重列出文件，不要求額外長期保存解析階段的 Data。實際後端可用適當 metadata／catalog 加速，但必須與資料一致，不能以 Runtime 的工作紀錄當成唯一依據。API-D07 保留實體布局與查詢策略的實作選擇。
+預設儲存單位是 Chunk，透過其 document_id 判斷存在與去重列出文件，不要求額外長期保存解析階段的 Document。實際後端可用適當 metadata／catalog 加速，但必須與資料一致，不能以 Runtime 的工作紀錄當成唯一依據。API-D07 保留實體布局與查詢策略的實作選擇。
 
 | 問題 | 查詢位置 | Runtime 重啟後 |
 |---|---|---|
@@ -698,7 +698,7 @@ Local Search 的持久化模式沿用同版 Config：DEV 為 Memory，FTEST／EN
 <a id="src-07-911-remote-service-manifest-與環境綁定"></a>
 ### Remote API 與環境綁定
 
-同版邏輯 Config 使用環境 Endpoint、認證與 Secret 綁定。認證欄位支援固定 Secret reference 或 `{{params.remote_secret_ref}}`。Runtime 使用本次已驗證的 secret_ref 參數，檢查系統使用權限、解析並注入 Header。認證值與業務 Data、Remote parameters、模板、索引及記錄分離。匯出包含 Runtime 與外部依賴引用，外部服務維運由服務提供者負責。
+同版邏輯 Config 使用環境 Endpoint、認證與 Secret 綁定。認證欄位支援固定 Secret reference 或 `{{params.remote_secret_ref}}`。Runtime 使用本次已驗證的 secret_ref 參數，檢查系統使用權限、解析並注入 Header。認證值與業務 Document、Remote parameters、模板、索引及記錄分離。匯出包含 Runtime 與外部依賴引用，外部服務維運由服務提供者負責。
 
 <a id="src-07-92-驗證與部署"></a>
 ### 驗證與部署
@@ -743,4 +743,4 @@ Builder 使用者登入依本輪指示延後討論；既有 tSSO 圖示不代表
 <a id="src-18-5-執行實例儲存與資料共用"></a>
 ## 外部 Retrieval 就緒與資料責任
 
-搜尋自有資料的 Remote Retrieval 可直接查詢，不需要平台 Ingestion 或 IndexBinding。Runtime 仍驗證每筆候選 Data 是否符合 System 的有效 Ingestion 輸出 Schema，後續內建 Rerank 使用同一欄位規格。外部服務負責其資料空間及授權。平台的文件狀態、清單及刪除僅處理平台管理的資料。
+搜尋自有資料的 Remote Retrieval 可直接查詢，不需要平台 Ingestion 或 IndexBinding。Runtime 仍驗證每筆候選 Document 是否符合 System 的有效 Ingestion 輸出 Schema，後續內建 Rerank 使用同一欄位規格。外部服務負責其資料空間及授權。平台的文件狀態、清單及刪除僅處理平台管理的資料。

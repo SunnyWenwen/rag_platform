@@ -75,7 +75,7 @@ Create／Edit 可選用全域模板，設定 Import 入口欄位及參數，再�
 
 - Parsing 初始只顯示「結構化 JSON」；其他格式及所有相關設定集中在預設關閉的「進階選項」，展開才出現。正式 Parser 能力另依 Q-005，顯示選項不等於可執行。
 - D-67：由 Parser Descriptor＋Config 推導 Unit／metadata 細節，再沿 Pipeline 提供下游選項與卡控；多分支須保留可用性，缺欄位不靜默替換。詳細規則見 [Descriptor](04_component_descriptor.md)，UI 待辦 UIB-024。
-- 2026-10-16 已確認：Indexing 預設保存全部 Data.structdata／metadata，移除「儲存內容」選單，只選全文／向量索引與可過濾欄位；Chunking 預設繼承全部合法 metadata，第一版不新增排除表單。Prototype v0.12 已有上述保存／繼承互動，見 Builder UI／Backlog手冊 的 UIB-005／006；真實儲存 Adapter 尚待實作。
+- 2026-10-16 已確認：Indexing 預設保存全部 Document.structdata／metadata，移除「儲存內容」選單，只選全文／向量索引與可過濾欄位；Chunking 預設繼承全部合法 metadata，第一版不新增排除表單。Prototype v0.12 已有上述保存／繼承互動，見 Builder UI／Backlog手冊 的 UIB-005／006；真實儲存 Adapter 尚待實作。
 - LLM 服務集中管理；Rewrite／Multi-query 在需要時以下拉引用，同一服務不重填連線。
 - Rewrite／Multi-query 的 Prompt 可編輯，分別保留草稿；提供變數插入、驗證與預覽。
 - Rerank 可查看固定平台 Request／Response 範例及 index／score 對應說明；不宣稱是所有模型的統一標準。
@@ -180,7 +180,7 @@ Inference 顯示 QueryContext[] 中的目前 ResultSets／ResultItems、依序�
 A. 先 Create Config，之後 Ingest 上傳 CSV 並映射。
 B. 先上傳 CSV 樣本，描述用途／問題範例，AI 提出 Schema、映射及 Pipeline 草稿，使用者確認後建立 System。
 
-CSV 每 row 對應一份 Data，不把每個 column 當文件。需要以多列合併文件的能力尚未定案，見 Q-007／Q-025。
+CSV 每 row 對應一份 Document，不把每個 column 當文件。需要以多列合併文件的能力尚未定案，見 Q-007／Q-025。
 
 <a id="src-06-42-映射與預覽"></a>
 ### 映射與預覽
@@ -193,7 +193,7 @@ CSV 每 row 對應一份 Data，不把每個 column 當文件。需要以多列�
 | 必填 | 無預設值的 input 必填欄位須映射 |
 | 型別 | number 有限值；boolean 規則明確；array 用 JSON 解析；正式強制轉型政策 Q-002 |
 | ID | 優先映射穩定鍵；自動 ID 的跨批更新限制要明示 |
-| 預覽 | 原始列 → 批次 Request → 各階段 Data；標示實際解析或模擬，錯誤對應列號／模組／欄位 |
+| 預覽 | 原始列 → 批次 Request → 各階段 Document；標示實際解析或模擬，錯誤對應列號／模組／欄位 |
 | 保存 | 成功後保存映射；是否成為執行 Config Revision 的一部分見 Q-015 |
 
 Prototype 限制 ≤1 MB 且在瀏覽器讀取，不等於正式產品限制。正式檔案上傳、樣本保留、敏感欄位與大小限制見 Q-016／Q-019／Q-024。
@@ -361,7 +361,7 @@ API 回傳最終有效清單。D-52：Chunk.metadata._rag.source_refs 為選填�
 
 單一 Workspace／Group 主畫面，Create／Edit 共用設定介面，提供 Ingest、Inference、檢索 Evaluation、Export。全部為瀏覽器記憶體內操作，重新整理重設；沒有真實 Engine、模型、DB、Registry、服務健康探測或部署控制器。
 
-- Import 欄位及 CSV 映射、各階段有效 Data Schema、批次 Ingestion Request 與逐文件驗證。
+- Import 欄位及 CSV 映射、各階段有效 Document Schema、批次 Ingestion Request 與逐文件驗證。
 - Fixed-size／Recursive／Header-aware 的配置、Tokenizer 連動、預設 text／進階多欄位任務，metadata 繼承。
 - 全部 Chunk 內容預設保存；全文、向量、Filter 能力分開，失效欄位保留並報錯。
 - 推論 QueryContext[]／filters／metadata、兩層融合與四處 Top N；可以回多份分組清單。
@@ -420,12 +420,12 @@ ResultSet.key 對應 Config 路徑／群組；items 位置即名次。RRF 可用
 <a id="src-10-4-component-與-remote-的原型範圍"></a>
 ## Prototype／Backlog：Remote API
 
-原型涵蓋 [支援的連續範圍](03_engine_and_components.md#remote-api)、單一 Data、輸出向量宣告、有效 I/O 與參數引用。外部 Retrieval 使用 System 有效候選 Schema，測試可略過平台 Ingestion。Endpoint 與憑證解析顯示為配置預覽；真實 HTTP、認證、資料和索引仍由 Runtime 整合驗收。
+原型涵蓋 [支援的連續範圍](03_engine_and_components.md#remote-api)、單一 Document、輸出向量宣告、有效 I/O 與參數引用。外部 Retrieval 使用 System 有效候選 Schema，測試可略過平台 Ingestion。Endpoint 與憑證解析顯示為配置預覽；真實 HTTP、認證、資料和索引仍由 Runtime 整合驗收。
 ## Prototype／Backlog：選填追溯與文件提示
 
 內建預覽預設沒有 _rag，不以缺少 source_refs／fingerprint／ordinal 阻擋儲存或執行。Component 未提供來源就不捏造。Chunk.metadata._rag 保留為選填擴充；ResultItem 不另帶分數血緣，流程診斷交 Logs。
 
-內建 Chunker 的示例可讀 metadata.chunking_mode="passthrough"，逐 Unit／task 完整轉 Chunk；預設無提示時正常切分。由 CSV 映射或 JSON Data 傳入 metadata。這不是任意 Config／ACL 覆寫；其他 Component 的支援由其宣告決定。
+內建 Chunker 的示例可讀 metadata.chunking_mode="passthrough"，逐 Unit／task 完整轉 Chunk；預設無提示時正常切分。由 CSV 映射或 JSON Document 傳入 metadata。這不是任意 Config／ACL 覆寫；其他 Component 的支援由其宣告決定。
 
 <a id="uib-018-embedding-composition"></a>
 <a id="src-10-6-欄位組合與原文-chunk"></a>

@@ -11,7 +11,7 @@ Workspace 管理多個 System。System ID、Config Revision、source_revision、
 | 模組 | 設定與推導 |
 |---|---|
 | Import | CSV 映射、來源型態、structdata 欄位與批次參數宣告 |
-| Parsing | 單選內建方法或 Remote，依選擇推導 Data[] |
+| Parsing | 單選內建方法或 Remote，依選擇推導 Document[] |
 | Chunking | 方法、Tokenizer、來源／輸出欄位及保留欄位 |
 | Embedding | 欄位映射、Profile、維度、可選文字組合。Remote 執行 Embedding 時，保留的內建 Chunking 自行指定 Tokenizer |
 | Indexing | 全文／向量／Filter 欄位、後端及持久化 |
@@ -23,7 +23,7 @@ Workspace 管理多個 System。System ID、Config Revision、source_revision、
 
 ## 執行參數
 
-Import／Inference Input 各自宣告名稱、型別、必填與預設值。Import 的值放在整批 Ingestion Request 的 `parameters`，Inference 的值放在該次查詢的 `parameters`。Runtime 先檢查型別、套預設及拒絕缺少的必填值。下游用 `{{params.name}}` 引用。Remote parameters JSON 中完整參數引用保留原值型別，例如 `{"top_k":"{{params.top_k}}"}` 在值為整數 5 時解析為 `{"top_k":5}`。執行參數留在呼叫環境，與 Data、metadata、索引內容分開。
+Import／Inference Input 各自宣告名稱、型別、必填與預設值。Import 的值放在整批 Ingestion Request 的 `parameters`，Inference 的值放在該次查詢的 `parameters`。Runtime 先檢查型別、套預設及拒絕缺少的必填值。下游用 `{{params.name}}` 引用。Remote parameters JSON 中完整參數引用保留原值型別，例如 `{"top_k":"{{params.top_k}}"}` 在值為整數 5 時解析為 `{"top_k":5}`。執行參數留在呼叫環境，與 Document、metadata、索引內容分開。
 
 認證欄位可填固定 Secret reference 或 `{{params.remote_secret_ref}}`。動態引用必須宣告為 `secret_ref`，由 Runtime 檢查本 System 可使用該引用，再解析成認證 Header。一般業務參數傳入 Remote 的 parameters，實際認證憑證走 Header。
 

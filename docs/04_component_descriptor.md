@@ -4,10 +4,10 @@
 
 ## Schema 推導
 
-1. 從 Import 設定取得原始 Data Schema。
+1. 從 Import 設定取得原始 Document Schema。
 2. 依有效方法推導該步輸出。內建方法按規則繼承或衍生欄位。Remote Parsing／Chunking 的外部輸出欄位由 User 宣告。涵蓋 Embedding 時一併宣告向量名稱、來源、維度及 Profile。
 3. 將有效輸出用於下游的候選欄位、必填性、型別與相依驗證。選到不存在、型別不符或未保證出現的欄位時保留草稿選值並顯示錯誤。
-4. 用同一有效 Schema 產生 Remote Request／Response 預覽和 Runtime 驗證。Inference 共用 QueryContext[]，候選 Data 引用 System 可檢索 Schema。
+4. 用同一有效 Schema 產生 Remote Request／Response 預覽和 Runtime 驗證。Inference 共用 QueryContext[]，候選 Document 引用 System 可檢索 Schema。
 
 例：Chunking 保留 text 與 title，Embedding 可選兩者作字串來源。若 Chunking 改名為 body，原 text 映射顯示失效。若 Remote 含 Embedding 並宣告 vectors.body，Indexing 選用 vectors.body，內建向量 Retrieval 再取得對應 Profile 的 Query Encoder。
 

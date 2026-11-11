@@ -137,7 +137,7 @@ Config 與部署設定的欄位、有效設定規則及範例見 [資料契約�
 
 | 契約 | 主責 |
 |---|---|
-| A 資料與 I/O | [Data、QueryContext、IndexBinding](02_data_contracts.md) |
+| A 資料與 I/O | [Document、QueryContext、IndexBinding](02_data_contracts.md) |
 | B 內建方法描述 | [Config Schema 與有效 I/O 推導](04_component_descriptor.md) |
 | C Remote API | [接入範圍、固定 HTTP 封裝與回應驗證](03_engine_and_components.md#remote-api) |
 | D System Config | [流程、參數、欄位及邏輯服務引用](05_system_config.md) |
