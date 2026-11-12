@@ -1,0 +1,107 @@
+{
+  "descriptor_version": "0.1-draft",
+  "module": "chunking",
+  "method_id": "recursive",
+  "method_version": "1.0.0",
+  "parameters_schema": {
+    "type": "object",
+    "properties": {
+      "split_field": {
+        "type": "string",
+        "minLength": 1
+      },
+      "output_field": {
+        "type": "string",
+        "minLength": 1
+      },
+      "copy_fields": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "source_field": {
+              "type": "string",
+              "minLength": 1
+            },
+            "output_field": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "source_field",
+            "output_field"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "max_tokens": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "overlap_tokens": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "tokenizer_profile_id": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "required": [
+      "split_field",
+      "output_field",
+      "copy_fields",
+      "max_tokens",
+      "overlap_tokens",
+      "tokenizer_profile_id"
+    ],
+    "additionalProperties": false
+  },
+  "io": {
+    "input": "Document[]",
+    "output": "Document[]"
+  },
+  "option_sources": {
+    "/split_field": {
+      "source": "input.structdata",
+      "types": [
+        "string"
+      ],
+      "required": true
+    },
+    "/copy_fields/*/source_field": {
+      "source": "input.structdata",
+      "types": [
+        "string",
+        "integer",
+        "number",
+        "boolean"
+      ],
+      "required": true
+    }
+  },
+  "data_rules": [
+    {
+      "op": "declare",
+      "target": "/output_field",
+      "schema": {
+        "type": "string",
+        "required": true
+      }
+    },
+    {
+      "op": "copy",
+      "source": "/source_field",
+      "target": "/output_field",
+      "for_each": "/copy_fields"
+    }
+  ],
+  "constraints": [
+    {
+      "op": "lt",
+      "left": "/overlap_tokens",
+      "right": "/max_tokens"
+    }
+  ]
+}

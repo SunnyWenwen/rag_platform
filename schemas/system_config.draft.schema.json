@@ -1,0 +1,297 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rag-builder.example/schemas/system_config.draft.schema.json",
+  "title": "Published Retrieval System Config (draft)",
+  "description": "Structural draft for a published configuration snapshot. A compiler validates method-specific parameters, effective pipeline coverage, and cross-node contracts.",
+  "type": "object",
+  "properties": {
+    "system_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "config_revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "config": {
+      "$ref": "#/$defs/config"
+    }
+  },
+  "required": [
+    "system_id",
+    "config_revision",
+    "config"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "config": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "0.1-draft"
+        },
+        "pipelines": {
+          "type": "object",
+          "properties": {
+            "ingestion": {
+              "$ref": "#/$defs/ingestion_pipeline"
+            },
+            "inference": {
+              "$ref": "#/$defs/inference_pipeline"
+            }
+          },
+          "required": [
+            "ingestion",
+            "inference"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "contract_version",
+        "pipelines"
+      ],
+      "additionalProperties": false
+    },
+    "ingestion_pipeline": {
+      "type": "object",
+      "properties": {
+        "import": {
+          "$ref": "#/$defs/builtin_node"
+        },
+        "parsing": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/builtin_node"
+            },
+            {
+              "$ref": "#/$defs/remote_ingestion_node"
+            }
+          ]
+        },
+        "chunking": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/builtin_node"
+            },
+            {
+              "$ref": "#/$defs/remote_ingestion_node"
+            }
+          ]
+        },
+        "embedding": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/builtin_node"
+            },
+            {
+              "$ref": "#/$defs/remote_ingestion_node"
+            }
+          ]
+        },
+        "indexing": {
+          "$ref": "#/$defs/builtin_node"
+        }
+      },
+      "required": [
+        "import",
+        "indexing"
+      ],
+      "additionalProperties": false
+    },
+    "inference_pipeline": {
+      "type": "object",
+      "properties": {
+        "inference_input": {
+          "$ref": "#/$defs/builtin_node"
+        },
+        "query_transformation": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/builtin_node"
+            },
+            {
+              "$ref": "#/$defs/remote_inference_node"
+            }
+          ]
+        },
+        "retrieval": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/builtin_node"
+            },
+            {
+              "$ref": "#/$defs/remote_inference_node"
+            }
+          ]
+        },
+        "rerank": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/builtin_node"
+            },
+            {
+              "$ref": "#/$defs/remote_inference_node"
+            }
+          ]
+        }
+      },
+      "required": [
+        "inference_input"
+      ],
+      "additionalProperties": false
+    },
+    "builtin_node": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "builtin"
+        },
+        "method_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "method_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parameters": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "kind",
+        "method_id",
+        "method_version",
+        "parameters"
+      ],
+      "additionalProperties": false
+    },
+    "remote_ingestion_node": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "remote"
+        },
+        "through": {
+          "enum": [
+            "parsing",
+            "chunking",
+            "embedding"
+          ]
+        },
+        "service_ref": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "parameters": {
+          "type": "object"
+        },
+        "output": {
+          "$ref": "#/$defs/remote_ingestion_output"
+        }
+      },
+      "required": [
+        "kind",
+        "through",
+        "service_ref",
+        "parameters",
+        "output"
+      ],
+      "additionalProperties": false
+    },
+    "remote_inference_node": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "remote"
+        },
+        "through": {
+          "enum": [
+            "query_transformation",
+            "retrieval",
+            "rerank"
+          ]
+        },
+        "service_ref": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "parameters": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "kind",
+        "through",
+        "service_ref",
+        "parameters"
+      ],
+      "additionalProperties": false
+    },
+    "remote_ingestion_output": {
+      "type": "object",
+      "properties": {
+        "structdata": {
+          "type": "object",
+          "propertyNames": {
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "enum": [
+                  "string",
+                  "integer",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "required": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "type",
+              "required"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "vectors": {
+          "type": "object",
+          "propertyNames": {
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "source_field": {
+                "type": "string",
+                "minLength": 1
+              },
+              "embedding_profile_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "dimensions": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "source_field",
+              "embedding_profile_id",
+              "dimensions"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [],
+      "additionalProperties": false,
+      "minProperties": 1
+    }
+  }
+}

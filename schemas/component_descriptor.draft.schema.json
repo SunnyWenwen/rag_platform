@@ -1,0 +1,229 @@
+{
+  "type": "object",
+  "properties": {
+    "descriptor_version": {
+      "const": "0.1-draft"
+    },
+    "module": {
+      "enum": [
+        "import",
+        "parsing",
+        "chunking",
+        "embedding",
+        "indexing",
+        "inference_input",
+        "query_transformation",
+        "retrieval",
+        "rerank"
+      ]
+    },
+    "method_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "method_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "parameters_schema": {
+      "type": "object"
+    },
+    "io": {
+      "type": "object",
+      "properties": {
+        "input": {
+          "type": "string",
+          "minLength": 1
+        },
+        "output": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "input",
+        "output"
+      ],
+      "additionalProperties": false
+    },
+    "option_sources": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^/"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "enum": [
+              "input.structdata",
+              "input.vectors",
+              "candidate.structdata",
+              "index_plan.fulltext",
+              "index_plan.vectors",
+              "profiles",
+              "models"
+            ]
+          },
+          "types": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "string",
+                "integer",
+                "number",
+                "boolean"
+              ]
+            }
+          },
+          "required": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "source"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "data_rules": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "const": "declare"
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1
+              },
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "string",
+                      "integer",
+                      "number",
+                      "boolean"
+                    ]
+                  },
+                  "required": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "type",
+                  "required"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "op",
+              "target",
+              "schema"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "const": "copy"
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1
+              },
+              "for_each": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "op",
+              "source",
+              "target"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "const": "vector"
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1
+              },
+              "profile": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "op",
+              "source",
+              "target",
+              "profile"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "ui_hints": {
+      "type": "object"
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "op": {
+            "const": "lt"
+          },
+          "left": {
+            "type": "string",
+            "minLength": 1
+          },
+          "right": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "op",
+          "left",
+          "right"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "descriptor_version",
+    "module",
+    "method_id",
+    "method_version",
+    "parameters_schema",
+    "io"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Component Descriptor v0.1 review draft",
+  "description": "Offline schema for the reviewed subset. Module I/O, pointer targets and context-dependent validity are also checked semantically."
+}
