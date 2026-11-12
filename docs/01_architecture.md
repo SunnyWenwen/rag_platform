@@ -151,7 +151,6 @@ User 在 Workspace 建立 System，選用模板或自行設定 Import、Ingestio
 - [User 流程](../diagrams/01_user_system_l1.png)
 - [Runtime 架構](../diagrams/02_infra_architecture.png)
 - [模組與 System](../diagrams/03_module_component_concept.png)
-- [Remote 與模板](../diagrams/04_component_delivery_modes.png)
 
 ## 歷史名稱與遷移對照
 

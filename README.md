@@ -16,4 +16,4 @@ User 在 Builder 設定、測試及匯出 Retrieval System。System 由 Retrieva
 - 接外部服務依序看 [03 Remote API](docs/03_engine_and_components.md#remote-api)、[05 設定](docs/05_system_config.md)及[契約範例](examples/user_remote_api/README.md)。
 - [01_ui_prototype.html](01_ui_prototype.html) 可離線操作，展示有效契約、套用模板及批次 Request。真實服務、模型和索引由 Runtime 實作。
 - [Schemas](schemas/README.md) 區分現行契約與歷史測資。舊規格與驗證入口見[歷史索引](docs/history/superseded/2026-11-11_developer_mode.md)。
-- 圖面：[User 流程](diagrams/01_user_system_l1.png)、[Infra](diagrams/02_infra_architecture.png)、[模組與 System](diagrams/03_module_component_concept.png)、[Remote 與模板](diagrams/04_component_delivery_modes.png)。
+- 圖面：[User 流程](diagrams/01_user_system_l1.png)、[Infra](diagrams/02_infra_architecture.png)、[模組與 System](diagrams/03_module_component_concept.png)。

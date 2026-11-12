@@ -11,7 +11,7 @@
 2026-11-02 D-50：改為 Retrieval-only；不做 Generation。Library＋Config（及必要資源綁定）建立 Retrieval System，Platform 包含 Library／Runtime API／共用 Image。查詢輸出檢索清單；Rewrite／助手仍可使用 LLM。Prototype v0.12 已遷移產品名稱並移除答案功能，見 UIB-015；底層技術識別另案遷移。repo rag_platform、rag_engine、套件與 Schema ID／_rag 保留為既有技術識別，非產品名稱。
 
 
-Parser 開發示範：[三種交付模式圖](../../../diagrams/04_component_delivery_modes.md) → [16 兩種開發方式與程式](../../03_engine_and_components.md)。Remote 服務不要求完整 Engine／ABC；正式 HTTP／參數協定仍待核定。
+Parser 開發示範：[三種交付模式圖](https://github.com/SunnyWenwen/rag_platform/blob/781fd3e31251739290f93b975aff5696090391d0/diagrams/04_component_delivery_modes.md) → [16 兩種開發方式與程式](../../03_engine_and_components.md)。Remote 服務不要求完整 Engine／ABC；正式 HTTP／參數協定仍待核定。
 
 2026-11-02 D-51：Remote Service 改以 Manifest 註冊供 User 選用，可一次涵蓋連續多 Module；Image 由平台部署，External 固定使用服務既有資料空間，第一版不加入 data_space_id。規格見 18；v0.12 已有 UIB-016 的模擬選取／鎖定／匯出，正式服務管理仍待實作。
 

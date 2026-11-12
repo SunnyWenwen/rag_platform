@@ -1,28 +1,209 @@
 flowchart TB
-  subgraph G0["Ingestion"]
-  I["Import"]
-  P["Parsing"]
-  H["Chunking"]
-  E["Embedding"]
-  X["Indexing"]
-  end
-  subgraph G1["Inference"]
-  A["Inference Input"]
-  Q["Query Transformation"]
-  R["Retrieval"]
-  K["Rerank"]
-  end
-  C["System Config · 內建方法或 Remote API"]
-  S["外部 Remote API"]
-  C --> |"入口 Schema"| I
-  I --> |"單筆 Document"| P
-  P --> |"Document[]"| H
-  H --> |"Document[]"| E
-  E --> |"Document[] + vectors"| X
-  C --> |"執行參數"| A
-  A --> |"QueryContext[]"| Q
-  Q --> |"QueryContext[]"| R
-  R --> |"QueryContext[]"| K
-  X --> |"平台索引綁定"| R
-  P --> |"範例：Parsing → Embedding"| S
-  R --> |"範例：外部資料 Retrieval"| S
+    %% 固定 SVG／PNG：上排 Ingestion、下排 Inference；每個內建選項獨立一格。
+    %% Import 驗證批次並逐筆交給 Parser。Ingestion 共用 Document，Inference 共用 QueryContext[]。
+    %% 選項是目標規劃；None 是略過，服務來源及搜尋模式不另列 Component。
+    subgraph ENGINE["Retrieval Engine Library｜Module 契約與 Component 目錄"]
+        direction TB
+        subgraph INGESTION["Ingestion"]
+            direction LR
+            subgraph IMPORT["Import"]
+                direction TB
+                IMPORT_B2["JSON Ingestion"]
+                IMPORT_CONTRACT["入口欄位與批次參數"]
+            end
+            subgraph PARSING["Parsing"]
+                direction TB
+                PARSING_B1["結構化資料直傳"]
+                PARSING_CONTRACT["擇一解析檔案，新增 contenttext"]
+                PARSING_REMOTE["Remote API Component"]
+            end
+            subgraph CHUNKING["Chunking"]
+                direction TB
+                CHUNKING_B1["Fixed-size"]
+                CHUNKING_B2["Recursive"]
+                CHUNKING_B3["Header-aware"]
+                CHUNKING_CONTRACT["每個任務切一個 structdata 欄位"]
+                CHUNKING_REMOTE["Remote API Component"]
+            end
+            subgraph EMBEDDING["Embedding"]
+                direction TB
+                EMBEDDING_B1["Embedding API Adapter"]
+                EMBEDDING_CONTRACT["宣告向量欄位、維度與 Profile"]
+                EMBEDDING_REMOTE["Remote API Component"]
+            end
+            subgraph INDEXING["Indexing"]
+                direction TB
+                INDEXING_B1["Elasticsearch"]
+                INDEXING_B2["Local Search"]
+                INDEXING_CONTRACT["平台管理索引與文件生命週期"]
+            end
+            IMPORT -->|"Document"| PARSING
+            PARSING -->|"Document[]"| CHUNKING
+            CHUNKING -->|"Document[]（切片）"| EMBEDDING
+            EMBEDDING -->|"Document[]（含 vectors）"| INDEXING
+        end
+        subgraph INFERENCE["Inference"]
+            direction LR
+            INPUT["Inference Input｜宣告執行參數"]
+            subgraph QUERY["Query Transformation"]
+                direction TB
+                QUERY_B1["None（略過）"]
+                QUERY_B2["Rewrite"]
+                QUERY_B3["Multi-query"]
+                QUERY_CONTRACT["可引用 Inference Input 參數"]
+                QUERY_REMOTE["Remote API Component"]
+            end
+            subgraph RETRIEVAL["Retrieval"]
+                direction TB
+                RETRIEVAL_B1["ES 檢索元件"]
+                RETRIEVAL_B2["Local Search 檢索元件"]
+                RETRIEVAL_CONTRACT["Remote Retrieval 可搜尋外部資料"]
+                RETRIEVAL_REMOTE["Remote API Component"]
+            end
+            subgraph RERANK["Rerank"]
+                direction TB
+                RERANK_B1["None（略過）"]
+                RERANK_B2["Rerank API Adapter"]
+                RERANK_CONTRACT["以 QueryContext[] 傳遞候選"]
+                RERANK_REMOTE["Remote API Component"]
+            end
+            INPUT -->|"QueryContext[]"| QUERY
+            QUERY -->|"QueryContext[]"| RETRIEVAL
+            RETRIEVAL -->|"QueryContext[]"| RERANK
+            RERANK -->|"QueryContext[]"| OUTPUT["檢索結果｜ResultSets / Documents / Scores"]
+        end
+    end
+
+    MAINTAIN["平台維護內建方法｜維護 Module 契約與 Descriptor"] --> CHECK["驗證方法與相容性｜驗證契約與設定"]
+    CHECK --> UPDATE["發布並更新 Retrieval Engine Library｜內建 Components 與 Remote Adapter"]
+    UPDATE -->|納入目標 Runtime| ENGINE
+    ENGINE -. "Component 目錄＋Config Schema" .-> UI["Retrieval Builder User｜選方法、設定 Remote API 與參數"]
+
+    classDef builtin fill:#e9f2ff,stroke:#6086c8,color:#143054
+    classDef custom fill:#eee9fa,stroke:#9380bf,color:#443267
+    classDef delivery fill:#fff5e5,stroke:#cf9b4a,color:#624516
+    classDef builder fill:#ecf8f2,stroke:#599d85,color:#153f32
+    class IMPORT_B2,PARSING_B1,CHUNKING_B1,CHUNKING_B2,CHUNKING_B3,EMBEDDING_B1,INDEXING_B1,INDEXING_B2,QUERY_B1,QUERY_B2,QUERY_B3,RETRIEVAL_B1,RETRIEVAL_B2,RERANK_B1,RERANK_B2 builtin
+    class IMPORT_CONTRACT,PARSING_CONTRACT,CHUNKING_CONTRACT,EMBEDDING_CONTRACT,INDEXING_CONTRACT,QUERY_CONTRACT,RETRIEVAL_CONTRACT,RERANK_CONTRACT,MAINTAIN custom
+    class CHECK,UPDATE delivery
+    class UI,INPUT builder
+    style ENGINE fill:#f7faff,stroke:#9aafc9
+    style INGESTION fill:#fbfaff,stroke:#b5a4d0
+    style INFERENCE fill:#f7fcfa,stroke:#a2c1b4
+
+    %% A = builtin.
+    %% B = 由 Admin 維護的全域模板，套用後複製至 System 草稿。
+    %% C = Parsing 接入 User 已部署的 Remote API。
+    CFG_A["Config A"]
+    BUILD_A["Library ＋ Config A"]
+    subgraph SYS_A["Retrieval System A"]
+      subgraph ING_A["Ingestion Service A"]
+        IMPORT_A["Import A｜JSON Ingestion"]
+        PARSING_A["Parsing A｜略過（結構化資料）"]
+        CHUNKING_A["Chunking A｜Fixed-size"]
+        EMBEDDING_A["Embedding A｜Embedding API"]
+        INDEXING_A["Indexing A｜Elasticsearch"]
+      end
+      subgraph RET_A["Retrieval Service A"]
+        INPUT_A["Inference Input A"] --> QUERY_A["Query Transformation A｜None（略過）"]
+        SEARCH_A["Retrieval A｜Elasticsearch"]
+        RERANK_A["Rerank A｜None（略過）"]
+      end
+      OUTPUT_A["結果 A｜ResultSets／Documents／Scores"]
+    end
+    CFG_B["Config B"]
+    BUILD_B["Library ＋ Config B"]
+    subgraph SYS_B["Retrieval System B"]
+      subgraph ING_B["Ingestion Service B"]
+        IMPORT_B["Import B｜JSON Ingestion"]
+        PARSING_B["Parsing B｜略過（結構化資料）"]
+        CHUNKING_B["Chunking B｜Recursive"]
+        EMBEDDING_B["Embedding B｜Embedding API"]
+        INDEXING_B["Indexing B｜Local Search"]
+      end
+      subgraph RET_B["Retrieval Service B"]
+        INPUT_B["Inference Input B"] --> QUERY_B["Query Transformation B｜Multi-query"]
+        SEARCH_B["Retrieval B｜Local Search"]
+        RERANK_B["Rerank B｜Rerank API"]
+      end
+      OUTPUT_B["結果 B｜ResultSets／Documents／Scores"]
+    end
+    CFG_C["Config C"]
+    BUILD_C["Library ＋ Config C"]
+    subgraph SYS_C["Retrieval System C"]
+      subgraph ING_C["Ingestion Service C"]
+        IMPORT_C["Import C｜JSON Ingestion"]
+        PARSING_C["Parsing C｜Remote API Component（Adapter）"]
+        CHUNKING_C["Chunking C｜Header-aware"]
+        EMBEDDING_C["Embedding C｜Embedding API"]
+        INDEXING_C["Indexing C｜Elasticsearch"]
+      end
+      subgraph RET_C["Retrieval Service C"]
+        INPUT_C["Inference Input C"] --> QUERY_C["Query Transformation C｜Rewrite"]
+        SEARCH_C["Retrieval C｜Elasticsearch"]
+        RERANK_C["Rerank C｜Rerank API"]
+      end
+      OUTPUT_C["結果 C｜ResultSets／Documents／Scores"]
+    end
+    subgraph REMOTE["User 的 Parsing Service C"]
+      PRIVATE["User 的解析服務"]
+    end
+    BINDING["C 的部署設定"]
+    CFG_A --> BUILD_A
+    ENGINE -.-> BUILD_A
+    BUILD_A --> |"依 Config 組裝"| SYS_A
+    IMPORT_A --> PARSING_A
+    PARSING_A --> CHUNKING_A
+    CHUNKING_A --> EMBEDDING_A
+    EMBEDDING_A --> INDEXING_A
+    QUERY_A --> SEARCH_A
+    SEARCH_A --> RERANK_A
+    INDEXING_A -.-> |"索引／資料綁定"| SEARCH_A
+    RERANK_A --> OUTPUT_A
+    CFG_B --> BUILD_B
+    ENGINE -.-> BUILD_B
+    BUILD_B --> |"依 Config 組裝"| SYS_B
+    IMPORT_B --> PARSING_B
+    PARSING_B --> CHUNKING_B
+    CHUNKING_B --> EMBEDDING_B
+    EMBEDDING_B --> INDEXING_B
+    QUERY_B --> SEARCH_B
+    SEARCH_B --> RERANK_B
+    INDEXING_B -.-> |"索引／資料綁定"| SEARCH_B
+    RERANK_B --> OUTPUT_B
+    CFG_C --> BUILD_C
+    ENGINE -.-> BUILD_C
+    BUILD_C --> |"依 Config 組裝"| SYS_C
+    IMPORT_C --> PARSING_C
+    PARSING_C --> CHUNKING_C
+    CHUNKING_C --> EMBEDDING_C
+    EMBEDDING_C --> INDEXING_C
+    QUERY_C --> SEARCH_C
+    SEARCH_C --> RERANK_C
+    INDEXING_C -.-> |"索引／資料綁定"| SEARCH_C
+    RERANK_C --> OUTPUT_C
+    PARSING_C --> |"Document"| PRIVATE
+    PRIVATE --> |"Document[]"| PARSING_C
+    classDef a fill:#e9f2ff,stroke:#6086c8
+    classDef b fill:#eee9fa,stroke:#9380bf
+    classDef c fill:#fff6e8,stroke:#b38039
+    classDef library fill:#f3effb,stroke:#a692c5
+    class CFG_A,BUILD_A,IMPORT_A,PARSING_A,CHUNKING_A,EMBEDDING_A,INDEXING_A,QUERY_A,SEARCH_A,RERANK_A,OUTPUT_A a
+    class CFG_B,BUILD_B,IMPORT_B,PARSING_B,CHUNKING_B,EMBEDDING_B,INDEXING_B,QUERY_B,SEARCH_B,RERANK_B,OUTPUT_B b
+    class CFG_C,BUILD_C,IMPORT_C,PARSING_C,CHUNKING_C,EMBEDDING_C,INDEXING_C,QUERY_C,SEARCH_C,RERANK_C,OUTPUT_C c
+    classDef remote fill:#fff5e5,stroke:#b38039,color:#855e2a
+    class PARSING_REMOTE,CHUNKING_REMOTE,EMBEDDING_REMOTE,QUERY_REMOTE,RETRIEVAL_REMOTE,RERANK_REMOTE remote
+
+    %% 內建 Retrieval 使用 IndexBinding。Remote Retrieval 可直接查外部資料。
+    INDEXING -.->|"IndexBinding"| RETRIEVAL
+    %% [] means a collection. Labels show primary business data; Inference modules pass QueryContext[] directly; current result_sets are nested.
+
+    style IMPORT_CONTRACT stroke-dasharray:8 6
+    style PARSING_CONTRACT stroke-dasharray:8 6
+    style CHUNKING_CONTRACT stroke-dasharray:8 6
+    style EMBEDDING_CONTRACT stroke-dasharray:8 6
+    style INDEXING_CONTRACT stroke-dasharray:8 6
+    style QUERY_CONTRACT stroke-dasharray:8 6
+    style RETRIEVAL_CONTRACT stroke-dasharray:8 6
+    style RERANK_CONTRACT stroke-dasharray:8 6
+    %% 虛線方框說明該模組的欄位、參數或責任。

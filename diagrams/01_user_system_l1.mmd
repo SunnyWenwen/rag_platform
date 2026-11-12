@@ -1,21 +1,69 @@
 flowchart TB
-  U["User"]
-  A["Admin"]
-  T["全域版本化模板"]
-  B["Builder · Workspace / System"]
-  C["設定欄位、方法與 Remote API"]
-  I["Ingest · 批次與逐文件工作"]
-  Q["Inference · QueryContext[]"]
-  E["Evaluation"]
-  X["Export · FTEST / ENT YAML"]
-  R["獨立 Retrieval Runtime"]
-  A --> |"維護"| T
-  U --> |"建立或編輯"| B
-  T --> |"選用並複製版本"| B
-  B --> |"設定草稿"| C
-  C --> |"驗證後測試"| I
-  C --> |"外部資料可直接查詢"| Q
-  I --> |"平台索引就緒"| Q
-  Q --> |"測試結果"| E
-  C --> |"已驗證設定"| X
-  X --> |"使用單位部署"| R
+    %% 節點與關係定義；三層固定版面見同名 SVG，PNG 由 SVG 產生。
+    %% 固定 SVG／PNG：1～6 同水平，6 在平台框外。
+    %% 上：Retrieval Builder 測試；中：共用 Retrieval Engine Library；下：全域模板與外部服務接入。
+    %% Remote Retrieval 使用外部資料時可直接查詢。
+    %% Runtime API／Image 包裝見 02 Infra；本圖以 Engine 與設定建立 System 表達。
+    subgraph BUILDER["Retrieval Builder 測試平台 (for Retrieval Builder User)"]
+        direction LR
+        B["1. Build（設定 System Config）"] --> I["2. Ingestion"]
+        I --> Q["3. Inference"]
+        Q --> E["4. Evaluation"]
+        E -->|準備部署到 k8s| X["5. Export YAML"]
+        E -->|驗證不達標，需調整| C["修改 Config"]
+        C -->|調整 Ingestion 設定，需重新 Ingestion| I
+        C -->|只調整 Inference 設定，不需重新 Ingestion| Q
+
+        F["Config"]
+        S["Retrieval System for Retrieval Builder 測試"]
+        R["評估報告"]
+        Y["YAML 設定檔（Config＋部署設定）"]
+
+        B -. 產出 .-> F
+        C -. 更新設定 .-> F
+        F -. 套用 Config .-> S
+        I -. "切片與建立索引" .-> S
+        Q -. 查詢 .-> S
+        E -. 評估 .-> S
+        E -. 產出 .-> R
+        X -. 產出 .-> Y
+    end
+
+    D["6. Deploy YAML in FTEST/ENT"]
+    K["Retrieval System in k8s"]
+    X -->|使用匯出的 YAML| D
+    D -. 部署 .-> K
+    Y -. 套用 YAML .-> K
+
+    subgraph ENGINE["Retrieval Engine Library"]
+        GE["共用 Retrieval Engine Library（Module／Component）"]
+    end
+    GE -. 依 Config 建立 .-> S
+    GE -. "Library 執行核心（由 Platform Image 封裝）" .-> K
+    GE -. "提供可選 Module／Component" .-> B
+
+    subgraph SETUP["全域模板與外部服務接入"]
+        direction LR
+        ADMIN1["A1. 建立全域模板"] --> ADMIN2["A2. 驗證模板設定"]
+        ADMIN2 --> ADMIN3["A3. 發布模板版本"]
+        ADMIN3 --> ADMIN4["A4. User 選用模板｜複製至 System 草稿"]
+        REMOTE1["R1. 選擇替換範圍｜可替換的單節點或連續區段"] --> REMOTE2["R2. 實作並部署 API"]
+        REMOTE2 --> REMOTE3["R3. 在 Builder 設定 API｜Endpoint、認證與參數"]
+        REMOTE3 --> REMOTE4["R4. 驗證有效契約｜儲存至 System Config"]
+    end
+    RS["User 外部服務（Remote API）"]
+    REMOTE4 -. "Config 綁定 Endpoint" .-> RS
+    GE -. 透過 Remote API Adapter 呼叫 .-> RS
+
+    classDef user fill:#e9f2ff,stroke:#6086c8,color:#143054
+    classDef system fill:#ecf8f2,stroke:#599d85,color:#153f32
+    classDef deploy fill:#fff5e5,stroke:#cf9b4a,color:#624516
+    classDef engine fill:#eee9fa,stroke:#9380bf,color:#443267
+    class B,I,Q,E,X,C user
+    class F,S,R,Y,K system
+    class D deploy
+    class GE,ADMIN1,ADMIN2,ADMIN3,ADMIN4,REMOTE1,REMOTE2,REMOTE3,REMOTE4 engine
+    class RS deploy
+    style BUILDER fill:#f7faff,stroke:#9aafc9
+    style ENGINE fill:#f7f4fc,stroke:#b5a4d0
+    style SETUP fill:#faf8fd,stroke:#b5a4d0
