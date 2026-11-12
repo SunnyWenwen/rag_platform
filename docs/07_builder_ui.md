@@ -50,7 +50,7 @@ UIB-021 保留給 D-55 索引綁定；後加入且重號的 Descriptor 驅動規
 | Workspace 首頁 | 檢視與選擇 System | 名稱、版本、資料／索引狀態與操作入口 |
 | Create／Edit | 設定 Schema、模組 Component／參數、Pipeline 與服務邏輯引用 | 經驗證的 Config 草稿／Revision；環境連線另存部署設定 |
 | 從 CSV 開始 | 樣本、用途、映射與 AI 建議 | 建議草稿；確認後仍由使用者建立／匯入 |
-| Ingest | 上傳、預覽、確認映射、執行 | run_id、進度、結果及可處理錯誤 |
+| Ingest | 上傳、預覽、確認映射、執行 | run_id、工作狀態及結果；進度管控細節另議 |
 | Inference | 問題、本次 filters | 檢索清單、分數／來源、可展開診斷 |
 | Evaluation | 選 Dataset／指標、啟動 | 工作狀態、報告、與版本對應 |
 | Export | 補齊 FTEST／ENT 目標服務 | 待設定草稿／已填妥但未驗證的匯出檔 |
@@ -89,7 +89,7 @@ Create／Edit 可選用全域模板，設定 Import 入口欄位及參數，再�
 | Parser 資料規格（D-67 目標） | 顯示當前輸入／輸出欄位摘要；不重填固定輸出 | 僅當 Parser 開放時設定欄位定義／映射及 metadata 限制；Schema 正式語法待核定 |
 | 服務 | DEV／自行提供、必要 URL／模型／認證引用 | Timeout、精確 Profile／Tokenizer 等 |
 | Parsing（已確認） | 只顯示結構化 JSON | 其他格式及相關設定全部收在預設關閉進階區 |
-| Chunking（欄位簡化已確認） | 切分方式／必要參數，直接用 text；不顯示切分／複製欄位選單，metadata 全繼承 | 有序多欄位任務、輸出名稱、附帶欄位與完整原文保留；共用 Token 設定與依方法啟用的分隔符／標題層級，不提供 metadata 排除；UIB-013 |
+| Chunking（欄位簡化已確認） | 切分方式／必要參數，直接用 text；不顯示切分／複製欄位選單，metadata 全繼承 | 單一切分來源、輸出名稱、可選複製欄位及完整原文保留。依方法顯示 Token、分隔符／標題層級設定。見 UIB-013。 |
 | Embedding | 來源欄位、輸出向量、模型 | 維度／Encoding／Normalization、Batch、輸入限制 |
 | Indexing | 後端、全文／向量欄位、過濾能力；全部內容自動保存的摘要 | 後端特有參數、進階 Mapping（支援後才顯示）；不要求再勾選保存內容 |
 | Query Transformation | 既有 None／Rewrite／Multi-query、LLM | Prompt、count、include_original；可能產生多 Query 時設定跨 Query 融合 |
@@ -233,7 +233,7 @@ Prototype 限制 ≤1 MB 且在瀏覽器讀取，不等於正式產品限制。�
 上傳／JSON → 批次 Request 預覽與檢查 → 明確啟動 → 顯示 run_id／狀態 → 結果。長工作由 Runtime API／部署手冊 管理，不依靠前端視窗存活。
 
 - 區分接收成功、處理完成、索引可查詢；202 不代表可檢索查詢。
-- 顯示文件數與 Chunk 數時分開標示；進度分母不混用文件／解析單位／切片。
+- 文件數與 Chunk 數各自標示。Ingestion 進度的呈現方式與工作操作留待後續討論。
 - 部分失敗列出可對應 item 的錯誤，不用單一成功 Toast 遮蔽。
 - 重新打開視窗應可查現有工作；跨重啟是否恢復依 Job Store 政策。
 - 重送／取消／重試按鈕僅在對應 API 及冪等行為實作後開放。
@@ -362,7 +362,7 @@ API 回傳最終有效清單。D-52：Chunk.metadata._rag.source_refs 為選填�
 單一 Workspace／Group 主畫面，Create／Edit 共用設定介面，提供 Ingest、Inference、檢索 Evaluation、Export。全部為瀏覽器記憶體內操作，重新整理重設；沒有真實 Engine、模型、DB、Registry、服務健康探測或部署控制器。
 
 - Import 欄位及 CSV 映射、各階段有效 Document Schema、批次 Ingestion Request 與逐文件驗證。
-- Fixed-size／Recursive／Header-aware 的配置、Tokenizer 連動、預設 text／進階多欄位任務，metadata 繼承。
+- Fixed-size／Recursive／Header-aware 的配置、Tokenizer 連動及 metadata 繼承。原型曾示範多任務切分，正式設定只選一個切分欄位。
 - 全部 Chunk 內容預設保存；全文、向量、Filter 能力分開，失效欄位保留並報錯。
 - 推論 QueryContext[]／filters／metadata、兩層融合與四處 Top N；可以回多份分組清單。
 - 選填 _rag；Embedding 欄位模板；複製原文欄位與額外原文 Chunk 的獨立設定。
@@ -407,7 +407,7 @@ ResultSet.key 對應 Config 路徑／群組；items 位置即名次。RRF 可用
 | UIB-010 | Component Descriptor 動態表單 | 模擬目錄及基本 Schema／UI hints 表單已完成；完整 12 協定／版本回應及真實 Registry 待整合 |
 | UIB-011 | JSON API／多 Parser 自動派送 | 三來源 API 說明、CSV／JSON／明確 Units Adapter 已有；二進位 resolver、能力派送及衝突政策待真實 Parser |
 | UIB-012 | text-spans／page-blocks 舊分類 UI | 已由 UIB-014 取代，刪除舊工作項 |
-| UIB-013／014 | Chunk 任務及平面 Units | 原型已完成；實際切片／來源追溯仍依 Component |
+| UIB-013／014 | 單欄位切分及平面 Units | 原型已有切分示意；表單收斂為單一來源，實際切片與來源追溯仍依 Component |
 | UIB-015 | Retrieval 命名與結果呈現 | 已完成；取消 Generation 與強制單清單 Gate |
 | UIB-016 | User Remote API 與連續區段 | 原型支援配置及契約驗證；真實呼叫待整合 |
 | UIB-017 | KISS 選填追溯／metadata 提示 | 原型完成；不捏造 _rag；真實 Component 自行支援 |
@@ -435,8 +435,8 @@ ResultSet.key 對應 Config 路徑／群組；items 位置即名次。RRF 可用
 |---|---|---|
 | 模板組合 | embedding.composition.enabled／template／output_field | 預設關閉；產生獨立 structdata.embedding_text；固定文字＋structdata.* 字串變數 |
 | 向量來源 | embedding.mappings | 明確選 embedding_text→vectors.text，source_field 記 embedding_text |
-| 原文欄位 | chunking.preserve_original | 預設單任務複製到 original_text；進階任務自行 copy，避免重名 |
-| 原文 Chunk | chunking.include_original_chunk | 每 Unit／task 額外一筆完整來源；相同完整片段已存在就不新增 |
+| 原文欄位 | chunking.preserve_original | 預設複製到 original_text；進階可設定複製映射，輸出名稱須唯一 |
+| 原文 Chunk | chunking.include_original_chunk | 每個 Unit 可額外保留所選欄位的完整原文；已有相同完整片段時沿用 |
 
 欄位組合在預設 Embedding 的前處理，不新增 Module。模板缺變數、來源非字串、缺欄位、語法錯誤或輸出撞名時阻止保存／樣本預覽；不執行 Python／LLM。衍生欄位出現在 Embedding／全文 Indexing／Filter／Rerank Picker。關閉保留草稿但不進有效設定；有效改動需重新 Ingestion。
 
@@ -471,7 +471,7 @@ ResultSet.key 對應 Config 路徑／群組；items 位置即名次。RRF 可用
 ## Prototype／Backlog：UIB-022：D-56 非同步 Ingestion／文件狀態與 Runtime 控制（已確認，待改 UI）
 
 - [ ] API 說明呈現 202 僅代表接收，顯示 run_id 及可用的狀態查詢入口；精確 Batch 路徑／Envelope 待 21 核定。
-- [ ] 依文件顯示 queued／running／completed／failed／unknown 與可知 Module／錯誤；Batch 顯示逐文件結果，不以固定計時器假造進度。
+- [ ] 依 Run／文件狀態與錯誤契約顯示查詢結果。進度粒度、呈現與工作操作（含取消）延後討論。
 - [ ] 同文件 queued／running 時顯示忙碌原因，不重複提交；完成／失敗後才可重新覆寫。
 - [ ] Runtime 重啟／紀錄消失時顯示 unknown 並結束無止境輪詢，不憑舊索引或 Builder 舊畫面宣稱本次已成功。
 - [ ] Ingestion Queue 額滿、Inference Rate／併發／Timeout 有可理解提示；不在每次文件／Query 表單加入環境上限設定。
@@ -536,7 +536,7 @@ ResultSet.key 對應 Config 路徑／群組；items 位置即名次。RRF 可用
 2. **Embedding** 保留 `page` 供查看，但停用其來源選項；映射 `body_text → body_vec` 時，輸出規格仍有三個原欄位，另有向量來源、測試 Profile 與維度。
 3. 回到 **Chunking** 把切片輸出名稱改成 `content`。儲存會被阻止；點底部驗證訊息可聚焦到失效的 Embedding 映射。修正 Embedding 的來源後，原本的 `body_vec` 向量索引選擇可沿用，仍引用 `body_text` 的全文搜尋與評分欄位則需修正。
 
-Create／Edit 直接從 Parsing 開始。內建 Parser 的欄位和 metadata 在進階參數內調整，固定輸出服務只顯示宣告。下游使用目前設定推導的規格；多 Chunking 任務只把各任務都保證且型別相容的欄位列為必填來源候選。AI 建議更新 Parser 參數，CSV 從 Parser 輸入取得映射目標，Export 將欄位宣告放在 Parsing 的設定內。
+Create／Edit 直接從 Parsing 開始。內建 Parser 的欄位和 metadata 在進階參數內調整，固定輸出服務只顯示宣告。下游依單欄位 Chunking 的切分輸出與複製欄位推導選項。AI 建議更新 Parser 參數，CSV 從 Parser 輸入取得映射目標，Export 將欄位宣告放在 Parsing 的設定內。
 
 尚待正式整合：
 

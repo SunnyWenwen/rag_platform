@@ -36,6 +36,11 @@
 - `group_by` 可多選。開啟時預選 `document_id`，多欄用組合鍵，每組保留當時排名最高的候選。任一欄缺值時獨立保留。見[設定規格](05_system_config.md#inference-result-processing)。
 - Remote 區段負責其內部的結果處理。整段 Query Transformation → Rerank 交由 Remote 時，平台驗證結果後按 Remote 排名交付。
 
+## 2026-11-12 已確認：Chunking 來源與 Ingestion 後續議題
+
+- 正式 Chunking 設定只選一個切分來源欄位，每個解析 Unit 使用同一欄位。可另行複製其他欄位或保留該欄原文。
+- Builder 登入方式及 Ingestion 進度管控延後討論。進度呈現與工作操作（含取消）由後續規格決定。
+
 ## 1. 使用方式與狀態
 
 | 狀態 | 意義 | Agent 行為 |
@@ -91,7 +96,7 @@
 | Remote 整合 | User 直連，支援單節點與連續區段；Admin 管理全域模板 | 2026-11-11；03、05 |
 | Flow／Config | 共用 Flow／Executor；每次請求及已接受文件固定 Config 快照，各步獨立傳入 Component Config／Context，資源作用域另管 | D-61／62；03、Engine／Component手冊、07 |
 | Config 生效／環境 | 同 System 有 queued／running Ingestion 時僅存草稿，工作結束後才允許新版生效；D 存邏輯值，E 存連線／Secret／目標及 Runtime 限制 | D-29／30／63／64；05、Runtime／部署手冊、Runtime 控制手冊、23 |
-| Ingestion 工作 | document_id 完整覆寫、逐文件結果；整批預檢才 202；文件無 partial，Run 可 partial；工作／Queue 留記憶體，重啟 unknown，不續跑、不提供取消 | D-56～58；21 |
+| Ingestion 工作 | document_id 完整覆寫、逐文件結果；整批預檢才 202；文件無 partial，Run 可 partial；工作／Queue 留記憶體，重啟 unknown；進度管控及取消延後討論 | D-56～58；21、2026-11-12 |
 | 讀寫／失敗 | 不加 Query 讀寫鎖，接受更新期間混合可見；同文件 queued／running 拒絕重複提交；未知 Remote 寫入不自動重試；資料清理／恢復仍有待決項 | D-59／60；Runtime API手冊、Q-008～Q-010／Q-017 |
 | 文件管理 | exists、文件摘要與 retire 讀取／管理實際儲存；摘要為 documents[]／next_cursor、document_id／source_revisions[]；retire 同步 200＋deleted 或 not_found，忙碌 409 | D-58／64／65；21 |
 | API／認證 | 7 支業務＋2 支 Health；Runtime 暫採一組 Basic 帳密操作服務 API；Builder 登入延後；共用 Runtime 經可信內部 System 路由選 Config | D-60／64；07、21 |
@@ -108,7 +113,7 @@
 |---|---|---|---|
 | M0 契約與專案基礎 | 先定 Q-001／Q-002；未決問題可獨立起草 | 版本鎖、程式結構、Pydantic／JSON Schema、完整範例及錯誤例 | 從乾淨環境可安裝；範例通過 Schema，錯誤可定位；無需 Builder |
 | M1 最小獨立 Engine | Structured JSON／Recursive／Dense／Local Memory／Query；依賴模型、Token、索引與失敗政策 | 可直接 Python／CLI 操作的 Engine；真實 Adapter＋隔離測試替身 | 手寫 Config ingest→query；檢索真的使用資料；引用可對回；程序重啟後正確不就緒 |
-| M2 Engine 方法與能力擴充 | Fixed-size／Header-aware、多欄位、BM25／融合、Rewrite／Multi-query、Rerank、ES／MongoDB；Parser 依 Q-005，Fusion Plan 依 Q-014 分批 | Remote Adapter／Registry、方法／合併時點配置、各模式範例與契約測試 | Fixed-size 邊界可重現；ES／Local 契約一致；MongoDB 恢復不重跑 Embedding；Filter／融合可驗算；設定改變真實路徑 |
+| M2 Engine 方法與能力擴充 | Fixed-size／Header-aware 單欄位切分、BM25／融合、Rewrite／Multi-query、Rerank、ES／MongoDB；Parser 依 Q-005，Fusion Plan 依 Q-014 分批 | Remote Adapter／Registry、方法／合併時點配置、各模式範例與契約測試 | Fixed-size 邊界可重現；ES／Local 契約一致；MongoDB 恢復不重跑 Embedding；Filter／融合可驗算；設定改變真實路徑 |
 | M3 Runtime API | 包裝已可用 Engine；定 API／工作／認證／併發 | OpenAPI、Runtime 服務、Job Store 政策、SDK／cURL 範例 | SDK／HTTP 相容；202 可查結果；失敗／重送／重啟行為有證據 |
 | M4 獨立 AI 設定助手 | 使用 M0～M2 的 Schema／Registry／Validator，提供不依賴 Builder 的 Python／API 入口；Q-024 | 真實助手核心、需求／樣本輸入、Config 草稿／Diff／缺少設定與可定位驗證結果 | 不開 Builder 可取得支援範圍內的 Config；具備所需設定者由驗收腳本透過 Engine／Runtime 跑通；資訊不足明列缺項，不造方法／憑證或自動 Ingestion |
 | M5 Builder 前後端與 AI 助手整合 | 管理儲存、Create／Edit、CSV／Schema、漸進式 UI，串接同一 Runtime 與 M4 助手 | 正式 Frontend／Backend、System／Revision／Binding、UI 草稿與建議 Diff／套用流程 | UI 可建立／匯入／查詢；助手讀取當前草稿及樣本，建議與控制項正確對應；過期建議不覆蓋人工修改，取消不改 Config，變更影響及版本衝突正確 |
@@ -275,7 +280,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 ### Q-008 重送、更新與刪除
 
 - D-56 已確認：同 (System, document_id) 完整覆寫，不存在則新增；成功後清除舊文件不再產出的 Chunk，不做欄位 merge。同文件 queued／running 時拒絕重複提交，終態後可重新提交；Runtime 重啟不恢復工作。
-- 仍待：source_revision 衝突／較舊來源、相同內容是否可 no-op、Idempotency-Key／遠端未知結果、retire 的執行／錯誤協定、實體索引替換／舊版清除及保留政策。整批接收前預檢通過才入列已由 D-57 確認；入列後逐文件結果。D-58 已確認單一 List 包裝、文件存在／ID 清單，以及 retire 直接刪除；精確管理介面仍待整理，取消工作首期不做。
+- 仍待：source_revision 衝突／較舊來源、相同內容是否可 no-op、Idempotency-Key／遠端未知結果、retire 的執行／錯誤協定、實體索引替換／舊版清除及保留政策。整批接收前預檢通過才入列已由 D-57 確認；入列後逐文件結果。D-58 已確認單一 List 包裝、文件存在／ID 清單，以及 retire 直接刪除；精確管理介面仍待整理，Ingestion 進度管控與取消另議。
 - 建議：先不承諾 exactly-once 或未知寫入自動重試，按文件發布與相容機制實作；文件刪除另外定義。
 - 負責角色：產品＋Engine＋Backend；阻擋安全重試／正式更新實作。
 - 決策狀態：覆寫單位與忙碌拒絕方向已確認，以上其餘細節 OPEN；更新 Engine／資料契約手冊／Runtime／部署手冊／Runtime API手冊。
@@ -357,7 +362,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 ### Q-017 Timeout、重試、取消與工作恢復
 
 - D-56 已確認：Runtime 共用有上限 Queue；工作／文件狀態放記憶體，重啟不保留／恢復，不保存斷點續跑。查不到紀錄為 unknown，不等於文件未寫入；終態紀錄可以限量／限時清理，活躍紀錄不提前清除。
-- D-64 已確認 Runtime 整體 Deadline／狀態保存初始值與管理方式，集中見 Runtime API／部署手冊；A 的成功／錯誤核心欄位已確認。仍待模組／Client Timeout、有限重試／可重試錯誤、中斷及未知遠端副作用處理、正式 Schema／載入方式；取消工作首期不做。
+- D-64 已確認 Runtime 整體 Deadline／狀態保存初始值與管理方式，集中見 Runtime API／部署手冊；A 的成功／錯誤核心欄位已確認。仍待模組／Client Timeout、有限重試／可重試錯誤、中斷及未知遠端副作用處理、正式 Schema／載入方式。Ingestion 進度管控與取消延後討論。
 - 建議：Engine 統一執行預算；不自動重試未確認的寫入，重試完整文件且需冪等支援。持久 Queue／自動恢復不屬第一版已確認需求。
 - 負責角色：Engine＋Runtime；阻擋 M1 錯誤政策及 M3 工作語意。
 - 決策狀態：無恢復與記憶體狀態方向已確認，其餘 OPEN；更新 Engine／資料契約手冊／Runtime／部署手冊／Runtime API手冊。

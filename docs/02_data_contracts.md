@@ -23,14 +23,14 @@ Import、Parsing、Chunking、Embedding、Indexing 與檢索候選共用 [Docume
 |---|---|---|
 | Import | [Ingestion Request](../schemas/ingestion_request.schema.json) | `documents` 非空，Runtime 預檢後拆成逐文件工作。每筆資料用 Import 宣告的 Document Schema，共用參數留在執行環境。 |
 | Parsing | 單筆 Document | `Document[]`，結構化資料可直傳。選一種內建檔案解析方法時，保留原欄位並輸出 `structdata.contenttext`。Remote 依宣告產出欄位。 |
-| Chunking | 同份文件的 `Document[]` | `Document[]`，各筆加 `data_id`。選 structdata 字串切分或複製，繼承合法 metadata。逐 Unit 切分，overlap 不跨 Unit。 |
+| Chunking | 同份文件的 `Document[]` | `Document[]`，各筆加 `data_id`。選單一 structdata 字串欄位切分，可另複製其他欄位並繼承合法 metadata。逐 Unit 切分，overlap 不跨 Unit。 |
 | Embedding | 切分後 `Document[]` | 保留資料識別及有效內容，附上宣告的 vectors。內建可先組合已知文字欄位，按有效欄位映射產向量。 |
 | Indexing | 可檢索 `Document[]` | 保存有效欄位，設定全文、向量及精確過濾的索引路徑。平台管理的索引以 IndexBinding 銜接。 |
 | Inference | `QueryContext[]` | 候選 `ResultItem.data` 遵守 System 有效的可檢索 Document Schema。 |
 
 Import 結構化來源示例為 `{"document_id":"p-1","structdata":{"title":"維護指南","text":"定期清潔"}}`。檔案來源以 content 提供原檔，已知 title 等欄位仍可放 structdata。Parser 消費 content 並輸出可供下游處理的 structdata；Schema 版本與所選解析方法取自 Config。
 
-Chunking 可另外保留原文 Document，避免同一任務重複產生完全相同的切片。多任務輸出相加，不做跨任務交叉配對。重建時，文件更新、舊切片清除、失敗原子性及重試遵守 Runtime 規格。追溯及 metadata 處理提示依所選方法支援。
+Chunking 逐 Unit 處理同一個選定欄位，可另外保留該欄位的原文 Document。已有完全相同的切片時沿用該筆。重建時，文件更新、舊切片清除、失敗原子性及重試遵守 Runtime 規格。追溯及 metadata 處理提示依所選方法支援。
 
 ## 向量與 Profile
 

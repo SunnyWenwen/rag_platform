@@ -28,9 +28,9 @@ User 提供已部署的 HTTP 服務並在 System 設定完整 Endpoint、認證�
 
 ### Chunking
 
-**契約**：同文件的 Document[] → Document[]，輸出各筆具有 data_id，向量在 Embedding 階段加入。逐 Unit 切分，進階多任務結果串接。_rag 來源位置與 fingerprint 選填。
+**契約**：同文件的 Document[] → Document[]，輸出各筆具有 data_id，向量在 Embedding 階段加入。每份有效 Chunking 設定只選一個來源欄位，逐 Unit 切分同一欄位。_rag 來源位置與 fingerprint 選填。
 
-**目的與方法**：Fixed-size／Recursive／Header-aware；預設直接切 Document.structdata.text 並寫回 text，不顯示欄位選單、不自動複製其他 fields。進階才設定有序任務，每個任務一個 split_field／output_field＋明確 copy 映射；同來源可切分且完整複製，但輸出名稱不能衝突。metadata 預設全部繼承，不再逐欄勾選。三種方法均以 Token 計量，沿用指定 Tokenizer／revision。2026-10-16 新增的「fix chunk」統一稱 **Fixed-size Chunking（固定 Token 視窗）**；方法已列入需求；Prototype v0.10 有設定展示，正式 Engine／Tokenizer 尚未實作。
+**目的與方法**：Fixed-size／Recursive／Header-aware；預設直接切 Document.structdata.text 並寫回 text，不顯示欄位選單、不自動複製其他 fields。進階設定可指定一組 `split_field`／`output_field`，並另外設定要完整複製的欄位。切分輸出及複製欄位的名稱須唯一。metadata 預設全部繼承，不再逐欄勾選。三種方法均以 Token 計量，沿用指定 Tokenizer／revision。2026-10-16 新增的「fix chunk」統一稱 **Fixed-size Chunking（固定 Token 視窗）**；方法已列入需求；Prototype v0.10 有設定展示，正式 Engine／Tokenizer 尚未實作。
 
 | 方法 | 切分依據 | 有效設定 |
 |---|---|---|
@@ -42,7 +42,7 @@ Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一�
 
 **處理**：
 
-1. 檢查必要切分欄位存在、為非空白 string，且明確 copy 欄位可取得；缺失／型別錯誤／全空白不視為成功，必要任務零產出須明確失敗。可選複製第一版不先擴充（D-48）。
+1. 檢查必要切分欄位存在、為非空白 string，且明確 copy 欄位可取得；來源缺失、型別錯誤、全空白或零切片時回報明確失敗。可選複製第一版不先擴充（D-48）。
 2. 依所選方法切分：Fixed-size 使用上述固定視窗；Recursive 依 separators 優先序切分，必要時處理過長片段，size 是上限、overlap 是目標值。
 3. Header-aware 先依可靠標題層級切分，再對超長章節 Recursive；標題取自當筆 Markdown；無標題時依 Component 明確策略處理，不跨 Unit 尋找。
 4. 記錄 unit_index 與原 Unit 字串範圍，不從帶 overlap 的文字猜測位置，不跨 Unit 合併。
@@ -55,7 +55,7 @@ Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一�
 
 **待決**：Q-004、Q-005、Q-007；Token 精確計數、切分 fallback 與 overlap 邊界需測試材料。
 
-D-53 真實 Engine 功能待實作，Prototype v0.12 已有控制與教學預覽：預設 Chunker 可選擇另留每 Unit／任務的完整原文 Chunk，預設關閉；已有相同完整切片則不重複新增。它與 copy 原文欄位獨立，不跨 Unit 合併，新增結果仍走 Embedding／Indexing 與模型上限檢查。行為與例子見 [Chunk](02_data_contracts.md)。
+D-53 真實 Engine 功能待實作，Prototype v0.12 已有控制與教學預覽：預設 Chunker 可選擇另留每個 Unit 所選欄位的完整原文 Chunk，預設關閉；已有相同完整切片則不重複新增。它與 copy 原文欄位獨立，不跨 Unit 合併，新增結果仍走 Embedding／Indexing 與模型上限檢查。行為與例子見 [Chunk](02_data_contracts.md)。
 
 <a id="src-04-44-embedding"></a>
 ### Embedding

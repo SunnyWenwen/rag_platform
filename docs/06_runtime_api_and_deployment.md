@@ -153,7 +153,7 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 - 202 表示已接受排隊，不表示解析、Embedding、索引或可搜尋已成功；提交後須可查詢結果。
 - Inference 沿用 query／filters／metadata 輸入，同步回 QueryContext[]；不做 Generation，不因非同步 Ingestion 而新增 InferenceState。
 - D-57：整批接收前預檢通過才入列、回 202；入列後逐文件結果，文件無 partial，Run 可 partial，無紀錄回 200＋unknown。這不是要求完成 Parsing／Embedding／Indexing 才回 202。
-- D-57／D-58：首期需要 retire，已確認為直接刪除該 System／document_id 的儲存資料與搜尋索引，不是保留資料的邏輯停用；後續 D-64 確認同步 200＋deleted／not_found，忙碌文件 409，後端／Remote 清理協定仍待細化。取消 queued／running 文件工作首期不做。
+- D-57／D-58：首期需要 retire，已確認為直接刪除該 System／document_id 的儲存資料與搜尋索引，不是保留資料的邏輯停用；後續 D-64 確認同步 200＋deleted／not_found，忙碌文件 409，後端／Remote 清理協定仍待細化。Ingestion 的進度管控及排隊／執行中工作的取消另議。
 - D-58：一支 POST /v1/ingestions 接收批次物件，documents 為非空 Document[]；Parser 每次仍接收單份物件，不另開 :batch。
 - D-58：新增文件存在性與全部 document_id 清單的查詢能力，資料來源為該 System 的實際儲存／索引，與 Runtime 工作狀態分開；清單需對 Chunk 的 document_id 去重。
 - D-60：讀寫各自進行，不因 Ingestion／retire 寫入而阻擋 Query，不加共享查詢讀寫鎖／全索引快照；同文件重複 Ingestion 的忙碌拒絕維持。
@@ -183,7 +183,7 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 
 共享 Builder DEV 的 System 選擇與資料權限由可信層決定，單一 Pod Health 不能代表每個 System 的 Query-ready。D-64 已採可信 Backend 的內部 System 路由，S1 為 system_id 示意，見 相關章節；API-D06 仍涵蓋實際認證／部署保護；清單／存在／retire 也必須受相同存取邊界限制。
 
-Document 管理細節見 [Runtime API相關章節](#src-21-9-文件資料查詢與直接刪除)。讀取整份文件／Chunk 內容、取消工作、單步 Module 測試仍不因加入 ID 清單而自動納入。
+Document 管理細節見 [Runtime API相關章節](#src-21-9-文件資料查詢與直接刪除)。整份文件／Chunk 內容、單步 Module 測試及 Ingestion 進度管控各有獨立的規格討論。
 
 <a id="src-21-3-ingestion-的提交與接收"></a>
 ## Ingestion 的提交與接收
@@ -378,11 +378,11 @@ path 指向 documents 第一筆的 document_id，不是 UI Config 的 node_ref �
 ## 非必備端點與本輪待討論
 
 <a id="src-21-71-首期不納入後續能力"></a>
-### 首期不納入／後續能力
+### 後續能力與待議範圍
 
 | 能力 | 狀態 | 後續界線 |
 |---|---|---|
-| 取消 queued／running 文件工作 | 已確認首期不做 | 未來另訂排隊移除、正在執行的中止／Remote 配合與已提交副作用；retire 不代替取消 |
+| Ingestion 進度管控（含取消） | 延後討論 | 屆時確認進度呈現、排隊／執行中的操作，以及外部服務的中止與副作用處理 |
 | 整份文件／Chunk 內容查詢 | 先延後 | document_id 清單與存在查詢已納入；不因此提供內容、向量或任意 DB 查詢 |
 | 索引詳細狀態／容量資訊 | 可作後續管理診斷 | index-ready／恢復／統計來源，不用 Health／最後 Run 反推 |
 | Rewrite／Rerank 單步測試、async Inference／streaming | 目前不納入 | 有明確需求再定義，不重新引入 Generation |
@@ -402,7 +402,7 @@ Retire 已確認為直接刪除，不做 soft delete／restore API；再次使�
 | API-D06 | Builder 登入延後；Runtime API 暫用一組 HTTP Basic 帳密操作全部 API；首期不做角色／逐 API 授權 | D-64 已選 相關章節 的受保護內部 System 路由；HTTPS／Secret 注入／網路保護與檢查位置待細化；對外 Health 同一帳密，Probe 接法為部署細節 | Q-006／Q-019／Q-020 |
 | API-D07 | 查 document_id 是否存在；D-65 文件清單回 documents[]＋next_cursor，每筆 document_id／source_revisions[]，讀取實際 Chunk 而非工作表 | exists 精確格式、分頁參數／排序／cursor、Remote 讀取操作及完整 OpenAPI 後續整理；不任選最新版本 | Q-019／Q-028 |
 
-API-D01～07 沿用既有 Q-ID，不另凍結完整 OpenAPI。批次物件、接收／Run 彙總、取消暫緩、文件 ID 管理與 retire 直接刪除方向不再重問；D-64 已收斂刪除結果／錯誤核心及 Runtime 參數，D-65 進一步確認文件摘要核心，存在查詢的精確格式、分頁參數／cursor 與完整 OpenAPI 仍待整理；不因此關閉所有 Q-ID。
+API-D01～07 沿用既有 Q-ID，不另凍結完整 OpenAPI。批次物件、接收／Run 彙總、文件 ID 管理與 retire 直接刪除沿用既有決策。進度管控及取消另議。D-64 已收斂刪除結果／錯誤核心及 Runtime 參數，D-65 進一步確認文件摘要核心，存在查詢的精確格式、分頁參數／cursor 與完整 OpenAPI 仍待整理；不因此關閉所有 Q-ID。
 
 
 
@@ -641,7 +641,7 @@ Local Search 第一版仍同程序／單副本。背景執行不能把唯一 Mem
 - 21 的 counts／錯誤 Envelope 與文件管理細節；批次物件、整批預檢、Run partial 與 retire 直接刪除方向已確認。
 - 文件級索引 staging／舊 Chunk 清除／發布點、搜尋可見性及崩潰一致性；不以單次 Bulk／Hash 宣稱原子替換已完成。
 - D-62 已定共用 Flow、逐請求／文件固定 Config 快照；D-63 已定該 System 的排隊／執行中 Ingestion 結束後才允許新版生效；舊 Query／資源交接、未知 Remote 操作與持久索引相容性仍待決。讀寫不互斥／接受短暫混合已由 D-60 確認，詳見 [Runtime API／部署](06_runtime_api_and_deployment.md#src-21-8-api-d0506-的具體情境)。
-- 未知遠端寫入已確認不自動重試；具體結果查核、同文件隔離、Idempotency-Key／版本控制及清理仍待定，首期不做取消。
+- 未知遠端寫入已確認不自動重試；具體結果查核、同文件隔離、Idempotency-Key／版本控制及清理仍待定。進度管控及取消另議。
 - Queue／並行／Rate／Deadline／紀錄保留初始值已依 D-64 記於Runtime 控制手冊；尚待正式設定 Schema／載入方式、未知紀錄清理與未來多 replica 一致控制。
 
 方向已確認不表示提交機制已實作；詳細盤點與待決子項見 Runtime API／部署。

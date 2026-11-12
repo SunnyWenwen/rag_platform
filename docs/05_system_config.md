@@ -16,7 +16,7 @@ Workspace 管理多個 System。System ID、Config Revision、source_revision、
 |---|---|
 | Import | CSV 映射、來源型態、structdata 欄位與批次參數宣告 |
 | Parsing | 單選內建方法或 Remote，依選擇推導 Document[] |
-| Chunking | 方法、Tokenizer、來源／輸出欄位及保留欄位 |
+| Chunking | 方法、Tokenizer、單一切分來源欄位、一個切分輸出欄位及可選複製欄位 |
 | Embedding | 欄位映射、Profile、維度、可選文字組合。Remote 執行 Embedding 時，保留的內建 Chunking 自行指定 Tokenizer |
 | Indexing | 全文／向量／Filter 欄位、後端及持久化 |
 | Inference Input | 查詢執行參數、型別、必填性與預設值。平台初始化 QueryContext[] |
