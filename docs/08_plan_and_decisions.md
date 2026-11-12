@@ -31,7 +31,7 @@
 
 ## 2026-11-12 已確認：Inference 結果處理
 
-- 同 Query 多路融合與當步 `group_by` 歸 Retrieval，Rerank 在模型重新排序後做自己的分組。各步都在當步分組後取 Top N。
+- 同 Query 多路融合與當步 `group_by` 歸 Retrieval。每條路先取 `per_route_k`，有多路時須選 RRF 或 Sum Score，每 Query 交付一份清單。策略各自開放的參數待逐 Component 定義。Rerank 在模型重新排序後做自己的分組，各步在分組後取各自的 Top N。
 - 跨 Query 控制放在 Query Transformation。能產生多個 Query 時開放設定，使用者選 Retrieval 或 Rerank 完成後執行，再選融合方法、可選 `group_by` 及跨 Query Top N。
 - `group_by` 可多選。開啟時預選 `document_id`，多欄用組合鍵，每組保留當時排名最高的候選。任一欄缺值時獨立保留。見[設定規格](05_system_config.md#inference-result-processing)。
 - Remote 區段負責其內部的結果處理。整段 Query Transformation → Rerank 交由 Remote 時，平台驗證結果後按 Remote 排名交付。
@@ -84,7 +84,7 @@
 | 保存／搜尋 | 保存完整 Chunk；全文／向量／Filter 能力分開。ES 或 Local Search；Memory／MongoDB 持久化模式屬邏輯 Config，跨環境不任意切換 | D-09／10／33／39；04、資料契約手冊、19 |
 | 索引交接 | 平台管理索引以單組 IndexBinding 銜接；外部 Retrieval 使用 System 候選 Schema | D-55、2026-11-11；02 |
 | 推論資料 | QueryContext[]；ResultSet=key/items，ResultItem=data/選填 score | D-54、2026-11-11；02 |
-| 結果處理 | 同 Query 融合在 Retrieval；跨 Query 在 Retrieval／Rerank 完成後；各步獨立分組與截斷 | 2026-11-12；[Engine](03_engine_and_components.md#result-processing)、[Builder](07_builder_ui.md#src-09-3-現行-ui-規劃) |
+| 結果處理 | 內建 Retrieval 每路取 `per_route_k`，多路以 RRF／Sum Score 融成每 Query 一份；跨 Query 在 Retrieval／Rerank 完成後 | 2026-11-12；[Engine](03_engine_and_components.md#result-processing)、[Builder](07_builder_ui.md#src-09-3-現行-ui-規劃) |
 | 共用模型 | System 共用 LLM 名稱清單，Rewrite 以 llm_ref 引用；模型語意與環境連線分開 | D-13／Schema 細化手冊／30；資料契約手冊、System Config手冊 |
 | I/O 宣告與細化 | 平台維護內建描述。Remote Request 由上游推導，Ingestion 輸出由 User 宣告 | D-67、2026-11-11；04 |
 | 內建方法 | rag_platform 管 Builder，rag_engine 管 Engine／Runtime 與平台內建方法 | 01、03 |
@@ -329,9 +329,9 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 <a id="q-014"></a>
 ### Q-014 融合計畫、合併時點與分組細節
 
-- 已確認：同 Query 多路融合在 Retrieval；跨 Query 可選 Retrieval 或 Rerank 完成後。各步先完成自身的排序／分組和 Top N。跨 Query 可以在融合後另行分組及截斷。
+- 已確認：內建 Retrieval 先依 `per_route_k` 限制每 Query／每路，多路時須以所選 RRF 或 Sum Score 融合，每 Query 交付一份。跨 Query 可選 Retrieval 或 Rerank 完成後，並可再分組及截斷。
 - 已確認：融合以 `data_id` 對齊。分組可選多個候選 Document 單值欄位，每組留目前排名最高的候選。開啟時預選 `document_id`。Rerank=None 時仍可執行後置跨 Query 規則。
-- 待實作與驗收：逐 Component 參數、正式 Config 序列化與動態候選欄位來源。需用人工可驗算資料驗證 RRF／Sum Score、分數可比性、同分順序、ES／Local Search Adapter 與完整 Remote 邊界。
+- 待實作與驗收：逐 Component 參數（含 RRF／Sum Score 各自開放的參數與預設值）、正式 Config 序列化與動態候選欄位來源。需用人工可驗算資料驗證 RRF／Sum Score、分數可比性、同分順序、ES／Local Search Adapter 與完整 Remote 邊界。
 - 決策：2026-11-12 確認流程與 UI 責任，可開始逐 Component 參數設計。真實資料與服務的整合驗收留在 M2。
 
 <a id="q-015"></a>

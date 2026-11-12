@@ -5,7 +5,7 @@
 ## 可驗證的 Local Search 設定
 
 - [System Config Schema 草案](../../schemas/system_config.draft.schema.json)驗證發布快照 `{system_id, config_revision, config}`。`config` 包含 `contract_version` 與固定 Module 骨架的 `pipelines`。
-- [內建版本](local_memory.builtin.json)及 [Remote Parsing 版本](local_memory.remote_parsing.json)使用同一個 System。第二版只把 Parsing 換成 Remote，兩版推導出相同的候選欄位、向量與索引能力。
+- [內建版本](local_memory.builtin.json)及 [Remote Parsing 版本](local_memory.remote_parsing.json)使用同一個 System。第二版只把 Parsing 換成 Remote，兩版推導出相同的候選欄位、向量與索引能力。兩份範例各使用一條向量搜尋路徑，首段搜尋上限以 `per_route_k` 表示。
 
 節點以 `component_id` 選執行方式，以 `component_version` 固定版本。內建節點用對應 Descriptor 驗證 `parameters`。使用 `component_id: remote_api` 的節點放在替換區段的第一個 Module，以 `through` 指定最後一個 Module，已涵蓋的後續節點從有效設定省略。Remote Parsing 宣告輸出 `structdata`，Request 依上游 Import 設定推導。Remote 服務以 `service_ref` 引用，Endpoint 與認證由環境綁定解析。
 

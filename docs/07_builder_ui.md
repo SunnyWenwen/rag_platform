@@ -93,7 +93,7 @@ Create／Edit 可選用全域模板，設定 Import 入口欄位及參數，再�
 | Embedding | 來源欄位、輸出向量、模型 | 維度／Encoding／Normalization、Batch、輸入限制 |
 | Indexing | 後端、全文／向量欄位、過濾能力；全部內容自動保存的摘要 | 後端特有參數、進階 Mapping（支援後才顯示）；不要求再勾選保存內容 |
 | Query Transformation | 既有 None／Rewrite／Multi-query、LLM | Prompt、count、include_original；可能產生多 Query 時設定跨 Query 融合 |
-| Retrieval／Fusion Plan | 搜尋欄位、每 Query／每路 Top K、有效流程摘要、預設 filters | 同 Query 融合、當步分組及 Retrieval Top N。跨 Query 規則由 Query Transformation 設定。 |
+| Retrieval／Fusion Plan | 全文／向量欄位、`per_route_k`、預設 filters、多路搜尋時選 RRF 或 Sum Score | 可選當步分組及 Retrieval Top N。跨 Query 規則由 Query Transformation 設定。 |
 | Rerank | None／服務、單一評分內容欄位、Rerank Top N（原型預設 3）、實際提問來源 | 當步分組、逐 Query 問題選擇、附加內容欄位、Timeout／服務輸入限制 |
 
 必填但缺失的設定不能因進階區收合而無法發現；錯誤摘要可直接展開並定位。改動過的進階設定收起後，建議顯示已修改項數／簡短摘要。範圍、預設值及「每次記住展開」政策見 Q-025。
@@ -307,10 +307,10 @@ UI Mock、Schema 驗證、HTTP integration、實際端對端驗收分開記錄�
 | UI 位置 | 控制項 |
 |---|---|
 | Query Transformation | 在可能產生多 Query 時顯示跨 Query 融合。包含 Multi-query、保留原始問題的 Rewrite，以及由平台負責融合的 Remote Query Transformation。選 Retrieval 或 Rerank 的最後一步，再選融合方法、分組欄位及可選 Top N。 |
-| Retrieval | 內建搜尋有多份獨立路徑時，可選全部或部分路徑做同 Query 融合。另有每份清單的分組和 Retrieval Top N。 |
+| Retrieval | 內建搜尋有多路時必選 RRF 或 Sum Score，所有路徑融合成每 Query 一份清單。另可設定分組和 Retrieval Top N。 |
 | Rerank | 設定模型、內容欄位、提問來源，以及評分後每份清單的分組和 Rerank Top N。 |
 
-既有新建預設為啟用適用的兩層融合。跨 Query 預設在 Retrieval 完成後。ES 已在後端融合時，Builder 顯示該 Query 的單份 Hybrid 清單，停用同 Query 多路融合。平台可選 RRF 或 Sum Score，按有效方法顯示 `k` 或權重及分數轉換。
+跨 Query 融合預設在 Retrieval 完成後。內建 Retrieval 的流程預覽會顯示搜尋路徑與選定策略，結果只呈現每個 Query 的一份清單。RRF／Sum Score 的進階參數待逐 Component 定義。
 
 每個分組控制項都可選一個或多個有效候選欄位。第一次開啟時預選 `document_id`，欄位選單可改選有效候選 Schema 中的單值欄位。多欄一起構成分組鍵，操作順序見 [Engine 結果處理](03_engine_and_components.md#result-processing)。
 
@@ -319,7 +319,7 @@ UI Mock、Schema 驗證、HTTP integration、實際端對端驗收分開記錄�
 
 | 位置 | 作用範圍 |
 |---|---|
-| Retrieval 搜尋 Top K | 每 Query／每路；ES Hybrid 為每 Query 的一份輸出 |
+| Retrieval `per_route_k` | 每個 Query 在每條路徑的搜尋上限，套用於同 Query 融合前 |
 | Retrieval Top N | 每份清單完成同 Query 融合和分組後 |
 | Rerank Top N | 每份清單完成模型評分、重排和分組後 |
 | 跨 Query Top N | 在所選步驟完成後，對已跨 Query 融合及分組的每份輸出清單截斷 |
@@ -339,7 +339,7 @@ API 回傳最終有效清單。D-52：Chunk.metadata._rag.source_refs 為選填�
 ### 共同卡控
 
 - 後端由 Indexing 繼承；搜尋只能選已建立索引且型別相容的欄位。
-- ES 內部 Hybrid 一次只回一份清單時，不捏造分項 ResultSet 或再做同 Query 融合。獨立分路輸出須 Adapter 明確支援。
+- 選兩條以上搜尋路徑時須選融合策略。單一路徑直接使用搜尋結果。Builder 顯示每個 Query 的輸出上限及已選融合方法。
 - 單 Query／單路徑停用不適用控制項並保留草稿；切回多路時恢復選擇。
 - 改上游欄位／服務造成失效時保留原值，錯誤顯示 `[Module]` 與欄位；不能靜默替換。
 - 展開進階不改 Config。Create／Edit／AI／預覽／匯出使用同一有效計畫；取消不修改既有 System。
@@ -349,9 +349,9 @@ API 回傳最終有效清單。D-52：Chunk.metadata._rag.source_refs 為選填�
 
 | 案例 | Retrieval 輸出 | 有效處理順序 |
 |---|---|---|
-| 單 Query＋ES Hybrid | 一份已融合清單 | Retrieval 分組／Top N → Rerank 分組／Top N |
+| 單 Query＋ES Hybrid | 一份已融合清單 | 每路取 `per_route_k` → 選定策略融合 → Retrieval 分組／Top N → Rerank |
 | 多 Query＋ES Hybrid | 每 Query 一份清單 | Retrieval Top N → 跨 Query RRF／Top N → 用原始問題 Rerank |
-| 多 Query＋Local 多路 | 每 Query 有全文／向量清單 | 同 Query 融合 → Retrieval 分組／Top N → 跨 Query 融合／Top N → Rerank |
+| 多 Query＋Local 多路 | 每 Query 一份已融合清單 | 同 Query 融合 → Retrieval 分組／Top N → 跨 Query 融合／Top N → Rerank |
 | 先逐 Query 評分 | 每 Query 有可辨識的候選清單 | Retrieval 按母 Chunk 分組／Top N → 逐 Query Rerank／Top N → 跨 Query RRF → 按文件分組 → 最終 Top N |
 
 最後一例若要保留每個 Query 的 Rerank 順序，將跨 Query 時點選在 Rerank 後。
@@ -373,7 +373,7 @@ API 回傳最終有效清單。D-52：Chunk.metadata._rag.source_refs 為選填�
 <a id="src-10-2-結果處理與有效設定"></a>
 ## Prototype／Backlog：結果處理與有效設定
 
-現有 Prototype 的舊版控制項集中在 Retrieval 進階設定。同 Query 多路與跨 Query 控制項預設收合，兩種融合預設勾選且可各自選時點。正式 UI 的位置及順序依[已確認設計](#src-09-3-現行-ui-規劃)調整。ES 已內部融合時停用重複融合；單 Query／單路保留草稿意圖。預設平台 RRF，ES 內部預設 Sum Score。權重／RRF k 僅對有效策略驗證。
+現有 Prototype 的舊版控制項集中在 Retrieval 進階設定。同 Query 多路與跨 Query 控制項預設收合，兩種融合預設勾選且可各自選時點。正式 UI 依[已確認設計](#src-09-3-現行-ui-規劃)將內建多路搜尋固定為融合後每 Query 一份，原型的分路輸出選項待對齊。ES 已內部融合時停用重複融合；單 Query／單路保留草稿意圖。預設平台 RRF，ES 內部預設 Sum Score。權重／RRF k 僅對有效策略驗證。
 
 | 位置 | 作用範圍 |
 |---|---|

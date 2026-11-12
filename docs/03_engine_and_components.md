@@ -180,16 +180,16 @@ result = Result.model_validate({"queries": [
 <a id="src-04-52-retrieval"></a>
 ### Retrieval
 
-**目的**：選已索引的全文／向量欄位，自動推導 Dense／全文／Hybrid；後端由 Binding 繼承。
+**目的**：`fulltext_fields` 選已建立全文索引的欄位供 BM25 等全文搜尋，`vector_fields` 選已建立向量索引的欄位。依選擇推導全文／向量／Hybrid，後端由 Binding 繼承。
 
 **處理**：
 
 1. 取得對應 Config／Binding，確認 Profile 與資料就緒。
-2. 將預設 filters、本次 filters、可信 ACL 以 AND 合併，驗證欄位／operator／值。
+2. 將預設 filters、本次 filters、可信 ACL 以 AND 合併。從可過濾欄位選路徑，以 `eq`／`in` 設定條件，值依欄位宣告型別驗證。Data Column 的型別及各類能力標記另行定義。
 3. 建立每個 Query × 全文／向量欄位的路徑；向量路徑依其 Profile 使用 query encoding。
-4. 每路在合法候選範圍內取 per_route_k，保留實際回傳的 rank、分數、方向與命中 Query。若 Adapter 在 ES 內部完成融合，接收已融合的一份清單並記錄計分設定；不要求憑空還原未回傳的分項清單／排名。
-5. 轉換距離為越大越相關的 relevance；保留 query／route identity，依核定計畫及 data_id 對齊融合。
-6. 有多份獨立路徑結果時，可選全部或部分路徑，在同一 Query 內按 `data_id` 融合算分。若設定 `group_by`，先取得所需候選欄位，再依當前排名對每份清單分組，最後取 Retrieval Top N。ES 已回傳單一 Hybrid 清單時，直接使用其排名執行分組與截斷。
+4. 每個 Query 的每條搜尋路徑先依 `per_route_k` 取候選，保留路徑、排名、分數及其方向。
+5. 同一 Query 若有多條搜尋路徑，須選 RRF 或 Sum Score，以 `data_id` 對齊所有路徑的候選並融合成一份清單。只有一路時，直接使用該路結果。若 Adapter 將融合交給後端，須驗證行為符合選定策略與每路上限。
+6. 若設定 `group_by`，先取得所需候選欄位，依當前排名分組，再執行選填的 Retrieval `top_n`。內建 Retrieval 對每個 Query 交付一份 ResultSet。
 7. 在 Rerank／檢索結果消費端使用候選前，批次取回所需 structdata／metadata，保留各路排序與身分；vectors 可省為 {}，下游無須知道 MongoDB 或 FAISS。
 8. 跨 Query 規則若選在 Retrieval 後，等 Retrieval 的融合、分組與 Top N 完成，再處理不同 Query 的清單。
 
@@ -197,10 +197,10 @@ result = Result.model_validate({"queries": [
 
 Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root array），沒有 InferenceState 外框。QueryContext 固定 ori_query、query，並提供預設空值的 filters、result_sets、metadata。ResultSet 只有 key／items；ResultItem 使用 data 與選填 score。只傳目前有效資料，處理後替換；歷史與診斷寫 Logs。items 順序就是排名，RRF 使用陣列位置。數值 score 經 Adapter 統一為越大越好，Sum Score 仍需驗證完整分數及可比性。 不限制合法流程只能選 Plan A／B。
 
-- Sum Score（ES 內部 Hybrid 預設；平台跨清單可另選）：`sum(weight × relevance_score)`；未命中該路為 0；來源權重與已核定轉換顯式配置；不因選 Sum Score 就默默正規化。
-- RRF：`sum(1 / (k + rank))`；各路 rank 從 1；預設 k=60。
+- Sum Score 以 `sum(weight × relevance_score)` 融合，未命中該路以 0 計。
+- RRF 以 `sum(1 / (k + rank))` 融合，排名從 1 開始。兩種策略各自開放的參數及預設值待逐 Component 定義。
 
-原始 BM25／向量分數尺度可能不同；等權 Sum Score 不代表相同實際影響。ES 內部計分與平台跨清單融合分開；後者原型預設 RRF，正式 Adapter 必須驗證分數可比性。距離轉換、同分順序、各路候選截斷的評估仍需 Q-011／Q-014。
+原始 BM25 與向量分數可能不同尺度。Sum Score 需要完整且可比的分數或已明確設定的轉換。距離轉換、同分順序及候選截斷的驗收見 Q-011／Q-014。
 
 融合以 `data_id` 對齊候選，分組規則另用 `group_by` 保留代表。融合的分數轉換、同分排序及 Adapter 能力驗收見 [Q-014](08_plan_and_decisions.md#q-014)。
 
@@ -213,11 +213,11 @@ Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root ar
 
 | 步驟 | 依設定執行的順序 |
 |---|---|
-| Retrieval | 每 Query／每路搜尋 Top K → 可選同 Query 多路融合 → 可選 `group_by` → Retrieval Top N |
+| Retrieval | 每 Query／每路取 `per_route_k` → 多路時以選定的 RRF／Sum Score 合成一份 → 可選 `group_by` → 可選 Retrieval `top_n` |
 | Rerank | 每份清單模型評分並重排 → 可選 `group_by` → Rerank Top N |
 | 跨 Query | 等所選步驟完成 → 跨 Query 融合 → 可選 `group_by` → 可選跨 Query Top N |
 
-跨 Query 融合以同一原始問題為範圍，按對應的路徑／群組合併清單。若同一 Query 還有多份獨立路徑清單，跨 Query 後仍可有多份結果。只有一個有效 Query 時略過跨 Query 規則。若選 `after_rerank` 且 Rerank 為 None，跨 Query 使用到達該時點的清單及排名。
+跨 Query 融合以同一原始問題為範圍，將各 Query 已完成當步處理的清單合併。若接入 Remote Retrieval 且平台負責跨 Query 融合，服務須提供可辨識的 Query／ResultSet 分組。只有一個有效 Query 時略過跨 Query 規則。若選 `after_rerank` 且 Rerank 為 None，跨 Query 使用到達該時點的清單及排名。
 
 ### 分組代表
 

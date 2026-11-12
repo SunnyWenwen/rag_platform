@@ -95,7 +95,7 @@
           "parameters": {
             "vector_name": "text",
             "query_profile": "text-v1",
-            "top_k": 10
+            "per_route_k": 10
           }
         },
         "rerank": {

@@ -159,7 +159,7 @@ INDEX = descriptor(
 )
 RETRIEVE = descriptor(
     "retrieval", "builtin",
-    {"vector_name": NAME, "query_profile": NAME, "top_k": POS},
+    {"vector_name": NAME, "query_profile": NAME, "per_route_k": POS},
     ("QueryContext[]", "QueryContext[]"),
     {"vector_name": selector("index_plan.vectors"), "query_profile": selector("profiles")},
 )
@@ -356,7 +356,7 @@ CHUNK_CONFIG = node("recursive", split_field="body", output_field="text",
                     max_tokens=500, overlap_tokens=50, tokenizer_profile_id="fixture")
 EMBED_CONFIG = node("dense", source_field="text", vector_name="text", profile="text-v1")
 INDEX_CONFIG = node("local", persistence="memory", fulltext_field="text", vector_name="text")
-RETRIEVAL_CONFIG = node("builtin", vector_name="text", query_profile="text-v1", top_k=10)
+RETRIEVAL_CONFIG = node("builtin", vector_name="text", query_profile="text-v1", per_route_k=10)
 RERANK_CONFIG = node("model_api", text_field="text")
 
 
@@ -569,6 +569,9 @@ def _():
     fields, vectors = builtin_output()
     index = compile_index(fields, vectors, INDEX_CONFIG)
     compile_retrieval(index, RETRIEVAL_CONFIG)
+    legacy = deepcopy(RETRIEVAL_CONFIG)
+    legacy["parameters"]["top_k"] = legacy["parameters"].pop("per_route_k")
+    rejects(lambda: compile_retrieval(index, legacy), "ValidationError")
     bad = deepcopy(RETRIEVAL_CONFIG)
     bad["parameters"]["query_profile"] = "other-space-v1"
     rejects(lambda: compile_retrieval(index, bad), "incompatible query profile")

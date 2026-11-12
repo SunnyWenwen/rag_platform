@@ -32,9 +32,11 @@ Retrieval 與 Rerank 各自在 Component `parameters` 設定當步分組與 Top 
 
 | 設定 | 內容 |
 |---|---|
-| Retrieval 參數 | 搜尋欄位、每路 Top K、可選同 Query 多路融合、`group_by`、Retrieval Top N |
+| Retrieval 參數 | `fulltext_fields`、`vector_fields`、預設 Filter、`per_route_k`、多路時必填的同 Query 融合策略、可選 `group_by` 和 `top_n` |
 | Rerank 參數 | 評分服務、內容欄位、提問來源、`group_by`、Rerank Top N |
 | 跨 Query 規則 | `at` 可選 `after_retrieval` 或 `after_rerank`，另選融合方法、`group_by` 和可選的最終 Top N |
+
+內建 Retrieval 以 `per_route_k` 表示搜尋階段每 Query、每路的上限，多路時必選 RRF 或 Sum Score，交付時每個 Query 只有一份清單。正式設定由使用者選擇融合策略，後端執行方式由 Adapter 負責。策略的專屬參數與預設值留待定義。Filter 欄位來自 Indexing 開放過濾的欄位，`eq`／`in` 的值依宣告型別驗證。資料型別與可搜尋、可過濾等能力標記由 Data Column 規格定義。
 
 `group_by` 可選一個或多個候選 Document 欄位。選多欄時以欄位值組合作為分組鍵；未設定分組時沿用排序後的清單。當步分組在排序後、當步 Top N 前執行。跨 Query 的融合、分組及 Top N 在該步驟的 Top N 之後執行。
 

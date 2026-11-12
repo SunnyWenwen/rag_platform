@@ -42,7 +42,7 @@ Chunking 可另外保留原文 Document，避免同一任務重複產生完全�
 [QueryContext[]](../schemas/query_context.schema.json) 是 Query Transformation、Retrieval、Rerank 的共用 I/O，也是 Runtime Inference 成功回應。每份 Context 有 `ori_query`、`query`、`filters`、`result_sets`、`metadata`。每個 ResultSet 以 `key` 表示搜尋路徑或群組，`items` 的順序代表排名。`ResultItem.data` 必填，值為候選 `Document`，`score` 選填。無命中時回空候選。
 
 - Query Transformation 可產生多個 Context，保留原始問題、條件與 Query metadata。
-- Retrieval 依設定填入候選。ResultSet key 在同一 Context 內唯一，同一清單的 data_id 唯一。
+- 內建 Retrieval 對每個 Query 交付一份 ResultSet，多路搜尋先融合再交付，無命中時 items 為空。ResultSet key 在同一 Context 內唯一，同一清單的 data_id 唯一。
 - Rerank 對輸入候選評分、重排與裁切，保留候選識別與 Document。融合以 `data_id` 對齊候選；`group_by` 使用候選 Document 的選定欄位保留目前排名最高的代表。組合多節點的 Remote API 依區段邊界驗證。
 - 內建路徑的固定過濾、請求 filters、已綁定參數及可信授權限制依有效規則合併。精確 Filter 使用欄位路徑與 `eq`／`in`，依宣告型別檢查。Remote Retrieval 採自己的服務參數與搜尋邏輯，保留 QueryContext 的 filters，服務負責套用授權。
 
