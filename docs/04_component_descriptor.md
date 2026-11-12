@@ -13,6 +13,32 @@
 
 例：Chunking 保留 text 與 title，Embedding 可選兩者作字串來源。若 Chunking 改名為 body，原 text 映射顯示失效。若 Remote 含 Embedding 並宣告 vectors.body，Indexing 選用 vectors.body，內建向量 Retrieval 再取得對應 Profile 的 Query Encoder。
 
+<a id="group-by-option-source"></a>
+## 分組欄位的選項來源
+
+Retrieval／Rerank 的 Descriptor 可用 `parameters_schema` 表達 `group_by` 為非空且不重複的欄位陣列，以 `/group_by/*` 檢查每個欄位。跨 Query 設定沿用同一份參數形狀及欄位來源。Builder 開啟分組時預選 `document_id`。
+
+待加入 Meta-schema 的來源 `candidate.document_fields` 由 System 的有效候選 Document Schema 取得 `document_id`、`structdata` 的單值欄位及已宣告型別的 `metadata` 單值路徑。候選欄位可以選填；執行時缺值的候選獨立保留。用於分組的欄位需能在該時點的候選資料讀到。
+
+```yaml
+parameters_schema:
+  type: object
+  properties:
+    group_by:
+      type: array
+      minItems: 1
+      uniqueItems: true
+      items:
+        type: string
+        minLength: 1
+option_sources:
+  "/group_by/*":
+    source: candidate.document_fields
+    types: [string, integer, number, boolean]
+```
+
+以上為待加入的 Descriptor 片段。現有草案已可驗證陣列與逐項選擇；`candidate.document_fields` 待加入 Meta-schema 及編譯環境。
+
 ## 內建描述保留的能力
 
 | 能力 | 例子 |

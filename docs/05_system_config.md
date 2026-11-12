@@ -25,6 +25,33 @@ Workspace 管理多個 System。System ID、Config Revision、source_revision、
 
 有效資料欄位由 Import 與後續有效方法推導，外部 Retrieval 沿用這份 System 候選 Schema。正式鍵名、細化規則的序列化及檔案包裝仍依 Q-002；Prototype 匯出是可查驗的設定示意。
 
+<a id="inference-result-processing"></a>
+## Inference 的結果處理
+
+Retrieval 與 Rerank 各自在 Component `parameters` 設定當步分組與 Top N。跨 Query 規則由 Query Transformation 的 UI 編輯，正式 Config 草案規劃放在 `config.pipelines.inference.result_processing.cross_query`，由 Engine 在選定步驟末尾執行。
+
+| 設定 | 內容 |
+|---|---|
+| Retrieval 參數 | 搜尋欄位、每路 Top K、可選同 Query 多路融合、`group_by`、Retrieval Top N |
+| Rerank 參數 | 評分服務、內容欄位、提問來源、`group_by`、Rerank Top N |
+| 跨 Query 規則 | `at` 可選 `after_retrieval` 或 `after_rerank`，另選融合方法、`group_by` 和可選的最終 Top N |
+
+`group_by` 可選一個或多個候選 Document 欄位。選多欄時以欄位值組合作為分組鍵；未設定分組時沿用排序後的清單。當步分組在排序後、當步 Top N 前執行。跨 Query 的融合、分組及 Top N 在該步驟的 Top N 之後執行。
+
+例如 Retrieval 先以 `[metadata.parent_chunk_id]` 收斂每個 Query 的候選，逐 Query Rerank 後，再執行以下跨 Query 規則。
+
+```yaml
+result_processing:
+  cross_query:
+    at: after_rerank
+    method: rrf
+    rrf_k: 60
+    group_by: [document_id]
+    top_n: 5
+```
+
+這段是正式格式的候選片段。現有 `0.2-draft` 的機器 Schema 尚待加入此規則和逐 Component 參數。Remote 涵蓋整段 Query Transformation → Rerank 時，結果處理由外部服務負責，平台驗證並交付回應。
+
 ## 執行參數
 
 Import／Inference Input 各自宣告名稱、型別、必填與預設值。Import 的值放在整批 Ingestion Request 的 `parameters`，Inference 的值放在該次查詢的 `parameters`。Runtime 先檢查型別、套預設及拒絕缺少的必填值。下游用 `{{params.name}}` 引用。Remote parameters JSON 中完整參數引用保留原值型別，例如 `{"top_k":"{{params.top_k}}"}` 在值為整數 5 時解析為 `{"top_k":5}`。執行參數留在呼叫環境，與 Document、metadata、索引內容分開。

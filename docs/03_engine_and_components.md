@@ -12,7 +12,7 @@ User 提供已部署的 HTTP 服務並在 System 設定完整 Endpoint、認證�
 | Ingestion | Parsing、Chunking、Embedding 各自可替換，也可選 Parsing → Chunking、Chunking → Embedding、Parsing → Chunking → Embedding | 從 Parsing 開始時 input 是單筆 Document，其餘為同文件 Document[]。output 為 Document[]。涵蓋 Parsing／Chunking 時宣告輸出 structdata，涵蓋 Embedding 時宣告 vectors。 |
 | Inference | Query Transformation、Retrieval、Rerank 各自可替換，也可選 Transformation → Retrieval、Retrieval → Rerank、Transformation → Retrieval → Rerank | input／output 皆為 QueryContext[]，候選 Document 遵守從 Ingestion 設定推導的 System Schema。 |
 
-區段只執行一次，涵蓋模組由首節點管理，編譯拒絕重疊。Indexing 與 Inference Input 由平台執行。只替換 Embedding 時，輸出保留原 Document 並附上向量。外部 Retrieval 自行執行搜尋及授權，平台無須等 Ingestion／IndexBinding 就緒。未被替換的後段使用驗證過的候選。平台保留內建擴充的能力，由平台團隊維護方法及相容契約。
+區段只執行一次，涵蓋模組由首節點管理，編譯拒絕重疊。Indexing 與 Inference Input 由平台執行。只替換 Embedding 時，輸出保留原 Document 並附上向量。外部 Retrieval 自行執行搜尋及授權，平台無須等 Ingestion／IndexBinding 就緒。未被替換的後段使用驗證過的候選。Inference 區段內的融合、分組和截斷由 Remote 負責，Engine 驗證平台規則與區段不重疊。Remote Retrieval 若留下可識別的 Query／ResultSet，區段外可顯式接平台跨 Query 處理或內建 Rerank。整段 Query Transformation → Rerank 由 Remote 執行時，Runtime 驗證回應及候選契約，按回傳順序交付。平台保留內建擴充的能力，由平台團隊維護方法及相容契約。
 
 呼叫前解析 `{{params.name}}` 與固定／動態 Secret reference。實際 Secret 經授權解析後放認證 Header。檢查回應形狀、欄位型別、資料識別、向量維度／Profile 與 Inference 邊界語意。HTTP 錯誤、Timeout、無效 JSON、違反契約及查無候選分別處理。服務失敗的重試依操作冪等性及 Runtime 政策。保留 request ID、模組範圍與錯誤摘要，遮罩憑證。
 
@@ -189,12 +189,11 @@ result = Result.model_validate({"queries": [
 3. 建立每個 Query × 全文／向量欄位的路徑；向量路徑依其 Profile 使用 query encoding。
 4. 每路在合法候選範圍內取 per_route_k，保留實際回傳的 rank、分數、方向與命中 Query。若 Adapter 在 ES 內部完成融合，接收已融合的一份清單並記錄計分設定；不要求憑空還原未回傳的分項清單／排名。
 5. 轉換距離為越大越相關的 relevance；保留 query／route identity，依核定計畫及 data_id 對齊融合。
-6. 按四個已確認位置取上限：搜尋 Top K、Retrieval 後合併 Top N、模型評分後 Top N、Reranker 後合併 Top N。每個上限只作用於該步輸出的各清單；逐 Query Rerank 後才跨 Query 融合時，不能提前攤平成全域清單。
-7. 在 Rerank／檢索結果消費端 使用候選前批次取回所需 structdata／metadata，保留各路排序與身分；vectors 可省為 {}，下游無須知道 MongoDB 或 FAISS。
+6. 有多份獨立路徑結果時，可選全部或部分路徑，在同一 Query 內按 `data_id` 融合算分。若設定 `group_by`，先取得所需候選欄位，再依當前排名對每份清單分組，最後取 Retrieval Top N。ES 已回傳單一 Hybrid 清單時，直接使用其排名執行分組與截斷。
+7. 在 Rerank／檢索結果消費端使用候選前，批次取回所需 structdata／metadata，保留各路排序與身分；vectors 可省為 {}，下游無須知道 MongoDB 或 FAISS。
+8. 跨 Query 規則若選在 Retrieval 後，等 Retrieval 的融合、分組與 Top N 完成，再處理不同 Query 的清單。
 
-**實作狀態**：Prototype v0.12 已提供 [Builder UI／Backlog](07_builder_ui.md) 的兩層時點 UI 與有效計畫推導；未實作真正的搜尋／融合。單一路是否略過融合仍依有效計畫判斷，文件分組不以清單數量為必要條件。
-
-已確認的 UI 範圍：同一 Query 多路合併、跨 Query 合併，各自可在 Retrieval 後或 Reranker 後執行；兩者新建預設勾選且在 Retrieval 後。先逐 Query Sum Score、再跨 Query RRF 是可表達情境。具體分數方法、正式配置 Schema 與 Adapter 支援仍由 Q-014 核定，原型展示初值不等同新增產品決策。
+已確認同 Query 的多路融合屬於 Retrieval。跨 Query 融合由 Query Transformation 的設定入口選擇在 Retrieval 或 Rerank 的末尾執行。先逐 Query Sum Score、再跨 Query RRF 是可表達情境。
 
 Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root array），沒有 InferenceState 外框。QueryContext 固定 ori_query、query，並提供預設空值的 filters、result_sets、metadata。ResultSet 只有 key／items；ResultItem 使用 data 與選填 score。只傳目前有效資料，處理後替換；歷史與診斷寫 Logs。items 順序就是排名，RRF 使用陣列位置。數值 score 經 Adapter 統一為越大越好，Sum Score 仍需驗證完整分數及可比性。 不限制合法流程只能選 Plan A／B。
 
@@ -203,24 +202,28 @@ Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root ar
 
 原始 BM25／向量分數尺度可能不同；等權 Sum Score 不代表相同實際影響。ES 內部計分與平台跨清單融合分開；後者原型預設 RRF，正式 Adapter 必須驗證分數可比性。距離轉換、同分順序、各路候選截斷的評估仍需 Q-011／Q-014。
 
-同文件片段分組不是 data_id 去重。max_chunks_per_document 仍待定。融合計畫的具體規格追蹤 Q-014：若先逐 Query Rerank 再跨 Query 融合，需定義 Rerank 的問題、每路 Top-N、跨路相同 Chunk 與分數比較，不能只搬動一條流程箭頭；Rerank=None 時也不能無聲丟掉必要融合。
+融合以 `data_id` 對齊候選，分組規則另用 `group_by` 保留代表。融合的分數轉換、同分排序及 Adapter 能力驗收見 [Q-014](08_plan_and_decisions.md#q-014)。
 
-**驗收**：同 Chunk 多路命中按計畫去重；少於 K 或零筆為合法；多路套用相同授權；融合可人工驗算；無效 filter 拒絕而不變無條件搜尋。合併時點核定後，另驗證逐 Query／跨 Query 與 Rerank 次序、各階段截斷及 Trace；不能只有策略下拉選單而沒有實際路徑變化。
+**驗收**：同 Chunk 多路命中按計畫去重；少於 K 或零筆為合法；多路套用相同授權；融合可人工驗算；無效 filter 拒絕而不變無條件搜尋。另驗證逐 Query／跨 Query 與 Rerank 次序、各階段截斷及 Trace；不能只有策略下拉選單而沒有實際路徑變化。
 
 <a id="result-processing"></a>
 
 <a id="src-04-521-resultset-後處理與共同排序"></a>
 ### ResultSet 後處理與共同排序
 
-2026-10-15 14:24～14:31（Asia/Taipei）確認後處理收斂為三類：
+| 步驟 | 依設定執行的順序 |
+|---|---|
+| Retrieval | 每 Query／每路搜尋 Top K → 可選同 Query 多路融合 → 可選 `group_by` → Retrieval Top N |
+| Rerank | 每份清單模型評分並重排 → 可選 `group_by` → Rerank Top N |
+| 跨 Query | 等所選步驟完成 → 跨 Query 融合 → 可選 `group_by` → 可選跨 Query Top N |
 
-| 操作 | 輸入／行為 | 輸出 |
-|---|---|---|
-| 去重＆合併 | 對選入清單依 group_by 分組、merge_key 對齊，再依方法計分 | 每個處理群組的新清單；Sum Score／RRF 為合併方法，不是額外一類操作 |
-| 取 Top N | 對已排序的每份選入清單保留前 N 筆 | 分數／方向保留，候選不足時回傳可用數量 |
-| 新模型算分 | 依明確 Query、服務與內容欄位評分 | 新分數及來源對應；具體缺項／服務限制仍待 Q-003 |
+跨 Query 融合以同一原始問題為範圍，按對應的路徑／群組合併清單。若同一 Query 還有多份獨立路徑清單，跨 Query 後仍可有多份結果。只有一個有效 Query 時略過跨 Query 規則。若選 `after_rerank` 且 Rerank 為 None，跨 Query 使用到達該時點的清單及排名。
 
-Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root array），沒有 InferenceState 外框。QueryContext 固定 ori_query、query，並提供預設空值的 filters、result_sets、metadata。ResultSet 只有 key／items；ResultItem 使用 data 與選填 score。只傳目前有效資料，處理後替換；歷史與診斷寫 Logs。items 順序就是排名，RRF 使用陣列位置。數值 score 經 Adapter 統一為越大越好，Sum Score 仍需驗證完整分數及可比性。 三種操作後各份清單有序，Top N 取目前前 N 筆；None 不取消必要的後置合併。兩層合併／四處 Top N 見 Builder UI／Backlog手冊；Config 細節仍見 Q-014。
+### 分組代表
+
+`group_by` 在當前每份有序清單中選一個或多個候選 Document 欄位。多選時以所有欄位值的組合為分組鍵，每組保留排名最高的一筆。候選只要有任一選定欄位缺值或為 null，就獨立保留。文件去重選 `document_id`。若 Retrieval 以母 Chunk ID 分組，保留的是代表子 Chunk，仍帶自己的 `data_id`。之後可在跨 Query 融合後以 `document_id` 再分組，最後取最終 Top N。
+
+設定位置及候選欄位來源見 [System Config](05_system_config.md#inference-result-processing) 與 [Descriptor](04_component_descriptor.md#group-by-option-source)。
 
 <a id="src-04-53-rerank"></a>
 ### Rerank
@@ -237,11 +240,11 @@ Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root ar
 
 這是平台契約，不是所有模型服務的通用標準。POST 路徑為選定 Base URL 下的 /rerank；其他格式需 Adapter。
 
-**處理**：從選定 ResultSet 的 Document.structdata 取評分內容，保留候選 index 對照；驗證 index 唯一且在範圍內、score 有限，映回相同 Chunk，覆寫目前 score，再排序與取平台設定的 Top N。舊分數不放在業務物件，不改文件／ACL 或生成新候選。None 不評分、不使用其評分後 Top N，但仍執行配置的後置融合；零筆不呼叫服務。服務端 top_n 與平台保留數的邊界如下。
+**處理**：從選定 ResultSet 的 Document.structdata 取評分內容，保留候選 index 對照；驗證 index 唯一且在範圍內、score 有限，映回相同 Chunk，覆寫目前 score，再排序、套用當步可選的 `group_by`，最後取 Rerank Top N。舊分數不放在業務物件，不改文件／ACL 或生成新候選。None 略過當步評分、分組與 Top N，跨 Query 規則仍可選在 Rerank 後執行；零筆時直接沿用空清單。跨 Query 融合若已於 Retrieval 後完成，Rerank 用原始問題；若在 Rerank 後才融合，Rerank 可使用各清單對應的當前 Query。服務端 top_n 與平台保留數的邊界如下。
 
 **驗收**：不生成新 data_id；重新 rank；保留原 Retrieval Trace。串接 Timeout／錯誤時不假裝 Rerank=None。
 
-**與最新結果操作的對齊**：Rerank 是「新模型算分」的一種方法；模型輸出經共用排序與 Top N，名次由 items 陣列位置表示，不新增 rank 欄位。Top N 保留為可獨立描述的操作能力，但最新 UI 不要求獨立卡片，而是動作的收尾參數；Prototype v0.12 的 Reranker 輸出 Top N 預設 3，見 [Builder UI／Backlog](07_builder_ui.md)。原型 API 說明要求 top_n 等於輸入 documents 數、回應完整評分，再由平台依 UI 上限截斷；正式 Adapter 的完整覆蓋驗證與服務上限仍待 Q-003／Q-014，不能默默依服務預設值少回候選。
+**與最新結果操作的對齊**：Rerank 是「新模型算分」的一種方法；模型輸出經共用排序、可選分組與 Top N，名次由 items 陣列位置表示，不新增 rank 欄位。Top N 保留為可獨立描述的操作能力，但最新 UI 不要求獨立卡片，而是動作的收尾參數；Prototype v0.12 的 Reranker 輸出 Top N 預設 3，見 [Builder UI／Backlog](07_builder_ui.md)。原型 API 說明要求 top_n 等於輸入 documents 數、回應完整評分，再由平台依 UI 上限截斷；正式 Adapter 的完整覆蓋驗證與服務上限仍待 Q-003／Q-014，不能默默依服務預設值少回候選。
 
 **待決**：Q-003、Q-014、Q-017、Q-023；內容欄位分隔、輸入極限、全候選評分與服務回傳缺項政策需核定。
 

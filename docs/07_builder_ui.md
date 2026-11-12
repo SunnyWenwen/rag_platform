@@ -80,7 +80,7 @@ Create／Edit 可選用全域模板，設定 Import 入口欄位及參數，再�
 - Rewrite／Multi-query 的 Prompt 可編輯，分別保留草稿；提供變數插入、驗證與預覽。
 - Rerank 可查看固定平台 Request／Response 範例及 index／score 對應說明；不宣稱是所有模型的統一標準。
 - collection 由 Workspace＋System 名稱／穩定 ID 自動帶入且唯讀；改顯示名稱不換既有實體。
-- Retrieval 不另選 Implementation；由使用者選全文／向量欄位推導模式。原型已提供同 Query／跨 Query 兩層合併及各自的 Retrieval 後／Reranker 後時點；正式 Config 與 Engine 執行細節仍由 Q-014 追蹤。
+- 內建 Retrieval 依全文／向量欄位推導搜尋模式。Retrieval 設定同 Query 多路融合，Query Transformation 設定跨 Query 融合的時點。見[結果處理控制項](#src-09-3-現行-ui-規劃)。
 
 下表其餘分組仍為建議，待 Q-025；其中 Parsing 與上述已確認方向不可退回待定。
 
@@ -92,9 +92,9 @@ Create／Edit 可選用全域模板，設定 Import 入口欄位及參數，再�
 | Chunking（欄位簡化已確認） | 切分方式／必要參數，直接用 text；不顯示切分／複製欄位選單，metadata 全繼承 | 有序多欄位任務、輸出名稱、附帶欄位與完整原文保留；共用 Token 設定與依方法啟用的分隔符／標題層級，不提供 metadata 排除；UIB-013 |
 | Embedding | 來源欄位、輸出向量、模型 | 維度／Encoding／Normalization、Batch、輸入限制 |
 | Indexing | 後端、全文／向量欄位、過濾能力；全部內容自動保存的摘要 | 後端特有參數、進階 Mapping（支援後才顯示）；不要求再勾選保存內容 |
-| Query Transformation | 既有 None／Rewrite／Multi-query、LLM；合併提案見 相關章節 | Prompt、count、include_original |
-| Retrieval／Fusion Plan | 搜尋欄位、每 Query／每路 Top K、有效流程摘要、預設 filters | 同／跨 Query 合併、時點、演算法、去重及兩處合併後 Top N；見 相關章節 |
-| Rerank | None／服務、單一評分內容欄位、評分後 Top N（預設 3）、實際提問來源 | 逐 Query 問題選擇、附加內容欄位、Timeout／服務輸入限制 |
+| Query Transformation | 既有 None／Rewrite／Multi-query、LLM | Prompt、count、include_original；可能產生多 Query 時設定跨 Query 融合 |
+| Retrieval／Fusion Plan | 搜尋欄位、每 Query／每路 Top K、有效流程摘要、預設 filters | 同 Query 融合、當步分組及 Retrieval Top N。跨 Query 規則由 Query Transformation 設定。 |
+| Rerank | None／服務、單一評分內容欄位、Rerank Top N（原型預設 3）、實際提問來源 | 當步分組、逐 Query 問題選擇、附加內容欄位、Timeout／服務輸入限制 |
 
 必填但缺失的設定不能因進階區收合而無法發現；錯誤摘要可直接展開並定位。改動過的進階設定收起後，建議顯示已修改項數／簡短摘要。範圍、預設值及「每次記住展開」政策見 Q-025。
 
@@ -299,32 +299,32 @@ UI Mock、Schema 驗證、HTTP integration、實際端對端驗收分開記錄�
 <a id="src-09-3-現行-ui-規劃"></a>
 ## 結果處理控制項、預設值與共同卡控
 
-保留單一 Create／Edit 介面。Retrieval 的「進階結果處理」預設收合；Reranker 沿用原模組表單。Top N 是動作完成後的收尾設定，不新增可任意排列的操作卡片或 DAG。
+結果處理控制項分別放在 Query Transformation、Retrieval 和 Rerank 的表單。流程預覽顯示每條跨 Query 規則選定的執行時點。
 
 <a id="src-09-31-兩層合併"></a>
-### 兩層合併
+### 融合與分組設定
 
-| 控制項 | 新建預設 | 相依／有效範圍 |
-|---|---|---|
-| 同 Query 多路合併 | 勾選；Retrieval 後 | 有多個獨立 ResultSet 才融合；ES 已內部融合時顯示原因並停用 |
-| 跨 Query 合併 | 勾選；Retrieval 後 | 同原始問題有多個有效 Query 才執行 |
-| 每層合併時機 | 可選 Retrieval 後／Reranker 後 | 顯示有效順序，無效組合阻止套用；不默默改時機 |
-| 合併策略 | RRF／Sum Score | RRF 設 k；Sum Score 設來源權重與可比性／轉換；ES 內部策略另外設定 |
-| 身分合併 | data_id；可選 document_id | 文件模式先完成 data_id 融合，再於最後有效合併點選同文件最高分代表；單份清單也可文件去重 |
+| UI 位置 | 控制項 |
+|---|---|
+| Query Transformation | 在可能產生多 Query 時顯示跨 Query 融合。包含 Multi-query、保留原始問題的 Rewrite，以及由平台負責融合的 Remote Query Transformation。選 Retrieval 或 Rerank 的最後一步，再選融合方法、分組欄位及可選 Top N。 |
+| Retrieval | 內建搜尋有多份獨立路徑時，可選全部或部分路徑做同 Query 融合。另有每份清單的分組和 Retrieval Top N。 |
+| Rerank | 設定模型、內容欄位、提問來源，以及評分後每份清單的分組和 Rerank Top N。 |
 
-每個 Query 內是第一層分組，同原始問題跨 Query 是第二層。Query 以獨立 context 表示；ResultSet 以 key 對應路徑／群組，使用者不需填執行 ID。merge_key 選 document_id 不會產生虛構 Chunk，仍保留代表的 data_id 與來源資料。
+既有新建預設為啟用適用的兩層融合。跨 Query 預設在 Retrieval 完成後。ES 已在後端融合時，Builder 顯示該 Query 的單份 Hybrid 清單，停用同 Query 多路融合。平台可選 RRF 或 Sum Score，按有效方法顯示 `k` 或權重及分數轉換。
+
+每個分組控制項都可選一個或多個有效候選欄位。第一次開啟時預選 `document_id`，欄位選單可改選有效候選 Schema 中的單值欄位。多欄一起構成分組鍵，操作順序見 [Engine 結果處理](03_engine_and_components.md#result-processing)。
 
 <a id="src-09-32-四個固定-top-n-位置"></a>
-### 四個固定 Top N 位置
+### 四個固定截斷位置
 
-| 位置 | 作用對象 | 停用情境 |
-|---|---|---|
-| Retrieval 搜尋 Top K | 每 Query／每路搜尋；ES 內部融合則是一份 Hybrid 輸出 | 無搜尋路徑是錯誤，不自動略過 |
-| Retrieval 後合併 Top N | 該時點適用合併／文件去重完成後的各群組 | 該時點無處理時不參與有效設定 |
-| Reranker 評分後 Top N | 每份模型評分 ResultSet；新建預設 3 | Reranker=None 時停用此上限 |
-| Reranker 後合併 Top N | 後置合併／文件去重完成後的各群組 | 沒有後置處理時停用；None 不會取消必要後置合併 |
+| 位置 | 作用範圍 |
+|---|---|
+| Retrieval 搜尋 Top K | 每 Query／每路；ES Hybrid 為每 Query 的一份輸出 |
+| Retrieval Top N | 每份清單完成同 Query 融合和分組後 |
+| Rerank Top N | 每份清單完成模型評分、重排和分組後 |
+| 跨 Query Top N | 在所選步驟完成後，對已跨 Query 融合及分組的每份輸出清單截斷 |
 
-每次處理後按當前相關分數或後端既定順序排序，再取上限；名次由 items 位置表示，沒有獨立排序開關。多份清單各自 Top N 不等於全域 Top N。後續模型與融合不能找回已截掉的候選，預覽需標出清單數與截斷位置。
+預覽標出每個時點的清單數與上限。Rerank 選 None 時停用評分、當步分組與 Top N，跨 Query 可在 Rerank 後使用當前清單。完整 Remote Inference 由外部服務負責結果處理，Builder 顯示區段契約與回應驗證。
 
 <a id="src-09-33-模型與內容欄位"></a>
 ### 模型與內容欄位
@@ -349,12 +349,12 @@ API 回傳最終有效清單。D-52：Chunk.metadata._rag.source_refs 為選填�
 
 | 案例 | Retrieval 輸出 | 有效處理順序 |
 |---|---|---|
-| 單 Query＋ES Hybrid | 一份已融合清單 | 略過兩層跨清單合併 → Rerank → Top 3 → 回傳檢索結果 |
-| 多 Query＋ES Hybrid | 每 Query 一份清單 | Retrieval 後跨 Query RRF → 合併 Top N → Rerank → Top 3 |
-| 多 Query＋Local 多路 | 每 Query 有全文／向量清單 | 各 Query 內融合 → 跨 Query 融合 → 合併 Top N → Rerank → Top 3 |
-| 先逐 Query 評分 | 各 Query 內已完成融合 | Retrieval 後合併 Top N → 每 Query Rerank／Top N → 跨 Query RRF → 後置合併 Top N |
+| 單 Query＋ES Hybrid | 一份已融合清單 | Retrieval 分組／Top N → Rerank 分組／Top N |
+| 多 Query＋ES Hybrid | 每 Query 一份清單 | Retrieval Top N → 跨 Query RRF／Top N → 用原始問題 Rerank |
+| 多 Query＋Local 多路 | 每 Query 有全文／向量清單 | 同 Query 融合 → Retrieval 分組／Top N → 跨 Query 融合／Top N → Rerank |
+| 先逐 Query 評分 | 每 Query 有可辨識的候選清單 | Retrieval 按母 Chunk 分組／Top N → 逐 Query Rerank／Top N → 跨 Query RRF → 按文件分組 → 最終 Top N |
 
-前三個採預設時機；第四個展示進階配置。這些案例不限制合法計畫只能選固定模板；實際支援能力由 Registry／Adapter 驗證。完整資料與 Python 範例見 [資料契約](02_data_contracts.md#inference-contract)。
+最後一例若要保留每個 Query 的 Rerank 順序，將跨 Query 時點選在 Rerank 後。
 
 <a id="src-10-1-已完成的原型能力"></a>
 ## Prototype／Backlog：已完成的原型能力
@@ -373,14 +373,14 @@ API 回傳最終有效清單。D-52：Chunk.metadata._rag.source_refs 為選填�
 <a id="src-10-2-結果處理與有效設定"></a>
 ## Prototype／Backlog：結果處理與有效設定
 
-Retrieval 進階設定預設收合；同 Query 多路、跨 Query 合併預設勾選，時機預設 Retrieval 後，各自可改為 Reranker 後。ES 已內部融合時停用重複融合；單 Query／單路保留草稿意圖。預設平台 RRF，ES 內部預設 Sum Score。權重／RRF k 僅對有效策略驗證。
+現有 Prototype 的舊版控制項集中在 Retrieval 進階設定。同 Query 多路與跨 Query 控制項預設收合，兩種融合預設勾選且可各自選時點。正式 UI 的位置及順序依[已確認設計](#src-09-3-現行-ui-規劃)調整。ES 已內部融合時停用重複融合；單 Query／單路保留草稿意圖。預設平台 RRF，ES 內部預設 Sum Score。權重／RRF k 僅對有效策略驗證。
 
 | 位置 | 作用範圍 |
 |---|---|
 | Retrieval 搜尋 Top K | 每 Query／每路；ES Hybrid 為每 Query 的一份輸出 |
 | Retrieval 後合併 Top N | 該時點處理後的每份清單 |
 | Reranker Top N | 每份模型評分清單，預設 3 |
-| Reranker 後合併 Top N | 後置處理後的每份清單；None 不取消必要合併 |
+| 舊版 Reranker 後合併 Top N | 舊版控制項可在 Rerank 後處理清單 |
 
 ResultSet.key 對應 Config 路徑／群組；items 位置即名次。RRF 可用無 score 的有序結果；Sum Score 需完整且可比分數。Prototype 的推導器只計算流程與候選上限；mockRetrieval 用固定示意候選，不真的搜尋、融合或評分。畫面說明與計畫獨立於 QueryContext JSON，不新增外框或歷史記錄。
 

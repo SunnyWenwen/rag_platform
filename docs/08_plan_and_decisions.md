@@ -29,6 +29,13 @@
 
 取代 D-40／51 的 Developer 交付、Manifest 目錄與 Remote Image 流程，更新 D-47～49 的外層資料形狀、D-54 的候選資料鍵、D-58 的 Request 封裝及 D-67 的規格來源。保留 D-67 的內建 Schema 細化能力和 D-58 的單端點、整批預檢及逐文件工作。舊來源見[歷史索引](history/superseded/2026-11-11_developer_mode.md)。
 
+## 2026-11-12 已確認：Inference 結果處理
+
+- 同 Query 多路融合與當步 `group_by` 歸 Retrieval，Rerank 在模型重新排序後做自己的分組。各步都在當步分組後取 Top N。
+- 跨 Query 控制放在 Query Transformation。能產生多個 Query 時開放設定，使用者選 Retrieval 或 Rerank 完成後執行，再選融合方法、可選 `group_by` 及跨 Query Top N。
+- `group_by` 可多選。開啟時預選 `document_id`，多欄用組合鍵，每組保留當時排名最高的候選。任一欄缺值時獨立保留。見[設定規格](05_system_config.md#inference-result-processing)。
+- Remote 區段負責其內部的結果處理。整段 Query Transformation → Rerank 交由 Remote 時，平台驗證結果後按 Remote 排名交付。
+
 ## 1. 使用方式與狀態
 
 | 狀態 | 意義 | Agent 行為 |
@@ -77,7 +84,7 @@
 | 保存／搜尋 | 保存完整 Chunk；全文／向量／Filter 能力分開。ES 或 Local Search；Memory／MongoDB 持久化模式屬邏輯 Config，跨環境不任意切換 | D-09／10／33／39；04、資料契約手冊、19 |
 | 索引交接 | 平台管理索引以單組 IndexBinding 銜接；外部 Retrieval 使用 System 候選 Schema | D-55、2026-11-11；02 |
 | 推論資料 | QueryContext[]；ResultSet=key/items，ResultItem=data/選填 score | D-54、2026-11-11；02 |
-| 結果處理 | 同 Query／跨 Query 兩層融合，各可在 Retrieval／Rerank 後；四個 Top N；RRF／Sum Score；文件去重選代表 Chunk | D-Engine／Descriptor 手冊／23／34／35；04、資料契約手冊、09 |
+| 結果處理 | 同 Query 融合在 Retrieval；跨 Query 在 Retrieval／Rerank 完成後；各步獨立分組與截斷 | 2026-11-12；[Engine](03_engine_and_components.md#result-processing)、[Builder](07_builder_ui.md#src-09-3-現行-ui-規劃) |
 | 共用模型 | System 共用 LLM 名稱清單，Rewrite 以 llm_ref 引用；模型語意與環境連線分開 | D-13／Schema 細化手冊／30；資料契約手冊、System Config手冊 |
 | I/O 宣告與細化 | 平台維護內建描述。Remote Request 由上游推導，Ingestion 輸出由 User 宣告 | D-67、2026-11-11；04 |
 | 內建方法 | rag_platform 管 Builder，rag_engine 管 Engine／Runtime 與平台內建方法 | 01、03 |
@@ -322,13 +329,10 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 <a id="q-014"></a>
 ### Q-014 融合計畫、合併時點與分組細節
 
-- 已有需求：使用者要求可配置融合策略及「在哪一步合併」，並提出逐 Query Score Sum→跨 Query RRF 情境；D-23 已記錄，不能只當可做可不做的助理建議。2026-10-15 再次明確可自行決定融合位置，且應先釐清 Inference 物件如何記錄多 Query／多 Index／多階段分數。
-- 已補確認：後處理三類（D-34）與共同排序（D-35）；不再把是否需要這些語意列為未決。餘下不清楚的是支援的合法路徑、scope／stage 精確 Schema、預設、每階段 K／N、Rerank Query、同分、文件代表、分數語意與 UI 整合。
-- 情境例：同 Query 融合→跨 Query 融合→Rerank、同 Query 融合→逐 Query Rerank→跨 Query 融合、ES 已內部融合。Config 需能選擇合法融合位置，不能只接受固定 Plan A／B；正式 Config 拼字及 Adapter 能力仍待核定；兩層預設勾選且在 Retrieval 後已確認，不再列為未定。
-- 目前基準：D-54 已確認 QueryContext[]、filters／metadata、key／items 及選填 score，取代舊歷史狀態。09 的兩層合併、四處 Top N 已有 Prototype；正式 Config、同分、正規化與真實 Adapter 支援仍待核定。
-- 建議：先定可驗證的有限計畫及共同 route 型別，保留 query／route identity；Rerank=None 及非法組合須顯式驗證。文件分組另定，不與 data_id 去重混同。
-- 負責角色：產品＋Engine＋Frontend；阻擋目標時點配置的契約／驗收，可先維持舊基線做迭代但不宣稱需求完成。
-- 決策：配置能力的需求已確認；具體計畫／預設／Schema 未定。同步更新 架構、資料、Engine、Runtime 與 UI 手冊 與範例。
+- 已確認：同 Query 多路融合在 Retrieval；跨 Query 可選 Retrieval 或 Rerank 完成後。各步先完成自身的排序／分組和 Top N。跨 Query 可以在融合後另行分組及截斷。
+- 已確認：融合以 `data_id` 對齊。分組可選多個候選 Document 單值欄位，每組留目前排名最高的候選。開啟時預選 `document_id`。Rerank=None 時仍可執行後置跨 Query 規則。
+- 待實作與驗收：逐 Component 參數、正式 Config 序列化與動態候選欄位來源。需用人工可驗算資料驗證 RRF／Sum Score、分數可比性、同分順序、ES／Local Search Adapter 與完整 Remote 邊界。
+- 決策：2026-11-12 確認流程與 UI 責任，可開始逐 Component 參數設計。真實資料與服務的整合驗收留在 M2。
 
 <a id="q-015"></a>
 ### Q-015 Revision、有效 Config Hash 與 Index 版本
