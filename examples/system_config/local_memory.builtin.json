@@ -2,13 +2,12 @@
   "system_id": "local-search-example",
   "config_revision": "revision-1",
   "config": {
-    "contract_version": "0.1-draft",
+    "contract_version": "0.2-draft",
     "pipelines": {
       "ingestion": {
         "import": {
-          "kind": "builtin",
-          "method_id": "platform",
-          "method_version": "1.0.0",
+          "component_id": "platform",
+          "component_version": "1.0.0",
           "parameters": {
             "structdata": {
               "body": {
@@ -23,15 +22,13 @@
           }
         },
         "parsing": {
-          "kind": "builtin",
-          "method_id": "passthrough",
-          "method_version": "1.0.0",
+          "component_id": "passthrough",
+          "component_version": "1.0.0",
           "parameters": {}
         },
         "chunking": {
-          "kind": "builtin",
-          "method_id": "recursive",
-          "method_version": "1.0.0",
+          "component_id": "recursive",
+          "component_version": "1.0.0",
           "parameters": {
             "split_field": "body",
             "output_field": "text",
@@ -47,9 +44,8 @@
           }
         },
         "embedding": {
-          "kind": "builtin",
-          "method_id": "dense",
-          "method_version": "1.0.0",
+          "component_id": "dense",
+          "component_version": "1.0.0",
           "parameters": {
             "source_field": "text",
             "vector_name": "text",
@@ -57,9 +53,8 @@
           }
         },
         "indexing": {
-          "kind": "builtin",
-          "method_id": "local",
-          "method_version": "1.0.0",
+          "component_id": "local",
+          "component_version": "1.0.0",
           "parameters": {
             "persistence": "memory",
             "fulltext_field": "text",
@@ -69,21 +64,18 @@
       },
       "inference": {
         "inference_input": {
-          "kind": "builtin",
-          "method_id": "platform",
-          "method_version": "1.0.0",
+          "component_id": "platform",
+          "component_version": "1.0.0",
           "parameters": {}
         },
         "query_transformation": {
-          "kind": "builtin",
-          "method_id": "none",
-          "method_version": "1.0.0",
+          "component_id": "none",
+          "component_version": "1.0.0",
           "parameters": {}
         },
         "retrieval": {
-          "kind": "builtin",
-          "method_id": "builtin",
-          "method_version": "1.0.0",
+          "component_id": "builtin",
+          "component_version": "1.0.0",
           "parameters": {
             "vector_name": "text",
             "query_profile": "text-v1",
@@ -91,9 +83,8 @@
           }
         },
         "rerank": {
-          "kind": "builtin",
-          "method_id": "none",
-          "method_version": "1.0.0",
+          "component_id": "none",
+          "component_version": "1.0.0",
           "parameters": {}
         }
       }

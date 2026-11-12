@@ -13,7 +13,7 @@ MODULES = {
     "ingestion": ("parsing", "chunking", "embedding"),
     "inference": ("query_transformation", "retrieval", "rerank"),
 }
-METHOD_FAMILIES = {
+BUILTIN_COMPONENTS = {
     "import": (("platform",), ("IngestionRequest", "Document")),
     "parsing": (("passthrough", "pdf", "pdf_ocr", "office", "image_ocr", "text", "json"),
                 ("Document", "Document[]")),
@@ -51,6 +51,7 @@ FIELD_RULE = obj({"type": {"enum": SCALAR_TYPES}, "required": BOOL})
 DESCRIPTOR_SCHEMA = json.loads((REPO / "schemas/component_descriptor.draft.schema.json").read_text())
 SYSTEM_CONFIG_SCHEMA = json.loads((REPO / "schemas/system_config.draft.schema.json").read_text())
 BUILTIN_SCHEMA = SYSTEM_CONFIG_SCHEMA["$defs"]["builtin_node"]
+REMOTE_ADAPTER_VERSIONS = {"1.0.0"}
 
 
 @dataclass(frozen=True)
@@ -74,10 +75,10 @@ def fail(code):
     raise ConfigError(code)
 
 
-def descriptor(module, method, params, io, selectors=None, rules=(), constraints=(), required=None):
+def descriptor(module, component_id, params, io, selectors=None, rules=(), constraints=(), required=None):
     value = {
-        "descriptor_version": "0.1-draft", "module": module, "method_id": method,
-        "method_version": "1.0.0", "parameters_schema": obj(params, required),
+        "descriptor_version": "0.2-draft", "module": module, "component_id": component_id,
+        "component_version": "1.0.0", "parameters_schema": obj(params, required),
         "io": dict(zip(("input", "output"), io)),
         "option_sources": {"/" + key.lstrip("/"): spec for key, spec in (selectors or {}).items()},
         "data_rules": list(rules), "constraints": list(constraints),
@@ -106,7 +107,7 @@ def validate_descriptor(value):
     Draft202012Validator(DESCRIPTOR_SCHEMA).validate(value)
     root = value["parameters_schema"]
     Draft202012Validator.check_schema(root)
-    expected_io = METHOD_FAMILIES[value["module"]][1]
+    expected_io = BUILTIN_COMPONENTS[value["module"]][1]
     if (value["io"]["input"], value["io"]["output"]) != expected_io:
         fail("invalid module I/O")
     for pointer, spec in value.get("option_sources", {}).items():
@@ -178,11 +179,11 @@ FIXTURE_DESCRIPTORS = (
     descriptor("query_transformation", "none", {}, ("QueryContext[]", "QueryContext[]")),
     descriptor("rerank", "none", {}, ("QueryContext[]", "QueryContext[]")),
 )
-REGISTRY = {(d["module"], d["method_id"], d["method_version"]): d for d in FIXTURE_DESCRIPTORS}
+REGISTRY = {(d["module"], d["component_id"], d["component_version"]): d for d in FIXTURE_DESCRIPTORS}
 PROFILES = {"text-v1": 3, "other-space-v1": 3}
 
-def node(method, **parameters):
-    return {"kind": "builtin", "method_id": method, "method_version": "1.0.0",
+def node(component_id, **parameters):
+    return {"component_id": component_id, "component_version": "1.0.0",
             "parameters": parameters}
 
 
@@ -208,9 +209,9 @@ def selected_values(values, pointer):
 
 def parameters(module, config, context):
     Draft202012Validator(BUILTIN_SCHEMA).validate(config)
-    key = module, config["method_id"], config["method_version"]
+    key = module, config["component_id"], config["component_version"]
     if key not in REGISTRY:
-        fail("unknown method")
+        fail("unknown component version")
     desc = REGISTRY[key]
     values = config["parameters"]
     Draft202012Validator(desc["parameters_schema"]).validate(values)
@@ -376,7 +377,9 @@ def effective_nodes(pipeline, nodes):
         config = nodes.get(module)
         if config is None:
             fail("missing effective module:" + module)
-        if config["kind"] == "remote":
+        if config["component_id"] == "remote_api":
+            if config["component_version"] not in REMOTE_ADAPTER_VERSIONS:
+                fail("unknown Remote API adapter version")
             segment, _, _, _ = remote_contract(pipeline, module, config["through"])
             check_coverage(segment[1:], nodes)
             covered.update(segment)
@@ -393,7 +396,7 @@ def compile_local_example(snapshot):
     pipelines = snapshot["config"]["pipelines"]
     fields, vectors = {}, {}
     for module, config in effective_nodes("ingestion", pipelines["ingestion"]):
-        if config["kind"] == "remote":
+        if config["component_id"] == "remote_api":
             output = config["output"]
             declarations = {}
             if "structdata" in output:
@@ -414,7 +417,7 @@ def compile_local_example(snapshot):
                 fields, vectors = data_effects(desc, values, fields, vectors)
 
     for module, config in effective_nodes("inference", pipelines["inference"]):
-        if config["kind"] == "remote":
+        if config["component_id"] == "remote_api":
             fail("example compiler only supports builtin Inference")
         if module == "retrieval":
             compile_retrieval(index, config)
@@ -467,6 +470,43 @@ def _():
     rejects(lambda: compile_local_example(bad), "missing effective module:chunking")
 
 
+@case("component IDs select the node shape and versions pin the implementation")
+def _():
+    bad_descriptor = deepcopy(CHUNK)
+    bad_descriptor["component_id"] = "remote_api"
+    rejects(lambda: validate_descriptor(bad_descriptor), "ValidationError")
+    del bad_descriptor["component_id"]
+    rejects(lambda: validate_descriptor(bad_descriptor), "ValidationError")
+
+    snapshot = local_snapshot("remote_parsing")
+    parser = snapshot["config"]["pipelines"]["ingestion"]["parsing"]
+    parser["kind"] = "remote"
+    rejects(lambda: compile_local_example(snapshot), "ValidationError")
+    del parser["kind"]
+    del parser["component_version"]
+    rejects(lambda: compile_local_example(snapshot), "ValidationError")
+    parser["component_version"] = "2.0.0"
+    rejects(lambda: compile_local_example(snapshot), "unknown Remote API adapter version")
+    parser["component_version"] = "1.0.0"
+    parser["component_id"] = "passthrough"
+    rejects(lambda: compile_local_example(snapshot), "ValidationError")
+
+    parser["component_id"] = "remote_api"
+    inference = snapshot["config"]["pipelines"]["inference"]
+    inference["retrieval"] = {
+        "component_id": "remote_api",
+        "component_version": "1.0.0",
+        "through": "rerank",
+        "service_ref": "external-search",
+        "parameters": {},
+    }
+    del inference["rerank"]
+    Draft202012Validator(SYSTEM_CONFIG_SCHEMA).validate(snapshot)
+    assert [module for module, _ in effective_nodes("inference", inference)] == [
+        "inference_input", "query_transformation", "retrieval",
+    ]
+
+
 @case("builtin flow uses one derived set of fields through Rerank")
 def _():
     fields, vectors = builtin_output()
@@ -512,12 +552,12 @@ def _():
             "invalid selection:/copy_fields/*/source_field")
 
 
-@case("unknown method, invalid parameter type and invalid relation fail separately")
+@case("unknown component version, invalid parameter type and invalid relation fail separately")
 def _():
     bad = deepcopy(CHUNK_CONFIG)
-    bad["method_version"] = "2.0.0"
-    rejects(lambda: parameters("chunking", bad, context(UPSTREAM, {})), "unknown method")
-    bad["method_version"] = "1.0.0"
+    bad["component_version"] = "2.0.0"
+    rejects(lambda: parameters("chunking", bad, context(UPSTREAM, {})), "unknown component version")
+    bad["component_version"] = "1.0.0"
     bad["parameters"]["overlap_tokens"] = "500"
     rejects(lambda: parameters("chunking", bad, context(UPSTREAM, {})), "ValidationError")
     bad["parameters"]["overlap_tokens"] = 500
@@ -590,11 +630,11 @@ def _():
     rejects(lambda: schema.validate(bad), "ValidationError")
 
 
-@case("descriptor envelope represents all planned builtin method families")
+@case("descriptor envelope represents all planned builtin component families")
 def _():
-    for module, (methods, io) in METHOD_FAMILIES.items():
-        for method in methods:
-            descriptor(module, method, {}, io)
+    for module, (components, io) in BUILTIN_COMPONENTS.items():
+        for component_id in components:
+            descriptor(module, component_id, {}, io)
 
 
 @case("external retrieval candidate uses effective output schema without an IndexBinding")

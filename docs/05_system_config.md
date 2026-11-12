@@ -8,6 +8,8 @@ Workspace 管理多個 System。System ID、Config Revision、source_revision、
 
 [System Config Schema 草案](../schemas/system_config.draft.schema.json)和[內建／Remote Parsing 對照](../examples/system_config/README.md#可驗證的-local-search-設定)提供發布快照的機器驗證範例。
 
+每個有效節點以 `component_id` 選擇執行方式，並以 `component_version` 固定元件版本。內建元件使用該版本的 Descriptor 驗證參數。Remote API 共用平台保留的 `component_id: remote_api`，由 `service_ref` 選擇外部服務。Builder 設計可用同一個「執行方式」欄位選 Recursive、Fixed-size 或 Remote API。
+
 ## 設定位置
 
 | 模組 | 設定與推導 |

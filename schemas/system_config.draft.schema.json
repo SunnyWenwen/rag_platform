@@ -28,7 +28,7 @@
       "type": "object",
       "properties": {
         "contract_version": {
-          "const": "0.1-draft"
+          "const": "0.2-draft"
         },
         "pipelines": {
           "type": "object",
@@ -144,14 +144,14 @@
     "builtin_node": {
       "type": "object",
       "properties": {
-        "kind": {
-          "const": "builtin"
-        },
-        "method_id": {
+        "component_id": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "not": {
+            "const": "remote_api"
+          }
         },
-        "method_version": {
+        "component_version": {
           "type": "string",
           "minLength": 1
         },
@@ -160,9 +160,8 @@
         }
       },
       "required": [
-        "kind",
-        "method_id",
-        "method_version",
+        "component_id",
+        "component_version",
         "parameters"
       ],
       "additionalProperties": false
@@ -170,8 +169,12 @@
     "remote_ingestion_node": {
       "type": "object",
       "properties": {
-        "kind": {
-          "const": "remote"
+        "component_id": {
+          "const": "remote_api"
+        },
+        "component_version": {
+          "type": "string",
+          "minLength": 1
         },
         "through": {
           "enum": [
@@ -192,7 +195,8 @@
         }
       },
       "required": [
-        "kind",
+        "component_id",
+        "component_version",
         "through",
         "service_ref",
         "parameters",
@@ -203,8 +207,12 @@
     "remote_inference_node": {
       "type": "object",
       "properties": {
-        "kind": {
-          "const": "remote"
+        "component_id": {
+          "const": "remote_api"
+        },
+        "component_version": {
+          "type": "string",
+          "minLength": 1
         },
         "through": {
           "enum": [
@@ -222,7 +230,8 @@
         }
       },
       "required": [
-        "kind",
+        "component_id",
+        "component_version",
         "through",
         "service_ref",
         "parameters"

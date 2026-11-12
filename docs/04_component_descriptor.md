@@ -2,6 +2,8 @@
 
 平台維護內建方法的描述與實作。描述保存 Module、方法版本、Config Schema、固定 I/O、可衍生欄位、資源需求及 UI 提示。Builder 用它產生表單、列出有效選項及說明欄位失效原因。Engine 用同一規則編譯有效設定。User 的 Remote API 從 System Config 取得範圍及輸出宣告，由平台產生邊界契約。
 
+內建 Component Descriptor 必須宣告 `component_id` 和 `component_version`。Registry 以 Module、ID 和版本共同定位一份描述。Builder 發布時在 System Config 固定所選版本。平台保留 `remote_api` 給共用 Adapter，遠端服務的連線與輸出宣告由 System Config 及部署綁定提供。
+
 ## Schema 推導
 
 1. 從 Import 設定取得原始 Document Schema。

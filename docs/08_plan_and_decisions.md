@@ -25,6 +25,8 @@
 - Remote Retrieval 的候選遵守 Ingestion 設定推導的有效 System Document Schema。外部資料可直接查詢，無須執行平台 Ingestion 或建立平台索引。
 - Remote 認證設定支援固定 Secret reference 或參數引用，由 Runtime 在呼叫前解析後注入 Header。
 
+- Component Descriptor 與發布的 System Config 用 `component_id`／`component_version` 固定元件版本。節點由 Component ID 選擇格式，`remote_api` 為平台保留的共用 Adapter，外部服務由 `service_ref` 選擇。
+
 取代 D-40／51 的 Developer 交付、Manifest 目錄與 Remote Image 流程，更新 D-47～49 的外層資料形狀、D-54 的候選資料鍵、D-58 的 Request 封裝及 D-67 的規格來源。保留 D-67 的內建 Schema 細化能力和 D-58 的單端點、整批預檢及逐文件工作。舊來源見[歷史索引](history/superseded/2026-11-11_developer_mode.md)。
 
 ## 1. 使用方式與狀態

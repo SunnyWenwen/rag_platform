@@ -2,7 +2,7 @@
   "type": "object",
   "properties": {
     "descriptor_version": {
-      "const": "0.1-draft"
+      "const": "0.2-draft"
     },
     "module": {
       "enum": [
@@ -17,11 +17,14 @@
         "rerank"
       ]
     },
-    "method_id": {
+    "component_id": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "not": {
+        "const": "remote_api"
+      }
     },
-    "method_version": {
+    "component_version": {
       "type": "string",
       "minLength": 1
     },
@@ -217,8 +220,8 @@
   "required": [
     "descriptor_version",
     "module",
-    "method_id",
-    "method_version",
+    "component_id",
+    "component_version",
     "parameters_schema",
     "io"
   ],
