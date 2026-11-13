@@ -15,7 +15,7 @@ Elasticsearch 索引存取層另在每筆 ES Chunk 保存內部 `write_id`，同
 | `data_id` | 每筆可檢索 Document 的識別，Chunking 產出後必填。不同切片可共用 document_id，data_id 須能區分它們。去重使用 data_id，文件分組及刪除使用 document_id。 |
 | `structdata` | 平面純量欄位，支援字串、整數、有限數字、布林。名稱、型別、必填性由有效 Schema 決定，選填可缺省。 |
 | `content` | 待解析來源，`media_type` 加 `uri` 或 `base64` 二選一。與已知 structdata 可並存。 |
-| `metadata` | 可含巢狀 JSON。作索引或過濾的路徑需宣告型別。追溯 `_rag` 選填，平台身分、ACL 及系統保留欄位由 Runtime 管理。 |
+| `metadata` | 可含巢狀 JSON。作索引或過濾的路徑需宣告型別。追溯 `_rag` 選填，平台保留欄位由 Runtime 管理。文件級 ACL 延後討論。 |
 | `vectors` | 名稱到 DenseVector 的物件。每筆向量含 `values`、`embedding_profile_id`、`source_field`。 |
 
 <a id="data-flow"></a>
@@ -46,7 +46,8 @@ Chunking 逐 Unit 處理同一個選定欄位，可另外保留該欄位的原�
 - Query Transformation 可產生多個 Context，保留原始問題、條件與 Query metadata。
 - 內建 Retrieval 對每個 Query 交付一份 ResultSet，多路搜尋先融合再交付，無命中時 items 為空。ResultSet key 在同一 Context 內唯一，同一清單的 data_id 唯一。
 - Rerank 對輸入候選評分、重排與裁切，保留候選識別與 Document。融合以 `data_id` 對齊候選；`group_by` 使用候選 Document 的選定欄位保留目前排名最高的代表。組合多節點的 Remote API 依區段邊界驗證。
-- 內建路徑的固定過濾、請求 filters、已綁定參數及可信授權限制依有效規則合併。精確 Filter 使用欄位路徑與 `eq`／`in`，依宣告型別檢查。Remote Retrieval 採自己的服務參數與搜尋邏輯，保留 QueryContext 的 filters，服務負責套用授權。
+- 內建路徑依有效設定合併固定過濾、請求 filters 與已綁定參數。精確 Filter 使用欄位路徑與 `eq`／`in`，依宣告型別檢查。Remote Retrieval 使用自己的服務參數與搜尋邏輯，保留 QueryContext 的 filters，外部服務負責其資料存取規則。
+- 成功回應代表當次所需的查詢與搜尋路徑均完成。路徑失敗時回傳整次 Inference 錯誤，詳見 [Runtime Inference](06_runtime_api_and_deployment.md#src-21-5-inference)。
 
 **外部 Retrieval 的候選 Schema 仍由 System 的 Ingestion 設定推導。** 例如 System 的有效候選欄位有必填字串 `structdata.title`、`structdata.text`，外部商品 API 回傳的候選也要有這些欄位。後段內建 Rerank 因而能選用 text。外部資料可直接查詢，平台只需已驗證的有效 Schema，無須先執行 Ingestion 或建立平台索引。
 

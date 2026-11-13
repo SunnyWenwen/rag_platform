@@ -61,6 +61,11 @@
 
 - Builder 保存並管理原始資料。Runtime 建好新索引並啟用 Config 後，Builder 以保存的原始資料重新提交 Ingestion。儲存方式、保留與管理流程由 Builder 後續規劃，見 [Q-016](#q-016)。重匯入後何時恢復查詢仍待確認。
 
+## 2026-11-13 已確認：Inference 失敗及文件權限
+
+- 首版 Inference 所需的 Query、搜尋路徑及節點均成功才回結果。任一最終失敗就回整次錯誤。查無命中回成功空候選。見 [Q-023](#q-023)。
+- 文件／檔案級 ACL 延後討論。Runtime 依既有 System 及工具權限限制呼叫。見 [Q-006](#q-006)。
+
 ## 1. 使用方式與狀態
 
 | 狀態 | 意義 | Agent 行為 |
@@ -279,11 +284,10 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 
 - D-60：Builder 登入方式延後；Runtime API 暫採一組 HTTP Basic 帳密操作該服務全部 API，首期不做多角色／逐 API 授權，部署採 HTTPS／Secret 引用。D-64 已選可信 Backend 的內部 System 路由；具體部署保護／Secret 注入與 metadata 保留區仍 OPEN。
 
-- 不清楚：保留欄位名稱、ACL 來源、System／Workspace 權限、tSSO／Gateway 驗證、獨立 Runtime 認證。
-- 建議：可信 Context 注入租戶與 ACL，保留 metadata 顯式命名且不可覆寫；初期最小權限模型先核定。
-- 替代：只先驗單 System 的封閉環境；不得宣稱多租戶安全已完成。
-- 負責角色：平台／身分團隊＋Backend＋Engine；阻擋 M1 保留欄位及 M3／M5 多使用者服務。
-- 決策：未定；更新 架構、資料、Engine、Runtime 與 UI 手冊。
+- 已確認：文件／檔案級 ACL 延後。第一版依 System 的執行範圍隔離資料，MCP API key 授權到 System 與工具。
+- 仍待：平台保留欄位名稱、Workspace 權限、Builder 登入與 Gateway 接線、獨立 Runtime 認證設定。
+- 負責角色：平台／身分團隊＋Backend＋Engine。
+- 決策狀態：首版文件存取範圍已確認，其他授權與保留欄位細節另議。
 
 <a id="q-007"></a>
 ### Q-007 文件／Chunk ID 與 source_revision
@@ -347,9 +351,9 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 ### Q-013 精確 Filter 的候選與缺值語意
 
 - 不清楚：缺欄位／null／多值如何匹配；FAISS 合法候選搜尋策略、ES Mapping 相容矩陣。
-- 建議：固定字串 eq／in、各路取 Top-K 前限制；用有／無命中與 ACL 測資驗證。
+- 建議：以宣告型別檢查 eq／in，各路取 Top-K 前套用業務過濾；用有／無命中與缺值測資驗證。
 - 替代：未具備可靠 pre-filter 的組合先停用，不能偷偷 post-filter。
-- 負責角色：Engine＋授權設計；阻擋 M2 過濾與多租戶驗收。
+- 負責角色：Engine；阻擋 M2 過濾驗收。
 - 決策：未定；更新 Engine／資料契約手冊／Runtime／部署手冊。
 
 <a id="q-014"></a>
@@ -450,13 +454,12 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - 待核定：允許的出站目的地、資源隔離、授權與憑證範圍、租戶配額及相容版本驗收。
 
 <a id="q-023"></a>
-### Q-023 Fallback、無命中與資源上限
+### Q-023 Inference 失敗、無命中與資源上限
 
-- 不清楚：空清單、部分檢索路徑失敗、多 Query／Rerank 失敗降級與候選數／資源上限。
-- 建議：錯誤與無命中分開；預設不靜默降級；明確定義空命中與超限回應，保留實際 ResultSets／Trace。
-- 替代：可設定 fallback，但需 Trace／warnings 與測試。
-- 負責角色：產品＋Engine；阻擋 M1 正式檢索輸出邊界及 M2 降級。
-- 決策：未定；更新 Engine／資料契約手冊／UI手冊／Runtime／部署手冊。
+- 已確認：首版任一必要 Query、搜尋路徑或 Rerank 等節點最終失敗，整次回可定位錯誤。全部必要操作成功但查無命中時，回成功空候選。見 [Runtime Inference](06_runtime_api_and_deployment.md#src-21-5-inference)。
+- 待定：候選數與資源上限、超限錯誤及各服務的重試條件。重試另見 Q-017，部分結果與降級留待後續討論。
+- 負責角色：產品＋Engine。
+- 決策狀態：首版回應語意已確認，細節待實作及驗收。
 
 <a id="q-024"></a>
 ### Q-024 真實 AI 設定助手

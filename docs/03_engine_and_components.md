@@ -48,7 +48,7 @@ Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一�
 2. 依所選方法切分：Fixed-size 使用上述固定視窗；Recursive 依 separators 優先序切分，必要時處理過長片段，size 是上限、overlap 是目標值。
 3. Header-aware 先依可靠標題層級切分，再對超長章節 Recursive；標題取自當筆 Markdown；無標題時依 Component 明確策略處理，不跨 Unit 尋找。
 4. 記錄 unit_index 與原 Unit 字串範圍，不從帶 overlap 的文字猜測位置，不跨 Unit 合併。
-5. 從同一 Unit 複製指定欄位到 Document.structdata；文件摘要保持文件摘要。繼承 輸入 Document 中經 Schema 驗證的全部業務 metadata，並保留必要可信來源／ACL；Component 可選擇提供 metadata._rag.source_refs／chunking，輸入不能覆蓋平台保留資訊，完整可信區協定見 Q-006。第一版不新增 metadata 排除表單，有明確需求再規劃。
+5. 從同一 Unit 複製指定欄位到 Document.structdata。繼承輸入 Document 中經 Schema 驗證的業務 metadata 與可信來源資訊。Component 可選擇提供 metadata._rag.source_refs／chunking，平台保留欄位由 Runtime 管理，見 Q-006。
 6. 由 Component 或 SDK helper 產生必要且唯一的 data_id，初始化 vectors={}。fingerprint／ordinal 的 Hash 規則僅為選用參考工具，不強制所有 Component 實作或輸出，見 [資料契約](02_data_contracts.md)～6。
 
 **驗證／例外**：size 為正整數、overlap 為整數且 `0 ≤ overlap < size`、Tokenizer 可用；涵蓋重複文字、非 BMP 字元、空段及極長無分隔文字。Fixed-size 不啟用 separators／keep_separator／header_levels，也不要求 結構化 heading Blocks；未啟用的方法參數可保留草稿，但不驗證或匯出為有效參數。複製欄位未被主要內容切分，不保證其長度小於 size。
@@ -88,7 +88,7 @@ D-53 真實 Engine 功能待實作，Prototype v0.12 已有控制與教學預覽
 
 **處理**：
 
-1. 驗證完整 Chunk 與 fulltext／vector／filter 選擇及 Profile；全部 structdata／metadata 保存，ID／版本／來源／ACL 固定保留，不再以使用者的保存投影刪欄位。
+1. 驗證完整 Chunk 與 fulltext／vector／filter 選擇及 Profile。保存全部 structdata／metadata，並保留 ID、版本和來源資訊。
 2. 比較目標 Schema／Profile，拒絕不相容寫入，避免不同模型混在同一向量欄位。
 3. 依版本／冪等策略寫入 Chunk，維護 data_id 對照及 Binding。
 4. 按後端 refresh／發布規則回報 searchable；write_acknowledged 不等於 searchable。
@@ -155,7 +155,7 @@ result = Result.model_validate({"queries": [
 1. **模組定義輸出 Schema**：固定 key、型別與要求筆數；使用者改 Prompt 不改這個契約。
 2. **共用 LLM Adapter 選擇能力**：優先使用 Provider 原生 Structured Output；支援工具呼叫者可用指定的結構化回傳工具；僅有文字／JSON mode 時解析後嚴格驗證，不宣稱同等約束。OpenAI-compatible URL 不代表服務／模型支援相同功能，須實測 Profile／能力；不支援時明確報錯或用已核定策略，不靜默換模式。
 3. **Engine 做語意驗證**：解析、額外 key、實際筆數、去除首尾空白後非空、重複及原始問題政策。上例沒有自動完成非空／重複檢查；正規化後仍須符合目標筆數。是否允許與原始問題相同、等價重複與最終 Query 去重規則仍由 Q-003／Q-023 核定，不用補複製 Query 或任意截掉多餘結果來假裝符合數量。
-4. **失敗政策**：格式錯誤可在核定次數／時間／成本上限內重試或修正；拒答、回應截斷、Timeout 等分開處理。耗盡後回可定位的模組錯誤，或採明確核定的 fallback，不能無限重試或未告知改回原始問題。
+4. **失敗政策**：格式錯誤可在核定次數、時間及成本上限內重試或修正。拒答、回應截斷、Timeout 分開處理，若最終失敗則回可定位的模組錯誤。
 
 這套邊界可共用，但每個用途的輸出 Schema 不同：
 
@@ -184,7 +184,7 @@ query_transformation:
     include_original: true
 ```
 
-這份設定要求兩筆改寫，並讓原始問題一併搜尋。Descriptor 與離線驗證見 [System Config 範例](../examples/system_config/README.md)。Provider 能力、重試與 fallback 依 Q-003／Q-017／Q-023 另定。
+這份設定要求兩筆改寫，並讓原始問題一併搜尋。Descriptor 與離線驗證見 [System Config 範例](../examples/system_config/README.md)。Provider 能力與重試依 Q-003／Q-017 另定。首版 Inference 的失敗行為依 Q-023。
 
 <a id="src-04-52-retrieval"></a>
 ### Retrieval
@@ -194,7 +194,7 @@ query_transformation:
 **處理**：
 
 1. 取得對應 Config／Binding，確認 Profile 與資料就緒。
-2. 將預設 filters、本次 filters、可信 ACL 以 AND 合併。從可過濾欄位選路徑，以 `eq`／`in` 設定條件，值依欄位宣告型別驗證。Data Column 的型別及各類能力標記另行定義。
+2. 將預設 filters 與本次 filters 以 AND 合併。從可過濾欄位選路徑，以 `eq`／`in` 設定條件，值依欄位宣告型別驗證。Data Column 的型別及各類能力標記另行定義。
 3. 建立每個 Query × 全文／向量欄位的路徑；向量路徑依其 Profile 使用 query encoding。
 4. 每個 Query 的每條搜尋路徑先依 `per_route_k` 取候選，保留路徑、排名、分數及其方向。
 5. 同一 Query 若有多條搜尋路徑，須選 RRF 或 Sum Score，以 `data_id` 對齊所有路徑的候選並融合成一份清單。只有一路時，直接使用該路結果。若 Adapter 將融合交給後端，須驗證行為符合選定策略與每路上限。
@@ -249,7 +249,7 @@ Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root ar
 
 這是平台契約，不是所有模型服務的通用標準。POST 路徑為選定 Base URL 下的 /rerank；其他格式需 Adapter。
 
-**處理**：從選定 ResultSet 的 Document.structdata 取評分內容，保留候選 index 對照；驗證 index 唯一且在範圍內、score 有限，映回相同 Chunk，覆寫目前 score，再排序、套用當步可選的 `group_by`，最後取 Rerank Top N。舊分數不放在業務物件，不改文件／ACL 或生成新候選。None 略過當步評分、分組與 Top N，跨 Query 規則仍可選在 Rerank 後執行；零筆時直接沿用空清單。跨 Query 融合若已於 Retrieval 後完成，Rerank 用原始問題；若在 Rerank 後才融合，Rerank 可使用各清單對應的當前 Query。服務端 top_n 與平台保留數的邊界如下。
+**處理**：從選定 ResultSet 的 Document.structdata 取評分內容，保留候選 index 對照；驗證 index 唯一且在範圍內、score 有限，映回相同 Chunk，覆寫目前 score，再排序、套用當步可選的 `group_by`，最後取 Rerank Top N。舊分數不放在業務物件，候選文件與識別沿用輸入。None 略過當步評分、分組與 Top N，跨 Query 規則仍可選在 Rerank 後執行；零筆時直接沿用空清單。跨 Query 融合若已於 Retrieval 後完成，Rerank 用原始問題；若在 Rerank 後才融合，Rerank 可使用各清單對應的當前 Query。服務端 top_n 與平台保留數的邊界如下。
 
 **驗收**：不生成新 data_id；重新 rank；保留原 Retrieval Trace。串接 Timeout／錯誤時不假裝 Rerank=None。
 
@@ -261,6 +261,8 @@ Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root ar
 ### 最終檢索輸出
 
 Inference 在完成配置的 Fusion／Rerank／Top N 後，直接回傳 QueryContext[]；各 ResultItem 包含 Document 與選填 score，名次由 items 順序表示，無歷史 lineage。跨 Query 合併停用時保留分組結果，不任意再融合一次。API 包裝見 [Runtime API／部署](06_runtime_api_and_deployment.md#src-07-3-平台管理資料與儲存)，最終結果選擇與版本政策仍由 Q-014／Q-019 核定。
+
+首版若任何必要節點、任一 Query 的搜尋路徑或 Remote 區段最終失敗，整次 Inference 回傳可定位的錯誤。Fusion 使用完整且有效的路徑結果；單路無命中可正常參與融合。全部流程成功但無命中時回空候選。首版的失敗結果與驗收案例見 [Runtime Inference](06_runtime_api_and_deployment.md#src-21-5-inference)。
 
 不呼叫回答生成模型、不建立答案 Prompt／Context Budget，也不回傳模型生成的 answer 或 citations。Embedding、Rewrite 與助手所需服務仍依其各自契約使用。
 

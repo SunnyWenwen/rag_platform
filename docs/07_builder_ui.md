@@ -248,7 +248,7 @@ Prototype 限制 ≤1 MB 且在瀏覽器讀取，不等於正式產品限制。�
 | 進階 | 原始與衍生 Query、各路候選、融合結果、Rerank 前後、實際 Context、耗時／用量 |
 | 版本 | config_revision、index_generation、request_id；不可顯示為另一版的結果 |
 
-Trace 保存與敏感內容政策見 Q-016；診斷顯示範圍 Q-025。Filter 預設條件與本次附加條件要區分，空清單不能取消後端 ACL。API 說明隨時可查看，不需先 Ingestion。Ingest／Inference 皆有「查看 API 端點」入口，內容包含當前 Base URL、認證示意、JSON／multipart、cURL、回應與錯誤；Ingest 另示範 run_id 輪詢。查看說明不執行工作或模型／DB 測試。
+Trace 保存與敏感內容政策見 Q-016，診斷顯示範圍見 Q-025。Filter 預設條件與本次附加條件要區分。Inference 執行失敗時顯示 Runtime 的錯誤，成功但無候選時顯示無命中。API 說明隨時可查看，不需先 Ingestion。Ingest／Inference 皆有「查看 API 端點」入口，內容包含當前 Base URL、認證示意、JSON／multipart、cURL、回應與錯誤；Ingest 另示範 run_id 輪詢。查看說明不執行工作或模型／DB 測試。
 
 <a id="src-06-7-evaluation-與-edit-config"></a>
 ## Evaluation 與 Edit Config
@@ -424,7 +424,7 @@ ResultSet.key 對應 Config 路徑／群組；items 位置即名次。RRF 可用
 
 內建預覽預設沒有 _rag，不以缺少 source_refs／fingerprint／ordinal 阻擋儲存或執行。Component 未提供來源就不捏造。Chunk.metadata._rag 保留為選填擴充；ResultItem 不另帶分數血緣，流程診斷交 Logs。
 
-內建 Chunker 的示例可讀 metadata.chunking_mode="passthrough"，逐 Unit／task 完整轉 Chunk；預設無提示時正常切分。由 CSV 映射或 JSON Document 傳入 metadata。這不是任意 Config／ACL 覆寫；其他 Component 的支援由其宣告決定。
+內建 Chunker 的示例可讀 metadata.chunking_mode="passthrough"，逐 Unit／task 完整轉 Chunk；預設無提示時正常切分。由 CSV 映射或 JSON Document 傳入 metadata。提示的支援範圍由各 Component 的宣告決定。
 
 <a id="uib-018-embedding-composition"></a>
 <a id="src-10-6-欄位組合與原文-chunk"></a>

@@ -107,7 +107,7 @@ User 設定已部署的外部服務。Runtime 在執行時依有效環境綁定�
 實作驗收覆蓋首次建立、相容重連、未知歸屬拒絕、相容切版、忙碌拒絕、排空後重建／卸載、刪除後建立失敗，以及 Local Memory 重啟與 ES 索引接回。正式管理 API 的版本衝突與重試、排空逾時、重匯入後的就緒判定細節仍待定。
 
 
-2026-10-16 的內容保存簡化：Indexing 保存全部 Document.structdata／metadata，Chunking 預設繼承全部有效業務 metadata；只選全文／向量／Filter 能力。原型的 indexing.stored／chunking.metadata 是待遷移的舊保存／繼承投影，不能直接套用為新規則。Metadata 全繼承仍保留可信 ACL／來源及 Schema 驗證，Memory／MongoDB 的持久化模式不變；保存內容也不等於全部內容回傳給 API，回傳與授權投影另外處理。
+2026-10-16 的內容保存簡化：Indexing 保存全部 Document.structdata／metadata，Chunking 預設繼承全部有效業務 metadata；只選全文／向量／Filter 能力。原型的 indexing.stored／chunking.metadata 是待遷移的舊保存／繼承投影，不能直接套用為新規則。繼承 metadata 時仍驗證 Schema 並保留可信來源，API 回傳欄位另依資料契約。
 
 **D-60 的讀寫範圍與仍待決的版本機制**：
 
@@ -355,9 +355,16 @@ counts 指這次接收的 Document 數，不是 Unit／Chunk／模型呼叫次�
 {"query": "設備多久需要清潔？", "filters": [{"field": "metadata.department", "operator": "eq", "value": "manufacturing"}], "metadata": {"language": "zh-TW"}, "parameters": {"top_k": 5}}
 ```
 
-query 必填；filters／metadata／parameters 選填，預設 []／{}／{}，parameters 依 Inference Input 宣告驗證，沿用 [資料契約](02_data_contracts.md)／Runtime API／部署。Runtime 結合可信 System／ACL Filter，初始化 QueryContext[]，依所選 Component 執行。Metadata 不是任意 Config／授權覆寫入口。
+`query` 必填，`filters`／`metadata`／`parameters` 選填，預設 []／{}／{}。Runtime 先確定呼叫可操作的 System，依 Inference Input 宣告驗證參數，再初始化 QueryContext[] 並執行所選 Component。`filters` 用於資料篩選，System 選擇及授權由 Runtime 的路由和認證設定決定。見 [資料契約](02_data_contracts.md)。
 
-成功 body 根層仍是 **QueryContext[]**，不另包 run_id、data、answer 或 InferenceState；完整範例引用 [Runtime／部署](#src-07-3-平台管理資料與儲存)／[資料契約](02_data_contracts.md)。沒有命中是成功空候選，與索引不就緒／服務失敗分開。
+成功 body 根層是 **QueryContext[]**。首版每次請求的所有必要節點、Query 及搜尋路徑成功後才回 `200`。索引不就緒、服務失敗或逾時依原因回錯誤；首版沒有部分成功回應或自動降級。既有錯誤的 HTTP 映射見 [HTTP 與錯誤](#src-21-6-http狀態與錯誤層次提案)。
+
+| 執行情境 | 回應 |
+|---|---|
+| Hybrid 的 BM25 成功且向量路徑最終失敗 | 整次回錯誤，標示失敗的 Module。 |
+| Multi-Query 中任一必要 Query 最終逾時 | 整次回錯誤。 |
+| 設定啟用的 Rerank 最終失敗 | 整次回錯誤。 |
+| 各路皆成功，其中一路無命中 | 成功，該路以空候選參與融合。全部無命中時回 `200` 及空候選。 |
 
 <a id="src-21-52-執行與流量"></a>
 ### 執行與流量
@@ -435,7 +442,7 @@ API-D01～07 沿用既有 Q-ID，不另凍結完整 OpenAPI。批次物件、接
 
 
 
-驗收先採：單筆／Batch 接收、文件忙碌衝突、Queue 滿、逐文件 partial、狀態兩種查詢、重啟 unknown、同 ID 完整替換、Query 無命中／不就緒／限流，以及已授權 System 隔離。這些是未來實作驗收清單，不是本文件新增的可執行測試。
+實作驗收涵蓋單筆／Batch 接收、文件忙碌衝突、Queue 滿、逐文件 partial、兩種狀態查詢、重啟 unknown、同 ID 完整替換、Query 無命中／不就緒／限流、Inference 路徑或 Rerank 失敗，以及已授權 System 隔離。
 
 <a id="src-21-8-api-d0506-的具體情境"></a>
 ## API-D05／06 的具體情境
@@ -779,7 +786,7 @@ Runtime 更新若重啟 Memory 模式，依既有規則需要重新 Ingestion；
 
 request／run／trace 必須可跨 Backend／Runtime／模組關聯。輸出結構化錯誤、耗時、輸入輸出數及可取得用量；模型與 Judge 也記版本。OTel／Langfuse 為候選，非每個 Runtime 必備外部依賴，具體方案 Q-016／Q-027。
 
-Builder 使用者登入依本輪指示延後討論；既有 tSSO 圖示不代表本輪已凍結或實作登入方案，具體方式見 Q-006。呼叫 Runtime 的認證與 Runtime 呼叫模型／DB 的 Secret 不同。System／Workspace／ACL 由可信 Backend／Runtime Context 注入，Filter 不能提權；獨立 Runtime 仍需部署端認證，不因 API only 就公開匿名。
+Builder 使用者登入與文件／檔案級 ACL 延後討論，見 Q-006。可信 Backend 與 Runtime 負責 System 存取範圍。MCP 固定 API key 對應可操作的 System 與工具，Runtime 依授權列出工具並在呼叫時驗證。獨立 Runtime 採部署端認證。模型與 DB 的連線憑證由各服務綁定提供。
 
 <a id="src-18-5-執行實例儲存與資料共用"></a>
 ## 外部 Retrieval 就緒與資料責任
