@@ -178,7 +178,12 @@ Inference 顯示 QueryContext[] 中的目前 ResultSets／ResultItems、依序�
 A. 先 Create Config，之後 Ingest 上傳 CSV 並映射。
 B. 先上傳 CSV 樣本，描述用途／問題範例，AI 提出 Schema、映射及 Pipeline 草稿，使用者確認後建立 System。
 
-CSV 每 row 對應一份 Document，不把每個 column 當文件。需要以多列合併文件的能力尚未定案，見 Q-007／Q-025。
+CSV 每 row 對應一份 Document。需要以多列合併文件的能力尚未定案，見 Q-007／Q-025。
+
+<a id="builder-csv-replacement"></a>
+### CSV 整批替換
+
+Builder 的 CSV 資料上傳以目標 System 的索引資料為替換範圍。先完成整份 CSV 的解析及映射預檢，再清除該 System 的既有索引資料，將新 CSV 的所有列重新匯入。每列 ID 需在本次資料集中唯一。清除及重送的具體 API、失敗處理和 CSV ID 生成由 Builder 後續規劃。
 
 <a id="src-06-42-映射與預覽"></a>
 ### 映射與預覽
@@ -190,7 +195,7 @@ CSV 每 row 對應一份 Document，不把每個 column 當文件。需要以多
 | 映射 | 可將同一 column 填入多個目標；未映射欄位不送出 |
 | 必填 | 無預設值的 input 必填欄位須映射 |
 | 型別 | number 有限值；boolean 規則明確；array 用 JSON 解析；正式強制轉型政策 Q-002 |
-| ID | 優先映射穩定鍵；自動 ID 的跨批更新限制要明示 |
+| ID | 可映射來源主鍵；整批替換時須確保本次資料集的文件 ID 唯一，自動 ID 生成方式待定 |
 | 預覽 | 原始列 → 批次 Request → 各階段 Document；標示實際解析或模擬，錯誤對應列號／模組／欄位 |
 | 保存 | 成功後保存映射；是否成為執行 Config Revision 的一部分見 Q-015 |
 
@@ -241,6 +246,11 @@ Prototype 限制 ≤1 MB 且在瀏覽器讀取，不等於正式產品限制。�
 ## Inference 與診斷
 
 問題＋本次 filters → 呼叫相同 Runtime API → 排序的檢索清單及來源。基礎結果簡潔呈現；詳細資訊按需展開。
+
+<a id="builder-initial-ingestion-readiness"></a>
+### 初次匯入與查詢入口
+
+Builder 對新建立或清空後重新建置的資料集，等預定的初次資料全部匯入成功且可搜尋後才開放查詢。若初次匯入有失敗文件，仍等待補齊。之後一般新增或逐文件更新不關閉查詢入口。Runtime 的 Inference API 依索引與查詢依賴的就緒狀態服務，索引可查時接受空索引查詢。
 
 | 層級 | 建議呈現 |
 |---|---|
@@ -490,7 +500,7 @@ ResultSet.key 對應 Config 路徑／群組；items 位置即名次。RRF 可用
 <a id="src-10-d-60讀寫並行與暫定驗證方式補充"></a>
 ### D-60：讀寫並行與暫定驗證方式補充
 
-- [ ] 不因有 Ingestion／retire 寫入就禁用 Inference 或顯示等待讀寫鎖；索引實際未就緒／限流／錯誤仍按 Runtime 回應呈現。
+- [ ] 初次資料依 [查詢入口規則](#builder-initial-ingestion-readiness)開放。後續一般 Ingestion／retire 與查詢併行；索引未就緒、限流或錯誤依 Runtime 回應呈現。
 - [ ] API 說明暫採單一 Basic 帳密操作全部 Runtime API，憑證不寫進業務 payload；不因此新增 Builder 登入或角色權限 UI。
 - [ ] 更新期間 Query 可反映不同時點的資料，不在 UI 宣稱原子快照；同文件 queued／running 重複提交仍保留忙碌提示。
 

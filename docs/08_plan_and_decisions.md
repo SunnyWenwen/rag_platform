@@ -59,12 +59,18 @@
 
 ## 2026-11-13 已確認：索引重建的原始資料
 
-- Builder 保存並管理原始資料。Runtime 建好新索引並啟用 Config 後，Builder 以保存的原始資料重新提交 Ingestion。儲存方式、保留與管理流程由 Builder 後續規劃，見 [Q-016](#q-016)。重匯入後何時恢復查詢仍待確認。
+- Builder 保存並管理原始資料。Runtime 建好新索引並啟用 Config 後，Builder 以保存的原始資料重新提交 Ingestion。儲存方式、保留與管理流程由 Builder 後續規劃，見 [Q-016](#q-016)。重匯入後的查詢開放規則見下節。
 
 ## 2026-11-13 已確認：Inference 失敗及文件權限
 
 - 首版 Inference 所需的 Query、搜尋路徑及節點均成功才回結果。任一最終失敗就回整次錯誤。查無命中回成功空候選。見 [Q-023](#q-023)。
 - 文件／檔案級 ACL 延後討論。Runtime 依既有 System 及工具權限限制呼叫。見 [Q-006](#q-006)。
+
+## 2026-11-13 已確認：查詢開放、CSV 替換與 Elasticsearch 驗收
+
+- Runtime 的 Elasticsearch 索引可查且必要依賴就緒時接受 Inference，空索引回成功空候選。Builder 等初次預定資料全部匯入且可搜尋後才開放其查詢入口，後續一般新增不停止查詢。
+- Builder 的 CSV 資料上傳以整批替換為語意，每列對應一份 Document，預檢後清除目標 System 的既有索引資料，再匯入全份 CSV。具體管理流程由 Builder 規劃。
+- M1 首條端到端流程使用 Elasticsearch。Data Column 型別與能力另行討論。
 
 ## 1. 使用方式與狀態
 
@@ -137,15 +143,15 @@
 | 階段 | 範圍／依賴 | 交付 | 驗收 |
 |---|---|---|---|
 | M0 契約與專案基礎 | 先定 Q-001／Q-002；未決問題可獨立起草 | 版本鎖、程式結構、Pydantic／JSON Schema、完整範例及錯誤例 | 從乾淨環境可安裝；範例通過 Schema，錯誤可定位；無需 Builder |
-| M1 最小獨立 Engine | Structured JSON／Recursive／Dense／Local Memory／Query；依賴模型、Token、索引與失敗政策 | 可直接 Python／CLI 操作的 Engine；真實 Adapter＋隔離測試替身 | 手寫 Config ingest→query；檢索真的使用資料；引用可對回；程序重啟後正確不就緒 |
-| M2 Engine 方法與能力擴充 | Fixed-size／Header-aware 單欄位切分、BM25／融合、單筆／多筆 Rewrite、Rerank、ES／MongoDB；Parser 依 Q-005，Fusion Plan 依 Q-014 分批 | Remote Adapter／Registry、方法／合併時點配置、各模式範例與契約測試 | Fixed-size 邊界可重現；ES／Local 契約一致；MongoDB 恢復不重跑 Embedding；Filter／融合可驗算；設定改變真實路徑 |
+| M1 最小獨立 Engine | Structured JSON／Recursive／Dense／Elasticsearch／Query；依賴模型、Token、ES 版本、索引與失敗政策 | 可直接 Python／CLI 操作的 Engine；真實 Elasticsearch 索引存取與隔離測試替身 | 真實 ES ingest→query；空索引回成功空候選；命中可對回來源；重啟後接回相容索引 |
+| M2 Engine 方法與能力擴充 | Fixed-size／Header-aware 單欄位切分、BM25／融合、單筆／多筆 Rewrite、Rerank、ES 進階搜尋；Parser 依 Q-005，Fusion Plan 依 Q-014 分批 | Remote Adapter／Registry、方法／合併時點配置、各模式範例與契約測試 | Fixed-size 邊界可重現；ES Filter／融合可驗算；設定改變真實路徑 |
 | M3 Runtime API | 包裝已可用 Engine；定 API／工作／認證／併發 | OpenAPI、Runtime 服務、Job Store 政策、SDK／cURL 範例 | SDK／HTTP 相容；202 可查結果；失敗／重送／重啟行為有證據 |
 | M4 獨立 AI 設定助手 | 使用 M0～M2 的 Schema／Registry／Validator，提供不依賴 Builder 的 Python／API 入口；Q-024 | 真實助手核心、需求／樣本輸入、Config 草稿／Diff／缺少設定與可定位驗證結果 | 不開 Builder 可取得支援範圍內的 Config；具備所需設定者由驗收腳本透過 Engine／Runtime 跑通；資訊不足明列缺項，不造方法／憑證或自動 Ingestion |
-| M5 Builder 前後端與 AI 助手整合 | 管理儲存、Create／Edit、CSV／Schema、漸進式 UI，串接同一 Runtime 與 M4 助手 | 正式 Frontend／Backend、System／Revision／Binding、UI 草稿與建議 Diff／套用流程 | UI 可建立／匯入／查詢；助手讀取當前草稿及樣本，建議與控制項正確對應；過期建議不覆蓋人工修改，取消不改 Config，變更影響及版本衝突正確 |
+| M5 Builder 前後端與 AI 助手整合 | 管理儲存、Create／Edit、CSV／Schema、漸進式 UI，串接同一 Runtime 與 M4 助手 | 正式 Frontend／Backend、System／Revision／Binding、UI 草稿與建議 Diff／套用流程 | UI 可建立／匯入／查詢，驗證初次匯入的查詢開放與 CSV 整批替換；助手讀取當前草稿及樣本，建議與控制項正確對應；過期建議不覆蓋人工修改，取消不改 Config，變更影響及版本衝突正確 |
 | M6 Evaluation | Q-018；Dataset／Runner／指標／報告與版本追蹤 | 可由 SDK／API 及 Builder 使用的評估流程、逐題結果與報告 | 固定測資可重現計算依據；缺標註不造分；報告綁 Config／資料／模型版本，可比較配置差異 |
 | M7 獨立部署交付 | Q-021／Q-027；核心 Runtime 已真實可用，完成目標環境交付 | Runtime Image 版本／Digest、FTEST／ENT Bundle、部署／Secret／資料準備與運維說明 | 新環境無 Builder 可用 YAML 啟動；API Ingest→Query；外部依賴故障可定位；不含測試資料與憑證 |
 
-M1 先驗結構化 Document → 直傳 Parsing → Recursive → Embedding → Local Memory Index → Retrieval。Fixed-size 與其他方法於 M2 擴充。
+M1 先驗結構化 Document → 直傳 Parsing → Recursive → Embedding → Elasticsearch Index → Retrieval。Fixed-size 與其他方法於 M2 擴充。Local Memory、FAISS 與 MongoDB 的交付階段另議。
 
 Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，不要求每個 Retrieval System 各建一個 Image。匯出通常引用支援該 Config 的 Runtime Image 版本／Digest，另外交付 Config 與部署設定。M6 的評估純邏輯可在 M1／M2 先做，但不能把早期模組測試當作 M6 整體評估已完成。
 
@@ -158,7 +164,7 @@ Image 建置可在 M3 開始；M7 驗收的是可獨立部署的完整交付，�
 | 正式契約／公開 SDK | Q-001／Q-002 | 需求整理、Schema 候選、型別範例 |
 | 真實 Token／Embedding／搜尋 | Q-003／Q-004／Q-011；安全最小範圍 Q-006 | Fake Adapter、欄位映射與純函式 |
 | 對既存文件更新／partial 寫入 | Q-007／Q-008／Q-009／Q-010 | 純新增、不重複 ID 的受限流程及明確拒絕 |
-| MongoDB 恢復 | Q-012／Q-015 | Store 介面與小型 Manifest 草案 |
+| 其他儲存後端的恢復（後續） | Q-012／Q-015 | Store 介面與小型 Manifest 草案 |
 | HTTP／工作服務 | Q-017／Q-019／Q-020；資料保存 Q-016 | Engine SDK 及 Client／Repository interface |
 | M4 獨立助手 | Q-002／Q-003／Q-024；可用 Registry／Validator | 無 Builder 的需求／樣本與結構化建議測試；Mock 明示 |
 | M5 Builder 與助手整合 | Q-015／Q-019／Q-020／Q-025；M4 建議契約 | Draft／Diff／過期建議與控制項對應測試，不宣稱真實助手已串接 |
@@ -191,7 +197,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 
 | 材料 | 最小內容 |
 |---|---|
-| examples/configs | 完整 Local Memory、ES、Local MongoDB 配置；必要服務／Secret 設定說明 |
+| examples/configs | 首版 ES 配置及必要服務／Secret 設定說明 |
 | fixtures | CSV 映射／各階段 Document、已知文字與標題、Fixed-size 的零 overlap／短文／整塊／末塊、Unicode／長文字、合法／無效欄位、同 ID 更新與 Filter 測資 |
 | retrieval fixtures | 固定小向量／詞項與人工路徑排名，可計算 Top-K／RRF／Sum Score／去重 |
 | provider fakes | 合法回應、Timeout、429、缺項、錯誤維度、非法 Rerank index、未知引用 |
@@ -227,7 +233,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - 2026-10-28 已確認 D-41：rag_platform 管理 Builder，rag_engine 集中 SDK／Engine／Components／Runtime API。仍待定的是 repo 內可獨立安裝的套件名稱／精確目錄、Python／SDK／Engine 相容矩陣與建置工具；目錄草案見 Runtime API／部署手冊／Component 開發手冊，發布政策見 Q-022，不能再將 repo 邊界列為未決。
 - 建議：沿用 Python／既有生態；選最小必要套件並鎖定。Web Framework／前端沿用部門標準；具體版本要實測再鎖。
 - 替代：以專案獨立技術棧開發，需增加維運／整合評估。
-- 負責角色：技術負責人＋Engine／前後端；阻擋 M0 正式依賴及 M2 ES 選型。
+- 負責角色：技術負責人＋Engine／前後端；阻擋 M0 正式依賴及 M1 ES 選型。
 - 決策：未定；更新 架構／Engine 手冊／Runtime／部署手冊 及 dependency lock。
 
 <a id="q-002"></a>
@@ -293,7 +299,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 ### Q-007 文件／Chunk ID 與 source_revision
 
 - 2026-11-03 D-52：必要 data_id 仍須有效／清單內唯一，但不強制由 fingerprint／ordinal 計算，也不強制將計算資訊寫入 _rag。SDK helper 可選用；穩定／更新語意按實作及此 Q-ID 核定。
-- 2026-10-30 D-47：已同意可重現 ID 方向；[資料契約](02_data_contracts.md#data-flow)～6 提供有效切分計畫 fingerprint＋文件內全域 ordinal 的 Python 參考演算法。仍不清楚：省略 revision 的生成、檔案拆多文件、CSV 無主鍵、同 revision 不同內容的衝突政策、跨語言 canonicalization 與正式遷移；不能再將穩定 ID 方向全部列為未決。
+- 2026-10-30 D-47：已同意可重現 ID 方向；[資料契約](02_data_contracts.md#data-flow)～6 提供有效切分計畫 fingerprint＋文件內全域 ordinal 的 Python 參考演算法。仍不清楚：省略 revision 的生成、檔案拆多文件、CSV 整批替換的 ID 生成、同 revision 不同內容的衝突政策、跨語言 canonicalization 與正式遷移；不能再將穩定 ID 方向全部列為未決。
 - D-65 確認文件摘要清單回 document_id＋source_revisions[]，彙整實際儲存 Chunk 的版本；這不凍結省略 revision 的生成規則、衝突政策或版本時序，也不等於持久工作歷史。
 - 建議：跨批更新要求穩定 document_id，內容版本與 Config 分開；採明確可重現的衍生 ID 規則。
 - 替代：每批當新文件；需接受無法自然更新與重複資料後果。
@@ -330,9 +336,9 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - 決策：未定；更新 Engine／資料契約手冊／UI手冊／Runtime／部署手冊。
 
 <a id="q-011"></a>
-### Q-011 FAISS／BM25 與分數定義
+### Q-011 Elasticsearch／BM25 與分數定義
 
-- 不清楚：FAISS index 類型、metric／normalization、距離到 relevance、中文斷詞、BM25 參數／套件。
+- 首版以 Elasticsearch 為準。待定：向量 similarity、分數轉換、中文 analyzer 與 BM25 參數。FAISS 相關選型後續討論。
 - 建議：先用可精確驗算的小規模索引作基準，再評估 ANN；全文逐欄位建索引並固定斷詞。
 - 替代：直接 ANN，需先定 Recall／容量目標。
 - 負責角色：Engine；阻擋 M1 搜尋語意及 M2 效能優化。
@@ -344,7 +350,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - 不清楚：Collection／Manifest 形狀、索引版本、完整性／Profile 驗證、DB 中斷、恢復期間讀寫。
 - 建議：保存完整 Chunk／vectors 及可驗證的設定／資料版本；重建完成才發布 Local Index。
 - 替代：另保存 FAISS 檔案與快照，增加檔案版本及同步機制。
-- 負責角色：Engine＋Backend／DB；阻擋 M2 持久化恢復。
+- 負責角色：Engine＋Backend／DB；MongoDB 恢復的交付階段另議。
 - 決策：未定；更新 Engine／資料契約手冊／Runtime／部署手冊。
 
 <a id="q-013"></a>
@@ -498,7 +504,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 
 - 不清楚：資料量、平均長度、並發、回應時間、重建啟動時間、模型成本、Trace 內容與監控工具。
 - 建議：先建立可重現基準再定門檻，保留 request／run／module Trace。D-56 已確認首期記憶體 Queue，D-64 有初始限制；分散式持久 Queue／HPA 與生產容量承諾另行評估。
-- 替代：先採既有企業 SLA，需驗證 Local Memory／模型資源是否能滿足。
+- 替代：先採既有企業 SLA，需驗證 Elasticsearch／模型資源是否能滿足。
 - 負責角色：產品＋平台／Engine／QA；阻擋生產容量承諾與 M7 運維驗收。
 - 決策：未定；更新 架構／Engine 手冊／Runtime／部署手冊／計畫手冊。
 
@@ -525,11 +531,11 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 
 | 建議順序 | 主題／Q-ID | 這輪需要收斂什麼 | 建議產出 |
 |---|---|---|---|
-| 1 | 最小完整 System Config 與環境綁定／Q-002、Q-015 | component_id／版本／parameters／服務引用如何放在 D，E 如何提供連線及 Runtime 設定；不把完整 Descriptor 複製進 Config | 一份可人工閱讀的 Local Memory Config，及切換 Remote Parser 的對照；機器 Schema 再按核定內容產出 |
+| 1 | 最小完整 System Config 與環境綁定／Q-002、Q-015 | component_id／版本／parameters／服務引用如何放在 D，E 如何提供連線及 Runtime 設定；不把完整 Descriptor 複製進 Config | 一份可人工閱讀的 Elasticsearch Config，及切換 Remote Parser 的對照；機器 Schema 再按核定內容產出 |
 | 2 | User Remote API／Q-022、Q-028 | 邊界驗證、呼叫失敗與認證解析 | 完整 Remote 連續區段範例 |
 | 3 | Component SDK／Context 與資源生命週期／Q-002、Q-017、Q-020 | B 的 run(input, config, context)、初始化／關閉、Resolver 取得正確 System Client／IndexBinding、有狀態實例的作用範圍 | 一組 Local Parser／Remote Adapter 的 SDK 示意與契約驗收；不為每個 System 組裝專屬 Flow |
-| 4 | 資料更新／索引讀寫與恢復／Q-007～Q-015 | revision 生成／衝突、失敗清理與 Remote unknown、ES／Local 格式、MongoDB 恢復、Filter／融合的可驗算規則 | backend 更新／清理與管理操作的具體約定；沿用完整覆寫、不續跑、無查詢讀寫鎖等已確認方向 |
-| 5 | 最小可執行技術與驗收基線／Q-001、Q-003、Q-004、Q-011、Q-026 | 具體框架／套件版本、可實測模型 API、Tokenizer／搜尋實作與測資；既有 M1 範圍不重新擴張 | Structured JSON／Recursive／Dense／Local Memory 的真實 ingest→query，以及成功、失敗與多 System 隔離驗收 |
+| 4 | 資料更新／索引讀寫與恢復／Q-007～Q-015 | revision 生成／衝突、失敗清理與 Remote unknown、ES mapping、Filter／融合的可驗算規則 | backend 更新／清理與管理操作的具體約定；沿用完整覆寫、不續跑、無查詢讀寫鎖等已確認方向 |
+| 5 | 最小可執行技術與驗收基線／Q-001、Q-003、Q-004、Q-011、Q-026 | 具體框架／套件版本、可實測模型 API、Tokenizer／搜尋實作與測資；既有 M1 範圍不重新擴張 | Structured JSON／Recursive／Dense／Elasticsearch 的真實 ingest→query，以及成功、失敗與多 System 隔離驗收 |
 
 優先用第 1 項完整 Config 驗證第 2～3 項是否足夠串接，再依 M1／M2 所需的第 4～5 項收斂。Builder 管理 API／動態 UI、AI 助手與 Export／部署仍依既有 M4～M7 階段補齊；Builder 登入繼續延後。技術與驗收基線可平行準備，不要求等整張待決清單全部關閉才開始受限的 M1 開發。
 

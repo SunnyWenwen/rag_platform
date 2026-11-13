@@ -73,11 +73,11 @@ Builder 保存 System、草稿與發布歷史，Runtime 持有已載入的 `syst
 <a id="system-index-lifecycle"></a>
 ### 初始化、重連與索引重建
 
-`apply_system()` 先驗證 Config，推導平台索引應有的 mapping、搜尋欄位與 Embedding Profile，再依操作意圖處理索引。Config 成功載入與資料可搜尋分開回報。
+`apply_system()` 先驗證 Config，推導平台索引應有的 mapping、搜尋欄位與 Embedding Profile，再依操作意圖處理索引。Config 成功載入與索引能否執行搜尋分開回報。索引就緒不要求已有文件。Builder 依[初次匯入規則](07_builder_ui.md#builder-initial-ingestion-readiness)決定何時開放其查詢入口。
 
 | 操作 | 條件 | 結果 |
 |---|---|---|
-| 初始化／重啟後重新載入／重連 | 確認索引不存在 | 建立空索引與 mapping。可接受 Ingestion，待資料寫入並可搜尋後才開放依賴該索引的查詢。 |
+| 初始化／重啟後重新載入／重連 | 確認索引不存在 | 建立空索引與 mapping。索引可正常查詢後即可接受 Ingestion 與 Inference，空索引查詢回成功空候選。 |
 | 初始化／重啟後重新載入／重連 | 既有索引的歸屬、索引相容性指紋及實際 mapping 相符 | 接回既有索引，依其實際可用性開放匯入與查詢。 |
 | 初始化／重啟後重新載入／重連 | 無法確認索引歸屬，或指紋／mapping 不相容 | 回報衝突並保留索引。連線或授權錯誤依實際原因回報，不能當作索引不存在。 |
 | 明確更新 | 既有索引與新版相容 | 沿用索引。切換後新請求使用新版，已開始的查詢固定原版至結束。 |
@@ -104,7 +104,7 @@ User 設定已部署的外部服務。Runtime 在執行時依有效環境綁定�
 
 獨立部署重新載入 Config 時採初始化規則；若既有索引不相容，由部署管理者安排明確的重建及重新匯入。獨立部署的重建入口與部署流程另議。Backend 依 [變更影響](05_system_config.md#變更影響)向使用者呈現重建及停查影響。
 
-實作驗收覆蓋首次建立、相容重連、未知歸屬拒絕、相容切版、忙碌拒絕、排空後重建／卸載、刪除後建立失敗，以及 Local Memory 重啟與 ES 索引接回。正式管理 API 的版本衝突與重試、排空逾時、重匯入後的就緒判定細節仍待定。
+實作驗收覆蓋首次建立、相容重連、未知歸屬拒絕、相容切版、忙碌拒絕、排空後重建／卸載、刪除後建立失敗，以及 Local Memory 重啟與 ES 索引接回。正式管理 API 的版本衝突與重試、排空逾時，以及 Builder 初次匯入完成狀態的追蹤方式仍待定。
 
 
 2026-10-16 的內容保存簡化：Indexing 保存全部 Document.structdata／metadata，Chunking 預設繼承全部有效業務 metadata；只選全文／向量／Filter 能力。原型的 indexing.stored／chunking.metadata 是待遷移的舊保存／繼承投影，不能直接套用為新規則。繼承 metadata 時仍驗證 Schema 並保留可信來源，API 回傳欄位另依資料契約。
@@ -136,7 +136,7 @@ System 列表／讀取、Workspace／Dataset CRUD、AI suggestion／連線檢查
 
 Engine 不提供 multipart 上傳端點。Builder 可接收檔案／CSV，轉成 content、Base64 或可存取 URI 再呼叫相同 JSON API；自行部署的呼叫端負責相同轉換。檔案傳輸轉換不等於語意 Parsing，原始檔案內容仍需 Engine 有相容 Parser。
 
-Builder 管理的 System 重建索引後，由 Builder 使用保存的原始資料，以生效的新 Config 透過既有 Ingestion API 重新匯入。索引刪除與原始資料保留各由 Runtime 和 Builder 管理。獨立部署的資料由部署方提供，使用相同的 Ingestion API。
+Builder 管理的 System 重建索引後，由 Builder 使用保存的原始資料，以生效的新 Config 透過既有 Ingestion API 重新匯入。索引刪除與原始資料保留各由 Runtime 和 Builder 管理。Builder 的 [CSV 整批替換](07_builder_ui.md#builder-csv-replacement)由 Builder 協調清除資料和重新提交。獨立部署的資料由部署方提供，使用相同的 Ingestion API。
 
 檔案儲存、上傳／下載授權、來源版本、保留與刪除、重新匯入的觸發與管理流程由 Builder 後續規劃，見 Q-016／Q-019。Builder 上傳入口的 MIME、大小、逾時及實際格式偵測規則另待核定。Runtime 的 JSON／來源取得限制依 Runtime 控制手冊，檔案來源須符合該 System 所選 Parser 的格式契約。
 
@@ -357,7 +357,7 @@ counts 指這次接收的 Document 數，不是 Unit／Chunk／模型呼叫次�
 
 `query` 必填，`filters`／`metadata`／`parameters` 選填，預設 []／{}／{}。Runtime 先確定呼叫可操作的 System，依 Inference Input 宣告驗證參數，再初始化 QueryContext[] 並執行所選 Component。`filters` 用於資料篩選，System 選擇及授權由 Runtime 的路由和認證設定決定。見 [資料契約](02_data_contracts.md)。
 
-成功 body 根層是 **QueryContext[]**。首版每次請求的所有必要節點、Query 及搜尋路徑成功後才回 `200`。索引不就緒、服務失敗或逾時依原因回錯誤；首版沒有部分成功回應或自動降級。既有錯誤的 HTTP 映射見 [HTTP 與錯誤](#src-21-6-http狀態與錯誤層次提案)。
+成功 body 根層是 **QueryContext[]**。索引與必要查詢依賴已就緒時，空索引可以正常執行 Inference。首版每次請求的所有必要節點、Query 及搜尋路徑成功後才回 `200`。索引不就緒、服務失敗或逾時依原因回錯誤；首版沒有部分成功回應或自動降級。既有錯誤的 HTTP 映射見 [HTTP 與錯誤](#src-21-6-http狀態與錯誤層次提案)。
 
 | 執行情境 | 回應 |
 |---|---|
@@ -760,7 +760,7 @@ Secret Vault 位於 Runtime 外，以環境支援的解析／注入方式提供�
 <a id="src-07-93-獨立啟動"></a>
 ### 獨立啟動
 
-建議步驟：讀選定 Config Revision＋該環境部署設定 → 解析服務／資料綁定與 Secret → 04 驗證 Config 快照／準備 Component 及資源 → 驗證資料／恢復索引 → 啟動 HTTP，以共用 Executor 執行該配置。Live／Ready 與 IndexReady 分開；無資料可以接受 Ingestion，Query 回不就緒。部署後 Config 更新可先經重新部署，熱更新／零停機另案。
+建議步驟：讀選定 Config Revision＋該環境部署設定 → 解析服務／資料綁定與 Secret → 04 驗證 Config 快照／準備 Component 及資源 → 驗證資料／恢復索引 → 啟動 HTTP，以共用 Executor 執行該配置。Live／Ready 與 IndexReady 分開。相容索引可查詢後即接受 Ingestion 和 Inference，空索引回成功空候選。部署後 Config 更新可先經重新部署，熱更新／零停機另案。
 
 <a id="release-deployment-boundaries"></a>
 
