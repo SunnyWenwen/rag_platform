@@ -51,7 +51,7 @@
 
 正式管理階層只有 Workspace → System；同一 System 在 DEV／FTEST／ENT 沿用相同邏輯 Config Revision，部署綁定分環境保存。部署識別／儲存形狀待定，不額外建 Group 或 Blueprint。Config Store 與 Artifact／Run Store 不等於搜尋選配 MongoDB；Memory 模式仍可能保存平台管理資料；獨立 Runtime 不強制連回平台儲存。
 
-原始檔、解析結果、Prompt／Context Trace、評估報告保留與刪除規則仍見 Q-016。Ingestion Queue／Run／文件狀態的跨重啟方向已由 D-56 確認不保留；Builder 若另存歷史摘要，不能拿來覆蓋 Runtime 的 unknown 或宣稱工作已恢復。歷史評估報告不因新 Config 失效就自動刪除。
+Builder 保存並管理可供重新匯入的原始資料（原始檔、CSV 或結構化 JSON）。儲存及保留方式由 Builder 後續規劃，見 [Q-016](08_plan_and_decisions.md#q-016)。解析結果、Prompt／Context Trace、評估報告保留與刪除規則也依 Q-016 追蹤。D-56 已確認 Ingestion Queue、Run 與文件工作狀態在 Runtime 重啟後清除；若 Builder 另存歷史摘要，Runtime 仍依實際工作紀錄回報 `unknown`。歷史評估報告保留對應的舊 Config。
 
 <a id="src-07-4-systemrevision-與-engine-生命週期"></a>
 ## System／Revision 與 Engine 生命週期
@@ -82,7 +82,7 @@ Builder 保存 System、草稿與發布歷史，Runtime 持有已載入的 `syst
 | 初始化／重啟後重新載入／重連 | 無法確認索引歸屬，或指紋／mapping 不相容 | 回報衝突並保留索引。連線或授權錯誤依實際原因回報，不能當作索引不存在。 |
 | 明確更新 | 既有索引與新版相容 | 沿用索引。切換後新請求使用新版，已開始的查詢固定原版至結束。 |
 | 明確更新 | 確認索引不存在 | 建立新版空索引與 mapping。新索引建立成功後才啟用新版，並等待 Builder 重新匯入。 |
-| 明確更新 | 新版與本 System 的受管理索引不相容 | 驗證新版後排空請求，刪除舊索引及資料，再建立新索引與 mapping。新索引建立成功後才啟用新版並接收匯入，由 Builder 重新提交來源資料。 |
+| 明確更新 | 新版與本 System 的受管理索引不相容 | 驗證新版後排空請求，刪除舊索引及資料，再建立新索引與 mapping。新索引建立成功後才啟用新版並接收匯入，Builder 以保存的原始資料重新提交 Ingestion。 |
 | 明確卸載 | 已排空，且索引已不存在或可確認由本 System 管理 | 刪除仍存在的受管理索引及資料，完成卸載。無法確認歸屬時回報衝突。 |
 
 Elasticsearch 使用 `mappings._meta` 記錄 `system_id` 與 `index_fingerprint`。Runtime 讀取實際 mapping 並驗證歸屬及相容性。指紋基於影響索引內容、向量語意及搜尋能力的有效設定，純 Inference 參數如 `top_n` 不改變指紋。精確輸入與正規化規則依 Q-015 定義。參考 [Elasticsearch mapping `_meta`](https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/mapping-meta-field)。
@@ -136,7 +136,9 @@ System 列表／讀取、Workspace／Dataset CRUD、AI suggestion／連線檢查
 
 Engine 不提供 multipart 上傳端點。Builder 可接收檔案／CSV，轉成 content、Base64 或可存取 URI 再呼叫相同 JSON API；自行部署的呼叫端負責相同轉換。檔案傳輸轉換不等於語意 Parsing，原始檔案內容仍需 Engine 有相容 Parser。
 
-Builder 上傳管理端點、暫存儲存與下載授權／生命週期尚待 Q-016／Q-019；獨立 Runtime 不得因此強制依賴 Builder Object Storage。Builder 上傳入口／暫存的 MIME、大小／逾時及實際格式偵測規則另待核定；Runtime JSON／來源取得的已確認初始限制依Runtime 控制手冊；選擇多個 Parser 不代表所有檔案都可解析。
+Builder 管理的 System 重建索引後，由 Builder 使用保存的原始資料，以生效的新 Config 透過既有 Ingestion API 重新匯入。索引刪除與原始資料保留各由 Runtime 和 Builder 管理。獨立部署的資料由部署方提供，使用相同的 Ingestion API。
+
+檔案儲存、上傳／下載授權、來源版本、保留與刪除、重新匯入的觸發與管理流程由 Builder 後續規劃，見 Q-016／Q-019。Builder 上傳入口的 MIME、大小、逾時及實際格式偵測規則另待核定。Runtime 的 JSON／來源取得限制依 Runtime 控制手冊，檔案來源須符合該 System 所選 Parser 的格式契約。
 
 <a id="runtime-capability-contract"></a>
 

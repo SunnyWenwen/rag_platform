@@ -57,6 +57,10 @@
 - 新 Chunk 全部寫入並可搜尋後才刪舊。新版確認失敗時，清理本次 `write_id` 並保留舊資料。更新期間可短暫查到新舊 Chunk；結果不明先查核，再決定是否重送。
 - `write_id` 與來源 `source_revision` 分開。ES 寫入、可見性與清理案例見 [Elasticsearch 文件覆寫](06_runtime_api_and_deployment.md#elasticsearch-document-replacement)。
 
+## 2026-11-13 已確認：索引重建的原始資料
+
+- Builder 保存並管理原始資料。Runtime 建好新索引並啟用 Config 後，Builder 以保存的原始資料重新提交 Ingestion。儲存方式、保留與管理流程由 Builder 後續規劃，見 [Q-016](#q-016)。重匯入後何時恢復查詢仍待確認。
+
 ## 1. 使用方式與狀態
 
 | 狀態 | 意義 | Agent 行為 |
@@ -370,11 +374,12 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 <a id="q-016"></a>
 ### Q-016 平台儲存、原始資料與保留
 
-- 不清楚：Config／Run／Dataset／Report DB、原始檔／解析結果 是否保存、Trace 原文、期限／刪除、獨立 Runtime 儲存。
+- 已確認：Builder 保存及管理原始檔與結構化來源資料，供受管理 System 索引重建後重新匯入。Runtime 負責索引與 Ingestion 執行。
+- 仍待：Builder 的儲存後端、來源版本、權限、保留／刪除與重匯入流程。Config／Run／Dataset／Report 的管理資料庫、解析結果與 Trace 原文的保留政策，以及獨立 Runtime 儲存另議。
 - 建議：管理資料與搜尋 Chunk Store 分離；可用 Store interface 分環境替換；只保存明確必要資料。
 - 替代：統一平台 DB／Object Store；獨立 Runtime 的外部依賴與成本需交代。
 - 負責角色：Backend＋平台／資料負責人；阻擋 M3／M5 正式持久化與資料政策。
-- 決策：未定；更新 架構／資料契約手冊／UI手冊／Runtime／部署手冊。
+- 決策狀態：Builder 原始資料管理責任已確認，具體方案待 Builder 規劃。
 
 <a id="q-017"></a>
 ### Q-017 Timeout、重試、取消與工作恢復

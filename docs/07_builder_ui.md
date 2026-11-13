@@ -267,12 +267,12 @@ Comparison、門檻與 Release Gate 為 Q-018；UI 不自行認定所有測試�
 
 | 變更 | 使用者看到的結果 |
 |---|---|
-| Ingestion 邏輯配置／Schema | 新 Config Revision，需要重新 Ingestion |
+| Ingestion 邏輯配置／Schema 變更使索引不相容 | 套用新 Config Revision 會清除舊索引資料；建好新索引後由 Builder 使用保存的原始資料重新 Ingestion。 |
 | 部署資料目標 | 同版 Config，部署綁定改變；需驗證目標資料或 Ingestion |
 | Inference 配置 | 不需重匯；需重新測試／評估 |
 | 顯示名稱／未啟用草稿 | 不更換實體 collection，不誤判需重建 |
 
-Runtime 的新舊 Revision／Index 發布策略見 Q-010／Q-015；UI 不單靠本機 boolean 決定正式可查詢狀態。
+Runtime 的新舊 Revision／Index 發布策略見 Q-010／Q-015。原始資料與重匯入的管理流程由 Builder 後續規劃，見 [Q-016](08_plan_and_decisions.md#q-016)。UI 依 Runtime 狀態呈現正式可查詢狀態。
 
 <a id="src-06-8-export-與部署說明"></a>
 ## Export 與部署說明
