@@ -20,7 +20,8 @@ Workspace 管理多個 System。System ID、Config Revision、source_revision、
 | Embedding | 欄位映射、Profile、維度、可選文字組合。Remote 執行 Embedding 時，保留的內建 Chunking 自行指定 Tokenizer |
 | Indexing | 全文／向量／Filter 欄位、後端及持久化 |
 | Inference Input | 查詢執行參數、型別、必填性與預設值。平台初始化 QueryContext[] |
-| Query Transformation／Retrieval／Rerank | 內建方法／模型、查詢參數引用、過濾、融合、Top K／N；也可選 Remote 替換 |
+| Query Transformation | `none` 沿用原始問題；`rewrite` 以 `llm_ref`、`prompt`、`count`、`include_original` 設定單筆或多筆改寫；也可用 Remote |
+| Retrieval／Rerank | 內建方法／模型、查詢參數引用、過濾、融合與截斷；也可選 Remote 替換 |
 | Remote API | 首節點與連續範圍、服務引用、parameters JSON、Ingestion 輸出欄位及向量宣告 |
 
 有效資料欄位由 Import 與後續有效方法推導，外部 Retrieval 沿用這份 System 候選 Schema。正式鍵名、細化規則的序列化及檔案包裝仍依 Q-002；Prototype 匯出是可查驗的設定示意。

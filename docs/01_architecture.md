@@ -63,7 +63,7 @@ Builder Backend 下發／註冊 Config 與目標 Runtime 的對應，Runtime 依
 
 FTEST／ENT 的一 Pod 基準指主 Runtime。外部 API、模型、DB 及 Secret 為部署依賴。Ingestion／Inference 是同組 Runtime 的 API 能力，不強制各自一個 Pod／程序。
 
-**範圍：Retrieval-only，不提供 Generation。** Inference 回傳排序後的檢索結果、分數與來源／追溯資訊，由呼叫端決定如何消費。Query Rewrite／Multi-query 與 AI 設定助手仍可使用 LLM；取消 Generation 不等於移除所有 LLM。
+**範圍：Retrieval-only，不提供 Generation。** Inference 回傳排序後的檢索結果、分數與來源／追溯資訊，由呼叫端決定如何消費。單筆／多筆 Query Rewrite 與 AI 設定助手仍可使用 LLM；取消 Generation 不等於移除所有 LLM。
 
 <a id="pipeline-terms"></a>
 

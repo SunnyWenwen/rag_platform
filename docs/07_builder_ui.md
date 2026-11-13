@@ -76,8 +76,8 @@ Create／Edit 可選用全域模板，設定 Import 入口欄位及參數，再�
 - Parsing 初始只顯示「結構化 JSON」；其他格式及所有相關設定集中在預設關閉的「進階選項」，展開才出現。正式 Parser 能力另依 Q-005，顯示選項不等於可執行。
 - D-67：由 Parser Descriptor＋Config 推導 Unit／metadata 細節，再沿 Pipeline 提供下游選項與卡控；多分支須保留可用性，缺欄位不靜默替換。詳細規則見 [Descriptor](04_component_descriptor.md)，UI 待辦 UIB-024。
 - 2026-10-16 已確認：Indexing 預設保存全部 Document.structdata／metadata，移除「儲存內容」選單，只選全文／向量索引與可過濾欄位；Chunking 預設繼承全部合法 metadata，第一版不新增排除表單。Prototype v0.12 已有上述保存／繼承互動，見 Builder UI／Backlog手冊 的 UIB-005／006；真實儲存 Adapter 尚待實作。
-- LLM 服務集中管理；Rewrite／Multi-query 在需要時以下拉引用，同一服務不重填連線。
-- Rewrite／Multi-query 的 Prompt 可編輯，分別保留草稿；提供變數插入、驗證與預覽。
+- LLM 服務集中管理；Rewrite 以下拉選擇 System 已設定的服務。
+- Rewrite 提供一份可編輯 Prompt、改寫數量與原始問題開關，並提供變數插入、驗證及預覽。
 - Rerank 可查看固定平台 Request／Response 範例及 index／score 對應說明；不宣稱是所有模型的統一標準。
 - collection 由 Workspace＋System 名稱／穩定 ID 自動帶入且唯讀；改顯示名稱不換既有實體。
 - 內建 Retrieval 依全文／向量欄位推導搜尋模式。Retrieval 設定同 Query 多路融合，Query Transformation 設定跨 Query 融合的時點。見[結果處理控制項](#src-09-3-現行-ui-規劃)。
@@ -92,7 +92,7 @@ Create／Edit 可選用全域模板，設定 Import 入口欄位及參數，再�
 | Chunking（欄位簡化已確認） | 切分方式／必要參數，直接用 text；不顯示切分／複製欄位選單，metadata 全繼承 | 單一切分來源、輸出名稱、可選複製欄位及完整原文保留。依方法顯示 Token、分隔符／標題層級設定。見 UIB-013。 |
 | Embedding | 來源欄位、輸出向量、模型 | 維度／Encoding／Normalization、Batch、輸入限制 |
 | Indexing | 後端、全文／向量欄位、過濾能力；全部內容自動保存的摘要 | 後端特有參數、進階 Mapping（支援後才顯示）；不要求再勾選保存內容 |
-| Query Transformation | 既有 None／Rewrite／Multi-query、LLM | Prompt、count、include_original；可能產生多 Query 時設定跨 Query 融合 |
+| Query Transformation | None／Rewrite／Remote API；Rewrite 選共用 LLM 並設定改寫數量 | Prompt、include_original；可能產生多 Query 時設定跨 Query 融合 |
 | Retrieval／Fusion Plan | 全文／向量欄位、`per_route_k`、預設 filters、多路搜尋時選 RRF 或 Sum Score | 可選當步分組及 Retrieval Top N。跨 Query 規則由 Query Transformation 設定。 |
 | Rerank | None／服務、單一評分內容欄位、Rerank Top N（原型預設 3）、實際提問來源 | 當步分組、逐 Query 問題選擇、附加內容欄位、Timeout／服務輸入限制 |
 
@@ -151,20 +151,18 @@ Admin 在 Builder 以外維護版本化全域模板。Builder 顯示可選版本
 <a id="src-06-331-討論提案query-rewrite-單模組測試"></a>
 ### 討論提案：Query Rewrite 單模組測試
 
-**待使用者確認，尚未改 UI。** 建議在 Query Transformation 放「測試 Rewrite／Multi-query」：輸入一個問題，用當前草稿的 Prompt／LLM／count 執行該模組，不要求先建立／保存 System 或 Ingestion，也不執行 Retrieval／Rerank／檢索結果消費端。
+**待使用者確認，尚未改 UI。** 建議在 Query Transformation 放「測試 Rewrite」：輸入一個問題，用當前草稿的 Prompt／LLM／count 執行該模組，不要求先建立／保存 System 或 Ingestion，也不執行 Retrieval／Rerank／檢索結果消費端。
 
 測試前驗證本模組與引用服務的必要設定，不以其他無關模組未填完阻擋。顯示實際生成的 Prompt、要求筆數、解析後 Query 清單、原始問題是否另外加入及格式／筆數／非空／重複驗證；原始回應可收合，耗時／Token 用量僅顯示實際可取得數據。None 不呼叫 LLM。
 
 測試使用與正式執行相同的 Engine 模組、Adapter、Schema 與驗證；LLM 輸出策略提案見 [Engine／Component](03_engine_and_components.md#remote-api)。未接真實服務則明示模擬。修改 Prompt／LLM／count／保留原始問題或測試輸入後，舊結果標示過期；過期非同步回應不覆蓋新測試。試跑結果不自動套用／保存 Config，也不新增「必須先測試才能儲存」的 Gate。
 
 <a id="src-06-332-討論提案以數量統一-query-rewrite"></a>
-### 討論提案：以數量統一 Query Rewrite
+### 單一 Rewrite Component
 
-**待確認，UIB-008 未實作。** 建議用「啟用 Query Rewrite」＋產生 Query 數量 N，取代兩個分開的方法選項；N=1 單 Query 改寫，N>1 多 Query，停用直接沿用原始問題。保留一份有效 Prompt、共用 LLM 引用與 include_original，後者不計入 N。
+Query Transformation 的「執行方式」可選 None、Rewrite 或 Remote API。選 Rewrite 後，使用同一份 Prompt，`count` 設定改寫筆數。`include_original` 決定是否也搜尋原始問題。例如兩筆改寫加上原始問題，會交給 Retrieval 三個 Query。
 
-數量設定動態產生輸出 Schema；Prompt 可編輯改寫內容與角度，平台補上格式／數量要求。UI 說明「count 決定筆數，Prompt 決定內容」，可看實際格式要求，避免誤以為 Prompt 寫任意筆數就可覆寫設定；非空／重複與語意驗證仍需要。多筆預設 Prompt 應描述多樣性，但使用者改 count 時不自動覆蓋已編輯 Prompt。
-
-UIB-007 試跑如採用，也改用這組相同草稿與 Schema。Edit／AI／匯出及合併計畫預覽需沿用同一有效設定；舊 Rewrite 保留 N=1、舊 Multi-query 保留 N 與原本有效 Prompt，不能遷移時丟失另一份手寫草稿。具體保存政策 Q-002，原型仍維持兩種選項。
+正式 UI 採上述選項。Prototype 現有的 Rewrite／Multi-query 分開選項及草稿保留方式，留待 UI 對齊時處理。單步試跑的提案見 UIB-007。
 
 <a id="src-06-35-檢索結果呈現取代舊答案輸出設定"></a>
 ### 檢索結果呈現（取代舊答案輸出設定）
@@ -306,7 +304,7 @@ UI Mock、Schema 驗證、HTTP integration、實際端對端驗收分開記錄�
 
 | UI 位置 | 控制項 |
 |---|---|
-| Query Transformation | 在可能產生多 Query 時顯示跨 Query 融合。包含 Multi-query、保留原始問題的 Rewrite，以及由平台負責融合的 Remote Query Transformation。選 Retrieval 或 Rerank 的最後一步，再選融合方法、分組欄位及可選 Top N。 |
+| Query Transformation | 在可能產生多 Query 時顯示跨 Query 融合。包含 `count>1` 或保留原始問題的 Rewrite，以及由平台負責融合的 Remote Query Transformation。選 Retrieval 或 Rerank 的最後一步，再選融合方法、分組欄位及可選 Top N。 |
 | Retrieval | 內建搜尋有多路時必選 RRF 或 Sum Score，所有路徑融合成每 Query 一份清單。另可設定分組和 Retrieval Top N。 |
 | Rerank | 設定模型、內容欄位、提問來源，以及評分後每份清單的分組和 Rerank Top N。 |
 
@@ -402,7 +400,8 @@ ResultSet.key 對應 Config 路徑／群組；items 位置即名次。RRF 可用
 | UIB-003 | AI 助手串接 M4 核心／API | 待後端整合；目前明示本機規則 |
 | UIB-004 | Diff、驗證、套用、取消與過期回應 | 本機模擬完成；真實非同步 API／版本一致性待整合 |
 | UIB-005／006 | 全 Chunk 保存、metadata 全繼承 | 原型已完成；儲存 Adapter 待實作 |
-| UIB-007／008 | Rewrite 統一生成設定／真實測試與結構化輸出 | **討論提案，尚未核定；未藉本輪實作為既定需求** |
+| UIB-007 | Rewrite 單步試跑及模型回應驗證 | 試跑介面與 Provider 整合仍待討論 |
+| UIB-008 | 單一 Rewrite Component，以 count 設定改寫筆數 | 規格已確認，Prototype 舊選項待對齊 |
 | UIB-009 | Generation 自訂輸出 | D-50 取消 Generation，關閉此待辦 |
 | UIB-010 | Component Descriptor 動態表單 | 模擬目錄及基本 Schema／UI hints 表單已完成；完整 12 協定／版本回應及真實 Registry 待整合 |
 | UIB-011 | JSON API／多 Parser 自動派送 | 三來源 API 說明、CSV／JSON／明確 Units Adapter 已有；二進位 resolver、能力派送及衝突政策待真實 Parser |

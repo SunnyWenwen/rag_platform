@@ -110,20 +110,20 @@ FAISS 的維度／metric 不足以證明向量空間相容。cosine／inner prod
 <a id="src-04-51-query-transformation"></a>
 ### Query Transformation
 
-**方法**：None／Rewrite／Multi-query；原始問題永遠保留。count 指衍生 Query 數，不含選配原始問題。
+**執行方式**：`none` 沿用原始問題，`rewrite` 用同一個 Component 產生一個或多個改寫問題。自訂外部 Query Transformation 使用共用 Remote API Adapter。
 
-**處理**：None 回一筆原始 Query；Rewrite 使用 {{query}} 產生一筆；Multi-query 使用 {{query}}／{{count}} 產生多筆。include_original 由程式處理，不交由 Prompt 決定。引用 System 共用 llm_ref。
+**參數**：`llm_ref` 選 System 共用 LLM，`prompt` 可引用 `{{query}}`、`{{count}}` 及已宣告的 `{{params.name}}`。`count` 是改寫問題的正整數筆數。`include_original` 決定是否另加一筆原始 Query 參與 Retrieval。原始問題始終保存在各 Context 的 `ori_query`。
 
-**驗證**：非空問題、合法模板、LLM 引用、衍生結果數量／文字合法。去除相同問題、模型輸出格式不符及降級政策由 Q-003／Q-023 核定；不自動忽略壞結果。
+**輸出**：`none` 輸出一筆原始 Query Context。`rewrite` 依驗證過的改寫字串建立 `QueryContext[]`，保留原始問題、filters 和 metadata，供下游 Retrieval 使用。跨 Query 設定的執行時點見 [結果處理](#result-processing)。
 
-**驗收**：Rewrite 不覆蓋 original_question；Multi-query count 與原始問題選項獨立；None 不呼叫 LLM；Rerank／檢索結果消費端 始終取得原始問題。
+**驗收**：同一 `component_id` 可用 `count=1` 或 `count>1`。`include_original` 由平台套用，模型只需產生改寫字串。`none` 直接使用原始問題。
 
 <a id="src-04-511-討論提案rewrite-的結構化輸出與共用-llm-邊界"></a>
 ### 討論提案：Rewrite 的結構化輸出與共用 LLM 邊界
 
 **狀態：2026-10-16 提案，待使用者確認及 Q-003／Q-017／Q-023 核定；不是已實作或已凍結的公共 Contract。** 建議 UI 加單模組試跑，見 Builder UI／Backlog手冊／UI Backlog手冊；輸出形狀與數量由平台提供，Prompt 主要描述如何改寫，不讓使用者每次重寫機器可讀契約。
 
-建議 Rewrite 與 Multi-query 共用 `{queries: [...]}` 的結果形狀；Rewrite 目標為 1 筆，Multi-query 目標為 Config.count 筆。原始問題及 include_original 由平台處理，與模型要求生成的數量分開。ori_query、filters、metadata 由 Runtime 保留／複製，LLM 只生成 query 文字，不負責授權或結果物件。
+Rewrite 的模型回應草案為 `{queries: [...]}`，由 `count` 決定所需筆數。原始問題及 include_original 由平台處理，與模型要求生成的數量分開。ori_query、filters、metadata 由 Runtime 保留／複製，LLM 只生成 query 文字，不負責授權或結果物件。
 
 以下 Python／Pydantic 例子只示範按 n 產生 Schema 及驗證形狀／型別／數量，不會呼叫 LLM；可將匯出的 JSON Schema 交給支援的 Provider。正式類別名稱與 Adapter 格式仍待決：
 
@@ -159,7 +159,7 @@ result = Result.model_validate({"queries": [
 
 | 用途 | 建議模型輸出 | 後端驗證 |
 |---|---|---|
-| Rewrite／Multi-query | queries 的 1／N 筆字串清單 | 數量、非空、重複、原始問題保存 |
+| Rewrite | queries 的 count 筆字串清單 | 數量、非空、重複、原始問題保存 |
 | AI 設定助手 | Config 草稿、建議／Diff、缺項 | Schema、Registry、欄位相依與草稿基準 |
 
 服務連線與模型引用集中管理，Schema 由每次模組呼叫傳入，不在同一 LLM 服務上固定一種輸出格式。使用 LangChain 時可採其 Model structured-output 介面，不需要為單次 Rewrite 引入完整 Agent。
@@ -167,15 +167,22 @@ result = Result.model_validate({"queries": [
 官方依據（查核 2026-10-16）：[JSON Schema 的陣列長度限制](https://json-schema.org/understanding-json-schema/reference/array#length)；[OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs) 說明 Schema 約束與 JSON mode 的區別、支援子集及拒答／不完整回應；[LangChain Models](https://docs.langchain.com/oss/python/langchain/models)／[Structured output](https://docs.langchain.com/oss/python/langchain/structured-output) 說明 Provider／Tool 策略與驗證。來源提供技術依據，不直接核定本專案的 Provider、類別、重試數或 fallback 預設。
 
 <a id="src-04-512-討論提案合併-rewrite-與-multi-query-設定"></a>
-### 討論提案：合併 Rewrite 與 Multi-query 設定
+### Rewrite Component 的設定範例
 
-**2026-10-16 10:22 提問後的建議，待確認。** 目前 Prototype v0.12 有 None／Rewrite／Multi-query；Rewrite 固定一筆，Multi-query 使用 count，且分別保存 rewrite_prompt／multi_prompt。兩者目前不是只有畫面名稱不同，也尚無真實 Engine 生成實作。不要把共用輸出 Schema 提案描述成現有已共用的執行程式。
+`count=1` 表示單筆改寫，`count>1` 表示多筆改寫。多筆 Prompt 可以要求不同搜尋角度。當設定可能產生多個 Query，Builder 顯示跨 Query 融合設定。模型若實際產生多個有效 Query，Engine 在所選的 Retrieval 或 Rerank 完成後處理。
 
-建議保留同一 Query Transformation 模組，UI 簡稱 Query Rewrite，以啟用／停用、產生 Query 數量 N、include_original、llm_ref 與一份有效 Prompt 控制：N=1 表示單 Query 改寫，N>1 表示多個檢索表述，停用則直接沿用原始問題、不呼叫模型。多筆時 Prompt 建議描述不同表述／搜尋角度，不能只靠改數字就保證多樣性。
+```yaml
+query_transformation:
+  component_id: rewrite
+  component_version: "1.0.0"
+  parameters:
+    llm_ref: default-llm
+    prompt: "為 {{query}} 產生 {{count}} 個不同的檢索表述。"
+    count: 2
+    include_original: true
+```
 
-數量設定由平台動態帶入 Schema，queries 的 minItems／maxItems 同為 N，並供實際 Provider 支援的結構化生成與後端驗證使用。Prompt 可自由描述改寫內容，格式／型別／筆數則由平台的 I/O 契約管理；可提供 query／count 變數及固定格式要求預覽，但不依靠使用者手寫「輸出幾筆」才建立限制。Prompt 與設定衝突時仍只放行通過 Schema／語意驗證的結果，不能讓 Prompt 覆寫所選 count。語法與筆數合格不代表保留原意或足夠多樣，後者需人工／Evaluation 驗證。
-
-此為單一方法與共用執行邏輯的候選，不新增另一個 Pipeline 模組。舊 Rewrite 映射 N=1，舊 Multi-query 保留原 count；取原先啟用的 Prompt 為新有效 Prompt，另一份舊草稿的保留／可恢復政策需 Q-002 核定，不能靜默刪除。None、include_original、LLM 引用、逐 Query／跨 Query 融合語意維持一致。採用後應同步 SDK、Registry、AI 助手、UI、範例與驗證；本輪只記提案，不更動原型／正式 Config 枚舉。
+這份設定要求兩筆改寫，並讓原始問題一併搜尋。Descriptor 與離線驗證見 [System Config 範例](../examples/system_config/README.md)。Provider 能力、重試與 fallback 依 Q-003／Q-017／Q-023 另定。
 
 <a id="src-04-52-retrieval"></a>
 ### Retrieval

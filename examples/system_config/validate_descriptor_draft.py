@@ -21,7 +21,7 @@ BUILTIN_COMPONENTS = {
     "embedding": (("dense",), ("Document[]", "Document[]")),
     "indexing": (("elasticsearch", "local"), ("Document[]", "IndexBinding")),
     "inference_input": (("platform",), ("InferenceRequest", "QueryContext[]")),
-    "query_transformation": (("none", "rewrite", "multi_query"),
+    "query_transformation": (("none", "rewrite"),
                              ("QueryContext[]", "QueryContext[]")),
     "retrieval": (("builtin",), ("QueryContext[]", "QueryContext[]")),
     "rerank": (("none", "model_api"), ("QueryContext[]", "QueryContext[]")),
@@ -169,8 +169,10 @@ RERANK = descriptor(
     ("QueryContext[]", "QueryContext[]"),
     {"text_field": selector("candidate.structdata", "string")},
 )
+REWRITE = json.loads((HERE / "rewrite.descriptor.json").read_text())
+validate_descriptor(REWRITE)
 FIXTURE_DESCRIPTORS = (
-    CHUNK, EMBED, INDEX, RETRIEVE, RERANK,
+    CHUNK, EMBED, INDEX, RETRIEVE, RERANK, REWRITE,
     descriptor("import", "platform",
                {"structdata": {"type": "object", "additionalProperties": FIELD_RULE}},
                ("IngestionRequest", "Document")),
@@ -422,12 +424,41 @@ def compile_local_example(snapshot):
         if module == "retrieval":
             compile_retrieval(index, config)
         else:
-            parameters(module, config, {"candidate.structdata": fields})
+            parameters(module, config, {"candidate.structdata": fields, "models": {"default-llm": None}})
     return fields, vectors, index
 
 
 def local_snapshot(mode):
     return json.loads((HERE / f"local_memory.{mode}.json").read_text())
+
+
+@case("one Rewrite component supports single and multiple generated queries")
+def _():
+    config = node("rewrite", llm_ref="default-llm",
+                  prompt="Rewrite {{query}} in {{count}} distinct ways.",
+                  count=1, include_original=False)
+    context = {"models": {"default-llm": None}}
+    snapshot = local_snapshot("builtin")
+    inference = snapshot["config"]["pipelines"]["inference"]
+    inference["query_transformation"] = config
+    compile_local_example(snapshot)
+    _, single = parameters("query_transformation", config, context)
+    assert single["count"] == 1 and not single["include_original"]
+    config["parameters"].update(count=2, include_original=True)
+    compile_local_example(snapshot)
+    _, multiple = parameters("query_transformation", config, context)
+    assert multiple["count"] + int(multiple["include_original"]) == 3
+
+    bad = deepcopy(config)
+    bad["component_id"] = "multi_query"
+    rejects(lambda: parameters("query_transformation", bad, context), "unknown component version")
+    for key, value in (("count", 0), ("count", "2"), ("prompt", "  "), ("include_original", 1)):
+        bad = deepcopy(config)
+        bad["parameters"][key] = value
+        rejects(lambda: parameters("query_transformation", bad, context), "ValidationError")
+    bad = deepcopy(config)
+    bad["parameters"]["llm_ref"] = "unknown"
+    rejects(lambda: parameters("query_transformation", bad, context), "invalid selection:/llm_ref")
 
 
 @case("published Local Search examples compile to the same index and candidate contracts")

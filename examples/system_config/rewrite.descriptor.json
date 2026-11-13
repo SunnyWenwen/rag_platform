@@ -1,0 +1,42 @@
+{
+  "descriptor_version": "0.2-draft",
+  "module": "query_transformation",
+  "component_id": "rewrite",
+  "component_version": "1.0.0",
+  "parameters_schema": {
+    "type": "object",
+    "properties": {
+      "llm_ref": {
+        "type": "string",
+        "minLength": 1
+      },
+      "prompt": {
+        "type": "string",
+        "pattern": "\\S"
+      },
+      "count": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "include_original": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "llm_ref",
+      "prompt",
+      "count",
+      "include_original"
+    ],
+    "additionalProperties": false
+  },
+  "io": {
+    "input": "QueryContext[]",
+    "output": "QueryContext[]"
+  },
+  "option_sources": {
+    "/llm_ref": {
+      "source": "models"
+    }
+  }
+}

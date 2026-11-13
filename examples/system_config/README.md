@@ -15,7 +15,8 @@
 
 - [Meta-schema 草案](../../schemas/component_descriptor.draft.schema.json)驗證 Descriptor 的外層及目前測試的宣告語法。
 - [Recursive Descriptor](recursive.descriptor.json)示範一個切分欄位、動態選項、欄位複製及 overlap 約束。
-- Python 驗證包含 17 組案例，涵蓋代表性內建鏈、欄位失效、IndexBinding、外部候選及 Remote 區段。其他內建方法驗共用外層。IndexBinding 驗證使用符合現行 Schema 的 fixture，檢查全文／向量能力。
+- [Rewrite Descriptor](rewrite.descriptor.json)用同一個 Component 驗證單筆及多筆改寫、共用 LLM 引用與原始問題選項。
+- Python 驗證包含 18 組案例，涵蓋代表性內建鏈、欄位失效、IndexBinding、外部候選及 Remote 區段。其他內建方法驗共用外層。IndexBinding 驗證使用符合現行 Schema 的 fixture，檢查全文／向量能力。
 - Remote API fixture 涵蓋批次請求、向量輸出與外部檢索候選。實際 Parser、Tokenizer、模型、索引、權限、服務可用性與跨環境部署仍需整合驗收。
 
 從 repo 根目錄執行，Python 需要 jsonschema 4.x。
