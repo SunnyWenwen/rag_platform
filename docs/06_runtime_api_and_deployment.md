@@ -10,6 +10,7 @@
 - [範圍與已確認基準](#src-21-1-範圍與已確認基準)
 - [API 清單：7 支業務 API＋2 支 Health API](#src-21-2-api-清單7-支業務-api2-支-health-api)
 - [Ingestion 的提交與接收](#src-21-3-ingestion-的提交與接收)
+- [Elasticsearch 文件覆寫](#elasticsearch-document-replacement)
 - [文件狀態與一次提交的狀態](#src-21-4-文件狀態與一次提交的狀態)
 - [Inference](#src-21-5-inference)
 - [HTTP、狀態與錯誤層次提案](#src-21-6-http狀態與錯誤層次提案)
@@ -171,7 +172,7 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 ### 已確認，不再當成待選方向
 
 - 同一 System 的同一 document_id 以新文件完整替換；不存在則新增，成功後移除該文件不再產出的舊 Chunk。
-- 更新與執行結果以 document_id 為單位。Batch 中不同文件獨立成功／失敗，不要求全 Batch 回滾；文件未完整成功不得標 completed，失敗資料清理／保留舊版的實作仍需 backend 驗證。D-60 已確認不加平台查詢讀寫鎖，更新期間可讀到新舊混合，不保證文件級原子可見性。
+- 更新與執行結果以 `document_id` 為單位，Batch 中各文件獨立。ES 確認新批次完整可搜尋後才清理舊資料，清理完成才標 `completed`。依 D-60，更新期間可讀到新舊混合。詳見 [Elasticsearch 文件覆寫](#elasticsearch-document-replacement)。
 - 不保存斷點續跑；重試整份文件。Runtime 重啟不恢復已接受的排隊／執行工作。
 - Runtime 統一管理有上限的 Ingestion Queue、併發、Inference Rate limit／併發與逾時。每 System 的文件執行併發可配置，預設 1；調高前需驗證 Component／共享資源安全，不等於無限制並行。
 - 同一 System 的同一 document_id 已 queued／running 時，拒絕再次提交；終態後才可重新提交覆寫。不同文件可依上限並行；Batch 是文件集合，不是另一種資料契約。
@@ -456,11 +457,25 @@ Builder 下發新版時，依 [System 管理](#src-07-4-systemrevision-與-engin
 FTEST／ENT 的一 Pod 基準是主 Runtime。外部 API、ES／MongoDB 等資源以環境綁定提供。
 
 <a id="src-21-82-remote-寫入可能成功但-runtime-timeout"></a>
-### Remote 寫入可能成功但 Runtime timeout
+### 索引寫入逾時與未知結果
 
-例：Runtime 透過 Indexing 寫入儲存後端，後端已寫完或仍在寫，但回應超時。若當作沒寫入而立即重送，可能重複計算／寫入；舊操作若稍後完成，也可能覆蓋較新的提交。document_id 覆寫本身不保證解決所有時序問題。
+Runtime 透過 Indexing 寫入 Elasticsearch 時，回應逾時可能發生在寫入前、寫入中或寫入完成後。依 D-59 回報 `unknown` 及可辨識原因，並依 [Elasticsearch 文件覆寫](#elasticsearch-document-replacement) 查核。Runtime 重啟會清除工作紀錄，後端已執行的操作仍可能生效。
 
-D-59 已確認沿用 unknown＋可辨識原因，不自動重試未知寫入；如何確認結果、暫時限制同文件新提交、或要求服務提供冪等／版本控制，需依儲存後端能力定義。Runtime 重啟清空狀態也不代表 Remote 工作已停止。
+<a id="elasticsearch-document-replacement"></a>
+### Elasticsearch 文件覆寫
+
+本節定義同一個 System 內以 `document_id` 為單位的 Elasticsearch 更新。一批 Ingestion 中的每份文件各自處理。相同 `document_id` 有 queued／running 工作時沿用忙碌拒絕。整個 System 的索引重建依 [索引生命週期](#system-index-lifecycle) 處理。
+
+Elasticsearch 索引存取層為每次文件寫入產生一個 `write_id`，例如 UUID。同一份文件此次輸出的全部 Chunk 共用此值。將它存入每筆 ES Chunk 的內部欄位（mapping 為 `keyword`）。ES `_id` 由 `document_id`、`write_id`、`data_id` 唯一且穩定地衍生，讓舊批次和新批次在同一索引內並存。`source_revision` 仍描述來源內容版本。`write_id` 用於精確定位寫入批次，時間可供診斷。共用 `Document` 的 API 契約及 `data_id` 語意維持原定義。
+
+1. 寫入前先取得該 System／文件現有的舊 `write_id`，作為本次成功後的清理範圍。產出並驗證完整的新 Chunk 集合後，使用新的 `write_id` 寫入。
+2. 逐筆檢查 ES Bulk 結果，確認新 Chunk 全部成功且已可搜尋，才依 `document_id` 和先前取得的舊 `write_id` 刪除舊 Chunk。舊資料的刪除對搜尋可見後，文件才標為 `completed`。
+3. 若確認新批次未完整寫入，只清理本次 `write_id` 的 Chunk，保留舊資料。若新版已可搜尋，舊資料清理失敗時保留新版並回報清理失敗或未完成。清理結果及殘留須可辨識，已知失敗回 `failed`，結果不明回 `unknown`。
+4. 若 ES 寫入或刪除逾時而無法判定結果，回 `unknown`。查核以原定的 Chunk `_id`、`write_id` 和後端操作結果為依據，確認後才決定是否清理或重送。安全重試同一次寫入時沿用原 `write_id`、Chunk 內容和 ES `_id`。重新提交的 Ingestion 工作產生新的 `write_id`。
+
+D-60 允許更新及清理期間查到新舊混合。驗收案例為舊批次 10 筆、新批次 6 筆。新版全部成功後只留下新 6 筆。若新版第 4 筆確認失敗，應保留舊 10 筆並清理本次所有實際成功的新 Chunk。另需覆蓋寫入逾時、舊資料刪除失敗與重啟後結果查核。
+
+待定細節包括舊索引缺少 `write_id` 的遷移、清理方式與錯誤碼、未知結果的查核／隔離，以及重啟後如何辨識和清理未完成批次。參考 [Elasticsearch Bulk](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-bulk) 和 [Refresh](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/refresh-parameter)。
 
 <a id="src-21-83-已確認不加平台-query-讀寫鎖"></a>
 ### 已確認：不加平台 Query 讀寫鎖
@@ -656,14 +671,14 @@ D-56 已確認：Builder DEV 與 FTEST／ENT 共用 Runtime 工作控制，Libra
 
 Batch 逐文件處理；併發 1 時依序，併發 2 時不同文件可同時處理。相同 (System, document_id) 已 queued／running 時拒絕再次提交。支援提高併發仍需驗證 Component／Client／共享索引的安全性，必要的同文件寫入互斥與資源安全由執行實作處理，但不加阻擋 Query 的共享讀寫鎖；不承諾任意 backend 可無限制並行。
 
-每份文件完整替換，只有完整執行成功才標 completed；D-60 不鎖 Query，允許更新中讀到短暫新舊混合，失敗資料清理／保留舊版仍是 backend 的處理目標，不承諾原子讀取。不保留續跑 checkpoint；Runtime 重啟丟棄 Queue／工作／記憶體狀態，查詢為 unknown。索引持久化恢復與工作恢復不同；Remote timeout／崩潰後可能已有副作用，不能當作一定未寫入或自動安全重試。
+每份文件完整替換。ES 的寫入、失敗清理及查詢可見性依 [Elasticsearch 文件覆寫](#elasticsearch-document-replacement)。Runtime 重啟丟棄 Queue／工作狀態，舊 `run_id` 查詢為 `unknown`。既有索引可依相容性接回。逾時或崩潰後的未確認寫入須先查核，才可判斷是否重送。
 
 Local Search 第一版仍同程序／單副本。背景執行不能把唯一 Memory 索引放在會退出的獨立 Job，也不能 fork 多個 worker 期待共享 Python 記憶體。這裡的 Worker 是執行排程概念，不要求新增 Pod；精確執行模型需測試。
 
 尚待 Q-008～Q-010／Q-015／Q-017／Q-019：
 
 - 21 的 counts／錯誤 Envelope 與文件管理細節；批次物件、整批預檢、Run partial 與 retire 直接刪除方向已確認。
-- 文件級索引 staging／舊 Chunk 清除／發布點、搜尋可見性及崩潰一致性；不以單次 Bulk／Hash 宣稱原子替換已完成。
+- ES 文件覆寫順序已定，仍待驗證清理失敗、未知結果查核及崩潰後殘留處理。其他後端的寫入與搜尋可見性另議。
 - 固定快照、System 切版／卸載及持久索引相容規則見 [System 管理](#src-07-4-systemrevision-與-engine-生命週期)。一般寫入與 Query 依 D-60 併行，未知寫入與失敗清理仍依 API-D05 追蹤。
 - 未知遠端寫入已確認不自動重試；具體結果查核、同文件隔離、Idempotency-Key／版本控制及清理仍待定。進度管控及取消另議。
 - Queue／並行／Rate／Deadline／紀錄保留初始值已依 D-64 記於Runtime 控制手冊；尚待正式設定 Schema／載入方式、未知紀錄清理與未來多 replica 一致控制。

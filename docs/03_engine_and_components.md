@@ -80,9 +80,9 @@ D-53 真實 Engine 功能待實作，Prototype v0.12 已有控制與教學預覽
 **待決**：Q-003、Q-004、Q-009、Q-017。Sparse、多模態及 late interaction 為後續。
 
 <a id="src-04-45-indexing-與搜尋-adapter"></a>
-### Indexing 與搜尋 Adapter
+### Indexing 與索引存取
 
-**目的**：保存 Chunk，依欄位用途建索引，回報寫入與可搜尋狀態。Runtime 套用設定時由 Engine 推導索引定義，再透過 Index Adapter 建立或接回目標。Adapter 驗證實際 mapping、索引歸屬與相容性指紋，並依 [Runtime 索引生命週期](06_runtime_api_and_deployment.md#system-index-lifecycle) 執行重建或卸載。
+**目的**：保存 Chunk，依欄位用途建索引，回報寫入與可搜尋狀態。Runtime 套用設定時由 Engine 推導索引定義，再由 Elasticsearch 索引存取層建立或接回目標。索引存取層驗證實際 mapping、索引歸屬與相容性指紋，並依 [Runtime 索引生命週期](06_runtime_api_and_deployment.md#system-index-lifecycle) 執行重建或卸載。
 
 **2026-10-16 已確認的簡化**：預設保存 Chunk 的全部 structdata／metadata，不再要求使用者填 stored_fields 或勾「儲存內容」。保存內容與建立搜尋索引分開：使用者只選全文欄位、向量欄位與可過濾欄位；未選搜尋索引的 title 等欄位仍可供 Rerank／檢索結果消費端／引用使用。保留 metadata 不代表自動對所有 metadata 建立 Filter／全文索引。向量保存與恢復沿用既有完整 Chunk／vectors 政策，不因拿掉內容選單而刪除 vectors。
 
@@ -92,9 +92,9 @@ D-53 真實 Engine 功能待實作，Prototype v0.12 已有控制與教學預覽
 2. 比較目標 Schema／Profile，拒絕不相容寫入，避免不同模型混在同一向量欄位。
 3. 依版本／冪等策略寫入 Chunk，維護 data_id 對照及 Binding。
 4. 按後端 refresh／發布規則回報 searchable；write_acknowledged 不等於 searchable。
-5. D-56：同 System／document_id 成功後整份替換並清除不再產出的舊 Chunk，失敗保留最後成功版本；實體提交與崩潰可見性需 Q-008／Q-009 驗證，D-58 文件管理需要存在／ID 清單與 retire 直接刪除，精確介面見 Runtime API／部署手冊／IndexBinding手冊。
+5. 同一 System／`document_id` 以一次 `write_id` 寫入新版。新版全部成功且可搜尋後，才清理舊批次。若確認新版寫入失敗，只清理本次批次。文件存在、清單與 retire 也使用索引存取層。詳見 [Elasticsearch 文件覆寫](06_runtime_api_and_deployment.md#elasticsearch-document-replacement)。
 
-| Adapter | 內部責任 |
+| 後端 | 內部責任 |
 |---|---|
 | ES | 組合 Mapping；全文 text、精確 keyword、Dense vector；全部內容可取回但只替選定欄位建立對應搜尋能力；相容查詢及 refresh |
 | Local Search | 每個具名向量管理 FAISS index；每個全文欄位管理 BM25；向量 ID → data_id；完整 Chunk 共用一份 |

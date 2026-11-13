@@ -6,6 +6,8 @@ Import、Parsing、Chunking、Embedding、Indexing 與檢索候選共用 [Docume
 
 一筆 `Document` 可以代表原始文件、解析單位或切片。由同一來源產出的多筆 `Document` 共用 `document_id`，切分後以 `data_id` 區分各筆。
 
+Elasticsearch 索引存取層另在每筆 ES Chunk 保存內部 `write_id`，同一次文件寫入的 Chunk 共用此值。它與 `source_revision` 分開，也不屬於共用 `Document` 或 Remote API 契約。ES `_id` 的衍生及清理範圍見 [Elasticsearch 文件覆寫](06_runtime_api_and_deployment.md#elasticsearch-document-replacement)。
+
 | 欄位 | 責任與語意 |
 |---|---|
 | `document_id` | 原始文件穩定識別。多頁、多切片保留原文件 ID。外部候選也需填可辨識來源的 ID。 |
