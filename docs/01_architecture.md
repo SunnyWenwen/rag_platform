@@ -45,7 +45,7 @@ Retrieval Builder 協助 User 建立、測試與匯出 Retrieval System，提供
 
 核心關係是 **Retrieval Engine Library ＋ Config → Retrieval System**；實際執行還需解析必要的資源／服務綁定。Python 使用者可直接載入 Library 建立 System，不需要 HTTP 或 Builder。Platform 將 Library 與 Runtime API 打包為共用 Image，部署時再載入 Config／環境設定，無須每份 Config 重新建 Image。
 
-Builder 管理設定與測試，Library 執行模組，Platform 交付執行框架，Runtime 承載 API，System 是依 Config 建立的具體應用。System 不等於 Pod／程序；Builder Local 共用 Runtime 指同一 API service／程序內建立多個 System，不只是共用 Pod，各自保有設定與資料作用範圍，資源限制與生命週期細節仍見 Q-017／Q-020。外部 Remote API 由服務提供者部署，Runtime 使用環境連線。 重啟 API service 程序即使不重建 Pod，仍影響該程序內所有 System 的 Memory 資料／工作；D-62 採共用 Flow／Executor，Builder Config 更新以新版配置快照及必要資源準備生效，不要求重建每份 Config 的專屬 Flow，也不必逐 Config 重啟共用 API service；D-63 確認該 System 的 Ingestion 結束後才允許新版設定生效；資源回收細節待定，模式對照見下一節。
+Builder 管理設定與測試，Library 執行模組，Platform 交付執行框架，Runtime 承載 API，System 是依 Config 建立的具體應用。System 不等於 Pod／程序；Builder Local 共用 Runtime 指同一 API service／程序內建立多個 System，不只是共用 Pod，各自保有設定與資料作用範圍，資源限制與生命週期細節仍見 Q-017／Q-020。外部 Remote API 由服務提供者部署，Runtime 使用環境連線。 重啟 API service 程序即使不重建 Pod，仍影響該程序內所有 System 的 Memory 資料／工作；D-62 採共用 Flow／Executor，Builder Config 更新以新版配置快照及必要資源準備生效，不要求重建每份 Config 的專屬 Flow，也不必逐 Config 重啟共用 API service；D-63 確認該 System 的 Ingestion 結束後才允許新版設定生效；切版與資源交接見 [Runtime 生命週期](06_runtime_api_and_deployment.md#src-07-4-systemrevision-與-engine-生命週期)。
 
 <a id="runtime-deployment-modes"></a>
 
@@ -54,8 +54,8 @@ Builder 管理設定與測試，Library 執行模組，Platform 交付執行框�
 
 | 環境 | Config 與 API service 的對應 | API service 啟動時 | Config 更新 |
 |---|---|---|---|
-| Builder DEV | UI 保存多份 System Config，共用一組或少數幾組 API service；每組均提供 Ingestion＋Inference，不逐張卡建立服務 | 載入 Library／Registry、服務／資源基礎設定，不被單一 System Config 定型；透過可信管理取得各 System Config | 驗證新版 Config 快照及相依資源，後續請求由共用 Executor 選 Component；不要求重建專屬 Flow；有 queued／running Ingestion 時僅存草稿，工作結束後才允許套用，資源切換仍待細化 |
-| FTEST／ENT | 主 Runtime 第一版基準為一個 Pod＋一組 API service＋一份 System Config | 綁定該 Config 與環境資源，建立該 System 實例，業務請求不另選 System | 以重啟／重新部署該 API service 採用新 Config；資料／索引相容與需否重新 Ingestion 仍需驗證 |
+| Builder DEV | Builder Backend 與 Runtime 各為獨立程序，一個 Runtime 可承載多個 System | 載入 Library／Registry 與共用 LangGraph，可先以零組 Config 啟動 | Builder Backend 經內部管理 API 下發設定。Runtime 依各 System 的工作狀態與索引相容性套用。 |
+| FTEST／ENT | 主 Runtime 第一版基準為一個 Pod＋一組 API service＋一份 System Config | 同一套 Runtime 啟動時載入 Config，管理 API 關閉 | 透過重新部署採用新 Config，啟動時檢查既有索引的歸屬與相容性。 |
 
 Builder Backend 下發／註冊 Config 與目標 Runtime 的對應，Runtime 依可信 System 識別取得已驗證 Config 快照，由共用 Flow／Executor 執行；各 Module 解析所選 Component 並傳入該次 Config／Context，Library 不直接讀 Builder DB。服務啟動不綁單份 Config，不代表 Engine／已安裝 Component 版本可任意熱替換；新增 Local 程式仍按原 Image／版本交付流程。
 

@@ -2,6 +2,8 @@
 
 Engine 用固定的 Ingestion／Inference 骨架編譯有效設定。每次執行使用同一 Config Revision，解析相依資源、驗證邊界、執行方法並記錄狀態。Builder、AI 助手與獨立 Runtime 共用設定驗證。平台內部 Registry／Factory 管理已交付的內建方法與 Remote Adapter。
 
+Engine 以 LangGraph 執行共用的 Ingestion／Inference 流程，各 System 傳入該次執行固定的設定快照。Component 接收當次輸入、參數與資源依賴。System 的載入、索引綁定與工作狀態由 [Runtime 管理](06_runtime_api_and_deployment.md#src-07-4-systemrevision-與-engine-生命週期)。
+
 <a id="remote-api"></a>
 ## User 接入 Remote API
 
@@ -80,7 +82,7 @@ D-53 真實 Engine 功能待實作，Prototype v0.12 已有控制與教學預覽
 <a id="src-04-45-indexing-與搜尋-adapter"></a>
 ### Indexing 與搜尋 Adapter
 
-**目的**：保存 Chunk，依欄位用途建索引，回報寫入與可搜尋狀態。Engine 在初始化時透過 Adapter 準備授權範圍內的目標；不依賴 Builder 才能 provision。
+**目的**：保存 Chunk，依欄位用途建索引，回報寫入與可搜尋狀態。Runtime 套用設定時由 Engine 推導索引定義，再透過 Index Adapter 建立或接回目標。Adapter 驗證實際 mapping、索引歸屬與相容性指紋，並依 [Runtime 索引生命週期](06_runtime_api_and_deployment.md#system-index-lifecycle) 執行重建或卸載。
 
 **2026-10-16 已確認的簡化**：預設保存 Chunk 的全部 structdata／metadata，不再要求使用者填 stored_fields 或勾「儲存內容」。保存內容與建立搜尋索引分開：使用者只選全文欄位、向量欄位與可過濾欄位；未選搜尋索引的 title 等欄位仍可供 Rerank／檢索結果消費端／引用使用。保留 metadata 不代表自動對所有 metadata 建立 Filter／全文索引。向量保存與恢復沿用既有完整 Chunk／vectors 政策，不因拿掉內容選單而刪除 vectors。
 

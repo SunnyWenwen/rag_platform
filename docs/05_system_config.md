@@ -67,8 +67,8 @@ Admin 以版本化設定檔維護全域模板。目錄提供模板 ID、版本�
 
 ## 變更影響
 
-- Import／Parsing／Chunking、文件 Embedding 或 Indexing 的有效資料語意變更，依實際相依判斷重跑 Ingestion／重建索引。
-- Query Transformation、搜尋／融合、Rerank 或執行參數變更以重新驗證與評估為主。
+- Import／Parsing／Chunking、文件 Embedding 或 Indexing 若改變已索引的內容、向量或搜尋能力，依 [Runtime 索引生命週期](06_runtime_api_and_deployment.md#system-index-lifecycle) 判定相容性。不相容的明確更新會刪除舊索引及資料、建新索引，由 Builder 重新匯入。
+- 純查詢參數變更（例如 `top_n`）、不改變輸出語意的執行調整（例如 Embedding batch size），可沿用相容索引。Inference 改用新的搜尋路徑時，仍須確認索引提供其要求的欄位和向量 Profile。
 - 外部 Retrieval 使用自身資料，驗證服務契約、回傳候選及後段相依。
 - 環境 Endpoint／Secret 更新後重新做連線與相容驗證。修改未啟用的內建草稿不改執行計畫。
 

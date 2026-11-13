@@ -45,6 +45,12 @@
 
 - 內建 Query Transformation 使用 `rewrite` 支援單筆與多筆改寫，以 `count` 設定改寫數量。`none` 沿用原始問題。模型回應、重試及錯誤政策依 [Engine 規格](03_engine_and_components.md#src-04-51-query-transformation) 追蹤。
 
+## 2026-11-13 已確認：Retrieval System 生命週期
+
+- Builder DEV 以獨立 Runtime 承載多個 System，透過內部 API 套用、列出、查詢及卸載。單組 Config 獨立部署由 Runtime 啟動時載入，管理 API 關閉。Engine 使用共用 LangGraph 執行。
+- Runtime 以 `system_id` 管理一份生效 Config，按 System 判斷管理操作與 Ingestion 是否忙碌。每個請求與已接受的文件工作固定 Config Revision。Ingestion Queue 與工作狀態採記憶體，重啟後不續跑。
+- 初始化或重連時驗證索引歸屬及相容性。明確更新遇到不相容索引時先刪再建，Builder 重新匯入。明確卸載移除該 System 的受管理索引及資料。規則與 API 草案見 [Runtime 生命週期](06_runtime_api_and_deployment.md#src-07-4-systemrevision-與-engine-生命週期)。
+
 ## 1. 使用方式與狀態
 
 | 狀態 | 意義 | Agent 行為 |
@@ -99,7 +105,7 @@
 | 內建方法 | rag_platform 管 Builder，rag_engine 管 Engine／Runtime 與平台內建方法 | 01、03 |
 | Remote 整合 | User 直連，支援單節點與連續區段；Admin 管理全域模板 | 2026-11-11；03、05 |
 | Flow／Config | 共用 Flow／Executor；每次請求及已接受文件固定 Config 快照，各步獨立傳入 Component Config／Context，資源作用域另管 | D-61／62；03、Engine／Component手冊、07 |
-| Config 生效／環境 | 同 System 有 queued／running Ingestion 時僅存草稿，工作結束後才允許新版生效；D 存邏輯值，E 存連線／Secret／目標及 Runtime 限制 | D-29／30／63／64；05、Runtime／部署手冊、Runtime 控制手冊、23 |
+| Config 生效／環境 | 依 System 固定生效版本並判斷忙碌；相容更新沿用索引，明確不相容更新先刪再建；獨立部署啟動時載入單一 Config | D-29／30／63／64；[Runtime 生命週期](06_runtime_api_and_deployment.md#src-07-4-systemrevision-與-engine-生命週期) |
 | Ingestion 工作 | document_id 完整覆寫、逐文件結果；整批預檢才 202；文件無 partial，Run 可 partial；工作／Queue 留記憶體，重啟 unknown；進度管控及取消延後討論 | D-56～58；21、2026-11-12 |
 | 讀寫／失敗 | 不加 Query 讀寫鎖，接受更新期間混合可見；同文件 queued／running 拒絕重複提交；未知 Remote 寫入不自動重試；資料清理／恢復仍有待決項 | D-59／60；Runtime API手冊、Q-008～Q-010／Q-017 |
 | 文件管理 | exists、文件摘要與 retire 讀取／管理實際儲存；摘要為 documents[]／next_cursor、document_id／source_revisions[]；retire 同步 200＋deleted 或 not_found，忙碌 409 | D-58／64／65；21 |
@@ -302,8 +308,8 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 
 - D-56 已確認：每 System 文件併發可配置、預設 1；不同文件可依上限並行，同 document_id queued／running 時拒絕重複提交。文件完成後完整替換，失敗不得冒充成功；D-60 放寬更新中的讀原子性，不加平台 Query 讀寫鎖。
 - D-60 已確認讀寫各自進行，不因寫入阻擋 Query、不加共享讀寫鎖或原子快照；同文件重複提交忙碌拒絕保留。
-- D-61／D-62 已確認 Builder 用一組或少數共用 API service／Flow，啟動不綁單份 Config；各請求固定 Config 快照，更新先驗證／解析及準備必要資源，不要求重建專屬 Flow。D-63 已確認該 System Ingestion 結束後才允許新版生效；舊 Query／資源交接仍待決。FTEST／ENT 主 Runtime 一 Pod＋一組 service＋一份 Config。
-- 仍待：舊 Query 與 Component／資源回收、未知 Remote 操作判定、Config／資料 Profile 相容、實體 backend 可見性與失敗清理；D-63 已定一般 queued／running Ingestion 結束後才允許新版生效。整體 Query Ready 條件與寫入鎖不同，不因本輪放寬讀一致性就忽略實際錯誤。
+- D-61～D-63：Builder DEV 使用共用 Runtime 與 LangGraph。每次執行固定 Config 快照，更新須等該 System 已接受的 Ingestion 完成。相容更新讓舊查詢跑完；索引重建與卸載須先排空。見 [Runtime 生命週期](06_runtime_api_and_deployment.md#src-07-4-systemrevision-與-engine-生命週期)。
+- 仍待：未知 Remote 操作、實體後端寫入可見性、失敗清理及跨重啟的生命週期失敗處理。
 - 第一版採已確認的無 Query 讀寫鎖策略；索引版本快照／零停機世代切換不是首期新增需求。
 - 負責角色：Engine＋Backend；阻擋 M2／M3 併發正式行為。
 - 決策：未定；更新 Engine／資料契約手冊／UI手冊／Runtime／部署手冊。
@@ -348,6 +354,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 
 - 已確認：同一 System 的同版邏輯 Config 跨環境相同，部署設定分開；文件 source_revision 與 index_generation 概念分開。不清楚的是保存／生效時點、Hash、草稿衝突、CSV mapping 歸屬、環境部署識別／資料版本及快照切換。
 - 2026-10-28 補充：需定 Component／package／Engine 解析版本保存位置、如何納入可重現執行與相容判定、更新 Component 後的重測／重建與回復政策；新版發布不自動升級既有 System，僅看版本號不能判定索引相容。
+- 已確認：Runtime 以索引相容性指紋與實際 mapping／Profile 驗證既有索引；ES 將 System 歸屬及指紋存入 `mappings._meta`。指紋輸入、正規化及演進規則仍待定。
 - 建議：分開保存版本與執行綁定；Hash 只納有效配置並保留有語意順序，使用樂觀版本檢查。
 - 替代：單一 active revision，改配置後阻擋到準備完成；仍須避免 lost update。
 - 負責角色：Engine＋Backend＋Frontend；阻擋 M0 Hash 凍結及 M5 版本操作。
@@ -405,7 +412,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - D-56 已確認：Builder DEV／獨立 Runtime 共用 System Queue／併發與 Inference Rate／併發／Deadline；Runtime 控制總量，Builder 另管理 User／Workspace 配額。上限可配置已確認；放 E 為先前建議，D-57 暫緩管理者／存放位置／Schema 的定案。Worker 是排程概念，不要求每 System 新 Pod。
 - D-61：共用 API service 啟動只綁服務／Registry 基礎設定，後續管理多份 System Config，不因每份 UI 設定新增服務；可依 Namespace／資源池分成少數共用服務，精確分組策略尚未選定。
 - D-62 已選 B：共用 Flow／Executor，逐請求／已接受文件固定 Config 快照，Module 依設定解析 Component；不要求每份 Config 建立專屬 Flow。Component 實例／資源是否共用依狀態與隔離需求決定。
-- 仍待：配置解析快取、Component／資源預載與回收、可信路由與管理 API、舊 Query／資源交接、服務池分組、公平排程、正式參數 Schema／載入方式、實際記憶體 bytes 配額、未知結果清理、未來多 replica 控制與程序安全性；初始上限與終態紀錄保存值已由 D-64 確認並記錄於Runtime 控制手冊。
+- 仍待：配置與 Component 快取、資源預載與釋放策略、管理 API 的正式協定、服務池分組、公平排程、正式參數 Schema、實際記憶體上限及多副本協調。Runtime 管理行為見 [生命週期](06_runtime_api_and_deployment.md#src-07-4-systemrevision-與-engine-生命週期)。
 - 建議：先有受限共享 Runtime 與明確隔離 Binding；Local Search 每 System 的 Ingest／Query 必須同程序。
 - 替代：每 System 獨立 Runtime，增加部署／資源管理成本。
 - 負責角色：平台＋Backend／Runtime；阻擋 M5 多 System 服務。

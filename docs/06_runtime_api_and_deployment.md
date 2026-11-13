@@ -56,26 +56,54 @@
 ## System／Revision 與 Engine 生命週期
 
 <a id="src-07-41-建立與啟動建議流程"></a>
-### 建立與啟動（建議流程）
+### System 管理介面
 
-1. Backend 驗證身分與 Workspace 權限，建立 system_id，依 05 的既定自動命名方向建立穩定 collection；不要求 UI 使用者手填。
-2. 收到 Draft，以目標 Runtime 的共用 Config 編譯／Validator 檢查有效設定，回傳錯誤與變更影響；本地格式預檢不取代完整驗證，接口依 相關章節 核定。
-3. 保存 Config Revision；由 Backend 經可信管理呼叫註冊該 System 的 Config／目標共用 Runtime 對應，不逐份 Config 啟動新的 API service。
-4. Runtime 驗證／解析 Config 快照並準備必要資源；共用 Flow／Executor 在各步依快照取得 Component 並傳入參數／Context，不要求每份 Config 組裝專屬 Flow。預載／快取策略待 Q-020，服務解析、Profile 與資料就緒分開回報。
-5. UI 可執行 Ingest／Query；沒有索引時 Query 回明確不就緒。
+Builder 保存 System、草稿與發布歷史，Runtime 持有已載入的 `system_id`、生效的 `config_revision`、索引綁定與工作狀態。Builder DEV 的 Runtime 獨立於 Builder Backend，啟動時可有零組 Config。Builder Backend 透過受保護的內部管理 API 下發設定。單組 Config 獨立部署在啟動時直接呼叫同一套 Python 管理函數，並停用管理 API 路由。
 
-共享 Runtime 不代表每建立 System 就新建 API service 或 Pod。各 System 仍有自己的 Config／Binding／索引／Queue 與限制；共用的是 API 及 Flow 骨架，不是把資料混在一起。D-62 下 Component 實例與模型／Client 等資源可另依狀態及作用範圍重用或隔離；配置解析快取、資源配額、LRU／釋放與同時工作限制見 Q-020。
+| 管理操作 | 內部 HTTP 路徑草案 | 行為 |
+|---|---|---|
+| 初始化／更新 | `PUT /internal/v1/systems/{system_id}` | 傳入 `config_revision` 與完整 `config`。可共用 `apply_system()`，由呼叫方明確區分初始化和更新意圖。 |
+| 列出 | `GET /internal/v1/systems` | 列出此 Runtime 目前載入的 System 與生效版本。 |
+| 查單一 | `GET /internal/v1/systems/{system_id}` | 回報生效版本、是否忙碌、能否匯入及能否查詢。 |
+| 卸載 | `DELETE /internal/v1/systems/{system_id}` | 排空該 System 的請求、刪除其受管理索引及資料、釋放執行資源。Builder 保有 System 與 Config 歷史。 |
+
+管理操作僅供可信 Builder Backend。業務 HTTP／MCP 使用相同的 Runtime 狀態與執行入口。MCP 的業務 API key 只授權相應 System 與工具。正式管理路徑、請求／回應 Schema、逾時及認證接線依 Q-019 定義。
+
+<a id="system-index-lifecycle"></a>
+### 初始化、重連與索引重建
+
+`apply_system()` 先驗證 Config，推導平台索引應有的 mapping、搜尋欄位與 Embedding Profile，再依操作意圖處理索引。Config 成功載入與資料可搜尋分開回報。
+
+| 操作 | 條件 | 結果 |
+|---|---|---|
+| 初始化／重啟後重新載入／重連 | 確認索引不存在 | 建立空索引與 mapping。可接受 Ingestion，待資料寫入並可搜尋後才開放依賴該索引的查詢。 |
+| 初始化／重啟後重新載入／重連 | 既有索引的歸屬、索引相容性指紋及實際 mapping 相符 | 接回既有索引，依其實際可用性開放匯入與查詢。 |
+| 初始化／重啟後重新載入／重連 | 無法確認索引歸屬，或指紋／mapping 不相容 | 回報衝突並保留索引。連線或授權錯誤依實際原因回報，不能當作索引不存在。 |
+| 明確更新 | 既有索引與新版相容 | 沿用索引。切換後新請求使用新版，已開始的查詢固定原版至結束。 |
+| 明確更新 | 確認索引不存在 | 建立新版空索引與 mapping。新索引建立成功後才啟用新版，並等待 Builder 重新匯入。 |
+| 明確更新 | 新版與本 System 的受管理索引不相容 | 驗證新版後排空請求，刪除舊索引及資料，再建立新索引與 mapping。新索引建立成功後才啟用新版並接收匯入，由 Builder 重新提交來源資料。 |
+| 明確卸載 | 已排空，且索引已不存在或可確認由本 System 管理 | 刪除仍存在的受管理索引及資料，完成卸載。無法確認歸屬時回報衝突。 |
+
+Elasticsearch 使用 `mappings._meta` 記錄 `system_id` 與 `index_fingerprint`。Runtime 讀取實際 mapping 並驗證歸屬及相容性。指紋基於影響索引內容、向量語意及搜尋能力的有效設定，純 Inference 參數如 `top_n` 不改變指紋。精確輸入與正規化規則依 Q-015 定義。參考 [Elasticsearch mapping `_meta`](https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/mapping-meta-field)。
+
+Local Memory 使用同一套相容判定與 `system_id` 隔離；程序重啟後記憶體索引遺失，需重新匯入。外部 Retrieval 查詢自有資料時，依其服務就緒狀態與候選契約執行；上述索引建立、重建與卸載的刪除範圍只涵蓋平台管理的資料。
 
 <a id="src-07-411-remote-imageexternal-的生命週期"></a>
 ### 外部 Remote API 的生命週期
 
 User 設定已部署的外部服務。Runtime 在執行時依有效環境綁定呼叫，平台驗證契約與連線。外部資料、服務部署與維護歸提供者，平台索引仍由 Indexing 管理。
 
-### Config 更新
+### 更新／卸載的併發與失敗
 
-獨立 Runtime 初期透過重啟／重部署套用 Config，見 [Runtime API／部署](06_runtime_api_and_deployment.md#src-21-81-builder-共用模式與獨立部署模式d-61d-62)。D-62 採共用 Flow／Executor，每次請求與已接受的文件工作固定已驗證 Config 快照；Builder 新版 Config 需先驗證／解析及準備必要資源，通常不重啟共用 API service，也不要求重建專屬 Flow。D-63 已確認該 System 有 queued／running Ingestion 時僅存草稿，工作結束後才允許新版生效；不把既有文件工作改綁新版，也不影響其他 System。舊 Query／Component 資源如何回收仍待 API-D05；持久索引相容性與 Remote 在途寫入不能只靠固定快照解決，不承諾熱切／無損恢復。
+每個 `system_id` 一次處理一個生命週期變更。有其他管理操作或排隊／執行中的 Ingestion 時，第一版回 `409 system_busy`（錯誤名稱草案），Builder 保留設定後重送，Runtime 無須另建 Revision 更新佇列。開始變更與接收新 Ingestion 共用該 System 的狀態檢查，避免檢查空閒後仍接受工作。其他 System 照常執行。
 
-Backend 儲存前以有效設定比較，依 05 判定影響；UI 與 AI 都不能繞過。Edit 使用獨立草稿，取消不生效。
+相容更新時，舊查詢可繼續，等引用結束才釋放原版專用資源。需要刪除索引的更新或卸載會先停止接收該 System 的新請求，等既有查詢結束，再操作索引。此排空限於生命週期操作；一般文件寫入仍依 D-60 與查詢併行。
+
+新版驗證失敗時，原生效版本與索引繼續使用。若已刪除索引但建立新索引失敗，回報更新失敗，該 System 保持不可用，待重試成功後由 Builder 重新匯入。Runtime 重啟後舊工作仍回 `unknown`。刪除或建立結果不明時，先查證目標索引狀態及歸屬，再決定如何重試；錯誤碼、重試協定與跨重啟的更新狀態仍待 API-D05／Q-019。
+
+獨立部署重新載入 Config 時採初始化規則；若既有索引不相容，由部署管理者安排明確的重建及重新匯入。獨立部署的重建入口與部署流程另議。Backend 依 [變更影響](05_system_config.md#變更影響)向使用者呈現重建及停查影響。
+
+實作驗收覆蓋首次建立、相容重連、未知歸屬拒絕、相容切版、忙碌拒絕、排空後重建／卸載、刪除後建立失敗，以及 Local Memory 重啟與 ES 索引接回。正式管理 API 的版本衝突與重試、排空逾時、重匯入後的就緒判定細節仍待定。
 
 
 2026-10-16 的內容保存簡化：Indexing 保存全部 Document.structdata／metadata，Chunking 預設繼承全部有效業務 metadata；只選全文／向量／Filter 能力。原型的 indexing.stored／chunking.metadata 是待遷移的舊保存／繼承投影，不能直接套用為新規則。Metadata 全繼承仍保留可信 ACL／來源及 Schema 驗證，Memory／MongoDB 的持久化模式不變；保存內容也不等於全部內容回傳給 API，回傳與授權投影另外處理。
@@ -84,9 +112,7 @@ Backend 儲存前以有效設定比較，依 05 判定影響；UI 與 AI 都不�
 
 - Ingestion／retire 與 Query 各自進行，不因寫入阻擋查詢，不加共享 Query 讀寫鎖／全索引快照；使用者接受更新期間的短暫新舊混合。
 - 同 document_id 重複 Ingestion 的忙碌拒絕保留；文件未完整成功不得標 completed。失敗清理、崩潰處理及最終資料正確性仍需 backend 實作，不代表讀取有原子保證。
-- Builder Config 以驗證後的新快照供後續請求執行，該 System Ingestion 結束後才允許啟用；舊 Query／資源交接細節待決，獨立 Runtime 初期仍重啟套用。索引格式／Profile 相容與版本識別仍依 Q-010／Q-015。因資源／索引不相容而無法查詢，與因寫入而主動鎖住查詢不同。
-
-純 Inference 設定不必重做 Ingestion，但仍需新設定版本與相容性驗證；初期不新增熱切／零停機承諾。
+- System 更新或卸載遵守本節的忙碌與排空規則。相容的 Inference 更新沿用現有索引。索引格式／Profile 相容與版本識別仍依 Q-010／Q-015。
 
 <a id="src-07-51-builder-backendcontrol-plane"></a>
 ## Builder Backend（Control Plane）
@@ -158,7 +184,7 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 - D-58：新增文件存在性與全部 document_id 清單的查詢能力，資料來源為該 System 的實際儲存／索引，與 Runtime 工作狀態分開；清單需對 Chunk 的 document_id 去重。
 - D-60：讀寫各自進行，不因 Ingestion／retire 寫入而阻擋 Query，不加共享查詢讀寫鎖／全索引快照；同文件重複 Ingestion 的忙碌拒絕維持。
 - D-60：Runtime API 暫採 HTTP Basic Auth，預設一組帳密可操作該 API service 提供的全部 API，首期不做逐角色／逐 API 權限；Builder 使用者登入另議。
-- D-61／D-62：Builder 的多份 UI Config 不對應等量 API service 或專屬 Flow；共用 Executor 逐請求固定 Config 快照，各 Module 依設定取得 Component 並傳入本次參數／Context。Component 實例與資源是否共用分開管理，D-63 已定該 System 的 Ingestion 結束後才允許新版 Config 生效；舊 Query／資源交接、Namespace／服務池分組與回收細節仍待定。
+- D-61～D-63：多個 System 共用 Runtime 與 LangGraph，各請求固定 Config 快照。切版、索引及資源交接見 [System 管理](#src-07-4-systemrevision-與-engine-生命週期)。服務池分組與快取回收策略依 Q-020。
 
 - D-64：確認接收／文件與 Run 狀態核心欄位及錯誤格式；覆寫失敗留 Runtime 記憶體可查，不代表資料回復舊版。初始限制見 Runtime API／部署手冊；可信內部 System 路由見 相關章節。文件 ID 每頁數量／排序／cursor 的細節仍待確認。
 
@@ -398,7 +424,7 @@ Retire 已確認為直接刪除，不做 soft delete／restore API；再次使�
 | API-D02 | 保留 Run／文件兩種查詢；文件無 partial、Run 可 partial；無紀錄 GET 200＋unknown；D-64 確認狀態／counts／error 核心欄位及 22 的終態保存初始值 | 完整型別／錯誤碼、輪詢、未知結果與機器 OpenAPI；不把記錄失敗等同自動回復資料 | Q-019／Q-017 |
 | API-D03 | retire 同步確認後 200＋document_id／result=deleted 或 not_found，同文件 queued／running 回 409；不取消工作或 soft delete／restore | 後端完整刪除能力、部分刪除／未知結果與重試清理協定仍待核定 | Q-008／Q-017／Q-028 |
 | API-D04 | D-64 確認 22 的初始預設與管理方式：E 的 Runtime 環境設定，由 Admin／部署管理者提供；Query 額滿直接拒絕 | 候選參數路徑、正式機器 Schema／載入方式、排程／計數算法與實際容量驗證；不新增單次請求覆寫 | Q-017／Q-020／Q-027 |
-| API-D05 | 共用 API／Flow、逐請求與已接收文件固定 Config 快照；該 System Ingestion 結束後才允許新版設定生效；獨立 Runtime 啟動綁定；無續跑／無 Query 讀寫鎖／未知寫入不自動重試 | 舊 Query／資源回收、管理端點的忙碌回應、Remote 在途操作與失敗清理仍待細化；不增加全域讀寫互斥／索引快照 | Q-008～010／Q-015／Q-017／Q-028 |
+| API-D05 | 共用 Runtime 固定每次執行的 Config 快照；按 System 判斷忙碌；相容更新沿用索引，不相容的明確更新先刪再建，明確卸載移除索引；重啟或重連驗證後接回 | 管理路徑及 Schema、逾時與未知結果、跨重啟失敗處理、獨立部署重建操作方式 | Q-008～010／Q-015／Q-017／Q-019／Q-028 |
 | API-D06 | Builder 登入延後；Runtime API 暫用一組 HTTP Basic 帳密操作全部 API；首期不做角色／逐 API 授權 | D-64 已選 相關章節 的受保護內部 System 路由；HTTPS／Secret 注入／網路保護與檢查位置待細化；對外 Health 同一帳密，Probe 接法為部署細節 | Q-006／Q-019／Q-020 |
 | API-D07 | 查 document_id 是否存在；D-65 文件清單回 documents[]＋next_cursor，每筆 document_id／source_revisions[]，讀取實際 Chunk 而非工作表 | exists 精確格式、分頁參數／排序／cursor、Remote 讀取操作及完整 OpenAPI 後續整理；不任選最新版本 | Q-019／Q-028 |
 
@@ -418,18 +444,16 @@ API-D01～07 沿用既有 Q-ID，不另凍結完整 OpenAPI。批次物件、接
 
 | 環境 | API service 啟動與 Config | 請求／更新 |
 |---|---|---|
-| Builder DEV | 一組或少數幾組 API service 共用 Library／Registry；不在啟動時由單一 System Config 定型 | Backend 經可信管理註冊／下發 Config；請求先固定一版快照，共用 Executor 在各 Module 選 Component，純參數更新不要求重建專屬 Flow |
-| FTEST／ENT | 主 Runtime 第一版一 Pod＋一組 Ingestion／Inference API service＋一份 Config，啟動時綁定 | 業務請求不需選 System；Config 更新可重啟／重部署該 API service |
+| Builder DEV | Runtime 以獨立程序啟動，共用 Library／Registry／LangGraph，可先載入零組 Config | Builder Backend 經內部管理 API 下發多組 Config。每次業務請求固定該 System 的一份生效快照。 |
+| FTEST／ENT | 同一套 Runtime 於啟動時載入單組 Config，管理 API 關閉 | 業務請求由啟動設定選定 System，Config 更新透過重啟／重新部署。 |
 
 Builder 儲存許多 UI Config 不等於建立等量 API service／Pod。Runtime 依已驗證快照準備必要 Component／資源，各 System 的 Config、Binding、索引及工作作用範圍分開；共用 Flow 不要求共用所有實例。配置解析快取、實例／資源預載與回收、Namespace 或服務池分組的精確機制待 Q-020。Library 不直接連 Builder DB；由 Backend 經可信邊界管理 Config 與目標 Runtime 對應。
 
 「不綁單份 Config」不代表程式可任意熱替換：可用 Local Components／Adapters 仍由所選 Runtime Image／Registry 版本決定。新 Component 程式依既定 Image 發布流程；不同 Config 在既有能力內組裝 System。
 
-因此 Builder 改某份 Config 通常不需重啟 API service；先驗證／解析新版快照，必要時重新準備資源及驗證資料相容性。每次請求及已接收 Ingestion 文件固定同一快照，不到各 Module 再讀最新版；D-63 已確認該 System 有 queued／running Ingestion 時可以保存草稿，暫不啟用新版，待既有 Ingestion 結束後才允許套用；既有工作不重綁新版，其他 System 照常執行，也不因此鎖住 Query。管理端點忙碌回應、既有 Query 與索引資源回收仍待 API-D05；Remote 結果不明不推定已停止寫入。若真的重啟共用 API 程序，即使 Pod 仍在，其內所有 System 的 Memory 資料與工作仍會遺失。
+Builder 下發新版時，依 [System 管理](#src-07-4-systemrevision-與-engine-生命週期)判斷忙碌、索引相容性及切換方式。Runtime 重啟會清除所有 System 的記憶體索引與工作狀態。Builder 可重新下發 Config，持久索引依相容性檢查接回。
 
 FTEST／ENT 的一 Pod 基準是主 Runtime。外部 API、ES／MongoDB 等資源以環境綁定提供。
-
-不提供任意 Config 原地熱切承諾。Ingestion／Embedding／Indexing 語意改變仍可能需要重新 Ingestion，純 Inference 改動可使用相容資料；Ingestion 結束後才允許啟用已確認；舊 Query／資源交接與未知 Remote 寫入仍待既有 Q-ID 落實。
 
 <a id="src-21-82-remote-寫入可能成功但-runtime-timeout"></a>
 ### Remote 寫入可能成功但 Runtime timeout
@@ -640,7 +664,7 @@ Local Search 第一版仍同程序／單副本。背景執行不能把唯一 Mem
 
 - 21 的 counts／錯誤 Envelope 與文件管理細節；批次物件、整批預檢、Run partial 與 retire 直接刪除方向已確認。
 - 文件級索引 staging／舊 Chunk 清除／發布點、搜尋可見性及崩潰一致性；不以單次 Bulk／Hash 宣稱原子替換已完成。
-- D-62 已定共用 Flow、逐請求／文件固定 Config 快照；D-63 已定該 System 的排隊／執行中 Ingestion 結束後才允許新版生效；舊 Query／資源交接、未知 Remote 操作與持久索引相容性仍待決。讀寫不互斥／接受短暫混合已由 D-60 確認，詳見 [Runtime API／部署](06_runtime_api_and_deployment.md#src-21-8-api-d0506-的具體情境)。
+- 固定快照、System 切版／卸載及持久索引相容規則見 [System 管理](#src-07-4-systemrevision-與-engine-生命週期)。一般寫入與 Query 依 D-60 併行，未知寫入與失敗清理仍依 API-D05 追蹤。
 - 未知遠端寫入已確認不自動重試；具體結果查核、同文件隔離、Idempotency-Key／版本控制及清理仍待定。進度管控及取消另議。
 - Queue／並行／Rate／Deadline／紀錄保留初始值已依 D-64 記於Runtime 控制手冊；尚待正式設定 Schema／載入方式、未知紀錄清理與未來多 replica 一致控制。
 
@@ -653,7 +677,7 @@ Local Search 第一版仍同程序／單副本。背景執行不能把唯一 Mem
 |---|---|---|
 | Memory | Chunk／向量／搜尋結構遺失 | 回需要 Ingestion；不回示意檢索結果 |
 | MongoDB | 讀保存的 Chunk／vectors／Manifest 重建 | 驗證 Config／Profile／資料版本，完成前不提供不完整索引 |
-| ES | 驗證既有 Index／Mapping／Profile | 有相容可用資料才 Query；不存在時可接受 Ingestion |
+| ES | 檢查既有 Index 的歸屬、指紋、mapping 與可用性 | 相容時接回，確認不存在時建立空索引並接受 Ingestion。衝突與暫時不可用分開回報。 |
 
 MongoDB 保存不等於跨 Pod 索引同步。重建失敗、DB 中斷、Profile 不符、損壞資料及大資料量啟動時間見 Q-012／Q-027。原始檔／解析結果 若未保留，不保證可自動重新切分／Embedding。
 
