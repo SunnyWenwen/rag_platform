@@ -85,7 +85,9 @@ Builder 保存 System、草稿與發布歷史，Runtime 持有已載入的 `syst
 | 明確更新 | 新版與本 System 的受管理索引不相容 | 驗證新版後排空請求，刪除舊索引及資料，再建立新索引與 mapping。新索引建立成功後才啟用新版並接收匯入，Builder 以保存的原始資料重新提交 Ingestion。 |
 | 明確卸載 | 已排空，且索引已不存在或可確認由本 System 管理 | 刪除仍存在的受管理索引及資料，完成卸載。無法確認歸屬時回報衝突。 |
 
-Elasticsearch 使用 `mappings._meta` 記錄 `system_id` 與 `index_fingerprint`。Runtime 讀取實際 mapping 並驗證歸屬及相容性。指紋基於影響索引內容、向量語意及搜尋能力的有效設定，純 Inference 參數如 `top_n` 不改變指紋。精確輸入與正規化規則依 Q-015 定義。參考 [Elasticsearch mapping `_meta`](https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/mapping-meta-field)。
+Runtime 從有效 Config 推導會影響索引內容、向量語意及搜尋能力的設定，將結果正規化後計算 SHA-256。輸入包括生效的解析／切分設定、文件 Embedding Profile（含模型版本與維度）及推導出的索引 mapping 和搜尋設定。正規化消除 JSON 物件鍵順序的影響，保留具語意的順序。純 Inference 參數如 `top_n` 不改變指紋。精確欄位與序列化規則依 Q-015 定義。
+
+Elasticsearch 在 `mappings._meta` 記錄 `system_id`、`index_fingerprint` 與指紋規則版本。Runtime 比對歸屬、指紋及實際 mapping，判定是否可接回或沿用索引。完整 Config 由 Builder 按 `config_revision` 保存。參考 [Elasticsearch mapping `_meta`](https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/mapping-meta-field)。
 
 Local Memory 使用同一套相容判定與 `system_id` 隔離；程序重啟後記憶體索引遺失，需重新匯入。外部 Retrieval 查詢自有資料時，依其服務就緒狀態與候選契約執行；上述索引建立、重建與卸載的刪除範圍只涵蓋平台管理的資料。
 
@@ -475,16 +477,18 @@ Runtime 透過 Indexing 寫入 Elasticsearch 時，回應逾時可能發生在�
 
 本節定義同一個 System 內以 `document_id` 為單位的 Elasticsearch 更新。一批 Ingestion 中的每份文件各自處理。相同 `document_id` 有 queued／running 工作時沿用忙碌拒絕。整個 System 的索引重建依 [索引生命週期](#system-index-lifecycle) 處理。
 
-Elasticsearch 索引存取層為每次文件寫入產生一個 `write_id`，例如 UUID。同一份文件此次輸出的全部 Chunk 共用此值。將它存入每筆 ES Chunk 的內部欄位（mapping 為 `keyword`）。ES `_id` 由 `document_id`、`write_id`、`data_id` 唯一且穩定地衍生，讓舊批次和新批次在同一索引內並存。`source_revision` 仍描述來源內容版本。`write_id` 用於精確定位寫入批次，時間可供診斷。共用 `Document` 的 API 契約及 `data_id` 語意維持原定義。
+Elasticsearch 索引存取層為每次文件寫入產生一個 `write_id`，例如 UUID。同一份文件此次輸出的全部 Chunk 共用此值。將它存入每筆 ES Chunk 的內部欄位（mapping 為 `keyword`）。ES `_id` 由 `document_id`、`write_id`、`data_id` 唯一且穩定地衍生，讓舊批次和新批次在同一索引內並存。`source_revision` 供來源追溯。相同 `document_id` 的新提交依既有覆寫規則執行，即使 `source_revision` 相同而內容有變。`write_id` 用於精確定位寫入批次，時間可供診斷。
 
 1. 寫入前先取得該 System／文件現有的舊 `write_id`，作為本次成功後的清理範圍。產出並驗證完整的新 Chunk 集合後，使用新的 `write_id` 寫入。
 2. 逐筆檢查 ES Bulk 結果，確認新 Chunk 全部成功且已可搜尋，才依 `document_id` 和先前取得的舊 `write_id` 刪除舊 Chunk。舊資料的刪除對搜尋可見後，文件才標為 `completed`。
 3. 若確認新批次未完整寫入，只清理本次 `write_id` 的 Chunk，保留舊資料。若新版已可搜尋，舊資料清理失敗時保留新版並回報清理失敗或未完成。清理結果及殘留須可辨識，已知失敗回 `failed`，結果不明回 `unknown`。
 4. 若 ES 寫入或刪除逾時而無法判定結果，回 `unknown`。查核以原定的 Chunk `_id`、`write_id` 和後端操作結果為依據，確認後才決定是否清理或重送。安全重試同一次寫入時沿用原 `write_id`、Chunk 內容和 ES `_id`。重新提交的 Ingestion 工作產生新的 `write_id`。
 
-D-60 允許更新及清理期間查到新舊混合。驗收案例為舊批次 10 筆、新批次 6 筆。新版全部成功後只留下新 6 筆。若新版第 4 筆確認失敗，應保留舊 10 筆並清理本次所有實際成功的新 Chunk。另需覆蓋寫入逾時、舊資料刪除失敗與重啟後結果查核。
+Runtime 重啟後，舊 `run_id` 回 `unknown`，未完成文件由 Builder 使用保存的原始資料重新提交。確認先前 ES 寫入已結束後，新的工作重跑整份文件。新版完整可搜尋後，清理寫入前查到的所有舊 `write_id`，包括中斷留下的批次。Builder 如何識別受影響的文件及發起重送，留給 Builder 規劃。Runtime 對仍在運作時已確認的寫入失敗，照第 3 步清理。
 
-待定細節包括舊索引缺少 `write_id` 的遷移、清理方式與錯誤碼、未知結果的查核／隔離，以及重啟後如何辨識和清理未完成批次。參考 [Elasticsearch Bulk](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-bulk) 和 [Refresh](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/refresh-parameter)。
+D-60 允許更新及清理期間查到新舊混合。驗收案例為舊批次 10 筆、新批次 6 筆。新版全部成功後只留下新 6 筆。若新版第 4 筆確認失敗，應保留舊 10 筆並清理本次所有實際成功的新 Chunk。另需覆蓋寫入逾時、舊資料刪除失敗，以及重啟後由 Builder 重送並清理殘留。
+
+待定細節包括舊索引缺少 `write_id` 的遷移、清理方式與錯誤碼，以及如何確認逾時或中斷的 ES 操作已結束。參考 [Elasticsearch Bulk](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-bulk) 和 [Refresh](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/refresh-parameter)。
 
 <a id="src-21-83-已確認不加平台-query-讀寫鎖"></a>
 ### 已確認：不加平台 Query 讀寫鎖

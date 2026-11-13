@@ -56,6 +56,7 @@
 - 本輪先以 Elasticsearch 為文件覆寫的後端。索引存取層產生內部 `write_id`，同一次寫入的 Chunk 共用此值，並以獨立 ES `_id` 保存。
 - 新 Chunk 全部寫入並可搜尋後才刪舊。新版確認失敗時，清理本次 `write_id` 並保留舊資料。更新期間可短暫查到新舊 Chunk；結果不明先查核，再決定是否重送。
 - `write_id` 與來源 `source_revision` 分開。ES 寫入、可見性與清理案例見 [Elasticsearch 文件覆寫](06_runtime_api_and_deployment.md#elasticsearch-document-replacement)。
+- 覆寫以同 System 的 `document_id` 為準，`source_revision` 僅供來源追溯。Runtime 重啟後，由 Builder 重新提交原始資料，完整寫入成功後清理舊批次及中斷殘留。
 
 ## 2026-11-13 已確認：索引重建的原始資料
 
@@ -71,6 +72,10 @@
 - Runtime 的 Elasticsearch 索引可查且必要依賴就緒時接受 Inference，空索引回成功空候選。Builder 等初次預定資料全部匯入且可搜尋後才開放其查詢入口，後續一般新增不停止查詢。
 - Builder 的 CSV 資料上傳以整批替換為語意，每列對應一份 Document，預檢後清除目標 System 的既有索引資料，再匯入全份 CSV。具體管理流程由 Builder 規劃。
 - M1 首條端到端流程使用 Elasticsearch。Data Column 型別與能力另行討論。
+
+## 2026-11-13 已確認：索引相容性指紋
+
+- 由有效 Config 推導影響索引內容、向量與搜尋能力的設定，正規化後計算 SHA-256。ES `mappings._meta` 保存 System 歸屬、指紋及指紋規則版本。完整 Config 由 Builder 保存。見 [索引生命週期](06_runtime_api_and_deployment.md#system-index-lifecycle)。
 
 ## 1. 使用方式與狀態
 
@@ -299,8 +304,8 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 ### Q-007 文件／Chunk ID 與 source_revision
 
 - 2026-11-03 D-52：必要 data_id 仍須有效／清單內唯一，但不強制由 fingerprint／ordinal 計算，也不強制將計算資訊寫入 _rag。SDK helper 可選用；穩定／更新語意按實作及此 Q-ID 核定。
-- 2026-10-30 D-47：已同意可重現 ID 方向；[資料契約](02_data_contracts.md#data-flow)～6 提供有效切分計畫 fingerprint＋文件內全域 ordinal 的 Python 參考演算法。仍不清楚：省略 revision 的生成、檔案拆多文件、CSV 整批替換的 ID 生成、同 revision 不同內容的衝突政策、跨語言 canonicalization 與正式遷移；不能再將穩定 ID 方向全部列為未決。
-- D-65 確認文件摘要清單回 document_id＋source_revisions[]，彙整實際儲存 Chunk 的版本；這不凍結省略 revision 的生成規則、衝突政策或版本時序，也不等於持久工作歷史。
+- 2026-10-30 D-47：已同意可重現 ID 方向；[資料契約](02_data_contracts.md#data-flow)～6 提供有效切分計畫 fingerprint＋文件內全域 ordinal 的 Python 參考演算法。仍待省略 revision 的生成、檔案拆多文件、CSV 整批替換的 ID 生成、跨語言 canonicalization 與正式遷移。
+- D-65 確認文件摘要清單回 document_id＋source_revisions[]，彙整實際儲存 Chunk 的版本。覆寫以 `document_id` 為準，接受相同 `source_revision` 帶入新內容；來源版本僅供追溯。
 - 建議：跨批更新要求穩定 document_id，內容版本與 Config 分開；採明確可重現的衍生 ID 規則。
 - 替代：每批當新文件；需接受無法自然更新與重複資料後果。
 - 負責角色：Engine＋資料／產品；阻擋 M1 正式 ID 規範及 M2 更新。
@@ -311,7 +316,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 
 - D-56 已確認：同 (System, document_id) 完整覆寫，不存在則新增；成功後清除舊文件不再產出的 Chunk，不做欄位 merge。同文件 queued／running 時拒絕重複提交，終態後可重新提交；Runtime 重啟不恢復工作。
 - 已確認：ES 以 `write_id` 保存新舊批次，新版全部可搜尋後刪除舊批次。確認寫入失敗時僅清理本次批次。見 [Elasticsearch 文件覆寫](06_runtime_api_and_deployment.md#elasticsearch-document-replacement)。
-- 仍待：source_revision 衝突／較舊來源、相同內容是否可 no-op、跨請求 Idempotency-Key、未知結果查核及重啟殘留清理。整批預檢與逐文件結果沿用 D-57；文件管理與 retire 沿用 D-58。精確錯誤協定、Ingestion 進度管控與取消另議。
+- 已確認：`source_revision` 不作版本衝突或新舊順序判斷。Runtime 重啟後的復原由 Builder 重送整份文件觸發。仍待相同內容是否可 no-op、跨請求 Idempotency-Key、確認先前 ES 寫入已結束的方式，以及 Builder 識別需重送的文件。整批預檢與逐文件結果沿用 D-57；文件管理與 retire 沿用 D-58。精確錯誤協定、Ingestion 進度管控與取消另議。
 - 建議：先不承諾 exactly-once 或未知寫入自動重試，按文件發布與相容機制實作；文件刪除另外定義。
 - 負責角色：產品＋Engine＋Backend；阻擋安全重試／正式更新實作。
 - 決策狀態：覆寫單位與忙碌拒絕方向已確認，以上其餘細節 OPEN；更新 Engine／資料契約手冊／Runtime／部署手冊／Runtime API手冊。
@@ -320,7 +325,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 ### Q-009 部分失敗與提交原子性
 
 - D-56 已確認：以 document_id 為更新與成功／失敗單位；Batch 逐文件獨立結果，不要求全 Batch 回滾；文件完整執行成功才標 completed，不接受半份文件為成功；D-60 不加 Query 讀寫鎖，允許更新期間短暫讀不一致，失敗清理／保留舊版機制仍需 backend 落實。
-- ES 在新版全數可搜尋及舊批次清理後標文件 `completed`。更新與清理期間可查到新舊混合。逾時、崩潰清理及精確錯誤碼仍待定，非 ES 後端的提交行為另議。Run partial／文件無 partial 依 API-D01／02。
+- ES 在新版全數可搜尋及舊批次清理後標文件 `completed`。更新與清理期間可查到新舊混合。重啟後由 Builder 重送整份文件並依正常覆寫流程清理殘留。逾時後的查核及精確錯誤碼仍待定，非 ES 後端的提交行為另議。Run partial／文件無 partial 依 API-D01／02。
 - 負責角色：Engine＋Backend；阻擋 M2 更新與 M3 終態／提交驗收。
 - 決策狀態：文件級原則已確認，實作與精確 Envelope OPEN；更新 Engine／資料契約手冊／Runtime／部署手冊／Runtime API手冊。
 
@@ -375,11 +380,11 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 
 - 已確認：同一 System 的同版邏輯 Config 跨環境相同，部署設定分開；文件 source_revision 與 index_generation 概念分開。不清楚的是保存／生效時點、Hash、草稿衝突、CSV mapping 歸屬、環境部署識別／資料版本及快照切換。
 - 2026-10-28 補充：需定 Component／package／Engine 解析版本保存位置、如何納入可重現執行與相容判定、更新 Component 後的重測／重建與回復政策；新版發布不自動升級既有 System，僅看版本號不能判定索引相容。
-- 已確認：Runtime 以索引相容性指紋與實際 mapping／Profile 驗證既有索引；ES 將 System 歸屬及指紋存入 `mappings._meta`。指紋輸入、正規化及演進規則仍待定。
+- 已確認：Runtime 從會影響索引的有效設定推導並正規化後計算 SHA-256，與實際 mapping／Profile 一併驗證。ES 將 System 歸屬、指紋及指紋規則版本存入 `mappings._meta`。精確輸入欄位、序列化及規則升版處理仍待定。
 - 建議：分開保存版本與執行綁定；Hash 只納有效配置並保留有語意順序，使用樂觀版本檢查。
 - 替代：單一 active revision，改配置後阻擋到準備完成；仍須避免 lost update。
 - 負責角色：Engine＋Backend＋Frontend；阻擋 M0 Hash 凍結及 M5 版本操作。
-- 決策：未定；更新 資料、UI 與 Runtime 手冊。
+- 決策狀態：索引指紋的用途與計算方向已確認，其餘版本管理細節仍待定。
 
 <a id="q-016"></a>
 ### Q-016 平台儲存、原始資料與保留
