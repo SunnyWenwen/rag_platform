@@ -92,7 +92,7 @@ Indexing 保存全部有效 structdata、metadata 與向量。全文與 Filter �
 2. 比較目標 Schema／Profile，拒絕不相容寫入，避免不同模型混在同一向量欄位。
 3. 依版本／冪等策略寫入 Chunk，維護 data_id 對照及 Binding。
 4. 按後端 refresh／發布規則回報 searchable；write_acknowledged 不等於 searchable。
-5. 同一 System／`document_id` 以一次 `write_id` 寫入新版。新版全部成功且可搜尋後，才清理舊批次。若確認新版寫入失敗，只清理本次批次。文件存在、清單與 retire 也使用索引存取層。詳見 [Elasticsearch 文件覆寫](06_runtime_api_and_deployment.md#elasticsearch-document-replacement)。
+5. 同一 System／`document_id` 以一次 `write_id` 寫入新版。IndexStore 在第一個 ES Bulk 前持久化預期 Chunk 與清理範圍。新版完整可搜尋後才清舊。若確認寫入已結束且新版未完成，清理本次寫入殘留並保留舊資料。結果待查核時標 `unknown` 並限制同文件重送。文件存在、清單與 retire 也使用索引存取層。見 [ES 寫入控制紀錄與查核](06_runtime_api_and_deployment.md#es-write-control-record)。
 
 | 後端 | 內部責任 |
 |---|---|

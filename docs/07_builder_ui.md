@@ -239,8 +239,8 @@ Prototype 限制 ≤1 MB 且在瀏覽器讀取，不等於正式產品限制。�
 - 區分接收成功、處理完成、索引可查詢；202 不代表可檢索查詢。
 - 文件數與 Chunk 數各自標示。Ingestion 進度的呈現方式與工作操作留待後續討論。
 - 部分失敗列出可對應 item 的錯誤，不用單一成功 Toast 遮蔽。
-- 重新打開視窗應可查現有工作；跨重啟是否恢復依 Job Store 政策。
-- 重送／取消／重試按鈕僅在對應 API 及冪等行為實作後開放。
+- 重新打開視窗可用 run_id 查工作。ES 模式的逐文件狀態在 Runtime 重啟後仍可在保留期內查詢，依 [重啟結算規則](06_runtime_api_and_deployment.md#ingestion-job-records) 顯示結果。
+- 失敗或中斷的文件由呼叫方決定是否重新提交。ES 寫入未查清時顯示待查核。重送與取消的 UI 操作依對應 API 驗收。
 - 真實 Parser／Chunk 小量試跑是建議能力，Q-025 核定前不能用瀏覽器格式預覽冒充。
 
 <a id="src-06-6-inference-與診斷"></a>
@@ -482,8 +482,8 @@ ResultSet.key 對應 Config 路徑／群組；items 位置即名次。RRF 可用
 
 - [ ] API 說明呈現 202 僅代表接收，顯示 run_id 及可用的狀態查詢入口；精確 Batch 路徑／Envelope 待 21 核定。
 - [ ] 依 Run／文件狀態與錯誤契約顯示查詢結果。進度粒度、呈現與工作操作（含取消）延後討論。
-- [ ] 同文件 queued／running 時顯示忙碌原因，不重複提交；完成／失敗後才可重新覆寫。
-- [ ] Runtime 重啟／紀錄消失時顯示 unknown 並結束無止境輪詢，不憑舊索引或 Builder 舊畫面宣稱本次已成功。
+- [ ] 同文件 queued／running 或 ES 寫入未收尾時顯示忙碌原因。呼叫方可在結果已確認且安全收尾後重新提交。
+- [ ] ES 模式重啟後以 Runtime 回傳的逐文件狀態為準。未送出 Bulk 的中斷工作顯示 failed 與原因，結果未確認時顯示 unknown。查無紀錄時結束一般工作輪詢。
 - [ ] Ingestion Queue 額滿、Inference Rate／併發／Timeout 有可理解提示；不在每次文件／Query 表單加入環境上限設定。
 - [ ] 區分文件工作狀態、索引是否可查與 Runtime Health；Local／Remote 的未知結果不冒充可安全重試。
 
