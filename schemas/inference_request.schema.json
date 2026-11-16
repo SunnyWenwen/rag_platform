@@ -8,10 +8,7 @@
       "minLength": 1
     },
     "filters": {
-      "type": "array",
-      "items": {
-        "$ref": "https://rag-builder.example/schemas/query_context.schema.json#/$defs/filter"
-      }
+      "$ref": "https://rag-builder.example/schemas/query_context.schema.json#/$defs/filters"
     },
     "metadata": {
       "type": "object"

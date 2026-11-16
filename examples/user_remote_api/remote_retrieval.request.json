@@ -3,7 +3,30 @@
     {
       "ori_query": "如何保養設備？",
       "query": "如何保養設備？",
-      "filters": [],
+      "filters": [
+        {
+          "field": "structdata.price",
+          "operator": "gte",
+          "value": 300
+        },
+        {
+          "any": [
+            {
+              "field": "structdata.tags",
+              "operator": "in",
+              "value": [
+                "設備",
+                "保養"
+              ]
+            },
+            {
+              "field": "structdata.title",
+              "operator": "eq",
+              "value": "設備維護"
+            }
+          ]
+        }
+      ],
       "result_sets": [],
       "metadata": {}
     }

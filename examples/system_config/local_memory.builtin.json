@@ -16,7 +16,20 @@
               },
               "title": {
                 "type": "string",
-                "required": true
+                "required": true,
+                "filterable": true
+              },
+              "price": {
+                "type": "number",
+                "required": false,
+                "searchable": false,
+                "filterable": false
+              },
+              "tags": {
+                "type": "string_array",
+                "required": false,
+                "searchable": false,
+                "filterable": true
               }
             }
           }
@@ -36,6 +49,14 @@
               {
                 "source_field": "title",
                 "output_field": "title"
+              },
+              {
+                "source_field": "price",
+                "output_field": "price"
+              },
+              {
+                "source_field": "tags",
+                "output_field": "tags"
               }
             ],
             "max_tokens": 500,
@@ -57,8 +78,15 @@
           "component_version": "1.0.0",
           "parameters": {
             "persistence": "memory",
-            "fulltext_field": "text",
-            "vector_name": "text"
+            "vector_name": "text",
+            "structdata_overrides": {
+              "text": {
+                "searchable": true
+              },
+              "price": {
+                "filterable": true
+              }
+            }
           }
         }
       },
@@ -86,7 +114,14 @@
           "component_id": "none",
           "component_version": "1.0.0",
           "parameters": {}
-        }
+        },
+        "fixed_filters": [
+          {
+            "field": "structdata.price",
+            "operator": "gte",
+            "value": 300
+          }
+        ]
       }
     }
   }

@@ -18,13 +18,28 @@ Workspace 管理多個 System。System ID、Config Revision、source_revision、
 | Parsing | 單選內建方法或 Remote，依選擇推導 Document[] |
 | Chunking | 方法、Tokenizer、單一切分來源欄位、一個切分輸出欄位及可選複製欄位 |
 | Embedding | 欄位映射、Profile、維度、可選文字組合。Remote 執行 Embedding 時，保留的內建 Chunking 自行指定 Tokenizer |
-| Indexing | 全文／向量／Filter 欄位、後端及持久化 |
+| Indexing | structdata 搜尋能力覆寫、向量欄位、後端及持久化 |
 | Inference Input | 查詢執行參數、型別、必填性與預設值。平台初始化 QueryContext[] |
 | Query Transformation | `none` 沿用原始問題；`rewrite` 以 `llm_ref`、`prompt`、`count`、`include_original` 設定單筆或多筆改寫；也可用 Remote |
-| Retrieval／Rerank | 內建方法／模型、查詢參數引用、過濾、融合與截斷；也可選 Remote 替換 |
+| Retrieval／Rerank | 內建方法／模型、查詢參數引用、融合與截斷，也可選 Remote 替換。固定 Filter 由 Inference Pipeline 共用 |
 | Remote API | 首節點與連續範圍、服務引用、parameters JSON、Ingestion 輸出欄位及向量宣告 |
 
-有效資料欄位由 Import 與後續有效方法推導，外部 Retrieval 沿用這份 System 候選 Schema。正式鍵名、細化規則的序列化及檔案包裝仍依 Q-002；Prototype 匯出是可查驗的設定示意。
+有效資料欄位由 Import 與後續有效方法推導，外部 Retrieval 沿用這份 System 候選 Schema。整體 Config 包裝依 Q-002 收斂。Prototype 匯出是設定示意。
+
+<a id="data-schema-config"></a>
+## 欄位宣告、索引覆寫與發布
+
+| Config 位置 | 設定 |
+|---|---|
+| `config.pipelines.ingestion.import.parameters.structdata` | 以欄位名稱為 key，宣告 `type`、`required` 以及 `searchable`、`filterable`。兩個搜尋旗標省略時預設為 `false`。 |
+| Ingestion 的 Remote `output.structdata` | 以相同格式列出實際輸出。Builder 帶入保留欄位的定義，新增或改寫欄位在此宣告。內建方法輸出由 Descriptor 推導。 |
+| `config.pipelines.ingestion.indexing.parameters.structdata_overrides` | 選填，以欄位名為 key。每筆可覆寫 `searchable`、`filterable` 或兩者。未覆寫的屬性繼承上游。 |
+| `config.pipelines.inference.fixed_filters` | 選填，以 `AND` 套用於每次 Inference。放在 Pipeline 讓內建及涵蓋 Retrieval 的 Remote 區段共用。Remote 的業務 `parameters` 維持獨立。 |
+| Inference Request 的 `filters` | 每次請求選填，與 `fixed_filters` 以 `AND` 合併。兩邊的 `any` 群組各自保有 OR 語意。 |
+
+例如 Import 宣告選填的 `price`，Chunking 複製它，Indexing 開啟 `price.filterable`。最終候選的 `price` 仍是選填數字。IndexBinding 根據生效的 `searchable`／`filterable` 衍生 `fulltext_fields`／`filter_fields`。搜尋與 Filter 引用採 `structdata.<欄位名>`，`group_by` 另可選 `document_id`。
+
+發布先驗 Config 形狀，再依啟用的 Pipeline 推導中間和最終 Schema，最後驗證引用與用途。上游刪除／改名後留下的 Indexing 覆寫、停用的固定 Filter 欄位、不支援的型別用途都要指出設定位置，保留草稿並阻擋發布。未啟用的方法設定可留在草稿。動態 Filter 依請求綁定的 Config Revision 在 Inference Input 重新驗證，無效條件回驗證錯誤。見 [可驗證的設定與請求範例](../examples/system_config/README.md)。
 
 <a id="inference-result-processing"></a>
 ## Inference 的結果處理
@@ -33,15 +48,15 @@ Retrieval 與 Rerank 各自在 Component `parameters` 設定當步分組與 Top 
 
 | 設定 | 內容 |
 |---|---|
-| Retrieval 參數 | `fulltext_fields`、`vector_fields`、預設 Filter、`per_route_k`、多路時必填的同 Query 融合策略、可選 `group_by` 和 `top_n` |
+| Retrieval 參數 | `fulltext_fields`、`vector_fields`、`per_route_k`、多路時必填的同 Query 融合策略、可選 `group_by` 和 `top_n` |
 | Rerank 參數 | 評分服務、內容欄位、提問來源、`group_by`、Rerank Top N |
 | 跨 Query 規則 | `at` 可選 `after_retrieval` 或 `after_rerank`，另選融合方法、`group_by` 和可選的最終 Top N |
 
-內建 Retrieval 以 `per_route_k` 表示搜尋階段每 Query、每路的上限，多路時必選 RRF 或 Sum Score，交付時每個 Query 只有一份清單。正式設定由使用者選擇融合策略，後端執行方式由 Adapter 負責。策略的專屬參數與預設值留待定義。Filter 欄位來自 Indexing 開放過濾的欄位，`eq`／`in` 的值依宣告型別驗證。資料型別與可搜尋、可過濾等能力標記由 Data Column 規格定義。
+內建 Retrieval 以 `per_route_k` 表示搜尋階段每 Query、每路的上限，多路時必選 RRF 或 Sum Score，交付時每個 Query 只有一份清單。正式設定由使用者選擇融合策略，後端執行方式由 Adapter 負責。策略的專屬參數與預設值留待定義。全文和 Filter 選項依 [欄位總表及 Filter 契約](02_data_contracts.md#data-meta-schema) 推導。
 
-`group_by` 可選一個或多個候選 Document 欄位。選多欄時以欄位值組合作為分組鍵；未設定分組時沿用排序後的清單。當步分組在排序後、當步 Top N 前執行。跨 Query 的融合、分組及 Top N 在該步驟的 Top N 之後執行。
+`group_by` 可選 `document_id` 或一個以上有效的 `structdata` 字串欄位，也可以組合使用。選多欄時以欄位值組合作為分組鍵；未設定分組時沿用排序後的清單。當步分組在排序後、當步 Top N 前執行。跨 Query 的融合、分組及 Top N 在該步驟的 Top N 之後執行。
 
-例如 Retrieval 先以 `[metadata.parent_chunk_id]` 收斂每個 Query 的候選，逐 Query Rerank 後，再執行以下跨 Query 規則。
+例如 Retrieval 先以 `[structdata.parent_chunk_id]` 收斂每個 Query 的候選，逐 Query Rerank 後，再執行以下跨 Query 規則。
 
 ```yaml
 result_processing:

@@ -3,7 +3,30 @@
     {
       "ori_query": "如何保養設備？",
       "query": "如何保養設備？",
-      "filters": [],
+      "filters": [
+        {
+          "field": "structdata.price",
+          "operator": "gte",
+          "value": 300
+        },
+        {
+          "any": [
+            {
+              "field": "structdata.tags",
+              "operator": "in",
+              "value": [
+                "設備",
+                "保養"
+              ]
+            },
+            {
+              "field": "structdata.title",
+              "operator": "eq",
+              "value": "設備維護"
+            }
+          ]
+        }
+      ],
       "result_sets": [
         {
           "key": "external-manuals",
@@ -15,9 +38,17 @@
                 "data_id": "external-manual-7:chunk-1",
                 "structdata": {
                   "title": "設備維護",
-                  "text": "定期清潔散熱孔。"
+                  "text": "定期清潔散熱孔。",
+                  "price": 350,
+                  "tags": [
+                    "設備"
+                  ]
                 },
-                "metadata": {}
+                "metadata": {
+                  "source": {
+                    "display_label": "外部設備手冊"
+                  }
+                }
               },
               "score": 0.91
             }

@@ -6,9 +6,9 @@
 
 ## Schema 推導
 
-1. 從 Import 設定取得原始 Document Schema。
-2. 依有效方法推導該步輸出。內建方法按規則繼承或衍生欄位。Remote Parsing／Chunking 的外部輸出欄位由 User 宣告。涵蓋 Embedding 時一併宣告向量名稱、來源、維度及 Profile。
-3. 將有效輸出用於下游的候選欄位、必填性、型別與相依驗證。選到不存在、型別不符或未保證出現的欄位時保留草稿選值並顯示錯誤。
+1. 從 Import 設定取得原始 `Document.structdata` 欄位，使用 [Data Meta Schema](02_data_contracts.md#data-meta-schema) 的型別與屬性。
+2. 依有效方法推導該步輸出。內建方法按規則繼承或衍生欄位。Remote Parsing／Chunking 列出實際輸出，保留欄位由 Builder 帶入上游定義，轉型、補值保證及新欄位由產生階段宣告。涵蓋 Embedding 時一併宣告向量名稱、來源、維度及 Profile。
+3. 將有效輸出用於下游的欄位選項、必填性、型別與相依驗證。Indexing 只合併搜尋能力覆寫，再以同一份最終設定推導候選 Schema 及 IndexBinding。選到不存在、型別不符或未保證出現的欄位時保留草稿選值並顯示錯誤。
 4. 用同一有效 Schema 產生 Remote Request／Response 預覽和 Runtime 驗證。Inference 共用 QueryContext[]，候選 Document 引用 System 可檢索 Schema。
 
 例：Chunking 保留 text 與 title，Embedding 可選兩者作字串來源。若 Chunking 改名為 body，原 text 映射顯示失效。若 Remote 含 Embedding 並宣告 vectors.body，Indexing 選用 vectors.body，內建向量 Retrieval 再取得對應 Profile 的 Query Encoder。
@@ -18,7 +18,7 @@
 
 Retrieval／Rerank 的 Descriptor 可用 `parameters_schema` 表達 `group_by` 為非空且不重複的欄位陣列，以 `/group_by/*` 檢查每個欄位。跨 Query 設定沿用同一份參數形狀及欄位來源。Builder 開啟分組時預選 `document_id`。
 
-待加入 Meta-schema 的來源 `candidate.document_fields` 由 System 的有效候選 Document Schema 取得 `document_id`、`structdata` 的單值欄位及已宣告型別的 `metadata` 單值路徑。候選欄位可以選填；執行時缺值的候選獨立保留。用於分組的欄位需能在該時點的候選資料讀到。
+Meta-schema 的來源 `candidate.document_fields` 由 System 的有效候選 Document Schema 取得 `document_id` 與 `structdata` 欄位。`group_by` 選項限制為 `string`。候選欄位可以選填，執行時缺值的候選獨立保留。
 
 ```yaml
 parameters_schema:
@@ -34,10 +34,10 @@ parameters_schema:
 option_sources:
   "/group_by/*":
     source: candidate.document_fields
-    types: [string, integer, number, boolean]
+    types: [string]
 ```
 
-以上為待加入的 Descriptor 片段。現有草案已可驗證陣列與逐項選擇；`candidate.document_fields` 待加入 Meta-schema 及編譯環境。
+離線範例驗證內建 Retrieval 的分組欄位選項，正式 Runtime 及跨 Query 設定整合依里程碑驗收。
 
 ## 內建描述保留的能力
 

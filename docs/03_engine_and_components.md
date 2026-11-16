@@ -14,7 +14,7 @@ User 提供已部署的 HTTP 服務並在 System 設定完整 Endpoint、認證�
 | Ingestion | Parsing、Chunking、Embedding 各自可替換，也可選 Parsing → Chunking、Chunking → Embedding、Parsing → Chunking → Embedding | 從 Parsing 開始時 input 是單筆 Document，其餘為同文件 Document[]。output 為 Document[]。涵蓋 Parsing／Chunking 時宣告輸出 structdata，涵蓋 Embedding 時宣告 vectors。 |
 | Inference | Query Transformation、Retrieval、Rerank 各自可替換，也可選 Transformation → Retrieval、Retrieval → Rerank、Transformation → Retrieval → Rerank | input／output 皆為 QueryContext[]，候選 Document 遵守從 Ingestion 設定推導的 System Schema。 |
 
-區段只執行一次，涵蓋模組由首節點管理，編譯拒絕重疊。Indexing 與 Inference Input 由平台執行。只替換 Embedding 時，輸出保留原 Document 並附上向量。外部 Retrieval 自行執行搜尋及授權，平台無須等 Ingestion／IndexBinding 就緒。未被替換的後段使用驗證過的候選。Inference 區段內的融合、分組和截斷由 Remote 負責，Engine 驗證平台規則與區段不重疊。Remote Retrieval 若留下可識別的 Query／ResultSet，區段外可顯式接平台跨 Query 處理或內建 Rerank。整段 Query Transformation → Rerank 由 Remote 執行時，Runtime 驗證回應及候選契約，按回傳順序交付。平台保留內建擴充的能力，由平台團隊維護方法及相容契約。
+區段只執行一次，涵蓋模組由首節點管理，編譯拒絕重疊。Indexing 與 Inference Input 由平台執行。只替換 Embedding 時，輸出保留原 Document 並附上向量。外部 Retrieval 自行執行搜尋及授權，平台無須等 Ingestion／IndexBinding 就緒。當區段涵蓋 Retrieval，Engine 以共用 I/O 傳入已驗證、合併後的 QueryContext.filters，並驗證回傳候選。過濾、排序及截斷由外部服務決定。未被替換的後段使用驗證過的候選。Inference 區段內的融合、分組和截斷由 Remote 負責，Engine 驗證平台規則與區段不重疊。Remote Retrieval 若留下可識別的 Query／ResultSet，區段外可顯式接平台跨 Query 處理或內建 Rerank。整段 Query Transformation → Rerank 由 Remote 執行時，Runtime 驗證回應及候選契約，按回傳順序交付。平台保留內建擴充的能力，由平台團隊維護方法及相容契約。
 
 呼叫前解析 `{{params.name}}` 與固定／動態 Secret reference。實際 Secret 經授權解析後放認證 Header。檢查回應形狀、欄位型別、資料識別、向量維度／Profile 與 Inference 邊界語意。HTTP 錯誤、Timeout、無效 JSON、違反契約及查無候選分別處理。服務失敗的重試依操作冪等性及 Runtime 政策。保留 request ID、模組範圍與錯誤摘要，遮罩憑證。
 
@@ -44,11 +44,11 @@ Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一�
 
 **處理**：
 
-1. 檢查必要切分欄位存在、為非空白 string，且明確 copy 欄位可取得；來源缺失、型別錯誤、全空白或零切片時回報明確失敗。可選複製第一版不先擴充（D-48）。
+1. 檢查切分來源存在且為非空白 string。明確複製的欄位須在上游 Schema 中，複製時沿用型別和必填性。選填欄位缺值時，對應輸出也省略；必填來源缺失、型別錯誤、全空白或零切片時回報明確失敗。
 2. 依所選方法切分：Fixed-size 使用上述固定視窗；Recursive 依 separators 優先序切分，必要時處理過長片段，size 是上限、overlap 是目標值。
 3. Header-aware 先依可靠標題層級切分，再對超長章節 Recursive；標題取自當筆 Markdown；無標題時依 Component 明確策略處理，不跨 Unit 尋找。
 4. 記錄 unit_index 與原 Unit 字串範圍，不從帶 overlap 的文字猜測位置，不跨 Unit 合併。
-5. 從同一 Unit 複製指定欄位到 Document.structdata。繼承輸入 Document 中經 Schema 驗證的業務 metadata 與可信來源資訊。Component 可選擇提供 metadata._rag.source_refs／chunking，平台保留欄位由 Runtime 管理，見 Q-006。
+5. 從同一 Unit 複製指定欄位到 Document.structdata。整包繼承輸入 Document 的 metadata 與可信來源資訊。Component 可選擇提供 metadata._rag.source_refs／chunking，平台保留欄位由 Runtime 管理，見 Q-006。
 6. 由 Component 或 SDK helper 產生必要且唯一的 data_id，初始化 vectors={}。fingerprint／ordinal 的 Hash 規則僅為選用參考工具，不強制所有 Component 實作或輸出，見 [資料契約](02_data_contracts.md)～6。
 
 **驗證／例外**：size 為正整數、overlap 為整數且 `0 ≤ overlap < size`、Tokenizer 可用；涵蓋重複文字、非 BMP 字元、空段及極長無分隔文字。Fixed-size 不啟用 separators／keep_separator／header_levels，也不要求 結構化 heading Blocks；未啟用的方法參數可保留草稿，但不驗證或匯出為有效參數。複製欄位未被主要內容切分，不保證其長度小於 size。
@@ -84,7 +84,7 @@ D-53 真實 Engine 功能待實作，Prototype v0.12 已有控制與教學預覽
 
 **目的**：保存 Chunk，依欄位用途建索引，回報寫入與可搜尋狀態。Runtime 套用設定時由 Engine 推導索引定義，再由 Elasticsearch 索引存取層建立或接回目標。索引存取層驗證實際 mapping、索引歸屬與相容性指紋，並依 [Runtime 索引生命週期](06_runtime_api_and_deployment.md#system-index-lifecycle) 執行重建或卸載。
 
-**2026-10-16 已確認的簡化**：預設保存 Chunk 的全部 structdata／metadata，不再要求使用者填 stored_fields 或勾「儲存內容」。保存內容與建立搜尋索引分開：使用者只選全文欄位、向量欄位與可過濾欄位；未選搜尋索引的 title 等欄位仍可供 Rerank／檢索結果消費端／引用使用。保留 metadata 不代表自動對所有 metadata 建立 Filter／全文索引。向量保存與恢復沿用既有完整 Chunk／vectors 政策，不因拿掉內容選單而刪除 vectors。
+Indexing 保存全部有效 structdata、metadata 與向量。全文與 Filter 能力從 structdata 的有效宣告及 [Indexing 覆寫](05_system_config.md#data-schema-config) 推導，向量能力依向量欄位與 Profile 推導。只保存的 structdata 字串可供 Rerank 或顯示使用，metadata 整包保存供取回。
 
 **處理**：
 
@@ -102,7 +102,7 @@ D-53 真實 Engine 功能待實作，Prototype v0.12 已有控制與教學預覽
 
 FAISS 的維度／metric 不足以證明向量空間相容。cosine／inner product／L2 的 normalization 與對外 relevance 轉換必須定義；中文 BM25 需斷詞方案。不能把 post-filter 與 Top-K 前授權過濾視為等價。
 
-**驗收**：ES 與 Local 共用契約測試；未建搜尋索引的 structdata／metadata 仍完整可取回；metadata 不因未勾可過濾而遺失；只有宣告的欄位可搜尋／過濾；不出現跨 System Chunk；寫入失敗／不就緒不回可查詢；Memory 重啟清空、MongoDB 可驗證恢復。
+**驗收**：ES 與 Local 共用契約測試；未建搜尋索引的 structdata／metadata 仍完整可取回；巢狀 metadata 整包可取回；全文與 Filter 只使用已啟用的 structdata 欄位；不出現跨 System Chunk；寫入失敗／不就緒不回可查詢；Memory 重啟清空、MongoDB 可驗證恢復。
 
 **待決**：Q-008～Q-013、Q-015；ES 版本／授權 Q-001。
 
@@ -194,9 +194,9 @@ query_transformation:
 **處理**：
 
 1. 取得對應 Config／Binding，確認 Profile 與資料就緒。
-2. 將預設 filters 與本次 filters 以 AND 合併。從可過濾欄位選路徑，以 `eq`／`in` 設定條件，值依欄位宣告型別驗證。Data Column 的型別及各類能力標記另行定義。
+2. 套用已驗證的 `QueryContext.filters`。Engine 在發布時驗證固定 Filter、在 Inference Input 驗證請求 Filter，兩組以 AND 合併。欄位、運算子、值與 OR 群組遵守 [Filter 契約](02_data_contracts.md#filter-semantics)。
 3. 建立每個 Query × 全文／向量欄位的路徑；向量路徑依其 Profile 使用 query encoding。
-4. 每個 Query 的每條搜尋路徑先依 `per_route_k` 取候選，保留路徑、排名、分數及其方向。
+4. 每個 Query 的每條內建搜尋路徑先套用完整 Filter，再依 `per_route_k` 取候選，保留路徑、排名、分數及其方向。
 5. 同一 Query 若有多條搜尋路徑，須選 RRF 或 Sum Score，以 `data_id` 對齊所有路徑的候選並融合成一份清單。只有一路時，直接使用該路結果。若 Adapter 將融合交給後端，須驗證行為符合選定策略與每路上限。
 6. 若設定 `group_by`，先取得所需候選欄位，依當前排名分組，再執行選填的 Retrieval `top_n`。內建 Retrieval 對每個 Query 交付一份 ResultSet。
 7. 在 Rerank／檢索結果消費端使用候選前，批次取回所需 structdata／metadata，保留各路排序與身分；vectors 可省為 {}，下游無須知道 MongoDB 或 FAISS。
@@ -230,7 +230,7 @@ Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root ar
 
 ### 分組代表
 
-`group_by` 在當前每份有序清單中選一個或多個候選 Document 欄位。多選時以所有欄位值的組合為分組鍵，每組保留排名最高的一筆。候選只要有任一選定欄位缺值或為 null，就獨立保留。文件去重選 `document_id`。若 Retrieval 以母 Chunk ID 分組，保留的是代表子 Chunk，仍帶自己的 `data_id`。之後可在跨 Query 融合後以 `document_id` 再分組，最後取最終 Top N。
+`group_by` 在當前每份有序清單中選一個或多個候選 Document 欄位。可選 `document_id` 或 `structdata` 中宣告為 `string` 的欄位。多選時以所有欄位值的組合為分組鍵，每組保留排名最高的一筆。候選只要有任一選定欄位缺值，就獨立保留。文件去重選 `document_id`。若 Retrieval 以母 Chunk ID 分組，保留的是代表子 Chunk，仍帶自己的 `data_id`。之後可在跨 Query 融合後以 `document_id` 再分組，最後取最終 Top N。
 
 設定位置及候選欄位來源見 [System Config](05_system_config.md#inference-result-processing) 與 [Descriptor](04_component_descriptor.md#group-by-option-source)。
 

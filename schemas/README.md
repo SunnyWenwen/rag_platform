@@ -2,6 +2,7 @@
 
 | Schema | 用途 |
 |---|---|
+| [data_meta](data_meta.schema.json) | structdata 欄位型別、必填性、搜尋旗標與 Indexing 覆寫 |
 | [document](document.schema.json) | Document 外層、content、DenseVector 與檢索候選基礎 |
 | [ingestion_request](ingestion_request.schema.json) | 非空 documents 和共用 parameters |
 | [inference_request](inference_request.schema.json) | query、filters、metadata、parameters |

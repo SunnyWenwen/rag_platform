@@ -71,11 +71,18 @@
 
 - Runtime 的 Elasticsearch 索引可查且必要依賴就緒時接受 Inference，空索引回成功空候選。Builder 等初次預定資料全部匯入且可搜尋後才開放其查詢入口，後續一般新增不停止查詢。
 - Builder 的 CSV 資料上傳以整批替換為語意，每列對應一份 Document，預檢後清除目標 System 的既有索引資料，再匯入全份 CSV。具體管理流程由 Builder 規劃。
-- M1 首條端到端流程使用 Elasticsearch。Data Column 型別與能力另行討論。
+- M1 首條端到端流程使用 Elasticsearch。
 
 ## 2026-11-13 已確認：索引相容性指紋
 
 - 由有效 Config 推導影響索引內容、向量與搜尋能力的設定，正規化後計算 SHA-256。ES `mappings._meta` 保存 System 歸屬、指紋及指紋規則版本。完整 Config 由 Builder 保存。見 [索引生命週期](06_runtime_api_and_deployment.md#system-index-lifecycle)。
+
+## 2026-11-16 已確認：Data Meta Schema 與 Filter
+
+- Import 宣告 structdata 欄位，處理模組推導實際輸出，Indexing 只可覆寫 searchable／filterable。metadata 以 JSON object 隨文件保存、傳遞和回傳。
+- 首版支援 string、string_array、integer、number、boolean、date、datetime，group_by 可選 document_id 及有效 structdata 的 string 欄位。缺省、日期時間與各型別能力見 [欄位總表](02_data_contracts.md#data-meta-schema)。
+- 保留固定與動態 Filter。外層 AND 搭配一層 any，運算子按型別驗證。先 Filter 再取 Top-K 是內建 Retrieval 的責任。Remote 接收有效 QueryContext.filters，自行決定查詢行為。
+- Config 使用 structdata_overrides 與 fixed_filters。無效的使用中欄位引用保留於草稿並阻擋發布。見 [Config 與發布驗證](05_system_config.md#data-schema-config)。
 
 ## 1. 使用方式與狀態
 
@@ -246,7 +253,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 
 - 平台內部描述規則沿用 D-67 的相依推導，精確 Meta-schema 待核定。舊例見歷史索引。
 
-- 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System；Local Search 持久化模式隨 Config 跨環境固定（D-33）；全部 Document.structdata／metadata 保存與合法 metadata 全繼承（D-39）。不清楚的是 05 建議拼字／枚舉／Default／nullable、array 型別、錯誤 Envelope、SDK、多 Profile；QueryContext[]／ResultSet 業務欄位已依 D-54 確認。仍待核定的是舊保存／繼承投影、原型短名稱／匯出標籤 migration。
+- 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System；Local Search 持久化模式隨 Config 跨環境固定（D-33）；全部 Document.structdata／metadata 保存與合法 metadata 全繼承（D-39）。structdata 的型別、旗標預設、空值及欄位宣告已依 11-16 決策確認。仍待整體 Config 鍵名、錯誤 Envelope、SDK 及多 Profile；QueryContext[]／ResultSet 業務欄位已依 D-54 確認。仍待核定的是舊保存／繼承投影、原型短名稱／匯出標籤 migration。
 - D-62 已確認選項 B（共用 Flow）：共用 Flow／Executor，依固定 Config 快照在各 Module 選 Component，並傳入 input／本次 config／Context；不強制所有實例共用。精確 SDK 簽名及 Resolver／資源作用域仍待凍結。
 - 2026-10-28 補充：Component SDK 的 Module-specific I/O 包裝、run／初始化／釋放簽名、RunContext、Registry／Factory 與 Config Schema 介面待凍結；Registry 草案改稱 component_id，不直接改寫既有 Config。精確方法／版本引用、舊 module_id 別名與遷移須一致驗證；11 的 Python 程式只作介面示意。
 - [System Config：System Config 討論稿](05_system_config.md#草稿有效設定與部署) 依 D-67 取消頂層 document_schema，資料細節由 B／C＋D 提供；首版六類宣告與相依推導見 [Descriptor](04_component_descriptor.md)。規則語法／SDK／解析 API 仍待凍結；D-66 舊機器稿及五案例已歸 [歷史快照](history/superseded/system_config_d66/README.md)，不作新功能驗收。前輪校對過程見 [歷史報告](history/reviews/2026-11-05_spec_alignment_review.md)。
@@ -361,11 +368,8 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 <a id="q-013"></a>
 ### Q-013 精確 Filter 的候選與缺值語意
 
-- 不清楚：缺欄位／null／多值如何匹配；FAISS 合法候選搜尋策略、ES Mapping 相容矩陣。
-- 建議：以宣告型別檢查 eq／in，各路取 Top-K 前套用業務過濾；用有／無命中與缺值測資驗證。
-- 替代：未具備可靠 pre-filter 的組合先停用，不能偷偷 post-filter。
-- 負責角色：Engine；阻擋 M2 過濾驗收。
-- 決策：未定；更新 Engine／資料契約手冊／Runtime／部署手冊。
+- 已確認欄位與運算子矩陣、缺欄位／null／多值語意、固定與動態 Filter，以及各內建路徑先過濾再取 Top-K。見 [Filter 契約](02_data_contracts.md#filter-semantics)。
+- 待驗收項目包含 Elasticsearch mapping／Query DSL、Local／FAISS 合法候選策略及實際 ES／Local 測資。由 Engine 負責 M2 整合驗收。
 
 <a id="q-014"></a>
 ### Q-014 融合計畫、合併時點與分組細節
@@ -516,7 +520,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 <a id="q-028"></a>
 ### Q-028 User Remote API 整合
 
-- 已確認：支援連續區段、固定 HTTP 封裝、上游推導 Request、輸出欄位與向量宣告、共用 QueryContext[]、外部資料符合 System Schema。
+- 已確認：支援連續區段、固定 HTTP 封裝、上游推導 Request、輸出欄位與向量宣告、共用 QueryContext[]、外部候選符合有效 System Schema。Remote 可使用傳入的 filters，自行決定過濾、排序與截斷。
 - 待核定：正式 Config 序列化、連線驗證、逾時及重試政策、錯誤觀測與容量門檻。
 - 驗收：同區段呼叫一次、無重疊、驗證失敗可定位、內建與 Remote 切換、外部 Retrieval 與下游相容、匯出可解析部署綁定。見 [Engine](03_engine_and_components.md#remote-api)。
 

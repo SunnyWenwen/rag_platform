@@ -1,10 +1,11 @@
 """Offline acceptance of the Descriptor draft and selected System Config relationships."""
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from math import isfinite
 from pathlib import Path
 import json
 
-from jsonschema import Draft202012Validator, ValidationError
+from jsonschema import Draft202012Validator, FormatChecker, ValidationError
 from referencing import Registry, Resource
 
 HERE = Path(__file__).resolve().parent
@@ -26,8 +27,7 @@ BUILTIN_COMPONENTS = {
     "retrieval": (("builtin",), ("QueryContext[]", "QueryContext[]")),
     "rerank": (("none", "model_api"), ("QueryContext[]", "QueryContext[]")),
 }
-FIELD_SOURCES = {"input.structdata", "candidate.structdata", "index_plan.fulltext"}
-SCALAR_TYPES = ["string", "integer", "number", "boolean"]
+FIELD_SOURCES = {"input.structdata", "candidate.structdata", "candidate.document_fields", "index_plan.fulltext"}
 
 
 def obj(properties, required=None):
@@ -44,12 +44,23 @@ def array(items):
 
 
 NAME = {"type": "string", "minLength": 1}
+FIELD_SELECTION = {**array(NAME), "minItems": 1, "uniqueItems": True}
 BOOL = {"type": "boolean"}
 NAT = {"type": "integer", "minimum": 0}
 POS = {"type": "integer", "minimum": 1}
-FIELD_RULE = obj({"type": {"enum": SCALAR_TYPES}, "required": BOOL})
 DESCRIPTOR_SCHEMA = json.loads((REPO / "schemas/component_descriptor.draft.schema.json").read_text())
 SYSTEM_CONFIG_SCHEMA = json.loads((REPO / "schemas/system_config.draft.schema.json").read_text())
+DATA_META = json.loads((REPO / "schemas/data_meta.schema.json").read_text())
+QUERY_CONTEXT = json.loads((REPO / "schemas/query_context.schema.json").read_text())
+SCHEMA_REGISTRY = Registry().with_resources(
+    (schema["$id"], Resource.from_contents(schema)) for schema in (DATA_META, QUERY_CONTEXT)
+)
+VALUE_TYPES = DATA_META["$defs"]["field_type"]["enum"]
+DATE_FORMATS = {
+    kind: Draft202012Validator(DATA_META["$defs"][kind], format_checker=FormatChecker())
+    for kind in ("date", "datetime")
+}
+FILTER_SHAPE = Draft202012Validator({"$ref": QUERY_CONTEXT["$id"] + "#/$defs/filters"}, registry=SCHEMA_REGISTRY)
 BUILTIN_SCHEMA = SYSTEM_CONFIG_SCHEMA["$defs"]["builtin_node"]
 REMOTE_ADAPTER_VERSIONS = {"1.0.0"}
 
@@ -58,6 +69,8 @@ REMOTE_ADAPTER_VERSIONS = {"1.0.0"}
 class Field:
     type: str
     required: bool = True
+    searchable: bool = False
+    filterable: bool = False
 
 
 @dataclass(frozen=True)
@@ -104,7 +117,7 @@ def schema_at(root, pointer):
 
 
 def validate_descriptor(value):
-    Draft202012Validator(DESCRIPTOR_SCHEMA).validate(value)
+    Draft202012Validator(DESCRIPTOR_SCHEMA, registry=SCHEMA_REGISTRY).validate(value)
     root = value["parameters_schema"]
     Draft202012Validator.check_schema(root)
     expected_io = BUILTIN_COMPONENTS[value["module"]][1]
@@ -139,7 +152,9 @@ CHUNK = descriptor(
      "copy_fields": array(obj({"source_field": NAME, "output_field": NAME})),
      "max_tokens": POS, "overlap_tokens": NAT, "tokenizer_profile_id": NAME},
     ("Document[]", "Document[]"),
-    {"split_field": STRING_INPUT, "/copy_fields/*/source_field": selector("input.structdata", *SCALAR_TYPES)},
+    {"split_field": STRING_INPUT, "/copy_fields/*/source_field": {
+        "source": "input.structdata", "types": VALUE_TYPES,
+    }},
     [{"op": "declare", "target": "/output_field", "schema": {"type": "string", "required": True}},
      {"op": "copy", "source": "/source_field", "target": "/output_field", "for_each": "/copy_fields"}],
     [{"op": "lt", "left": "/overlap_tokens", "right": "/max_tokens"}],
@@ -153,28 +168,35 @@ EMBED = descriptor(
 )
 INDEX = descriptor(
     "indexing", "local",
-    {"persistence": {"const": "memory"}, "fulltext_field": NAME, "vector_name": NAME},
+    {"persistence": {"const": "memory"}, "vector_name": NAME,
+     "structdata_overrides": {"$ref": DATA_META["$id"] + "#/$defs/overrides"}},
     ("Document[]", "IndexBinding"),
-    {"fulltext_field": STRING_INPUT, "vector_name": selector("input.vectors")},
+    {"vector_name": selector("input.vectors")}, required=["persistence", "vector_name"],
 )
 RETRIEVE = descriptor(
     "retrieval", "builtin",
-    {"vector_name": NAME, "query_profile": NAME, "per_route_k": POS},
+    {"vector_name": NAME, "query_profile": NAME, "per_route_k": POS,
+     "fulltext_fields": FIELD_SELECTION, "group_by": FIELD_SELECTION},
     ("QueryContext[]", "QueryContext[]"),
-    {"vector_name": selector("index_plan.vectors"), "query_profile": selector("profiles")},
+    {"vector_name": selector("index_plan.vectors"), "query_profile": selector("profiles"),
+     "/fulltext_fields/*": selector("index_plan.fulltext"),
+     "/group_by/*": {"source": "candidate.document_fields", "types": ["string"]}},
+    required=["vector_name", "query_profile", "per_route_k"],
 )
 RERANK = descriptor(
     "rerank", "model_api",
-    {"text_field": NAME},
+    {"text_field": NAME, "group_by": FIELD_SELECTION},
     ("QueryContext[]", "QueryContext[]"),
-    {"text_field": selector("candidate.structdata", "string")},
+    {"text_field": selector("candidate.structdata", "string"),
+     "/group_by/*": {"source": "candidate.document_fields", "types": ["string"]}},
+    required=["text_field"],
 )
 REWRITE = json.loads((HERE / "rewrite.descriptor.json").read_text())
 validate_descriptor(REWRITE)
 FIXTURE_DESCRIPTORS = (
     CHUNK, EMBED, INDEX, RETRIEVE, RERANK, REWRITE,
     descriptor("import", "platform",
-               {"structdata": {"type": "object", "additionalProperties": FIELD_RULE}},
+               {"structdata": {"$ref": DATA_META["$id"]}},
                ("IngestionRequest", "Document")),
     descriptor("parsing", "passthrough", {}, ("Document", "Document[]")),
     descriptor("inference_input", "platform", {}, ("InferenceRequest", "QueryContext[]")),
@@ -216,7 +238,7 @@ def parameters(module, config, context):
         fail("unknown component version")
     desc = REGISTRY[key]
     values = config["parameters"]
-    Draft202012Validator(desc["parameters_schema"]).validate(values)
+    Draft202012Validator(desc["parameters_schema"], registry=SCHEMA_REGISTRY).validate(values)
     for key, spec in desc.get("option_sources", {}).items():
         selected = selected_values(values, key)
         if selected and any(value not in options(spec, context) for value in selected):
@@ -256,15 +278,61 @@ def context(fields, vectors):
     return {"input.structdata": fields, "input.vectors": vectors, "profiles": PROFILES}
 
 
+def candidate_context(fields):
+    return {
+        "candidate.structdata": fields,
+        "candidate.document_fields": {"document_id": Field("string"),
+                                      **{f"structdata.{name}": value for name, value in fields.items()}},
+    }
+
+
 def compile_index(fields, vectors, config):
     _, params = parameters("indexing", config, context(fields, vectors))
-    return {"fulltext": {params["fulltext_field"]: fields[params["fulltext_field"]]},
-            "vectors": {params["vector_name"]: vectors[params["vector_name"]]}}
+    effective = fields.copy()
+    for name, override in params.get("structdata_overrides", {}).items():
+        path = f"/ingestion/indexing/parameters/structdata_overrides/{name}"
+        if name not in effective:
+            fail("missing index override field:" + path)
+        effective[name] = replace(effective[name], **override)
+        if effective[name].searchable and effective[name].type != "string":
+            fail("invalid searchable type:" + path)
+    return {
+        "fields": effective,
+        "fulltext": {f"structdata.{name}": value for name, value in effective.items() if value.searchable},
+        "filters": {f"structdata.{name}": value for name, value in effective.items() if value.filterable},
+        "vectors": {params["vector_name"]: vectors[params["vector_name"]]},
+    }
+
+
+def validate_filters(filters, filter_fields, path):
+    FILTER_SHAPE.validate(filters)
+    range_types = {"integer", "number", "date", "datetime"}
+    for index, clause in enumerate(filters):
+        conditions = clause.get("any", [clause])
+        for position, condition in enumerate(conditions):
+            location = f"{path}/{index}"
+            if "any" in clause:
+                location += f"/any/{position}"
+            field = filter_fields.get(condition["field"])
+            operator = condition["operator"]
+            if field is None:
+                fail("field is not filterable:" + location + "/field")
+            if operator not in {"eq", "in"} and field.type not in range_types:
+                fail("invalid filter operator:" + location + "/operator")
+            values = condition["value"] if operator == "in" else [condition["value"]]
+            kind = "string" if field.type == "string_array" else field.type
+            value_schema = {"type": kind}
+            validator = DATE_FORMATS.get(kind) or Draft202012Validator(value_schema)
+            if any((isinstance(value, float) and not isfinite(value)) or not validator.is_valid(value)
+                   for value in values):
+                fail("invalid filter value:" + location + "/value")
 
 
 def compile_retrieval(index_plan, config):
-    _, params = parameters("retrieval", config, {"index_plan.vectors": index_plan["vectors"],
-                                                  "profiles": PROFILES})
+    _, params = parameters("retrieval", config, {
+        **candidate_context(index_plan["fields"]), "index_plan.fulltext": index_plan["fulltext"],
+        "index_plan.vectors": index_plan["vectors"], "profiles": PROFILES,
+    })
     vector = index_plan["vectors"][params["vector_name"]]
     if params["query_profile"] != vector.profile:
         fail("incompatible query profile")
@@ -274,7 +342,7 @@ def binding_fixture():
     return {
         "artifact_type": "builtin.local/v1",
         "target": {"collection": "test-only"},
-        "fulltext_fields": ["text"],
+        "fulltext_fields": ["structdata.text"],
         "filter_fields": [],
         "vector_bindings": {
             "text": {"source_field": "text", "embedding_profile_id": "text-v1", "dimensions": 3},
@@ -290,6 +358,7 @@ def check_runtime_binding(index_plan, binding):
         for name, entry in binding.get("vector_bindings", {}).items()
     }
     if (set(binding.get("fulltext_fields", [])) != set(index_plan["fulltext"])
+            or set(binding.get("filter_fields", [])) != set(index_plan["filters"])
             or vectors != index_plan["vectors"]):
         fail("binding mismatch")
 
@@ -357,7 +426,8 @@ CHUNK_CONFIG = node("recursive", split_field="body", output_field="text",
                     copy_fields=[{"source_field": "title", "output_field": "title"}],
                     max_tokens=500, overlap_tokens=50, tokenizer_profile_id="fixture")
 EMBED_CONFIG = node("dense", source_field="text", vector_name="text", profile="text-v1")
-INDEX_CONFIG = node("local", persistence="memory", fulltext_field="text", vector_name="text")
+INDEX_CONFIG = node("local", persistence="memory", structdata_overrides={"text": {"searchable": True}},
+                    vector_name="text")
 RETRIEVAL_CONFIG = node("builtin", vector_name="text", query_profile="text-v1", per_route_k=10)
 RERANK_CONFIG = node("model_api", text_field="text")
 
@@ -394,7 +464,7 @@ def field_specs(values):
 
 def compile_local_example(snapshot):
     """Exercise the Local Search examples using the offline descriptor registry."""
-    Draft202012Validator(SYSTEM_CONFIG_SCHEMA).validate(snapshot)
+    Draft202012Validator(SYSTEM_CONFIG_SCHEMA, registry=SCHEMA_REGISTRY).validate(snapshot)
     pipelines = snapshot["config"]["pipelines"]
     fields, vectors = {}, {}
     for module, config in effective_nodes("ingestion", pipelines["ingestion"]):
@@ -418,14 +488,16 @@ def compile_local_example(snapshot):
             else:
                 fields, vectors = data_effects(desc, values, fields, vectors)
 
-    for module, config in effective_nodes("inference", pipelines["inference"]):
+    inference = pipelines["inference"]
+    validate_filters(inference.get("fixed_filters", []), index["filters"], "/inference/fixed_filters")
+    for module, config in effective_nodes("inference", inference):
         if config["component_id"] == "remote_api":
             fail("example compiler only supports builtin Inference")
         if module == "retrieval":
             compile_retrieval(index, config)
         else:
-            parameters(module, config, {"candidate.structdata": fields, "models": {"default-llm": None}})
-    return fields, vectors, index
+            parameters(module, config, {**candidate_context(index["fields"]), "models": {"default-llm": None}})
+    return index["fields"], vectors, index
 
 
 def local_snapshot(mode):
@@ -473,9 +545,70 @@ def _():
     assert remote_contract("ingestion", "parsing", parser["through"])[1:3] == ("Document", "Document[]")
     fields, vectors, index = compile_local_example(local_snapshot("builtin"))
     assert (fields, vectors, index) == compile_local_example(local_snapshot("remote_parsing"))
-    assert fields == {"text": Field("string"), "title": Field("string")}
+    assert fields == {
+        "text": Field("string", searchable=True),
+        "title": Field("string", filterable=True),
+        "price": Field("number", required=False, filterable=True),
+        "tags": Field("string_array", required=False, filterable=True),
+    }
     assert vectors == {"text": Vector("text", "text-v1", 3)}
-    check_runtime_binding(index, binding_fixture())
+    binding = binding_fixture()
+    binding["filter_fields"] = ["structdata.title", "structdata.price", "structdata.tags"]
+    check_runtime_binding(index, binding)
+    snapshot = local_snapshot("builtin")
+    retrieval = snapshot["config"]["pipelines"]["inference"]["retrieval"]["parameters"]
+    retrieval["group_by"] = ["document_id", "structdata.title"]
+    retrieval["fulltext_fields"] = ["structdata.text"]
+    compile_local_example(snapshot)
+    retrieval["group_by"] = ["structdata.tags"]
+    rejects(lambda: compile_local_example(snapshot), "invalid selection:/group_by/*")
+    retrieval["group_by"] = ["document_id"]
+    retrieval["fulltext_fields"] = ["structdata.title"]
+    rejects(lambda: compile_local_example(snapshot), "invalid selection:/fulltext_fields/*")
+
+
+@case("Indexing changes capabilities while preserving the final Document shape")
+def _():
+    snapshot = local_snapshot("remote_parsing")
+    pipeline = snapshot["config"]["pipelines"]["ingestion"]
+    pipeline["parsing"]["output"]["structdata"]["section_title"] = {"type": "string", "required": False}
+    copies = pipeline["chunking"]["parameters"]["copy_fields"]
+    copies.append({"source_field": "section_title", "output_field": "section_title"})
+    overrides = pipeline["indexing"]["parameters"]["structdata_overrides"]
+    overrides["section_title"] = {"searchable": True}
+    fields, _, index = compile_local_example(snapshot)
+    assert fields["section_title"] == Field("string", required=False, searchable=True)
+    assert "structdata.section_title" in index["fulltext"]
+    copies.pop()
+    rejects(lambda: compile_local_example(snapshot), "missing index override field:/ingestion/indexing/parameters/structdata_overrides/section_title")
+    del overrides["section_title"]
+    overrides["tags"] = {"searchable": True}
+    rejects(lambda: compile_local_example(snapshot), "invalid searchable type:/ingestion/indexing/parameters/structdata_overrides/tags")
+    overrides["tags"] = {"required": True}
+    rejects(lambda: compile_local_example(snapshot), "ValidationError")
+    del overrides["tags"]
+    overrides["price"] = {"filterable": False}
+    rejects(lambda: compile_local_example(snapshot), "field is not filterable:/inference/fixed_filters/0/field")
+
+
+@case("Fixed and request Filters use the same typed rules and one-level any groups")
+def _():
+    _, _, index = compile_local_example(local_snapshot("builtin"))
+    request = json.loads((REPO / "examples/user_remote_api/inference.request.json").read_text())
+    filters = index["filters"] | {"structdata.updated_at": Field("datetime", filterable=True),
+                                  "structdata.valid_on": Field("date", filterable=True)}
+    validate_filters(request["filters"], filters, "/filters")
+    for kind, value, invalid in (
+        ("updated_at", "2026-11-16T00:00:00+08:00", "2026-11-16T00:00:00"),
+        ("valid_on", "2026-11-16", "2026-02-31"),
+        ("price", 300, "300"),
+    ):
+        condition = {"field": "structdata." + kind, "operator": "gte", "value": value}
+        validate_filters([condition], filters, "/filters")
+        condition["value"] = invalid
+        rejects(lambda: validate_filters([condition], filters, "/filters"), "invalid filter value:/filters/0/value")
+    invalid_range = [{"field": "structdata.tags", "operator": "gt", "value": "設備"}]
+    rejects(lambda: validate_filters(invalid_range, filters, "/filters"), "invalid filter operator:/filters/0/operator")
 
 
 @case("System Config rejects extra deployment keys, forbidden scopes and invalid effective settings")
@@ -532,7 +665,7 @@ def _():
         "parameters": {},
     }
     del inference["rerank"]
-    Draft202012Validator(SYSTEM_CONFIG_SCHEMA).validate(snapshot)
+    Draft202012Validator(SYSTEM_CONFIG_SCHEMA, registry=SCHEMA_REGISTRY).validate(snapshot)
     assert [module for module, _ in effective_nodes("inference", inference)] == [
         "inference_input", "query_transformation", "retrieval",
     ]
@@ -579,8 +712,10 @@ def _():
     params["copy_fields"][0]["output_field"] = "text"
     rejects(lambda: data_effects(desc, params, UPSTREAM, {}), "duplicate field")
     params["copy_fields"][0]["source_field"] = "summary"
-    rejects(lambda: parameters("chunking", config, context(UPSTREAM, {})),
-            "invalid selection:/copy_fields/*/source_field")
+    params["copy_fields"][0]["output_field"] = "summary"
+    desc, params = parameters("chunking", config, context(UPSTREAM, {}))
+    fields, _ = data_effects(desc, params, UPSTREAM, {})
+    assert fields["summary"] == Field("string", required=False)
 
 
 @case("unknown component version, invalid parameter type and invalid relation fail separately")
@@ -660,7 +795,7 @@ def _():
     candidate = json.loads((examples / "remote_ingestion.response.json").read_text())["output"][0]
     schema.validate(candidate)
     bad = deepcopy(candidate)
-    bad["structdata"]["text"] = ["invalid", "nested"]
+    bad["structdata"]["text"] = [["invalid", "nested"]]
     rejects(lambda: schema.validate(bad), "ValidationError")
 
 
@@ -682,8 +817,10 @@ def _():
     results = response["output"]
     query.validate(results)
     fields, _ = builtin_output()
+    fields |= {"price": Field("number", required=False), "tags": Field("string_array", required=False)}
     field_schema = obj({name: {"type": value.type} for name, value in fields.items()},
                        [name for name, value in fields.items() if value.required])
+    field_schema["properties"]["tags"] = array({"type": "string"})
     validator = Draft202012Validator({"properties": {"structdata": field_schema}})
     candidate = results[0]["result_sets"][0]["items"][0]["data"]
     validator.validate(candidate)
@@ -731,6 +868,7 @@ def _():
 
 
 if __name__ == "__main__":
+    Draft202012Validator.check_schema(DATA_META)
     Draft202012Validator.check_schema(DESCRIPTOR_SCHEMA)
     Draft202012Validator.check_schema(SYSTEM_CONFIG_SCHEMA)
     assert CHUNK == json.loads((HERE / "recursive.descriptor.json").read_text())

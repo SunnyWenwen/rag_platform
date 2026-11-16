@@ -74,11 +74,13 @@
       "source": "input.structdata",
       "types": [
         "string",
+        "string_array",
         "integer",
         "number",
-        "boolean"
-      ],
-      "required": true
+        "boolean",
+        "date",
+        "datetime"
+      ]
     }
   },
   "data_rules": [

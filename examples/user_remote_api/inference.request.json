@@ -2,5 +2,24 @@
   "query": "如何保養設備？",
   "parameters": {
     "top_k": 5
-  }
+  },
+  "filters": [
+    {
+      "any": [
+        {
+          "field": "structdata.tags",
+          "operator": "in",
+          "value": [
+            "設備",
+            "保養"
+          ]
+        },
+        {
+          "field": "structdata.title",
+          "operator": "eq",
+          "value": "設備維護"
+        }
+      ]
+    }
+  ]
 }

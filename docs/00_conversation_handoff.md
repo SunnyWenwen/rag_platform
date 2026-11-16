@@ -5,17 +5,16 @@
 | 來源 | ChatGPT 專案 Generic rag system platform 的 `[MAIN] 主要對話`，整理至 2026-11-16 |
 | 目標 repo／分支 | `SunnyWenwen/rag_platform`／`docs/rag-system-factory` |
 | 核對基準 | 交接撰寫前的分支 HEAD [`2cf5d1c`](https://github.com/SunnyWenwen/rag_platform/commit/2cf5d1c0516d31422083c0781b0b12005a38fc67)，之後若有新提交，先比對差異 |
-| 對話停點 | `structdata` 的宣告、沿用／新增與 Indexing 最後覆寫已在對話確認。接著討論 `metadata` 如何宣告可查路徑、Filter 細節，以及 ES 逾時的安全重送。 |
+| 對話停點 | Data Meta Schema、Filter、Remote 邊界及發布驗證已確認並同步。下一題是 ES 寫入逾時後的安全重送。 |
 
-這份交接用於續談。[README](../README.md) 是規格入口，[08 決策登錄](08_plan_and_decisions.md) 維護正式決策與未決事項。以下會標記「分支已記錄」、「對話已確認、待同步」或「提案／待定」。讀到較早的對話、原型或歷史範例時，依這些狀態核對。此交接提交只新增本文件。
+這份交接用於續談。[README](../README.md) 是規格入口，[08 決策登錄](08_plan_and_decisions.md) 維護正式決策與未決事項。讀到較早的對話、原型或歷史範例時，以現行規格和決策登錄核對。
 
 ## 1. 接手時先掌握的狀態
 
 | 狀態 | 內容 |
 |---|---|
 | 分支已記錄 | Retrieval-only、LangGraph、單一 `Document`、User Remote API、Admin 全域模板、Inference 結果處理、System／索引生命週期、ES 文件覆寫、Builder 管理來源與重送、ES-first 的 M1。 |
-| 對話已確認、待同步 | Data Import 宣告 `structdata` 的原始欄位。後續保留的欄位繼承宣告，新增欄位在產生點宣告。Indexing 對最終仍存在的欄位保留最後覆寫 `searchable`／`filterable` 的能力。使用者已回覆「好」。 |
-| 草案、待定稿 | `string_array` 作唯一集合型別、範圍 Filter、完整型別／能力矩陣、日期與缺值語意、Remote Filter 能力表達、`metadata` 路徑宣告、索引覆寫差異的正式 Config 鍵名。 |
+| 已同步至規格 | Data Meta Schema 欄位宣告、索引覆寫、固定及動態 Filter、Remote I/O 與發布驗證。見 [第 6 節](#data-meta-handoff)。 |
 | 現有交付 | 規格、HTML Prototype、圖面、JSON Schema／Descriptor／Config 草案及離線 fixtures。基準分支尚未交付可對真實 ES 執行的正式 Engine、Runtime 或 Builder。 |
 
 使用者習慣先看取捨與具體例子，再決定並同步到規格。文件更新沿用 `docs/rag-system-factory`。以中文溝通，保留英文術語和欄位鍵名。當需求是續談時，先解決當前設計問題。收到更新文件或圖面的指示時，連同受影響的 Schema、範例、Prototype Backlog 及決策登錄檢查，並回報 commit 與檔案連結。
@@ -50,7 +49,7 @@
 
 - 固定 HTTP 契約為 POST `{"input": ..., "parameters": {...}}` → `{"output": ...}`。平台從上游推導 input，從同一份共用資料契約與 User 宣告產出 output 契約。既有服務的 payload 轉接由外部服務處理。
 - Ingestion 可替換 Parsing／Chunking／Embedding 各自或連續組合。Parsing 起始時 input 是單一 `Document`，其他情況是同文件 `Document[]`，output 為 `Document[]`。涵蓋 Parsing／Chunking 時宣告輸出欄位，涵蓋 Embedding 時宣告向量。Import 與 Indexing 為平台節點。
-- Inference Input 為平台節點。Query Transformation／Retrieval／Rerank 可單獨或相鄰合併。Remote I/O 都是 `QueryContext[]`。整段包給 Remote 時，Runtime 驗證回傳候選，再依對方順序交付。Remote Retrieval 查自有資料可直接用，候選仍須符合 System 從 Ingestion 推導的可檢索 `Document` Schema。後續內建 Rerank 可使用同一套候選欄位。
+- Inference Input 為平台節點。Query Transformation／Retrieval／Rerank 可單獨或相鄰合併。Remote I/O 都是 `QueryContext[]`。整段包給 Remote 時，Runtime 驗證回傳候選，再依對方順序交付。Remote Retrieval 查自有資料可直接用，候選仍須符合 System 從 Ingestion 推導的可檢索 `Document` Schema。Remote 收到合併後的 filters，自行決定過濾、排序及截斷。後續內建 Rerank 可使用同一套候選欄位。
 - 有效設定在區段第一個節點使用 `component_id: remote_api`、`component_version`、`through`、`service_ref`，拒絕重疊，涵蓋節點不再單獨執行。原設定可留在 UI Draft。Import／Inference Input 宣告執行參數，`{{params.name}}` 可傳至下游，完整引用保留型別。認證用固定或動態 `secret_ref`，Runtime 檢查後解析並注入 Header。憑證與執行參數留在各自的環境／請求作用域。
 - Graph 類檢索曾討論由平台方開發可選的內建模組，沿用共用資料形狀及契約。這是能力方向，M1 驗收範圍見第 7 節。
 
@@ -61,7 +60,7 @@
 - Query Transformation 的 `none` 直接用原問題，`rewrite` 是一個 Component，使用 `llm_ref`、`prompt`、`count`、`include_original` 表達單筆和多筆改寫。LLM 服務集中設定，再從下拉選取。保留 `ori_query`。固定結構化輸出、去重、何時重試及 Prompt 單模組測試仍須依 Engine 草案定細節。
 - **同 Query 多路**：內建 Retrieval 每 Query／每全文或向量路徑先取 `per_route_k`。一路可直接交付，多路須選 RRF 或 Sum Score，以 `data_id` 對齊。按當前排名分組後，才取 Retrieval `top_n`。每 Query 只交付一份 ResultSet，查無命中仍可交付空 `items`。路徑與融合策略的專屬參數及預設待定。
 - **Rerank**：對候選做模型打分與重排，再做當步可選 `group_by`，最後做 Rerank Top N。**跨 Query** 的 UI 控制在 Query Transformation，可選 Retrieval 或 Rerank 完成後才執行，依序融合 → 分組 → 跨 Query Top N。可設在 `after_retrieval` 或 `after_rerank`，Config 正式形狀仍屬草案。Rerank 為 None 時仍可執行後置跨 Query 規則。
-- **分組**：開啟時預選 `document_id`，也可選候選 `Document` 的單值欄位，例如 `metadata.parent_chunk_id`。可多選成組合鍵，保留當時排名最高的候選。任一分組欄缺值的候選各自保留。分組候選欄位來源 `candidate.document_fields` 已有 Descriptor 提案，Meta-schema／編譯整合仍待做。
+- **分組**：開啟時預選 `document_id`，也可選候選 `Document.structdata` 的 `string` 欄位，例如 `structdata.parent_chunk_id`。可多選成組合鍵，保留當時排名最高的候選。任一分組欄缺值的候選各自保留。分組候選欄位來源 `candidate.document_fields` 已加入 Descriptor 草案，內建選項可離線驗證。
 - **失敗**：必要 Query、搜尋路徑或 Rerank 任一最終失敗，就回整次 Inference 錯誤。必要操作全部成功但查無資料時回 `200` 和空候選。文件／檔案級 ACL 先延後，System 隔離與 MCP API key 的 System／工具授權保留。
 
 來源：[Engine 結果處理](03_engine_and_components.md) · [Config 結果處理](05_system_config.md#inference-result-processing) · [08 相關決策](08_plan_and_decisions.md)
@@ -99,46 +98,14 @@ Runtime 首版 Queue／Job Store 在程序 Memory。重要可調預設：單批 
 
 來源：[Runtime API](06_runtime_api_and_deployment.md) · [索引生命週期](06_runtime_api_and_deployment.md#system-index-lifecycle) · [ES 文件覆寫](06_runtime_api_and_deployment.md#elasticsearch-document-replacement) · [Builder 查詢開放](07_builder_ui.md#builder-initial-ingestion-readiness) · [CSV 整批替換](07_builder_ui.md#builder-csv-replacement)
 
-## 6. 最新待續談：Data Meta Schema、metadata、Filter
+<a id="data-meta-handoff"></a>
+## 6. Data Meta Schema 已定案
 
-### 已確認、待同步到規格
-
-使用者原意是「`structdata` 的 data schema 在 Data Import 就要宣告，後面都是繼承前面的或是新增」，並確認下列 Indexing 最後調整方向。
-
-| 階段 | 欄位宣告責任 |
-|---|---|
-| Data Import | 原始欄位宣告 `type`、`required`、`searchable`、`filterable`，布林能力在這一步提供預設。 |
-| Parsing／Chunking／Remote 等 | 保留下來的欄位沿用上游宣告。新欄在產生點用同一套格式宣告。需要改型別或必填性時，回到產生點處理，維持上下游驗證一致。 |
-| Indexing | 顯示真正到達這一步的有效欄位，包含中途新增的欄位。可逐欄覆寫 `searchable`／`filterable`，沿用 `type`／`required`。向量能力仍從 Embedding 與 Indexing 的向量設定取得。 |
-| Retrieval | 全文及 Filter 選單讀取最終的有效能力。`searchable` 表示建立全文索引，某次 Retrieval 要用哪幾個全文欄位仍在 Retrieval 選。ES mapping 與指紋以最終能力推導。 |
-
-具體例：Import 有 `title`，Parser 新增 `section_title` 並設 `searchable: false`。若 Chunking 保留該欄，Indexing 可把 `section_title.searchable` 改成 `true`，其他屬性沿用。若上游刪除、改名或 Chunking 未保留，該欄不會出現在 Indexing 的可選清單。前一輪建議 Config 僅存覆寫差異，Builder 標出失效覆寫，精確鍵名、刪除／改名後的發布驗證仍待定。
-
-### 已提出的欄位與 Filter 草案
-
-資料來源是同事整理的 [CH_additional_Note.md](https://github.com/x21530317x/rag_platform/blob/docs/rag-system-factory/CH_additional_Note.md)。以下是 MAIN 對照平台契約後的草案，與基準分支的機器 Schema 仍有差異。
-
-| 欄位型別草案 | 值形狀 | 全文搜尋 | `filterable: true` 時的運算子草案 |
-|---|---|---|---|
-| `string` | 字串 | 可 | `eq`、`in` |
-| `string_array` | 一維 `string[]`，陣列元素皆為字串 | 先關閉 | `eq`、`in`，匹配任一元素 |
-| `integer` | 整數 | — | `eq`、`in`、`gt`、`gte`、`lt`、`lte` |
-| `number` | 有限數值 | — | 同上 |
-| `boolean` | 布林 | — | `eq`、`in` |
-| `date` | 日期字串，首版候選 `YYYY-MM-DD` | — | `eq`、`in` 與範圍 |
-
-- `string_array` 是討論中的唯一集合型別。`structdata` 仍維持平面欄位。草案允許複製、回傳和精確過濾，Chunking 切分來源、Embedding／Rerank 文字來源與 `group_by` 選單仍取符合契約的單值欄位。例：`["AI", "ML"]` 符合 `eq "AI"`、`in ["ML", "NLP"]`。
-- Filter 草案沿用 `{field, operator, value}` 與 AND。`{"field":"structdata.price","operator":"gte","value":300}` 翻成 ES `range`，`eq`／`in` 對應 `term`／`terms`。上下界可寫兩個條件。草案拒絕 Filter 的 `null` 值，文件欄位缺省或空陣列不命中。`required` 是否只要求存在（例如必填 `tags: []`）及日期時間／時區支援尚待定。範圍 Filter 影響評估為中等，主要涉及 API、型別驗證、表單和 Remote 相容性。
-- ES mapping 草案：`string` 只全文用 `text`，只 Filter 用 `keyword`，兩者皆用 `text` 加 `.keyword`。`string_array` 過濾用多值 `keyword`。`integer` 建議 `long`、`number` 建議 `double`、日期用 `date`、布林用 `boolean`。僅保存的欄位可留在 `_source`，用 `dynamic: false` 與明確 mapping。若明確映射到可用 doc values 的型別，需一起檢查 `index` 和 `doc_values` 設定。
-- Remote Retrieval 會收到共用 `QueryContext.filters`。擴增運算子時，討論過由 Remote 宣告支援範圍，平台拒絕把未支援的條件送入。能力宣告放在哪裡、由誰驗證及舊服務如何相容待定。
-
-### 新對話可直接開始的議題
-
-1. **先談 `metadata` 路徑宣告**（Q-006／Q-013）。現行允許巢狀自由 JSON，供索引或過濾的路徑需要型別。最新提案是僅對需全文、Filter 或分組的路徑宣告，並讓 `metadata.department` 與 `metadata.parent_chunk_id` 的需求共用欄位路徑機制。前者要可過濾，後者只需候選可讀且是單值，分組不要求建立 Filter 索引。請用這兩例確認宣告應在產生階段、Indexing，或以可繼承宣告加 Indexing 覆寫，並把 `_rag` 保留路徑、缺值及巢狀路徑限制一併說清楚。
-2. **再定 Filter 和完整範例**（Q-002／Q-013／Q-028）。確認 `string_array`、range、日期、缺值／`null`／空陣列、Remote 能力，再擬一份從 Import 到 Retrieval 的 System Config（含欄位新增、索引覆寫及 metadata）。基準分支 `document.schema.json` 仍只接純量，`query_context.schema.json` 仍只列 `eq`／`in`，其 `$defs.filter` 也給 `inference_request.schema.json` 引用。同步時檢查 Context 內嵌 Filter 及共用 `$defs`，再對照 Engine、Descriptor、System Config、Runtime API、Builder 表單、有效 Schema fixtures 與 Q-013。現有 `0.2-draft` Local Memory 範例可參考結構。
-3. **ES 逾時後的安全重送**（Q-008／Q-009／Q-017、API-D05）。已定 Builder 重送。仍要定如何確認前一次 ES 操作確實終止、如何觀測與清掉晚到資料。驗收情境：舊寫入 A 逾時且實際還在 ES 跑，重送 B 已寫入成功，A 的部分／全部 Chunk 才出現。現行「重送前查到的舊 `write_id`」無法涵蓋尚未出現的 A，需明確定出完成確認及清理邊界。避免把後端「目前查不到」當成終止證據。`write_id` 精確鎖定批次，單靠它無法證明當初該寫幾筆或後端已結束。
-
-來源：[資料契約](02_data_contracts.md) · [Descriptor 的分組欄位來源](04_component_descriptor.md#group-by-option-source) · [Q-013](08_plan_and_decisions.md#q-013) · [ES 文件覆寫](06_runtime_api_and_deployment.md#elasticsearch-document-replacement)
+- Import 宣告 structdata 欄位的 type、required、searchable、filterable。處理階段沿用保留欄位，依實際輸出宣告新欄位、轉型或補值保證。Indexing 只以 structdata_overrides 覆寫兩個搜尋旗標，最終形狀供 Inference 驗證候選。
+- metadata 以巢狀 JSON object 整包攜帶。Filter、文字及分組欄位均使用有宣告的 structdata，group_by 另可用 document_id。首版型別與用途見 [欄位總表](02_data_contracts.md#data-meta-schema)。
+- 固定 Filter 放在 Inference Pipeline 的 fixed_filters，請求另帶 filters。兩者以 AND 合併，可包含單層 any 群組。內建 Retrieval 各路先過濾再取 Top-K。Remote 收到共用 I/O，自行決定過濾、排序及截斷。
+- 啟用中的引用失效會在草稿定位，修正後才能發布。資料形狀與參數見 [System Config](05_system_config.md#data-schema-config)，離線驗收入口見 [範例](../examples/system_config/README.md)。
+- **下一題是 ES 寫入逾時後的安全重送**（Q-008／Q-009／Q-017、API-D05）。已有 Builder 重送的決策，仍要確認前次 ES 操作終止及如何清掉晚到資料。驗收情境為 A 逾時且仍在 ES 寫入，B 重送完成後 A 的 Chunk 才出現。重送前看到的舊 write_id 無法涵蓋晚到資料。見 [ES 文件覆寫](06_runtime_api_and_deployment.md#elasticsearch-document-replacement)。
 
 ## 7. 里程碑、Prototype 與圖面待辦
 
@@ -180,4 +147,4 @@ Runtime 首版 Queue／Job Store 在程序 Memory。重要可調預設：單批 
 
 ## 9. 貼給新對話的指令
 
-> 請先讀 `SunnyWenwen/rag_platform` 的 `docs/rag-system-factory` 分支，從 `docs/00_conversation_handoff.md` 接手。以交接的已確認／草案狀態為準，先對照 02、03、04、05、08 的規格。接著用 `metadata.department` 要做 Filter、`metadata.parent_chunk_id` 要 `group_by` 的例子，提出一版 metadata 欄位宣告與 Indexing／Retrieval 的串接方式，並說明如何和 `structdata`、`string_array`、範圍 Filter 的設計對齊。先跟我討論，等我確認後再同步規格與相關 Schema／範例。後續接 ES 寫入逾時安全重送，以及 M1 的第一份可執行 Config。
+> 請先讀本交接與 [決策登錄](08_plan_and_decisions.md)。Data Meta Schema 已同步，接續討論 ES 寫入逾時的安全重送，以及 M1 的第一份可執行 Config。
