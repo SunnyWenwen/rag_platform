@@ -3,29 +3,31 @@ flowchart LR
   %% Solid blue: Config publication and deployment. Teal: business API use.
   %% Dashed: artifacts or contracts delivered by the Engine Platform.
   %% Orange: export of the approved logical Config and target deployment settings.
+  %% User flow follows 01_user_system_l1: 1 設定與啟用 → 2 Ingest → 3 Inference → 4 Evaluation → 5 Export → 6 Deploy.
+  %% A starts Frontend, Backend and shared D. D can start with no System Config; publishing E enables F.
 
   subgraph A["A · Retrieval Builder（DEV）"]
     direction TB
-    FRONT["Builder Frontend"]
-    BACK["Builder Backend"]
-    E["E · 已驗證的 System Config Revision"]
-    subgraph D["D · 共用 DEV Retrieval Runtime"]
+    FRONT["Builder Frontend · 依 Schema、Descriptor 與有效相依產生欄位和選項"]
+    BACK["Builder Backend · 啟動時載入契約與元件目錄、連接 Config Store"]
+    E["① 設定與啟用 · E · 已驗證的 System Config Revision"]
+    subgraph D["D · 啟動初始化的共用 DEV Retrieval Runtime · 可零組 Config"]
       direction TB
-      DAPI["Runtime API · 依 system_id 路由"]
-      F["F · 測試 Retrieval System"]
+      DAPI["Runtime API、Registry、Executor 與 Queue · 依 system_id 路由"]
+      F["F · 發布 E 後啟用的測試 Retrieval System"]
       DAPI --> F
     end
     DEV["DEV 外部依賴 · Elasticsearch（資料／控制索引）、模型與 Remote API"]
     FRONT --> BACK
     BACK -->|"驗證並保存"| E
     E -->|"經內部管理 API 下發"| DAPI
-    BACK -->|"Ingest／Inference：指定目標 System"| DAPI
+    BACK -->|"② Ingest／③ Inference／④ Evaluation 批次 Query"| DAPI
     F --> DEV
   end
 
   subgraph B["B · Retrieval Engine Platform"]
     direction TB
-    SCHEMA["System Config Schema · Component Descriptor"]
+    SCHEMA["System Config Schema · Component Descriptor 與動態選項規則"]
     LIB["Retrieval Engine Library · 驗證、組裝與執行"]
     IMAGE["共用 Runtime Image · Runtime API ＋ Engine Library"]
     LIB -->|"封裝"| IMAGE
@@ -34,7 +36,7 @@ flowchart LR
   subgraph C["C · FTEST／ENT 部署"]
     direction TB
     BUNDLE["K8s 部署 Bundle · 同版 E、Image 引用、目標環境綁定"]
-    CD["使用單位以 K8s CD 套用"]
+    CD["⑥ Deploy · 使用單位以 K8s CD 套用"]
     subgraph DP["D′ · 獨立 Retrieval Runtime"]
       direction TB
       PAPI["Runtime API · 啟動時載入 E"]
@@ -50,7 +52,7 @@ flowchart LR
   SCHEMA -. "提供設定契約" .-> BACK
   IMAGE -. "啟動共用 D" .-> D
   IMAGE -. "同版 Image 啟動 D′" .-> DP
-  E -->|"Export 通過測試的 E"| BUNDLE
+  E -->|"⑤ Export 通過測試的 E"| BUNDLE
 
   classDef builder fill:#ffffff,stroke:#aec2df,color:#172c48
   classDef engine fill:#ffffff,stroke:#c8c2e9,color:#253450

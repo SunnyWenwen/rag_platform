@@ -156,11 +156,15 @@ User 在 Workspace 建立 System，選用模板或自行設定 Import、Ingestio
 
 | 圖面區塊 | 責任與交付物 |
 |---|---|
-| **A · Retrieval Builder** | Frontend 提供設定、測試與匯出介面。Backend 依 B 的契約驗證並保存 **E · System Config Revision**。Builder 使用 B 的共用 Runtime Image 啟動共用的 **D · DEV Runtime**，經內部管理 API 下發 E，在 D 中啟用 **F · 測試 Retrieval System**。使用者在 Builder 執行 Ingest／Inference 時，Backend 呼叫 D 的 Runtime API，由 D 依 `system_id` 路由到 F。 |
-| **B · Retrieval Engine Platform** | 提供 System Config Schema 與 Component Descriptor，讓 A 能驗證設定及相依欄位。交付 Engine Library 與共用 Runtime Image。Library 負責依 Config 組裝 System 並執行 Pipeline，Image 則封裝 Runtime API 和 Library。 |
+| **A · Retrieval Builder** | Frontend 依 B 的 System Config Schema 與 Component Descriptor 產生設定欄位和控制項，再用草稿的有效上游欄位、索引及服務能力決定可選值。Backend 驗證並保存 **E · System Config Revision**，經內部管理 API 下發 E，在 **D · 共用 DEV Runtime** 中啟用 **F · 測試 Retrieval System**。Ingest、Inference 和 Evaluation 由 A 發起，D 依 `system_id` 路由到 F。 |
+| **B · Retrieval Engine Platform** | 提供相容版本的 System Config Schema、Component Descriptor 與動態相依規則，供 A 產生表單及驗證設定。交付 Engine Library 與共用 Runtime Image。Library 負責依 Config 組裝 System 並執行 Pipeline，Image 則封裝 Runtime API 和 Library。 |
 | **C · FTEST／ENT 部署** | 使用單位取得 A 匯出的同版 E、Runtime Image 引用、K8s manifests 與目標環境綁定。K8s CD 使用 Image 啟動 **D′ · 獨立 Runtime**，載入 E 後建立 **F′ · 目標環境的 Retrieval System**。使用單位準備 ES、模型／Remote API、Secret 與觀測資源。 |
 
 DEV 與目標環境各自綁定服務及索引。對使用 Elasticsearch 的 System，Runtime 使用檢索資料索引及環境共用的控制索引。匯出交付同版邏輯 Config 和部署所需引用，目標資料由部署方準備或重新匯入。[部署 Bundle 與資料準備](06_runtime_api_and_deployment.md#src-07-91-bundle-目標)
+
+**A 服務啟動時**，提供 Frontend 介面、啟動 Backend 並連接 Config Store，讓 Backend 取得與目標 Runtime 相容的 Schema 和元件目錄。共用 DEV Runtime D 以獨立程序啟動，載入 Runtime API、Engine Library、Registry、共用 Executor 及記憶體 Queue。D 可以零組 System Config 啟動。已有 System 的重新載入依 Runtime 管理規則處理。[Runtime 啟動與管理](06_runtime_api_and_deployment.md#src-07-41-建立與啟動建議流程)
+
+**後續使用者操作**依圖面 1～6 執行。使用者先在 A 設定並發布 E，D 驗證服務／索引綁定後啟用 F。Ingest 由 F 建立或更新 DEV 索引，Inference 呼叫 F 取回查詢結果，Evaluation 由 A 的 Runner 批次呼叫 F。評估後可以調整 E 並重測受影響的步驟。Exporter 交付同版 E 與部署 Bundle，使用單位在 C 啟動 D′，由 D′ 載入 E 建立 F′。[使用者流程](../diagrams/01_user_system_l1.png)
 
 ## 歷史名稱與遷移對照
 
