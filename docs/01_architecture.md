@@ -156,15 +156,23 @@ User 在 Workspace 建立 System，選用模板或自行設定 Import、Ingestio
 
 | 圖面區塊 | 責任與交付物 |
 |---|---|
-| **A · Retrieval Builder** | Frontend 依 B 的 System Config Schema 與 Component Descriptor 產生設定欄位和控制項，再用草稿的有效上游欄位、索引及服務能力決定可選值。Backend 驗證並保存 **E · System Config Revision**，經內部管理 API 下發 E，在 **D · 共用 DEV Runtime** 中啟用 **F · 測試 Retrieval System**。Ingest、Inference 和 Evaluation 由 A 發起，D 依 `system_id` 路由到 F。 |
-| **B · Retrieval Engine Platform** | 提供相容版本的 System Config Schema、Component Descriptor 與動態相依規則，供 A 產生表單及驗證設定。交付 Engine Library 與共用 Runtime Image。Library 負責依 Config 組裝 System 並執行 Pipeline，Image 則封裝 Runtime API 和 Library。 |
-| **C · FTEST／ENT 部署** | 使用單位取得 A 匯出的同版 E、Runtime Image 引用、K8s manifests 與目標環境綁定。K8s CD 使用 Image 啟動 **D′ · 獨立 Runtime**，載入 E 後建立 **F′ · 目標環境的 Retrieval System**。使用單位準備 ES、模型／Remote API、Secret 與觀測資源。 |
+| **A · Retrieval Builder** | **A-1 Frontend** 依 B-1 的契約與有效資料相依產生設定欄位和選項。**A-2 Backend** 驗證並保存 **A-3 System Config Revision**，經 **A-4 共用 DEV Runtime** 的內部管理 API 下發設定，啟用 **A-5 測試 Retrieval System**。Ingest、Inference 與 Evaluation 由 A 發起，A-4 依 `system_id` 路由到 A-5，並使用 **A-6 DEV 外部依賴**。 |
+| **B · Retrieval Engine Platform** | **B-1 System Config Schema** 搭配 Component Descriptor 與動態相依規則，供 A 產生表單和驗證設定。**B-2 Engine Library** 依 Config 組裝 System 並執行 Pipeline。**B-3 共用 Runtime Image** 封裝 Runtime API 與 B-2，供 A-4 及 C-3 啟動。 |
+| **C · FTEST／ENT 部署** | **C-1 K8s 部署 Bundle** 包含同版 A-3、B-3 Image 引用、K8s manifests 與目標環境綁定。使用單位經 **C-2 K8s CD** 啟動 **C-3 獨立 Retrieval Runtime**，載入 A-3 後建立 **C-4 目標環境的 Retrieval System**，並提供 **C-5 目標環境依賴**。 |
 
 DEV 與目標環境各自綁定服務及索引。對使用 Elasticsearch 的 System，Runtime 使用檢索資料索引及環境共用的控制索引。匯出交付同版邏輯 Config 和部署所需引用，目標資料由部署方準備或重新匯入。[部署 Bundle 與資料準備](06_runtime_api_and_deployment.md#src-07-91-bundle-目標)
 
-**A 服務啟動時**，提供 Frontend 介面、啟動 Backend 並連接 Config Store，讓 Backend 取得與目標 Runtime 相容的 Schema 和元件目錄。共用 DEV Runtime D 以獨立程序啟動，載入 Runtime API、Engine Library、Registry、共用 Executor 及記憶體 Queue。D 可以零組 System Config 啟動。已有 System 的重新載入依 Runtime 管理規則處理。[Runtime 啟動與管理](06_runtime_api_and_deployment.md#src-07-41-建立與啟動建議流程)
+**A 服務啟動時**提供 A-1，啟動 A-2 並連接 Config Store。A-2 取得相容的 B-1 契約與元件目錄。共用 A-4 以獨立程序啟動，載入 Runtime API、Engine Library、Registry、Executor 及記憶體 Queue。A-4 可以零組 System Config 啟動。已有 System 的重新載入依 Runtime 管理規則處理。[Runtime 啟動與管理](06_runtime_api_and_deployment.md#src-07-41-建立與啟動建議流程)
 
-**後續使用者操作**依圖面 1～6 執行。使用者先在 A 設定並發布 E，D 驗證服務／索引綁定後啟用 F。Ingest 由 F 建立或更新 DEV 索引，Inference 呼叫 F 取回查詢結果，Evaluation 由 A 的 Runner 批次呼叫 F。評估後可以調整 E 並重測受影響的步驟。Exporter 交付同版 E 與部署 Bundle，使用單位在 C 啟動 D′，由 D′ 載入 E 建立 F′。[使用者流程](../diagrams/01_user_system_l1.png)
+| 使用者步驟 | 圖面對應 |
+|---|---|
+| 1 設定與啟用 | 使用者經 A-1／A-2 設定並發布 A-3。A-4 驗證服務及索引綁定後啟用 A-5。 |
+| 2 Ingest | A-1／A-2 上傳資料，A-4 路由到 A-5，使用 A-6 建立或更新 DEV 索引。 |
+| 3 Inference | A-1／A-2 發起查詢，A-4 路由到 A-5，回傳檢索結果。 |
+| 4 Evaluation | A 的 Runner 經 A-4 批次查詢 A-5。評估後可調整 A-3 並重測受影響的步驟。 |
+| 5 Export | A-2 將同版 A-3 與目標部署所需引用匯出成 C-1。 |
+| 6 Deploy | 使用單位透過 C-2 啟動 C-3。C-3 載入 A-3，建立 C-4。 |
+
 
 ## 歷史名稱與遷移對照
 

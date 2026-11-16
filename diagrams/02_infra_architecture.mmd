@@ -1,58 +1,57 @@
 flowchart LR
-  %% Target architecture and division of development responsibilities.
+  %% Architecture groups A, B and C contain locally numbered boxes.
   %% Solid blue: Config publication and deployment. Teal: business API use.
   %% Dashed: artifacts or contracts delivered by the Engine Platform.
   %% Orange: export of the approved logical Config and target deployment settings.
-  %% User flow follows 01_user_system_l1: 1 設定與啟用 → 2 Ingest → 3 Inference → 4 Evaluation → 5 Export → 6 Deploy.
-  %% A starts Frontend, Backend and shared D. D can start with no System Config; publishing E enables F.
+  %% 1 設定與啟用：A-1／A-2 → A-3 → A-4／A-5
+  %% 2 Ingest：A-1／A-2 → A-4／A-5 → A-6
+  %% 3 Inference、4 Evaluation：A-1／A-2 → A-4／A-5
+  %% 5 Export：A-2 匯出 A-3 → C-1；6 Deploy：C-2 → C-3 → C-4
+  %% A initializes A-1, A-2 and shared A-4. A-4 can start with no Config; publishing A-3 enables A-5.
 
   subgraph A["A · Retrieval Builder（DEV）"]
     direction TB
-    FRONT["Builder Frontend · 依 Schema、Descriptor 與有效相依產生欄位和選項"]
-    BACK["Builder Backend · 啟動時載入契約與元件目錄、連接 Config Store"]
-    E["① 設定與啟用 · E · 已驗證的 System Config Revision"]
-    subgraph D["D · 啟動初始化的共用 DEV Retrieval Runtime · 可零組 Config"]
+    A1["A-1 · Frontend · 依 Schema、Descriptor 與有效相依產生設定選項"]
+    A2["A-2 · Backend · 啟動時載入契約與元件目錄、連接 Config Store"]
+    A3["A-3 · 已驗證的 System Config Revision"]
+    subgraph A4["A-4 · 共用 DEV Retrieval Runtime · 初始化 API、Registry、Executor、Queue · 可零組 Config"]
       direction TB
-      DAPI["Runtime API、Registry、Executor 與 Queue · 依 system_id 路由"]
-      F["F · 發布 E 後啟用的測試 Retrieval System"]
-      DAPI --> F
+      A5["A-5 · 測試 Retrieval System · 發布 A-3 後啟用"]
     end
-    DEV["DEV 外部依賴 · Elasticsearch（資料／控制索引）、模型與 Remote API"]
-    FRONT --> BACK
-    BACK -->|"驗證並保存"| E
-    E -->|"經內部管理 API 下發"| DAPI
-    BACK -->|"② Ingest／③ Inference／④ Evaluation 批次 Query"| DAPI
-    F --> DEV
+    A6["A-6 · DEV 外部依賴 · Elasticsearch（資料／控制索引）、模型與 Remote API"]
+    A1 --> A2
+    A2 -->|"驗證並保存"| A3
+    A3 -->|"① 經 A-4 內部管理 API 下發"| A5
+    A2 -->|"② Ingest／③ Inference／④ Evaluation 批次 Query · 經 A-4 API 依 system_id 路由"| A5
+    A5 --> A6
   end
 
   subgraph B["B · Retrieval Engine Platform"]
     direction TB
-    SCHEMA["System Config Schema · Component Descriptor 與動態選項規則"]
-    LIB["Retrieval Engine Library · 驗證、組裝與執行"]
-    IMAGE["共用 Runtime Image · Runtime API ＋ Engine Library"]
-    LIB -->|"封裝"| IMAGE
+    B1["B-1 · System Config Schema · Component Descriptor 與動態選項規則"]
+    B2["B-2 · Retrieval Engine Library · 驗證、組裝與執行"]
+    B3["B-3 · 共用 Runtime Image · Runtime API ＋ Engine Library"]
+    B2 -->|"封裝"| B3
   end
 
   subgraph C["C · FTEST／ENT 部署"]
     direction TB
-    BUNDLE["K8s 部署 Bundle · 同版 E、Image 引用、目標環境綁定"]
-    CD["⑥ Deploy · 使用單位以 K8s CD 套用"]
-    subgraph DP["D′ · 獨立 Retrieval Runtime"]
+    C1["C-1 · K8s 部署 Bundle · 同版 A-3、Image 引用、目標環境綁定"]
+    C2["C-2 · K8s CD · 使用單位套用"]
+    subgraph C3["C-3 · 獨立 Retrieval Runtime · 啟動時載入 A-3"]
       direction TB
-      PAPI["Runtime API · 啟動時載入 E"]
-      FP["F′ · 目標環境的 Retrieval System"]
-      PAPI --> FP
+      C4["C-4 · 目標環境的 Retrieval System"]
     end
-    PROD["目標環境依賴 · Elasticsearch（資料／控制索引）、模型、Remote API、Secret Vault、觀測"]
-    BUNDLE --> CD
-    CD -->|"啟動 Image 並載入 E"| PAPI
-    FP --> PROD
+    C5["C-5 · 目標環境依賴 · Elasticsearch（資料／控制索引）、模型、Remote API、Secret Vault、觀測"]
+    C1 --> C2
+    C2 -->|"⑥ Deploy · 啟動 C-3 並載入 A-3"| C4
+    C4 --> C5
   end
 
-  SCHEMA -. "提供設定契約" .-> BACK
-  IMAGE -. "啟動共用 D" .-> D
-  IMAGE -. "同版 Image 啟動 D′" .-> DP
-  E -->|"⑤ Export 通過測試的 E"| BUNDLE
+  B1 -.->|"提供設定契約"| A2
+  B3 -.->|"啟動 A-4"| A4
+  B3 -.->|"同版 Image 啟動 C-3"| C3
+  A3 -->|"⑤ Export 通過測試的 A-3"| C1
 
   classDef builder fill:#ffffff,stroke:#aec2df,color:#172c48
   classDef engine fill:#ffffff,stroke:#c8c2e9,color:#253450
@@ -60,16 +59,16 @@ flowchart LR
   classDef system fill:#ddf1ec,stroke:#78b3a4,color:#153c3b
   classDef infra fill:#ffffff,stroke:#a7cbbe,color:#2e4b45
   classDef bundle fill:#fff2e2,stroke:#e5b47c,color:#58381e
-  class FRONT,BACK builder
-  class SCHEMA,LIB,IMAGE engine
-  class E config
-  class F,FP system
-  class DEV,PROD,CD infra
-  class BUNDLE bundle
+  class A1,A2 builder
+  class B1,B2,B3 engine
+  class A3 config
+  class A5,C4 system
+  class A6,C5,C2 infra
+  class C1 bundle
   style A fill:#eef4ff,stroke:#bbcee8
   style B fill:#f2effa,stroke:#d1c9e8
   style C fill:#edf7f2,stroke:#b6dace
-  style D fill:#e6f3f3,stroke:#a0c2c5
-  style DP fill:#e6f3f3,stroke:#a0c2c5
-  linkStyle 4 stroke:#147e75,stroke-width:2.5px
-  linkStyle 14 stroke:#af6217,stroke-width:2.5px
+  style A4 fill:#e6f3f3,stroke:#a0c2c5
+  style C3 fill:#e6f3f3,stroke:#a0c2c5
+  linkStyle 3 stroke:#147e75,stroke-width:2.5px
+  linkStyle 12 stroke:#af6217,stroke-width:2.5px
