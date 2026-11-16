@@ -1,13 +1,16 @@
 flowchart LR
   %% Architecture groups A, B and C contain locally numbered boxes.
   %% Solid blue: Config publication and deployment. Teal: business API use.
-  %% Dashed: artifacts or contracts delivered by the Engine Platform.
+  %% Dashed: artifacts or contracts delivered by the Engine Framework.
   %% Orange: export of the approved logical Config and target deployment settings.
-  %% 1 設定與啟用：A-1／A-2 → A-3 → A-4／A-5
-  %% 2 Ingest：A-1／A-2 → A-4／A-5 → A-6
-  %% 3 Inference、4 Evaluation：A-1／A-2 → A-4／A-5
-  %% 5 Export：A-2 匯出 A-3 → C-1；6 Deploy：C-2 → C-3 → C-4
-  %% A initializes A-1, A-2 and shared A-4. A-4 can start with no Config; publishing A-3 enables A-5.
+  %% 1 設定與啟用：在 A-1 設定，A-2 驗證並發布 A-3。A-4 套用設定，啟用 A-5。
+  %% 2 Ingest：從 A-1 上傳，A-2 提交匯入。A-5 處理文件，寫入 A-6 的索引。
+  %% 3 Inference：從 A-1 提問，A-2 送出查詢。A-4 路由到 A-5，並回傳結果。
+  %% 4 Evaluation：在 A-1 啟動評估。Runner 批次查詢 A-5 並彙整結果。
+  %% 5 Export：A-2 匯出同版 A-3 與部署設定。產生 C-1 部署 Bundle。
+  %% 6 Deploy：使用單位透過 C-2 套用 C-1。啟動 C-3，建立 C-4。
+  %% A starts shared A-4 directly from B-2. B-3 carries the Runtime API and Library for deployment to C-3.
+  %% A-4 can start with no Config; publishing A-3 enables A-5.
 
   subgraph A["A · Retrieval Builder（DEV）"]
     direction TB
@@ -19,14 +22,14 @@ flowchart LR
       A5["A-5 · 測試 Retrieval System · 發布 A-3 後啟用"]
     end
     A6["A-6 · DEV 外部依賴 · Elasticsearch（資料／控制索引）、模型與 Remote API"]
-    A1 --> A2
+    A1 -->|"① 編輯設定並提交驗證"| A2
     A2 -->|"驗證並保存"| A3
     A3 -->|"① 經 A-4 內部管理 API 下發"| A5
     A2 -->|"② Ingest／③ Inference／④ Evaluation 批次 Query · 經 A-4 API 依 system_id 路由"| A5
     A5 --> A6
   end
 
-  subgraph B["B · Retrieval Engine Platform"]
+  subgraph B["B · Retrieval Engine Framework"]
     direction TB
     B1["B-1 · System Config Schema · Component Descriptor 與動態選項規則"]
     B2["B-2 · Retrieval Engine Library · 驗證、組裝與執行"]
@@ -49,9 +52,9 @@ flowchart LR
   end
 
   B1 -.->|"提供設定契約"| A2
-  B3 -.->|"啟動 A-4"| A4
+  B2 -.->|"由 DEV Runtime 入口直接啟動 A-4"| A4
   B3 -.->|"同版 Image 啟動 C-3"| C3
-  A3 -->|"⑤ Export 通過測試的 A-3"| C1
+  A3 -->|"⑤ A-2 匯出同版 A-3 與目標部署設定"| C1
 
   classDef builder fill:#ffffff,stroke:#aec2df,color:#172c48
   classDef engine fill:#ffffff,stroke:#c8c2e9,color:#253450

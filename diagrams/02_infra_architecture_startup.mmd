@@ -1,0 +1,29 @@
+flowchart LR
+  %% Initial DEV startup before a user publishes the first System Config.
+  %% Component IDs match the architecture after user operations.
+
+  subgraph B["B · Retrieval Engine Framework"]
+    direction TB
+    B1["B-1 · System Config Schema · Component Descriptor 與動態選項規則"]
+    B2["B-2 · Retrieval Engine Library · 驗證 Config、組裝 System、執行 Pipeline"]
+  end
+
+  subgraph A["A · Retrieval Builder（DEV）"]
+    direction TB
+    A2["A-2 · Backend · 載入契約與元件目錄，連接 Config Store"]
+    A1["A-1 · Frontend · 依 Schema、Descriptor 與有效相依產生設定欄位及選項"]
+    A4["A-4 · 共用 DEV Retrieval Runtime · 獨立程序初始化 API、Registry、Executor、記憶體 Queue，以零組 System Config 就緒"]
+    A2 -->|"提供設定契約與元件目錄"| A1
+  end
+
+  B1 -.->|"載入設定契約"| A2
+  B2 -.->|"由 DEV Runtime 入口直接載入"| A4
+
+  classDef builder fill:#ffffff,stroke:#aec2df,color:#172c48
+  classDef engine fill:#ffffff,stroke:#c8c2e9,color:#253450
+  classDef runtime fill:#e8f4f4,stroke:#96bcc2,color:#172c48
+  class A1,A2 builder
+  class B1,B2 engine
+  class A4 runtime
+  style A fill:#eef4ff,stroke:#bbcee8
+  style B fill:#f2effa,stroke:#d1c9e8

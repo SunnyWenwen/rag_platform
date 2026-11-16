@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="751" viewBox="0 0 1500 751" role="img" aria-labelledby="title desc">
+<title id="title">Retrieval Builder 啟動後</title>
+<desc id="desc">首次啟動，使用者尚未發布設定。B-1 提供契約給 A-2。B-2 由 DEV Runtime 入口直接載入，讓 A-4 以零組 System Config 就緒。</desc>
+<defs>
+<marker id="arrow-blue" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5.5 L0 11Z" fill="#315e9b"/></marker>
+<marker id="arrow-purple" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5.5 L0 11Z" fill="#6e5ea3"/></marker>
+<marker id="arrow-teal" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5.5 L0 11Z" fill="#13796f"/></marker>
+<marker id="arrow-orange" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5.5 L0 11Z" fill="#a55b18"/></marker>
+</defs>
+<style>
+text{font-family:'Noto Sans CJK TC','Noto Sans CJK SC',sans-serif;text-rendering:geometricPrecision}
+</style>
+<rect x="0" y="0" width="1500" height="751" rx="0" fill="#f9fbfe" stroke="none" stroke-width="1.4"/>
+<text x="55" y="72" fill="#172a45" font-size="49" font-weight="800" text-anchor="start">Retrieval Builder 啟動後</text>
+<text x="57" y="113" fill="#4b5e75" font-size="21" font-weight="500" text-anchor="start">首次啟動，使用者尚未操作。Frontend、Backend 與共用 DEV Runtime 已就緒。</text>
+<rect x="55" y="153" width="780" height="524" rx="22" fill="#edf4fd" stroke="#b8cde8" stroke-width="1.4"/>
+<rect x="986" y="153" width="459" height="524" rx="22" fill="#f2eff9" stroke="#cec6e5" stroke-width="1.4"/>
+<rect x="85" y="180" width="36" height="34" rx="8" fill="#dbe9fa" stroke="none" stroke-width="1.4"/>
+<text x="103" y="205" fill="#315e9b" font-size="21" font-weight="750" text-anchor="middle">A</text>
+<text x="135" y="206" fill="#172a45" font-size="29" font-weight="750" text-anchor="start">Retrieval Builder</text>
+<text x="135" y="235" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">Frontend／Backend ＋ DEV Runtime</text>
+<rect x="1016" y="180" width="36" height="34" rx="8" fill="#e5dff4" stroke="none" stroke-width="1.4"/>
+<text x="1034" y="205" fill="#6e5ea3" font-size="21" font-weight="750" text-anchor="middle">B</text>
+<text x="1066" y="206" fill="#172a45" font-size="25" font-weight="750" text-anchor="start">Retrieval Engine Framework</text>
+<text x="1066" y="235" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">設定契約與執行核心</text>
+<path d="M1017 407 H804" fill="none" stroke="#6e5ea3" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#arrow-purple)"/>
+<path d="M1017 559 H804" fill="none" stroke="#6e5ea3" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#arrow-purple)"/>
+<path d="M445 364 V320" fill="none" stroke="#315e9b" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+<text x="910" y="388" fill="#6e5ea3" font-size="18" font-weight="680" text-anchor="middle">載入設定契約</text>
+<text x="910" y="540" fill="#6e5ea3" font-size="18" font-weight="680" text-anchor="middle">直接載入 B-2</text>
+<text x="462" y="348" fill="#315e9b" font-size="17" font-weight="650" text-anchor="start">提供契約與元件目錄</text>
+<rect x="85" y="253" width="719" height="67" rx="13" fill="#ffffff" stroke="#bdcfe6" stroke-width="1.4"/>
+<text x="108" y="296" fill="#172a45" font-size="24" font-weight="750" text-anchor="start">A-1　Frontend</text>
+<text x="305" y="296" fill="#4b5e75" font-size="19" font-weight="500" text-anchor="start">依 Schema、Descriptor 與有效相依產生設定選項</text>
+<rect x="85" y="364" width="719" height="100" rx="13" fill="#ffffff" stroke="#bdcfe6" stroke-width="1.4"/>
+<text x="108" y="405" fill="#172a45" font-size="24" font-weight="750" text-anchor="start">A-2　Backend</text>
+<text x="108" y="438" fill="#4b5e75" font-size="19" font-weight="500" text-anchor="start">載入設定契約與元件目錄，連接 Config Store</text>
+<rect x="85" y="505" width="719" height="140" rx="15" fill="#e8f4f4" stroke="#96bcc2" stroke-width="1.4"/>
+<text x="108" y="545" fill="#172a45" font-size="25" font-weight="750" text-anchor="start">A-4　共用 DEV Retrieval Runtime</text>
+<text x="108" y="583" fill="#4b5e75" font-size="17" font-weight="500" text-anchor="start">DEV Runtime 入口啟動獨立程序，初始化 API、Registry、Executor 與記憶體 Queue</text>
+<text x="108" y="615" fill="#13796f" font-size="19" font-weight="700" text-anchor="start">以零組 System Config 就緒，等待第一份設定發布</text>
+<rect x="1017" y="364" width="397" height="100" rx="13" fill="#ffffff" stroke="#c8bddf" stroke-width="1.4"/>
+<text x="1039" y="405" fill="#302450" font-size="23" font-weight="750" text-anchor="start">B-1　System Config Schema</text>
+<text x="1039" y="438" fill="#4b5e75" font-size="17" font-weight="500" text-anchor="start">搭配 Component Descriptor 與動態選項規則</text>
+<rect x="1017" y="505" width="397" height="114" rx="13" fill="#ffffff" stroke="#c8bddf" stroke-width="1.4"/>
+<text x="1039" y="545" fill="#302450" font-size="22" font-weight="750" text-anchor="start">B-2　Retrieval Engine Library</text>
+<text x="1039" y="578" fill="#4b5e75" font-size="17" font-weight="500" text-anchor="start">驗證 Config、組裝 System、執行 Pipeline</text>
+<text x="55" y="720" fill="#4b5e75" font-size="19" font-weight="500" text-anchor="start">使用者發布第一份 Config 後，A-4 會啟用測試 Retrieval System。</text>
+</svg>

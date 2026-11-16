@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1880" height="1226" viewBox="0 0 1880 1226" role="img" aria-labelledby="title desc">
-<title id="title">Retrieval 基礎架構與分工</title>
-<desc id="desc">A 為 Retrieval Builder，B 為 Retrieval Engine Platform，C 為部署環境。上方六步與各區塊的子框編號相互對照。B-1 提供契約，B-3 啟動 A-4 與 C-3。A-3 的同版 Config 在 A-4 啟用 A-5，並透過 C-1 匯出，由 C-3 建立 C-4。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1880" height="1344" viewBox="0 0 1880 1344" role="img" aria-labelledby="title desc">
+<title id="title">Retrieval Builder 使用者操作後</title>
+<desc id="desc">操作流程從 Builder 設定與測試，到匯出與部署。B-1 提供設定契約，B-2 由 DEV Runtime 入口直接載入以啟動 A-4，B-3 作為 C-3 部署 Image。A-3 的同版 Config 在 A-4 啟用 A-5，並透過 C-1 匯出，由 C-3 建立 C-4。</desc>
 <defs>
 <marker id="arrow-blue" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5.5 L0 11Z" fill="#315e9b"/></marker>
 <marker id="arrow-purple" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5.5 L0 11Z" fill="#6e5ea3"/></marker>
@@ -10,43 +10,49 @@
 <style>
 text{font-family:'Noto Sans CJK TC','Noto Sans CJK SC',sans-serif;text-rendering:geometricPrecision}
 </style>
-<rect x="0" y="0" width="1880" height="1226" rx="0" fill="#f9fbfe" stroke="none" stroke-width="1.4"/>
-<text x="55" y="72" fill="#172a45" font-size="49" font-weight="800" text-anchor="start">Retrieval 基礎架構與分工</text>
-<text x="57" y="113" fill="#4b5e75" font-size="21" font-weight="500" text-anchor="start">從設定、測試到部署，沿用同一份已驗證的 System Config。</text>
-<rect x="55" y="140" width="1770" height="154" rx="17" fill="#ffffff" stroke="#d3dfed" stroke-width="1.4"/>
-<text x="77" y="177" fill="#172a45" font-size="22" font-weight="750" text-anchor="start">使用者流程</text>
-<text x="1803" y="176" fill="#4b5e75" font-size="16" font-weight="540" text-anchor="end">評估後可回到步驟 1 調整 A-3，再重測受影響的步驟。</text>
-<rect x="76" y="199" width="278" height="74" rx="10" fill="#f8fafc" stroke="#dbe4ee" stroke-width="1.4"/>
-<rect x="87" y="212" width="28" height="24" rx="6" fill="#e9f1ff" stroke="none" stroke-width="1.4"/>
-<text x="101" y="230" fill="#315e9b" font-size="14" font-weight="730" text-anchor="middle">1</text>
-<text x="126" y="231" fill="#172a45" font-size="20" font-weight="740" text-anchor="start">設定與啟用</text>
-<text x="87" y="258" fill="#4b5e75" font-size="15" font-weight="520" text-anchor="start">A-1／A-2 → A-3 → A-4／A-5</text>
-<rect x="366" y="199" width="278" height="74" rx="10" fill="#f8fafc" stroke="#dbe4ee" stroke-width="1.4"/>
-<rect x="377" y="212" width="28" height="24" rx="6" fill="#e8f4f1" stroke="none" stroke-width="1.4"/>
-<text x="391" y="230" fill="#13796f" font-size="14" font-weight="730" text-anchor="middle">2</text>
-<text x="416" y="231" fill="#172a45" font-size="20" font-weight="740" text-anchor="start">Ingest</text>
-<text x="377" y="258" fill="#4b5e75" font-size="15" font-weight="520" text-anchor="start">A-1／A-2 → A-4／A-5 → A-6</text>
-<rect x="656" y="199" width="278" height="74" rx="10" fill="#f8fafc" stroke="#dbe4ee" stroke-width="1.4"/>
-<rect x="667" y="212" width="28" height="24" rx="6" fill="#e8f4f1" stroke="none" stroke-width="1.4"/>
-<text x="681" y="230" fill="#13796f" font-size="14" font-weight="730" text-anchor="middle">3</text>
-<text x="706" y="231" fill="#172a45" font-size="20" font-weight="740" text-anchor="start">Inference</text>
-<text x="667" y="258" fill="#4b5e75" font-size="15" font-weight="520" text-anchor="start">A-1／A-2 → A-4／A-5 檢索</text>
-<rect x="946" y="199" width="278" height="74" rx="10" fill="#f8fafc" stroke="#dbe4ee" stroke-width="1.4"/>
-<rect x="957" y="212" width="28" height="24" rx="6" fill="#e8f4f1" stroke="none" stroke-width="1.4"/>
-<text x="971" y="230" fill="#13796f" font-size="14" font-weight="730" text-anchor="middle">4</text>
-<text x="996" y="231" fill="#172a45" font-size="20" font-weight="740" text-anchor="start">Evaluation</text>
-<text x="957" y="258" fill="#4b5e75" font-size="15" font-weight="520" text-anchor="start">A-1／A-2 → A-4／A-5 批次 Query</text>
-<rect x="1236" y="199" width="278" height="74" rx="10" fill="#f8fafc" stroke="#dbe4ee" stroke-width="1.4"/>
-<rect x="1247" y="212" width="28" height="24" rx="6" fill="#fff2e2" stroke="none" stroke-width="1.4"/>
-<text x="1261" y="230" fill="#a55b18" font-size="14" font-weight="730" text-anchor="middle">5</text>
-<text x="1286" y="231" fill="#172a45" font-size="20" font-weight="740" text-anchor="start">Export</text>
-<text x="1247" y="258" fill="#4b5e75" font-size="15" font-weight="520" text-anchor="start">A-2 匯出 A-3 → C-1</text>
-<rect x="1526" y="199" width="278" height="74" rx="10" fill="#f8fafc" stroke="#dbe4ee" stroke-width="1.4"/>
-<rect x="1537" y="212" width="28" height="24" rx="6" fill="#e9f1ff" stroke="none" stroke-width="1.4"/>
-<text x="1551" y="230" fill="#315e9b" font-size="14" font-weight="730" text-anchor="middle">6</text>
-<text x="1576" y="231" fill="#172a45" font-size="20" font-weight="740" text-anchor="start">Deploy</text>
-<text x="1537" y="258" fill="#4b5e75" font-size="15" font-weight="520" text-anchor="start">C-2 → C-3 → C-4</text>
-<g transform="translate(0 168)">
+<rect x="0" y="0" width="1880" height="1344" rx="0" fill="#f9fbfe" stroke="none" stroke-width="1.4"/>
+<text x="55" y="72" fill="#172a45" font-size="49" font-weight="800" text-anchor="start">Retrieval Builder 使用者操作後</text>
+<text x="57" y="113" fill="#4b5e75" font-size="21" font-weight="500" text-anchor="start">從發布 System Config、啟用 DEV 測試 System，到匯出同版設定並部署 FTEST／ENT。</text>
+<rect x="55" y="140" width="1770" height="270" rx="17" fill="#ffffff" stroke="#d3dfed" stroke-width="1.4"/>
+<text x="77" y="175" fill="#172a45" font-size="23" font-weight="750" text-anchor="start">使用者流程</text>
+<text x="1803" y="175" fill="#4b5e75" font-size="17" font-weight="540" text-anchor="end">評估後可回到步驟 1 調整 A-3，再重測受影響的步驟。</text>
+<rect x="76" y="193" width="568" height="94" rx="10" fill="#f8fafc" stroke="#dbe4ee" stroke-width="1.4"/>
+<rect x="89" y="204" width="28" height="25" rx="6" fill="#e9f1ff" stroke="none" stroke-width="1.4"/>
+<text x="103" y="223" fill="#315e9b" font-size="16" font-weight="750" text-anchor="middle">1</text>
+<text x="129" y="223" fill="#172a45" font-size="22" font-weight="750" text-anchor="start">設定與啟用</text>
+<text x="90" y="249" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">在 A-1 選擇方法及參數，A-2 驗證並發布 A-3。</text>
+<text x="90" y="273" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">A-4 套用設定，啟用測試 System A-5。</text>
+<rect x="656" y="193" width="568" height="94" rx="10" fill="#f8fafc" stroke="#dbe4ee" stroke-width="1.4"/>
+<rect x="669" y="204" width="28" height="25" rx="6" fill="#e8f4f1" stroke="none" stroke-width="1.4"/>
+<text x="683" y="223" fill="#13796f" font-size="16" font-weight="750" text-anchor="middle">2</text>
+<text x="709" y="223" fill="#172a45" font-size="22" font-weight="750" text-anchor="start">Ingest</text>
+<text x="670" y="249" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">從 A-1 上傳資料，由 A-2 呼叫 A-4 的 Ingest API。</text>
+<text x="670" y="273" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">A-5 處理文件，寫入 A-6 中已綁定的 DEV 索引。</text>
+<rect x="1236" y="193" width="568" height="94" rx="10" fill="#f8fafc" stroke="#dbe4ee" stroke-width="1.4"/>
+<rect x="1249" y="204" width="28" height="25" rx="6" fill="#e8f4f1" stroke="none" stroke-width="1.4"/>
+<text x="1263" y="223" fill="#13796f" font-size="16" font-weight="750" text-anchor="middle">3</text>
+<text x="1289" y="223" fill="#172a45" font-size="22" font-weight="750" text-anchor="start">Inference</text>
+<text x="1250" y="249" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">在 A-1 提問，由 A-2 呼叫 A-4 的 Query API。</text>
+<text x="1250" y="273" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">A-4 依 system_id 路由至 A-5，回傳檢索結果。</text>
+<rect x="76" y="296" width="568" height="94" rx="10" fill="#f8fafc" stroke="#dbe4ee" stroke-width="1.4"/>
+<rect x="89" y="307" width="28" height="25" rx="6" fill="#e8f4f1" stroke="none" stroke-width="1.4"/>
+<text x="103" y="326" fill="#13796f" font-size="16" font-weight="750" text-anchor="middle">4</text>
+<text x="129" y="326" fill="#172a45" font-size="22" font-weight="750" text-anchor="start">Evaluation</text>
+<text x="90" y="352" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">從 A-1 啟動評估，Runner 經 A-4 批次查詢 A-5。</text>
+<text x="90" y="376" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">Runner 彙整評估結果，供使用者調整設定。</text>
+<rect x="656" y="296" width="568" height="94" rx="10" fill="#f8fafc" stroke="#dbe4ee" stroke-width="1.4"/>
+<rect x="669" y="307" width="28" height="25" rx="6" fill="#fff2e2" stroke="none" stroke-width="1.4"/>
+<text x="683" y="326" fill="#a55b18" font-size="16" font-weight="750" text-anchor="middle">5</text>
+<text x="709" y="326" fill="#172a45" font-size="22" font-weight="750" text-anchor="start">Export</text>
+<text x="670" y="352" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">A-2 匯出通過測試的同版 A-3 與目標部署設定。</text>
+<text x="670" y="376" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">產生 C-1 部署 Bundle，內含 B-3 Image 引用。</text>
+<rect x="1236" y="296" width="568" height="94" rx="10" fill="#f8fafc" stroke="#dbe4ee" stroke-width="1.4"/>
+<rect x="1249" y="307" width="28" height="25" rx="6" fill="#e9f1ff" stroke="none" stroke-width="1.4"/>
+<text x="1263" y="326" fill="#315e9b" font-size="16" font-weight="750" text-anchor="middle">6</text>
+<text x="1289" y="326" fill="#172a45" font-size="22" font-weight="750" text-anchor="start">Deploy</text>
+<text x="1250" y="352" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">使用單位透過 C-2 套用 C-1，啟動獨立 Runtime C-3。</text>
+<text x="1250" y="376" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">C-3 載入同版 A-3，建立 C-4 並綁定目標依賴 C-5。</text>
+<g transform="translate(0 280)">
 <rect x="55" y="150" width="591" height="837" rx="22" fill="#edf4fd" stroke="#b8cde8" stroke-width="1.5"/>
 <rect x="85" y="179" width="36" height="34" rx="8" fill="#dbe9fa" stroke="none" stroke-width="1.4"/>
 <text x="103" y="204" fill="#315e9b" font-size="21" font-weight="750" text-anchor="middle">A</text>
@@ -55,30 +61,29 @@ text{font-family:'Noto Sans CJK TC','Noto Sans CJK SC',sans-serif;text-rendering
 <rect x="704" y="150" width="472" height="563" rx="22" fill="#f2eff9" stroke="#cec6e5" stroke-width="1.5"/>
 <rect x="734" y="179" width="36" height="34" rx="8" fill="#e5dff4" stroke="none" stroke-width="1.4"/>
 <text x="752" y="204" fill="#6e5ea3" font-size="21" font-weight="750" text-anchor="middle">B</text>
-<text x="784" y="205" fill="#172a45" font-size="29" font-weight="750" text-anchor="start">Retrieval Engine Platform</text>
+<text x="784" y="205" fill="#172a45" font-size="27" font-weight="750" text-anchor="start">Retrieval Engine Framework</text>
 <text x="784" y="232" fill="#4b5e75" font-size="16" font-weight="500" text-anchor="start">Schema 與共用執行框架</text>
 <rect x="1234" y="150" width="591" height="837" rx="22" fill="#ecf6f0" stroke="#b9d8ca" stroke-width="1.5"/>
 <rect x="1264" y="179" width="36" height="34" rx="8" fill="#d8ece3" stroke="none" stroke-width="1.4"/>
 <text x="1282" y="204" fill="#13796f" font-size="21" font-weight="750" text-anchor="middle">C</text>
 <text x="1314" y="205" fill="#172a45" font-size="29" font-weight="750" text-anchor="start">部署環境</text>
 <text x="1314" y="232" fill="#4b5e75" font-size="16" font-weight="500" text-anchor="start">FTEST／ENT，由使用單位管理</text>
-<rect x="506" y="183" width="106" height="28" rx="7" fill="#dbe9fa" stroke="none" stroke-width="1.4"/>
-<text x="559" y="203" fill="#315e9b" font-size="15" font-weight="740" text-anchor="middle">服務啟動</text>
 <path d="M739 321 H596" fill="none" stroke="#6e5ea3" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#arrow-purple)"/>
+<path d="M363 299 V315" fill="none" stroke="#315e9b" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
 <path d="M363 404 V448" fill="none" stroke="#315e9b" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
 <path d="M363 542 V627" fill="none" stroke="#315e9b" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
 <path d="M87 365 H71 V747 H87" fill="none" stroke="#13796f" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M940 494 V543" fill="none" stroke="#6e5ea3" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-purple)"/>
-<path d="M739 650 H638 M614 650 H596" fill="none" stroke="#6e5ea3" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#arrow-purple)"/>
+<path d="M739 455 H676 V650 H638 M614 650 H596" fill="none" stroke="#6e5ea3" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#arrow-purple)"/>
 <path d="M1141 650 H1242 M1264 650 H1284" fill="none" stroke="#6e5ea3" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#arrow-purple)"/>
 <path d="M596 495 H626 V847 H1253 V362 H1284" fill="none" stroke="#a55b18" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-orange)"/>
 <path d="M1538 414 V472" fill="none" stroke="#315e9b" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
 <path d="M1538 551 V627" fill="none" stroke="#315e9b" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
 <path d="M363 807 V895" fill="none" stroke="#13796f" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-teal)"/>
 <path d="M1538 807 V895" fill="none" stroke="#13796f" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-teal)"/>
-<rect x="87" y="250" width="509" height="58" rx="13" fill="#ffffff" stroke="#bdcfe6" stroke-width="1.4"/>
-<text x="109" y="285" fill="#172a45" font-size="21" font-weight="740" text-anchor="start">A-1　Frontend</text>
-<text x="281" y="285" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">依 Schema 產生設定欄位與選項</text>
+<rect x="87" y="250" width="509" height="49" rx="13" fill="#ffffff" stroke="#bdcfe6" stroke-width="1.4"/>
+<text x="109" y="281" fill="#172a45" font-size="21" font-weight="740" text-anchor="start">A-1　Frontend</text>
+<text x="281" y="281" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">依 Schema 與 Descriptor 產生選項</text>
 <rect x="87" y="315" width="509" height="89" rx="13" fill="#ffffff" stroke="#bdcfe6" stroke-width="1.4"/>
 <text x="109" y="345" fill="#172a45" font-size="21" font-weight="740" text-anchor="start">A-2　Backend</text>
 <text x="281" y="345" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">管理版本、協調 DEV Runtime</text>
@@ -88,10 +93,10 @@ text{font-family:'Noto Sans CJK TC','Noto Sans CJK SC',sans-serif;text-rendering
 <text x="109" y="515" fill="#4b5e75" font-size="17" font-weight="500" text-anchor="start">Config Revision、Pipeline、資料與服務引用</text>
 <rect x="87" y="627" width="509" height="180" rx="16" fill="#e8f4f4" stroke="#96bcc2" stroke-width="1.4"/>
 <text x="111" y="663" fill="#172a45" font-size="24" font-weight="750" text-anchor="start">A-4　共用 DEV Retrieval Runtime</text>
-<text x="111" y="690" fill="#4b5e75" font-size="16" font-weight="500" text-anchor="start">啟動時載入 API、Registry、Executor 與 Queue，可零組 Config</text>
+<text x="111" y="690" fill="#4b5e75" font-size="16" font-weight="500" text-anchor="start">管理 API 套用 Config，業務 API 依 system_id 路由</text>
 <rect x="111" y="705" width="461" height="83" rx="13" fill="#d8efea" stroke="#a2ccbf" stroke-width="1.4"/>
 <text x="133" y="742" fill="#1c5149" font-size="22" font-weight="720" text-anchor="start">A-5　測試 Retrieval System</text>
-<text x="133" y="772" fill="#4b5e75" font-size="17" font-weight="500" text-anchor="start">依 A-3 啟用，透過 A-4 API 按 system_id 路由</text>
+<text x="133" y="772" fill="#4b5e75" font-size="17" font-weight="500" text-anchor="start">依 A-3 啟用，執行 Ingest 與 Inference Pipeline</text>
 <rect x="466" y="717" width="92" height="24" rx="6" fill="#c6e6df" stroke="none" stroke-width="1.4"/>
 <text x="512" y="734" fill="#13796f" font-size="13" font-weight="700" text-anchor="middle">發布後啟用</text>
 <path d="M87 747 H111" fill="none" stroke="#13796f" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-teal)"/>
@@ -101,6 +106,7 @@ text{font-family:'Noto Sans CJK TC','Noto Sans CJK SC',sans-serif;text-rendering
 <rect x="739" y="397" width="402" height="97" rx="13" fill="#ffffff" stroke="#c8bddf" stroke-width="1.4"/>
 <text x="761" y="434" fill="#302450" font-size="23" font-weight="720" text-anchor="start">B-2　Retrieval Engine Library</text>
 <text x="761" y="464" fill="#4b5e75" font-size="17" font-weight="500" text-anchor="start">驗證 Config、組裝 System、執行 Pipeline</text>
+<text x="761" y="486" fill="#4b5e75" font-size="16" font-weight="500" text-anchor="start">DEV Runtime 入口可直接載入 Library</text>
 <rect x="739" y="543" width="402" height="131" rx="13" fill="#e9e3f6" stroke="#b9a9d6" stroke-width="1.4"/>
 <text x="761" y="580" fill="#302450" font-size="25" font-weight="720" text-anchor="start">B-3　共用 Runtime Image</text>
 <text x="761" y="610" fill="#4b5e75" font-size="17" font-weight="500" text-anchor="start">Runtime API ＋ Engine Library</text>
@@ -122,16 +128,17 @@ text{font-family:'Noto Sans CJK TC','Noto Sans CJK SC',sans-serif;text-rendering
 <rect x="87" y="895" width="509" height="73" rx="13" fill="#ffffff" stroke="#bad0e7" stroke-width="1.4"/>
 <text x="109" y="924" fill="#172a45" font-size="18" font-weight="720" text-anchor="start">A-6　DEV 外部依賴</text>
 <text x="109" y="951" fill="#4b5e75" font-size="17" font-weight="500" text-anchor="start">Elasticsearch（資料／控制索引）、模型與 Remote API</text>
-<rect x="1284" y="895" width="509" height="73" rx="13" fill="#ffffff" stroke="#afccbd" stroke-width="1.4"/>
-<text x="1306" y="924" fill="#172a45" font-size="18" font-weight="720" text-anchor="start">C-5　目標環境依賴</text>
-<text x="1306" y="950" fill="#4b5e75" font-size="17" font-weight="500" text-anchor="start">ES（資料／控制索引）、模型／Remote API、Secret Vault、觀測</text>
+<rect x="1284" y="895" width="509" height="76" rx="13" fill="#ffffff" stroke="#afccbd" stroke-width="1.4"/>
+<text x="1306" y="920" fill="#172a45" font-size="18" font-weight="720" text-anchor="start">C-5　目標環境依賴</text>
+<text x="1306" y="941" fill="#4b5e75" font-size="16" font-weight="500" text-anchor="start">ES（資料／控制索引）、模型與 Remote API</text>
+<text x="1306" y="960" fill="#4b5e75" font-size="16" font-weight="500" text-anchor="start">Secret Vault 與觀測服務</text>
 <text x="667" y="304" fill="#6e5ea3" font-size="15" font-weight="680" text-anchor="middle">提供設定契約</text>
 <text x="381" y="433" fill="#315e9b" font-size="15" font-weight="650" text-anchor="start">驗證並保存</text>
 <text x="380" y="590" fill="#315e9b" font-size="15" font-weight="650" text-anchor="start">① 內部管理 API 下發 A-3</text>
 <text x="94" y="586" fill="#13796f" font-size="17" font-weight="760" text-anchor="start">② Ingest／③ Inference → A-5</text>
 <text x="94" y="610" fill="#13796f" font-size="15" font-weight="620" text-anchor="start">④ Evaluation 批次 Query A-5</text>
 <text x="957" y="525" fill="#6e5ea3" font-size="15" font-weight="640" text-anchor="start">封裝</text>
-<text x="680" y="635" fill="#6e5ea3" font-size="15" font-weight="680" text-anchor="middle">啟動 A-4</text>
+<text x="690" y="438" fill="#6e5ea3" font-size="15" font-weight="680" text-anchor="middle">直接啟動 A-4</text>
 <text x="1191" y="635" fill="#6e5ea3" font-size="15" font-weight="680" text-anchor="middle">啟動 C-3</text>
 <text x="1557" y="600" fill="#315e9b" font-size="15" font-weight="650" text-anchor="start">啟動 B-3 Image 並載入 A-3</text>
 <text x="940" y="826" fill="#a55b18" font-size="21" font-weight="740" text-anchor="middle">⑤ Export 通過測試的 A-3</text>
@@ -139,7 +146,7 @@ text{font-family:'Noto Sans CJK TC','Noto Sans CJK SC',sans-serif;text-rendering
 <text x="940" y="909" fill="#62748a" font-size="16" font-weight="500" text-anchor="middle">匯出包含部署設定及引用，部署方準備目標資料。</text>
 <path d="M55 1007 H1825" stroke="#dbe4ee"/>
 <path d="M55 1032 H92" fill="none" stroke="#6e5ea3" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6"/>
-<text x="104" y="1038" fill="#4b5e75" font-size="15" font-weight="580" text-anchor="start">Engine Platform 交付</text>
+<text x="104" y="1038" fill="#4b5e75" font-size="15" font-weight="580" text-anchor="start">Engine Framework 交付</text>
 <path d="M310 1032 H347" fill="none" stroke="#315e9b" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
 <text x="359" y="1038" fill="#4b5e75" font-size="15" font-weight="580" text-anchor="start">設定與啟動</text>
 <path d="M519 1032 H556" fill="none" stroke="#13796f" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>

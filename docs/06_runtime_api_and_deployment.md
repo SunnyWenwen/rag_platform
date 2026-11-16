@@ -473,8 +473,8 @@ API-D01～07 沿用既有 Q-ID，不另凍結完整 OpenAPI。批次物件、接
 
 | 環境 | API service 啟動與 Config | 請求／更新 |
 |---|---|---|
-| Builder DEV | Runtime 以獨立程序啟動，共用 Library／Registry／LangGraph，可先載入零組 Config | Builder Backend 經內部管理 API 下發多組 Config。每次業務請求固定該 System 的一份生效快照。 |
-| FTEST／ENT | 同一套 Runtime 於啟動時載入單組 Config，管理 API 關閉 | 業務請求由啟動設定選定 System，Config 更新透過重啟／重新部署。 |
+| Builder DEV | Runtime 入口可在獨立程序直接載入 Engine Library／Registry／LangGraph，可先載入零組 Config | Builder Backend 經內部管理 API 下發多組 Config。每次業務請求固定該 System 的一份生效快照。 |
+| FTEST／ENT | 使用 Runtime Image 部署，於啟動時載入單組 Config，管理 API 關閉 | 業務請求由啟動設定選定 System，Config 更新透過重啟／重新部署。 |
 
 Builder 儲存許多 UI Config 不等於建立等量 API service／Pod。Runtime 依已驗證快照準備必要 Component／資源，各 System 的 Config、Binding、索引及工作作用範圍分開；共用 Flow 不要求共用所有實例。配置解析快取、實例／資源預載與回收、Namespace 或服務池分組的精確機制待 Q-020。Library 不直接連 Builder DB；由 Backend 經可信邊界管理 Config 與目標 Runtime 對應。
 
@@ -799,7 +799,7 @@ Secret Vault 位於 Runtime 外，以環境支援的解析／注入方式提供�
 | 外部 Remote API | 修改環境連線或相容設定 | 變更輸出欄位或處理語意時重新驗證有效 Config、資料與後段相依 |
 | 文件／未納入產物的測試資料 | 執行相應文件／測試檢查 | 不僅因 repo 有新 commit 就強制重新部署服務 |
 
-每個完整 Runtime Image 應可追溯同一 rag_engine 交付來源、SDK／Engine／Component package 版本與依賴鎖定結果。同 repo 可以讓它們一起驗證，並不抹去各自的契約／實作版本。既有 System 可維持鎖定版本，新版發布不自動觸發所有 DEV／FTEST／ENT 升級；欲交付的選定版本應完成 DEV 驗證，再由使用單位以同一 Runtime Image／邏輯 Config 補齊環境設定進行部署。
+每個完整 Runtime Image 應可追溯同一 rag_engine 交付來源、SDK／Engine／Component package 版本與依賴鎖定結果。同 repo 可以讓它們一起驗證，並不抹去各自的契約／實作版本。既有 System 可維持鎖定版本，新版發布不自動觸發所有 DEV／FTEST／ENT 升級；欲交付的選定版本應完成 DEV 驗證，再由使用單位以對應版本的 Runtime Image 與同版邏輯 Config 補齊環境設定進行部署。
 
 Runtime 更新若重啟 Memory 模式，依既有規則需要重新 Ingestion；MongoDB／ES 依索引與版本相容性恢復。重建、快照、切換與回復仍依 Q-008～Q-010／Q-015，不因兩個 repo 分工就新增熱插拔 Component 或零停機升級承諾。
 

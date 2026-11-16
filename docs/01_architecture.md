@@ -36,16 +36,16 @@ Retrieval Builder 協助 User 建立、測試與匯出 Retrieval System，提供
 | Retrieval Builder | 設定、管理、測試與匯出 Retrieval System 的開發平台；含 Frontend／Backend |
 | Workspace | Builder 中管理 System 的容器；正式階層為 Workspace → System |
 | Retrieval Engine Library | 可匯入的程式庫，提供 SDK 契約、Registry、Config 驗證、模組組裝與執行核心；本身不是已啟動服務，也不是某一個 System |
-| Retrieval Engine Platform | 共用執行技術堆疊，包含 Library、Runtime API 封裝及共用 Runtime Image；不是 Builder 的別名，也不是 Runtime 每次執行必須呼叫的中央服務 |
+| Retrieval Engine Framework | 提供 System Config Schema、Component Descriptor、Engine Library 與 Runtime 啟動入口，並交付共用 Runtime Image |
 | Retrieval Runtime | 載入 Library／Registry 與服務基礎設定，提供 Ingest／Query／文件管理／Health API；Builder 共用模式管理多個 System／Config，獨立模式啟動時綁定單一 System Config |
 | Retrieval System | Library 依特定 Config 組裝，並完成必要服務及資料／索引綁定後建立的具體檢索系統；可由 Python 直接使用，也可由 Runtime 對外提供 API |
 | Retrieval Service（圖面用語） | Runtime 內的 System 執行實例；不是新的管理層級、必要微服務或 Kubernetes Service 物件 |
 | AI 設定助手 | 依需求、樣本、可用方法及 Config Schema 產生設定草稿的能力；可獨立由 Python／API 使用，Builder 另外提供互動、差異預覽及套用介面，不是 Ingestion／Inference 的必經模組 |
 | Evaluation Runner | 批次執行 Dataset 與收集指標；重用 04 的評估邏輯，由 Runtime API／部署手冊 管理任務與儲存 |
 
-核心關係是 **Retrieval Engine Library ＋ Config → Retrieval System**；實際執行還需解析必要的資源／服務綁定。Python 使用者可直接載入 Library 建立 System，不需要 HTTP 或 Builder。Platform 將 Library 與 Runtime API 打包為共用 Image，部署時再載入 Config／環境設定，無須每份 Config 重新建 Image。
+核心關係是 **Retrieval Engine Library ＋ Config → Retrieval System**；實際執行還需解析必要的資源／服務綁定。Python 使用者可直接載入 Library 建立 System，不需要 HTTP 或 Builder。Framework 將 Library 與 Runtime API 打包為共用 Image，部署時再載入 Config／環境設定，無須每份 Config 重新建 Image。
 
-Builder 管理設定與測試，Library 執行模組，Platform 交付執行框架，Runtime 承載 API，System 是依 Config 建立的具體應用。System 不等於 Pod／程序；Builder Local 共用 Runtime 指同一 API service／程序內建立多個 System，不只是共用 Pod，各自保有設定與資料作用範圍，資源限制與生命週期細節仍見 Q-017／Q-020。外部 Remote API 由服務提供者部署，Runtime 使用環境連線。 重啟 API service 程序即使不重建 Pod，仍影響該程序內所有 System 的 Memory 資料／工作；D-62 採共用 Flow／Executor，Builder Config 更新以新版配置快照及必要資源準備生效，不要求重建每份 Config 的專屬 Flow，也不必逐 Config 重啟共用 API service；D-63 確認該 System 的 Ingestion 結束後才允許新版設定生效；切版與資源交接見 [Runtime 生命週期](06_runtime_api_and_deployment.md#src-07-4-systemrevision-與-engine-生命週期)。
+Builder 管理設定與測試，Library 執行模組，Framework 交付設定契約與執行元件，Runtime 承載 API，System 是依 Config 建立的具體應用。System 不等於 Pod／程序；Builder Local 共用 Runtime 指同一 API service／程序內建立多個 System，不只是共用 Pod，各自保有設定與資料作用範圍，資源限制與生命週期細節仍見 Q-017／Q-020。外部 Remote API 由服務提供者部署，Runtime 使用環境連線。 重啟 API service 程序即使不重建 Pod，仍影響該程序內所有 System 的 Memory 資料／工作；D-62 採共用 Flow／Executor，Builder Config 更新以新版配置快照及必要資源準備生效，不要求重建每份 Config 的專屬 Flow，也不必逐 Config 重啟共用 API service；D-63 確認該 System 的 Ingestion 結束後才允許新版設定生效；切版與資源交接見 [Runtime 生命週期](06_runtime_api_and_deployment.md#src-07-4-systemrevision-與-engine-生命週期)。
 
 <a id="runtime-deployment-modes"></a>
 
@@ -54,7 +54,7 @@ Builder 管理設定與測試，Library 執行模組，Platform 交付執行框�
 
 | 環境 | Config 與 API service 的對應 | API service 啟動時 | Config 更新 |
 |---|---|---|---|
-| Builder DEV | Builder Backend 與 Runtime 各為獨立程序，一個 Runtime 可承載多個 System | 載入 Library／Registry 與共用 LangGraph，可先以零組 Config 啟動 | Builder Backend 經內部管理 API 下發設定。Runtime 依各 System 的工作狀態與索引相容性套用。 |
+| Builder DEV | Builder Backend 與 Runtime 各為獨立程序，一個 Runtime 可承載多個 System | DEV Runtime 入口可直接載入 Engine Library、Registry 與共用 LangGraph，可先以零組 Config 啟動 | Builder Backend 經內部管理 API 下發設定。Runtime 依各 System 的工作狀態與索引相容性套用。 |
 | FTEST／ENT | 主 Runtime 第一版基準為一個 Pod＋一組 API service＋一份 System Config | 同一套 Runtime 啟動時載入 Config，管理 API 關閉 | 透過重新部署採用新 Config，啟動時檢查既有索引的歸屬與相容性。 |
 
 Builder Backend 下發／註冊 Config 與目標 Runtime 的對應，Runtime 依可信 System 識別取得已驗證 Config 快照，由共用 Flow／Executor 執行；各 Module 解析所選 Component 並傳入該次 Config／Context，Library 不直接讀 Builder DB。服務啟動不綁單份 Config，不代表 Engine／已安裝 Component 版本可任意熱替換；新增 Local 程式仍按原 Image／版本交付流程。
@@ -149,27 +149,30 @@ Config 與部署設定的欄位、有效設定規則及範例見 [資料契約�
 User 在 Workspace 建立 System，選用模板或自行設定 Import、Ingestion 和 Inference。以 Builder DEV 驗證設定及試跑，再匯出 Config／環境綁定供 FTEST／ENT 獨立 Runtime。Admin 維護全域模板；套用時複製所選版本至 User 草稿。Engine 依有效設定選用內建方法或呼叫 User 設定的外部 API。
 
 - [User 流程](../diagrams/01_user_system_l1.png)
-- [基礎架構與開發分工](../diagrams/02_infra_architecture.png) · [SVG](../diagrams/02_infra_architecture.svg) · [Mermaid](../diagrams/02_infra_architecture.mmd)
+- [Builder 啟動後、使用者操作前](../diagrams/02_infra_architecture_startup.png) · [SVG](../diagrams/02_infra_architecture_startup.svg) · [Mermaid](../diagrams/02_infra_architecture_startup.mmd)
+- [使用者操作後](../diagrams/02_infra_architecture.png) · [SVG](../diagrams/02_infra_architecture.svg) · [Mermaid](../diagrams/02_infra_architecture.mmd)
 - [模組與 System](../diagrams/03_module_component_concept.png)
 
-### 02 圖面的分工與交接
+### 02 基礎架構的兩個階段
+
+**首次啟動後、使用者操作前**，A-2 Backend 載入 B-1 的設定契約與元件目錄並連接 Config Store。A-1 Frontend 依 Schema、Descriptor 與有效相依產生可設定欄位和選項。A-4 以獨立程序啟動，由 DEV Runtime 入口直接載入 B-2，初始化 API、Registry、Executor 及記憶體 Queue，此時可零組 System Config 就緒。已有 System 的重新載入依 Runtime 管理規則處理。[Runtime 啟動與管理](06_runtime_api_and_deployment.md#src-07-41-建立與啟動建議流程)
+
+**使用者操作後**，從發布 Config、啟用 DEV 測試 System，到匯出後部署目標 System，分工如下。
 
 | 圖面區塊 | 責任與交付物 |
 |---|---|
 | **A · Retrieval Builder** | **A-1 Frontend** 依 B-1 的契約與有效資料相依產生設定欄位和選項。**A-2 Backend** 驗證並保存 **A-3 System Config Revision**，經 **A-4 共用 DEV Runtime** 的內部管理 API 下發設定，啟用 **A-5 測試 Retrieval System**。Ingest、Inference 與 Evaluation 由 A 發起，A-4 依 `system_id` 路由到 A-5，並使用 **A-6 DEV 外部依賴**。 |
-| **B · Retrieval Engine Platform** | **B-1 System Config Schema** 搭配 Component Descriptor 與動態相依規則，供 A 產生表單和驗證設定。**B-2 Engine Library** 依 Config 組裝 System 並執行 Pipeline。**B-3 共用 Runtime Image** 封裝 Runtime API 與 B-2，供 A-4 及 C-3 啟動。 |
+| **B · Retrieval Engine Framework** | **B-1 System Config Schema** 搭配 Component Descriptor 與動態相依規則，供 A 產生表單和驗證設定。**B-2 Engine Library** 依 Config 組裝 System 並執行 Pipeline，DEV Runtime 入口直接載入 B-2 啟動 A-4。**B-3 共用 Runtime Image** 封裝 Runtime API 與 B-2，供 C-3 部署。 |
 | **C · FTEST／ENT 部署** | **C-1 K8s 部署 Bundle** 包含同版 A-3、B-3 Image 引用、K8s manifests 與目標環境綁定。使用單位經 **C-2 K8s CD** 啟動 **C-3 獨立 Retrieval Runtime**，載入 A-3 後建立 **C-4 目標環境的 Retrieval System**，並提供 **C-5 目標環境依賴**。 |
 
 DEV 與目標環境各自綁定服務及索引。對使用 Elasticsearch 的 System，Runtime 使用檢索資料索引及環境共用的控制索引。匯出交付同版邏輯 Config 和部署所需引用，目標資料由部署方準備或重新匯入。[部署 Bundle 與資料準備](06_runtime_api_and_deployment.md#src-07-91-bundle-目標)
 
-**A 服務啟動時**提供 A-1，啟動 A-2 並連接 Config Store。A-2 取得相容的 B-1 契約與元件目錄。共用 A-4 以獨立程序啟動，載入 Runtime API、Engine Library、Registry、Executor 及記憶體 Queue。A-4 可以零組 System Config 啟動。已有 System 的重新載入依 Runtime 管理規則處理。[Runtime 啟動與管理](06_runtime_api_and_deployment.md#src-07-41-建立與啟動建議流程)
-
 | 使用者步驟 | 圖面對應 |
 |---|---|
-| 1 設定與啟用 | 使用者經 A-1／A-2 設定並發布 A-3。A-4 驗證服務及索引綁定後啟用 A-5。 |
-| 2 Ingest | A-1／A-2 上傳資料，A-4 路由到 A-5，使用 A-6 建立或更新 DEV 索引。 |
-| 3 Inference | A-1／A-2 發起查詢，A-4 路由到 A-5，回傳檢索結果。 |
-| 4 Evaluation | A 的 Runner 經 A-4 批次查詢 A-5。評估後可調整 A-3 並重測受影響的步驟。 |
+| 1 設定與啟用 | 使用者在 A-1 設定，A-2 驗證並發布 A-3。A-4 套用設定，驗證服務及索引綁定後啟用 A-5。 |
+| 2 Ingest | 使用者從 A-1 上傳資料，A-2 提交匯入。A-4 路由到 A-5，由 A-5 處理文件並寫入 A-6 的 DEV 索引。 |
+| 3 Inference | 使用者在 A-1 提問，A-2 送出查詢。A-4 路由到 A-5 並回傳檢索結果。 |
+| 4 Evaluation | 使用者在 A-1 啟動評估，Runner 經 A-4 批次查詢 A-5 並彙整結果。評估後可調整 A-3 並重測受影響的步驟。 |
 | 5 Export | A-2 將同版 A-3 與目標部署所需引用匯出成 C-1。 |
 | 6 Deploy | 使用單位透過 C-2 啟動 C-3。C-3 載入 A-3，建立 C-4。 |
 
