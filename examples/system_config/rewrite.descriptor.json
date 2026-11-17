@@ -38,5 +38,10 @@
     "/llm_ref": {
       "source": "models"
     }
+  },
+  "ui_hints": {
+    "controls": {
+      "/prompt": "textarea"
+    }
   }
 }

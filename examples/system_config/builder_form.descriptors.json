@@ -87,7 +87,10 @@
       ],
       "advanced": [
         "/request_parameters"
-      ]
+      ],
+      "controls": {
+        "/structdata": "structdata_editor"
+      }
     }
   },
   {
@@ -506,7 +509,10 @@
             "/dimensions"
           ]
         }
-      ]
+      ],
+      "controls": {
+        "/composition_template": "textarea"
+      }
     }
   },
   {
@@ -595,7 +601,8 @@
         "/vector_fields"
       ],
       "controls": {
-        "/vector_fields": "vector_checklist"
+        "/vector_fields": "vector_checklist",
+        "/structdata_overrides": "structdata_overrides_editor"
       }
     }
   },
@@ -699,7 +706,8 @@
         "/vector_fields"
       ],
       "controls": {
-        "/vector_fields": "vector_checklist"
+        "/vector_fields": "vector_checklist",
+        "/structdata_overrides": "structdata_overrides_editor"
       }
     }
   },

@@ -7,6 +7,7 @@
 - [目標、相依與範圍](#src-06-1-目標相依與範圍)
 - [畫面與操作地圖](#src-06-2-畫面與操作地圖)
 - [Create／Edit 的資料與互動](#src-06-3-createedit-的資料與互動)
+- [Descriptor 與表單控制項](#descriptor-form-rendering)
 - [從 CSV 開始](#src-06-4-從-csv-開始)
 - [Ingestion 畫面](#src-06-5-ingestion-畫面)
 - [Inference 與診斷](#src-06-6-inference-與診斷)
@@ -151,6 +152,35 @@ Admin 在 Builder 以外維護版本化全域模板。Builder 顯示可選版本
 卡控只處理設定相依；不代替實際後端能力、Profile 或連線驗證。規則由 Engine／Component 開發手冊／資料契約手冊 共用來源推導。
 
 2026-10-28 D-42 將動態 Component 表單列為已確認規劃方向，描述／規則草案與案例集中於 [Descriptor](04_component_descriptor.md)。Create／Edit 保持固定介面，Component 參數才依 Schema 產生；無關分支欄位隱藏，進階預設收合，不相容選項顯示且停用。上游變更使已選值失效時保留並標錯，可以繼續編輯，但發布／建立有效版本／套用需通過 Engine 驗證；草稿持久化仍依 Q-016／Q-025。
+
+<a id="descriptor-form-rendering"></a>
+### Descriptor 與表單控制項
+
+Builder 以選定方法的 `parameters_schema.properties` 產生參數欄位，並把編輯值寫回同一個 `parameters` 物件。欄位先依 `const`、專用控制項、動態選項、固定 `enum`、一般型別決定呈現。專用控制項可以使用動態候選，例如向量清單的候選來自 `/vector_fields/*`。支援範圍如下。
+
+| Descriptor 宣告 | UI 控制項與保存格式 | 驗收 |
+|---|---|---|
+| `const` | 唯讀值，Config 保存原始 JSON 型別 | 可看見值且無法修改。新建套用固定值。 |
+| `option_sources` 指向字串欄位 | 動態下拉。若同時宣告 `enum`，可選值須符合兩者 | 請求送具體欄位路徑，含陣列列號。保留失效值並顯示原因。 |
+| 固定 `enum` | 固定下拉，寫回原始 JSON 值 | 不發出選項查詢。數值與布林選項保存為數值與布林。 |
+| `string` | 單行文字輸入，長文可宣告 `textarea` | 依 Schema 檢查長度及格式。 |
+| `boolean` | 勾選框 | 勾選和取消分別保存 `true` 與 `false`。 |
+| `integer` | 數字輸入，`step=1` | 整數含 0 可保存，檢查 `minimum`／`maximum`。 |
+| `number` | 數字輸入，`step=any` | 保留小數型別，例如輸入 `0.25` 保存為 JSON 數值，檢查上下限。 |
+| `array` | 可新增刪除的列表，每一列依 `items` 渲染。固定欄位的物件陣列用表格 | 依項目 Schema 及 `minItems`／`maxItems`／`uniqueItems` 驗證。 |
+| 有 `properties` 的 `object` | 群組，遞迴渲染子欄位。表格可將固定的子欄位展成各欄 | 依該層 `required` 標示必填，保存為原有巢狀結構。 |
+| 開放型 `object` | JSON 物件編輯器，或依 `ui_hints.controls` 使用專用表格 | 保存 JSON 物件並依 Schema 驗證。共用 `$ref` 由已載入的 Schema Registry 解析。 |
+
+`title` 用作標籤，未宣告時使用 Builder 已有的本地化名稱或參數名稱。`description` 是輔助文字，`default` 用於初始化缺值，已有草稿值優先。`ui_hints.order`、`groups`、`advanced` 控制順序、群組及預設收合的進階區。必填和格式問題在欄位及錯誤摘要顯示，由 Runtime 在發布前做完整驗證。遇到超出 Renderer 支援的必要格式或專用控制項，Builder 顯示不相容原因並保留草稿，待支援後才可發布。
+
+| `ui_hints.controls` 值 | 對應 UI | Config 保存／候選 |
+|---|---|---|
+| `structdata_editor` | Import 文件欄位表，逐欄編輯名稱、型別、必填、全文與 Filter | `structdata` Data Meta Schema。型別與能力限制取自共用 Schema。 |
+| `structdata_overrides_editor` | Indexing 欄位用途表，顯示有效欄名和型別，全文與 Filter 各有沿用、啟用、停用 | 沿用以省略對應覆寫表示，啟用與停用分別保存 `true`、`false`。候選從上游有效欄位取得。 |
+| `vector_checklist` | Indexing 勾選表，列出向量、來源欄與 Profile | 保存選取的向量名稱陣列。Descriptor 的項目選項來源是 `input.vectors`。 |
+| `textarea` | 多行文字欄，例如 Rewrite Prompt 或 Embedding 組合文字 | 保存原始字串及換行。 |
+
+Prototype 用本機 Catalog 和推導資料重現目前表單。正式 Builder 的動態欄位請求、重查和畫面狀態見 [W1 config:options 契約](06_runtime_api_and_deployment.md#w1-config-options)。
 
 動態候選使用目前有效欄位／服務／索引能力，前端不自行指定可信 Context。多個相同 Module 的錯誤以 node_ref＋欄位路徑定位。未知必要 UI feature 明示不支援且不能套用不完整設定；不自動改為任意 JSON 編輯器。實作與 SUI-01～14 互動驗收記在 10 UIB-010；v0.12 僅完成簡單模擬表單，正式協定驗收仍待整合。
 

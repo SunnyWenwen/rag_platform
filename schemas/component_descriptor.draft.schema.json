@@ -291,7 +291,12 @@
             "pattern": "^/"
           },
           "additionalProperties": {
-            "const": "vector_checklist"
+            "enum": [
+              "structdata_editor",
+              "structdata_overrides_editor",
+              "vector_checklist",
+              "textarea"
+            ]
           }
         }
       }

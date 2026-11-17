@@ -38,6 +38,24 @@ async function main() {
     assert.equal(await page.getByRole('navigation',{name:'模組'}).locator('.module-line').count(),2);
 
     await module('Chunking').click();
+    assert.equal(await page.getByLabel('切分上限（tokens）').getAttribute('step'),'1');
+    await page.evaluate(() => {
+      descriptor('chunking',draft).parameters_schema.properties.test_ratio = {
+        type:'number',title:'小數測試',minimum:0,maximum:1
+      };
+      render();
+    });
+    const ratio = dialog.getByRole('spinbutton',{name:'小數測試'});
+    assert.equal(await ratio.getAttribute('step'),'any');
+    assert.equal(await ratio.getAttribute('max'),'1');
+    await ratio.fill('0.25');
+    assert.equal(await page.evaluate(() => params(draft,'chunking').test_ratio),0.25);
+    await page.evaluate(() => {
+      delete descriptor('chunking',draft).parameters_schema.properties.test_ratio;
+      delete params(draft,'chunking').test_ratio;
+      render();
+    });
+
     await page.getByLabel('輸出欄位',{exact:true}).fill('body_text');
     await module('Embedding').click();
     assert.equal(await page.getByLabel('向量映射 1：來源欄位',{exact:true}).inputValue(),'text');
@@ -176,6 +194,9 @@ async function main() {
     assert.equal(await page.getByLabel('切分上限（tokens）').inputValue(),'450');
 
     await module('Import').click();
+    await button('＋ 新增欄位').click();
+    assert.equal(await page.getByLabel('field_1 型別').inputValue(),'string');
+    await button('移除 field_1').click();
     const importPreview = dialog.locator('details').filter({has:page.getByText('Ingestion 入口 JSON Schema 與 Request 範例',{exact:true})});
     assert.equal(await importPreview.evaluate(element => element.open),false);
     await importPreview.locator('summary').click();

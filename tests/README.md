@@ -7,9 +7,10 @@
 ```sh
 python3 examples/system_config/validate_descriptor_draft.py
 python3 examples/user_remote_api/validate.py
+python3 tests/validate_w1_config_options.py
 ```
 
-第一支驗證 `0.2-draft` 的 System Config、Descriptor、欄位推導、型別化 Filter 及索引相依。第二支驗證共用 Document、Ingestion、Inference 和 Remote API 測資。Runtime 的 HTTP、部署與搜尋需另做整合驗收。
+第一支驗證 `0.2-draft` 的 System Config、Descriptor、欄位推導、型別化 Filter 及索引相依。第二支驗證共用 Document、Ingestion、Inference 和 Remote API 測資。第三支重放 [W1 選項查詢 HTTP 案例](../examples/system_config/w1_config_options.http.json)，檢查缺漏草稿的候選、失效選值、空候選、欄位重查及回應順序。DEV Runtime 的實際 HTTP、部署與搜尋由整合測試驗收。
 
 ## UI prototype 回歸
 

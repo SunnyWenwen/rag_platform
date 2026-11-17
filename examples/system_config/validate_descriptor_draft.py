@@ -88,7 +88,8 @@ def fail(code):
     raise ConfigError(code)
 
 
-def descriptor(module, component_id, params, io, selectors=None, rules=(), constraints=(), required=None):
+def descriptor(module, component_id, params, io, selectors=None, rules=(), constraints=(), required=None,
+               ui_hints=None):
     value = {
         "descriptor_version": "0.2-draft", "module": module, "component_id": component_id,
         "component_version": "1.0.0", "parameters_schema": obj(params, required),
@@ -96,6 +97,8 @@ def descriptor(module, component_id, params, io, selectors=None, rules=(), const
         "option_sources": {"/" + key.lstrip("/"): spec for key, spec in (selectors or {}).items()},
         "data_rules": list(rules), "constraints": list(constraints),
     }
+    if ui_hints is not None:
+        value["ui_hints"] = ui_hints
     validate_descriptor(value)
     return value
 
@@ -132,9 +135,23 @@ def validate_descriptor(value):
             fail("selector must target a string")
     hints = value.get("ui_hints", {})
     for pointer in (*hints.get("order", ()), *hints.get("advanced", ()),
-                    *hints.get("controls", ()),
                     *(field for group in hints.get("groups", ()) for field in group["fields"])):
         schema_at(root, pointer)
+    for pointer, control in hints.get("controls", {}).items():
+        shape = schema_at(root, pointer)
+        if control == "structdata_editor":
+            compatible = shape.get("$ref") in (DATA_META["$id"], DATA_META["$id"] + "#/$defs/structdata")
+        elif control == "structdata_overrides_editor":
+            compatible = shape.get("$ref") == DATA_META["$id"] + "#/$defs/overrides"
+        elif control == "vector_checklist":
+            source = value.get("option_sources", {}).get(pointer + "/*", {}).get("source")
+            compatible = shape.get("type") == "array" and shape.get("items", {}).get("type") == "string" \
+                and source == "input.vectors"
+        else:
+            compatible = (shape.get("type") == "string" and not {"enum", "const"} & shape.keys()
+                          and pointer not in value.get("option_sources", {}))
+        if not compatible:
+            fail("incompatible UI control:" + pointer)
     for rule in value.get("data_rules", ()):
         if rule["op"] == "compose":
             if (schema_at(root, rule["enabled"]).get("type") != "boolean"
@@ -164,13 +181,17 @@ CHUNK = descriptor(
      "copy_fields": array(obj({"source_field": NAME, "output_field": NAME})),
      "max_tokens": POS, "overlap_tokens": NAT, "tokenizer_profile_id": NAME},
     ("Document[]", "Document[]"),
-    {"split_field": STRING_INPUT, "/copy_fields/*/source_field": {
+    {"split_field": STRING_INPUT, "tokenizer_profile_id": selector("tokenizer_profiles"),
+     "/copy_fields/*/source_field": {
         "source": "input.structdata", "types": VALUE_TYPES,
     }},
     [{"op": "declare", "target": "/output_field", "schema": {"type": "string", "required": True}},
      {"op": "copy", "source": "/source_field", "target": "/output_field", "for_each": "/copy_fields"}],
     [{"op": "lt", "left": "/overlap_tokens", "right": "/max_tokens"}],
+    ui_hints={"advanced": ["/copy_fields", "/overlap_tokens"]},
 )
+
+
 def form_descriptor(module, component_id):
     return next(item for item in BUILDER_FORM_DESCRIPTORS
                 if (item["module"], item["component_id"]) == (module, component_id))
@@ -296,7 +317,8 @@ def data_effects(desc, values, fields, vectors):
 
 
 def context(fields, vectors):
-    return {"input.structdata": fields, "input.vectors": vectors, "profiles": PROFILES}
+    return {"input.structdata": fields, "input.vectors": vectors, "profiles": PROFILES,
+            "tokenizer_profiles": {"fixture": None}}
 
 
 def candidate_context(fields):
@@ -942,11 +964,28 @@ def _():
         start = f'<script type="application/json" id="{script_id}">'
         return json.loads(source.split(start,1)[1].split("</script>",1)[0])
     assert embedded("builder-form-descriptors") == BUILDER_FORM_DESCRIPTORS
-    for name, schema in embedded("runtime-fixture")["schemas"].items():
+    runtime = embedded("runtime-fixture")
+    assert CHUNK == next(item for item in runtime["catalog"]["descriptors"] if item["module"] == "chunking")
+    for name, schema in runtime["schemas"].items():
         assert schema == json.loads((REPO / f"schemas/{name}.schema.json").read_text())
     for module, component in (("embedding","dense"), ("indexing","elasticsearch"),
                               ("indexing","local"), ("rerank","model_api")):
         assert form_descriptor(module, component)["parameters_schema"]["properties"]["service_source"]["default"] == "DEV test use"
+
+
+@case("Builder controls must target a compatible declared parameter")
+def _():
+    for module, component, pointer in (
+        ("import", "platform", "/source"),
+        ("indexing", "local", "/persistence"),
+        ("embedding", "dense", "/mappings"),
+    ):
+        bad = deepcopy(form_descriptor(module, component))
+        controls = bad["ui_hints"]["controls"]
+        controls[pointer] = next(iter(controls.values()))
+        rejects(lambda: validate_descriptor(bad), "incompatible UI control:" + pointer)
+        controls[pointer] = "unknown_editor"
+        rejects(lambda: validate_descriptor(bad), "ValidationError")
 
 
 @case("Import source controls built-in Parser compatibility")
