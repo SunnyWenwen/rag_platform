@@ -686,7 +686,7 @@ D-65 已確認摘要回應為 documents[]＋next_cursor，每筆 document_id＋s
 | Cursor | Runtime 產生、綁定目標 System；最後一頁 next_cursor=null | 待確認 |
 | 清單一致性 | 不加快照；分頁途中更新資料可能改變清單 | 待確認 |
 
-分頁分批取得文件摘要清單，不改變 Ingestion Batch、Parser Units、Chunking 或 Retrieval Top N。例如已有 250 份文件，每頁 100 份時，依序取得 100、100、50 筆摘要；一份文件即使有多個 Chunk 或來源版本，也只列一次，各版列在該筆 source_revisions。API／來源與候選格式見 [Runtime API](#src-21-2-api-清單7-支業務-api2-支-health-api)。
+分頁分批取得文件摘要清單，不改變 Ingestion Batch、Parser 的 Document 輸出、Chunking 或 Retrieval Top N。例如已有 250 份文件，每頁 100 份時，依序取得 100、100、50 筆摘要；一份文件即使有多個 Chunk 或來源版本，也只列一次，各版列在該筆 source_revisions。API／來源與候選格式見 [Runtime API](#src-21-2-api-清單7-支業務-api2-支-health-api)。
 
 <a id="src-22-5-文件維護與驗收待辦"></a>
 ## Runtime 設定：文件維護與驗收待辦

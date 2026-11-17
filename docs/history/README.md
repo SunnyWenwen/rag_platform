@@ -17,6 +17,8 @@
 | superseded | D-54 前的 InferenceState／歷史推論物件提案 | [舊 Inference 規格](superseded/inference_state_pre_d54.md) |
 | superseded | D-66 System Config 舊 document_schema 骨架、五案例及離線驗證 | [舊 System Config](superseded/system_config_d66/README.md) |
 
+| superseded | 舊 Document／Inference Schema、Descriptor 0.1 與離線測資 | [舊資料契約快照](superseded/legacy_contracts/README.md) |
+
 ## 歸檔原則
 
 - **現行規格、結論、Q-ID、SC 待討論選項與未完成 UI 待辦留在現行文件。**現行八份主題手冊及共用契約範例仍在使用，不因尚未定稿就歸檔。D-66 機器稿／五案例因 document_schema 已被 D-67 取代而另行歸檔。

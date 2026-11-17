@@ -813,15 +813,26 @@ def _():
     query_context = json.loads((paths / "query_context.schema.json").read_text())
     registry = Registry().with_resource(document["$id"], Resource.from_contents(document))
     query = Draft202012Validator(query_context, registry=registry)
-    response = json.loads((REPO / "examples/user_remote_api/remote_retrieval.response.json").read_text())
+    examples = REPO / "examples/user_remote_api"
+    request = json.loads((examples / "remote_retrieval.request.json").read_text())
+    response = json.loads((examples / "remote_retrieval.response.json").read_text())
+    query.validate(request["input"])
     results = response["output"]
     query.validate(results)
-    fields, _ = builtin_output()
-    fields |= {"price": Field("number", required=False), "tags": Field("string_array", required=False)}
-    field_schema = obj({name: {"type": value.type} for name, value in fields.items()},
-                       [name for name, value in fields.items() if value.required])
-    field_schema["properties"]["tags"] = array({"type": "string"})
-    validator = Draft202012Validator({"properties": {"structdata": field_schema}})
+
+    fields, _, index = compile_local_example(local_snapshot("builtin"))
+    for position, context_value in enumerate(request["input"]):
+        validate_filters(context_value["filters"], index["filters"], f"/input/{position}/filters")
+
+    field_schema = obj(
+        {name: array({"type": "string"}) if field.type == "string_array" else {"type": field.type}
+         for name, field in fields.items()},
+        sorted(name for name, field in fields.items() if field.required),
+    )
+    effective = json.loads((examples / "effective_document.schema.json").read_text())
+    fixture_fields = effective["allOf"][1]["properties"]["structdata"]
+    assert field_schema == {**fixture_fields, "required": sorted(fixture_fields["required"])}, "effective Document fixture drifted from System Config"
+    validator = Draft202012Validator(effective, registry=registry)
     candidate = results[0]["result_sets"][0]["items"][0]["data"]
     validator.validate(candidate)
     parameters("rerank", RERANK_CONFIG, {"candidate.structdata": fields})

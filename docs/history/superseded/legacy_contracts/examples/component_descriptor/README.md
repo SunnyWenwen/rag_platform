@@ -1,6 +1,6 @@
 # Component Descriptor 0.1 討論範例
 
-主文件：[25 Descriptor Schema 初版](../../docs/04_component_descriptor.md)；已確認行為：[24](../../docs/04_component_descriptor.md)。**本目錄是待 review 的格式與離線測資，不是正式 SDK／Registry／解析器。**所有 example.* ID、Profile、Feature 與服務引用都是 fixture。
+現行規格見 [Component Descriptor](../../../../../04_component_descriptor.md)。此目錄保存 0.1 格式、示意 ID 與離線測資。
 
 - descriptor.schema.json：B 的共同包裝及有限宣告語法；只靠這份 Schema 不能判定完整語意合法。
 - catalog.fixture.json：離線共用 Contract 與可信 Profile／欄位規格來源；既有共用資料 Schema 未修改。
@@ -18,11 +18,11 @@
 | [retrieval](retrieval.descriptor.json) | 索引能力、ES Hybrid／Local 分路、每路 Top K、已宣告的取回欄位 |
 | [rerank](rerank.descriptor.json) | 從巢狀 Chunk 選文字欄位、融合後 Query 卡控、新 score 與 Top N |
 
-安裝 jsonschema 4.x 後，從 repo 根目錄執行：
+安裝 jsonschema 4.x 後，從歷史快照的根目錄執行：
 
 ```bash
 python examples/component_descriptor/validate_examples.py
 python examples/component_descriptor/validate_inference_examples.py
 ```
 
-Inference 驗證器以離線程式解析本例使用的邊界綁定、欄位繼承與選項來源，使用既有參考函式驗證 RRF 與 Rerank。詳見[手冊的 Inference 對照](../../docs/04_component_descriptor.md#inference-descriptor-walkthrough)。兩支驗證器都不載入 Component、不存取模型／DB／Remote／K8s，也不是完整 Descriptor 編譯器、Registry 或 UI Renderer。
+Inference 驗證器以離線程式解析本例使用的邊界綁定、欄位繼承與選項來源，使用既有參考函式驗證 RRF 與 Rerank。兩支驗證器都不載入 Component、不存取模型／DB／Remote／K8s，也不是完整 Descriptor 編譯器、Registry 或 UI Renderer。

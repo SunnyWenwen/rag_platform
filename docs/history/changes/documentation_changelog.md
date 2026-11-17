@@ -19,7 +19,7 @@ Parser 開發示範：[三種交付模式圖](https://github.com/SunnyWenwen/rag
 
 
 
-2026-11-04 D-55：每 System 一組邏輯索引，IndexBinding 五鍵，省略 index_ref／searchable。索引格式定義、target Schema、Developer 配套及狀態責任見 [19](../../02_data_contracts.md)；共用 [Schema](../../../schemas/index_binding.schema.json)、[格式 target 範例](../../../examples/pydantic_contracts/artifact_definitions.json)。UI 待調整記 UIB-021，未改 Prototype。
+2026-11-04 D-55：每 System 一組邏輯索引，IndexBinding 五鍵，省略 index_ref／searchable。索引格式定義、target Schema、Developer 配套及狀態責任見 [19](../../02_data_contracts.md)；共用 [Schema](../../../schemas/index_binding.schema.json)、[格式 target 範例](../superseded/legacy_contracts/examples/pydantic_contracts/artifact_definitions.json)。UI 待調整記 UIB-021，未改 Prototype。
 
 
 2026-11-05 D-56～D-58：Ingestion 統一接非空 IngestionDocument[]，整批預檢才 202、逐文件完整覆寫／結果；工作狀態留 Runtime 記憶體，重啟 unknown。文件存在／document_id 清單直接讀取資料儲存，retire 真正刪除 Chunk／向量與搜尋／持久副本。共用 Queue／Inference 流量控制可配置；後續 D-64 已確認 E 的 Runtime 環境設定、Admin／部署管理者及初始預設，集中見 22。21 為 7 支業務＋2 支 Health，完整 OpenAPI／後端執行細節仍待整理。UIB-022／023 記錄待辦，不改 UI／共用機器 Schema。
@@ -39,4 +39,4 @@ Parser 開發示範：[三種交付模式圖](https://github.com/SunnyWenwen/rag
 2026-11-05 D-65：文件清單改回 documents[]＋next_cursor，每筆為 document_id＋source_revisions[]，從實際儲存 Chunk 去重彙整目前版本；正常單版、更新途中／失敗可能多版，不標示為最新成功版本，也不變更 Chunk.source_revision。定義見 [21 §9.3](../../06_runtime_api_and_deployment.md)，分頁參數與 Runtime 控制仍集中在 22；下一輪建議從完整 System Config、Developer 交付與 SDK 介面收斂，詳見 [08 §7](../../08_plan_and_decisions.md)。
 
 
-2026-11-05 D-66：完成規格交叉校對，修正舊 ParsedDocument 鍵數、Parser 輸出欄位、ResultSet.method／rank、Context／Config、選填 ID 追溯、UI 模擬狀態與 Queue／Remote 管理描述。新增 [23 整合草案](../../05_system_config.md)／[24 校對紀錄](../reviews/2026-11-05_spec_alignment_review.md)及 [System Config 五案例與離線驗證](../../../examples/system_config/README.md)。草案具體格式尚待核定，不是正式 Engine／SDK 或可部署設定；本輪未改 Prototype。
+2026-11-05 D-66：完成規格交叉校對，修正舊 ParsedDocument 鍵數、Parser 輸出欄位、ResultSet.method／rank、Context／Config、選填 ID 追溯、UI 模擬狀態與 Queue／Remote 管理描述。新增 [23 整合草案](../../05_system_config.md)／[24 校對紀錄](../reviews/2026-11-05_spec_alignment_review.md)及 [System Config 五案例與離線驗證](../superseded/system_config_d66/README.md)。草案具體格式尚待核定，不是正式 Engine／SDK 或可部署設定；本輪未改 Prototype。

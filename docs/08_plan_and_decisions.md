@@ -299,7 +299,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 ### Q-005 Parser／OCR 首批格式
 
 - 不清楚：PDF／PPTX／圖片／TXT／MD 哪些第一期支援；套件／外部 OCR、表格／標題 Schema、加密／損壞處理。
-- 關聯待決：現行 Units 契約的正式版本凍結、Parser 正規化及文字格式能力細節見 [Q-002 子項](#document-與共用契約)；不恢復已移除的 structure 型別或結構路由。
+- 關聯待決：現行 Document 與有效 `structdata` 契約的正式版本凍結、Parser 正規化及文字格式能力細節見 [Q-002 子項](#document-與共用契約)；不恢復已移除的 structure 型別或結構路由。
 - 建議：M1 先 Structured JSON，Native text 及其他格式逐一有測資才開放；OCR 服務另驗證。
 - 替代：第一期納入全部格式，需增加品質／成本驗收。
 - 負責角色：產品＋Engine；阻擋 M2 格式能力，不卡 M1 Structured JSON。
@@ -585,7 +585,7 @@ Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract�
 
 目前可審閱的交付為 03～23 的現行規格／討論稿、共用 JSON Schema、契約資料／參考驗證器、模擬 Prototype 及架構圖。三份 Ingestion 資料以 資料契約手冊 為準；Inference 的 ResultItem 引用共用 Chunk。
 
-- 資料驗證：examples/parsed_document、examples/chunk 與 examples/inference；完整限制與執行方式見 資料契約手冊／Chunk手冊。
+- 資料驗證：[System Config／Descriptor](../examples/system_config/README.md) 與 [Document／Remote API](../examples/user_remote_api/README.md)。[測試入口](../tests/README.md)另列 UI prototype 回歸。
 - Parser 對照：現行映射與驗收界線見 [資料契約](02_data_contracts.md#data-flow)；舊版供應者對照／試驗保存在 history/superseded，不等同目前契約的完整 Parser 驗收。範例通過不表示已交付 Engine Component。
 - Prototype v0.12：現行原型完成／提案／後端待辦以 [Builder UI／Backlog](07_builder_ui.md#src-10-1-已完成的原型能力)相關章節為準。不可再把 UIB-001～013 全列未實作；多項已完成模擬，UIB-007／008 仍未核定，UIB-021～024 等累積項仍待改 UI／正式整合。
 - 優先決策：正式共用契約／SDK、模型與 Tokenizer、ID／更新／發布政策，再按 M0～M7 推進。D-53 的 Chunk 後模板組合與額外原文 Chunk 已確認需求，尚待實作及凍結具體設定格式，見 [資料契約](02_data_contracts.md#data-flow)。

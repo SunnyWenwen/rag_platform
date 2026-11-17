@@ -57,7 +57,7 @@ Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一�
 
 **待決**：Q-004、Q-005、Q-007；Token 精確計數、切分 fallback 與 overlap 邊界需測試材料。
 
-D-53 真實 Engine 功能待實作，Prototype v0.12 已有控制與教學預覽：預設 Chunker 可選擇另留每個 Unit 所選欄位的完整原文 Chunk，預設關閉；已有相同完整切片則不重複新增。它與 copy 原文欄位獨立，不跨 Unit 合併，新增結果仍走 Embedding／Indexing 與模型上限檢查。行為與例子見 [Chunk](02_data_contracts.md)。
+D-53 的保留完整原文功能已在 Prototype v0.12 以舊 Unit 模型示範，Engine 實作仍待驗收。現行 Chunking 的輸入與輸出使用共用 [Document](02_data_contracts.md)。舊 Unit 的案例見[歷史契約快照](history/superseded/legacy_contracts/README.md)。
 
 <a id="src-04-44-embedding"></a>
 ### Embedding
