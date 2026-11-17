@@ -20,11 +20,22 @@ async function main() {
     const button = name => page.getByRole('button',{name,exact:true});
     const module = name => page.getByRole('navigation',{name:'模組'}).getByRole('button',{name,exact:true});
     const impact = page.locator('#publish-impact');
+    const dialog = page.locator('#system-dialog');
+    const card = page.locator('.card').filter({has:page.getByRole('heading',{name:'W1 驗收',exact:true})});
+    const openCardAction = name => card.getByRole('button',{name,exact:true}).click();
+    const closeSystem = () => dialog.getByRole('button',{name:'關閉',exact:true}).click();
     await page.goto(url);
-    await button('＋ 新增 System').click();
-    await page.getByLabel('System 名稱').fill('W1 驗收');
-    await button('建立草稿').click();
-    await page.getByRole('heading',{name:'W1 驗收',exact:true}).waitFor();
+    assert.equal(await page.getByRole('heading',{level:1}).innerText(),'Customer Support');
+    assert.equal(await page.locator('.card').count(),3);
+    assert.equal(await page.locator('.sidebar').evaluate(node => getComputedStyle(node).backgroundColor),'rgb(255, 255, 255)');
+    assert.equal(await page.locator('.mark').evaluate(node => getComputedStyle(node).backgroundColor),'rgb(101, 85, 215)');
+    await page.getByRole('button',{name:/Engineering/}).click();
+    assert.equal(await page.locator('.card').count(),1);
+    await page.getByRole('button',{name:/Customer Support/}).click();
+    await button('＋ Create Retrieval System').click();
+    await page.getByRole('dialog',{name:'Create Retrieval System'}).waitFor();
+    await page.getByLabel('Retrieval System 名稱').fill('W1 驗收');
+    assert.equal(await page.getByRole('navigation',{name:'模組'}).locator('.module-line').count(),2);
 
     await module('Chunking').click();
     await page.getByLabel('輸出欄位',{exact:true}).fill('body_text');
@@ -41,10 +52,12 @@ async function main() {
     await button('驗證並發布').click();
     assert.match(await impact.innerText(),/建立索引/);
     await button('確認發布').click();
-    await button('查詢測試').click();
+    await closeSystem();
+    await openCardAction('◇ Inference');
     assert.equal(await button('執行查詢').isDisabled(),true);
 
-    await button('資料匯入').click();
+    await closeSystem();
+    await openCardAction('↑ Ingest');
     await page.getByLabel('Ingestion Request').fill('{"documents":[]}');
     await button('預檢資料').click();
     assert.match(await page.getByRole('alert').innerText(),/至少一份文件/);
@@ -63,7 +76,8 @@ async function main() {
     await button('查詢工作').click();
     assert.match(await run.innerText(),/狀態未知/);
 
-    await button('查詢測試').click();
+    await closeSystem();
+    await openCardAction('◇ Inference');
     await button('載入範例').click();
     await button('執行查詢').click();
     const result = page.getByRole('region',{name:'查詢結果'});
@@ -76,7 +90,8 @@ async function main() {
     await button('執行查詢').click();
     assert.match(await page.getByRole('alert').innerText(),/符合 number/);
 
-    await button('系統設定').click();
+    await closeSystem();
+    await openCardAction('⚙ Edit Config');
     await module('Retrieval').click();
     await page.getByLabel('每路 Top K').fill('5');
     await page.evaluate(() => {
@@ -90,22 +105,25 @@ async function main() {
     await button('驗證並發布').click();
     assert.match(await impact.innerText(),/沿用索引/);
     await button('確認發布').click();
-    assert.match(await page.locator('.heading').innerText(),/revision-2.*1 份已匯入文件/);
+    assert.match(await page.locator('#dialog-subtitle').innerText(),/revision-2/);
+    assert.match(await card.locator('.meta').innerText(),/1 documents/);
     await module('Chunking').click();
     await page.getByLabel('切分上限（tokens）').fill('450');
     await button('驗證並發布').click();
     assert.match(await impact.innerText(),/重建索引/);
     await button('重建並發布').click();
-    await button('查詢測試').click();
+    await closeSystem();
+    await openCardAction('◇ Inference');
     assert.equal(await button('執行查詢').isDisabled(),true);
 
     await page.reload();
-    await page.getByRole('navigation',{name:'Retrieval Systems'}).getByRole('button',{name:'W1 驗收'}).click();
-    assert.match(await page.locator('.heading').innerText(),/revision-3.*0 份已匯入文件/);
+    assert.match(await card.locator('.meta').innerText(),/0 documents.*revision-3/);
     await page.setViewportSize({width:390,height:844});
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),true);
+    await openCardAction('⚙ Edit Config');
+    assert.equal(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth),true);
     assert.deepEqual(errors,[]);
-    console.log('PASS: draft, invalid selection, publish, CSV, run status, filters, index impact, persistence, mobile width');
+    console.log('PASS: original workspace and dialogs, draft, publishing, CSV, runs, filters, index impact, persistence and mobile width');
   } finally {
     await browser.close();
   }

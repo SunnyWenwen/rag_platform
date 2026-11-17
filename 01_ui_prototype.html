@@ -5,42 +5,178 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Retrieval Builder</title>
 <style>
-:root{color-scheme:light;--ink:#182637;--muted:#506476;--line:#dfe7ef;--paper:#fff;--canvas:#f4f7fa;--nav:#111f31;--nav-text:#d5e0ea;--accent:#145f64;--accent-light:#e6f3f0;--warn:#835017;--warn-bg:#fff4e4;--error:#a1323b;--error-bg:#fceff0;font:15px/1.55 "Inter","Noto Sans TC",system-ui,sans-serif}
-*{box-sizing:border-box}body{margin:0;background:var(--canvas);color:var(--ink)}button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.56}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid #0e7779;outline-offset:2px}h1,h2,h3,p{margin:0}h1{font-size:clamp(1.65rem,3vw,2.4rem);letter-spacing:-.035em;line-height:1.2}h2{font-size:1.2rem;line-height:1.35}h3{font-size:1rem}a{color:var(--accent)}label{font-weight:600}small,.muted{color:var(--muted)}code,pre{font-family:"IBM Plex Mono",ui-monospace,monospace}pre{max-height:320px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--canvas);border:1px solid var(--line);padding:1rem;border-radius:8px;font-size:.8rem}hr{border:0;border-top:1px solid var(--line);margin:1.1rem 0}
-.shell{display:grid;grid-template-columns:235px minmax(0,1fr);min-height:100vh}.sidebar{background:var(--nav);color:var(--nav-text);padding:25px 16px;display:flex;flex-direction:column;gap:24px}.brand{display:flex;align-items:center;gap:10px;color:#fff;font-weight:750;font-size:1.05rem;text-align:left;background:none;border:0;padding:0 5px}.logo{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:#a2dfcc;color:#173f40;font-size:1.12rem}.nav-title{font-size:.75rem;margin:0 8px 6px;color:#aabacb;letter-spacing:.03em}.side-list{display:grid;gap:4px}.side-button{display:flex;justify-content:space-between;gap:8px;text-align:left;width:100%;color:inherit;background:none;border:none;padding:8px;border-radius:7px;overflow-wrap:anywhere}.side-button:hover,.side-button[aria-current]{background:#293f54;color:white}.side-button .count{color:#adc5d5;font-size:.85rem}.environment{margin-top:auto;display:flex;gap:8px;align-items:center;padding:8px;color:#d3e6e6;font-size:.82rem}.dot{width:7px;height:7px;border-radius:50%;background:#80ccae}
-.topbar{background:var(--paper);border-bottom:1px solid var(--line);min-height:63px;padding:12px clamp(18px,4vw,48px);display:flex;align-items:center;justify-content:space-between;gap:12px}.crumb{color:var(--muted);overflow-wrap:anywhere}.page{max-width:1380px;margin:auto;padding:32px clamp(18px,4vw,48px) 56px}.heading{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:22px}.heading p{margin-top:8px}.btn{display:inline-flex;justify-content:center;align-items:center;gap:6px;min-height:38px;padding:7px 13px;border:1px solid #cbd8e3;border-radius:7px;background:var(--paper);color:var(--ink);font-weight:650;text-decoration:none}.btn:not(:disabled):hover{background:#eef3f7}.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.btn.primary:not(:disabled):hover{background:#0c5054}.btn.danger{color:#fff;background:#9b3037;border-color:#9b3037}.btn.danger:not(:disabled):hover{background:#7f2128}.btn.small{font-size:.84rem;min-height:30px;padding:3px 8px}.quiet{border:0;background:none;color:var(--accent);font-weight:650;padding:4px 0}.badge{display:inline-flex;align-items:center;border-radius:100px;padding:3px 10px;white-space:nowrap;background:#e8eef3;color:#374e65;font-size:.8rem;font-weight:650}.badge.good{background:var(--accent-light);color:#155e55}.badge.warn{background:var(--warn-bg);color:var(--warn)}.badge.bad{background:var(--error-bg);color:var(--error)}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));gap:16px}.panel,.card{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:20px;min-width:0}.card{display:grid;gap:13px}.card h2{overflow-wrap:anywhere}.card-head,.bar,.toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.bar,.card-head{justify-content:space-between}.toolbar{margin-top:14px}.tabs{display:flex;gap:20px;border-bottom:1px solid var(--line);margin-bottom:20px;overflow-x:auto}.tabs button{border:0;background:none;padding:11px 3px;color:var(--muted);font-weight:650;white-space:nowrap;border-bottom:3px solid transparent}.tabs button[aria-current]{color:var(--accent);border-bottom-color:var(--accent)}.workspace-empty{padding:45px 20px;text-align:center}.workspace-empty p{margin:8px 0 16px}
-.editor,.operation{display:grid;grid-template-columns:minmax(185px,245px) minmax(0,1fr);gap:16px;align-items:start}.operation{grid-template-columns:minmax(0,1fr) minmax(240px,340px)}.pipeline{padding:12px}.pipeline h3{margin:9px 9px 6px;color:var(--muted);font-size:.82rem}.node{width:100%;display:flex;justify-content:space-between;align-items:center;text-align:left;border:0;background:none;padding:8px 9px;border-radius:7px;color:var(--ink)}.node[aria-current]{background:var(--accent-light);color:#134e4a;font-weight:700}.node:hover{background:#edf3f6}.node small{font-size:.77rem}.flow-title{margin-bottom:12px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.field{display:grid;gap:5px;align-content:start;margin-top:11px;min-width:0}.wide{grid-column:1/-1}.control{width:100%;min-width:0;background:white;color:var(--ink);padding:8px 10px;border:1px solid #c1d1de;border-radius:7px}.control[aria-invalid=true]{border-color:var(--error)}textarea.control{min-height:110px;resize:vertical}.code{font:13px/1.55 ui-monospace,monospace}.table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;text-align:left;font-size:.88rem}td,th{border-bottom:1px solid var(--line);padding:8px;vertical-align:middle}th{color:var(--muted);font-weight:650;white-space:nowrap}td .control{padding:5px 7px}.check{width:18px;height:18px;accent-color:var(--accent)}.summary-row{display:grid;grid-template-columns:1fr auto;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}.empty{padding:20px 0;color:var(--muted)}.stack{display:grid;gap:14px}.info{padding:11px 13px;border-radius:7px;background:#ecf3f8;color:#284961;margin-top:12px;overflow-wrap:anywhere}.info.bad{background:var(--error-bg);color:var(--error)}.info.warn{background:var(--warn-bg);color:var(--warn)}.inline-error{font-size:.82rem;color:var(--error);font-weight:500}.result{padding:14px 0;border-bottom:1px solid var(--line)}.result p{margin-top:6px;white-space:pre-wrap;overflow-wrap:anywhere}details{margin-top:14px}summary{cursor:pointer;color:var(--accent);font-weight:650}dialog{width:min(calc(100% - 28px),480px);border:1px solid var(--line);border-radius:13px;padding:23px;color:var(--ink);box-shadow:0 24px 70px #0c243c45}dialog::backdrop{background:#14263f66}dialog .toolbar{justify-content:flex-end}#toast{position:fixed;right:18px;bottom:18px;max-width:min(420px,90vw);border-radius:9px;background:#18313c;color:white;padding:12px 15px;z-index:10}
-@media(max-width:940px){.operation{grid-template-columns:1fr}}@media(max-width:720px){.shell{grid-template-columns:1fr}.sidebar{padding:12px 18px;gap:8px}.side-list{display:flex;overflow:auto}.side-button{width:auto;white-space:nowrap}.environment{margin:0;padding:0 5px}.sidebar .nav-title{display:none}.page{padding-top:23px}.editor{grid-template-columns:1fr}.pipeline{display:flex;align-items:center;overflow:auto;gap:4px}.pipeline h3{white-space:nowrap}.node{width:auto;white-space:nowrap}.node small{display:none}}@media(max-width:450px){.heading{flex-direction:column}.form-grid{grid-template-columns:1fr}.topbar .btn{font-size:.83rem}.page{padding-inline:12px}.panel{padding:13px}}
+:root{--ink:#232738;--muted:#7b8193;--line:#e8eaf0;--accent:#6555d7;--bg:#f8f9fc}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.6 Inter,"Segoe UI","Microsoft JhengHei",sans-serif;color:var(--ink);background:var(--bg)}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+button:disabled{cursor:not-allowed;opacity:.45}
+button:focus-visible{outline:3px solid #b8aef6;outline-offset:3px}
+.sidebar{width:236px;position:fixed;inset:0 auto 0 0;background:white;border-right:1px solid var(--line);padding:32px 20px}
+.brand{display:flex;align-items:center;gap:10px;font-size:19px;font-weight:750;letter-spacing:-.6px;margin-bottom:50px}
+.mark{background:var(--accent);color:white;border-radius:10px;padding:4px 12px}
+.caption{font-size:10px;color:var(--muted);letter-spacing:1.5px;font-weight:700;margin:0 12px 16px}
+.group{border:0;background:none;color:#687083;display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:13px 12px;border-radius:8px;margin:5px 0}
+.group.active{background:#f0edff;color:#5a49ca;font-weight:650}
+.group .count{margin-left:auto;font-size:11px}
+.side-note{position:absolute;bottom:25px;left:32px;font-size:11px;color:#979cad}
+main{margin-left:236px;padding:0 48px 60px}
+header{height:104px;display:flex;justify-content:space-between;align-items:center;gap:20px;border-bottom:1px solid var(--line)}
+.crumb{color:var(--muted);font-size:12px}
+.btn{background:white;border:1px solid #dddfea;border-radius:8px;padding:10px 16px;color:#535a6e;font-weight:600}
+.primary{background:var(--accent);border-color:var(--accent);color:white;box-shadow:0 4px 10px #6555d71a}
+.primary:hover{background:#5747c6}
+.intro{margin:38px 0 28px}
+.intro h1{font-size:28px;letter-spacing:-.8px;margin:0 0 5px}
+.muted{color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}
+.card{background:white;border:1px solid var(--line);border-radius:13px;padding:24px;transition:box-shadow .15s}
+.card:hover{box-shadow:0 6px 24px #32354b09}
+.cardtop{display:flex;align-items:center;justify-content:space-between}
+.system-icon{width:48px;height:48px;display:grid;place-items:center;background:#f0edff;color:var(--accent);border-radius:13px;font-size:24px}
+.status{font-size:10px;color:#7e879b;background:#f6f7fa;border-radius:20px;padding:4px 9px}
+.status.ready{color:#268472;background:#edf9f5}
+.card h2{font-size:17px;margin:21px 0 3px;overflow-wrap:anywhere}
+.meta{font-size:12px;color:var(--muted)}
+.actions{display:flex;gap:7px;margin-top:25px}
+.actions button{flex:1;border:1px solid #e6e7f0;background:white;color:#60677d;border-radius:7px;padding:8px 2px;font-size:11px}
+.actions button:hover{background:#f5f3ff;color:var(--accent)}
+.export{background:none;border:0;padding:14px 0 0;color:#9296a4;font-size:11px}
+.hint{font-size:11px;color:#9a9fb0;margin-top:30px}
+dialog{border:1px solid var(--line);border-radius:16px;width:min(1200px,94vw);max-height:90vh;padding:0;color:var(--ink);box-shadow:0 24px 100px #18213730}
+dialog::backdrop{background:#1a203b65;backdrop-filter:blur(3px)}
+.modalhead{padding:24px 30px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+.modalhead h2{font-size:22px;margin:0}
+.close{border:0;background:#f5f6fa;border-radius:8px;font-size:22px;color:#7e8594;padding:0 10px}
+.modalbody{padding:26px 30px;background:#fafbfe}
+.modalfoot{padding:18px 30px;display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--line)}
+.label{display:block;font-size:12px;font-weight:600;color:#646c82;margin:12px 0 6px}
+.control{width:100%;border:1px solid #dfe2eb;border-radius:8px;padding:10px 12px;background:white;color:var(--ink)}
+.control:focus{outline:2px solid #d5ceff}
+.builder{display:grid;grid-template-columns:minmax(0,1fr) 410px;gap:20px;margin-top:22px}
+.panel{background:white;border:1px solid var(--line);border-radius:11px;padding:20px}
+.panel h3{font-size:14px;margin:0 0 15px}
+.module-line{display:flex;flex-wrap:wrap;gap:8px}
+.module{border:1px solid #e1e4ed;background:white;border-radius:8px;padding:14px 12px;text-align:left;flex:1;min-width:110px;color:#4d566d}
+.module strong{font-size:12px;display:block}
+.module small{display:block;font-size:10px;margin-top:8px;color:#8790a3}
+.module.selected{border-color:var(--accent);background:#f6f3ff;color:var(--accent)}
+.pipeline+.pipeline{margin-top:18px}
+.notice{font-size:12px;padding:12px;border-radius:8px;background:#f2f0ff;color:#64588d;white-space:pre-line;margin-top:18px}
+.notice.error{background:#fff1ef;color:#af4a3b}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.upload{border:1px dashed #cfd0e2;background:#faf9ff;padding:28px 20px;border-radius:9px;margin:16px 0}
+.result{white-space:pre-wrap;background:white;border:1px solid var(--line);padding:20px;border-radius:9px;min-height:170px;font-size:13px}
+.toast{position:fixed;bottom:25px;right:28px;background:#30334b;color:white;padding:12px 20px;border-radius:10px;z-index:10}
+.empty{padding:50px;border:1px dashed #daddE8;border-radius:12px;color:var(--muted)}
+@media(max-width:1250px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:850px){.sidebar{width:185px;padding:26px 12px}
+main{margin-left:185px;padding:0 22px}
+.cards,.builder,.twocol{grid-template-columns:1fr}
+.modalhead,.modalbody,.modalfoot{padding:20px}
+.brand{font-size:16px}
+.side-note{left:20px}
+}
+@media(max-width:550px){.sidebar{position:static;width:100%;padding:14px}
+.brand{margin:0 0 12px}
+.caption,.side-note{display:none}
+#groups{display:flex;overflow:auto}
+.group{white-space:nowrap;margin:0;width:auto}
+.count{display:none}
+main{margin:0;padding:0 16px}
+header{height:85px}
+.crumb{display:none}
+.intro{margin-top:24px}
+.modalhead h2{font-size:18px}
+}
+
+:root{--error:#a1323b;--warn:#835017}
+h3,p{margin:0}
+[hidden]{display:none!important}
+pre{max-height:320px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f6fa;border:1px solid var(--line);padding:14px;border-radius:8px;font:12px/1.7 ui-monospace,monospace}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid #a093f1;outline-offset:2px}
+.card{min-width:0}
+.cardlinks,.bar,.toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.cardlinks,.bar{justify-content:space-between}
+.toolbar{margin-top:14px}
+.card .export:enabled:hover,.quiet:hover{text-decoration:underline}
+.status{white-space:nowrap}
+.status.warn,.badge.warn{background:#fff4e4;color:var(--warn)}
+.status.bad,.badge.bad{background:#fff1ef;color:var(--error)}
+.badge{display:inline-flex;align-items:center;white-space:nowrap;border-radius:20px;padding:4px 9px;background:#f6f7fa;color:#657087;font-size:11px}
+.badge.good{background:#edf9f5;color:#268472}
+.btn.small{font-size:12px;padding:5px 9px}
+.btn.danger{background:#a1323b;border-color:#a1323b;color:white}
+.quiet{border:0;background:none;color:var(--accent);font-weight:650;padding:4px 0}
+#publish{width:min(480px,94vw)}
+.modalhead .muted{font-size:12px;overflow-wrap:anywhere}
+.editor-meta{margin-bottom:14px}
+.builder{grid-template-columns:minmax(0,.95fr) minmax(0,1.2fr);align-items:start}
+.builder>.panel,.operation>.stack,.operation>aside{min-width:0}
+.module{min-width:125px}
+.module small{margin-top:4px;overflow-wrap:anywhere}
+.module.selected small{color:#6555a7}
+.flow-title h3{margin:0}
+.operation{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(220px,1fr);gap:20px;align-items:start}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.field{display:grid;gap:5px;align-content:start;margin-top:11px;min-width:0;font-size:12px;font-weight:600;color:#646c82}
+.wide{grid-column:1/-1}
+.control{font-size:13px;min-width:0}
+.control[aria-invalid=true]{border-color:var(--error)}
+textarea.control{min-height:90px;resize:vertical}
+.code{font:12px/1.55 ui-monospace,monospace}
+.table-wrap{overflow:auto}
+table{border-collapse:collapse;width:100%;text-align:left;font-size:12px}
+td,th{border-bottom:1px solid var(--line);padding:7px;vertical-align:middle}
+th{color:var(--muted);font-weight:650;white-space:nowrap}
+td .control{padding:5px 7px}
+.check{width:16px;height:16px;accent-color:var(--accent)}
+.summary-row{display:grid;grid-template-columns:1fr auto;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}
+.stack{display:grid;gap:14px}
+.info{padding:11px 13px;border-radius:8px;background:#f2f0ff;color:#64588d;margin-top:12px;overflow-wrap:anywhere;font-size:12px}
+.info.bad{background:#fff1ef;color:var(--error)}
+.info.warn{background:#fff4e4;color:var(--warn)}
+.inline-error{font-size:12px;color:var(--error);font-weight:500}
+.result{min-height:0;margin-top:12px}
+.result h3{margin:0}
+.result p{margin-top:6px;white-space:pre-wrap;overflow-wrap:anywhere}
+details{margin-top:14px}
+summary{cursor:pointer;color:var(--accent);font-weight:650}
+.modalfoot{flex-wrap:wrap}
+@media(max-width:850px){.builder,.operation{grid-template-columns:1fr}}
+@media(max-width:550px){.form-grid{grid-template-columns:1fr}.modalhead,.modalbody,.modalfoot{padding:16px}.card{padding:18px}}
 </style>
 </head>
 <body>
-<div class="shell">
-  <aside class="sidebar" aria-label="工作區導覽">
-    <button class="brand" data-action="home"><span class="logo" aria-hidden="true">R</span>Retrieval Builder</button>
-    <div><div class="nav-title">工作區</div><nav id="groups" class="side-list" aria-label="工作區"></nav></div>
-    <div id="system-nav" hidden><div class="nav-title">Retrieval Systems</div><nav id="systems" class="side-list" aria-label="Retrieval Systems"></nav></div>
-    <div class="environment"><span class="dot" aria-hidden="true"></span>DEV · 本機模擬</div>
-  </aside>
-  <div>
-    <header class="topbar"><div class="crumb" id="breadcrumb"></div><button class="btn primary" data-action="open-create">＋ 新增 System</button></header>
-    <main class="page" id="page"></main>
+<aside class="sidebar" aria-label="工作區導覽">
+  <div class="brand"><span class="mark" aria-hidden="true">r</span> Retrieval Builder</div>
+  <div class="caption">WORKSPACES</div>
+  <nav id="groups" aria-label="Workspace groups"></nav>
+  <div class="side-note">DEV · 本機模擬</div>
+</aside>
+<main>
+  <header>
+    <div class="crumb">Workspaces / <span id="breadcrumb"></span></div>
+    <button class="btn primary" data-action="open-create">＋ Create Retrieval System</button>
+  </header>
+  <div class="intro"><h1 id="group-title"></h1><div class="muted" id="group-description"></div></div>
+  <div class="cards" id="cards"></div>
+</main>
+<dialog id="system-dialog" aria-labelledby="dialog-title">
+  <div class="modalhead">
+    <div><h2 id="dialog-title"></h2><div class="muted" id="dialog-subtitle"></div></div>
+    <button class="close" aria-label="關閉" data-action="close-dialog">×</button>
   </div>
-</div>
-<dialog id="create" aria-labelledby="create-title">
-  <form id="create-form">
-    <h2 id="create-title">新增 Retrieval System</h2>
-    <label class="field">System 名稱<input class="control" name="name" maxlength="80" required autofocus placeholder="例如：設備手冊檢索"></label>
-    <label class="field">設定模板<select class="control" name="template"><option>Elasticsearch · 向量檢索</option></select></label>
-    <div class="toolbar"><button type="button" class="btn" data-action="close-dialog">取消</button><button class="btn primary">建立草稿</button></div>
-  </form>
+  <div class="modalbody" id="page"></div>
+  <div class="modalfoot" id="editor-actions" hidden></div>
 </dialog>
 <dialog id="publish" aria-labelledby="publish-title">
-  <h2 id="publish-title">發布設定</h2>
-  <div id="publish-impact"></div>
-  <div class="toolbar"><button class="btn" data-action="close-dialog">返回</button><button class="btn primary" data-action="publish" id="publish-confirm">發布</button></div>
+  <div class="modalhead"><h2 id="publish-title">發布設定</h2></div>
+  <div class="modalbody" id="publish-impact"></div>
+  <div class="modalfoot"><button class="btn" data-action="close-dialog">返回</button><button class="btn primary" data-action="publish" id="publish-confirm">發布</button></div>
 </dialog>
-<div id="toast" role="status" hidden></div>
+<div id="toast" class="toast" role="status" hidden></div>
 <script type="application/json" id="runtime-fixture">
 {"catalog":{"runtime_ref":"dev-runtime","catalog_revision":"catalog-1","descriptors":[{"descriptor_version":"0.2-draft","module":"import","component_id":"platform","component_version":"1.0.0","parameters_schema":{"type":"object","properties":{"structdata":{"$ref":"https://rag-builder.example/schemas/data_meta.schema.json"}},"required":["structdata"],"additionalProperties":false},"io":{"input":"IngestionRequest","output":"Document"},"option_sources":{},"data_rules":[],"constraints":[]},{"descriptor_version":"0.2-draft","module":"parsing","component_id":"passthrough","component_version":"1.0.0","parameters_schema":{"type":"object","properties":{},"required":[],"additionalProperties":false},"io":{"input":"Document","output":"Document[]"},"option_sources":{},"data_rules":[],"constraints":[]},{"descriptor_version":"0.2-draft","module":"chunking","component_id":"recursive","component_version":"1.0.0","parameters_schema":{"type":"object","properties":{"split_field":{"type":"string","minLength":1},"output_field":{"type":"string","minLength":1},"copy_fields":{"type":"array","items":{"type":"object","properties":{"source_field":{"type":"string","minLength":1},"output_field":{"type":"string","minLength":1}},"required":["source_field","output_field"],"additionalProperties":false}},"max_tokens":{"type":"integer","minimum":1},"overlap_tokens":{"type":"integer","minimum":0},"tokenizer_profile_id":{"type":"string","minLength":1}},"required":["split_field","output_field","copy_fields","max_tokens","overlap_tokens","tokenizer_profile_id"],"additionalProperties":false},"io":{"input":"Document[]","output":"Document[]"},"option_sources":{"/split_field":{"source":"input.structdata","types":["string"],"required":true},"/tokenizer_profile_id":{"source":"tokenizer_profiles"},"/copy_fields/*/source_field":{"source":"input.structdata","types":["string","string_array","integer","number","boolean","date","datetime"]}},"data_rules":[{"op":"declare","target":"/output_field","schema":{"type":"string","required":true}},{"op":"copy","source":"/source_field","target":"/output_field","for_each":"/copy_fields"}],"constraints":[{"op":"lt","left":"/overlap_tokens","right":"/max_tokens"}],"ui_hints":{"advanced":["/copy_fields","/overlap_tokens"]}},{"descriptor_version":"0.2-draft","module":"embedding","component_id":"dense","component_version":"1.0.0","parameters_schema":{"type":"object","properties":{"source_field":{"type":"string","minLength":1},"vector_name":{"type":"string","minLength":1},"profile":{"type":"string","minLength":1}},"required":["source_field","vector_name","profile"],"additionalProperties":false},"io":{"input":"Document[]","output":"Document[]"},"option_sources":{"/source_field":{"source":"input.structdata","types":["string"],"required":true},"/profile":{"source":"profiles"}},"data_rules":[{"op":"vector","source":"/source_field","target":"/vector_name","profile":"/profile"}],"constraints":[]},{"descriptor_version":"0.2-draft","module":"indexing","component_id":"elasticsearch","component_version":"1.0.0","parameters_schema":{"type":"object","properties":{"service_ref":{"type":"string","minLength":1},"vector_name":{"type":"string","minLength":1},"structdata_overrides":{"$ref":"https://rag-builder.example/schemas/data_meta.schema.json#/$defs/overrides"}},"required":["service_ref","vector_name"],"additionalProperties":false},"io":{"input":"Document[]","output":"IndexBinding"},"option_sources":{"/service_ref":{"source":"elasticsearch_services"},"/vector_name":{"source":"input.vectors"}},"data_rules":[],"constraints":[]},{"descriptor_version":"0.2-draft","module":"inference_input","component_id":"platform","component_version":"1.0.0","parameters_schema":{"type":"object","properties":{},"required":[],"additionalProperties":false},"io":{"input":"InferenceRequest","output":"QueryContext[]"},"option_sources":{},"data_rules":[],"constraints":[]},{"descriptor_version":"0.2-draft","module":"query_transformation","component_id":"none","component_version":"1.0.0","parameters_schema":{"type":"object","properties":{},"required":[],"additionalProperties":false},"io":{"input":"QueryContext[]","output":"QueryContext[]"},"option_sources":{},"data_rules":[],"constraints":[]},{"descriptor_version":"0.2-draft","module":"retrieval","component_id":"builtin","component_version":"1.0.0","parameters_schema":{"type":"object","properties":{"vector_name":{"type":"string","minLength":1},"query_profile":{"type":"string","minLength":1},"per_route_k":{"type":"integer","minimum":1},"fulltext_fields":{"type":"array","items":{"type":"string","minLength":1},"minItems":1,"uniqueItems":true},"group_by":{"type":"array","items":{"type":"string","minLength":1},"minItems":1,"uniqueItems":true}},"required":["vector_name","query_profile","per_route_k"],"additionalProperties":false},"io":{"input":"QueryContext[]","output":"QueryContext[]"},"option_sources":{"/vector_name":{"source":"index_plan.vectors"},"/query_profile":{"source":"profiles"},"/fulltext_fields/*":{"source":"index_plan.fulltext"},"/group_by/*":{"source":"candidate.document_fields","types":["string"]}},"data_rules":[],"constraints":[]},{"descriptor_version":"0.2-draft","module":"rerank","component_id":"none","component_version":"1.0.0","parameters_schema":{"type":"object","properties":{},"required":[],"additionalProperties":false},"io":{"input":"QueryContext[]","output":"QueryContext[]"},"option_sources":{},"data_rules":[],"constraints":[]}]},"config":{"contract_version":"0.2-draft","pipelines":{"ingestion":{"import":{"component_id":"platform","component_version":"1.0.0","parameters":{"structdata":{"body":{"type":"string","required":true},"title":{"type":"string","required":true,"filterable":true},"price":{"type":"number","required":false,"searchable":false,"filterable":false},"tags":{"type":"string_array","required":false,"searchable":false,"filterable":true}}}},"parsing":{"component_id":"passthrough","component_version":"1.0.0","parameters":{}},"chunking":{"component_id":"recursive","component_version":"1.0.0","parameters":{"split_field":"body","output_field":"text","copy_fields":[{"source_field":"title","output_field":"title"},{"source_field":"price","output_field":"price"},{"source_field":"tags","output_field":"tags"}],"max_tokens":500,"overlap_tokens":50,"tokenizer_profile_id":"fixture"}},"embedding":{"component_id":"dense","component_version":"1.0.0","parameters":{"source_field":"text","vector_name":"text","profile":"text-v1"}},"indexing":{"component_id":"elasticsearch","component_version":"1.0.0","parameters":{"service_ref":"dev-search","vector_name":"text","structdata_overrides":{"text":{"searchable":true},"price":{"filterable":true}}}}},"inference":{"inference_input":{"component_id":"platform","component_version":"1.0.0","parameters":{}},"query_transformation":{"component_id":"none","component_version":"1.0.0","parameters":{}},"retrieval":{"component_id":"builtin","component_version":"1.0.0","parameters":{"vector_name":"text","query_profile":"text-v1","per_route_k":10}},"rerank":{"component_id":"none","component_version":"1.0.0","parameters":{}},"fixed_filters":[{"field":"structdata.price","operator":"gte","value":300}]}}},"ingestion":{"documents":[{"document_id":"guide-1","structdata":{"body":"定期清潔散熱孔。","title":"設備保養","price":350}}]},"query":{"query":"散熱孔怎麼清潔？","filters":[{"field":"structdata.price","operator":"lt","value":500}]}}
 </script>
@@ -74,7 +210,7 @@ const componentNames = {platform:'平台預設',passthrough:'結構化 JSON',rec
 const displayNames = {'dev-search':'DEV Elasticsearch',fixture:'DEV Tokenizer','text-v1':'text-v1'};
 const types = ['string','string_array','integer','number','boolean','date','datetime'];
 const fieldName = /^[^.\s]+$/u;
-const groups = ['知識庫', '個人測試'];
+const groups = ['Customer Support','Engineering','Operations'];
 const lanes = {ingestion:['import','parsing','chunking','embedding','indexing'], inference:['inference_input','query_transformation','retrieval','rerank']};
 const laneOf = module => lanes.ingestion.includes(module) ? 'ingestion' : 'inference';
 const prefix = module => `/config/pipelines/${laneOf(module)}/${module}/parameters`;
@@ -84,6 +220,7 @@ const storageKey = 'retrieval-builder-w1';
 const stored = load();
 let model = stored || {systems:[]};
 let workspace = 0, id = null, screen = 'config', selected = 'import';
+let pendingSystem = null, draftName = '';
 let draft = null, draftDirty = false, issues = [], checked = null, detailOpen = false;
 let ingestText = '', ingestError = '', csv = null, mapping = {}, batchPreview = null, viewRun = null;
 let queryText = '', filterText = '[]', queryError = '', queryResult = null;
@@ -100,7 +237,7 @@ function persist() {
   catch { notify('瀏覽器無法保存這次變更。'); }
 }
 
-const current = () => model.systems.find(system => system.id === id);
+const current = () => pendingSystem?.id === id ? pendingSystem : model.systems.find(system => system.id === id);
 
 function makeSystem(name, group, systemId = uuid()) {
   return {id:systemId, name, group, draft:clone(fixture.config), draftRevision:1, revision:0,
@@ -108,8 +245,11 @@ function makeSystem(name, group, systemId = uuid()) {
 }
 
 function notify(message) {
-  $('toast').textContent = message;
-  $('toast').hidden = false;
+  const toast = $('toast');
+  const parent = $('system-dialog').open ? $('system-dialog') : document.body;
+  if (toast.parentElement !== parent) parent.append(toast);
+  toast.textContent = message;
+  toast.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { $('toast').hidden = true; }, 3900);
 }
@@ -120,53 +260,67 @@ function resetOperation() {
 }
 
 function openSystem(systemId, target = 'config') {
-  const system = model.systems.find(entry => entry.id === systemId);
+  const system = pendingSystem?.id === systemId ? pendingSystem : model.systems.find(entry => entry.id === systemId);
   if (!system) return;
-  if (draftDirty && id !== systemId && !confirm('離開並捨棄尚未保存的設定？')) return;
-  if (id !== systemId) {
-    resetOperation();
-    draft = clone(system.draft); draftDirty = false; checked = null; issues = []; selected = 'import'; detailOpen = false;
-  }
+  resetOperation();
+  draft = clone(system.draft);
+  draftName = system.name;
+  draftDirty = false;
+  checked = null;
+  issues = [];
+  selected = 'import';
+  detailOpen = false;
   workspace = system.group;
   id = systemId;
   screen = target;
   render();
-}
-
-function openWorkspace(group) {
-  if (draftDirty && !confirm('離開並捨棄尚未保存的設定？')) return;
-  workspace = group;
-  id = null; draftDirty = false;
-  render();
+  $('system-dialog').showModal();
 }
 
 function readiness(system) {
-  if (!system.active) return badge('草稿');
-  if (!system.indexReady) return badge('索引未就緒', 'warn');
-  return system.initialized ? badge('可查詢','good') : badge('待匯入','warn');
+  if (!system.active) return '<span class="status">草稿</span>';
+  if (!system.indexReady) return '<span class="status warn">索引未就緒</span>';
+  return system.initialized ? '<span class="status ready">可測試</span>' : '<span class="status warn">需 Ingestion</span>';
+}
+
+function renderWorkspace() {
+  const entries = model.systems.filter(item => item.group === workspace);
+  $('groups').innerHTML = groups.map((name, index) =>
+    `<button class="group ${index === workspace ? 'active' : ''}" data-action="workspace" data-value="${index}" aria-pressed="${index === workspace}">▦ ${name}<span class="count">${model.systems.filter(item => item.group === index).length}</span></button>`).join('');
+  $('breadcrumb').textContent = groups[workspace];
+  $('group-title').textContent = groups[workspace];
+  $('group-description').textContent = `${entries.length} Retrieval systems`;
+  $('cards').innerHTML = entries.length ? entries.map(system => `<article class="card">
+    <div class="cardtop"><span class="system-icon" aria-hidden="true">▧</span>${readiness(system)}</div>
+    <h2>${escapeHTML(system.name)}</h2>
+    <div class="meta">${system.documents.length} documents · Vector · ${activeRevision(system) ?? '未發布'}</div>
+    <div class="actions">
+      <button data-action="system" data-value="${system.id}" data-view="ingest">↑ Ingest</button>
+      <button data-action="system" data-value="${system.id}" data-view="query">◇ Inference</button>
+      <button disabled title="Evaluation 待整合">◎ Evaluation</button>
+    </div>
+    <div class="cardlinks">
+      <button class="export" data-action="system" data-value="${system.id}" data-view="config">⚙ Edit Config</button>
+      <button class="export" disabled title="部署匯出待整合">↗ Export YAML</button>
+    </div>
+  </article>`).join('') : '<div class="empty">此 Workspace 尚無 Retrieval System。</div>';
 }
 
 function render() {
   const system = current();
-  const entries = model.systems.filter(item => item.group === workspace);
-  $('groups').innerHTML = groups.map((name, index) =>
-    `<button class="side-button" data-action="workspace" data-value="${index}" ${index === workspace ? 'aria-current="page"' : ''}>${name}<span class="count">${model.systems.filter(item => item.group === index).length}</span></button>`).join('');
-  $('system-nav').hidden = !entries.length;
-  $('systems').innerHTML = entries.map(item => `<button class="side-button" data-action="system" data-value="${item.id}" ${item.id === id ? 'aria-current="page"' : ''}>${escapeHTML(item.name)}</button>`).join('');
-  $('breadcrumb').textContent = ['工作區',groups[workspace],system?.name].filter(Boolean).join(' / ');
-  if (!system) {
-    $('page').innerHTML = `<div class="heading"><div><h1>${groups[workspace]}</h1><p class="muted">${entries.length} 個 Retrieval System</p></div></div>
-      ${entries.length ? `<div class="cards">${entries.map(item => `<article class="card"><div class="card-head"><h2>${escapeHTML(item.name)}</h2>${readiness(item)}</div>
-        <p class="muted">${item.active ? '生效版本 ' + activeRevision(item) + ' · ' + item.documents.length + ' 份文件' : '尚未發布設定'}</p>
-        <div class="bar"><small>Elasticsearch</small><button class="btn" data-action="system" data-value="${item.id}">開啟</button></div></article>`).join('')}</div>`
-        : '<div class="panel workspace-empty"><h2>尚無 Retrieval System</h2><p class="muted">建立 System 後即可設定工作流程。</p><button class="btn" data-action="open-create">新增 System</button></div>'}`;
-    return;
+  if (!$('system-dialog').open) renderWorkspace();
+  if (!system) return;
+
+  const actions = $('editor-actions');
+  const creating = system === pendingSystem;
+  $('dialog-title').textContent = screen === 'config' ? creating ? 'Create Retrieval System' : 'Edit Config' : screen === 'ingest' ? 'Ingest' : 'Inference';
+  $('dialog-subtitle').textContent = creating ? groups[workspace] : [system.name,activeRevision(system)].filter(Boolean).join(' / ');
+  actions.hidden = screen !== 'config';
+  if (screen === 'config') {
+    actions.innerHTML = `${system.active ? makeButton('下載生效設定','download') : ''}
+      ${makeButton('取消','close-dialog')}${makeButton('保存草稿','save')}${makeButton('驗證並發布','validate','primary')}`;
   }
-  $('page').innerHTML = `<div class="heading"><div><h1>${escapeHTML(system.name)}</h1>
-    <p class="muted">${system.active ? '生效版本 ' + activeRevision(system) : '尚未發布'} · ${system.documents.length} 份已匯入文件</p></div>${readiness(system)}</div>
-    <nav class="tabs" aria-label="System 操作">${Object.entries({config:'系統設定',ingest:'資料匯入',query:'查詢測試'}).map(([key,title]) =>
-    `<button data-action="tab" data-value="${key}" ${key === screen ? 'aria-current="page"' : ''}>${title}</button>`).join('')}</nav>
-    ${screen === 'config' ? settings(system) : screen === 'ingest' ? ingestion(system) : inference(system)}`;
+  $('page').innerHTML = screen === 'config' ? settings(system) : screen === 'ingest' ? ingestion(system) : inference(system);
 }
 
 const activeRevision = system => system.active ? 'revision-' + system.revision : null;
@@ -217,21 +371,26 @@ function settings(system) {
   const properties = Object.entries(item.parameters_schema.properties);
   const advanced = new Set(item.ui_hints?.advanced?.map(path => path.slice(1)) ?? []);
   const renderFields = entries => entries.map(([key,schema]) => renderField(key,schema,values[key])).join('');
-  const nav = Object.entries(lanes).map(([lane,modules]) => `<h3>${lane === 'ingestion' ? 'Ingestion' : 'Inference'}</h3>${modules.map(module =>
-    `<button class="node" data-action="module" data-value="${module}" ${selected===module ? 'aria-current="page"' : ''}>${labels[module]}
-    <small>${issues.some(issue => issue.module === module) ? '⚠ 待修正' : ''}</small></button>`).join('')}`).join('');
-  return `<div class="editor"><nav aria-label="模組" class="panel pipeline">${nav}</nav><section class="panel">
-    <div class="bar flow-title"><h2>${labels[selected]}</h2><span class="muted">草稿 ${system.draftRevision}${draftDirty ? ' · 未保存' : ''}</span></div>
+  const nav = Object.entries(lanes).map(([lane,modules]) => `<section class="panel pipeline">
+    <h3>${lane === 'ingestion' ? 'Ingestion' : 'Inference'}</h3><div class="module-line">${modules.map(module => {
+      const component = descriptor(module);
+      const note = issues.some(issue => issue.module === module) ? '⚠ 待修正' : componentNames[component.component_id];
+      return `<button class="module ${selected === module ? 'selected' : ''}" data-action="module" data-value="${module}"
+        aria-label="${labels[module]}" aria-pressed="${selected === module}"><strong>${labels[module]}</strong><small>${note}</small></button>`;
+    }).join('')}</div></section>`).join('');
+  return `<div class="editor-meta">
+    <label class="field">Retrieval System 名稱<input class="control" id="system-name" maxlength="80" required
+      placeholder="例如：Maintenance Retrieval" value="${escapeHTML(draftName)}"></label>
+    ${system === pendingSystem ? '<label class="field">設定模板<select class="control"><option>Elasticsearch · 向量檢索</option></select></label>' : ''}
+    </div>
+    <div class="builder"><nav aria-label="模組">${nav}</nav><section class="panel">
+    <div class="bar flow-title"><h3>${labels[selected]}</h3><span class="muted">草稿 ${system.draftRevision}${draftDirty ? ' · 未保存' : ''}</span></div>
     <label class="field">Component<select class="control" aria-label="Component"><option>${componentNames[item.component_id]} · ${item.component_version}</option></select></label>
     <div class="form-grid">${renderFields(properties.filter(([key]) => !advanced.has(key)))}</div>
     ${advanced.size ? `<details id="advanced" ${detailOpen || issues.some(issue => issue.module === selected && [...advanced].some(key => issue.path.startsWith(prefix(selected) + '/' + key))) ? 'open' : ''}><summary>進階設定</summary><div class="form-grid">${renderFields(properties.filter(([key]) => advanced.has(key)))}</div></details>` : ''}
     ${selected === 'inference_input' ? filterEditor('fixed',draft) : ''}
     ${issues.length ? `<div class="info bad" role="alert"><strong>請修正設定</strong><ul>${issues.map(issue =>
       `<li><button class="quiet" data-action="module" data-value="${issue.module}">${labels[issue.module]}</button> · ${escapeHTML(issue.message)}</li>`).join('')}</ul></div>` : ''}
-    <div class="toolbar">
-      ${makeButton('保存草稿','save')}${makeButton('驗證並發布','validate','primary')}
-      ${system.active ? makeButton('下載生效設定','download') : ''}
-    </div>
   </section></div>`;
 }
 
@@ -291,11 +450,23 @@ function markDirty() {
 }
 
 function saveDraft(system) {
+  if (system === pendingSystem) {
+    model.systems.push(system);
+    pendingSystem = null;
+  } else if (draftDirty) system.draftRevision++;
   if (!draftDirty) return;
+  system.name = draftName.trim();
   system.draft = clone(draft);
-  system.draftRevision++;
   draftDirty = false;
   persist();
+}
+
+function hasDraftName() {
+  const input = $('system-name');
+  if (draftName.trim()) return true;
+  input.value = '';
+  input.reportValidity();
+  return false;
 }
 
 function fitsType(value, type) {
@@ -432,8 +603,8 @@ function indexImpact(system, config) {
 }
 
 function checkPublish(system) {
+  if (!hasDraftName()) return;
   issues = configIssues(draft);
-  if (!system.name.trim()) return;
   if (issues.length) {
     selected = issues[0].module;
     render();
@@ -818,18 +989,22 @@ function download(system) {
   setTimeout(() => URL.revokeObjectURL(url),1000);
 }
 
-$('create-form').addEventListener('submit',event => {
-  event.preventDefault();
-  const input = event.currentTarget.elements.name;
-  const name = input.value.trim();
-  if (!name) { input.value = ''; input.reportValidity(); return; }
-  if (draftDirty && !confirm('捨棄尚未保存的設定並建立新草稿？')) return;
+const systemDialog = $('system-dialog');
+
+function canCloseSystem() {
+  return !draftDirty || confirm('捨棄尚未保存的設定？');
+}
+
+systemDialog.addEventListener('cancel',event => {
+  if (!canCloseSystem()) event.preventDefault();
+});
+
+systemDialog.addEventListener('close',() => {
+  pendingSystem = null;
   draftDirty = false;
-  const system = makeSystem(name,workspace);
-  model.systems.push(system);
-  persist();
-  $('create').close();
-  openSystem(system.id);
+  id = null;
+  uploadRevision++;
+  renderWorkspace();
 });
 
 document.addEventListener('submit',event => {
@@ -845,14 +1020,25 @@ document.addEventListener('click',event => {
   const {action,value,index} = button.dataset;
   const system = current();
   switch(action) {
-    case 'home': openWorkspace(workspace); return;
-    case 'workspace': openWorkspace(Number(value)); return;
-    case 'system': openSystem(value); return;
-    case 'open-create': $('create-form').reset(); $('create').showModal(); return;
-    case 'close-dialog': button.closest('dialog').close(); return;
-    case 'tab': screen = value; uploadRevision++; render(); return;
+    case 'workspace': workspace = Number(value); renderWorkspace(); return;
+    case 'system': openSystem(value,button.dataset.view); return;
+    case 'open-create':
+      pendingSystem = makeSystem('',workspace);
+      openSystem(pendingSystem.id);
+      $('system-name').focus();
+      return;
+    case 'close-dialog': {
+      const dialog = button.closest('dialog');
+      if (dialog !== systemDialog || canCloseSystem()) dialog.close();
+      return;
+    }
     case 'module': selected = value; render(); return;
-    case 'save': saveDraft(system); render(); notify('已保存草稿'); return;
+    case 'save':
+      if (!hasDraftName()) return;
+      saveDraft(system);
+      render();
+      notify('已保存草稿');
+      return;
     case 'validate': checkPublish(system); return;
     case 'publish': applyPublish(system); return;
     case 'download': download(system); return;
@@ -919,6 +1105,10 @@ function changeParameter(input) {
 
 document.addEventListener('input',event => {
   const input = event.target;
+  if (input.id === 'system-name') {
+    draftName = input.value;
+    markDirty();
+  }
   if (input.dataset.param !== undefined) changeParameter(input);
   if (input.id === 'fixed-filters') {
     try { draft.pipelines.inference.fixed_filters = JSON.parse(input.value); }
@@ -1005,13 +1195,21 @@ window.addEventListener('beforeunload',event => {
 });
 
 if (!stored) {
-  const seed = makeSystem('設備手冊檢索',0,'equipment-manuals');
-  seed.active = clone(fixture.config);
-  seed.revision = 1;
-  seed.indexReady = true;
-  seed.initialized = true;
-  seed.documents = fixture.ingestion.documents.map(doc => ({...doc,source_revision:'source-1'}));
-  model.systems.push(seed);
+  const samples = [
+    ['Customer Support Retrieval',0,'customer-support',true],
+    ['Product FAQ',0,'product-faq',true],
+    ['Service Handbook',0,'service-handbook',false],
+    ['Engineering Knowledge',1,'engineering-knowledge',false]
+  ];
+  for (const [name,group,systemId,ready] of samples) {
+    const system = makeSystem(name,group,systemId);
+    system.active = clone(fixture.config);
+    system.revision = 1;
+    system.indexReady = true;
+    system.initialized = ready;
+    system.documents = ready ? fixture.ingestion.documents.map(doc => ({...doc,source_revision:'source-1'})) : [];
+    model.systems.push(system);
+  }
   persist();
 }
 render();
