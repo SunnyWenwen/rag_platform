@@ -23,7 +23,7 @@
 | `io.content_media_types` | 內建檔案 Parser 宣告接受的 MIME types。Import 的 `source: content` 開放這些 Parser，並對 Ingestion 的 `content.media_type` 套用所選 Parser 的限制。 |
 | `ui_hints.previews` | `effective_io` 預設收合。Import 的 `ingestion_request` 同樣預設收合，顯示入口 JSON Schema 和對應 Request 範例。 |
 | `ui_hints.order`／`groups`／`advanced` | 以 JSON Pointer 指定欄位順序、分組及進階區。分組可提供 `example`。Embedding 的組合文字分組置於表單上方，服務來源與 Profile 同屬模型設定分組，向量映射以可新增的單一清單呈現。 |
-| `ui_hints.controls` | 以相對於 `parameters` 的 JSON Pointer 宣告專用控制項。支援 `structdata_editor`、`structdata_overrides_editor`、`vector_checklist` 及 `textarea`。型別與呈現見 [Builder 表單控制項](07_builder_ui.md#descriptor-form-rendering)。 |
+| `ui_hints.controls` | 以相對於 `parameters` 的 JSON Pointer 宣告專用控制項。支援 `structdata_editor`、`structdata_overrides_editor`、`vector_checklist` 及 `textarea`。各 hint 的格式、預設、輸入資料及呈現見 [Builder Renderer 契約](07_builder_ui.md#ui-hints-contract)。 |
 | `ui_hints.fixed_filters` | Inference Input 以 `advanced` 將固定 Filter 放在預設收合的進階設定。值儲存於 `pipelines.inference.fixed_filters`。 |
 | `parameters_schema.properties.*.default` | 提供預設值。Embedding、Elasticsearch、Local Search 的 MongoDB 和 Rerank 服務來源預設 `DEV test use`。 |
 

@@ -8,6 +8,7 @@
 - [畫面與操作地圖](#src-06-2-畫面與操作地圖)
 - [Create／Edit 的資料與互動](#src-06-3-createedit-的資料與互動)
 - [Descriptor 與表單控制項](#descriptor-form-rendering)
+- [`ui_hints` 定義與 Renderer 輸入](#ui-hints-contract)
 - [從 CSV 開始](#src-06-4-從-csv-開始)
 - [Ingestion 畫面](#src-06-5-ingestion-畫面)
 - [Inference 與診斷](#src-06-6-inference-與診斷)
@@ -171,18 +172,52 @@ Builder 以選定方法的 `parameters_schema.properties` 產生參數欄位，�
 | 有 `properties` 的 `object` | 群組，遞迴渲染子欄位。表格可將固定的子欄位展成各欄 | 依該層 `required` 標示必填，保存為原有巢狀結構。 |
 | 開放型 `object` | JSON 物件編輯器，或依 `ui_hints.controls` 使用專用表格 | 保存 JSON 物件並依 Schema 驗證。共用 `$ref` 由已載入的 Schema Registry 解析。 |
 
-`title` 用作標籤，未宣告時使用 Builder 已有的本地化名稱或參數名稱。`description` 是輔助文字，`default` 用於初始化缺值，已有草稿值優先。`ui_hints.order`、`groups`、`advanced` 控制順序、群組及預設收合的進階區。必填和格式問題在欄位及錯誤摘要顯示，由 Runtime 在發布前做完整驗證。遇到超出 Renderer 支援的必要格式或專用控制項，Builder 顯示不相容原因並保留草稿，待支援後才可發布。
+`default` 用於初始化缺值，已有草稿值優先。必填和格式問題在欄位及錯誤摘要顯示，由 Runtime 在發布前做完整驗證。遇到超出 Renderer 支援的必要格式或專用控制項，Builder 顯示不相容原因並保留草稿，待支援後才可發布。
 
-| `ui_hints.controls` 值 | 對應 UI | Config 保存／候選 |
+動態候選使用目前的有效欄位、服務與索引能力。可信的相依資料由 Runtime 推導。多個相同 Module 的錯誤以 `node_ref` 和欄位路徑定位。SUI-01～14 互動驗收見 UIB-010。
+
+<a id="ui-hints-contract"></a>
+#### `ui_hints` 定義與 Renderer 輸入
+
+Renderer 的共同輸入是已選 Component 的 Descriptor、目前草稿與該畫面需要的相依資料。先由 `parameters_schema` 和草稿決定要畫的欄位，再依 `ui_hints` 安排位置、選專用控制項及顯示附加區塊。欄位編輯寫回草稿。排序、分組、展開及預覽狀態由 Builder 管理。以下格式由 [Descriptor Meta-schema](../schemas/component_descriptor.draft.schema.json) 的 `properties.ui_hints` 定義。
+
+| Hint | 宣告格式與 Renderer 輸入 | 渲染行為與省略時的預設 |
 |---|---|---|
-| `structdata_editor` | Import 文件欄位表，逐欄編輯名稱、型別、必填、全文與 Filter | `structdata` Data Meta Schema。型別與能力限制取自共用 Schema。 |
-| `structdata_overrides_editor` | Indexing 欄位用途表，顯示有效欄名和型別，全文與 Filter 各有沿用、啟用、停用 | 沿用以省略對應覆寫表示，啟用與停用分別保存 `true`、`false`。候選從上游有效欄位取得。 |
-| `vector_checklist` | Indexing 勾選表，列出向量、來源欄與 Profile | 保存選取的向量名稱陣列。Descriptor 的項目選項來源是 `input.vectors`。 |
-| `textarea` | 多行文字欄，例如 Rewrite Prompt 或 Embedding 組合文字 | 保存原始字串及換行。 |
+| `order` | 不重複的參數路徑陣列，例如 `["/source", "/structdata"]`。搭配可見的參數欄位 | 已列欄位優先按清單排序，未列欄位按 Builder 讀到的 `properties` 順序接續。省略時沿用該順序。 |
+| `groups` | 群組陣列，每組必填 `title: string` 與 `fields: string[]`，可附 `example: object`。搭配各欄位的 Schema 和草稿值 | 按群組陣列順序顯示在一般欄位區上方，群組內按 `fields` 順序。分組欄位從一般與進階清單移出。範例以唯讀內容呈現。省略時無自訂群組。 |
+| `advanced` | 不重複的參數路徑陣列，例如 `["/request_parameters"]`。搭配可見且尚未分組的欄位及驗證結果 | 欄位集中於預設收合的「進階設定」，被驗證錯誤定位時展開。省略時參數沿用基本區或既有分組。 |
+| `controls` | `{參數路徑: 專用控制項名稱}`。每項取得該路徑的 Schema、目前值和下表所列資料 | 依名稱使用專用 Renderer。該路徑未指定時按前述通用規則選控制項。 |
+| `previews` | 支援 `effective_io` 和 `ingestion_request`，各接受選填的布林 `collapsed`，預設 `true`。搭配目前草稿推導的唯讀內容 | `effective_io` 顯示有效輸入與輸出 Schema，預設提供收合區。Import 宣告 `ingestion_request` 時另顯示匯入 Request 的 JSON Schema 和範例。`collapsed: false` 初次展開該預覽。 |
+| `fixed_filters` | Inference Input 可宣告 `"advanced"`。Renderer 讀取 `pipelines.inference.fixed_filters` 的草稿值，以及可過濾的索引欄位、型別和適用運算子 | 在進階區畫固定 Filter 編輯器，編輯值寫回原路徑。無既有 Filter 時顯示空清單。省略 hint 時，Renderer 略過該編輯區。 |
 
-Prototype 用本機 Catalog 和推導資料重現目前表單。正式 Builder 的動態欄位請求、重查和畫面狀態見 [W1 config:options 契約](06_runtime_api_and_deployment.md#w1-config-options)。
+`order`、`groups[].fields`、`advanced` 和 `controls` 的路徑相對於該 Component 的 `parameters`。例如 `/structdata` 讀取 `parameters.structdata`。查動態選項時，則依 [W1 config:options 契約](06_runtime_api_and_deployment.md#w1-config-options) 送從 Request body 根起算的完整路徑。
 
-動態候選使用目前有效欄位／服務／索引能力，前端不自行指定可信 Context。多個相同 Module 的錯誤以 node_ref＋欄位路徑定位。未知必要 UI feature 明示不支援且不能套用不完整設定；不自動改為任意 JSON 編輯器。實作與 SUI-01～14 互動驗收記在 10 UIB-010；v0.12 僅完成簡單模擬表單，正式協定驗收仍待整合。
+| `controls` 值 | 額外輸入與來源 | UI 與寫回 |
+|---|---|---|
+| `structdata_editor` | 共用 Data Meta Schema 的 `structdata` 定義和草稿欄位宣告 | Import 文件欄位表，編輯名稱、型別、必填、全文與 Filter。保存欄位名到欄位定義的物件。 |
+| `structdata_overrides_editor` | Data Meta Schema 的 `overrides` 定義、上游有效欄名／型別／全文與 Filter 旗標、草稿覆寫值 | Indexing 欄位用途表。每個旗標可沿用、啟用或停用。沿用以省略覆寫表示，啟用、停用分別保存 `true`、`false`。 |
+| `vector_checklist` | `input.vectors` 的候選向量名稱和可用狀態、上游向量的來源欄位與 Profile、草稿中已勾選的向量名稱 | Indexing 向量勾選表，回寫選取的向量名稱陣列。 |
+| `textarea` | 字串 Schema 與草稿字串 | 多行文字欄，例如 Rewrite Prompt 或 Embedding 組合文字。保存字串和換行。 |
+
+欄位文字來自 `parameters_schema.properties.<欄位>.title` 與 `description`，分別顯示為欄位標籤和控制項下方的輔助文字。省略標題時使用 Builder 已有的本地化名稱或參數名稱。群組文字使用 `groups[].title` 和選填的 `example`，目前群組格式沒有 `description`。專用表格的固定表頭、按鈕與提示由 Renderer 提供。動態選項的失效或相依未就緒原因使用 Runtime 回傳的 `reason` 或 `dependency_issue.message`。
+
+Import 的 `platform` Descriptor 例如以下宣告。Renderer 依序顯示入口資料形式、文件欄位表，再將 Request 參數收進進階區。
+
+```json
+{
+  "ui_hints": {
+    "order": ["/source", "/structdata"],
+    "advanced": ["/request_parameters"],
+    "controls": {"/structdata": "structdata_editor"},
+    "previews": {
+      "effective_io": {"collapsed": true},
+      "ingestion_request": {"collapsed": true}
+    }
+  }
+}
+```
+
+正式串接時，`config:options` 可提供候選值與可用狀態。上游有效欄位及能力旗標、向量來源和 Profile、逐模組有效 I/O Schema 的交付介面仍待串接確認。Prototype 目前以本機 Catalog 和草稿推導填入這些資料，Builder 可用相同形狀的測資先實作 Renderer。
 
 <a id="src-06-331-討論提案query-rewrite-單模組測試"></a>
 ### 討論提案：Query Rewrite 單模組測試
