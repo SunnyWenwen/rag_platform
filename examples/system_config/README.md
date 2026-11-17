@@ -33,3 +33,7 @@ python3 examples/user_remote_api/validate.py
 [builder_form.descriptors.json](builder_form.descriptors.json) 涵蓋 Prototype 的 20 個內建 Component。單檔 Prototype 的 `builder-form-descriptors` JSON 區塊內嵌相同描述。更新表單 Descriptor 或內嵌的共用資料 Schema 時同步更新 HTML。離線驗證檢查清冊、控制項型別、可見性及內嵌內容。完整清冊見 [Component Descriptor 手冊](../../docs/04_component_descriptor.md#prototype-component-inventory)。
 
 [W1 Catalog 回應](w1_catalog.response.json) 提供範例 Runtime 的 9 個 Component 及四類資源清單。用 [Catalog Schema](../../schemas/runtime_catalog.draft.schema.json) 驗證。Builder 依草稿推導欄位候選，並從同一份 Catalog 取得 Profile、Tokenizer、模型及 Elasticsearch 服務選項。表單實作見 [Renderer 對照表](../../docs/07_builder_ui.md#descriptor-form-rendering)。
+
+## Builder ↔ Runtime HTTP Mock
+
+[W1 HTTP JSON 範例](w1_http.examples.json)提供從 Catalog、發布、匯入到 Query 的可連續使用範例，以及更新相容性、重建及錯誤回應。用 [HTTP 契約](../../docs/09_w1_builder_runtime_contract.md)對照路徑與欄位。從 repo 根目錄執行 `python3 examples/system_config/validate_w1_http_examples.py` 驗證測資。

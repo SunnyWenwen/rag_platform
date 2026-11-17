@@ -1,0 +1,1603 @@
+{
+  "scenarios": {
+    "happy_path": [
+      {
+        "request": {"method": "GET", "path": "/health/live"},
+        "response": {"status": 200, "body": {"status": "ok"}}
+      },
+      {
+        "request": {"method": "GET", "path": "/health/ready"},
+        "response": {"status": 200, "body": {"status": "ok"}}
+      },
+      {
+        "request": {"method": "GET", "path": "/internal/v1/catalog"},
+        "response": {"status": 200, "body_file": "w1_catalog.response.json"}
+      },
+      {
+        "request": {"method": "GET", "path": "/internal/v1/systems"},
+        "response": {"status": 200, "body": {"systems": []}}
+      },
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/v1/systems/es-w1-example/config:validate",
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-1",
+            "config": {
+              "contract_version": "0.2-draft",
+              "pipelines": {
+                "ingestion": {
+                  "import": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "structdata": {
+                        "body": {"type": "string", "required": true},
+                        "title": {"type": "string", "required": true, "filterable": true},
+                        "price": {"type": "number", "required": false, "searchable": false, "filterable": false},
+                        "tags": {
+                          "type": "string_array",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": true
+                        }
+                      }
+                    }
+                  },
+                  "parsing": {"component_id": "passthrough", "component_version": "1.0.0", "parameters": {}},
+                  "chunking": {
+                    "component_id": "recursive",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "split_field": "body",
+                      "output_field": "text",
+                      "copy_fields": [
+                        {"source_field": "title", "output_field": "title"},
+                        {"source_field": "price", "output_field": "price"},
+                        {"source_field": "tags", "output_field": "tags"}
+                      ],
+                      "max_tokens": 500,
+                      "overlap_tokens": 50,
+                      "tokenizer_profile_id": "fixture"
+                    }
+                  },
+                  "embedding": {
+                    "component_id": "dense",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "profile": "text-v1",
+                      "mappings": [{"source_field": "text", "vector_name": "text"}]
+                    }
+                  },
+                  "indexing": {
+                    "component_id": "elasticsearch",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "service_ref": "dev-search",
+                      "vector_name": "text",
+                      "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
+                    }
+                  }
+                },
+                "inference": {
+                  "inference_input": {"component_id": "platform", "component_version": "1.0.0", "parameters": {}},
+                  "query_transformation": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "retrieval": {
+                    "component_id": "builtin",
+                    "component_version": "1.0.0",
+                    "parameters": {"per_route_k": 10, "vector_fields": ["text"]}
+                  },
+                  "rerank": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "fixed_filters": [{"field": "structdata.price", "operator": "gte", "value": 300}]
+                }
+              }
+            }
+          }
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-1",
+            "context_revision": "context-1",
+            "active_config_revision": null,
+            "index_impact": {"action": "create", "code": "INDEX_MISSING", "message": "建立空索引。"}
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "PUT",
+          "path": "/internal/v1/systems/es-w1-example",
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-1",
+            "config": {
+              "contract_version": "0.2-draft",
+              "pipelines": {
+                "ingestion": {
+                  "import": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "structdata": {
+                        "body": {"type": "string", "required": true},
+                        "title": {"type": "string", "required": true, "filterable": true},
+                        "price": {"type": "number", "required": false, "searchable": false, "filterable": false},
+                        "tags": {
+                          "type": "string_array",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": true
+                        }
+                      }
+                    }
+                  },
+                  "parsing": {"component_id": "passthrough", "component_version": "1.0.0", "parameters": {}},
+                  "chunking": {
+                    "component_id": "recursive",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "split_field": "body",
+                      "output_field": "text",
+                      "copy_fields": [
+                        {"source_field": "title", "output_field": "title"},
+                        {"source_field": "price", "output_field": "price"},
+                        {"source_field": "tags", "output_field": "tags"}
+                      ],
+                      "max_tokens": 500,
+                      "overlap_tokens": 50,
+                      "tokenizer_profile_id": "fixture"
+                    }
+                  },
+                  "embedding": {
+                    "component_id": "dense",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "profile": "text-v1",
+                      "mappings": [{"source_field": "text", "vector_name": "text"}]
+                    }
+                  },
+                  "indexing": {
+                    "component_id": "elasticsearch",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "service_ref": "dev-search",
+                      "vector_name": "text",
+                      "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
+                    }
+                  }
+                },
+                "inference": {
+                  "inference_input": {"component_id": "platform", "component_version": "1.0.0", "parameters": {}},
+                  "query_transformation": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "retrieval": {
+                    "component_id": "builtin",
+                    "component_version": "1.0.0",
+                    "parameters": {"per_route_k": 10, "vector_fields": ["text"]}
+                  },
+                  "rerank": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "fixed_filters": [{"field": "structdata.price", "operator": "gte", "value": 300}]
+                }
+              }
+            },
+            "context_revision": "context-1",
+            "operation": "initialize",
+            "expected_active_revision": null,
+            "config_revision": "revision-1"
+          }
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "system_id": "es-w1-example",
+            "active_config_revision": "revision-1",
+            "busy": false,
+            "index_ready": true,
+            "index_generation": "index-1",
+            "can_ingest": true,
+            "can_query": true
+          }
+        }
+      },
+      {
+        "request": {"method": "GET", "path": "/internal/v1/systems/es-w1-example"},
+        "response": {
+          "status": 200,
+          "body": {
+            "system_id": "es-w1-example",
+            "active_config_revision": "revision-1",
+            "busy": false,
+            "index_ready": true,
+            "index_generation": "index-1",
+            "can_ingest": true,
+            "can_query": true
+          }
+        }
+      },
+      {
+        "request": {"method": "GET", "path": "/internal/v1/systems"},
+        "response": {
+          "status": 200,
+          "body": {
+            "systems": [
+              {
+                "system_id": "es-w1-example",
+                "active_config_revision": "revision-1",
+                "busy": false,
+                "index_ready": true,
+                "index_generation": "index-1",
+                "can_ingest": true,
+                "can_query": true
+              }
+            ]
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/systems/es-w1-example/v1/ingestions",
+          "body": {
+            "documents": [
+              {
+                "document_id": "guide-1",
+                "structdata": {"body": "定期清潔散熱孔。", "title": "設備保養", "price": 350},
+                "source_revision": "v1"
+              }
+            ]
+          }
+        },
+        "response": {
+          "status": 202,
+          "body": {
+            "run_id": "ing-001",
+            "status": "queued",
+            "config_revision": "revision-1",
+            "documents": [{"document_id": "guide-1", "status": "queued"}]
+          },
+          "headers": {"Location": "/internal/systems/es-w1-example/v1/ingestions/ing-001"}
+        }
+      },
+      {
+        "request": {"method": "GET", "path": "/internal/systems/es-w1-example/v1/ingestions/ing-001"},
+        "response": {
+          "status": 200,
+          "body": {
+            "run_id": "ing-001",
+            "status": "queued",
+            "config_revision": "revision-1",
+            "documents": [
+              {
+                "document_id": "guide-1",
+                "status": "queued",
+                "module": null,
+                "updated_at": "2026-11-17T10:00:00+08:00",
+                "error": null
+              }
+            ],
+            "counts": {"total": 1, "queued": 1, "running": 0, "completed": 0, "failed": 0, "unknown": 0}
+          }
+        }
+      },
+      {
+        "request": {"method": "GET", "path": "/internal/systems/es-w1-example/v1/ingestions/ing-001"},
+        "response": {
+          "status": 200,
+          "body": {
+            "run_id": "ing-001",
+            "status": "completed",
+            "config_revision": "revision-1",
+            "documents": [
+              {
+                "document_id": "guide-1",
+                "status": "completed",
+                "module": null,
+                "updated_at": "2026-11-17T10:00:03+08:00",
+                "error": null
+              }
+            ],
+            "counts": {"total": 1, "queued": 0, "running": 0, "completed": 1, "failed": 0, "unknown": 0}
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "GET",
+          "path": "/internal/systems/es-w1-example/v1/documents/guide-1/ingestion-status"
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "document_id": "guide-1",
+            "status": "completed",
+            "module": null,
+            "updated_at": "2026-11-17T10:00:03+08:00",
+            "error": null,
+            "run_id": "ing-001"
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/systems/es-w1-example/v1/queries",
+          "body": {
+            "query": "散熱孔怎麼清潔？",
+            "filters": [{"field": "structdata.price", "operator": "lt", "value": 500}]
+          }
+        },
+        "response": {
+          "status": 200,
+          "body": [
+            {
+              "ori_query": "散熱孔怎麼清潔？",
+              "query": "散熱孔怎麼清潔？",
+              "filters": [
+                {"field": "structdata.price", "operator": "gte", "value": 300},
+                {"field": "structdata.price", "operator": "lt", "value": 500}
+              ],
+              "result_sets": [
+                {
+                  "key": "retrieval",
+                  "items": [
+                    {
+                      "data": {
+                        "document_id": "guide-1",
+                        "source_revision": "v1",
+                        "data_id": "guide-1-chunk-1",
+                        "structdata": {"title": "設備保養", "text": "定期清潔散熱孔。", "price": 350}
+                      },
+                      "score": 0.92
+                    }
+                  ]
+                }
+              ],
+              "metadata": {}
+            }
+          ],
+          "headers": {"X-Config-Revision": "revision-1", "X-Index-Generation": "index-1"}
+        }
+      },
+      {
+        "request": {"method": "GET", "path": "/internal/systems/es-w1-example/v1/documents/guide-1/exists"},
+        "response": {"status": 200, "body": {"document_id": "guide-1", "exists": true}}
+      },
+      {
+        "request": {"method": "GET", "path": "/internal/systems/es-w1-example/v1/documents?limit=1"},
+        "response": {
+          "status": 200,
+          "body": {"documents": [{"document_id": "guide-1", "source_revisions": ["v1"]}], "next_cursor": null}
+        }
+      },
+      {
+        "request": {"method": "POST", "path": "/internal/systems/es-w1-example/v1/documents/guide-1:retire"},
+        "response": {"status": 200, "body": {"document_id": "guide-1", "result": "deleted"}}
+      },
+      {
+        "request": {"method": "GET", "path": "/internal/systems/es-w1-example/v1/documents/guide-1/exists"},
+        "response": {"status": 200, "body": {"document_id": "guide-1", "exists": false}}
+      },
+      {
+        "request": {"method": "POST", "path": "/internal/systems/es-w1-example/v1/documents/guide-1:retire"},
+        "response": {"status": 200, "body": {"document_id": "guide-1", "result": "not_found"}}
+      },
+      {
+        "request": {"method": "DELETE", "path": "/internal/v1/systems/es-w1-example"},
+        "response": {"status": 204}
+      },
+      {
+        "request": {"method": "GET", "path": "/internal/v1/systems/es-w1-example"},
+        "response": {
+          "status": 404,
+          "body": {"error": {"code": "SYSTEM_NOT_FOUND", "message": "System 未載入。", "module": null}}
+        }
+      }
+    ],
+    "reuse_and_rebuild": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/v1/systems/es-w1-example/config:validate",
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-2",
+            "config": {
+              "contract_version": "0.2-draft",
+              "pipelines": {
+                "ingestion": {
+                  "import": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "structdata": {
+                        "body": {"type": "string", "required": true},
+                        "title": {"type": "string", "required": true, "filterable": true},
+                        "price": {"type": "number", "required": false, "searchable": false, "filterable": false},
+                        "tags": {
+                          "type": "string_array",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": true
+                        }
+                      }
+                    }
+                  },
+                  "parsing": {"component_id": "passthrough", "component_version": "1.0.0", "parameters": {}},
+                  "chunking": {
+                    "component_id": "recursive",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "split_field": "body",
+                      "output_field": "text",
+                      "copy_fields": [
+                        {"source_field": "title", "output_field": "title"},
+                        {"source_field": "price", "output_field": "price"},
+                        {"source_field": "tags", "output_field": "tags"}
+                      ],
+                      "max_tokens": 500,
+                      "overlap_tokens": 50,
+                      "tokenizer_profile_id": "fixture"
+                    }
+                  },
+                  "embedding": {
+                    "component_id": "dense",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "profile": "text-v1",
+                      "mappings": [{"source_field": "text", "vector_name": "text"}]
+                    }
+                  },
+                  "indexing": {
+                    "component_id": "elasticsearch",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "service_ref": "dev-search",
+                      "vector_name": "text",
+                      "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
+                    }
+                  }
+                },
+                "inference": {
+                  "inference_input": {"component_id": "platform", "component_version": "1.0.0", "parameters": {}},
+                  "query_transformation": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "retrieval": {
+                    "component_id": "builtin",
+                    "component_version": "1.0.0",
+                    "parameters": {"per_route_k": 8, "vector_fields": ["text"]}
+                  },
+                  "rerank": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "fixed_filters": [{"field": "structdata.price", "operator": "gte", "value": 300}]
+                }
+              }
+            }
+          }
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-2",
+            "context_revision": "context-2",
+            "active_config_revision": "revision-1",
+            "index_impact": {"action": "reuse", "code": "INDEX_COMPATIBLE", "message": "沿用索引。"}
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "PUT",
+          "path": "/internal/v1/systems/es-w1-example",
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-2",
+            "config": {
+              "contract_version": "0.2-draft",
+              "pipelines": {
+                "ingestion": {
+                  "import": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "structdata": {
+                        "body": {"type": "string", "required": true},
+                        "title": {"type": "string", "required": true, "filterable": true},
+                        "price": {"type": "number", "required": false, "searchable": false, "filterable": false},
+                        "tags": {
+                          "type": "string_array",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": true
+                        }
+                      }
+                    }
+                  },
+                  "parsing": {"component_id": "passthrough", "component_version": "1.0.0", "parameters": {}},
+                  "chunking": {
+                    "component_id": "recursive",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "split_field": "body",
+                      "output_field": "text",
+                      "copy_fields": [
+                        {"source_field": "title", "output_field": "title"},
+                        {"source_field": "price", "output_field": "price"},
+                        {"source_field": "tags", "output_field": "tags"}
+                      ],
+                      "max_tokens": 500,
+                      "overlap_tokens": 50,
+                      "tokenizer_profile_id": "fixture"
+                    }
+                  },
+                  "embedding": {
+                    "component_id": "dense",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "profile": "text-v1",
+                      "mappings": [{"source_field": "text", "vector_name": "text"}]
+                    }
+                  },
+                  "indexing": {
+                    "component_id": "elasticsearch",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "service_ref": "dev-search",
+                      "vector_name": "text",
+                      "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
+                    }
+                  }
+                },
+                "inference": {
+                  "inference_input": {"component_id": "platform", "component_version": "1.0.0", "parameters": {}},
+                  "query_transformation": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "retrieval": {
+                    "component_id": "builtin",
+                    "component_version": "1.0.0",
+                    "parameters": {"per_route_k": 8, "vector_fields": ["text"]}
+                  },
+                  "rerank": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "fixed_filters": [{"field": "structdata.price", "operator": "gte", "value": 300}]
+                }
+              }
+            },
+            "context_revision": "context-2",
+            "operation": "update",
+            "expected_active_revision": "revision-1",
+            "config_revision": "revision-2"
+          }
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "system_id": "es-w1-example",
+            "active_config_revision": "revision-2",
+            "busy": false,
+            "index_ready": true,
+            "index_generation": "index-1",
+            "can_ingest": true,
+            "can_query": true
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/v1/systems/es-w1-example/config:validate",
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-3",
+            "config": {
+              "contract_version": "0.2-draft",
+              "pipelines": {
+                "ingestion": {
+                  "import": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "structdata": {
+                        "body": {"type": "string", "required": true},
+                        "title": {"type": "string", "required": true, "filterable": true},
+                        "price": {"type": "number", "required": false, "searchable": false, "filterable": false},
+                        "tags": {
+                          "type": "string_array",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": true
+                        }
+                      }
+                    }
+                  },
+                  "parsing": {"component_id": "passthrough", "component_version": "1.0.0", "parameters": {}},
+                  "chunking": {
+                    "component_id": "recursive",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "split_field": "body",
+                      "output_field": "text",
+                      "copy_fields": [
+                        {"source_field": "title", "output_field": "title"},
+                        {"source_field": "price", "output_field": "price"},
+                        {"source_field": "tags", "output_field": "tags"}
+                      ],
+                      "max_tokens": 350,
+                      "overlap_tokens": 50,
+                      "tokenizer_profile_id": "fixture"
+                    }
+                  },
+                  "embedding": {
+                    "component_id": "dense",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "profile": "text-v1",
+                      "mappings": [{"source_field": "text", "vector_name": "text"}]
+                    }
+                  },
+                  "indexing": {
+                    "component_id": "elasticsearch",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "service_ref": "dev-search",
+                      "vector_name": "text",
+                      "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
+                    }
+                  }
+                },
+                "inference": {
+                  "inference_input": {"component_id": "platform", "component_version": "1.0.0", "parameters": {}},
+                  "query_transformation": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "retrieval": {
+                    "component_id": "builtin",
+                    "component_version": "1.0.0",
+                    "parameters": {"per_route_k": 8, "vector_fields": ["text"]}
+                  },
+                  "rerank": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "fixed_filters": [{"field": "structdata.price", "operator": "gte", "value": 300}]
+                }
+              }
+            }
+          }
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-3",
+            "context_revision": "context-3",
+            "active_config_revision": "revision-2",
+            "index_impact": {
+              "action": "rebuild_required",
+              "code": "INDEX_FINGERPRINT_CHANGED",
+              "message": "切分設定已變更，發布時停查並重建索引。"
+            }
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "PUT",
+          "path": "/internal/v1/systems/es-w1-example",
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-3",
+            "config": {
+              "contract_version": "0.2-draft",
+              "pipelines": {
+                "ingestion": {
+                  "import": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "structdata": {
+                        "body": {"type": "string", "required": true},
+                        "title": {"type": "string", "required": true, "filterable": true},
+                        "price": {"type": "number", "required": false, "searchable": false, "filterable": false},
+                        "tags": {
+                          "type": "string_array",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": true
+                        }
+                      }
+                    }
+                  },
+                  "parsing": {"component_id": "passthrough", "component_version": "1.0.0", "parameters": {}},
+                  "chunking": {
+                    "component_id": "recursive",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "split_field": "body",
+                      "output_field": "text",
+                      "copy_fields": [
+                        {"source_field": "title", "output_field": "title"},
+                        {"source_field": "price", "output_field": "price"},
+                        {"source_field": "tags", "output_field": "tags"}
+                      ],
+                      "max_tokens": 350,
+                      "overlap_tokens": 50,
+                      "tokenizer_profile_id": "fixture"
+                    }
+                  },
+                  "embedding": {
+                    "component_id": "dense",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "profile": "text-v1",
+                      "mappings": [{"source_field": "text", "vector_name": "text"}]
+                    }
+                  },
+                  "indexing": {
+                    "component_id": "elasticsearch",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "service_ref": "dev-search",
+                      "vector_name": "text",
+                      "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
+                    }
+                  }
+                },
+                "inference": {
+                  "inference_input": {"component_id": "platform", "component_version": "1.0.0", "parameters": {}},
+                  "query_transformation": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "retrieval": {
+                    "component_id": "builtin",
+                    "component_version": "1.0.0",
+                    "parameters": {"per_route_k": 8, "vector_fields": ["text"]}
+                  },
+                  "rerank": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "fixed_filters": [{"field": "structdata.price", "operator": "gte", "value": 300}]
+                }
+              }
+            },
+            "context_revision": "context-3",
+            "operation": "update",
+            "expected_active_revision": "revision-2",
+            "config_revision": "revision-3"
+          }
+        },
+        "response": {
+          "status": 409,
+          "body": {
+            "error": {"code": "REBUILD_CONFIRMATION_REQUIRED", "message": "請先確認重建索引。", "module": "indexing"}
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "PUT",
+          "path": "/internal/v1/systems/es-w1-example",
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-3",
+            "config": {
+              "contract_version": "0.2-draft",
+              "pipelines": {
+                "ingestion": {
+                  "import": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "structdata": {
+                        "body": {"type": "string", "required": true},
+                        "title": {"type": "string", "required": true, "filterable": true},
+                        "price": {"type": "number", "required": false, "searchable": false, "filterable": false},
+                        "tags": {
+                          "type": "string_array",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": true
+                        }
+                      }
+                    }
+                  },
+                  "parsing": {"component_id": "passthrough", "component_version": "1.0.0", "parameters": {}},
+                  "chunking": {
+                    "component_id": "recursive",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "split_field": "body",
+                      "output_field": "text",
+                      "copy_fields": [
+                        {"source_field": "title", "output_field": "title"},
+                        {"source_field": "price", "output_field": "price"},
+                        {"source_field": "tags", "output_field": "tags"}
+                      ],
+                      "max_tokens": 350,
+                      "overlap_tokens": 50,
+                      "tokenizer_profile_id": "fixture"
+                    }
+                  },
+                  "embedding": {
+                    "component_id": "dense",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "profile": "text-v1",
+                      "mappings": [{"source_field": "text", "vector_name": "text"}]
+                    }
+                  },
+                  "indexing": {
+                    "component_id": "elasticsearch",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "service_ref": "dev-search",
+                      "vector_name": "text",
+                      "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
+                    }
+                  }
+                },
+                "inference": {
+                  "inference_input": {"component_id": "platform", "component_version": "1.0.0", "parameters": {}},
+                  "query_transformation": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "retrieval": {
+                    "component_id": "builtin",
+                    "component_version": "1.0.0",
+                    "parameters": {"per_route_k": 8, "vector_fields": ["text"]}
+                  },
+                  "rerank": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "fixed_filters": [{"field": "structdata.price", "operator": "gte", "value": 300}]
+                }
+              }
+            },
+            "context_revision": "context-3",
+            "operation": "update",
+            "expected_active_revision": "revision-2",
+            "config_revision": "revision-3",
+            "allow_rebuild": true
+          }
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "system_id": "es-w1-example",
+            "active_config_revision": "revision-3",
+            "busy": false,
+            "index_ready": true,
+            "index_generation": "index-2",
+            "can_ingest": true,
+            "can_query": true
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "PUT",
+          "path": "/internal/v1/systems/es-w1-example",
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-3",
+            "config": {
+              "contract_version": "0.2-draft",
+              "pipelines": {
+                "ingestion": {
+                  "import": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "structdata": {
+                        "body": {"type": "string", "required": true},
+                        "title": {"type": "string", "required": true, "filterable": true},
+                        "price": {"type": "number", "required": false, "searchable": false, "filterable": false},
+                        "tags": {
+                          "type": "string_array",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": true
+                        }
+                      }
+                    }
+                  },
+                  "parsing": {"component_id": "passthrough", "component_version": "1.0.0", "parameters": {}},
+                  "chunking": {
+                    "component_id": "recursive",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "split_field": "body",
+                      "output_field": "text",
+                      "copy_fields": [
+                        {"source_field": "title", "output_field": "title"},
+                        {"source_field": "price", "output_field": "price"},
+                        {"source_field": "tags", "output_field": "tags"}
+                      ],
+                      "max_tokens": 350,
+                      "overlap_tokens": 50,
+                      "tokenizer_profile_id": "fixture"
+                    }
+                  },
+                  "embedding": {
+                    "component_id": "dense",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "profile": "text-v1",
+                      "mappings": [{"source_field": "text", "vector_name": "text"}]
+                    }
+                  },
+                  "indexing": {
+                    "component_id": "elasticsearch",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "service_ref": "dev-search",
+                      "vector_name": "text",
+                      "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
+                    }
+                  }
+                },
+                "inference": {
+                  "inference_input": {"component_id": "platform", "component_version": "1.0.0", "parameters": {}},
+                  "query_transformation": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "retrieval": {
+                    "component_id": "builtin",
+                    "component_version": "1.0.0",
+                    "parameters": {"per_route_k": 8, "vector_fields": ["text"]}
+                  },
+                  "rerank": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "fixed_filters": [{"field": "structdata.price", "operator": "gte", "value": 300}]
+                }
+              }
+            },
+            "context_revision": "context-3",
+            "operation": "update",
+            "expected_active_revision": "revision-2",
+            "config_revision": "revision-3",
+            "allow_rebuild": true
+          }
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "system_id": "es-w1-example",
+            "active_config_revision": "revision-3",
+            "busy": false,
+            "index_ready": true,
+            "index_generation": "index-2",
+            "can_ingest": true,
+            "can_query": true
+          }
+        }
+      }
+    ],
+    "blocked_or_stale_publish": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/v1/systems/es-w1-example/config:validate",
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-invalid",
+            "config": {
+              "contract_version": "0.2-draft",
+              "pipelines": {
+                "ingestion": {
+                  "import": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "structdata": {
+                        "body": {"type": "string", "required": true},
+                        "title": {"type": "string", "required": true, "filterable": true},
+                        "price": {"type": "number", "required": false, "searchable": false, "filterable": false},
+                        "tags": {
+                          "type": "string_array",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": true
+                        }
+                      }
+                    }
+                  },
+                  "parsing": {"component_id": "passthrough", "component_version": "1.0.0", "parameters": {}},
+                  "chunking": {
+                    "component_id": "recursive",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "split_field": "body",
+                      "output_field": "body_text",
+                      "copy_fields": [
+                        {"source_field": "title", "output_field": "title"},
+                        {"source_field": "price", "output_field": "price"},
+                        {"source_field": "tags", "output_field": "tags"}
+                      ],
+                      "max_tokens": 500,
+                      "overlap_tokens": 50,
+                      "tokenizer_profile_id": "fixture"
+                    }
+                  },
+                  "embedding": {
+                    "component_id": "dense",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "profile": "text-v1",
+                      "mappings": [{"source_field": "text", "vector_name": "text"}]
+                    }
+                  },
+                  "indexing": {
+                    "component_id": "elasticsearch",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "service_ref": "dev-search",
+                      "vector_name": "text",
+                      "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
+                    }
+                  }
+                },
+                "inference": {
+                  "inference_input": {"component_id": "platform", "component_version": "1.0.0", "parameters": {}},
+                  "query_transformation": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "retrieval": {
+                    "component_id": "builtin",
+                    "component_version": "1.0.0",
+                    "parameters": {"per_route_k": 10, "vector_fields": ["text"]}
+                  },
+                  "rerank": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "fixed_filters": [{"field": "structdata.price", "operator": "gte", "value": 300}]
+                }
+              }
+            }
+          }
+        },
+        "response": {
+          "status": 422,
+          "body": {
+            "error": {
+              "code": "CONFIG_VALIDATION_FAILED",
+              "message": "Embedding 所選的 text 欄位已不存在。",
+              "module": "embedding",
+              "path": "/config/pipelines/ingestion/embedding/parameters/mappings/0/source_field"
+            }
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/v1/systems/es-w1-example/config:validate",
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-1",
+            "config": {
+              "contract_version": "0.2-draft",
+              "pipelines": {
+                "ingestion": {
+                  "import": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "structdata": {
+                        "body": {"type": "string", "required": true},
+                        "title": {"type": "string", "required": true, "filterable": true},
+                        "price": {"type": "number", "required": false, "searchable": false, "filterable": false},
+                        "tags": {
+                          "type": "string_array",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": true
+                        }
+                      }
+                    }
+                  },
+                  "parsing": {"component_id": "passthrough", "component_version": "1.0.0", "parameters": {}},
+                  "chunking": {
+                    "component_id": "recursive",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "split_field": "body",
+                      "output_field": "text",
+                      "copy_fields": [
+                        {"source_field": "title", "output_field": "title"},
+                        {"source_field": "price", "output_field": "price"},
+                        {"source_field": "tags", "output_field": "tags"}
+                      ],
+                      "max_tokens": 500,
+                      "overlap_tokens": 50,
+                      "tokenizer_profile_id": "fixture"
+                    }
+                  },
+                  "embedding": {
+                    "component_id": "dense",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "profile": "text-v1",
+                      "mappings": [{"source_field": "text", "vector_name": "text"}]
+                    }
+                  },
+                  "indexing": {
+                    "component_id": "elasticsearch",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "service_ref": "dev-search",
+                      "vector_name": "text",
+                      "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
+                    }
+                  }
+                },
+                "inference": {
+                  "inference_input": {"component_id": "platform", "component_version": "1.0.0", "parameters": {}},
+                  "query_transformation": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "retrieval": {
+                    "component_id": "builtin",
+                    "component_version": "1.0.0",
+                    "parameters": {"per_route_k": 10, "vector_fields": ["text"]}
+                  },
+                  "rerank": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "fixed_filters": [{"field": "structdata.price", "operator": "gte", "value": 300}]
+                }
+              }
+            }
+          }
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-1",
+            "context_revision": "context-blocked",
+            "active_config_revision": null,
+            "index_impact": {"action": "blocked", "code": "INDEX_OWNERSHIP_UNVERIFIED", "message": "目標索引的歸屬無法確認。"}
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/v1/systems/es-w1-example/config:validate",
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-1",
+            "draft_revision": "draft-1",
+            "config": {
+              "contract_version": "0.2-draft",
+              "pipelines": {
+                "ingestion": {
+                  "import": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "structdata": {
+                        "body": {"type": "string", "required": true},
+                        "title": {"type": "string", "required": true, "filterable": true},
+                        "price": {"type": "number", "required": false, "searchable": false, "filterable": false},
+                        "tags": {
+                          "type": "string_array",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": true
+                        }
+                      }
+                    }
+                  },
+                  "parsing": {"component_id": "passthrough", "component_version": "1.0.0", "parameters": {}},
+                  "chunking": {
+                    "component_id": "recursive",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "split_field": "body",
+                      "output_field": "text",
+                      "copy_fields": [
+                        {"source_field": "title", "output_field": "title"},
+                        {"source_field": "price", "output_field": "price"},
+                        {"source_field": "tags", "output_field": "tags"}
+                      ],
+                      "max_tokens": 500,
+                      "overlap_tokens": 50,
+                      "tokenizer_profile_id": "fixture"
+                    }
+                  },
+                  "embedding": {
+                    "component_id": "dense",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "profile": "text-v1",
+                      "mappings": [{"source_field": "text", "vector_name": "text"}]
+                    }
+                  },
+                  "indexing": {
+                    "component_id": "elasticsearch",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "service_ref": "dev-search",
+                      "vector_name": "text",
+                      "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
+                    }
+                  }
+                },
+                "inference": {
+                  "inference_input": {"component_id": "platform", "component_version": "1.0.0", "parameters": {}},
+                  "query_transformation": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "retrieval": {
+                    "component_id": "builtin",
+                    "component_version": "1.0.0",
+                    "parameters": {"per_route_k": 10, "vector_fields": ["text"]}
+                  },
+                  "rerank": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "fixed_filters": [{"field": "structdata.price", "operator": "gte", "value": 300}]
+                }
+              }
+            }
+          }
+        },
+        "response": {
+          "status": 409,
+          "body": {"error": {"code": "STALE_CATALOG", "message": "請重新取得 Runtime Catalog。", "module": null}}
+        }
+      },
+      {
+        "request": {
+          "method": "PUT",
+          "path": "/internal/v1/systems/es-w1-example",
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-1",
+            "config": {
+              "contract_version": "0.2-draft",
+              "pipelines": {
+                "ingestion": {
+                  "import": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "structdata": {
+                        "body": {"type": "string", "required": true},
+                        "title": {"type": "string", "required": true, "filterable": true},
+                        "price": {"type": "number", "required": false, "searchable": false, "filterable": false},
+                        "tags": {
+                          "type": "string_array",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": true
+                        }
+                      }
+                    }
+                  },
+                  "parsing": {"component_id": "passthrough", "component_version": "1.0.0", "parameters": {}},
+                  "chunking": {
+                    "component_id": "recursive",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "split_field": "body",
+                      "output_field": "text",
+                      "copy_fields": [
+                        {"source_field": "title", "output_field": "title"},
+                        {"source_field": "price", "output_field": "price"},
+                        {"source_field": "tags", "output_field": "tags"}
+                      ],
+                      "max_tokens": 500,
+                      "overlap_tokens": 50,
+                      "tokenizer_profile_id": "fixture"
+                    }
+                  },
+                  "embedding": {
+                    "component_id": "dense",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "profile": "text-v1",
+                      "mappings": [{"source_field": "text", "vector_name": "text"}]
+                    }
+                  },
+                  "indexing": {
+                    "component_id": "elasticsearch",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "service_ref": "dev-search",
+                      "vector_name": "text",
+                      "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
+                    }
+                  }
+                },
+                "inference": {
+                  "inference_input": {"component_id": "platform", "component_version": "1.0.0", "parameters": {}},
+                  "query_transformation": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "retrieval": {
+                    "component_id": "builtin",
+                    "component_version": "1.0.0",
+                    "parameters": {"per_route_k": 10, "vector_fields": ["text"]}
+                  },
+                  "rerank": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "fixed_filters": [{"field": "structdata.price", "operator": "gte", "value": 300}]
+                }
+              }
+            },
+            "context_revision": "context-1",
+            "operation": "initialize",
+            "expected_active_revision": null,
+            "config_revision": "revision-1"
+          }
+        },
+        "response": {
+          "status": 409,
+          "body": {"error": {"code": "STALE_CONTEXT", "message": "索引狀態已改變，請重新驗證。", "module": null}}
+        }
+      },
+      {
+        "request": {
+          "method": "PUT",
+          "path": "/internal/v1/systems/es-w1-example",
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-2",
+            "config": {
+              "contract_version": "0.2-draft",
+              "pipelines": {
+                "ingestion": {
+                  "import": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "structdata": {
+                        "body": {"type": "string", "required": true},
+                        "title": {"type": "string", "required": true, "filterable": true},
+                        "price": {"type": "number", "required": false, "searchable": false, "filterable": false},
+                        "tags": {
+                          "type": "string_array",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": true
+                        }
+                      }
+                    }
+                  },
+                  "parsing": {"component_id": "passthrough", "component_version": "1.0.0", "parameters": {}},
+                  "chunking": {
+                    "component_id": "recursive",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "split_field": "body",
+                      "output_field": "text",
+                      "copy_fields": [
+                        {"source_field": "title", "output_field": "title"},
+                        {"source_field": "price", "output_field": "price"},
+                        {"source_field": "tags", "output_field": "tags"}
+                      ],
+                      "max_tokens": 500,
+                      "overlap_tokens": 50,
+                      "tokenizer_profile_id": "fixture"
+                    }
+                  },
+                  "embedding": {
+                    "component_id": "dense",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "profile": "text-v1",
+                      "mappings": [{"source_field": "text", "vector_name": "text"}]
+                    }
+                  },
+                  "indexing": {
+                    "component_id": "elasticsearch",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "service_ref": "dev-search",
+                      "vector_name": "text",
+                      "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
+                    }
+                  }
+                },
+                "inference": {
+                  "inference_input": {"component_id": "platform", "component_version": "1.0.0", "parameters": {}},
+                  "query_transformation": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "retrieval": {
+                    "component_id": "builtin",
+                    "component_version": "1.0.0",
+                    "parameters": {"per_route_k": 8, "vector_fields": ["text"]}
+                  },
+                  "rerank": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+                  "fixed_filters": [{"field": "structdata.price", "operator": "gte", "value": 300}]
+                }
+              }
+            },
+            "context_revision": "context-2",
+            "operation": "update",
+            "expected_active_revision": "revision-1",
+            "config_revision": "revision-2"
+          }
+        },
+        "response": {
+          "status": 409,
+          "body": {"error": {"code": "REVISION_CONFLICT", "message": "生效的 Config 版本已變更。", "module": null}}
+        }
+      },
+      {
+        "request": {"method": "DELETE", "path": "/internal/v1/systems/es-w1-example"},
+        "response": {
+          "status": 409,
+          "body": {"error": {"code": "SYSTEM_BUSY", "message": "System 有執行中的匯入。", "module": null}}
+        }
+      },
+      {
+        "request": {"method": "GET", "path": "/internal/v1/systems/es-w1-example"},
+        "response": {
+          "status": 200,
+          "body": {
+            "system_id": "es-w1-example",
+            "active_config_revision": "revision-1",
+            "busy": false,
+            "index_ready": false,
+            "index_generation": null,
+            "can_ingest": false,
+            "can_query": false
+          }
+        }
+      }
+    ],
+    "ingestion_status_and_errors": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/systems/es-w1-example/v1/ingestions",
+          "body": {"documents": [{"structdata": {"title": "設備保養"}}]}
+        },
+        "response": {
+          "status": 422,
+          "body": {
+            "error": {
+              "code": "REQUEST_VALIDATION_FAILED",
+              "message": "document_id 為必填。",
+              "module": null,
+              "path": "/documents/0/document_id"
+            }
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/systems/es-w1-example/v1/ingestions",
+          "body": {
+            "documents": [
+              {
+                "document_id": "guide-1",
+                "structdata": {"body": "定期清潔散熱孔。", "title": "設備保養", "price": 350},
+                "source_revision": "v1"
+              }
+            ]
+          }
+        },
+        "response": {
+          "status": 409,
+          "body": {
+            "error": {"code": "DOCUMENT_BUSY", "message": "這份文件已有進行中的匯入。", "module": null, "run_id": "ing-001"}
+          }
+        }
+      },
+      {
+        "request": {"method": "GET", "path": "/internal/systems/es-w1-example/v1/ingestions/ing-001"},
+        "response": {
+          "status": 200,
+          "body": {
+            "run_id": "ing-001",
+            "status": "partial",
+            "config_revision": "revision-1",
+            "documents": [
+              {
+                "document_id": "guide-1",
+                "status": "completed",
+                "module": null,
+                "updated_at": "2026-11-17T10:00:03+08:00",
+                "error": null
+              },
+              {
+                "document_id": "guide-2",
+                "status": "failed",
+                "module": "parsing",
+                "updated_at": "2026-11-17T10:00:03+08:00",
+                "error": {"code": "PARSER_CONTENT_INVALID", "message": "內容無法解析。", "module": "parsing"}
+              }
+            ],
+            "counts": {"total": 2, "queued": 0, "running": 0, "completed": 1, "failed": 1, "unknown": 0}
+          }
+        }
+      },
+      {
+        "request": {"method": "GET", "path": "/internal/systems/es-w1-example/v1/ingestions/ing-expired"},
+        "response": {"status": 200, "body": {"run_id": "ing-expired", "status": "unknown"}}
+      },
+      {
+        "request": {
+          "method": "GET",
+          "path": "/internal/systems/es-w1-example/v1/documents/guide-1/ingestion-status"
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "document_id": "guide-1",
+            "status": "unknown",
+            "module": null,
+            "updated_at": null,
+            "error": null,
+            "run_id": null
+          }
+        }
+      }
+    ],
+    "query_empty_and_errors": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/systems/es-w1-example/v1/queries",
+          "body": {
+            "query": "散熱孔怎麼清潔？",
+            "filters": [{"field": "structdata.price", "operator": "lt", "value": 500}]
+          }
+        },
+        "response": {
+          "status": 200,
+          "body": [
+            {
+              "ori_query": "散熱孔怎麼清潔？",
+              "query": "散熱孔怎麼清潔？",
+              "filters": [
+                {"field": "structdata.price", "operator": "gte", "value": 300},
+                {"field": "structdata.price", "operator": "lt", "value": 500}
+              ],
+              "result_sets": [{"key": "retrieval", "items": []}],
+              "metadata": {}
+            }
+          ],
+          "headers": {"X-Config-Revision": "revision-1", "X-Index-Generation": "index-1"}
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/systems/es-w1-example/v1/queries",
+          "body": {
+            "query": "散熱孔怎麼清潔？",
+            "filters": [{"field": "structdata.price", "operator": "lt", "value": "500"}]
+          }
+        },
+        "response": {
+          "status": 422,
+          "body": {
+            "error": {
+              "code": "REQUEST_VALIDATION_FAILED",
+              "message": "price 條件值必須為數字。",
+              "module": "inference_input",
+              "path": "/filters/0/value"
+            }
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/systems/es-w1-example/v1/queries",
+          "body": {
+            "query": "散熱孔怎麼清潔？",
+            "filters": [{"field": "structdata.price", "operator": "lt", "value": 500}]
+          }
+        },
+        "response": {
+          "status": 503,
+          "body": {"error": {"code": "INDEX_NOT_READY", "message": "索引尚未就緒。", "module": "indexing"}}
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/systems/es-w1-example/v1/queries",
+          "body": {
+            "query": "散熱孔怎麼清潔？",
+            "filters": [{"field": "structdata.price", "operator": "lt", "value": 500}]
+          }
+        },
+        "response": {
+          "status": 502,
+          "body": {"error": {"code": "UPSTREAM_ERROR", "message": "檢索服務回應失敗。", "module": "retrieval"}}
+        }
+      }
+    ]
+  }
+}

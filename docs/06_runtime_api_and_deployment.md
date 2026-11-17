@@ -30,7 +30,7 @@
 - [Observability、認證與權限](#src-07-10-observability認證與權限)
 
 
-更新日期為 2026-11-16。本手冊主責 Builder Backend／Runtime 整合、HTTP、Queue、狀態、環境控制與 Export。業務資料引用資料契約；不為 HTTP 另外建立 InferenceState／ParserInput。
+更新日期為 2026-11-16。本手冊主責 Builder Backend／Runtime 整合、HTTP、Queue、狀態、環境控制與 Export。W1 的精確路徑、欄位、狀態碼及 Mock 見 [Builder ↔ Runtime HTTP 契約](09_w1_builder_runtime_contract.md)。業務資料引用資料契約；不為 HTTP 另外建立 InferenceState／ParserInput。
 
 <a id="src-07-3-平台管理資料與儲存"></a>
 ## 平台管理資料與儲存
@@ -63,14 +63,14 @@ Builder 保存並管理可供重新匯入的原始資料（原始檔、CSV 或�
 
 Builder 保存 System、草稿與發布歷史，Runtime 持有已載入的 `system_id`、生效的 `config_revision`、索引綁定與工作狀態。Builder DEV 的 Runtime 獨立於 Builder Backend，啟動時可有零組 Config。Builder Backend 透過受保護的內部管理 API 下發設定。單組 Config 獨立部署在啟動時直接呼叫同一套 Python 管理函數，並停用管理 API 路由。
 
-| 管理操作 | 內部 HTTP 路徑草案 | 行為 |
+| 管理操作 | 內部 HTTP 路徑 | 行為 |
 |---|---|---|
 | 初始化／更新 | `PUT /internal/v1/systems/{system_id}` | 傳入 `config_revision` 與完整 `config`。可共用 `apply_system()`，由呼叫方明確區分初始化和更新意圖。 |
 | 列出 | `GET /internal/v1/systems` | 列出此 Runtime 目前載入的 System 與生效版本。 |
 | 查單一 | `GET /internal/v1/systems/{system_id}` | 回報生效版本、是否忙碌、能否匯入及能否查詢。 |
 | 卸載 | `DELETE /internal/v1/systems/{system_id}` | 排空該 System 的請求、刪除其受管理索引及資料、釋放執行資源。Builder 保有 System 與 Config 歷史。 |
 
-管理操作僅供可信 Builder Backend。業務 HTTP／MCP 使用相同的 Runtime 狀態與執行入口。MCP 的業務 API key 只授權相應 System 與工具。正式管理路徑、請求／回應 Schema、逾時及認證接線依 Q-019 定義。
+管理操作僅供可信 Builder Backend。業務 HTTP／MCP 使用相同的 Runtime 狀態與執行入口。MCP 的業務 API key 只授權相應 System 與工具。管理接口的請求、回應與衝突處理見 [W1 HTTP 契約](09_w1_builder_runtime_contract.md#2-catalog設定與-system-管理)。
 
 <a id="system-index-lifecycle"></a>
 ### 初始化、重連與索引重建
@@ -100,7 +100,7 @@ User 設定已部署的外部服務。Runtime 在執行時依有效環境綁定�
 
 ### 更新／卸載的併發與失敗
 
-每個 `system_id` 一次處理一個生命週期變更。有其他管理操作或排隊／執行中的 Ingestion 時，第一版回 `409 system_busy`（錯誤名稱草案），Builder 保留設定後重送，Runtime 無須另建 Revision 更新佇列。開始變更與接收新 Ingestion 共用該 System 的狀態檢查，避免檢查空閒後仍接受工作。其他 System 照常執行。
+每個 `system_id` 一次處理一個生命週期變更。有其他管理操作或排隊／執行中的 Ingestion 時，第一版回 `409 SYSTEM_BUSY`，Builder 保留設定後重送，Runtime 無須另建 Revision 更新佇列。開始變更與接收新 Ingestion 共用該 System 的狀態檢查，避免檢查空閒後仍接受工作。其他 System 照常執行。
 
 相容更新時，舊查詢可繼續，等引用結束才釋放原版專用資源。需要刪除索引的更新或卸載會先停止接收該 System 的新請求，等既有查詢結束，再操作索引。此排空限於生命週期操作；一般文件寫入仍依 D-60 與查詢併行。
 
@@ -108,7 +108,7 @@ User 設定已部署的外部服務。Runtime 在執行時依有效環境綁定�
 
 獨立部署重新載入 Config 時採初始化規則；若既有索引不相容，由部署管理者安排明確的重建及重新匯入。獨立部署的重建入口與部署流程另議。Backend 依 [變更影響](05_system_config.md#變更影響)向使用者呈現重建及停查影響。
 
-實作驗收覆蓋首次建立、相容重連、未知歸屬拒絕、相容切版、忙碌拒絕、排空後重建／卸載、刪除後建立失敗，以及 Local Memory 重啟與 ES 索引接回。正式管理 API 的版本衝突與重試、排空逾時，以及 Builder 初次匯入完成狀態的追蹤方式仍待定。
+實作驗收覆蓋首次建立、相容重連、未知歸屬拒絕、相容切版、忙碌拒絕、排空後重建／卸載、刪除後建立失敗，以及 Local Memory 重啟與 ES 索引接回。W1 版本衝突、重試與排空逾時見 [HTTP 契約](09_w1_builder_runtime_contract.md)。
 
 
 2026-10-16 的內容保存簡化：Indexing 保存全部 Document.structdata／metadata，Chunking 預設繼承全部有效業務 metadata；只選全文／向量／Filter 能力。原型的 indexing.stored／chunking.metadata 是待遷移的舊保存／繼承投影，不能直接套用為新規則。metadata 以 JSON object 整包保存與回傳，搜尋能力依 [structdata 欄位規格](02_data_contracts.md#data-meta-schema) 推導。
@@ -149,7 +149,7 @@ Builder 管理的 System 重建索引後，由 Builder 使用保存的原始資�
 <a id="src-07-58-runtime-component-目錄與-config-驗證邊界"></a>
 ## Runtime Component 目錄與 Config 驗證邊界
 
-兩個 repo 的服務透過 Runtime API 與 Component 目錄合作；實際路徑、認證與 Envelope 由 Q-019 核定，以下為需要覆蓋的介面能力，不新增已凍結端點：
+兩個 repo 的服務透過 Runtime API 與 Component 目錄合作；精確路徑、認證與 Envelope 見 [W1 HTTP 契約](09_w1_builder_runtime_contract.md)，以下說明各介面的責任：
 
 - **方法與能力目錄**：提供目標 Runtime 已交付的內建方法、版本、Schema 與能力。Remote API 的有效契約由 User 設定及 System Schema 推導。
 - **完整 Config 驗證**：Builder／助手提交有效設定與目標版本，重用 Engine 的型別、跨模組相依與索引相容檢查；回傳可定位到 `[MODULE NAME]`／欄位的結果。格式有效、可組裝、服務已連通與資料可查詢分開，不把目錄查詢當成真實連線測試。
@@ -160,7 +160,7 @@ Builder 管理的 System 重建索引後，由 Builder 使用保存的原始資�
 
 D-42 的 Descriptor、動態選項／能力 Context、規則與驗證回傳草案見 [Descriptor](04_component_descriptor.md)。W1 Builder 依 Catalog、草稿及上游輸出規則產生編輯候選。發布前的相依驗證與有效 Config 編譯由 Engine 統一處理。服務 URL／Secret 綁定仍在部署設定，目錄／Context 不含憑證值。
 
-設定檢查結果需對回 runtime_ref、catalog_revision、draft_revision、context_revision，錯誤使用 Module／節點引用／相對參數路徑定位。過期或取得失敗的結果不能沿用為新版設定驗證成功；建立／套用時再次核對版本。完整端點、Envelope、Context 型別及授權仍待 Q-019，12 不變更本文件的 Ingest／Query 公共 API 範例，也不把 UI 支援性與 Engine 設定合法性混為一談。
+設定檢查結果需對回 runtime_ref、catalog_revision、draft_revision、context_revision，錯誤以 Module 與相對於 HTTP Request 的 JSON Pointer 定位。過期或取得失敗的結果不得用於新版設定。建立及套用時再次核對版本，見 [W1 HTTP 契約](09_w1_builder_runtime_contract.md)。
 
 <a id="w1-catalog"></a>
 <a id="w1-config-options"></a>
@@ -186,7 +186,7 @@ D-42 的 Descriptor、動態選項／能力 Context、規則與驗證回傳草�
 | `index_plan.fulltext`、`index_plan.vectors` | 草稿推導的 Indexing 欄位用途及選定的向量。 |
 | `candidate.structdata`、`candidate.document_fields` | 草稿推導的有效候選文件欄位。 |
 
-Builder 依來源及 Descriptor 宣告的型別、必填條件和固定 `enum` 篩選。改 Import 的欄名後，Builder 重新推導受影響的下游候選。合法來源沒有相符欄位時顯示空清單；上游尚未填完時提示相依設定；現選值失效時留在草稿並標示原因。索引欄位表、向量表與有效 I/O 預覽共用推導結果。W1 編輯流程由 Catalog 與 Builder 推導提供選項，省略逐欄 `config:options`。正式發布前，Builder 送草稿及 Catalog 版本呼叫 `config:validate`，由 Runtime 確認元件與資源引用、有效設定及索引影響，再走既有套用流程。
+Builder 依來源及 Descriptor 宣告的型別、必填條件和固定 `enum` 篩選。改 Import 的欄名後，Builder 重新推導受影響的下游候選。合法來源沒有相符欄位時顯示空清單；上游尚未填完時提示相依設定；現選值失效時留在草稿並標示原因。索引欄位表、向量表與有效 I/O 預覽共用推導結果。W1 編輯流程由 Catalog 與 Builder 推導提供選項，省略逐欄 `config:options`。正式發布前，Builder 送草稿及 Catalog 版本呼叫 `POST /internal/v1/systems/{system_id}/config:validate`，由 Runtime 確認元件與資源引用、有效設定及索引影響，再走既有套用流程。
 
 [Renderer 契約](07_builder_ui.md#ui-hints-contract)定義呈現與存值。逐欄查詢的舊 W1 測資見[歷史提交](https://github.com/SunnyWenwen/rag_platform/commit/8f9f93cbb7b9ab67cbe01e5c4f306192f805aa1a)。
 
@@ -228,17 +228,17 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 <a id="src-21-2-api-清單7-支業務-api2-支-health-api"></a>
 ## API 清單：7 支業務 API＋2 支 Health API
 
-**能力、Ingestion 批次 Request、狀態／錯誤核心欄位及 retire 同步結果已確認；完整 OpenAPI、存在／清單精確格式與分頁細節仍待整理。**查詢以目標 System 為作用範圍，不直接開放任意 DB／Collection 管理。
+**下表概述業務行為。W1 HTTP 路由、存在／清單格式、分頁與錯誤碼依 [HTTP 契約](09_w1_builder_runtime_contract.md)。**查詢以目標 System 為作用範圍，不直接開放任意 DB／Collection 管理。
 
-| 優先 | Method／Path 草案 | 用途 | Request | 成功回應／狀態 | 主要行為 |
+| 優先 | Method／Path | 用途 | Request | 成功回應／狀態 | 主要行為 |
 |---|---|---|---|---|---|
 | P0 | POST /v1/ingestions | 提交一份或多份文件 | 批次物件，documents 為非空 Document[] | 202：run_id、queued、config_revision、文件清單；Location 指向查詢 | 整批預檢及預留容量後，ES 模式先保存 Run 收件與文件清單，再入列回 202。每筆與 Parser input 共用文件契約 |
 | P0 | GET /v1/ingestions/{run_id} | 查一次提交及逐文件結果 | run_id | 200：Run 狀態／計數／逐文件結果 | ES 模式讀取持久化 Run 與逐文件狀態，Run 可 partial |
 | P0 | GET /v1/documents/{document_id}/ingestion-status | 查文件最近一次工作 | document_id | 200：run_id、status、Module、時間／錯誤；無紀錄為 unknown | 工作狀態，不用成功儲存的文件反推 |
-| P0 能力；格式草案 | GET /v1/documents/{document_id}/exists | 查目前文件資料是否存在 | document_id | 200：document_id／exists | 從實際文件儲存／索引讀取；不是工作紀錄是否存在；backend 無法確認時回錯誤 |
-| P0 核心已確認 | GET /v1/documents?limit=...&cursor=... | 列出目前文件摘要 | 分頁參數 | 200：documents[]／next_cursor；每筆 document_id／source_revisions[] | 從實際 Chunk 去重彙整文件與版本；不當作工作歷史／最新成功版本 |
+| P0 | GET /v1/documents/{document_id}/exists | 查目前文件資料是否存在 | document_id | 200：document_id／exists | 從實際文件儲存／索引讀取；不是工作紀錄是否存在；backend 無法確認時回錯誤 |
+| P0 | GET /v1/documents?limit=...&cursor=... | 列出目前文件摘要 | 分頁參數 | 200：documents[]／next_cursor；每筆 document_id／source_revisions[] | 從實際 Chunk 去重彙整文件與版本；不當作工作歷史／最新成功版本 |
 | P0 | POST /v1/documents/{document_id}:retire | 直接刪除文件資料 | document_id | 200：document_id／result=deleted 或 not_found；同文件忙碌 409 | 清除對應 Chunk／向量、持久儲存與本地搜尋副本，避免重啟重建復活；不取消 Ingestion 工作 |
-| P0 | POST /v1/queries | 完整 Inference | {query, filters?, metadata?} | 200：根層 QueryContext[] | 同步完成；Runtime 控制 Rate／併發／Deadline |
+| P0 | POST /v1/queries | 完整 Inference | {query, filters?, metadata?, parameters?} | 200：根層 QueryContext[] | 同步完成；Runtime 控制 Rate／併發／Deadline |
 | P0 支援 | GET /health/live | 程序存活 | — | 200：存活 | 不依是否有資料判斷 |
 | P0 支援 | GET /health/ready | Runtime／必要資源初始化 | — | 200：就緒；否則 503 | 尚無可查索引不一律等於不 Ready |
 
@@ -283,7 +283,7 @@ Location: /v1/ingestions/ing-001
 }
 ```
 
-提交一份或多份使用相同 receipt，一份只有一筆 documents；Receipt 的 documents 是回應格式，不代表 Request 必須有 documents wrapper。Receipt 是接受當下的快照，Client 查詢時可能已 running 或完成。
+提交一份或多份使用相同 receipt，一份只有一筆 documents；Request 與 Receipt 都以 documents 陣列列出各筆文件。Receipt 是接受當下的快照，Client 查詢時可能已 running 或完成。
 
 建議接收階段只做授權、JSON／外層 Schema、有效 Config／Parser 能力等快速預檢、文件忙碌檢查與容量預留。下載、昂貴 Parsing、Embedding／Indexing 在 Worker 執行，失敗由狀態 API 回報，不能把 202 當作最後成功。
 
@@ -320,14 +320,14 @@ Location: /v1/ingestions/ing-001
 
 查詢應區分「查無紀錄」及「有紀錄但結果未確認」。後者保留已知的 run_id、Module 與原因，例如 ES Bulk 回應逾時或清理未確認。再次提交前依 [ES 寫入查核](#es-write-control-record) 處理。
 
-module 可為 null（例如 queued 或終態），亦可指目前 Local Module 或 Remote operation 的可知邊界；不假造 Remote 私有流程內部的百分比。D-64：文件狀態核心為 document_id／run_id／status／module／updated_at／error，Run 另含 config_revision／counts／documents。error 在沒有錯誤時為 null，失敗時使用 code／module／message，輸入驗證另附 path，不公開 Stack／Secret；狀態物件的 error 內不再包一層 error。核心已確認，完整型別／未知結果原因及 OpenAPI 待 API-D02／05。
+module 可為 null（例如 queued 或終態），亦可指目前 Local Module 或 Remote operation 的可知邊界；不假造 Remote 私有流程內部的百分比。D-64：文件狀態核心為 document_id／run_id／status／module／updated_at／error，Run 另含 config_revision／counts／documents。error 在沒有錯誤時為 null，失敗時使用 code／module／message，輸入驗證另附 path，不公開 Stack／Secret；狀態物件的 error 內不再包一層 error。欄位型別與查無紀錄的回應見 [W1 HTTP 契約](09_w1_builder_runtime_contract.md)。
 
 ```json
 {
   "document_id": "manual-001",
   "run_id": "ing-001",
   "status": "running",
-  "module": "Embedding",
+  "module": "embedding",
   "updated_at": "2026-11-05T08:30:00+08:00",
   "error": null
 }
@@ -361,7 +361,7 @@ D-57 已確認 Batch 彙總方向：仍有 running 為 running，只有等待且
   "counts": {"total": 2, "queued": 0, "running": 0, "completed": 1, "failed": 1, "unknown": 0},
   "documents": [
     {"document_id": "manual-001", "status": "completed", "module": null, "updated_at": "2026-11-05T08:31:00+08:00", "error": null},
-    {"document_id": "manual-002", "status": "failed", "module": "Parsing", "updated_at": "2026-11-05T08:30:30+08:00", "error": {"code": "PARSER_CONTENT_INVALID", "module": "Parsing", "message": "內容不符合所選 Parser 的輸入要求。"}}
+    {"document_id": "manual-002", "status": "failed", "module": "parsing", "updated_at": "2026-11-05T08:30:30+08:00", "error": {"code": "PARSER_CONTENT_INVALID", "module": "parsing", "message": "內容不符合所選 Parser 的輸入要求。"}}
   ]
 }
 ```
@@ -423,7 +423,7 @@ D-64：第一版同步查詢額滿直接拒絕，不加短等待 Queue，也不�
 目前不需要另開 async Query／查詢工作狀態 API，也不增加獨立 Rewrite／Retrieval／Rerank 測試端點；後者需有明確需求再討論，既有 UIB-007／008 仍未核定。
 
 <a id="src-21-6-http狀態與錯誤層次提案"></a>
-## HTTP、狀態與錯誤層次提案
+## HTTP、狀態與錯誤層次
 
 | 情境 | 建議 HTTP／行為 |
 |---|---|
@@ -440,14 +440,14 @@ D-64：第一版同步查詢額滿直接拒絕，不加短等待 Queue，也不�
 | Query 成功但無命中 | 200＋QueryContext[] 中的空候選 |
 | Query 執行／上游 API 失敗或超時 | 依錯誤來源映射 5xx（502／503／504 等）與 code；不偽造成功結果 |
 
-輸入預檢拒絕、工作執行失敗、索引可見性、狀態查不到是不同問題。錯誤碼與數值上限尚未完整核定，不能把這張表當成完整 OpenAPI。
+輸入預檢拒絕、工作執行失敗、索引可見性、狀態查不到是不同問題。W1 錯誤碼與 Client 行為見 [HTTP 契約](09_w1_builder_runtime_contract.md#4-錯誤與-builder-處理)。
 
 202／狀態監看依據：[RFC 9110 相關章節](https://www.rfc-editor.org/rfc/rfc9110.html#section-15.3.3)；429／Retry-After 依據：[RFC 6585 [Runtime API相關章節](#src-21-4-文件狀態與一次提交的狀態)](https://www.rfc-editor.org/rfc/rfc6585.html#section-4)。RFC 支持 HTTP 語意，不替本專案決定 Queue 耐久性、批次政策或錯誤 Envelope。
 
 <a id="src-21-61-已確認的錯誤核心格式d-64"></a>
 ### 已確認的錯誤核心格式（D-64）
 
-HTTP 請求失敗使用 error 外框，核心欄位為 code／message／module；module 無法歸屬時為 null，輸入驗證另附相對該 Request body 的 JSON Pointer path。以下是 422 輸入錯誤示例，code 的完整枚舉及所有 HTTP 映射仍待 OpenAPI：
+HTTP 請求失敗使用 error 外框，核心欄位為 code／message／module；module 無法歸屬時為 null，輸入驗證另附相對該 Request body 的 JSON Pointer path。以下是 422 輸入錯誤示例，W1 的 HTTP 映射見 [HTTP 契約](09_w1_builder_runtime_contract.md#4-錯誤與-builder-處理)：
 
 ```json
 {"error": {"code": "REQUEST_VALIDATION_FAILED", "message": "document_id 為必填。", "module": null, "path": "/documents/0/document_id"}}
@@ -455,7 +455,7 @@ HTTP 請求失敗使用 error 外框，核心欄位為 code／message／module�
 
 path 指向 documents 第一筆的 document_id，不是 UI Config 的 node_ref 或 Python Stack。無驗證位置時省略 path。SDK 內部 ModuleError 與 ModuleResult 不直接當作 HTTP body，retryable／details 等擴充尚非已確認的必要對外欄位。
 
-已接受工作後的執行失敗仍以 GET 200＋status=failed 查詢；其 error 直接放相同 code／message／module 核心，不再嵌套 HTTP error 外框。ES 模式下，失敗紀錄在保留期內可跨重啟查詢。資料存在性與回復情形以實際索引查核為準。Query 成功 body 保持 QueryContext[]；request／版本的 Header 名稱、正式型別、多筆驗證問題及完整錯誤碼仍待核定。
+已接受工作後的執行失敗仍以 GET 200＋status=failed 查詢；其 error 直接放相同 code／message／module 核心，不再嵌套 HTTP error 外框。ES 模式下，失敗紀錄在保留期內可跨重啟查詢。資料存在性與回復情形以實際索引查核為準。Query 成功 body 保持 QueryContext[]；版本以 `X-Config-Revision` 與 `X-Index-Generation` 回應 Header 傳遞。
 
 <a id="src-21-7-非必備端點與本輪待討論"></a>
 ## 非必備端點與本輪待討論
@@ -477,15 +477,15 @@ Retire 已確認為直接刪除，不做 soft delete／restore API；再次使�
 
 | ID | 已確認 | 仍待確認／建議 | 關聯 |
 |---|---|---|---|
-| API-D01 | 單一 POST、批次物件的非空 documents、單筆也置於 documents；整批預檢通過才 202；逐文件結果 | 方向已收斂；完整 Runtime Request／錯誤 OpenAPI 後續整理，不改單筆共用資料契約 | Q-019／Q-009 |
-| API-D02 | 保留 Run／文件兩種查詢；文件無 partial、Run 可 partial；無紀錄 GET 200＋unknown，ES 模式持久化收件與逐文件結果並依寫入證據結算。D-64 的狀態／counts／error 核心與終態保存初始值 | 完整型別／錯誤碼、輪詢、未知結果與機器 OpenAPI；不把記錄失敗等同自動回復資料 | Q-019／Q-017 |
+| API-D01 | 單一 POST、批次物件的非空 documents、單筆也置於 documents；整批預檢通過才 202；逐文件結果 | Rate／Queue 與特殊來源的實際測試 | Q-019／Q-009 |
+| API-D02 | 保留 Run／文件兩種查詢；文件無 partial、Run 可 partial；無紀錄 GET 200＋unknown，ES 模式持久化收件與逐文件結果並依寫入證據結算。D-64 的狀態／counts／error 核心與終態保存初始值 | ES 未知結果的重啟查核與輪詢整合驗收 | Q-019／Q-017 |
 | API-D03 | retire 同步確認後 200＋document_id／result=deleted 或 not_found，同文件 queued／running 或有未收尾 ES 寫入回 409；不取消工作或 soft delete／restore | 後端完整刪除能力、部分刪除／未知結果與重試清理協定仍待核定 | Q-008／Q-017／Q-028 |
 | API-D04 | D-64 確認 22 的初始預設與管理方式：E 的 Runtime 環境設定，由 Admin／部署管理者提供；Query 額滿直接拒絕 | 候選參數路徑、正式機器 Schema／載入方式、排程／計數算法與實際容量驗證；不新增單次請求覆寫 | Q-017／Q-020／Q-027 |
-| API-D05 | 共用 Runtime 固定每次執行的 Config 快照；按 System 判斷忙碌；相容更新沿用索引，不相容的明確更新先刪再建，明確卸載移除索引；重啟或重連驗證後接回 | 管理路徑及 Schema、前次 ES 寫入終止的查核證據、跨重啟管理操作與獨立部署重建方式 | Q-008～010／Q-015／Q-017／Q-019／Q-028 |
+| API-D05 | 共用 Runtime 固定每次執行的 Config 快照；按 System 判斷忙碌；相容更新沿用索引，不相容的明確更新先刪再建，明確卸載移除索引；重啟或重連驗證後接回 | 前次 ES 寫入終止的查核證據、跨重啟管理操作與獨立部署重建方式 | Q-008～010／Q-015／Q-017／Q-019／Q-028 |
 | API-D06 | Builder 登入延後；Runtime API 暫用一組 HTTP Basic 帳密操作全部 API；首期不做角色／逐 API 授權 | D-64 已選 相關章節 的受保護內部 System 路由；HTTPS／Secret 注入／網路保護與檢查位置待細化；對外 Health 同一帳密，Probe 接法為部署細節 | Q-006／Q-019／Q-020 |
-| API-D07 | 查 document_id 是否存在；D-65 文件清單回 documents[]＋next_cursor，每筆 document_id／source_revisions[]，讀取實際 Chunk 而非工作表 | exists 精確格式、分頁參數／排序／cursor、Remote 讀取操作及完整 OpenAPI 後續整理；不任選最新版本 | Q-019／Q-028 |
+| API-D07 | 查 document_id 是否存在；D-65 文件清單回 documents[]＋next_cursor，每筆 document_id／source_revisions[]，讀取實際 Chunk 而非工作表 | Remote 讀取操作與實際分頁一致性驗收 | Q-019／Q-028 |
 
-API-D01～07 沿用既有 Q-ID，不另凍結完整 OpenAPI。批次物件、接收／Run 彙總、文件 ID 管理與 retire 直接刪除沿用既有決策。進度管控及取消另議。D-64 已收斂刪除結果／錯誤核心及 Runtime 參數，D-65 進一步確認文件摘要核心，存在查詢的精確格式、分頁參數／cursor 與完整 OpenAPI 仍待整理；不因此關閉所有 Q-ID。
+API-D01～07 的 W1 HTTP 欄位與行為見 [Builder ↔ Runtime HTTP 契約](09_w1_builder_runtime_contract.md)。其餘實作待辦保留在既有 Q-ID，進度管控及取消另議。
 
 
 
@@ -569,7 +569,7 @@ S1 是 system_id 示意：由 Builder Backend 建立並維護的穩定 Retrieval
 | Backend → 共用 Runtime | POST /internal/systems/S1/v1/queries | 只供可信 Backend 存取且驗證認證；Runtime 查已註冊 S1 的有效配置，固定快照後執行 |
 | 呼叫端 → FTEST／ENT | POST /v1/queries | 單 System Runtime 已載入配置，業務請求不需再帶 S1 |
 
-七支業務 API 依同一內部前綴選 System，Request／Response 的業務語意不複製兩套；Health 仍是 service 級 /health/live／ready，不逐 System 複製。Builder 路由前綴為 /api/systems/{system_id}，共用 Runtime 為 /internal/systems/{system_id}/v1，完整 Backend CRUD／Config 註冊接口與 OpenAPI 另定。
+七支業務 API 依同一內部前綴選 System，Request／Response 的業務語意不複製兩套；Health 仍是 service 級 /health/live／ready，不逐 System 複製。Builder 路由前綴為 /api/systems/{system_id}，共用 Runtime 為 /internal/systems/{system_id}/v1，Config 套用格式見 [W1 HTTP 契約](09_w1_builder_runtime_contract.md)，Builder 自有 CRUD 另定。
 
 路徑識別不能單獨充當授權；內部路由須受可信網路／Backend 存取與認證保護，不依任意外部 Header 載入配置。具體部署保護、Secret／Probe 接法仍待核定，Runtime 暫採單一 Basic 帳號的政策不變。工作狀態、文件管理與 Query 都遵守相同 System 作用範圍，不在業務 body 加入整份 Config／任意索引位置。Library 不讀 Builder DB。
 
@@ -592,7 +592,7 @@ S1 是 system_id 示意：由 Builder Backend 建立並維護的穩定 Retrieval
 「更新失敗但舊版仍存在」可以同時得到 ingestion-status=failed、exists=true；「成功後已 retire」也可以同時是歷史工作 completed、exists=false。這些不是矛盾，不把狀態改成 retired 或抹掉成功紀錄來代替資料查詢。工作歷史依 [紀錄保留政策](#ingestion-job-records) 清理。
 
 <a id="src-21-92-存在查詢提案"></a>
-### 存在查詢提案
+### 存在查詢
 
 GET /v1/documents/manual-001/exists
 
@@ -600,7 +600,7 @@ GET /v1/documents/manual-001/exists
 {"document_id": "manual-001", "exists": true}
 ```
 
-不存在時建議仍為 200 並回 exists=false。後端無法連線、尚未初始化或不支援操作時，應回可辨識錯誤，不回 false 偽裝不存在。這支 API 不回原始內容／Chunk／向量，也不表示最近一次工作成功。
+不存在時回 200 並回 exists=false。後端無法連線、尚未初始化或不支援操作時，應回可辨識錯誤，不回 false 偽裝不存在。這支 API 不回原始內容／Chunk／向量，也不表示最近一次工作成功。
 
 <a id="src-21-93-文件摘要清單d-65-已確認核心"></a>
 ### 文件摘要清單（D-65 已確認核心）
@@ -619,7 +619,7 @@ GET /v1/documents?limit=100&cursor=...
 
 D-65 採 documents[]＋next_cursor，取代早期 document_ids[]；每筆為 document_id＋source_revisions[]。直接查該 System 實際保存的 Chunk／ES／Local 資料，以 document_id 去重並分頁，一份文件不論多少 Chunk 都只列一筆。每筆 source_revisions 為實際 Chunk.source_revision 的去重集合：正常通常一版，更新中／部分寫入失敗可能多版。這不是最新成功版本或持久歷史，不依 Run／文件工作紀錄推定，不將單一 Chunk 的 source_revision 改成陣列。
 
-每頁預設 100／上限 1,000、document_id 升冪、System 綁定 cursor 與不加快照先留為 [Runtime API／部署](06_runtime_api_and_deployment.md#src-22-4-文件摘要與分頁參數) 的候選規格；精確值、頁面排序、cursor 有效期與同時寫入一致性後續於 API-D07／OpenAPI 整理，不把它們當成本輪新核定。初版不要求全量 total、文件／Chunk 原文、metadata 投影或任意版本回復。
+W1 清單每頁預設 100／上限 1,000、依 document_id 升冪、Cursor 綁定 System，分頁期間可反映更新。實作細節與進階分頁需求留 API-D07。
 
 分頁只代表清單分批傳回。例如 250 份不同文件，每頁取 100 個 ID，可依 next_cursor 取得第 1 批 100、第 2 批 100、第 3 批 50；最後 next_cursor=null。每個分頁項目是一份文件摘要，包含該文件目前可見的來源版本；不是每個版本各占一筆，也不以 Chunk 數計算 limit。Client 可讀完所有頁取得當時可遍歷的清單。
 

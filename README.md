@@ -12,6 +12,7 @@ User 在 Builder 設定、測試及匯出 Retrieval System。System 由 Retrieva
 | [06 Runtime API 與部署](docs/06_runtime_api_and_deployment.md) | 批次 Ingestion、Inference、文件工作、部署與認證 |
 | [07 Builder UI](docs/07_builder_ui.md) | 表單、模板選用、測試操作及 Backlog |
 | [08 開發計畫與決策](docs/08_plan_and_decisions.md) | 最新決策、里程碑、未決事項與驗收 |
+| [09 W1 Builder ↔ Runtime HTTP 契約](docs/09_w1_builder_runtime_contract.md) | API 路徑、欄位、錯誤與 Mock 測資 |
 
 - 接外部服務依序看 [03 Remote API](docs/03_engine_and_components.md#remote-api)、[05 設定](docs/05_system_config.md)及[契約範例](examples/user_remote_api/README.md)。
 - [01_ui_prototype.html](01_ui_prototype.html) 可離線操作。W1 流程涵蓋 Elasticsearch Config 草稿、索引發布影響、批次匯入與查詢測試。

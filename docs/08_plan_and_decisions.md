@@ -430,20 +430,11 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 <a id="q-019"></a>
 ### Q-019 API／HTTP Envelope 與呼叫認證
 
-- D-60：Runtime API 暫採 HTTP Basic Auth，一組帳密可操作該 service 全部對外 API（含對外 Health），不做首期角色／逐 API 授權；Builder 登入延後。OpenAPI Security Scheme、驗證位置、Secret／Probe 配置與內部路由的具體部署保護仍待細化，不另加匿名 API 例外。
+- [W1 Builder ↔ Runtime HTTP 契約](09_w1_builder_runtime_contract.md)為 A/B 開發基線，涵蓋 Catalog、Config 驗證、System 生命週期、Ingestion、Run、文件管理、Inference 與 Health。JSON fixtures 提供同一個 System 的完整成功流程及錯誤案例。
+- D-60 的 Basic Auth、D-64 的可信 System 路由與錯誤核心、D-65 的文件摘要格式沿用。D-42 的欄位選項由 Builder 依 Catalog 與草稿推導。Query 成功 body 保持 `QueryContext[]`，版本以 Header 回傳。
+- 仍待正式環境部署接線、OpenAPI 整理、Builder 自有 CRUD／助手／檔案 manifest、資料保留、Trace 及版本相容政策。W1 DEV Runtime 的 HTTP、ES 與模型還需整合驗收。
+- 負責角色為 Backend、Runtime、Frontend 與身分團隊。以 W1 Mock 開發，真實串接按 M3／M5 驗收。
 
-- Ingestion 使用單一批次端點與逐文件工作，工作狀態、文件管理及認證見 [Runtime API](06_runtime_api_and_deployment.md)。
-
-- 仍待：完整 CRUD／助手／管理 API、OpenAPI／完整錯誤碼、檔案 manifest、冪等鍵、內部路由的部署保護、Header／認證接線及暴露 Trace。D-64 已確認核心回應／錯誤、retire 結果、System 路由方向與 22 的初始限制，不再把這些全部視為未決。
-- D-41 補充：Builder 與 Runtime 透過 API／Component 目錄合作；需核定目標 Runtime 版本識別、Config Schema／能力目錄、完整 Config 驗證、快取失效與接口相容政策。能力範圍見 [Runtime API／部署](06_runtime_api_and_deployment.md#src-07-58-runtime-component-目錄與-config-驗證邊界)，精確端點與 Envelope 仍 OPEN。
-- D-42 的 W1 編輯方案採 [Catalog 與草稿推導](06_runtime_api_and_deployment.md#w1-catalog)。Catalog 提供 Descriptor 與目標環境資源，Builder 推導上游欄位和候選，Runtime 驗證待發布設定。更廣的 API 認證、版本相容及公開 Meta-schema 見本節其餘待決項目。
-- Query API 成功 body 直接回傳 QueryContext[]，只保留目前 key／items／score；排名以陣列順序表示。request／版本進 Headers／Logs；精確 HTTP 版本協商及錯誤待核定。
-- D-64 已確認 retire 同步 200＋deleted／not_found、忙碌 409，狀態／錯誤核心欄位與可信內部 System 路由；後續 D-65 已確認 documents[]＋next_cursor 的摘要形式及 source_revisions[]；精確分頁參數／cursor、完整 OpenAPI、Backend 管理 API 與部署保護仍 OPEN；HTTP 與領域錯誤分層。
-- 替代：沿用既有企業 API 規範並明確映射。
-- 負責角色：Backend＋Runtime＋Frontend／身分團隊；阻擋 M3 Runtime／M4 助手 API／M5 Builder 真實串接。
-- 決策：未定；更新 資料、UI 與 Runtime 手冊、OpenAPI／cURL 範例。
-
-<a id="q-020"></a>
 ### Q-020 DEV 共享 Runtime 與資源隔離
 
 - Builder DEV 共用 Runtime，外部 API 由服務提供者維運，資源隔離與配額另行驗證。
