@@ -95,7 +95,8 @@ Create／Edit 可選用全域模板，設定 Import 入口欄位及參數，再�
 | Embedding | 組合文字欄位置頂並附可展開範例。服務來源與 Embedding Profile 同在模型設定區。向量映射預設一筆，可按「＋ 新增」加入其他映射。 | 維度／Encoding／Normalization、Batch、輸入限制 |
 | Indexing | 後端、全文／過濾欄位用途、逐欄勾選向量索引；全部內容自動保存的摘要 | 後端特有參數、進階 Mapping（支援後才顯示）；不要求再勾選保存內容 |
 | Query Transformation | None／Rewrite／Remote API；Rewrite 選共用 LLM 並設定改寫數量 | Prompt、include_original；可能產生多 Query 時設定跨 Query 融合 |
-| Retrieval／Fusion Plan | 全文／向量欄位、`per_route_k`、選填固定 Filter、多路搜尋時選 RRF 或 Sum Score | 可選當步分組及 Retrieval Top N。跨 Query 規則由 Query Transformation 設定。 |
+| Inference Input | 有效輸入／輸出規格預設收合 | 固定 Filter、Request 參數 |
+| Retrieval／Fusion Plan | 向量欄位和全文欄位皆可多選，其下依序顯示每路 Top K、多路時的 RRF／Sum Score、Group by 合併欄位、Top N。查詢 Profile 隨各向量欄位的索引綁定。 | 依融合策略顯示專屬參數。跨 Query 規則由 Query Transformation 設定。 |
 | Rerank | None／服務、單一評分內容欄位、Rerank Top N（原型預設 3）、實際提問來源 | 當步分組、逐 Query 問題選擇、附加內容欄位、Timeout／服務輸入限制 |
 
 Import 可選已整理欄位或待解析來源。選待解析來源時，入口要求 `content`，可附已知的 `structdata`，並開放內建檔案 Parser。Import 的入口 JSON Schema、Request 範例和各模組的有效 I/O 預設收合。
@@ -386,16 +387,16 @@ API 回傳最終有效清單。D-52：Chunk.metadata._rag.source_refs 為選填�
 <a id="src-10-2-結果處理與有效設定"></a>
 ## Prototype／Backlog：結果處理與有效設定
 
-現有 Prototype 的舊版控制項集中在 Retrieval 進階設定。同 Query 多路與跨 Query 控制項預設收合，兩種融合預設勾選且可各自選時點。正式 UI 依[已確認設計](#src-09-3-現行-ui-規劃)將內建多路搜尋固定為融合後每 Query 一份，原型的分路輸出選項待對齊。ES 已內部融合時停用重複融合；單 Query／單路保留草稿意圖。預設平台 RRF，ES 內部預設 Sum Score。權重／RRF k 僅對有效策略驗證。
+現行 Prototype 可在 Retrieval 基本區設定每路 Top K、同 Query 融合、Group by 合併欄位與 Top N。選定多條路徑後顯示融合策略，選 RRF 才在進階區顯示 RRF k。跨 Query 控制項由 Query Transformation 管理。[正式結果處理流程](#src-09-3-現行-ui-規劃)在同 Query 多路融合後交付每 Query 一份清單。
 
 | 位置 | 作用範圍 |
 |---|---|
-| Retrieval 搜尋 Top K | 每 Query／每路；ES Hybrid 為每 Query 的一份輸出 |
-| Retrieval 後合併 Top N | 該時點處理後的每份清單 |
-| Reranker Top N | 每份模型評分清單，預設 3 |
-| 舊版 Reranker 後合併 Top N | 舊版控制項可在 Rerank 後處理清單 |
+| Retrieval 每路 Top K | 每 Query／每路的候選上限 |
+| Retrieval Top N | 每 Query 完成多路融合與 Group by 後的上限 |
+| Rerank Top N | 每份清單完成評分、重排與 Group by 後的上限 |
+| 跨 Query Top N | 選定於 Retrieval 或 Rerank 後執行，套用在跨 Query 融合與 Group by 之後 |
 
-ResultSet.key 對應 Config 路徑／群組；items 位置即名次。RRF 可用無 score 的有序結果；Sum Score 需完整且可比分數。Prototype 的推導器只計算流程與候選上限；mockRetrieval 用固定示意候選，不真的搜尋、融合或評分。畫面說明與計畫獨立於 QueryContext JSON，不新增外框或歷史記錄。
+ResultSet.key 對應 Config 路徑／群組，items 位置即名次。RRF 可用無 score 的有序結果，Sum Score 需完整且可比分數。W1 模擬用瀏覽器資料驗證單向量路徑的 Filter、每路 Top K、Group by 與 Top N。多路搜尋及融合可保存草稿，實際執行由 Engine 驗證。
 
 原始 Draft 保留停用參數；effectiveConfig 排除它們。Create／Edit／AI 套用／匯出使用同一驗證入口。取消不改已存 System；純 Inference 改動只使舊示意結果失效，Ingestion 模組有效改動提示重跑 Ingestion。
 

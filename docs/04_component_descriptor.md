@@ -24,6 +24,7 @@
 | `ui_hints.previews` | `effective_io` 預設收合。Import 的 `ingestion_request` 同樣預設收合，顯示入口 JSON Schema 和對應 Request 範例。 |
 | `ui_hints.order`／`groups`／`advanced` | 以 JSON Pointer 指定欄位順序、分組及進階區。分組可提供 `example`。Embedding 的組合文字分組置於表單上方，服務來源與 Profile 同屬模型設定分組，向量映射以可新增的單一清單呈現。 |
 | `ui_hints.controls` | `/vector_fields: vector_checklist` 以清單列出上游向量的名稱、來源欄位、Profile 及是否建立向量索引。 |
+| `ui_hints.fixed_filters` | Inference Input 以 `advanced` 將固定 Filter 放在預設收合的進階設定。值儲存於 `pipelines.inference.fixed_filters`。 |
 | `parameters_schema.properties.*.default` | 提供預設值。Embedding、Elasticsearch、Local Search 的 MongoDB 和 Rerank 服務來源預設 `DEV test use`。 |
 
 Dense Embedding 使用一份 `mappings[]` 清單，每筆有 `source_field` 和 `vector_name`。清單至少一筆，預設 `text → text`。讀取舊版 Config 時，原本頂層的映射會轉成清單第一筆。啟用文字組合時，先依 `composition_template` 產生 `composition_field`。模板引用 `{{structdata.欄位}}`，來源須為現有且必填的字串，輸出欄位名稱須唯一。每筆映射都可選該衍生欄位，所有映射共用 Embedding Profile。
@@ -31,6 +32,8 @@ Dense Embedding 使用一份 `mappings[]` 清單，每筆有 `source_field` 和 
 `profile` 識別向量空間及模型／版本、維度、文件與查詢的編碼設定。Query Encoder 須與文件向量相容。同時選用多個向量欄位時，每路檢索依其索引綁定的 Profile 進行。
 
 Indexing 的 `vector_fields` 接受要建立索引的具名向量清單。既有的單欄 `vector_name` 仍可讀取，同一有效設定只採其中一種表示。W1 Prototype 的發布模擬使用單欄格式。Embedding 產生多個向量後，Builder 可選擇要讓 Retrieval 搜尋的欄位。
+
+內建 Retrieval 的 `vector_fields` 和 `fulltext_fields` 都可多選，選項分別來自 `index_plan.vectors` 和 `index_plan.fulltext`。至少選一個欄位。每個向量路徑的查詢 Profile 由對應的 IndexBinding 推導。兩組欄位下方依序顯示每路 Top K、多路時的融合策略、Group by 合併欄位和 Top N。
 
 <a id="group-by-option-source"></a>
 ## 分組欄位的選項來源

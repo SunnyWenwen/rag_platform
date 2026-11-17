@@ -52,7 +52,7 @@ Retrieval 與 Rerank 各自在 Component `parameters` 設定當步分組與 Top 
 | Rerank 參數 | 評分服務、內容欄位、提問來源、`group_by`、Rerank Top N |
 | 跨 Query 規則 | `at` 可選 `after_retrieval` 或 `after_rerank`，另選融合方法、`group_by` 和可選的最終 Top N |
 
-內建 Retrieval 以 `per_route_k` 表示搜尋階段每 Query、每路的上限，多路時必選 RRF 或 Sum Score，交付時每個 Query 只有一份清單。正式設定由使用者選擇融合策略，後端執行方式由 Adapter 負責。策略的專屬參數與預設值留待定義。全文和 Filter 選項依 [欄位總表及 Filter 契約](02_data_contracts.md#data-meta-schema) 推導。
+內建 Retrieval 的全文與向量欄位皆可多選，每個向量欄位依 IndexBinding 的 `embedding_profile_id` 決定 Query Encoder。`per_route_k` 是每個 Query 在個別路徑的搜尋上限。多路時必選 RRF 或 Sum Score，交付時每個 Query 只有一份清單。Adapter 負責執行選定的策略。策略的專屬參數與預設值留待定義。全文和 Filter 選項依 [欄位總表及 Filter 契約](02_data_contracts.md#data-meta-schema) 推導。
 
 `group_by` 可選 `document_id` 或一個以上有效的 `structdata` 字串欄位，也可以組合使用。選多欄時以欄位值組合作為分組鍵；未設定分組時沿用排序後的清單。當步分組在排序後、當步 Top N 前執行。跨 Query 的融合、分組及 Top N 在該步驟的 Top N 之後執行。
 

@@ -195,7 +195,7 @@ query_transformation:
 
 1. 取得對應 Config／Binding，確認 Profile 與資料就緒。
 2. 套用已驗證的 `QueryContext.filters`。Engine 在發布時驗證固定 Filter、在 Inference Input 驗證請求 Filter，兩組以 AND 合併。欄位、運算子、值與 OR 群組遵守 [Filter 契約](02_data_contracts.md#filter-semantics)。
-3. 建立每個 Query × 全文／向量欄位的路徑；向量路徑依其 Profile 使用 query encoding。
+3. 每個 Query 對每個選定的全文或向量欄位建立一條路徑。向量路徑透過 `IndexBinding.vector_bindings[欄位].embedding_profile_id` 使用原索引指定的 Query Encoder。不同向量欄位可沿用各自的 Profile。
 4. 每個 Query 的每條內建搜尋路徑先套用完整 Filter，再依 `per_route_k` 取候選，保留路徑、排名、分數及其方向。
 5. 同一 Query 若有多條搜尋路徑，須選 RRF 或 Sum Score，以 `data_id` 對齊所有路徑的候選並融合成一份清單。只有一路時，直接使用該路結果。若 Adapter 將融合交給後端，須驗證行為符合選定策略與每路上限。
 6. 若設定 `group_by`，先取得所需候選欄位，依當前排名分組，再執行選填的 Retrieval `top_n`。內建 Retrieval 對每個 Query 交付一份 ResultSet。

@@ -805,5 +805,194 @@
         }
       }
     }
+  },
+  {
+    "descriptor_version": "0.2-draft",
+    "module": "inference_input",
+    "component_id": "platform",
+    "component_version": "1.0.0",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "request_parameters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "title": "參數名稱"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "string",
+                  "integer",
+                  "number",
+                  "boolean",
+                  "array",
+                  "object"
+                ],
+                "title": "型別"
+              },
+              "required": {
+                "type": "boolean",
+                "title": "必填"
+              },
+              "default_value": {
+                "type": "string",
+                "title": "預設值（JSON）"
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "required"
+            ],
+            "additionalProperties": false
+          },
+          "title": "Request 參數"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "io": {
+      "input": "InferenceRequest",
+      "output": "QueryContext[]"
+    },
+    "option_sources": {},
+    "data_rules": [],
+    "constraints": [],
+    "ui_hints": {
+      "previews": {
+        "effective_io": {
+          "collapsed": true
+        }
+      },
+      "advanced": [
+        "/request_parameters"
+      ],
+      "fixed_filters": "advanced"
+    }
+  },
+  {
+    "descriptor_version": "0.2-draft",
+    "module": "retrieval",
+    "component_id": "builtin",
+    "component_version": "1.0.0",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "vector_fields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "title": "向量欄位"
+        },
+        "fulltext_fields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "title": "全文欄位"
+        },
+        "per_route_k": {
+          "type": "integer",
+          "minimum": 1,
+          "title": "每路 Top K"
+        },
+        "fusion": {
+          "type": "string",
+          "enum": [
+            "RRF",
+            "Sum Score"
+          ],
+          "title": "同 Query 多路融合"
+        },
+        "group_by": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "title": "Group by 合併欄位"
+        },
+        "top_n": {
+          "type": "integer",
+          "minimum": 1,
+          "title": "Top N"
+        },
+        "rrf_k": {
+          "type": "integer",
+          "minimum": 1,
+          "title": "RRF k"
+        }
+      },
+      "required": [
+        "per_route_k"
+      ],
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "vector_fields"
+          ]
+        },
+        {
+          "required": [
+            "fulltext_fields"
+          ]
+        }
+      ]
+    },
+    "io": {
+      "input": "QueryContext[]",
+      "output": "QueryContext[]"
+    },
+    "option_sources": {
+      "/vector_fields/*": {
+        "source": "index_plan.vectors"
+      },
+      "/fulltext_fields/*": {
+        "source": "index_plan.fulltext"
+      },
+      "/group_by/*": {
+        "source": "candidate.document_fields",
+        "types": [
+          "string"
+        ]
+      }
+    },
+    "data_rules": [],
+    "constraints": [],
+    "ui_hints": {
+      "previews": {
+        "effective_io": {
+          "collapsed": true
+        }
+      },
+      "order": [
+        "/vector_fields",
+        "/fulltext_fields",
+        "/per_route_k",
+        "/fusion",
+        "/group_by",
+        "/top_n"
+      ],
+      "advanced": [
+        "/rrf_k"
+      ]
+    }
   }
 ]

@@ -92,8 +92,23 @@ async function main() {
 
     await closeSystem();
     await openCardAction('⚙ Edit Config');
+    await module('Inference Input').click();
+    const fixedFilter = dialog.locator('#advanced').getByText('固定 Filter',{exact:true});
+    assert.equal(await fixedFilter.isVisible(),false);
+    await dialog.locator('#advanced > summary').click();
+    assert.equal(await fixedFilter.isVisible(),true);
+    await button('＋ 新增條件').click();
+    await page.getByLabel('Filter 欄位').last().selectOption('structdata.price');
+    await page.getByLabel('Filter 條件').last().selectOption('gte');
+    assert.equal(await page.getByLabel('Filter 條件').last().inputValue(),'gte');
+    await button('移除條件').last().click();
     await module('Retrieval').click();
+    assert.deepEqual(await dialog.locator('.builder .form-grid > .field').evaluateAll(
+      fields => fields.map(field => field.firstChild.textContent.trim())
+    ),['向量欄位','全文欄位','每路 Top K','Group by 合併欄位','Top N']);
+    assert.equal(await dialog.getByLabel('查詢 Embedding Profile').count(),0);
     await page.getByLabel('每路 Top K').fill('5');
+    await page.getByLabel('Top N',{exact:true}).fill('2');
     await page.evaluate(() => {
       current().indexIssue = {code:'INDEX_OWNERSHIP_UNVERIFIED',message:'目標索引的歸屬無法確認。'};
     });
@@ -106,6 +121,7 @@ async function main() {
     assert.match(await impact.innerText(),/沿用索引/);
     await button('確認發布').click();
     assert.match(await page.locator('#dialog-subtitle').innerText(),/revision-2/);
+    assert.equal(await page.evaluate(() => params(current().active,'retrieval').top_n),2);
     assert.match(await card.locator('.meta').innerText(),/1 documents/);
     await module('Chunking').click();
     await page.getByLabel('切分上限（tokens）').fill('450');
@@ -227,6 +243,16 @@ async function main() {
     await page.getByLabel('combined 建立向量索引').check();
     const effectiveIndex = JSON.parse(await dialog.locator('pre[data-contract-preview="output"]').textContent());
     assert.equal(effectiveIndex.properties.vector_bindings.properties.combined.properties.source_field.const,'embedding_text');
+    await module('Retrieval').click();
+    const vectorFields = dialog.locator('.field').filter({has:page.getByText('向量欄位',{exact:true})});
+    await vectorFields.getByRole('button',{name:'＋ 新增'}).click();
+    await vectorFields.getByLabel('向量欄位',{exact:true}).nth(1).selectOption('combined');
+    assert.deepEqual(await vectorFields.getByLabel('向量欄位',{exact:true}).evaluateAll(
+      fields => fields.map(field => field.value)
+    ),['text','combined']);
+    await page.getByLabel('同 Query 多路融合').selectOption('RRF');
+    await vectorFields.locator('tbody tr').nth(1).getByRole('button',{name:'移除此項'}).click();
+    await module('Indexing').click();
     await page.getByLabel('combined 建立向量索引').uncheck();
     await module('Embedding').click();
     await mappings.locator('tbody tr').nth(1).getByRole('button',{name:'移除此項'}).click();

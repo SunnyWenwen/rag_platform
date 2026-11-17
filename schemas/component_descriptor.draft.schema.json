@@ -211,6 +211,9 @@
     "ui_hints": {
       "type": "object",
       "properties": {
+        "fixed_filters": {
+          "const": "advanced"
+        },
         "order": {
           "type": "array",
           "items": {

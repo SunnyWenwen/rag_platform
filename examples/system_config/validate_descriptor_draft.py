@@ -45,8 +45,6 @@ def array(items):
 
 
 NAME = {"type": "string", "minLength": 1}
-FIELD_SELECTION = {**array(NAME), "minItems": 1, "uniqueItems": True}
-BOOL = {"type": "boolean"}
 NAT = {"type": "integer", "minimum": 0}
 POS = {"type": "integer", "minimum": 1}
 DESCRIPTOR_SCHEMA = json.loads((REPO / "schemas/component_descriptor.draft.schema.json").read_text())
@@ -180,23 +178,13 @@ def form_descriptor(module, component_id):
 
 EMBED = form_descriptor("embedding", "dense")
 INDEX = form_descriptor("indexing", "local")
-RETRIEVE = descriptor(
-    "retrieval", "builtin",
-    {"vector_name": NAME, "query_profile": NAME, "per_route_k": POS,
-     "fulltext_fields": FIELD_SELECTION, "group_by": FIELD_SELECTION},
-    ("QueryContext[]", "QueryContext[]"),
-    {"vector_name": selector("index_plan.vectors"), "query_profile": selector("profiles"),
-     "/fulltext_fields/*": selector("index_plan.fulltext"),
-     "/group_by/*": {"source": "candidate.document_fields", "types": ["string"]}},
-    required=["vector_name", "query_profile", "per_route_k"],
-)
+RETRIEVE = form_descriptor("retrieval", "builtin")
 RERANK = form_descriptor("rerank", "model_api")
 REWRITE = json.loads((HERE / "rewrite.descriptor.json").read_text())
 validate_descriptor(REWRITE)
 FIXTURE_DESCRIPTORS = (
-    CHUNK, RETRIEVE, REWRITE, *BUILDER_FORM_DESCRIPTORS,
+    CHUNK, REWRITE, *BUILDER_FORM_DESCRIPTORS,
     descriptor("parsing", "passthrough", {}, ("Document", "Document[]")),
-    descriptor("inference_input", "platform", {}, ("InferenceRequest", "QueryContext[]")),
     descriptor("query_transformation", "none", {}, ("QueryContext[]", "QueryContext[]")),
     descriptor("rerank", "none", {}, ("QueryContext[]", "QueryContext[]")),
 )
@@ -243,6 +231,11 @@ def parameters(module, config, context):
         first = {key: values.pop(key) for key in ("source_field", "vector_name") if key in values}
         if isinstance(values.get("mappings", []), list):
             values["mappings"] = [first, *values.get("mappings", [])]
+    if module == "retrieval" and "vector_name" in values and isinstance(values.get("vector_fields", []), list):
+        values = values.copy()
+        name = values.pop("vector_name")
+        values.pop("query_profile", None)
+        values["vector_fields"] = [name, *(field for field in values.get("vector_fields", []) if field != name)]
     Draft202012Validator(desc["parameters_schema"], registry=SCHEMA_REGISTRY).validate(values)
     if module == "embedding":
         context = {**context, "input.structdata": composition_fields(desc, values, context.get("input.structdata", {}))}
@@ -360,11 +353,16 @@ def validate_filters(filters, filter_fields, path):
 def compile_retrieval(index_plan, config):
     _, params = parameters("retrieval", config, {
         **candidate_context(index_plan["fields"]), "index_plan.fulltext": index_plan["fulltext"],
-        "index_plan.vectors": index_plan["vectors"], "profiles": PROFILES,
+        "index_plan.vectors": index_plan["vectors"],
     })
-    vector = index_plan["vectors"][params["vector_name"]]
-    if params["query_profile"] != vector.profile:
-        fail("incompatible query profile")
+    profiles = {name: index_plan["vectors"][name].profile for name in params.get("vector_fields", [])}
+    original = config["parameters"]
+    if "vector_name" in original and "query_profile" in original:
+        if original["query_profile"] != profiles[original["vector_name"]]:
+            fail("incompatible query profile")
+    if len(profiles) + len(params.get("fulltext_fields", [])) > 1 and "fusion" not in params:
+        fail("fusion required for multiple routes")
+    return profiles
 
 
 def binding_fixture():
@@ -457,7 +455,7 @@ CHUNK_CONFIG = node("recursive", split_field="body", output_field="text",
 EMBED_CONFIG = node("dense", mappings=[{"source_field": "text", "vector_name": "text"}], profile="text-v1")
 INDEX_CONFIG = node("local", persistence="memory", structdata_overrides={"text": {"searchable": True}},
                     vector_name="text")
-RETRIEVAL_CONFIG = node("builtin", vector_name="text", query_profile="text-v1", per_route_k=10)
+RETRIEVAL_CONFIG = node("builtin", vector_fields=["text"], per_route_k=10)
 RERANK_CONFIG = node("model_api", text_field="text")
 
 
@@ -597,6 +595,7 @@ def _():
     retrieval = snapshot["config"]["pipelines"]["inference"]["retrieval"]["parameters"]
     retrieval["group_by"] = ["document_id", "structdata.title"]
     retrieval["fulltext_fields"] = ["structdata.text"]
+    retrieval["fusion"] = "RRF"
     compile_local_example(snapshot)
     retrieval["group_by"] = ["structdata.tags"]
     rejects(lambda: compile_local_example(snapshot), "invalid selection:/group_by/*")
@@ -772,13 +771,13 @@ def _():
 def _():
     fields, vectors = builtin_output()
     index = compile_index(fields, vectors, INDEX_CONFIG)
-    compile_retrieval(index, RETRIEVAL_CONFIG)
-    legacy = deepcopy(RETRIEVAL_CONFIG)
-    legacy["parameters"]["top_k"] = legacy["parameters"].pop("per_route_k")
-    rejects(lambda: compile_retrieval(index, legacy), "ValidationError")
-    bad = deepcopy(RETRIEVAL_CONFIG)
-    bad["parameters"]["query_profile"] = "other-space-v1"
-    rejects(lambda: compile_retrieval(index, bad), "incompatible query profile")
+    assert compile_retrieval(index, RETRIEVAL_CONFIG) == {"text": "text-v1"}
+    legacy = node("builtin", vector_name="text", query_profile="text-v1", per_route_k=10)
+    assert compile_retrieval(index, legacy) == {"text": "text-v1"}
+    legacy["parameters"]["query_profile"] = "other-space-v1"
+    rejects(lambda: compile_retrieval(index, legacy), "incompatible query profile")
+    invalid_limit = node("builtin", vector_fields=["text"], top_k=10)
+    rejects(lambda: compile_retrieval(index, invalid_limit), "ValidationError")
     binding = binding_fixture()
     check_runtime_binding(index, binding)
     binding["vector_bindings"]["text"]["dimensions"] = 4
@@ -787,8 +786,28 @@ def _():
     rejects(lambda: check_runtime_binding(index, binding), "ValidationError")
     binding["vector_bindings"] = {}
     rejects(lambda: check_runtime_binding(index, binding), "binding mismatch")
-    rejects(lambda: options(RETRIEVE["option_sources"]["/vector_name"], {}), "unresolved:index_plan.vectors")
-    assert options(RETRIEVE["option_sources"]["/vector_name"], {"index_plan.vectors": {}}) == []
+    vector_options = RETRIEVE["option_sources"]["/vector_fields/*"]
+    rejects(lambda: options(vector_options, {}), "unresolved:index_plan.vectors")
+    assert options(vector_options, {"index_plan.vectors": {}}) == []
+
+
+@case("retrieval supports multi-select and inherits a query profile per indexed vector")
+def _():
+    fields, vectors = builtin_output()
+    vectors["title"] = Vector("title", "other-space-v1", 3)
+    index = compile_index(fields, vectors, node(
+        "local", persistence="memory", vector_fields=["text", "title"],
+        structdata_overrides={"text": {"searchable": True}},
+    ))
+    config = node("builtin", vector_fields=["text", "title"], fulltext_fields=["structdata.text"],
+                  per_route_k=10, fusion="RRF", group_by=["document_id"], top_n=3)
+    assert compile_retrieval(index, config) == {"text": "text-v1", "title": "other-space-v1"}
+    del config["parameters"]["fusion"]
+    rejects(lambda: compile_retrieval(index, config), "fusion required for multiple routes")
+    assert compile_retrieval(index, node("builtin", fulltext_fields=["structdata.text"], per_route_k=5)) == {}
+    rejects(lambda: compile_retrieval(index, node("builtin", per_route_k=5)), "ValidationError")
+    rejects(lambda: compile_retrieval(index, node("builtin", vector_fields=["text"], per_route_k=5, top_n=0)),
+            "ValidationError")
 
 
 @case("all twelve allowed Remote scopes plus invalid and overlapping scopes")
