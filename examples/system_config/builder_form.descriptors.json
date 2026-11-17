@@ -330,14 +330,6 @@
     "parameters_schema": {
       "type": "object",
       "properties": {
-        "source_field": {
-          "type": "string",
-          "minLength": 1
-        },
-        "vector_name": {
-          "type": "string",
-          "minLength": 1
-        },
         "profile": {
           "type": "string",
           "minLength": 1,
@@ -389,7 +381,14 @@
             ],
             "additionalProperties": false
           },
-          "title": "額外向量映射"
+          "title": "向量映射",
+          "minItems": 1,
+          "default": [
+            {
+              "source_field": "text",
+              "vector_name": "text"
+            }
+          ]
         },
         "compose_text": {
           "type": "boolean",
@@ -410,8 +409,7 @@
         }
       },
       "required": [
-        "source_field",
-        "vector_name",
+        "mappings",
         "profile"
       ],
       "additionalProperties": false,
@@ -441,13 +439,6 @@
       "output": "Document[]"
     },
     "option_sources": {
-      "/source_field": {
-        "source": "input.structdata",
-        "types": [
-          "string"
-        ],
-        "required": true
-      },
       "/profile": {
         "source": "profiles"
       },
@@ -468,12 +459,6 @@
       },
       {
         "op": "vector",
-        "source": "/source_field",
-        "target": "/vector_name",
-        "profile": "/profile"
-      },
-      {
-        "op": "vector",
         "for_each": "/mappings",
         "source": "/source_field",
         "target": "/vector_name",
@@ -488,13 +473,6 @@
         }
       },
       "order": [
-        "/service_source",
-        "/embedding_service_ref",
-        "/embedding_model",
-        "/dimensions",
-        "/source_field",
-        "/vector_name",
-        "/profile",
         "/mappings"
       ],
       "groups": [
@@ -517,6 +495,16 @@
               "vector_name": "combined"
             }
           }
+        },
+        {
+          "title": "Embedding 模型設定",
+          "fields": [
+            "/service_source",
+            "/profile",
+            "/embedding_service_ref",
+            "/embedding_model",
+            "/dimensions"
+          ]
         }
       ]
     }

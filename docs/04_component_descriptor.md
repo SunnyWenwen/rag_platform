@@ -22,11 +22,11 @@
 | `io.input`／`io.output` | 指定 I/O 的資料類型。Builder 以目前草稿的欄位和上游宣告顯示每個模組的有效輸入／輸出。Remote 跨模組範圍顯示整段邊界。 |
 | `io.content_media_types` | 內建檔案 Parser 宣告接受的 MIME types。Import 的 `source: content` 開放這些 Parser，並對 Ingestion 的 `content.media_type` 套用所選 Parser 的限制。 |
 | `ui_hints.previews` | `effective_io` 預設收合。Import 的 `ingestion_request` 同樣預設收合，顯示入口 JSON Schema 和對應 Request 範例。 |
-| `ui_hints.order`／`groups`／`advanced` | 以 JSON Pointer 指定欄位順序、分組及進階區。分組可提供 `example`。Embedding 的組合文字分組置於表單上方，額外映射留在主要表單。 |
+| `ui_hints.order`／`groups`／`advanced` | 以 JSON Pointer 指定欄位順序、分組及進階區。分組可提供 `example`。Embedding 的組合文字分組置於表單上方，服務來源與 Profile 同屬模型設定分組，向量映射以可新增的單一清單呈現。 |
 | `ui_hints.controls` | `/vector_fields: vector_checklist` 以清單列出上游向量的名稱、來源欄位、Profile 及是否建立向量索引。 |
 | `parameters_schema.properties.*.default` | 提供預設值。Embedding、Elasticsearch、Local Search 的 MongoDB 和 Rerank 服務來源預設 `DEV test use`。 |
 
-Dense Embedding 保留主映射 `source_field`／`vector_name`，可用 `mappings[]` 將其他文字欄位寫成具名向量。啟用文字組合時，先依 `composition_template` 產生 `composition_field`。模板引用 `{{structdata.欄位}}`，來源須為現有且必填的字串，輸出欄位名稱須唯一。主映射和額外映射均可選擇該衍生欄位，並共用 Embedding Profile。
+Dense Embedding 使用一份 `mappings[]` 清單，每筆有 `source_field` 和 `vector_name`。清單至少一筆，預設 `text → text`。讀取舊版 Config 時，原本頂層的映射會轉成清單第一筆。啟用文字組合時，先依 `composition_template` 產生 `composition_field`。模板引用 `{{structdata.欄位}}`，來源須為現有且必填的字串，輸出欄位名稱須唯一。每筆映射都可選該衍生欄位，所有映射共用 Embedding Profile。
 
 `profile` 識別向量空間及模型／版本、維度、文件與查詢的編碼設定。Query Encoder 須與文件向量相容。同時選用多個向量欄位時，每路檢索依其索引綁定的 Profile 進行。
 

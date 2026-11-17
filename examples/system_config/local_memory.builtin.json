@@ -68,8 +68,12 @@
           "component_id": "dense",
           "component_version": "1.0.0",
           "parameters": {
-            "source_field": "text",
-            "vector_name": "text",
+            "mappings": [
+              {
+                "source_field": "text",
+                "vector_name": "text"
+              }
+            ],
             "profile": "text-v1"
           }
         },

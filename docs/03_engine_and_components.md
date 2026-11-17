@@ -71,7 +71,7 @@ D-53 的保留完整原文功能已在 Prototype v0.12 以舊 Unit 模型示範�
 3. 按 Batch Size 呼叫 Embedding Adapter；現有 Prototype 的格式基線為 OpenAI-compatible embeddings。正式首組服務、相容範圍及模型契約仍待 Q-003，不把原型格式當作所有 Embedding API 的通用標準。
 4. 驗證回應 index 對應、數量、維度與有限值；不能因回傳順序錯誤把向量寫給其他 Chunk。
 5. normalization 與 metric 依 Profile 執行；記錄模型／版本／Provider request ID。
-6. 寫回原 Document.vectors 的命名物件（values、embedding_profile_id、source_field），精確格式引用 Document 契約；保留 structdata／metadata。預設 structdata.text → vectors.text，額外向量映射在主要表單設定；純全文 Pipeline 不初始化此服務。
+6. 寫回原 Document.vectors 的命名物件（values、embedding_profile_id、source_field），精確格式引用 Document 契約；保留 structdata／metadata。向量映射清單預設一筆 `structdata.text → vectors.text`，可直接新增映射。純全文 Pipeline 不初始化此服務。
 
 **例外**：缺欄位、超長、429／Timeout、批次缺項、維度錯誤與非法數值。截斷或 partial 需明確政策，不能默默處理。
 

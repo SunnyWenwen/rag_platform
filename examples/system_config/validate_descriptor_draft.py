@@ -238,6 +238,11 @@ def parameters(module, config, context):
         fail("unknown component version")
     desc = REGISTRY[key]
     values = config["parameters"]
+    if module == "embedding" and any(key in values for key in ("source_field", "vector_name")):
+        values = values.copy()
+        first = {key: values.pop(key) for key in ("source_field", "vector_name") if key in values}
+        if isinstance(values.get("mappings", []), list):
+            values["mappings"] = [first, *values.get("mappings", [])]
     Draft202012Validator(desc["parameters_schema"], registry=SCHEMA_REGISTRY).validate(values)
     if module == "embedding":
         context = {**context, "input.structdata": composition_fields(desc, values, context.get("input.structdata", {}))}
@@ -449,7 +454,7 @@ UPSTREAM = {"body": Field("string"), "title": Field("string"),
 CHUNK_CONFIG = node("recursive", split_field="body", output_field="text",
                     copy_fields=[{"source_field": "title", "output_field": "title"}],
                     max_tokens=500, overlap_tokens=50, tokenizer_profile_id="fixture")
-EMBED_CONFIG = node("dense", source_field="text", vector_name="text", profile="text-v1")
+EMBED_CONFIG = node("dense", mappings=[{"source_field": "text", "vector_name": "text"}], profile="text-v1")
 INDEX_CONFIG = node("local", persistence="memory", structdata_overrides={"text": {"searchable": True}},
                     vector_name="text")
 RETRIEVAL_CONFIG = node("builtin", vector_name="text", query_profile="text-v1", per_route_k=10)
@@ -730,9 +735,9 @@ def _():
     config["parameters"]["output_field"] = "body"
     desc, params = parameters("chunking", config, context(UPSTREAM, {}))
     fields, vectors = data_effects(desc, params, UPSTREAM, {})
-    assert options(EMBED["option_sources"]["/source_field"], context(fields, vectors)) == ["body", "title"]
+    assert options(EMBED["option_sources"]["/mappings/*/source_field"], context(fields, vectors)) == ["body", "title"]
     rejects(lambda: parameters("embedding", EMBED_CONFIG, context(fields, vectors)),
-            "invalid selection:/source_field")
+            "invalid selection:/mappings/*/source_field")
 
 
 @case("copy preserves type and catches collisions")
@@ -944,10 +949,17 @@ def _():
     config["parameters"].update(
         compose_text=True, composition_field="embedding_text",
         composition_template="{{structdata.title}}｜{{structdata.text}}",
-        mappings=[{"source_field":"embedding_text", "vector_name":"combined"}],
     )
+    config["parameters"]["mappings"].append({"source_field": "embedding_text", "vector_name": "combined"})
     fields = {"title": Field("string"), "text": Field("string")}
     desc, values = parameters("embedding", config, context(fields, {}))
+    legacy = node("dense", source_field="text", vector_name="text", profile="text-v1",
+                  mappings=[{"source_field": "embedding_text", "vector_name": "combined"}],
+                  compose_text=True, composition_field="embedding_text",
+                  composition_template=config["parameters"]["composition_template"])
+    assert parameters("embedding", legacy, context(fields, {}))[1] == values
+    empty = node("dense", mappings=[], profile="text-v1")
+    rejects(lambda: parameters("embedding", empty, context(fields, {})), "ValidationError")
     expanded, vectors = data_effects(desc, values, fields, {})
     assert expanded["embedding_text"] == Field("string")
     assert vectors["combined"] == Vector("embedding_text", "text-v1", 3)
