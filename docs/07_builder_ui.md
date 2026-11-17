@@ -1,5 +1,7 @@
 # Retrieval Builder UI、原型狀態與 Backlog
 
+2026-11-17｜[目前的 UI Prototype](../01_ui_prototype.html) 採 W1 Elasticsearch 開發基線，提供草稿、索引發布、匯入與查詢操作。下文的 v0.12～v0.15 操作紀錄對應[舊版快照](history/source_snapshots/ui-prototype-v015/01_ui_prototype.html)。Evaluation、AI 設定助手、Remote API 與部署匯出仍屬後續設計範圍。
+
 ## 閱讀目錄
 
 - [目標、相依與範圍](#src-06-1-目標相依與範圍)

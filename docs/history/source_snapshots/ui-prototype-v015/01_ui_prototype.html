@@ -1,0 +1,1457 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Retrieval Builder · UI Prototype</title><style>
+:root{--ink:#232738;--muted:#7b8193;--line:#e8eaf0;--accent:#6555d7;--bg:#f8f9fc}*{box-sizing:border-box}body{margin:0;font:14px/1.6 Inter,"Segoe UI","Microsoft JhengHei",sans-serif;color:var(--ink);background:var(--bg)}button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.45}button:focus-visible{outline:3px solid #b8aef6;outline-offset:3px}.sidebar{width:236px;position:fixed;inset:0 auto 0 0;background:white;border-right:1px solid var(--line);padding:32px 20px}.brand{display:flex;align-items:center;gap:10px;font-size:19px;font-weight:750;letter-spacing:-.6px;margin-bottom:50px}.mark{background:var(--accent);color:white;border-radius:10px;padding:4px 12px}.caption{font-size:10px;color:var(--muted);letter-spacing:1.5px;font-weight:700;margin:0 12px 16px}.group{border:0;background:none;color:#687083;display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:13px 12px;border-radius:8px;margin:5px 0}.group.active{background:#f0edff;color:#5a49ca;font-weight:650}.group .count{margin-left:auto;font-size:11px}.side-note{position:absolute;bottom:25px;left:32px;font-size:11px;color:#979cad}main{margin-left:236px;padding:0 48px 60px}header{height:104px;display:flex;justify-content:space-between;align-items:center;gap:20px;border-bottom:1px solid var(--line)}.crumb{color:var(--muted);font-size:12px}.btn{background:white;border:1px solid #dddfea;border-radius:8px;padding:10px 16px;color:#535a6e;font-weight:600}.primary{background:var(--accent);border-color:var(--accent);color:white;box-shadow:0 4px 10px #6555d71a}.primary:hover{background:#5747c6}.intro{margin:38px 0 28px}.intro h1{font-size:28px;letter-spacing:-.8px;margin:0 0 5px}.muted{color:var(--muted)}.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}.card{background:white;border:1px solid var(--line);border-radius:13px;padding:24px;transition:box-shadow .15s}.card:hover{box-shadow:0 6px 24px #32354b09}.cardtop{display:flex;align-items:center;justify-content:space-between}.system-icon{width:48px;height:48px;display:grid;place-items:center;background:#f0edff;color:var(--accent);border-radius:13px;font-size:24px}.status{font-size:10px;color:#7e879b;background:#f6f7fa;border-radius:20px;padding:4px 9px}.status.ready{color:#268472;background:#edf9f5}.card h2{font-size:17px;margin:21px 0 3px;overflow-wrap:anywhere}.meta{font-size:12px;color:var(--muted)}.actions{display:flex;gap:7px;margin-top:25px}.actions button{flex:1;border:1px solid #e6e7f0;background:white;color:#60677d;border-radius:7px;padding:8px 2px;font-size:11px}.actions button:hover{background:#f5f3ff;color:var(--accent)}.export{background:none;border:0;padding:14px 0 0;color:#9296a4;font-size:11px}.hint{font-size:11px;color:#9a9fb0;margin-top:30px}dialog{border:1px solid var(--line);border-radius:16px;width:min(1200px,94vw);max-height:90vh;padding:0;color:var(--ink);box-shadow:0 24px 100px #18213730}dialog::backdrop{background:#1a203b65;backdrop-filter:blur(3px)}.modalhead{padding:24px 30px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.modalhead h2{font-size:22px;margin:0}.close{border:0;background:#f5f6fa;border-radius:8px;font-size:22px;color:#7e8594;padding:0 10px}.modalbody{padding:26px 30px;background:#fafbfe}.modalfoot{padding:18px 30px;display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--line)}.label{display:block;font-size:12px;font-weight:600;color:#646c82;margin:12px 0 6px}.control{width:100%;border:1px solid #dfe2eb;border-radius:8px;padding:10px 12px;background:white;color:var(--ink)}.control:focus{outline:2px solid #d5ceff}.builder{display:grid;grid-template-columns:minmax(0,1fr) 410px;gap:20px;margin-top:22px}.panel{background:white;border:1px solid var(--line);border-radius:11px;padding:20px}.panel h3{font-size:14px;margin:0 0 15px}.module-line{display:flex;flex-wrap:wrap;gap:8px}.module{border:1px solid #e1e4ed;background:white;border-radius:8px;padding:14px 12px;text-align:left;flex:1;min-width:110px;color:#4d566d}.module strong{font-size:12px;display:block}.module small{display:block;font-size:10px;margin-top:8px;color:#8790a3}.module.selected{border-color:var(--accent);background:#f6f3ff;color:var(--accent)}.pipeline+.pipeline{margin-top:18px}.notice{font-size:12px;padding:12px;border-radius:8px;background:#f2f0ff;color:#64588d;white-space:pre-line;margin-top:18px}.notice.error{background:#fff1ef;color:#af4a3b}.twocol{display:grid;grid-template-columns:1fr 1fr;gap:22px}.upload{border:1px dashed #cfd0e2;background:#faf9ff;padding:28px 20px;border-radius:9px;margin:16px 0}.result{white-space:pre-wrap;background:white;border:1px solid var(--line);padding:20px;border-radius:9px;min-height:170px;font-size:13px}.toast{position:fixed;bottom:25px;right:28px;background:#30334b;color:white;padding:12px 20px;border-radius:10px;display:none;z-index:10}.empty{padding:50px;border:1px dashed #daddE8;border-radius:12px;color:var(--muted)}@media(max-width:1250px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:850px){.sidebar{width:185px;padding:26px 12px}main{margin-left:185px;padding:0 22px}.cards,.builder,.twocol{grid-template-columns:1fr}.modalhead,.modalbody,.modalfoot{padding:20px}.brand{font-size:16px}.side-note{left:20px}}@media(max-width:550px){.sidebar{position:static;width:100%;padding:14px}.brand{margin:0 0 12px}.caption,.side-note{display:none}#groups{display:flex;overflow:auto}.group{white-space:nowrap;margin:0;width:auto}.count{display:none}main{margin:0;padding:0 16px}header{height:85px}.crumb{display:none}.intro{margin-top:24px}.modalhead h2{font-size:18px}}
+.control:disabled,.control[readonly]{background:#f0f1f6;color:#858a99;cursor:not-allowed}.control option:disabled{color:#9a9eac}.rule{font-size:11px;color:#817b98;margin:6px 0 10px}.demo-cases{margin-top:18px;font-size:12px;color:#7b8193}.demo-cases button{margin:8px 5px 0 0;border:1px solid #dddbea;background:white;border-radius:6px;padding:6px 10px;color:#64588d}.locked{margin-top:20px;border-top:1px solid var(--line);padding-top:12px}
+.builder{grid-template-columns:minmax(250px,1fr) minmax(380px,1.2fr);align-items:start}.module-line{gap:8px}.module{min-width:125px}.builder>.panel{min-width:0}.module small{overflow-wrap:anywhere}.cardlinks{display:flex;justify-content:space-between;gap:8px}.mapping{display:grid;grid-template-columns:minmax(0,1fr) 20px minmax(0,1fr) 38px;gap:6px;align-items:center;margin:10px 0}.mapping .btn{padding:8px}.check{display:flex;align-items:center;gap:8px;font-size:13px;margin:8px 0}.check input{accent-color:var(--accent)}.invalid{color:#ae473b}.preview{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.7 ui-monospace,"Noto Sans TC","Microsoft JhengHei",monospace;background:#f5f6fa;border:1px solid var(--line);padding:14px;border-radius:8px;max-height:400px;overflow:auto}.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.chip{border:1px solid #ded9f7;background:#f7f4ff;color:#6555a7;border-radius:5px;padding:4px 7px;font-size:11px}.simple{width:100%;border-collapse:collapse}.simple td,.simple th{border:1px solid var(--line);padding:10px;text-align:left}h4{margin:22px 0 10px}summary{cursor:pointer;color:#665890}fieldset{border:1px solid var(--line);border-radius:9px;margin:16px 0;padding:16px}legend{font-weight:600}#createDialog{width:min(1320px,96vw)}.modalhead,.modalfoot{background:white}.modalfoot{position:sticky;bottom:0;z-index:2}.toptools{flex-wrap:wrap;display:flex;justify-content:space-between;align-items:center;gap:14px;margin:16px 0}.assistant-panel{background:#f8f5ff;border:1px solid #ded6fb;border-radius:12px;padding:20px;margin-top:18px}.assistant-layout{display:grid;grid-template-columns:1fr 1fr;gap:16px}.assistant-panel[hidden]{display:none}.modalbody{min-width:0}.rule{line-height:1.7}input[type=file]{max-width:100%}#changeImpact{white-space:pre-line;margin-top:16px}.control{min-width:0}#helpDialog,#exportDialog{width:min(800px,94vw)}.toolbar{display:flex;gap:10px;flex-wrap:wrap}.contract{margin-top:18px}.module.selected{box-shadow:inset 3px 0 var(--accent)}@media(max-width:850px){.builder,.assistant-layout{grid-template-columns:1fr}.toptools{align-items:flex-start;flex-direction:column}}
+
+.api-entry{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:12px;border:1px solid var(--line);border-radius:8px;background:#f7f5ff;margin:16px 0}.api-entry code{overflow-wrap:anywhere;font-size:12px}.api-entry .btn{padding:8px 12px}
+
+.twocol>div,fieldset{min-width:0}.result,.rule,.invalid{overflow-wrap:anywhere}
+
+.merge-card{background:#fcfbff}.conditional{padding:0;border:0;margin:10px 0}.conditional:disabled{opacity:.6}.plan-summary{font-size:12px;line-height:1.9;overflow-wrap:anywhere}#resultAdvanced{margin-top:22px;border-top:1px solid var(--line);padding-top:16px}#resultAdvanced summary{font-weight:650}.validation-link{display:block;text-align:left;width:100%;background:none;border:0;color:inherit;padding:6px;white-space:normal;border-radius:4px}.validation-link:hover{background:#fff8}.validation-link:focus-visible{outline:2px solid var(--accent)}fieldset:disabled input,fieldset:disabled select{cursor:not-allowed}.merge-card legend{font-size:13px}summary .muted{font-size:11px;font-weight:400}
+.io-rows{margin:8px 0 14px;padding-left:20px}.io-rows li{margin:4px 0;overflow-wrap:anywhere}.io-rows code{color:#473b8b}.io-panel{margin:18px 0 4px;padding:10px 12px;background:#fbfaff;border:1px solid #e7e1fc;border-radius:8px}.io-panel summary{font-weight:650;cursor:pointer}.io-panel h4{margin:12px 0 0}.io-panel p{margin:6px 0}
+
+.demo-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.remote-intro{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 20px;margin:0 0 22px;border:1px solid #ded8fa;border-radius:11px;background:#f4f1ff}.remote-intro strong{display:block;color:#4536a3}.remote-intro p{margin:3px 0 0}.remote-intro .btn{flex-shrink:0}.remote-guide{border:1px solid #ded8fa;background:#f4f1ff;border-radius:10px;padding:12px 15px;margin:16px 0}.remote-guide p{margin:0 0 8px}.remote-guide[hidden]{display:none}.demo-actions .btn{padding:6px 10px;font-size:12px}.schema-editor{padding:12px;margin:14px 0}.schema-edit-row,.metadata-edit-row{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) auto auto;gap:8px;align-items:end;margin-bottom:12px}.metadata-edit-row{grid-template-columns:minmax(0,2fr) minmax(0,1fr) auto}.schema-edit-row .label,.metadata-edit-row .label{margin:0 0 4px}.schema-edit-row .check{margin:0 0 10px;white-space:nowrap}.schema-edit-row .btn,.metadata-edit-row .btn{padding:9px}.remote-contract{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0}.remote-contract h4{margin:0}.remote-contract .chip{display:inline-block;font-weight:500}.remote-contract .preview{max-height:270px;font-size:11px}.remote-test{margin:12px 0}.remote-test .btn{margin-top:8px}.remote-test-result{white-space:pre-wrap}@media(max-width:600px){.remote-contract{grid-template-columns:1fr}.remote-intro{align-items:flex-start;flex-direction:column}.schema-edit-row,.metadata-edit-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.template-picker[open]{order:1;flex:0 0 100%;padding:12px 16px;border:1px solid var(--line);border-radius:9px;background:white}.template-picker h4{margin-top:12px}.template-picker details{margin-top:10px}
+</style></head><body>
+<aside class="sidebar"><div class="brand"><span class="mark">r</span> Retrieval Builder</div><div class="caption">WORKSPACES</div><nav id="groups" aria-label="Workspace groups"></nav><div class="side-note">UI Prototype v0.15 · 示意資料<br>重新整理會重設所有操作</div></aside>
+<main><header><div class="crumb">Workspaces / <span id="crumb"></span></div><button class="btn primary" onclick="openCreate()">＋ Create Retrieval System</button></header><div class="intro"><h1 id="groupTitle"></h1><div class="muted" id="groupDesc"></div></div><aside class="remote-intro"><div><strong>把自家服務接進 Retrieval 流程</strong><p class="muted">User 選模組與替換範圍、填 API Endpoint。Ingestion 宣告輸出欄位，Inference 沿用 QueryContext[] 與 System Document Schema。</p></div><button class="btn" onclick="openRemoteDemo()">開啟 Remote API 示範 →</button></aside><div class="cards" id="cards"></div><p class="hint">Build → Ingest → Inference → Evaluation → Export YAML；可隨時 Edit Config。</p></main>
+<dialog id="createDialog" aria-labelledby="createTitle"><div class="modalhead"><div><h2 id="createTitle">Create Retrieval System</h2><div class="muted" id="createGroup"></div></div><button class="close" aria-label="關閉" onclick="$('createDialog').close()">×</button></div><div class="modalbody"><label class="label" for="systemName">Retrieval System 名稱</label><input class="control" id="systemName" placeholder="例如：Maintenance Retrieval" maxlength="80"><div class="toptools"><div class="toolbar"><button class="btn" onclick="selectMod('import')">設定 Ingestion 入口</button><button class="btn" onclick="startWithCSV()">從 CSV 開始 · AI 設定助手</button></div><details class="demo-cases template-picker"><summary>選用模板</summary><p class="rule">套用模板會更新目前草稿設定，保留 System 名稱。</p><p class="rule">全域模板由 Admin 維護。選用時複製該版本到目前草稿。</p><div id="sharedRemoteTemplates"></div><p id="templateStatus" class="rule" role="status"></p><details><summary>進階設定案例</summary><button onclick="demoCase(1)">缺少全文索引</button><button onclick="demoCase(2)">Rewrite Prompt</button><button onclick="demoCase(4)">Top N 卡控</button><button onclick="demoCase(5)">多 Query · ES Hybrid</button><button onclick="demoCase(6)">多路 · 評分後合併</button><button onclick="demoCase(7)">文件去重</button><button onclick="demoCase(8)">欄位組合</button><button onclick="demoCase(9)">原文 Chunk</button><button onclick="demoCase(11)">Remote API · 只換 Parsing</button><button onclick="demoCase(12)">⑫ Schema 相依：欄位改名</button></details></details><div class="toolbar"><button class="btn" onclick="selectMod('llms')">⚙ LLM 服務設定</button><button class="btn" onclick="toggleHelper()">✦ AI 設定助手（模擬）</button></div></div>
+<aside class="assistant-panel" id="helperPanel" hidden><h3>AI 設定助手 · 模擬版</h3><div class="assistant-layout"><div><p id="helperChat" class="rule" role="status"></p><label class="label" for="helperSample">資料樣本（JSON／CSV／TXT／MD，≤ 1 MB）</label><input type="file" id="helperSample" accept=".json,.csv,.txt,.md" onchange="readSample()"><label class="label" for="helperRequest">描述你想調整的設定</label><textarea class="control" id="helperRequest" rows="4" placeholder="這份資料的 content 是原文、abstract 是摘要；改用 Local Search"></textarea><button class="btn" style="margin-top:12px" onclick="propose()">產生建議（模擬）</button></div><div><h4>套用前確認變更</h4><pre class="preview" id="helperChanges"></pre><button class="btn primary" id="applySuggestion" disabled onclick="applySuggestion()">套用到草稿</button><p class="rule">本機規則示範，無 LLM 連線；樣本只在瀏覽器讀取；套用後可帶到 Ingest，再確認映射與執行。</p></div></div></aside>
+<aside id="remoteGuide" class="remote-guide" hidden><p><strong>User 自帶服務</strong> · 入口定義原始欄位，Remote API 宣告輸出，下游接續使用同一種 Document。</p><div class="demo-actions"><button class="btn" onclick="selectMod('import')">1 入口 Document Schema</button><button class="btn" onclick="selectMod(ingestionRemoteModules.find(module=>remote(config,module)))">2 Remote API 契約</button><button class="btn" onclick="selectMod('embedding')">3 Embedding</button><button class="btn" onclick="selectMod('indexing')">4 Indexing 欄位</button></div></aside><div class="builder"><div><div class="panel pipeline"><h3>Ingestion</h3><p class="rule">同一種 Document 依序傳遞。入口定義原始欄位，模組各自宣告或推導有效資料規格。</p><div id="ingestnodes" class="module-line"></div></div><div class="panel pipeline"><h3>Inference</h3><p class="rule">入口驗證參數。Query Transformation → Retrieval → Rerank 共用 QueryContext[]，候選為符合 System 有效 Schema 的 Document。</p><div id="querynodes" class="module-line"></div></div><div class="notice" id="changeImpact"></div></div><div class="panel"><h3 id="modtitle"></h3><div class="muted" id="moddesc"></div><div id="dynamicfields"></div></div></div><details class="panel contract"><summary>資料契約預覽 · 示意內容</summary><pre class="preview" id="contractPreview"></pre></details><div class="notice" id="validation" role="status"></div></div><div class="modalfoot"><button class="btn" onclick="$('createDialog').close()">Cancel</button><button class="btn primary" id="createButton" onclick="createSystem()">Create Retrieval System</button></div></dialog>
+<dialog id="operationDialog" aria-labelledby="operationTitle"><div class="modalhead"><div><h2 id="operationTitle"></h2><div class="muted" id="operationSystem"></div></div><button class="close" aria-label="關閉" onclick="$('operationDialog').close()">×</button></div><div class="modalbody" id="operationBody"></div></dialog>
+<dialog id="helpDialog" aria-labelledby="helpTitle"><div class="modalhead"><h2 id="helpTitle"></h2><button class="close" aria-label="關閉說明" onclick="$('helpDialog').close()">×</button></div><div class="modalbody" id="helpBody"></div></dialog>
+<dialog id="exportDialog" aria-labelledby="exportTitle"><div class="modalhead"><div><h2 id="exportTitle">Export YAML</h2><div class="muted" id="exportSystemName"></div></div><button class="close" aria-label="關閉匯出" onclick="$('exportDialog').close()">×</button></div><div class="modalbody" id="exportBody"></div><div class="modalfoot"><button class="btn" onclick="downloadExport(true)">下載待設定草稿</button><button class="btn primary" id="exportReady" onclick="downloadExport(false)">匯出已填妥設定</button></div></dialog>
+<div id="toast" class="toast" role="status"></div>
+<script>
+'use strict';
+const $=id=>document.getElementById(id),clone=x=>structuredClone(x),esc=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
+const groups=['Customer Support','Engineering','Operations'];
+const modules=[['import','Import','Ingestion 入口 · 原始欄位與待解析來源'],['parsing','Parsing','內容解析與 Schema 驗證'],['chunking','Chunking','Token 邊界與欄位繼承'],['embedding','Embedding','structdata → vectors'],['indexing','Indexing','儲存與搜尋索引'],['inference_input','Inference Input','宣告查詢參數、型別、必填與預設值'],['transform','Query Transformation','產生檢索問題'],['retrieval','Retrieval','選擇搜尋欄位'],['rerank','Rerank','候選內容重新排序']];
+const service=(model='')=>({mode:'DEV test use',url:'',auth:'None',secret_ref:'',header:'X-API-Key',model,timeout:30});
+function defaults(){return {remote_apis:{},llms:[{id:'llm-default',name:'Default LLM',...service('demo-chat')}],import:{entries:['upload','api'],csv_mapping:{},source:'structdata',fields:[schemaField('text','string',true)],parameters:[]},parsing:{file_parser:'pdf'},chunking:{preserve_original:false,include_original_chunk:false,method:'Recursive',unit:'tokens',size:512,overlap:64,tokenizer_mode:'沿用 Embedding',tokenizer:'BAAI/bge-m3',tokenizer_revision:'main',separators:['\n\n','\n','。','！','？','；',' ',''],keep_separator:true,levels:[1,2,3],split:'text',output_field:'text',copy:[],metadata:[]},embedding:{...service('bge-m3'),composition:{enabled:false,output_field:'embedding_text',template:'標題：{{structdata.title}}\n內容：{{structdata.text}}'},dimension:1024,tokenizer:'BAAI/bge-m3',tokenizer_revision:'main',max_tokens:8192,batch_size:16,mappings:[{source:'text',output:'text'}]},indexing:{metadata_fields:[],backend:'Elasticsearch',es:service(),persistence:'Memory',mongo:{...service(),database:'rag',collection:'chunks'},metric:'cosine',stored:['text'],vectors:['text'],fulltext:['text'],filters:[]},inference_input:{parameters:[]},transform:{method:'None',include_original:true,count:3,llm_ref:'llm-default',rewrite_prompt:'請將以下問題改寫成適合文件檢索的問題，保留原意，只輸出改寫結果。\n問題：{{query}}',multi_prompt:'請為以下問題產生 {{count}} 個不同表述的檢索問題，保留原意，每行一個，不加編號或說明。\n問題：{{query}}'},retrieval:{vectors:['text'],fulltext:['text'],per_route_k:10,top_k_ref:'',filters_ref:'',output_mode:'backend_fused',processing:processingDefaults(),filters:[],fusion:'Sum Score',score_weights:{fulltext:1,vector:1},rrf_k:60},rerank:{...service('demo-reranker'),top_n:3,content:['text'],query_source:'original'}};}
+const blockedKeys=['__proto__','prototype','constructor'];
+const reservedMetadata=['tenant_id','system_id','access_policy_ref','locations','_system','source_uri','_rag'];
+function schemaField(name,type='string',required=false,default_json=''){return {name,type,required,default_json};}
+function exampleConfig(){const c=defaults();c.import.fields.push(schemaField('summary','string',true),schemaField('title','string',true));c.chunking.copy=['summary','title'];c.embedding.mappings.push({source:'summary',output:'summary_vector'});c.indexing.vectors=['text','summary_vector'];c.indexing.metadata_fields=[{path:'metadata.department',type:'string'}];c.indexing.filters=['metadata.department'];c.retrieval.vectors=[...c.indexing.vectors];return c;}
+function exampleValue(f){if((f.default_json||'').trim()){try{return JSON.parse(f.default_json);}catch{}}return ['number','integer'].includes(f.type)?1:f.type==='boolean'?true:f.type==='array'?['示例']:({text:'設備每月需清潔散熱孔。',summary:'每月清潔保養。',title:'設備保養規範',contenttext:'設備保養前須先斷電，並定期清潔散熱孔。',department:'manufacturing'})[f.name]||'示例內容';}
+
+function matchesType(value,type){return type==='string'?typeof value==='string':type==='number'?typeof value==='number'&&Number.isFinite(value):type==='integer'?Number.isInteger(value):type==='boolean'?typeof value==='boolean':type==='array'?Array.isArray(value):false;}
+let ioDetailsOpen=false,chunkSourcesOpen=false;
+function startWithCSV(){selectMod('import');$('helperPanel').hidden=false;$('helperSample').focus();}
+function mappingTargets(c){
+ const optional=(path,type='string')=>({...schemaField(path,type),path});
+ return [optional('document_id'),optional('source_revision'),...c.import.fields.map(f=>({...f,path:'structdata.'+f.name})),...c.indexing.metadata_fields.filter(f=>validMetadataPath(f.path)).map(f=>optional(f.path,f.type))];
+}
+function coerceCSV(value,type){if(type==='string')return value;if(['number','integer'].includes(type)){const n=Number(value);if(!value.trim()||!matchesType(n,type))throw Error('需為有效 '+type);return n;}if(type==='boolean'){if(!['true','false'].includes(value.trim()))throw Error('boolean 只接受 true／false');return value.trim()==='true';}if(type==='array'){const a=JSON.parse(value);if(!Array.isArray(a))throw Error('需為 JSON array');return a;}throw Error('不支援型別');}
+function parseCSV(text){const rows=csvRows(text.replace(/^\uFEFF/,'')),headers=(rows.shift()||[]).map(v=>v.trim());if(!headers.length||headers.some(x=>!x)||new Set(headers).size!==headers.length)throw Error('CSV 欄名需非空且唯一。');const data=rows.filter(r=>r.some(v=>v!==''));if(!data.length)throw Error('CSV 沒有資料列。');if(data.some(r=>r.length!==headers.length))throw Error('CSV 每列欄位數需與標題一致。');return {headers,rows:data};}
+function csvPayload(c,data,mapping,batch='upload',requestParameters={}){
+  const errors=[],records=[],targets=mappingTargets(c),validPaths=new Set(targets.map(t=>t.path));
+  for(const [path,column] of Object.entries(mapping))if(column&&(!validPaths.has(path)||!data.headers.includes(column)))errors.push('[Import] 映射已失效：'+path+' ← '+column);
+  for(const t of targets)if(t.required&&!t.default_json.trim()&&!mapping[t.path])errors.push('[Import] 必填欄位尚未映射：'+t.path);
+  if(errors.length)return {records,parsed:[],errors};
+  data.rows.forEach((row,i)=>{
+    const record={document_id:batch+'-row-'+(i+1),source_revision:'auto-v1',structdata:{},metadata:{}};
+    for(const t of targets){const column=mapping[t.path];if(!column)continue;const value=row[data.headers.indexOf(column)];if(value===''&&!t.required)continue;try{const cast=coerceCSV(value,t.type);writePath(record,t.path,cast);}catch(e){errors.push('[Import] CSV 第 '+(i+2)+' 列 '+t.path+'：'+e.message);}}
+    records.push(record);
+  });
+  return validateRecords(c,records,errors,requestParameters);
+}
+function validateRecords(c,documents,errors=[],requestParameters={}){
+ const records=[],parsed=[],remoteCalls=[],ids=new Set();
+ const resolved=resolveParameters(c.import.parameters,requestParameters,'Import');
+ errors.push(...resolved.errors);
+ if(!documents.length)errors.push('[Import] documents 至少需要一筆 Document。');
+ for(const [i,doc] of documents.entries()){
+if(!objectValue(doc)){errors.push('[Import] 第 '+(i+1)+' 筆資料必須是 JSON object。');continue;}
+  const issues=schemaIssues(doc,ingestSchema(c),'documents['+i+']');
+  if(issues.length){errors.push(...issues.map(issue=>'[Import] '+issue));continue;}
+  if(resolved.errors.length)continue;
+  if(ids.has(doc.document_id))errors.push('[Import] document_id 重複：'+doc.document_id);ids.add(doc.document_id);
+  for(const key of Object.keys(doc.metadata||{}))if(reservedMetadata.includes(key)||blockedKeys.includes(key))errors.push('[Import] metadata.'+key+' 由平台管理。');
+  records.push(clone(doc));
+  try{
+   const invocations=ingestRemoteInvocations(c,resolved.parameters);
+   if(invocations.length)remoteCalls.push({document_id:doc.document_id,calls:invocations});
+  }catch(error){errors.push('[Import／Remote API] '+error.message);}
+  if(doc.content||remote(c,'parsing')||remote(c,'chunking'))continue;
+  const unit={...clone(doc),source_revision:doc.source_revision??'auto-v1'};
+  for(const {path,type} of c.indexing.metadata_fields){
+   const value=readPath(unit,path);
+   if(c.indexing.filters.includes(path)&&value!==undefined&&!matchesType(value,type))errors.push('[Indexing] '+path+' 需為 '+type+'。');
+  }
+  parsed.push(unit);
+ }
+ errors.push(...unitErrors(c,parsed));
+ return {records,request:ingestionRequest(records,requestParameters),parsed,remoteCalls,errors:[...new Set(errors)],external:records.some(d=>d.content)||ingestionRemoteModules.some(module=>remote(c,module))};
+}
+let pendingCSV=null,sampleReadToken=0;
+let group=0,config=defaults(),selected='parsing',editId=null,draftId='',active=null,helperProposal=null,sample=null,exportDraft=null;
+const systems=[{id:'a1b2c3',group:0,name:'Customer Support Retrieval',docs:12},{id:'d4e5f6',group:0,name:'Product FAQ',docs:8},{id:'h7j8k9',group:0,name:'Service Handbook',docs:0},{id:'m1n2p3',group:1,name:'Engineering Knowledge',docs:0}].map(s=>({...s,config:exampleConfig(),collection:collectionName(s.group,s.name,s.id),needsIngest:!s.docs,revision:1,files:[],result:'',retrievalResult:null,qa:''}));
+function collectionName(g,name,id){const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,45)||'system';return `${slug(groups[g])}-${slug(name)}-${id}`;}
+function collection(){return editId?systems.find(s=>s.id===editId).collection:collectionName(group,$('systemName').value.trim()||'new-system',draftId);}
+function toast(t){$('toast').textContent=t;$('toast').style.display='block';clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>$('toast').style.display='none',3500);}
+function render(){$('groups').innerHTML=groups.map((g,i)=>`<button class="group ${i===group?'active':''}" onclick="switchGroup(${i})" aria-pressed="${i===group}">▦ ${esc(g)}<span class="count">${systems.filter(s=>s.group===i).length}</span></button>`).join('');$('crumb').textContent=groups[group];$('groupTitle').textContent=groups[group];const list=systems.filter(s=>s.group===group);$('groupDesc').textContent=`${list.length} Retrieval systems`; $('cards').innerHTML=list.length?list.map(s=>`<article class="card"><div class="cardtop"><span class="system-icon">▧</span><span class="status ${inferenceReady(s)?'ready':''}">${!usesPlatformRetrieval(s.config)?'Remote 搜尋 · Demo':s.needsIngest?'需 Ingestion':'可測試 · Demo'}</span></div><h2>${esc(s.name)}</h2><div class="meta">${s.docs} documents · ${esc(usesPlatformRetrieval(s.config)?mode(s.config):'Remote Retrieval')} · v${s.revision}</div><div class="actions"><button onclick="openOperation('${s.id}','ingest')">↑ Ingest</button><button onclick="openOperation('${s.id}','inference')">◇ Inference</button><button onclick="openOperation('${s.id}','evaluation')">◎ Evaluation</button></div><div class="cardlinks"><button class="export" onclick="openEdit('${s.id}')">⚙ Edit Config</button><button class="export" onclick="exportSystem('${s.id}')">↗ Export YAML</button></div></article>`).join(''):'<div class="empty">此 Group 尚無 Retrieval System。點選 Create Retrieval System 開始建立。</div>';}
+function switchGroup(i){group=i;render();}
+function resetHelper(){$('templateStatus').textContent='';compositionAdvancedOpen=false;chunkExtrasOpen=false;resultAdvancedOpen=false;rerankAdvancedOpen=false;$('dynamicfields').innerHTML='';ioDetailsOpen=false;chunkSourcesOpen=false;sampleReadToken++;pendingCSV=null;separatorsError='';helperProposal=null;sample=null;$('helperChat').textContent='模擬助手：可輸入「摘要不要切分」「改用 Local Search」「只用原文搜尋」，或上傳 JSON／CSV 樣本。此版使用本機規則示範，不呼叫 AI。';$('helperChanges').textContent='尚未產生建議。';$('applySuggestion').disabled=true;$('helperRequest').value='';$('helperSample').value='';$('helperPanel').hidden=true;}
+function openCreate(){taskDraftError='';editId=null;draftId=crypto.randomUUID().slice(0,8);config=defaults();$('systemName').value='';$('createTitle').textContent='Create Retrieval System';$('createButton').textContent='Create Retrieval System';$('createGroup').textContent=groups[group];resetHelper();selectMod('import');$('createDialog').showModal();}
+function openEdit(id){const s=systems.find(x=>x.id===id);editId=id;draftId=id;config=clone(s.config);$('systemName').value=s.name;$('createTitle').textContent='Edit Config';$('createButton').textContent='Save Changes';$('createGroup').textContent=groups[s.group]+' / v'+s.revision;resetHelper();pendingCSV=s.pendingCSV?clone(s.pendingCSV):null;selectMod('import');$('createDialog').showModal();}
+function nodes(){renderSharedTemplates();$('remoteGuide').hidden=!ingestionRemoteModules.some(module=>remote(config,module));for(const [id,items] of [['ingestnodes',modules.slice(0,5)],['querynodes',modules.slice(5)]])$(id).innerHTML=items.map(m=>`<button class="module ${selected===m[0]?'selected':''}" onclick="selectMod('${m[0]}')"><strong>${m[1]}</strong><small>${esc(summary(m[0]))}</small></button>`).join('');}
+function summary(id){const owner=managedBy(config,id);if(owner)return '由 '+moduleLabel(owner)+' Remote API 涵蓋';if(remote(config,id))return 'Remote API · 自帶服務';return ({import:'入口 Document Schema',parsing:config.import.source==='structdata'?'直接傳遞 structdata':activeFileParser(config)?.label||'選擇解析方法',chunking:config.chunking.method,embedding:config.embedding.mode,indexing:config.indexing.backend,inference_input:config.inference_input.parameters.length+' 個查詢參數',transform:config.transform.method,retrieval:mode(config),rerank:config.rerank.mode})[id];}
+function mode(c){return c.retrieval.vectors.length&&c.retrieval.fulltext.length?'Hybrid':c.retrieval.vectors.length?'Vector':c.retrieval.fulltext.length?'Full-text':'未選搜尋欄位';}
+function get(path,c=config){return path.split('.').reduce((v,k)=>v[k],c);}
+function put(path,v,c=config){const a=path.split('.'),k=a.pop();a.reduce((v,k)=>v[k],c)[k]=v;}
+const label=(t,html,hint='')=>`<label class="label">${t}</label>${html}${hint?`<p class="rule">${hint}</p>`:''}`;
+function input(path,title,type='text',hint='',readonly=false){return label(title,`<input class="control" aria-label="${esc(title)}" data-path="${path}" type="${type}" ${type==='number'?'step="any"':''} value="${esc(get(path))}" ${readonly?'readonly':''}>`,hint);}
+function select(path,title,options,hint=''){const v=get(path);return label(title,`<select class="control" aria-label="${esc(title)}" data-path="${path}">${[...new Set([...options,v])].map(o=>`<option value="${esc(o)}" ${o===v?'selected':''}>${esc(o)}${options.includes(o)?'':'（已失效）'}</option>`).join('')}</select>`,hint);}
+function textarea(path,title,hint=''){return label(title,`<textarea class="control" rows="5" aria-label="${esc(title)}" data-path="${path}">${esc(get(path))}</textarea>`,hint);}
+function flag(path,title){return `<label class="check"><input type="checkbox" data-path="${path}" ${get(path)?'checked':''}>${title}</label>`;}
+function pick(path,title,options,prefix=''){const vals=get(path);return `<div class="label">${title}</div>`+[...new Set([...options,...vals])].map(v=>`<label class="check"><input type="checkbox" data-pick="${path}" value="${esc(v)}" ${vals.includes(v)?'checked':''}>${esc(prefix+v)}${options.includes(v)?'':' <span class="invalid">上游已移除，請取消</span>'}</label>`).join('');}
+function serviceForm(path,kind,{mode=true,model=true,choices=null}={}){let c=get(path),opts=choices||['DEV test use',kind];let html=mode?select(path+'.mode','服務來源',opts):'';if(c.mode==='None')return html;if(c.mode==='DEV test use')return html+`<div class="notice">平台測試資源（示意）${model?'<br>Model：'+esc(c.model):''}<br>匯出正式部署前需提供自己的服務。</div>`;
+html+=input(path+'.url',kind.includes('Mongo')?'MongoDB URI（不含帳密）':kind==='Elasticsearch'?'Elasticsearch URL':'API Base URL','text',kind==='Rerank API'?'固定 POST /rerank；下方可查看本平台契約。':kind==='Embedding API'?'OpenAI-compatible embeddings：POST /embeddings。':kind==='OpenAI-compatible API'?'Chat Completions：POST /chat/completions。':'');
+if(model)html+=input(path+'.model','Model ID');html+=select(path+'.auth','認證方式',kind.includes('Mongo')?['None','Secret reference']:kind==='Elasticsearch'?['None','API Key','Basic secret']:['None','Bearer','API Key']);if(c.auth!=='None'){html+=input(path+'.secret_ref','K8s Secret 引用','text','格式：secret-name/key；不在 prototype 輸入真實憑證。');if(c.auth==='API Key'&&kind!=='Elasticsearch')html+=input(path+'.header','API Key Header');}html+=input(path+'.timeout','Timeout（秒）','number')+`<button class="btn" type="button" onclick="testService('${path}','${kind}')">Check Settings（模擬）</button>`;return html;}
+function names(c=config){return parsedFields(c).filter(f=>f.type==='string').map(f=>f.name);}
+
+function chunkTasks(c){return c.chunking.tasks||[{task_id:'text',split_field:c.chunking.split,output_field:c.chunking.output_field??'text',copy_fields:[...c.chunking.copy.map(n=>({source_field:n,output_field:n})),...(c.chunking.preserve_original?[{source_field:c.chunking.split,output_field:'original_text'}]:[])]}];}
+
+function taskErrors(c){const errors=[],ids=new Set();for(const t of chunkTasks(c)){
+ if(!t.task_id||ids.has(t.task_id))errors.push('[Chunking] task_id 需非空且唯一。');ids.add(t.task_id);
+ const f=parsedFields(c).find(f=>f.name===t.split_field);if(!f||f.type!=='string'||!f.required)errors.push('[Chunking] '+t.task_id+' 切分來源 '+t.split_field+' 需為每筆必定有的文字欄位。');
+ const out=[t.output_field,...t.copy_fields.map(m=>m.output_field)];if(new Set(out).size!==out.length||out.some(n=>!/^[A-Za-z_][A-Za-z0-9_]*$/.test(n)||blockedKeys.includes(n)))errors.push('[Chunking] '+t.task_id+' 輸出欄位重名或無效。');
+ for(const m of t.copy_fields)if(!parsedFields(c).some(f=>f.name===m.source_field&&f.required))errors.push('[Chunking] '+t.task_id+' 複製來源未宣告或不保證存在：'+m.source_field);
+ }return errors;}
+function editTasks(value){try{const a=JSON.parse(value);if(!Array.isArray(a)||!a.length||a.some(t=>!t||typeof t!=='object'||['task_id','split_field','output_field'].some(k=>typeof t[k]!=='string')||!Array.isArray(t.copy_fields)||t.copy_fields.some(m=>!m||typeof m!=='object'||typeof m.source_field!=='string'||typeof m.output_field!=='string')))throw Error();config.chunking.tasks=a;taskDraftError='';}catch{taskDraftError='[Chunking] 任務需為非空 JSON array，每項包含 task_id、split_field、output_field、copy_fields。';}if($('schemaIO')){ioDetailsOpen=$('schemaIO').open;$('schemaIO').outerHTML=schemaIOPanel('chunking',config);}valid();}
+let taskDraftError='';
+function resetTasks(){delete config.chunking.tasks;taskDraftError='';selectMod('chunking');}
+function taskEditor(){return '<details><summary>進階：多欄位任務與重新命名</summary><p class="rule">各任務預設 output_field=text；結果串接（2＋3＝5），不做交叉配對。保留完整原文可映射 text → original_text。此處為配置預覽，未執行切分。</p><textarea class="control" rows="10" aria-label="切分任務 JSON" onchange="editTasks(this.value)">'+esc(JSON.stringify(chunkTasks(config),null,2))+'</textarea><button class="btn" onclick="resetTasks()">還原單一任務</button></details>';}
+
+function vectorNames(){return resolvedVectors(config).map(x=>x.name);}
+function tokenizer(c=config){return c.chunking.tokenizer_mode==='沿用 Embedding'?(embeddingRemoteOwner(c)?{id:'',revision:''}:{id:c.embedding.tokenizer,revision:c.embedding.tokenizer_revision}):{id:c.chunking.tokenizer,revision:c.chunking.tokenizer_revision};}
+
+function resolvedOptions(fields,selected,expected=null){
+ const rows=new Map(fields.map(f=>[f.name,f]));if(!rows.has(selected))rows.set(selected,{name:selected,reason:selected?'上游未提供':'請選擇欄位'});
+ return [...rows.values()].map(f=>{const why=fieldReason(f,expected);return `<option value="${esc(f.name)}" ${f.name===selected?'selected':''} ${why?'disabled':''}>${esc((f.name||'請選擇欄位')+(why&&f.name?'（'+why+'）':''))}</option>`;}).join('');
+}
+function resolvedSelect(path,title,fields,expected=null){const val=get(path);return label(title,`<select class="control" aria-label="${esc(title)}" data-path="${esc(path)}">${resolvedOptions(fields,val,expected)}</select>`);}
+function resolvedPick(path,title,fields,prefix='',expected=null){
+ const vals=get(path), rows=new Map(fields.map(f=>[f.name,f]));for(const name of vals)if(!rows.has(name))rows.set(name,{name,reason:'上游未提供'});
+ return '<div class="label">'+title+'</div>'+[...rows.values()].map(f=>{const checked=vals.includes(f.name),why=fieldReason(f,expected);return `<label class="check"><input type="checkbox" data-pick="${esc(path)}" value="${esc(f.name)}" ${checked?'checked':''} ${why&&!checked?'disabled':''}>${esc(prefix+f.name)}${why?' <span class="invalid">'+esc(why+(checked?'；可取消以修正':''))+'</span>':''}</label>`;}).join('');
+}
+function processingDefaults(){
+  const merge=()=>({enabled:true,at:'after_retrieval',method:'RRF',rrf_k:60,normalization:'none',comparable:false,weights:{}});
+  return {version:'ui-0.9-draft',same_query:{...merge(),route_scope:'all',routes:[]},cross_query:merge(),merge_key:'data_id',document_at:'after_retrieval',after_retrieval_top_n:5,after_rerank_top_n:3};
+}
+let resultAdvancedOpen=false,rerankAdvancedOpen=false;
+function searchRoutes(c){return [...c.retrieval.fulltext.map(x=>({id:'fulltext:'+x,label:'全文 · structdata.'+x})),...c.retrieval.vectors.map(x=>({id:'vector:'+x,label:'向量 · vectors.'+x}))];}
+function searchQueries(c){
+  if(c.transform.method==='None')return [{id:'original',label:'原始問題'}];
+  return [...(c.transform.include_original?[{id:'original',label:'原始問題'}]:[]),...Array.from({length:Number.isInteger(c.transform.count)&&c.transform.count>0?Math.min(c.transform.method==='Rewrite'?1:c.transform.count,32):1},(_,i)=>({id:'rewrite-'+(i+1),label:'改寫問題 '+(i+1)}))];
+}
+function nativeFusion(c){return c.indexing.backend==='Elasticsearch'&&c.retrieval.output_mode==='backend_fused'&&searchRoutes(c).length>1;}
+function rerankFields(c){return outputFields(c).filter(n=>fieldIsText(c,n));}
+function resultPlan(c,topK=c.retrieval.per_route_k){
+  const p=c.retrieval.processing,routes=searchRoutes(c),queries=searchQueries(c),native=nativeFusion(c);
+  const routeGroups=native?[{ids:routes.map(x=>x.id),label:'ES Hybrid（後端已融合）'}]:routes.map(x=>({ids:[x.id],label:x.label}));
+  let lists=queries.flatMap(q=>routeGroups.map(r=>({queries:[q.id],routes:r.ids,upper:topK})));
+  const initial=clone(lists),stages=[],samePossible=!native&&routes.length>1,crossPossible=queries.length>1;
+  const selected=p.same_query.route_scope==='all'?routes.map(x=>x.id):p.same_query.routes;
+  function combine(kind,at){
+    const rule=p[kind],possible=kind==='same_query'?samePossible:crossPossible;
+    if(!rule.enabled||rule.at!==at||!possible)return false;
+    const groups=new Map(),untouched=[];
+    for(const l of lists){
+      if(kind==='same_query'&&!l.routes.every(id=>selected.includes(id))){untouched.push(l);continue;}
+      const key=JSON.stringify(kind==='same_query'?l.queries:l.routes);
+      if(!groups.has(key))groups.set(key,[]);groups.get(key).push(l);
+    }
+    let applied=false;
+    const merged=Array.from(groups.values()).map(g=>{
+      if(g.length>1)applied=true;
+      return {queries:[...new Set(g.flatMap(x=>x.queries))],routes:[...new Set(g.flatMap(x=>x.routes))],upper:g.reduce((sum,x)=>sum+x.upper,0)};
+    });
+    lists=[...merged,...untouched];return applied;
+  }
+  function atPoint(at){
+    const before=clone(lists),same=combine('same_query',at),cross=combine('cross_query',at);
+    const document=p.merge_key==='document_id'&&p.document_at===at;
+    const enabled=same||cross||document;
+    const limit=p[at+'_top_n'];
+    if(enabled)lists=lists.map(l=>({...l,upper:Math.min(l.upper,limit)}));
+    const stage={at,same,cross,document,enabled,limit,before,lists:clone(lists)};stages.push(stage);return stage;
+  }
+  const before=atPoint('after_retrieval'),rerankInputs=clone(lists);
+  const queryAllowed=lists.every(l=>l.queries.length===1);
+  const scoringQuery=c.rerank.query_source==='current'&&queryAllowed?'current':'original';
+  if(c.rerank.mode!=='None')lists=lists.map(l=>({...l,upper:Math.min(l.upper,c.rerank.top_n)}));
+  const scored=clone(lists),after=atPoint('after_rerank');
+  return {routes,queries,native,samePossible,crossPossible,initial,before,after,rerankInputs,scored,queryAllowed,scoringQuery,final:lists,upper:lists.reduce((s,l)=>s+l.upper,0)};
+}
+const stageName=at=>at==='after_retrieval'?'Retrieval 後':'Reranker 後';
+function planText(c,topK=resolveInference(c,{}, {checkRequired:false}).topK){
+  if(inferenceRemoteModules.some(module=>remote(c,module)))return inferenceRemoteModules.filter(module=>!managedBy(c,module)).map(module=>remote(c,module)?remoteScope(c,module).map(moduleLabel).join(' → ')+'：Remote API · QueryContext[]':moduleLabel(module)+'：內建方法 · QueryContext[]').join('\n')+'\nQuery／ResultSet 數量由執行時回傳決定；候選 Document 依 System Schema 驗證。';
+  const p=resultPlan(c,topK),lines=[`設定推導上限（非實際命中）：${p.queries.length} Query × ${p.native?'1 份 ES Hybrid':p.routes.length+' 路獨立搜尋'} = ${p.initial.length} 份 ResultSet；每份 Top ${topK}`];
+  function line(s){
+    const parts=[...(s.same?['同 Query 多路合併']:[]),...(s.cross?['跨 Query 合併（相同搜尋路徑群組）']:[]),...(s.document?['按 document_id 保留最高分 Chunk']:[])];
+    lines.push(stageName(s.at)+(s.at==='after_rerank'&&c.rerank.mode==='None'?'（Rerank=None：不評分，仍執行後置處理）':'')+'：'+(s.enabled?parts.join('＋')+' → 每組 Top '+s.limit:'無需處理／沿用')+`；${s.lists.length} 份清單`);
+  }
+  line(p.before);
+  lines.push(c.rerank.mode==='None'?'Reranker：略過模型評分':`Reranker：${p.rerankInputs.length} 份清單分別評分，內容 ${c.rerank.content.map(x=>'structdata.'+x).join(' + ')}；使用${p.scoringQuery==='original'?'原始問題':'各 Query 的問題'} → 每份 Top ${c.rerank.top_n}`);
+  line(p.after);
+  lines.push(`最終檢索輸出：${p.final.length} 份 ResultSet，合計最多 ${p.upper} 個候選。`);
+  if(p.final.length>1)lines.push('各分組清單獨立保留分數／排名；不隱含新增融合或全域排序。');
+  lines.push('實際候選可能更少；上游已截掉的候選不會復原。所有動作固定排序 → Top N → 更新 rank。');
+  return lines.join('\n');
+}
+function numberControl(path,title,{disabled=false,hint='',value=get(path),min=1,integer=true}={}){
+  return label(title,`<input class="control" type="number" aria-label="${esc(title)}" data-path="${path}" min="${min}" step="${integer?1:'any'}" value="${esc(value)}" ${disabled?'disabled':''}>`,hint);
+}
+function choice(path,title,choices,{disabled=false,hint='',value=get(path)}={}){
+  const all=choices.some(x=>x.value===value)?choices:[...choices,{value,label:'已失效：'+value,disabled:true}];
+  return label(title,`<select class="control" aria-label="${esc(title)}" data-path="${path}" ${disabled?'disabled':''}>${all.map(x=>`<option value="${esc(x.value)}" ${x.value===value?'selected':''} ${x.disabled?'disabled':''}>${esc(x.label)}</option>`).join('')}</select>`,hint);
+}
+function mergeForm(kind,plan){
+  const p='retrieval.processing.'+kind,r=get(p),same=kind==='same_query',possible=same?plan.samePossible:plan.crossPossible;
+  const title=same?'同 Query 多路合併':'跨 Query 合併';
+  const reason=possible?'':same?(plan.native?'後端已融合：ES 每個 Query 已回傳一份清單，不再重做融合。':'目前只有一路搜尋，無須跨路合併。'):'目前只有一個有效 Query，無須跨 Query 合併。';
+  let h=`<fieldset class="merge-card"><legend>${title}</legend><label class="check"><input type="checkbox" data-path="${p}.enabled" ${r.enabled?'checked':''} ${!possible?'disabled':''}>啟用${title}</label>`;
+  if(reason)h+=`<p class="rule">${reason} 保留草稿選擇；上游條件恢復時沿用。</p>`;
+  h+=`<fieldset class="conditional" ${!possible||!r.enabled?'disabled':''}>`;
+  h+=choice(p+'.at','合併時機',[{value:'after_retrieval',label:'Retrieval 後'},{value:'after_rerank',label:'Reranker 後'}]);
+  if(same){
+    h+=choice(p+'.route_scope','搜尋路徑範圍',[{value:'all',label:'合併所有搜尋路徑'},{value:'selected',label:'合併指定路徑，其餘各自保留'}]);
+    if(r.route_scope==='selected')h+=plan.routes.map(x=>`<label class="check"><input type="checkbox" data-pick="${p}.routes" value="${esc(x.id)}" ${r.routes.includes(x.id)?'checked':''}>${esc(x.label)}</label>`).join('')+r.routes.filter(x=>!plan.routes.some(y=>y.id===x)).map(x=>`<label class="check invalid"><input type="checkbox" data-pick="${p}.routes" value="${esc(x)}" checked>已失效：${esc(x)}（取消以修正）</label>`).join('');
+  }else h+='<p class="rule">同一原始問題的 Query 一起比較；若各搜尋路徑尚未合併，則依相同路徑群組分別跨 Query 合併，不混用不同群組。</p>';
+  h+=choice(p+'.method','合併方法',[{value:'Sum Score',label:'Sum Score · 加權分數'},{value:'RRF',label:'RRF · 排名融合'}]);
+  if(r.method==='RRF')h+=numberControl(p+'.rrf_k','RRF k')+'<p class="rule">依各清單名次加總 1 / (k + rank)，不直接加總原始分數。</p>';
+  else if(r.method==='Sum Score'){
+    const members=same?plan.routes.filter(x=>r.route_scope==='all'||r.routes.includes(x.id)):plan.queries;
+    for(const x of members)h+=numberControl(p+'.weights.'+x.id,x.label+' 權重',{min:0,integer:false,value:r.weights[x.id]??1});
+    h+=choice(p+'.normalization','分數轉換',[{value:'none',label:'不轉換（須確認可比）'},{value:'min_max',label:'每份清單 Min–max 至 0–1'}]);
+    if(r.normalization==='none')h+=flag(p+'.comparable','已確認這些來源的分數方向與尺度可比');
+    h+='<p class="rule">分數先依 score_order 統一為越大越好；Min–max 以各清單候選計算，同分清單給 1。未命中來源貢獻 0。這是 UI 契約草案，真實 Adapter 支援度尚須驗證。</p>';
+  }
+  return h+'</fieldset></fieldset>';
+}
+function resultProcessingForm(){
+  const p=resultPlan(config),r=config.retrieval.processing;
+  let h=`<details id="resultAdvanced" ${resultAdvancedOpen?'open':''}><summary>進階結果處理設定 <span class="muted">· 合併／去重／輸出上限</span></summary><p class="rule">基本與進階使用同一份設定；展開不會更改設定。搜尋後端由 Indexing 繼承。</p>`;
+  h+=choice('retrieval.output_mode','搜尋輸出粒度',[{value:'backend_fused',label:'ES 後端融合，每 Query 一份'},{value:'independent',label:'各欄位獨立搜尋，每 Query 多份'}],{disabled:config.indexing.backend!=='Elasticsearch',value:config.indexing.backend==='Elasticsearch'?config.retrieval.output_mode:'independent',hint:config.indexing.backend==='Elasticsearch'?'後端融合的策略與結果處理的合併分開；ES 版本／授權能力尚未連線驗證。':'Local Search 固定各欄位獨立輸出；ES 草稿選擇保留，但不參與執行。'});
+  if(p.native){
+    h+='<fieldset><legend>ES 內部 Hybrid</legend>'+select('retrieval.fusion','後端融合方式',['Sum Score','RRF']);
+    if(config.retrieval.fusion==='RRF')h+=numberControl('retrieval.rrf_k','ES RRF k');
+    else {if(config.retrieval.fulltext.length)h+=numberControl('retrieval.score_weights.fulltext','全文分數權重',{min:0,integer:false});if(config.retrieval.vectors.length)h+=numberControl('retrieval.score_weights.vector','向量分數權重',{min:0,integer:false});h+='<p class="rule">加總後端各路分數乘權重；不自動正規化，不假造 BM25／向量的獨立 ResultSet。</p>';}
+    h+='</fieldset>';
+  }
+  h+=mergeForm('same_query',p)+mergeForm('cross_query',p);
+  h+=choice('retrieval.processing.merge_key','候選去重單位（merge_key）',[{value:'data_id',label:'data_id · 合併同一 Chunk'},{value:'document_id',label:'document_id · 每份文件一個代表 Chunk'}]);
+  if(r.merge_key==='document_id')h+=choice('retrieval.processing.document_at','文件去重時機',[{value:'after_retrieval',label:'Retrieval 後'},{value:'after_rerank',label:'Reranker 後'}])+'<p class="rule">先按 data_id 完成該時點的融合，再於每份清單內按 document_id 保留最高分 Chunk，最後取 Top N；原 data_id／引用不變。單份清單也可去重。不同清單不隱含比較；若要全域去重，應在所有清單合併完成後執行。</p>';
+  h+='<h4>動作完成後的保留數</h4><p class="rule">四個位置各自保存。搜尋 Top K 在基本區，Reranker Top N 在 Reranker；沒有對應動作的欄位停用，不參與驗證與匯出。</p>';
+  h+=numberControl('retrieval.processing.after_retrieval_top_n','Retrieval 後合併／去重 Top N',{disabled:!p.before.enabled,hint:'本時點所有適用合併及文件去重完成後，每份輸出清單的上限。'});
+  h+=numberControl('retrieval.processing.after_rerank_top_n','Reranker 後合併／去重 Top N',{disabled:!p.after.enabled,hint:'本時點所有適用合併及文件去重完成後，每份輸出清單的上限。Rerank=None 仍保留此後置處理。'});
+  return h+'</details>';
+}
+function showResultSettings(){resultAdvancedOpen=true;selectMod('retrieval');if($('resultAdvanced'))$('resultAdvanced').open=true;}
+function searchFieldControl(path,title,available,candidates,prefix){
+const vals=get(path);return '<div class="label">'+title+'</div>'+[...new Set([...candidates,...vals])].map(v=>'<label class="check"><input type="checkbox" data-pick="'+path+'" value="'+esc(v)+'" '+(vals.includes(v)?'checked':'')+' '+(!available.includes(v)&&!vals.includes(v)?'disabled':'')+'>'+esc(prefix+v)+(available.includes(v)?'':' <span class="invalid">未建立對應索引'+(vals.includes(v)?'（取消以修正）':'')+'</span>')+'</label>').join('');
+}
+function rerankExtraFields(){
+const available=rerankFields(config),extra=config.rerank.content.slice(1);
+return '<div class="label">附加評分內容（依序串接，可不選）</div>'+[...new Set([...parsedFields(config).map(f=>f.name),...outputFields(config),...extra])].filter(x=>x!==config.rerank.content[0]).map(x=>'<label class="check"><input type="checkbox" data-rerank-extra value="'+esc(x)+'" '+(extra.includes(x)?'checked':'')+' '+(!available.includes(x)&&!extra.includes(x)?'disabled':'')+'>structdata.'+esc(x)+(available.includes(x)?'':'（已失效／非文字／未儲存）')+'</label>').join('');
+}
+function rerankContentControl(){
+  const available=rerankFields(config),first=config.rerank.content[0]||'';
+  const fields=[...new Set([...parsedFields(config).map(f=>f.name),...outputFields(config),...config.rerank.content])];
+  return label('評分內容欄位',`<select class="control" data-rerank-content aria-label="評分內容欄位"><option value="" ${!first?'selected':''} disabled>請選擇已儲存的文字欄位</option>${fields.map(x=>`<option value="${esc(x)}" ${x===first?'selected':''} ${available.includes(x)?'':'disabled'}>structdata.${esc(x)}${available.includes(x)?'':'（已失效／非文字／未儲存）'}</option>`).join('')}</select>`,'每筆候選 data 會使用所選 structdata 欄位作為評分內容。');
+}
+function resultErrors(c){
+  const e=[],p=resultPlan(c),r=c.retrieval.processing,add=(m,t)=>e.push('['+m+'] '+t),positive=(v,m,n)=>{if(!Number.isSafeInteger(v)||v<1)add(m,n+' 必須為正整數。');};
+  positive(c.retrieval.per_route_k,'Retrieval／搜尋 Top K','Top K');
+  if(!['Elasticsearch','Local Search'].includes(c.indexing.backend))add('Indexing／搜尋後端','不支援的搜尋後端；請選 Elasticsearch 或 Local Search。');
+  if(c.indexing.backend==='Elasticsearch'&&!['backend_fused','independent'].includes(c.retrieval.output_mode))add('Retrieval／結果處理','不支援的搜尋輸出粒度。');
+  for(const [kind,possible] of [['same_query',p.samePossible],['cross_query',p.crossPossible]]){
+    const rule=r[kind],name='Retrieval／'+(kind==='same_query'?'同 Query 合併':'跨 Query 合併');
+    if(!possible||!rule.enabled)continue;
+    if(!['after_retrieval','after_rerank'].includes(rule.at))add(name,'不支援的合併時機。');
+    if(kind==='same_query'&&!['all','selected'].includes(rule.route_scope))add(name,'不支援的路徑範圍。');
+    if(kind==='same_query'&&rule.route_scope==='selected'&&(rule.routes.length<2||rule.routes.some(x=>!p.routes.some(y=>y.id===x))||new Set(rule.routes).size!==rule.routes.length))add(name,'請選至少兩個有效且不重複的搜尋路徑。');
+    if(!['RRF','Sum Score'].includes(rule.method))add(name,'只支援 Sum Score／RRF。');
+    if(rule.method==='RRF')positive(rule.rrf_k,name,'RRF k');
+    if(rule.method==='Sum Score'){
+      const members=kind==='same_query'?p.routes.filter(x=>rule.route_scope==='all'||rule.routes.includes(x.id)):p.queries;
+      const weights=members.map(x=>rule.weights[x.id]??1);
+      if(weights.some(x=>!Number.isFinite(x)||x<0)||!weights.some(x=>x>0))add(name,'使用中的權重須為非負有限數值，且至少一項大於 0。');
+      if(!['none','min_max'].includes(rule.normalization))add(name,'不支援的分數轉換。');
+      if(rule.normalization==='none'&&!rule.comparable)add(name,'Sum Score 請選擇分數轉換或確認分數可比。');
+    }
+  }
+  if(!['data_id','document_id'].includes(r.merge_key))add('Retrieval／文件去重','merge_key 只支援 data_id／document_id。');
+  if(r.merge_key==='document_id'&&!['after_retrieval','after_rerank'].includes(r.document_at))add('Retrieval／文件去重','請選擇有效的去重時機。');
+  if(r.merge_key==='document_id'&&r.document_at==='after_retrieval'&&(p.after.same||p.after.cross))add('Retrieval／文件去重','後面仍有跨清單合併，請將文件去重移到 Reranker 後，確保最終每份文件只留一個代表 Chunk。');
+  for(const s of [p.before,p.after])if(s.enabled)positive(s.limit,'Retrieval／結果處理',stageName(s.at)+' Top N');
+  if(c.rerank.mode!=='None'){
+    if(!['DEV test use','Rerank API'].includes(c.rerank.mode))add('Rerank／服務','不支援的評分服務。');
+    positive(c.rerank.top_n,'Rerank／Top N','評分後 Top N');
+    for(const field of c.rerank.content)if(!rerankFields(c).includes(field))add('Rerank／評分內容','structdata.'+field+' 已失效、非文字或未儲存；請重新選擇，不自動換值。');
+    if(!c.rerank.content.length)add('Rerank／評分內容','請選至少一個 structdata.* 文字欄位。');
+    if(!['original','current'].includes(c.rerank.query_source))add('Rerank／使用的提問','不支援的 Query 來源。');
+  }
+  return e;
+}
+function effectiveProcessing(c){
+  const p=resultPlan(c),r=c.retrieval.processing;
+  const out={version:r.version};
+  for(const kind of ['same_query','cross_query']){
+    if(![p.before,p.after].some(s=>s[kind==='same_query'?'same':'cross']))continue;
+    const rule=r[kind],x={at:rule.at,method:rule.method};
+    if(kind==='same_query')x.routes=(rule.route_scope==='all'?p.routes:p.routes.filter(y=>rule.routes.includes(y.id))).map(y=>y.id);
+    if(rule.method==='RRF')x.rrf_k=rule.rrf_k;
+    else {x.normalization=rule.normalization;if(rule.normalization==='none')x.comparable=rule.comparable;const members=kind==='same_query'?p.routes.filter(y=>x.routes.includes(y.id)):p.queries;x.weights=Object.fromEntries(members.map(y=>[y.id,rule.weights[y.id]??1]));}
+    out[kind]=x;
+  }
+  out.merge_key=r.merge_key;if(r.merge_key==='document_id')out.document_at=r.document_at;
+  for(const s of [p.before,p.after])if(s.enabled)out[s.at+'_top_n']=s.limit;
+  return out;
+}
+function openValidationIssue(index){
+  const message=validate(config)[index]||'',prefix=message.match(/^\[([^\]]+)/)?.[1]||'';
+  const map={'LLM Settings':'llms','Inference Input':'inference_input','Query Transformation':'transform',Rerank:'rerank',Retrieval:'retrieval',Indexing:'indexing',Embedding:'embedding',Chunking:'chunking',Parsing:'parsing',Import:'import'};
+  const module=Object.keys(map).find(x=>prefix.startsWith(x));if(!module)return;
+  if(module==='Retrieval')resultAdvancedOpen=true;if(module==='Rerank')rerankAdvancedOpen=true;
+  selectMod(map[module]);
+  const mappingPath=message.match(/\((\/mappings\/\d+\/source_field)\)/)?.[1];
+  if(mappingPath){const i=mappingPath.split('/')[2];document.querySelector('[data-path="embedding.mappings.'+i+'.source"]')?.focus();}
+  if(module==='Retrieval'&&$('resultAdvanced')){$('resultAdvanced').open=true;resultAdvancedOpen=true;}
+  if(module==='Rerank'&&$('rerankAdvanced')){$('rerankAdvanced').open=true;rerankAdvancedOpen=true;}
+  const panel=$('dynamicfields');panel.scrollIntoView?.({block:'start',behavior:'smooth'});
+  const path=prefix.includes('同 Query')?'retrieval.processing.same_query':prefix.includes('跨 Query')?'retrieval.processing.cross_query':prefix.includes('文件去重')?'retrieval.processing.merge_key':prefix.includes('搜尋 Top K')?'retrieval.per_route_k':prefix.includes('Top N')?'rerank.top_n':prefix.includes('結果處理')?'retrieval.processing':null;
+  const target=prefix.includes('評分內容')?panel.querySelector?.('[data-rerank-content]'):path?panel.querySelector?.('[data-path^="'+path+'"]:not(:disabled)'):null;
+  (target||panel.querySelector?.('input:not(:disabled),select:not(:disabled),textarea:not(:disabled)'))?.focus();
+}
+
+function selectMod(id){if($('resultAdvanced'))resultAdvancedOpen=$('resultAdvanced').open===true;if($('rerankAdvanced'))rerankAdvancedOpen=$('rerankAdvanced').open===true;selected=id;nodes();if(id==='llms'){renderLLMs();valid();return;}const m=modules.find(x=>x[0]===id);$('modtitle').textContent=m[1];$('moddesc').textContent=m[2];let h='';
+if(id==='import')h=sourceForm();
+if(id==='inference_input')h=inferenceInputForm();
+if(id==='parsing')h=builtinParserForm(config);
+if(id==='chunking'){h=select('chunking.method','切分方法',['Fixed-size','Recursive','Header-aware'])+'<div class="rule">長度單位固定為 Tokens；上限與實際長度不同，Overlap 為目標值。</div>'+input('chunking.size','Chunk Size（Tokens）','number')+input('chunking.overlap','Overlap（Tokens）','number')+select('chunking.tokenizer_mode','Tokenizer 來源',['沿用 Embedding','自行指定']);if(config.chunking.tokenizer_mode==='自行指定')h+=input('chunking.tokenizer','Tokenizer ID')+input('chunking.tokenizer_revision','Tokenizer revision');else if(embeddingRemoteOwner(config))h+='<div class="notice">Embedding 由 Remote API 執行。請自行指定切分使用的 Tokenizer。</div>';else h+=`<div class="notice">${esc(tokenizer().id)} @ ${esc(tokenizer().revision)}<br>與 Embedding 設定連動；更換 Tokenizer 需重新切分。</div>`;
+if(config.chunking.method==='Header-aware')h+=pick('chunking.levels','章節切分層級',[1,2,3,4,5,6],'H')+'<p class="rule">先依章節切分；超長章節使用下方 Recursive 規則。針對 Unit 的 Markdown text 判讀 # 標題，不要求 Parser 產生 heading Blocks。</p>';
+if(config.chunking.method!=='Fixed-size')h+='<details><summary>進階：Recursive 分隔符</summary>'+label('依優先順序排列（JSON）',`<textarea class="control" rows="4" data-separators aria-label="分隔符 JSON">${esc(JSON.stringify(config.chunking.separators))}</textarea>`,'最後的空字串代表必要時按字元細切；Token 計量仍使用指定 Tokenizer。')+flag('chunking.keep_separator','保留分隔符')+'</details>';h+='<details id="chunkSources" '+(chunkSourcesOpen?'open':'')+'><summary>進階：切分來源與完整欄位複製</summary>'+(config.chunking.tasks?'<p class="rule">目前使用多任務，下方任務各自設定來源與輸出。</p>':resolvedSelect('chunking.split','主要切分欄位',parsedFields(config),'string')+input('chunking.output_field','切片輸出欄位','text','預設 text；改名會影響 Embedding 與 Indexing。')+resolvedPick('chunking.copy','複製完整欄位',parsedFields(config),'structdata.'))+'</details><p class="rule">預設逐 Unit 切 structdata.text → structdata.text；不跨 Unit 合併／overlap，metadata 全部繼承。來源追溯由模組依設定提供，缺少 _rag 不阻擋。</p>'; }
+if(id==='chunking')h+=taskEditor();
+if(id==='embedding'){h=serviceForm('embedding','Embedding API');if(config.embedding.mode!=='DEV test use')h+=input('embedding.dimension','向量維度（需與模型吻合）','number')+input('embedding.tokenizer','Tokenizer ID')+input('embedding.tokenizer_revision','Tokenizer revision')+input('embedding.max_tokens','模型輸入上限（Tokens）','number')+input('embedding.batch_size','Batch Size','number');else h+=`<p class="rule">${config.embedding.dimension} 維 · Tokenizer ${esc(config.embedding.tokenizer)} · 上限 ${config.embedding.max_tokens} Tokens。測試服務資訊為示例。</p>`;
+h+='<h4>structdata → vectors</h4>'+config.embedding.mappings.map((m,i)=>`<div class="mapping"><select class="control" aria-label="Embedding 欄位 ${i}" data-path="embedding.mappings.${i}.source">${resolvedOptions(embeddingInputs(config),m.source,'string')}</select><span>→</span><input class="control" aria-label="向量名稱 ${i}" data-path="embedding.mappings.${i}.output" value="${esc(m.output)}"><button class="btn" aria-label="移除向量 ${i}" onclick="removeRow('embedding.mappings',${i})">×</button></div>`).join('')+'<button class="btn" onclick="addMapping()">＋ 向量映射</button><p class="rule">映射共用本組模型。複製的 summary 也會 Embedding，執行時需另驗證它的實際長度。</p>';}
+if(id==='indexing'){h=select('indexing.backend','搜尋後端',['Elasticsearch','Local Search'])+label('Index collection（自動命名）',`<input class="control" id="collectionDisplay" readonly value="${esc(collection())}">`,'Workspace＋名稱＋System ID；建立後改名不改實體索引。');if(config.indexing.backend==='Elasticsearch')h+=serviceForm('indexing.es','Elasticsearch',{model:false});else{h+=select('indexing.persistence','資料保存',['Memory','MongoDB']);if(config.indexing.persistence==='MongoDB')h+=serviceForm('indexing.mongo','MongoDB',{model:false})+(config.indexing.mongo.mode==='DEV test use'?'':input('indexing.mongo.database','Database'))+'<p class="rule">Collection 使用上方自動名稱；保存完整 Chunk 與 vectors，重啟後重建搜尋索引。</p>';else h+='<div class="notice">純記憶體；程序重啟後需重新 Ingestion。FAISS＋BM25 與 Inference 在同一程序。</div>';}
+h+=select('indexing.metric','向量相似度',['cosine','dot_product'])+'<p class="notice">自動保存全部 structdata／metadata／vectors；以下只設定搜尋索引。</p>'+resolvedPick('indexing.vectors','向量索引',resolvedVectors(config),'vectors.')+resolvedPick('indexing.fulltext','全文索引',embeddedFields(config),'structdata.','string')+metadataIndexForm()+pick('indexing.filters','可過濾欄位',filterCandidates())+'<p class="rule">此處只宣告可過濾的欄位；比對詞值在 Retrieval 設定。structdata 使用精確索引，與全文搜尋的斷詞不同。</p>'+'<p class="rule">document_id 固定保留作分組；必要身份與權限資訊固定保留。</p>';}
+if(id==='transform'){h=select('transform.method','方法',['None','Rewrite','Multi-query']);if(config.transform.method!=='None')h+=flag('transform.include_original','將原始問題也加入搜尋')+(config.transform.method==='Multi-query'?input('transform.count','產生 Query 數量（不含原始問題）','number'):'')+llmSelector('transform')+rewriteEditor()+'<p class="rule">各 Query 分別搜尋；合併範圍、時機與輸出上限在 Retrieval 的進階結果處理設定。原始問題永遠保留。Multi-query 最多 32 個改寫問題（原型限制）。</p>';else h+='<p class="rule">直接使用原始問題搜尋。</p>';}
+if(id==='retrieval'){
+const p=resultPlan(config);
+h='<div class="notice">後端：'+esc(config.indexing.backend)+' · '+mode(config)+'<br>來源：Indexing；'+(coveredByRemote(config,'transform')?'由上游回傳的 QueryContext[]':p.queries.length+' 個 Query')+' × '+p.routes.length+' 個搜尋欄位'+(p.native?'；ES 每 Query 內部融合成一份':'；各路獨立輸出')+'</div>'+searchFieldControl('retrieval.fulltext','全文搜尋欄位',config.indexing.fulltext.filter(x=>fieldIsText(config,x)),[...new Set([...names(),...outputFields(config)])],'structdata.')+searchFieldControl('retrieval.vectors','向量搜尋欄位',config.indexing.vectors.filter(x=>usableVectorNames(config).includes(x)),vectorNames(),'vectors.')+inferenceParameterChoice('retrieval.top_k_ref','Top K 來源','integer','使用固定值','可引用 Inference Input 宣告的整數參數。若選填參數缺值且沒有預設值，使用下方固定值。')+numberControl('retrieval.per_route_k','搜尋後保留 Top K（固定值）',{hint:p.native?'每 Query 的 ES Hybrid 輸出上限；後端候選池與融合視窗不在本原型配置。':'每 Query、每搜尋路徑的輸出上限。'});
+if(config.retrieval.vectors.length)h+=embeddingRemoteOwner(config)?queryEncoderForm():'<div class="notice">Query Embedding（唯讀繼承）<br>'+esc(config.embedding.model)+' · '+config.embedding.dimension+' 維</div>';
+h+='<h4>有效流程摘要</h4><div class="notice plan-summary" id="resultPlanSummary">'+esc(planText(config))+'</div>'+resultProcessingForm()+inferenceParameterChoice('retrieval.filters_ref','查詢過濾參數','array','未綁定','可引用陣列參數。條件欄位須在 Indexing 開啟過濾，並與其他條件全部 AND。')+filterForm();
+}
+if(id==='rerank'){
+const p=resultPlan(config),off=config.rerank.mode==='None';
+h=serviceForm('rerank','Rerank API',{choices:['None','DEV test use','Rerank API']})+'<fieldset class="conditional" '+(off?'disabled':'')+'>'+rerankContentControl()+numberControl('rerank.top_n','評分後保留 Top N',{disabled:off,hint:'每份模型評分清單的上限，預設 3；不足時回可用數量。不要求小於其他階段的 Top N。'})+'<div class="notice">使用的提問：'+(p.scoringQuery==='original'?'原始問題（QueryContext.ori_query）':'各 Query 的問題（QueryContext.query）')+'<br>評分輸入：'+(coveredByRemote(config,'transform')||coveredByRemote(config,'retrieval')?'上游回傳的':p.rerankInputs.length+' 份')+' ResultSet，各自呼叫模型並排序。</div><details id="rerankAdvanced" '+(rerankAdvancedOpen?'open':'')+'><summary>進階評分設定</summary>'+choice('rerank.query_source','使用的提問',[{value:'original',label:'原始問題'},{value:'current',label:'各 Query 的問題',disabled:!p.queryAllowed}],{disabled:!p.queryAllowed,value:p.scoringQuery,hint:p.queryAllowed?'逐 Query 評分時才可選各自問題；原始問題始終保留。':'跨 Query 已合併，沒有唯一改寫問題；有效設定固定原始問題，草稿選擇保留。'})+rerankExtraFields()+'</details><p class="rule">API 必須評分整份輸入候選；平台再排序與取 Top N，避免服務內部截斷讓後續合併漏資料。</p><button class="btn" onclick="showRerankHelp()">查看 API 格式</button></fieldset>';
+if(off)h+='<p class="rule">略過模型評分；評分 Top N 不生效，已設定的後置合併仍會執行。</p>';
+h+='<div class="notice plan-summary">'+esc(planText(config))+'</div><button class="btn" onclick="showResultSettings()">調整合併與輸出上限</button>';
+}
+$('dynamicfields').innerHTML=h;valid();}
+let separatorsError='';
+$('dynamicfields').addEventListener('change',e=>{const el=e.target;if(el.disabled||el.closest?.('fieldset[disabled]'))return;if(el.dataset.component){chooseComponent(el.dataset.component,el.value);return;}if('rerankExtra' in el.dataset){config.rerank.content=el.checked?[...config.rerank.content,el.value]:config.rerank.content.filter(x=>x!==el.value);selectMod(selected);return;}if('rerankContent' in el.dataset){config.rerank.content=[el.value,...config.rerank.content.slice(1).filter(x=>x!==el.value)];selectMod(selected);return;}if(el.dataset.path){let v=el.type==='checkbox'?el.checked:el.type==='number'?Number(el.value):el.value;if(/^retrieval\.filters\.\d+\.operator$/.test(el.dataset.path)){const f=get(el.dataset.path.slice(0,-9));f.value=v==='in'?(f.value===''?[]:[f.value]):(Array.isArray(f.value)?f.value[0]??'':'');}put(el.dataset.path,v);if(el.dataset.path.endsWith('.llm_ref')){helperProposal=null;$('applySuggestion').disabled=true;}if(el.dataset.path.endsWith('.mode')&&v==='DEV test use'){const path=el.dataset.path.slice(0,-5);if(path==='embedding')Object.assign(config.embedding,{model:'bge-m3',dimension:1024,tokenizer:'BAAI/bge-m3',tokenizer_revision:'main',max_tokens:8192});if(path.startsWith('llms.'))get(path).model='demo-chat';if(path==='rerank')config.rerank.model='demo-reranker';}selectMod(selected);}else if(el.dataset.pick){let v=el.value;if(el.dataset.pick==='chunking.levels')v=Number(v);put(el.dataset.pick,el.checked?[...new Set([...get(el.dataset.pick),v])]:get(el.dataset.pick).filter(x=>x!==v));selectMod(selected);}else if('filterValues' in el.dataset){setFilterValues(Number(el.dataset.filterValues),el.value);valid();}else if('separators' in el.dataset){try{const a=JSON.parse(el.value);if(!Array.isArray(a)||!a.length||a.some(x=>typeof x!=='string')||a.at(-1)!=='')throw Error();config.chunking.separators=a;separatorsError='';}catch{separatorsError='分隔符必須是非空字串陣列 JSON，最後一項為空字串。';}valid();}});
+$('dynamicfields').addEventListener('input',e=>{const el=e.target;if('filterValues' in el.dataset){setFilterValues(Number(el.dataset.filterValues),el.value);valid();return;}if(el.dataset.path&&el.tagName==='TEXTAREA'){put(el.dataset.path,el.value);valid();}});
+$('systemName').addEventListener('input',()=>{if($('collectionDisplay'))$('collectionDisplay').value=collection();valid();});
+function removeRow(path,i){get(path).splice(i,1);selectMod(selected);}
+
+function addMapping(){let i=config.embedding.mappings.length;while(vectorNames().includes('vector_'+i))i++;config.embedding.mappings.push({source:embeddingInputs(config).find(f=>!fieldReason(f,'string'))?.name||'',output:'vector_'+i});selectMod(selected);}
+function variableButtons(path,vars){return '<div class="chips">'+vars.map(v=>`<button class="chip" data-template="${path}" data-variable="${esc(v)}">{{${esc(v)}}}</button>`).join('')+'</div>';}
+$('dynamicfields').addEventListener('click',e=>{if(e.target.dataset.template){const path=e.target.dataset.template;put(path,get(path)+'{{'+e.target.dataset.variable+'}}');selectMod(selected);}});
+function filterType(c,path){
+ if(['document_id','source_revision','data_id'].includes(path))return 'string';
+ if(path.startsWith('structdata.'))return embeddedFields(c).find(f=>f.name===path.slice(11))?.type;
+ return c.indexing.metadata_fields.find(field=>field.path===path)?.type;
+}
+function filterCandidates(c=config){return ['document_id','source_revision','data_id',...embeddedFields(c).filter(f=>scalarTypes.includes(f.type)).map(f=>'structdata.'+f.name),...c.indexing.metadata_fields.filter(f=>validMetadataPath(f.path)&&scalarTypes.includes(f.type)).map(f=>f.path)];}
+function filterErrors(c,rows,label='過濾條件'){
+ const e=[],add=t=>e.push('[Retrieval] '+label+'：'+t);
+ if(!Array.isArray(rows)){add('必須是條件陣列。');return e;}
+ rows.forEach((f,i)=>{
+  const n='第 '+(i+1)+' 筆 ';
+  if(!objectValue(f)){add(n+'必須是物件。');return;}
+  if(typeof f.field!=='string'||!c.indexing.filters.includes(f.field)||!filterCandidates(c).includes(f.field)){add(n+'欄位未在 Indexing 啟用過濾，或上游已失效。');return;}
+  const type=filterType(c,f.field),validValue=value=>matchesType(value,type)&&(type!=='string'||!!value.trim());
+  if(!['eq','in'].includes(f.operator)){add(n+'僅支援 eq／in。');return;}
+  if(f.operator==='eq'&&!validValue(f.value))add(n+'eq 需填寫 '+type+'。');
+  if(f.operator==='in'&&(!Array.isArray(f.value)||!f.value.length||f.value.some(x=>!validValue(x))||new Set(f.value).size!==f.value.length))add(n+'in 需填寫非空、唯一且型別為 '+type+' 的 JSON 陣列。');
+ });return e;
+}
+function setFilterValues(i,text){const row=config.retrieval.filters[i];if(row.operator==='eq'&&filterType(config,row.field)==='string'){row.value=text;return;}try{row.value=JSON.parse(text);}catch{row.value=text;}}
+function addFilter(){const available=config.indexing.filters.filter(f=>filterCandidates().includes(f));if(!available.length)return;config.retrieval.filters.push({field:available[0],operator:'eq',value:''});selectMod('retrieval');}
+function filterForm(){
+  const rows=config.retrieval.filters,available=config.indexing.filters.filter(f=>filterCandidates().includes(f));
+  let h='<h4>預設過濾條件（全部 AND）</h4><p class="rule">只可選 Indexing 已啟用的欄位。eq 為等於；in 為符合清單其中之一。值依 Indexing 宣告的型別檢查。</p>';
+  h+=rows.map((f,i)=>{const p='retrieval.filters.'+i;let v=f.operator==='in'?label('比對值（JSON 陣列）','<textarea class="control" rows="3" aria-label="比對值 JSON '+i+'" data-filter-values="'+i+'">'+esc(typeof f.value==='string'?f.value:JSON.stringify(f.value))+'</textarea>','例如：["manufacturing","quality"]'):label('比對值（'+filterType(config,f.field)+'）',`<input class="control" aria-label="比對值 ${i}" data-filter-values="${i}" value="${esc(typeof f.value==='string'?f.value:JSON.stringify(f.value))}">`);return '<fieldset><legend>條件 '+(i+1)+'</legend>'+select(p+'.field','過濾欄位',available)+select(p+'.operator','比對方式',['eq','in'])+v+'<button class="btn" onclick="removeRow(\'retrieval.filters\','+i+')">移除條件</button></fieldset>';}).join('');
+  h+='<button class="btn" onclick="addFilter()" '+(available.length?'':'disabled')+'>＋ 新增過濾條件</button>';
+  if(!available.length)h+='<p class="invalid">請先在 Indexing 選擇可過濾欄位。</p>';
+  return h+'<p class="rule">空清單代表不加業務過濾。API 的 filters 可附加條件，與此處及後端權限限制全部 AND；不覆蓋預設條件。改詞值只影響 Inference，不需重新 Ingestion。</p>';
+}
+function queryFilterState(c,text){try{const filters=text.trim()?JSON.parse(text):[];return {filters,errors:filterErrors(c,filters,'本次查詢 filters')};}catch{return {filters:[],errors:['[Retrieval] 本次查詢 filters 必須是有效 JSON 陣列。']};}}
+function queryFilterForm(){
+ const c=active.config,builtin=usesPlatformRetrieval(c);
+ return '<details><summary>'+(builtin?'本次查詢附加過濾（選填）':'本次 QueryContext.filters（選填）')+'</summary><label class="label" for="queryFilters">filters（JSON 條件陣列）</label><textarea class="control" id="queryFilters" rows="5">[]</textarea><p class="rule">可用欄位：'+esc(c.indexing.filters.join('、')||'尚未啟用')+'。'+(builtin?'條件格式可查看 API 說明；與系統預設及參數條件全部 AND。':'此欄位隨 QueryContext 傳給 Remote API。服務的自訂過濾參數可透過 parameters 傳入。')+'</p>'+(builtin?'<label class="label">系統預設條件（唯讀）</label>'+jsonPreview(c.retrieval.filters):'')+'</details><p class="invalid" id="queryFilterValidation" role="status"></p>';
+}
+$('operationBody').addEventListener('input',e=>{if(['question','queryParameters','queryFilters','queryMetadata'].includes(e.target.id))updateInferenceInput();});
+function filterExample(field,c=active?.config||config){const values={'document_id':'doc-example-1','source_revision':'v1','data_id':'doc-example-1:chunk-1','metadata.department':'設備工程','structdata.title':'設備保養規範','structdata.text':'設備每月需清潔散熱孔。'};const type=filterType(c,field);return type==='integer'||type==='number'?7:type==='boolean'?true:values[field]||'設備工程';}
+function queryCount(c){return c.transform.method==='None'?1:(c.transform.method==='Rewrite'?1:c.transform.count)+(c.transform.include_original?1:0);}
+function routeCount(c){return queryCount(c)*(c.retrieval.vectors.length+c.retrieval.fulltext.length);}
+function fusionErrors(c){
+  if(!nativeFusion(c))return [];
+  const r=c.retrieval,e=[];
+  if(!['Sum Score','RRF'].includes(r.fusion))return ['[Retrieval] 請選擇 Sum Score 或 RRF。'];
+  if(r.fusion==='Sum Score'){
+    const keys=[...(r.fulltext.length?['fulltext']:[]),...(r.vectors.length?['vector']:[])];
+    for(const key of keys)if(!Number.isFinite(r.score_weights?.[key])||r.score_weights[key]<0)e.push('[Retrieval] '+(key==='fulltext'?'全文':'向量')+'分數權重必須為 ≥ 0 的有限數值。');
+    if(!keys.some(key=>Number.isFinite(r.score_weights?.[key])&&r.score_weights[key]>0))e.push('[Retrieval] 至少一個使用中的分數權重需大於 0。');
+  }return e;
+}
+function serviceErrors(c,kind,name){if(c.mode==='DEV test use'||c.mode==='None')return [];const e=[];try{const u=new URL(c.url);if(!((kind==='MongoDB'?['mongodb:','mongodb+srv:']:['http:','https:']).includes(u.protocol))||!u.hostname||u.username||u.password||u.search||u.hash)throw Error();}catch{e.push('['+name+'] 請填入有效服務 URL，不含帳密、query 或 fragment。');}if(!['Elasticsearch','MongoDB'].includes(kind)&&!c.model.trim())e.push('['+name+'] Model ID 不可空白。');if(c.auth!=='None'&&!/^[a-z0-9][a-z0-9.-]*\/[A-Za-z0-9._-]+$/.test(c.secret_ref))e.push('['+name+'] 請設定 secret-name/key。');if(c.auth==='API Key'&&kind!=='Elasticsearch'&&!/^[A-Za-z0-9-]+$/.test(c.header))e.push('['+name+'] API Key Header 不合法。');if(!Number.isFinite(c.timeout)||c.timeout<=0)e.push('['+name+'] Timeout 必須大於 0。');return e;}
+function testService(path,kind){const errors=serviceErrors(get(path),kind,path);toast(errors.length?errors.join(' '):'設定格式檢查通過（模擬）；未連線、未驗證模型或憑證。');}
+function templateVars(t){return [...t.matchAll(/{{\s*([^{}]+?)\s*}}/g)].map(x=>x[1]);}
+
+function syncStored(c){c.indexing.stored=outputFields(c);}
+function validateBuiltin(c){syncStored(c);const e=[],add=(m,t)=>e.push('['+m+'] '+t),check=(a,b,m,t)=>a.forEach(v=>{if(!b.includes(v))add(m,t+'：'+v+' 不在上游，請修正。')}),cf=outputFields(c),vs=c.embedding.mappings.map(x=>x.output),unique=a=>new Set(a).size===a.length,ident=/^[A-Za-z_][A-Za-z0-9_]*$/;
+if(Object.hasOwn(c,'generation')||Object.hasOwn(c.parsing,'headings'))add('Config','舊 Generation／結構設定需明確遷移；不執行或靜默丟棄。');e.push(...schemaFieldErrors(c.import.fields,'Import'));e.push(...builtinParsingErrors(c));e.push(...taskErrors(c));if(taskDraftError)e.push(taskDraftError);if(!c.chunking.tasks){if(c.chunking.copy.includes(c.chunking.split))add('Chunking','同來源完整複製需在進階任務映射為 original_text 等不同名稱。');}if(c.chunking.method==='Header-aware'&&!c.chunking.levels.length)add('Chunking','Header-aware 需至少一個 Markdown 標題層級。');if(!['Fixed-size','Recursive','Header-aware'].includes(c.chunking.method))add('Chunking','不支援的切分方法。');if(!tokenizer(c).id.trim()||!tokenizer(c).revision.trim())add('Chunking',embeddingRemoteOwner(c)&&c.chunking.tokenizer_mode==='沿用 Embedding'?'Embedding 由 Remote API 執行，請自行指定 Tokenizer。':'Tokenizer ID／revision 不可空白。');
+if(!unique(vs)||vs.some(x=>!ident.test(x)))add('Embedding','向量名稱必須有效且唯一。');check(c.indexing.stored,cf,'Indexing','儲存欄位');check(c.indexing.vectors,usableVectorNames(c),'Indexing','向量索引');check(c.indexing.fulltext,c.indexing.stored,'Indexing','全文索引');check(c.indexing.filters,filterCandidates(c),'Indexing','過濾欄位');e.push(...filterErrors(c,c.retrieval.filters));e.push(...fusionErrors(c),...resultErrors(c));check(c.retrieval.vectors,c.indexing.vectors.filter(v=>usableVectorNames(c).includes(v)),'Retrieval','向量欄位');check(c.retrieval.fulltext,c.indexing.fulltext.filter(v=>fieldIsText(c,v)),'Retrieval','全文欄位');if(!c.retrieval.vectors.length&&!c.retrieval.fulltext.length)add('Retrieval','請選擇至少一個搜尋欄位。');
+if(c.embedding.mappings.length){e.push(...serviceErrors(c.embedding,'Embedding API','Embedding'));if(!c.embedding.tokenizer.trim()||!c.embedding.tokenizer_revision.trim())add('Embedding','Tokenizer 資訊不可空白。');if(!embeddingRemoteOwner(c)&&c.chunking.tokenizer_mode==='沿用 Embedding'&&c.chunking.size>=c.embedding.max_tokens)add('Chunking','Chunk Size 須小於模型上限，預留特殊 Token／前綴空間。');}
+if(c.indexing.backend==='Elasticsearch')e.push(...serviceErrors(c.indexing.es,'Elasticsearch','Indexing'));else if(c.indexing.persistence==='MongoDB'){e.push(...serviceErrors(c.indexing.mongo,'MongoDB','Indexing'));if(c.indexing.mongo.mode!=='DEV test use'&&!c.indexing.mongo.database.trim())add('Indexing','MongoDB Database 不可空白。');}
+if(!unique(c.llms.map(x=>x.id)))add('LLM Settings','服務 ID 不可重複。');if(!unique(c.llms.map(x=>x.name.trim()))||c.llms.some(x=>!x.name.trim()))add('LLM Settings','服務名稱必須非空且唯一。');for(const p of c.llms)e.push(...serviceErrors(p,'OpenAI-compatible API','LLM Settings / '+p.name));
+for(const [key,title] of (c.transform.method==='None'?[]:[['transform','Query Transformation']])){const profile=c.llms.find(p=>p.id===c[key].llm_ref);if(!profile)add(title,'LLM 選擇已失效，請重新選擇。');else if(serviceErrors(profile,'OpenAI-compatible API',title).length)add(title,'所選 LLM「'+profile.name+'」連線設定不完整，請至 LLM 服務設定修正。');}e.push(...rewriteErrors(c));
+if(c.rerank.mode!=='None'){e.push(...serviceErrors(c.rerank,'Rerank API','Rerank'));check(c.rerank.content,c.indexing.stored,'Rerank','內容欄位');if(!c.rerank.content.length)add('Rerank','請選擇 Rerank 內容。');}
+for(const [v,n,min,m] of [[c.chunking.size,'Chunk Size',1,'Chunking'],[c.chunking.overlap,'Overlap',0,'Chunking'],...(nativeFusion(c)&&c.retrieval.fusion==='RRF'?[[c.retrieval.rrf_k,'RRF k',1,'Retrieval']]:[]),...(c.transform.method==='Multi-query'?[[c.transform.count,'Query 數量',1,'Query Transformation']]:[]),...(c.embedding.mappings.length?[[c.embedding.dimension,'Dimension',1,'Embedding'],[c.embedding.max_tokens,'Embedding 上限',1,'Embedding'],[c.embedding.batch_size,'Batch Size',1,'Embedding']]:[])])if(!Number.isInteger(v)||v<min)add(m,n+' 必須是 ≥ '+min+' 的整數。');if(c.transform.method==='Multi-query'&&c.transform.count>32)add('Query Transformation','原型最多支援 32 個改寫問題。');if(c.chunking.overlap>=c.chunking.size)add('Chunking','Overlap 必須小於 Chunk Size。');return [...new Set(e)];}
+function effectiveBuiltin(raw){if(Object.hasOwn(raw,'generation')||Object.hasOwn(raw.parsing,'headings'))throw Error('舊 Config 需明確遷移');const c=clone(raw);syncStored(c);c.chunking.tasks=chunkTasks(raw);for(const key of ['preserve_original','split','output_field','copy'])delete c.chunking[key];if(c.chunking.method==='Fixed-size'){delete c.chunking.separators;delete c.chunking.keep_separator;}const used=new Set((raw.transform.method==='None'?[]:[raw.transform.llm_ref]));c.llms=c.llms.filter(x=>used.has(x.id));c.chunking.resolved_tokenizer=tokenizer(c);if(c.chunking.method!=='Header-aware')delete c.chunking.levels;if(c.chunking.tokenizer_mode==='沿用 Embedding'){delete c.chunking.tokenizer;delete c.chunking.tokenizer_revision;}if(c.indexing.backend==='Elasticsearch'){delete c.indexing.mongo;delete c.indexing.persistence;}else {delete c.indexing.es;if(c.indexing.persistence==='Memory')delete c.indexing.mongo;}if(c.transform.method==='None')c.transform={method:'None'};else if(c.transform.method==='Rewrite'){delete c.transform.count;delete c.transform.multi_prompt;}else delete c.transform.rewrite_prompt;if(c.rerank.mode==='None')c.rerank={mode:'None'};c.retrieval.processing=effectiveProcessing(raw);c.retrieval.output_mode=raw.indexing.backend==='Elasticsearch'?raw.retrieval.output_mode:'independent';if(c.rerank.mode!=='None')c.rerank.query_source=resultPlan(raw).scoringQuery;if(!nativeFusion(raw)){delete c.retrieval.fusion;delete c.retrieval.rrf_k;delete c.retrieval.score_weights;}else if(c.retrieval.fusion==='RRF')delete c.retrieval.score_weights;else if(c.retrieval.fusion==='Sum Score'){delete c.retrieval.rrf_k;if(!c.retrieval.fulltext.length)delete c.retrieval.score_weights.fulltext;if(!c.retrieval.vectors.length)delete c.retrieval.score_weights.vector;}c.retrieval.mode=mode(raw);if(!c.embedding.mappings.length)c.embedding={mappings:[],skipped:true};function clean(o){if(!o||typeof o!=='object')return;if(o.mode==='DEV test use'){delete o.url;delete o.auth;delete o.secret_ref;delete o.header;delete o.timeout;}else if(o.auth==='None'){delete o.secret_ref;delete o.header;}else if(o.auth!=='API Key')delete o.header;for(const v of Object.values(o))clean(v);}clean(c);return c;}
+function impact(old,c){const a=effectiveConfig(old),b=effectiveConfig(c);for(const x of [a,b])for(const key of ['transform'])if(x[key]?.llm_ref){const {name,...profile}=x.llms.find(p=>p.id===x[key].llm_ref)||{};x[key].resolved_llm=profile;}const changed=modules.filter(m=>JSON.stringify(a[m[0]])!==JSON.stringify(b[m[0]])).map(m=>m[0]);return {changed,ingestion:changed.some(x=>['import','parsing','chunking','embedding','indexing'].includes(x))};}
+function unitErrors(c,units){
+ const errors=[];
+ if(managedBy(c,'chunking')||remote(c,'chunking'))return errors;
+ units.forEach((unit,i)=>{
+  for(const task of chunkTasks(c)){
+   const text=unit.structdata[task.split_field];
+   if(typeof text!=='string'||!text.trim())errors.push('[Chunking] Unit '+(i+1)+' 的 structdata.'+task.split_field+' 需為非空文字。');
+   for(const field of task.copy_fields)if(!Object.hasOwn(unit.structdata,field.source_field))errors.push('[Chunking] Unit '+(i+1)+' 缺少欄位 '+field.source_field);
+  }
+ });return errors;
+}
+function valid(){const errors=validate(config);if(separatorsError&&!coveredByRemote(config,'chunking'))errors.push('[Chunking] '+separatorsError);$('validation').innerHTML=errors.length?errors.map((e,i)=>'<button class="validation-link" type="button" onclick="openValidationIssue('+i+')">'+esc(e)+'</button>').join(''):'設定檢查通過 · UI 模擬，未連接模型或資料庫。';$('validation').classList.toggle('error',!!errors.length);$('createButton').disabled=!!errors.length;const old=editId?systems.find(s=>s.id===editId):null,im=old?impact(old.config,config):null;$('changeImpact').textContent=old?(im.changed.length?(im.ingestion?(usesPlatformRetrieval(config)?'儲存影響：需重新 Ingestion；完成前暫停新版 Inference／Evaluation。':'儲存影響：System Document Schema／匯入設定已變更；Remote Retrieval 依更新後的 Schema 驗證候選。'):'儲存影響：僅 Inference 設定改變，不需重新 Ingestion；請重新評估。')+'\n變更模組：'+im.changed.join(', '):'尚未變更模組設定；改名不變更實體索引。'):(usesPlatformRetrieval(config)?'建立後請先執行 Ingestion。':'Remote Retrieval 可直接測試 Inference；回傳候選依此 System Document Schema 驗證。');
+const units=exampleDocument(config),samples=[['Ingestion 入口 · Document',exampleIngestion(config)]];
+for(const module of ingestionRemoteModules){
+ if(managedBy(config,module))continue;
+ if(remote(config,module))samples.push([remoteScope(config,module).map(moduleLabel).join(' → ')+'／Remote API 輸出 · Document[]（樣本）',remoteBoundary(config,module).response.output]);
+ else if(module==='parsing')samples.push(['Parsing 輸出 · Document[]（樣本）',units]);
+ else if(module==='chunking'){
+  let chunks=[];
+  try{chunks=previewChunks(config,units,{embed:false});}catch(error){chunks=[{error:error.message}];}
+  samples.push(['Chunking 輸出 · Document[]（樣本）',chunks]);
+ }
+}
+samples.push(['Inference 節點共用 · QueryContext[]（入口範例）',exampleQueryContexts(config,'transform')]);
+$('contractPreview').textContent=samples.map(([title,data])=>title+'\n'+JSON.stringify(data,null,2)).join('\n\n');
+if($('rewritePreview'))$('rewritePreview').textContent=rewritePreview();return !errors.length;}
+function createSystem(){if(!valid())return;const name=$('systemName').value.trim();if(!name){$('systemName').focus();toast('請填 Retrieval System 名稱。');return;}const g=editId?systems.find(s=>s.id===editId).group:group;if(systems.some(s=>s.group===g&&s.id!==editId&&s.name===name)){toast('此 Workspace 已有同名系統。');return;}if(editId){const s=systems.find(s=>s.id===editId),im=impact(s.config,config);s.name=name;s.config=clone(config);s.revision++;if(im.ingestion){s.needsIngest=true;s.result='設定已變更，需重新 Ingestion。';}if(im.changed.length){s.retrievalResult=null;s.qa='';}toast(im.ingestion&&usesPlatformRetrieval(config)?'已儲存；請重新 Ingestion。':'設定已儲存。');}else{systems.push({id:draftId,group,name,docs:0,config:clone(config),collection:collection(),revision:1,needsIngest:true,files:[],qa:'',retrievalResult:null,result:''});toast('Retrieval System 已建立（模擬）。');}if(pendingCSV){const target=editId?systems.find(s=>s.id===editId):systems.at(-1);target.pendingCSV=clone(pendingCSV);}else if(editId)delete systems.find(s=>s.id===editId).pendingCSV;$('createDialog').close();render();}
+function demoCase(n){config=defaults();resetHelper();if(n===1){config.indexing.fulltext=[];selectMod('retrieval');}if(n===2){config=exampleConfig();config.transform.method='Rewrite';selectMod('transform');}if(n===3){config.indexing.backend='Local Search';selectMod('indexing');}if(n===4){config.rerank.top_n=0;selectMod('rerank');}if(n===5){config.transform.method='Multi-query';selectMod('retrieval');}if(n===6){config.indexing.backend='Local Search';config.transform.method='Multi-query';config.retrieval.processing.same_query.at='after_rerank';config.retrieval.processing.cross_query.at='after_rerank';config.rerank.query_source='current';resultAdvancedOpen=true;selectMod('retrieval');}if(n===7){config.retrieval.processing.merge_key='document_id';config.retrieval.processing.document_at='after_rerank';resultAdvancedOpen=true;selectMod('retrieval');}}
+function substitute(t,values){return t.replace(/{{\s*([^{}]+?)\s*}}/g,(_,k)=>Object.hasOwn(values,k)?String(values[k]):'[未定義：'+k+']');}
+
+
+function help(title,html){$('helpTitle').textContent=title;$('helpBody').innerHTML=html;$('helpDialog').showModal();}
+
+
+function showRerankHelp(){help('內建 Rerank 方法 · 模型服務契約','<p>POST {Base URL}/rerank。每個 documents 字串對應一筆候選 data。</p><pre class="preview">'+esc(JSON.stringify({model:'reranker-a',query:'原始問題',documents:['候選內容 A','候選內容 B'],top_n:2},null,2))+'</pre><p>回應 results 中的 index 為輸入 documents 的 0-based 序號，score 越大越相關（輸入 documents 有兩筆，因此送 top_n=2 要求完整評分；UI 的輸出 Top N 由平台評分後處理）：</p><pre class="preview">'+esc(JSON.stringify({results:[{index:1,score:0.92},{index:0,score:0.61}]},null,2))+'</pre><p>內建方法的節點 I/O 使用 QueryContext[]，此處說明其呼叫模型的 API。平台驗證 index 唯一且在範圍內、score 有限，並對回 data_id，且 results 必須覆蓋所有輸入候選。服務無法回傳完整分數時視為不相容，不悄悄截斷；自訂排序邏輯可在上方將整個節點切換為 Remote API，沿用 QueryContext[] 契約。</p>');}
+function runtimeApiSample(s,type){
+  if(type==='ingest'){
+    const parsed=remote(s.config,'parsing')?remoteBoundary(s.config,'parsing').response.output:exampleDocument(s.config);
+    return {method:'POST',path:'/v1/ingestions',request:exampleIngestionRequest(s.config),parsed,response:{run_id:'ing-example-1',status:'queued',config_revision:s.revision},status:{run_id:'ing-example-1',status:'completed',config_revision:s.revision,processed_documents:1,total_documents:1,errors:[]}};
+  }
+  const request=inferenceRequestExample(s.config),effective=resolveInference(s.config,request.parameters||{});
+  return {method:'POST',path:'/v1/queries',request,response:inferenceRemoteModules.some(module=>remote(s.config,module))?exampleInferenceResponse(s.config,request.query,[...request.filters,...effective.filters],request.metadata):mockRetrieval(s.config,request.query,[...request.filters,...effective.filters],request.metadata,effective.topK)};
+}
+
+function apiEntry(type){
+  const path=type==='ingest'?'/v1/ingestions':'/v1/queries';
+  return '<div class="api-entry"><code>POST '+path+'</code><button class="btn" data-api-help="'+type+'" onclick="showOperationApi(\''+type+'\')">查看 API 端點</button></div>';
+}
+function showOperationApi(type){
+  if(!active||!['ingest','inference'].includes(type))return;
+  const s=active,a=runtimeApiSample(s,type),isIngest=type==='ingest';
+  const block=(title,value)=>'<h4>'+esc(title)+'</h4><pre class="preview">'+esc(typeof value==='string'?value:JSON.stringify(value,null,2))+'</pre>';
+  const base='https://runtime.example';
+  const headers=['Authorization: Bearer <RUNTIME_TOKEN>','Content-Type: application/json'];
+  const curl=['curl -X POST \''+base+a.path+'\' \\',"  -H 'Authorization: Bearer <RUNTIME_TOKEN>' \\","  -H 'Content-Type: application/json' \\",'  --data-binary @'+(isIngest?'document.json':'query.json')].join('\n');
+  let h='<div class="notice">Runtime API 契約提案：本 Prototype 尚未提供可呼叫的端點。以下 URL、Token、ID、資料及回應均為範例。</div>';
+  h+='<p><strong>Retrieval System：</strong>'+esc(s.name)+' · Config v'+s.revision+'</p>';
+  h+='<p>Retrieval Builder 測試時使用平台提供、綁定此 System 的 Sandbox Base URL；自行部署時使用自己的 Runtime Base URL。兩種情境共用下列相對路徑。</p>';
+  h+=block('API 端點',a.method+' {BASE_URL}'+a.path)+block('Headers（Bearer 認證示例）',headers.join('\n'));
+  h+='<p class="rule">BASE_URL 範例：'+base+'。認證依部署 Gateway 設定；RUNTIME_TOKEN 是呼叫 Retrieval Runtime 的憑證，與 LLM／DB Secret 分開。此 Runtime 已綁定 Config，不在請求中另外指定 System ID。</p>';
+  h+=block('JSON Request · '+(isIngest?'document.json':'query.json'),a.request);
+  h+='<p class="rule">'+(isIngest?'documents 可包含多筆 Document。Runtime 在 Parser 前拆成逐文件工作，每筆共用 parameters。':'query 是使用者的原始問題；Rewrite／Retrieval／Rerank 由此 System 的 Config 決定。')+'</p>';
+  if(isIngest){h+='<p class="rule">document_id 是文件的穩定識別。source_revision 是來源版本；Config Revision 是設定版本。入口依目前的 Document Schema 驗證。</p>'+block('Parsing／Remote API 輸出（示例 Document[]）',a.parsed);if(s.config.import.parameters.length)h+=block('匯入 parameters JSON Schema',importParameterSchema(s.config));}else{h+=usesPlatformRetrieval(s.config)?'<p class="rule">filters 可省略或為 []。僅接受 Indexing 已啟用的欄位，eq／in 的值須符合索引型別。參數條件、附加 filters、系統預設及後端權限全部 AND。</p>'+block('系統預設 filters（與本次請求全部 AND）',s.config.retrieval.filters):'<p class="rule">filters 是 QueryContext 的共用欄位，可省略或為 []。Remote API 的服務參數依 parameters JSON 設定傳送。</p>';if(s.config.inference_input.parameters.length)h+=block('parameters JSON Schema',inferenceParameterSchema(s.config));}
+  h+=block('cURL · 先將上述 JSON 存成檔案',curl);
+  if(isIngest){
+    if(a.request.documents[0].content){
+      h+=block('Base64 來源（內容為示意）',{...a.request,documents:[{...a.request.documents[0],content:{base64:'SGVsbG8=',media_type:a.request.documents[0].content.media_type}}]});
+      h+='<p class="rule">Engine 接受 JSON。content.uri 與 content.base64 二選一；此原型僅顯示來源契約。</p>';
+    }
+    h+=block('202 Accepted · 已接收，尚未完成 Ingestion',a.response);
+    h+=block('查詢匯入進度',['GET {BASE_URL}/v1/ingestions/{run_id}','Authorization: Bearer <RUNTIME_TOKEN>'].join('\n'));
+    h+=block('200 OK · 完成狀態範例',a.status);
+    h+='<p class="rule">使用回傳的 run_id 查詢 queued／running／completed／failed。使用平台 Retrieval 時，需先讓目前配置的資料與索引就緒。Remote Retrieval 可直接搜尋自有資料。</p>';
+  }else{
+    h+=block('200 OK · QueryContext[]／ResultSets（示意）',a.response);
+    if(inferenceRemoteModules.some(module=>remote(s.config,module)))h+='<p class="rule">上述回應為固定契約範例。Remote API 依替換範圍執行，ResultItem.data 由 System Document Schema 驗證。Remote 搜尋自有資料時，平台 Ingestion 狀態不作為前置條件。</p>';
+    h+='<p class="rule">Response body 直接是 QueryContext[]；包含 filters、metadata 與目前有效的 result_sets。ResultItem 使用 data 與選填 score，items 順序就是排名，RRF 使用位置。request_id／Config Revision 置於回應 Headers／Logs（提案），不塞進資料物件；不保留歷史結果。</p>';
+  }
+  h+='<h4>常見狀態與錯誤</h4><table class="simple"><tr><th>HTTP</th><th>說明</th></tr><tr><td>400</td><td>請求格式或必要欄位不正確</td></tr><tr><td>401／403</td><td>認證或操作權限不足</td></tr>'+ (isIngest?'<tr><td>404</td><td>找不到此 run_id 的匯入紀錄</td></tr>':'<tr><td>409</td><td>目前配置的索引尚未就緒或需重新 Ingestion</td></tr>')+'<tr><td>503</td><td>必要外部服務不可用</td></tr></table>';
+  h+=block('結構化錯誤範例',{request_id:'req-example-error',code:isIngest?'INVALID_REQUEST':'INDEX_NOT_READY',module:isIngest?'Import':'Retrieval',message:isIngest?'請提供 document_id 與入口契約要求的 structdata 或 content。':'請先完成目前配置的 Ingestion。'});
+  h+='<p class="rule">上述錯誤範例分別對應 '+(isIngest?'400':'409')+'；Prototype 的操作按鈕只執行本機模擬，不送出 HTTP 請求。</p>';
+  help((isIngest?'Ingestion':'Inference')+' API 端點與範例',h);
+}
+
+function openOperation(id,type){active=systems.find(s=>s.id===id);ingestReadToken++;const ready=inferenceReady(active);$('operationTitle').textContent={ingest:'Ingest',inference:'Inference',evaluation:'Evaluation'}[type];$('operationSystem').textContent=groups[active.group]+' / '+active.name;const note='<p class="rule">UI 模擬：不會上傳資料、呼叫服務或執行真實評估。</p>';let h='';if(type==='ingest'){resetIngest();h=ingestionForm();}
+if(type==='inference')h=`<div class="twocol"><div><label class="label">問題</label><textarea class="control" id="question" rows="5"></textarea>${inferenceParametersForm(active.config)}<p><button class="btn primary" id="inferenceRun" onclick="runInference()" ${ready?'':'disabled'}>Run Inference</button></p>${ready?'':'<p class="invalid">請先完成目前設定的 Ingestion。</p>'}${queryFilterForm()}<details><summary>本次 Query metadata（選填）</summary><textarea class="control" id="queryMetadata" aria-label="Query metadata JSON" rows="4">{}</textarea><p class="rule">JSON object，預設 {}；Rewrite 複製，不授予權限或覆寫 Config。</p></details>${apiEntry('inference')}${note}</div><div><details open><summary>有效執行參數</summary><pre class="preview" id="effectiveInferenceInput"></pre></details><p class="rule" id="inferencePlan">固定示意資料；未搜尋／融合／評分，分數非品質證據。</p><div class="result" id="opResult">${esc(active.retrievalResult?JSON.stringify(active.retrievalResult,null,2):'尚未執行 Inference。')}</div></div></div>`;
+if(type==='evaluation')h=`<div class="twocol"><div><label class="label">QA Dataset</label><input id="qaFile" type="file" accept=".csv,.json,.jsonl"><p class="rule">query、relevant_document_ids 或 relevant_data_ids；不需要參考答案。</p><p><button class="btn primary" onclick="runEvaluation()" ${ready?'':'disabled'}>Run Evaluation</button></p>${ready?'':'<p class="invalid">請先完成目前設定的 Ingestion。</p>'}${note}</div><div><div class="result" id="opResult">${esc(active.qa||'尚未執行 Evaluation。')}</div><button class="btn" style="margin-top:12px" onclick="$('operationDialog').close();openEdit(active.id)">調整 Config</button></div></div>`;
+$('operationBody').innerHTML=h;$('operationDialog').showModal();if(type==='inference')updateInferenceInput();if(type==='ingest'&&active.pendingCSV){ingestData={kind:'csv',name:active.pendingCSV.name,...clone(active.pendingCSV.data)};renderIngestMapping();updateIngestPreview();}}
+function finishIngest(files){if(active.needsIngest){active.files=[];active.docs=0;}active.files.push(...files);active.docs+=files.length;active.needsIngest=false;active.retrievalResult=null;active.qa='';active.result='Ingestion 完成（模擬）\n'+files.join('\n')+'\nImport → Parsing → Chunking → Embedding → Indexing\n本機模擬，未連線服務。';$('opResult').textContent=active.result;render();}
+let ingestData=null,ingestMapping={},ingestBatch='',ingestState=null,ingestReadToken=0;
+function ingestionForm(){return '<div class="twocol"><div><label class="label" for="documents">上傳測試資料 · CSV／JSON（≤ 1 MB）</label><input id="documents" type="file" accept=".csv,.json" onchange="readIngestFile()"><p class="rule">CSV 每列是一份文件；JSON 可使用批次 Request 或單筆 Document。檔案只在瀏覽器讀取。</p>'+ingestParametersForm(active.config)+'<div id="ingestMapping"></div><p class="invalid" id="ingestValidation" role="status"></p><p><button class="btn primary" id="ingestRun" disabled onclick="runIngest()">Run Ingestion（模擬）</button></p>'+apiEntry('ingest')+'<p><button class="btn" onclick="ingestDemoRecords()">模擬 JSON API 匯入 1 筆</button></p><p class="rule">映射可隨成功的模擬匯入保存至此 System。未提供 source_revision 時使用展示值 auto-v1，正式生成政策尚未定案。自動 ID 在本次上傳內固定；跨批更新相同文件請映射穩定 ID。</p></div><div><h4>API Payload 預覽</h4><pre class="preview" id="ingestPayload">選擇 CSV／JSON 後顯示。</pre><details><summary>解析／直接傳遞預覽 · Document[]</summary><pre class="preview" id="ingestParsed"></pre></details>'+(ingestionRemoteModules.some(module=>remote(active.config,module))?'<details open><summary>Remote API 參數傳遞預覽</summary><pre class="preview" id="ingestRemoteCalls"></pre></details>':'')+'<div class="result" id="opResult">'+esc(active.result||'尚未執行 Ingestion。')+'</div></div></div>';}
+function resetIngest(){ingestReadToken++;ingestData=null;ingestState=null;ingestBatch='csv-'+crypto.randomUUID().slice(0,8);ingestMapping=clone(active.config.import.csv_mapping||{});}
+async function readIngestFile(){const token=++ingestReadToken,id=active.id,f=$('documents').files[0];ingestData=null;ingestState=null;$('ingestRun').disabled=true;$('ingestMapping').innerHTML='';$('ingestPayload').textContent='讀取資料中…';$('ingestParsed').textContent='';$('ingestValidation').textContent='';$('ingestValidation').className='invalid';if(!f){$('ingestPayload').textContent='請選擇檔案。';return;}try{if(f.size>1024*1024)throw Error('測試檔案上限 1 MB。');const text=(await f.text()).replace(/^\uFEFF/,'');if(token!==ingestReadToken||active.id!==id)return;const ext=f.name.split('.').at(-1).toLowerCase();if(ext==='csv')ingestData={kind:'csv',name:f.name,...parseCSV(text)};else if(ext==='json'){const obj=JSON.parse(text);if(!objectValue(obj))throw Error('JSON 檔案需為批次 Request 或單筆 Document。');const batch=Object.hasOwn(obj,'documents');const {documents,parameters={},...rest}=obj;if(!objectValue(parameters)||batch&&(!Array.isArray(documents)||Object.keys(rest).length))throw Error('批次 Request 需包含 documents 陣列及選填 parameters 物件。');ingestData={kind:'json',name:f.name,records:batch?documents:[rest],parameters};}else throw Error('本版測試只支援 CSV／JSON。');renderIngestMapping();updateIngestPreview();}catch(e){if(token!==ingestReadToken||active.id!==id)return;$('ingestValidation').textContent='[Import] '+e.message;$('ingestPayload').textContent='資料未載入。';}}
+function renderIngestMapping(){if(!ingestData)return;let h='';if(ingestData.kind==='csv'){
+  h='<h4>CSV column → API JSON</h4><p class="rule">目標欄位來自 Ingestion 入口與已選的 Metadata 路徑；未選取的 column 不送出。可把同一 column 映射到多個目標。</p>';
+  h+=mappingTargets(active.config).map(t=>{const value=ingestMapping[t.path]||'',auto=t.path==='document_id'||t.path==='source_revision';return '<label class="label">'+esc(t.path)+(t.required?' · 必填':'')+' · '+t.type+'</label><select class="control" aria-label="映射 '+esc(t.path)+'" data-csv-target="'+esc(t.path)+'"><option value="">'+(auto?'自動產生':t.default_json.trim()?'使用預設值':'不提供')+'</option>'+[...new Set([...ingestData.headers,...(value?[value]:[])])].map(col=>'<option value="'+esc(col)+'" '+(col===value?'selected':'')+'>'+esc(col)+(ingestData.headers.includes(col)?'':'（已失效）')+'</option>').join('')+'</select>';}).join('');
+  h+='<p class="rule">number 為有效數值，boolean 使用 true／false。Parser 產生的欄位在輸出設定宣告。</p>';
+}else h='<div class="notice">JSON 依入口 Document Schema 驗證 structdata、content 與 metadata。</div>';
+$('ingestMapping').innerHTML=h;}
+function renderIngestRequestPreview(state){
+const documents=state.request?.documents||[];
+ $('ingestPayload').textContent=documents.length?'POST /v1/ingestions\n'+JSON.stringify({...state.request,documents:documents.slice(0,3)},null,2)+(documents.length>3?'\n（僅預覽前 3 筆，共 '+documents.length+' 筆）':''):'尚無可預覽的 Request。';
+ $('ingestParsed').textContent=JSON.stringify(state.parsed.slice(0,3),null,2);
+ if($('ingestRemoteCalls'))$('ingestRemoteCalls').textContent=JSON.stringify((state.remoteCalls||[]).slice(0,3),null,2);
+}
+function updateIngestPreview(){
+ if(!ingestData)return;
+ const c=active.config,provided=readIngestParameters(),invalid=[...validate(c),...provided.errors];
+ ingestState=invalid.length?{records:[],parsed:[],errors:invalid}:ingestData.kind==='csv'?csvPayload(c,ingestData,ingestMapping,ingestBatch,provided.value):validateRecords(c,ingestData.records,[],{...ingestData.parameters,...provided.value});
+ renderIngestRequestPreview(ingestState);
+ $('ingestValidation').textContent=ingestState.errors.length?ingestState.errors.slice(0,12).join('\n')+(ingestState.errors.length>12?'\n另有 '+(ingestState.errors.length-12)+' 個錯誤。':''):'入口 Document 與匯入參數檢查通過，共 '+ingestState.records.length+' 筆；未執行真實 Pipeline。';
+ $('ingestValidation').className=ingestState.errors.length?'invalid':'rule';$('ingestRun').disabled=!!ingestState.errors.length||!ingestState.records.length;
+}
+$('operationBody').addEventListener('change',e=>{if(e.target.dataset.csvTarget){ingestMapping[e.target.dataset.csvTarget]=e.target.value;updateIngestPreview();}});
+$('operationBody').addEventListener('input',e=>{if(e.target.id==='ingestParameters')updateIngestPreview();});
+function runIngest(){if(!ingestData)return;updateIngestPreview();if(!ingestState||ingestState.errors.length)return;if(ingestState.external){$('opResult').textContent='入口契約驗證通過。待解析來源或 Remote API 需要服務執行；此原型只驗證契約。';return;}const count=ingestState.records.length;if(ingestData.kind==='csv'){const saved=Object.fromEntries(Object.entries(ingestMapping).filter(([,column])=>column));if(JSON.stringify(saved)!==JSON.stringify(active.config.import.csv_mapping)){active.config.import.csv_mapping=clone(saved);active.revision=(active.revision||1)+1;}}finishIngest(Array.from({length:count},(_,i)=>ingestData.name+' · row '+(i+1)));active.result='Ingestion 完成（模擬）\n'+count+' documents · '+ingestData.name+'\n已在瀏覽器完成欄位映射、型別及必填檢查。\n未送出 HTTP、未執行模型／索引。';$('opResult').textContent=active.result;}
+function ingestDemoRecords(){
+ const a=runtimeApiSample(active,'ingest'),provided=readIngestParameters();
+ if(provided.errors.length){$('opResult').textContent=provided.errors.join('\n');return;}
+ const state=validateRecords(active.config,a.request.documents,[],{...a.request.parameters,...provided.value});renderIngestRequestPreview(state);
+ if(state.errors.length){$('opResult').textContent=state.errors.join('\n');return;}
+ if(state.external){$('opResult').textContent='入口契約驗證通過 · 此原型只展示 Remote API 契約與參數傳遞。';return;}
+ finishIngest(['API 範例記錄']);
+}
+function runInference(){
+ if(!inferenceReady(active))return;
+ const issues=validate(active.config),state=inferenceInputState();
+ if(issues.length||state.errors.length){$('opResult').textContent=[...issues,...state.errors].join('\n');return;}
+ const q=$('question').value.trim();if(!q){$('opResult').textContent='請輸入問題。';return;}
+ if(inferenceRemoteModules.some(module=>remote(active.config,module))){
+  active.retrievalResult=null;
+  $('opResult').textContent=JSON.stringify({mode:'contract_preview',input:initialQueryContexts(active.config,q,state.filters,state.metadata),remote_apis:inferenceRemotePlan(active.config,state.parameters)},null,2);
+  $('inferencePlan').textContent='Remote API 執行流程預覽。實際 HTTP 呼叫與下游結果由 Runtime 執行；可在 Edit Config 驗證範例 Response。';return;
+ }
+ active.retrievalResult=mockRetrieval(active.config,q,state.filters,state.metadata,state.topK);
+ $('opResult').textContent=JSON.stringify(active.retrievalResult,null,2);$('inferencePlan').textContent='固定示意資料；未搜尋／融合／評分。'+planText(active.config,state.topK);
+}
+function runEvaluation(){if(!inferenceReady(active))return;const f=$('qaFile').files[0];if(!f){$('opResult').textContent='請選擇檢索 Dataset。';return;}active.qa='Evaluation（模擬）\nDataset：'+f.name+'\nRecall@K／MRR／Latency／Usage／Error Rate：未量測\n未讀取評估內容、未執行真實搜尋／評估，不提供假品質分數。';$('opResult').textContent=active.qa;}
+function toggleHelper(){$('helperPanel').hidden=!$('helperPanel').hidden;}
+function csvRows(text){let rows=[],row=[],value='',quoted=false;for(let i=0;i<text.length;i++){const ch=text[i];if(ch==='"'){if(quoted&&text[i+1]==='"'){value+='"';i++;}else quoted=!quoted;}else if(!quoted&&(ch===','||ch==='\n')){row.push(value.replace(/\r$/,''));value='';if(ch==='\n'){rows.push(row);row=[];}}else value+=ch;}if(quoted)throw Error('CSV 引號未閉合');if(value||row.length){row.push(value.replace(/\r$/,''));rows.push(row);}return rows;}
+function diffs(a,b,path=''){const rows=[];for(const k of new Set([...Object.keys(a||{}),...Object.keys(b||{})])){const x=a?.[k],y=b?.[k],p=path?path+'.'+k:k;if(JSON.stringify(x)===JSON.stringify(y))continue;if(x&&y&&typeof x==='object'&&typeof y==='object'&&!Array.isArray(x)&&!Array.isArray(y))rows.push(...diffs(x,y,p));else rows.push({path:p,before:x,after:y});}return rows;}
+async function readSample(){const token=++sampleReadToken,f=$('helperSample').files[0];sample=null;helperProposal=null;$('applySuggestion').disabled=true;if(!f)return;try{if(f.size>1024*1024)throw Error('樣本上限 1 MB');const ext=f.name.split('.').at(-1).toLowerCase();if(!['json','csv','txt','md'].includes(ext))throw Error('模擬版僅讀取 JSON／CSV／TXT／MD；Excel／PDF／PPTX 尚未解析');const text=(await f.text()).replace(/^\uFEFF/,'');if(token!==sampleReadToken)return;let keys=[],data=null,first=null,metadata={};
+if(ext==='csv'){data=parseCSV(text);keys=data.headers;first=Object.fromEntries(keys.map((k,i)=>[k,data.rows[0][i]]));}
+else if(ext==='json'){const obj=JSON.parse(text);first=Array.isArray(obj)?obj[0]:Array.isArray(obj.records)?obj.records[0]:obj;if(!first||typeof first!=='object'||Array.isArray(first))throw Error('需 JSON 物件或物件陣列');metadata=first.metadata||{};if(first.document_id&&Object.hasOwn(first,'structdata'))first=first.structdata;else if(first.document_id&&first.content)throw Error('檔案來源請在 Ingestion 入口與 Parsing 設定；此助手只讀取平面欄位。');if(!first||typeof first!=='object'||Array.isArray(first))throw Error('structdata 必須是內容物件');keys=Object.keys(first).filter(k=>typeof first[k]==='string');}else {keys=['body'];first={body:text};}
+if(!keys.length)throw Error('沒有可用文字欄位');sample={name:f.name,keys,data,first,metadata};$('helperChat').textContent='已在瀏覽器讀取樣本欄位（未上傳）：'+keys.join(', ')+'。\n將建議 Ingestion 入口欄位、CSV 映射與 Pipeline；請確認後套用。';}catch(e){if(token===sampleReadToken)$('helperChat').textContent='樣本未載入：'+e.message;}}
+function propose(){helperProposal=null;$('applySuggestion').disabled=true;const request=$('helperRequest').value.trim(),draft=clone(config);if(!request&&!sample){$('helperChat').textContent='請描述需求或上傳樣本。';return;}const actions=[];
+if(sample){const keys=sample.keys,lookup=aliases=>keys.find(k=>aliases.includes(k.toLowerCase()));const body=lookup(['body','text','content','原文','內容']),summary=lookup(['summary','abstract','摘要']),title=lookup(['title','name','標題']);if(!body){$('helperChat').textContent='無法確定主要文字欄位。示例支援 body／text／content／原文／內容；請先在 Import 定義欄位，再於 Ingest 手動映射。';return;}
+const mapping={},fields=[schemaField('text','string',true)],meta=[];mapping['structdata.text']=body;if(summary){fields.push(schemaField('summary','string',true));mapping['structdata.summary']=summary;}if(title){fields.push(schemaField('title','string',true));mapping['structdata.title']=title;}
+for(const name of ['department','category','language','chunking_mode']){const col=lookup([name]);if(col||Object.hasOwn(sample.metadata||{},name)){meta.push(schemaField(name));if(col)mapping['metadata.'+name]=col;}}
+const id=lookup(['document_id','id','文件編號']),revision=lookup(['source_revision','version','版本']);if(id)mapping.document_id=id;if(revision)mapping.source_revision=revision;
+draft.import.fields=fields;draft.import.source='structdata';draft.indexing.metadata_fields=meta.map(f=>({path:'metadata.'+f.name,type:f.type}));draft.import.csv_mapping=mapping;draft.chunking.split='text';draft.chunking.output_field='text';draft.chunking.copy=fields.map(x=>x.name).filter(n=>n!=='text');draft.embedding.mappings=[{source:'text',output:'text'},...(summary?[{source:'summary',output:'summary_vector'}]:[])];draft.indexing.stored=fields.map(x=>x.name);draft.indexing.vectors=draft.embedding.mappings.map(x=>x.output);draft.indexing.fulltext=['text'];draft.indexing.filters=meta.map(x=>'metadata.'+x.name);draft.retrieval.filters=[];draft.retrieval.vectors=[...draft.indexing.vectors];draft.retrieval.fulltext=['text'];draft.rerank.content=['text'];actions.push('依樣本建議 Ingestion 入口欄位、CSV 欄位映射、Chunking、Embedding 與搜尋欄位；未辨識 columns 暫不映射');}
+if(/local|faiss/i.test(request)){draft.indexing.backend='Local Search';actions.push('改用 Local Search');}if(/mongo/i.test(request)){draft.indexing.backend='Local Search';draft.indexing.persistence='MongoDB';actions.push('MongoDB 使用平台 DEV 測試資源');}if(/memory|記憶體/i.test(request)){draft.indexing.backend='Local Search';draft.indexing.persistence='Memory';actions.push('使用記憶體保存');}if(/摘要.*不.*切/.test(request)&&parsedFields(draft).some(x=>x.name==='summary')){draft.chunking.split='text';draft.chunking.copy=[...new Set([...draft.chunking.copy.filter(x=>x!=='text'),'summary'])];actions.push('原文切分、文件摘要複製');}if(/只.*原文/.test(request)){draft.retrieval.vectors=draft.indexing.vectors.includes('text')?['text']:[];draft.retrieval.fulltext=draft.indexing.fulltext.includes('text')?['text']:[];actions.push('只搜尋原文');}if(/multi|多.*query|多.*問題/i.test(request)){draft.transform.method='Multi-query';draft.transform.include_original=true;actions.push('啟用 Multi-query 並保留原始問題');}
+if(/欄位組合|組合.*文字|embedding_text/.test(request)){if(!remote(draft,'parsing')&&!remote(draft,'chunking')){const hasTitle=parsedFields(draft).some(f=>f.name==='title'&&f.type==='string');if(hasTitle&&!draft.chunking.tasks)draft.chunking.copy=[...new Set([...draft.chunking.copy,'title'])];draft.embedding.composition={enabled:true,output_field:'embedding_text',template:(hasTitle?'標題：{{structdata.title}}\n':'')+'內容：{{structdata.text}}'};draft.embedding.mappings[0]={source:'embedding_text',output:draft.embedding.mappings[0]?.output||'text'};actions.push('啟用內建 Embedding 的欄位模板組合並更新映射');}}
+if(/原文.*[Cc]hunk|[Cc]hunk.*原文/.test(request)){draft.chunking.include_original_chunk=true;actions.push('額外保留每 Unit／任務的原文 Chunk，完整相同片段不重複新增');}
+if(!actions.length){$('helperChat').textContent='模擬助手尚不支援此描述。可試「改用 Local Search」「使用 MongoDB」「摘要不要切分」「只用原文搜尋」或上傳欄位樣本。';return;}
+const errors=validate(draft),changes=diffs(config,draft);helperProposal={base:JSON.stringify(config),draft,sample:sample?clone(sample):null};$('helperChat').textContent='模擬建議：'+actions.join('；')+'。\n未呼叫 LLM，未執行 Ingestion。';$('helperChanges').textContent=(changes.length?changes.map(x=>x.path+'\n  '+JSON.stringify(x.before)+' → '+JSON.stringify(x.after)).join('\n\n'):'目前設定已符合建議。')+(errors.length?'\n\n尚未通過驗證：\n'+errors.join('\n'):'\n\n設定驗證通過，可套用到草稿。');$('applySuggestion').disabled=!!errors.length||!changes.length;}
+function applySuggestion(){if(!helperProposal)return;if(JSON.stringify(config)!==helperProposal.base){$('helperChanges').textContent='草稿已變更，請重新產生建議後再套用。';$('applySuggestion').disabled=true;return;}if(validate(helperProposal.draft).length)return;config=clone(helperProposal.draft);pendingCSV=helperProposal.sample?.data?clone(helperProposal.sample):null;helperProposal=null;$('applySuggestion').disabled=true;$('helperChanges').textContent='已套用至草稿；按 Create／Save Changes 後生效。CSV 樣本可於 Ingest 確認映射後測試。';selectMod('import');}
+
+function resources(c){const r=[];if(!embeddingRemoteOwner(c)&&c.embedding.mappings.length)r.push({path:'embedding',kind:'Embedding API',label:'Embedding'});if(c.indexing.backend==='Elasticsearch')r.push({path:'indexing.es',kind:'Elasticsearch',label:'Indexing / Elasticsearch'});else if(c.indexing.persistence==='MongoDB')r.push({path:'indexing.mongo',kind:'MongoDB',label:'Indexing / MongoDB'});const refs=(coveredByRemote(c,'transform')||c.transform.method==='None'?[]:[c.transform.llm_ref]);for(const id of new Set(refs)){const i=c.llms.findIndex(x=>x.id===id);if(i>=0){const users=(c.transform.method==='None'?[]:['transform']).filter(k=>c[k].llm_ref===id).map(k=>k==='transform'?'Query Transformation':'Generation');r.push({path:'llms.'+i,kind:'OpenAI-compatible API',label:'LLM '+c.llms[i].name+' / '+users.join('、')});}}const profiles=new Set(queryEmbeddingProfiles(c).map(vector=>vector.profile));
+ for(const [i,encoder] of (c.retrieval.query_encoders||[]).entries())if(profiles.has(encoder.profile))r.push({path:'retrieval.query_encoders.'+i,kind:'Embedding API',label:'Query Encoder / '+encoder.profile});
+ if(!coveredByRemote(c,'rerank')&&c.rerank.mode!=='None')r.push({path:'rerank',kind:'Rerank API',label:'Rerank'});return r;}
+function exportSystem(id){active=systems.find(s=>s.id===id);exportDraft=clone(active.config);$('exportSystemName').textContent=active.name+' / '+active.collection;$('exportBody').innerHTML='<p>DEV 資源僅供平台測試。可下載待設定草稿，或補齊自己的服務設定再匯出。此 prototype 沒有可部署的 Engine。</p>'+resources(exportDraft).map(r=>{const c=get(r.path,exportDraft);return `<fieldset><legend>${esc(r.label)} · ${esc(c.mode)}</legend><label class="label">部署 URL</label><input class="control" data-export="${r.path}.url" value="${esc(c.url)}" placeholder="${r.kind==='MongoDB'?'mongodb://db:27017':'https://service.example/v1'}">${!['Elasticsearch','MongoDB'].includes(r.kind)?`<label class="label">Model ID</label><input class="control" data-export="${r.path}.model" value="${esc(c.model)}">`:r.kind==='MongoDB'?`<label class="label">Database</label><input class="control" data-export="${r.path}.database" value="${esc(c.database)}">`:''}<label class="label">認證</label><select class="control" data-export="${r.path}.auth">${(r.kind==='MongoDB'?['None','Secret reference']:r.kind==='Elasticsearch'?['None','API Key','Basic secret']:['None','Bearer','API Key']).map(x=>`<option ${x===c.auth?'selected':''}>${x}</option>`).join('')}</select><label class="label">Secret 引用（非 None 時必填）</label><input class="control" data-export="${r.path}.secret_ref" value="${esc(c.secret_ref)}" placeholder="secret-name/key">${!['Elasticsearch','MongoDB'].includes(r.kind)?`<label class="label">API Key Header（API Key 時使用）</label><input class="control" data-export="${r.path}.header" value="${esc(c.header)}">`:''}</fieldset>`;}).join('')+'<p class="rule">Embedding 模型必須與既有向量相容；更換服務後仍需實測模型版本、维度與 Tokenizer。匯出不搬移 ES／MongoDB 資料，目標環境需準備索引或重新 Ingestion。</p><div id="exportValidation" class="notice"></div>';$('exportDialog').showModal();updateExport();}
+$('exportBody').addEventListener('input',e=>{if(e.target.dataset.export){put(e.target.dataset.export,e.target.value,exportDraft);updateExport();}});
+function deploymentConfig(){const c=clone(exportDraft);for(const r of resources(c)){const svc=get(r.path,c);if(svc.url.trim())svc.mode=r.kind;}return c;}
+function exportErrors(){const c=deploymentConfig(),errors=validate(c); for(const r of resources(c)){const svc=get(r.path,c);if(svc.mode==='DEV test use')errors.push('['+r.label+'] 尚未提供部署 URL。');else errors.push(...serviceErrors(svc,r.kind,r.label));}if(c.indexing.backend==='Local Search'&&c.indexing.persistence==='MongoDB'&&!c.indexing.mongo.database.trim())errors.push('[Indexing] MongoDB Database 不可空白。');if(!embeddingRemoteOwner(c)&&c.embedding.mappings.length&&c.embedding.model!==active.config.embedding.model)errors.push('[Embedding] Model 改變：請先在 Edit Config 調整模型／維度／Tokenizer 並重新 Ingestion。');return errors;}
+function updateExport(){const e=exportErrors();$('exportValidation').textContent=e.length?e.join('\n'):'部署設定格式已填妥；連線、模型與目標資料仍需在部署環境驗證。';$('exportValidation').classList.toggle('error',!!e.length);$('exportReady').disabled=!!e.length;}
+function blueprint(c=active.config,draft=false){const b=effectiveConfig(c);b.indexing.collection=active.collection;if(b.indexing.mongo)b.indexing.mongo.collection=active.collection;return {apiVersion:'rag.company/v1',kind:'RAGBlueprint',prototype:true,deployment_status:draft?'needs_configuration':'configured_unverified',system_id:active.id,workspace:groups[active.group],name:active.name,config_revision:active.revision,llms:b.llms,resources:resources(c).map(r=>({module:r.label,mode:get(r.path,c).mode})),pipelines:{ingestion:Object.fromEntries(modules.slice(0,5).map(m=>[m[0],b[m[0]]])),inference:Object.fromEntries(modules.slice(5).map(m=>[m[0],b[m[0]]]))}};}
+function yaml(c,draft){const b=blueprint(c,draft),name='rag-'+active.id,local=c.indexing.backend==='Local Search';const refs=resources(c).map(r=>get(r.path,c)).filter(s=>s.mode!=='DEV test use'&&s.auth!=='None').map(s=>s.secret_ref.split('/')[0]);refs.push(...remoteBindings(c).filter(api=>api.auth==='Bearer'&&secretRefPattern.test(api.secret_ref)).map(api=>api.secret_ref.split('/')[0]));return `# PROTOTYPE ONLY: example engine image and API contract; not a working deployment.\n# ${draft?'DRAFT: unresolved DEV resources must be replaced.':'Settings validated syntactically; services and models have NOT been contacted.'}\n# ${local?'Local Search requires Ingestion and Inference in one process; replicas=1.':'Target ES data is not included. Prepare indexes or run Ingestion in the target environment.'}\n# Secret references are resolved by the planned engine from /etc/rag/secrets/<name>/<key>.\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: ${name}-config\ndata:\n  blueprint.json: |\n${JSON.stringify(b,null,2).split('\n').map(x=>'    '+x).join('\n')}\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: ${name}\nspec:\n  replicas: ${local?1:2}\n  selector:\n    matchLabels: {app: ${name}}\n  template:\n    metadata:\n      labels: {app: ${name}}\n    spec:\n      containers:\n        - name: rag-engine\n          image: registry.example.internal/rag-engine:prototype\n          env:\n            - {name: RAG_BLUEPRINT_PATH, value: /etc/rag/blueprint.json}\n            - {name: RAG_RUN_MODE, value: ${local?'combined':'api'}}\n          ports: [{containerPort: 8080}]\n          volumeMounts:\n            - {name: blueprint, mountPath: /etc/rag/blueprint.json, subPath: blueprint.json, readOnly: true}\n${[...new Set(refs)].map((n,i)=>`            - {name: credential-${i}, mountPath: /etc/rag/secrets/${n}, readOnly: true}\n`).join('')}      volumes:\n        - name: blueprint\n          configMap: {name: ${name}-config}\n${[...new Set(refs)].map((n,i)=>`        - name: credential-${i}\n          secret: {secretName: ${n}}\n`).join('')}---\napiVersion: v1\nkind: Service\nmetadata:\n  name: ${name}\nspec:\n  selector: {app: ${name}}\n  ports: [{port: 80, targetPort: 8080}]\n`;}
+function downloadExport(draft){if(!draft&&exportErrors().length)return;const c=draft?active.config:deploymentConfig();const url=URL.createObjectURL(new Blob([yaml(c,draft)],{type:'application/yaml'})),a=document.createElement('a');a.href=url;a.download='rag-'+active.id+(draft?'-draft':'-configured')+'.yaml';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('已下載示意 YAML；未部署服務。');}
+function llmLabel(id){return config.llms.find(p=>p.id===id)?.name||'LLM 選擇已失效';}
+function llmSelector(module){const id=config[module].llm_ref,found=config.llms.find(p=>p.id===id);return label('LLM',`<select class="control" aria-label="${module} LLM" data-path="${module}.llm_ref">${config.llms.map(p=>`<option value="${esc(p.id)}" ${p.id===id?'selected':''}>${esc(p.name)} · ${esc(p.model)} · ${esc(p.mode)}</option>`).join('')}${found?'':`<option value="${esc(id)}" selected>已失效：${esc(id)}</option>`}</select>`)+`<p class="rule">${found?'連線、認證與 Model ID 從共用設定繼承。':'請選擇有效的 LLM。'} <button class="chip" onclick="selectMod('llms')">管理 LLM</button></p>`;}
+function renderLLMs(){$('modtitle').textContent='LLM 服務設定';$('moddesc').textContent='此 Retrieval System 的 LLM 清單，供 Query Transformation 使用。';$('dynamicfields').innerHTML='<p class="rule">在這裡集中管理 LLM；各模組只選服務與設定自己的 Prompt。Embedding／Rerank 使用不同 API 契約，維持獨立。</p>'+config.llms.map((p,i)=>{const used=modules.filter(m=>config[m[0]]?.llm_ref===p.id&&(m[0]!=='transform'||config.transform.method!=='None')).map(m=>m[1]);return `<fieldset><legend>${esc(p.name)}</legend>`+input(`llms.${i}.name`,'服務名稱')+serviceForm(`llms.${i}`,'OpenAI-compatible API')+`<p class="rule">使用中：${used.length?used.join('、'):'尚無模組使用'}。服務 ID：${esc(p.id)}</p><button class="btn" onclick="deleteLLM(${i})">移除此 LLM</button></fieldset>`;}).join('')+'<button class="btn primary" onclick="addLLM()">＋ 新增 LLM</button><p class="rule">移除使用中的服務會保留失效引用並阻止儲存；請回到對應模組重新選擇。</p>';}
+function addLLM(){config.llms.push({id:'llm-'+crypto.randomUUID().slice(0,8),name:'LLM '+(config.llms.length+1),...service('demo-chat')});selectMod('llms');}
+function deleteLLM(i){config.llms.splice(i,1);selectMod('llms');}
+function rewriteEditor(){const multi=config.transform.method==='Multi-query',path='transform.'+(multi?'multi_prompt':'rewrite_prompt');return textarea(path,multi?'Multi-query Prompt':'Rewrite Prompt',multi?'{{query}} 是原始問題；{{count}} 是要產生的 Query 數，不含原始問題。':'{{query}} 是原始問題。只輸出一個改寫問題。')+variableButtons(path,[...(multi?['query','count']:['query']),...config.inference_input.parameters.filter(p=>validFieldName(p.name)).map(p=>'params.'+p.name)])+'<p class="rule">選填參數缺值且無預設值時，Prompt 使用空字串。Runtime 會驗證非空輸出與 Query 數量；Prompt 不決定是否保留原始問題，該選項由平台處理。</p><details open><summary>Query Prompt 預覽（示例）</summary><pre class="preview" id="rewritePreview"></pre></details>';}
+function rewritePreview(){return renderQueryPrompt(config,'設備經常過熱，該怎麼處理？',exampleInferenceParameters(config));}
+function rewriteErrors(c){if(c.transform.method==='None')return [];const multi=c.transform.method==='Multi-query',t=multi?c.transform.multi_prompt:c.transform.rewrite_prompt,allowed=multi?['query','count']:['query'],errors=[];if(!t.trim())errors.push('[Query Transformation] Prompt 不可空白。');if(/[{}]/.test(t.replace(/{{\s*([^{}]+?)\s*}}/g,'')))errors.push('[Query Transformation] 請使用完整 {{變數}} 語法。');const declared=c.inference_input.parameters.filter(p=>validFieldName(p.name)).map(p=>'params.'+p.name);for(const v of templateVars(t))if(!allowed.includes(v)&&!declared.includes(v))errors.push('[Query Transformation] 未知 Prompt 變數：'+v);for(const v of allowed)if(!templateVars(t).includes(v))errors.push('[Query Transformation] Prompt 需包含 {{'+v+'}}。');return errors;}
+
+const inferenceParameterTypes=['string','integer','number','boolean','array','object','secret_ref'];
+function parameterRef(name){return '{{params.'+name+'}}';}
+function referencedParameter(ref){return ref?.match(/^{{\s*params\.([A-Za-z_][A-Za-z0-9_]*)\s*}}$/)?.[1];}
+function parameterMatches(value,type){if(type==='object')return objectValue(value);if(type==='secret_ref')return typeof value==='string'&&secretRefPattern.test(value);return matchesType(value,type);}
+function parameterObjectSchema(definitions,shape){
+ const declared=definitions.filter(p=>validFieldName(p.name));
+ const properties=Object.fromEntries(declared.map(p=>{
+  const schema=shape(p);
+  if(p.default_json.trim())try{schema.default=JSON.parse(p.default_json);}catch{}
+  return [p.name,schema];
+ }));
+ return {type:'object',properties,required:declared.filter(p=>p.required).map(p=>p.name),additionalProperties:false};
+}
+function inferenceParameterSchema(c){
+ const settings=retrievalInputSettings(c);
+ return parameterObjectSchema(c.inference_input.parameters,p=>{
+  const schema=p.type==='secret_ref'?{type:'string',pattern:secretRefPattern.source}:{type:p.type};
+  if(p.name===referencedParameter(settings.top_k_ref)&&p.type==='integer')schema.minimum=1;
+  if(p.name===referencedParameter(settings.filters_ref)&&p.type==='array'){
+   const fields=c.indexing.filters.filter(field=>filterCandidates(c).includes(field));
+   schema.items={type:'object',required:['field','operator','value'],properties:{field:{type:'string',...(fields.length?{enum:fields}:{})},operator:{enum:['eq','in']},value:{}}};
+  }
+  return schema;
+ });
+}
+function addRunParameter(stage){
+ const fields=config[stage].parameters;
+ let i=fields.length+1;while(fields.some(f=>f.name==='param_'+i))i++;
+ fields.push(schemaField('param_'+i));selectMod(stage);
+}
+function runParameterEditor(stage,types){
+ const rows=config[stage].parameters.map((p,i)=>{
+  const path=stage+'.parameters.'+i;
+  return '<fieldset class="schema-editor"><legend>參數 '+(i+1)+'</legend><div class="schema-edit-row"><div>'+input(path+'.name','參數名稱 '+(i+1))+'</div><div>'+select(path+'.type','參數型別 '+(i+1),types)+'</div>'+flag(path+'.required','必填')+`<button class="btn" aria-label="移除參數 ${i+1}" onclick="removeRow('${stage}.parameters',${i})">×</button></div>`+input(path+'.default_json','預設值（JSON，選填參數適用）','text','例：10、[]、true 或 "zh-TW"。空白代表沒有預設值。')+(validFieldName(p.name)?'<p class="rule">引用 <code>'+esc(parameterRef(p.name))+'</code></p>':'')+'</fieldset>';
+ }).join('');
+ return rows+`<button class="btn" onclick="addRunParameter('${stage}')">＋ 新增參數</button>`;
+}
+function inferenceInputForm(){
+ return '<div class="notice">平台固定入口 · 驗證參數並建立 QueryContext[]。後續節點可選內建或 Remote API。</div><p class="rule">secret_ref 可供下游 Remote API 認證引用。參數保留在本次執行環境，候選 data 不會包含參數。</p><p class="rule">先宣告 <code>POST /v1/queries</code> 的 <code>parameters</code>，再到後續模組選用。必填參數由每次 Request 提供，選填參數可設定預設值。</p>'+runParameterEditor('inference_input',inferenceParameterTypes)+
+  '<h4>Inference Request 範例</h4>'+jsonPreview(inferenceRequestExample(config))+
+  '<details><summary>parameters JSON Schema</summary>'+jsonPreview(inferenceParameterSchema(config))+'</details>';
+}
+function inferenceParameterChoice(path,title,type,fixedLabel,hint){
+ const options=config.inference_input.parameters.filter(p=>p.type===type&&validFieldName(p.name)).map(p=>({value:parameterRef(p.name),label:parameterRef(p.name)}));
+ return choice(path,title,[{value:'',label:fixedLabel},...options],{hint});
+}
+function resolveParameters(definitions,provided,label,{checkRequired=true}={}){
+ const errors=[],parameters={},add=message=>errors.push('['+label+'] '+message);
+ if(!objectValue(provided)){add('parameters 必須是 JSON object。');return {parameters,errors};}
+ for(const key of Object.keys(provided))if(!definitions.some(p=>p.name===key))add('未宣告參數：'+key);
+ for(const p of definitions){
+  if(!validFieldName(p.name))continue;
+  const supplied=Object.hasOwn(provided,p.name);
+  let value;
+  if(supplied)value=provided[p.name];
+  else if(p.required){if(checkRequired)add('缺少必填參數：'+p.name);continue;}
+  else if(p.default_json.trim()){
+   try{value=JSON.parse(p.default_json);}catch{add(p.name+' 預設值必須是有效 JSON。');continue;}
+  }else continue;
+  if(!parameterMatches(value,p.type)){add(p.name+(supplied?'':' 預設值')+' 需為 '+(p.type==='secret_ref'?'Secret reference（secret-name/key）':p.type)+'。');continue;}
+  parameters[p.name]=value;
+ }
+ return {parameters,errors};
+}
+function resolveInference(c,provided,options){
+ const {parameters,errors}=resolveParameters(c.inference_input.parameters,provided,'Inference Input',options);
+ const settings=retrievalInputSettings(c),topKName=referencedParameter(settings.top_k_ref),filtersName=referencedParameter(settings.filters_ref);
+ const topK=topKName&&Object.hasOwn(parameters,topKName)?parameters[topKName]:settings.per_route_k;
+ const filters=filtersName&&Object.hasOwn(parameters,filtersName)?parameters[filtersName]:[];
+ if(usesPlatformRetrieval(c)&&(!Number.isSafeInteger(topK)||topK<1))errors.push('[Retrieval／搜尋 Top K] Top K 必須為正整數。');
+ errors.push(...filterErrors(c,filters,'參數 filters'));
+ return {parameters,topK,filters:Array.isArray(filters)?filters:[],errors};
+}
+function parameterDefinitionErrors(definitions,types,label){
+ const seen=new Set(),errors=[],add=message=>errors.push('['+label+'] '+message);
+ for(const p of definitions){
+  if(!validFieldName(p.name)||seen.has(p.name))add('參數名稱需有效且唯一：'+p.name);
+  seen.add(p.name);
+  if(!types.includes(p.type))add(p.name+' 型別無效。');
+  if(p.required&&p.default_json.trim())add(p.name+' 為必填，請清空預設值。');
+ }
+ return errors;
+}
+function importParameterErrors(c){
+ return [...parameterDefinitionErrors(c.import.parameters,importParameterTypes,'Import'),...resolveParameters(c.import.parameters,{},'Import',{checkRequired:false}).errors];
+}
+function inferenceConfigErrors(c){
+ const errors=parameterDefinitionErrors(c.inference_input.parameters,inferenceParameterTypes,'Inference Input');
+ const settings=retrievalInputSettings(c);
+ for(const [ref,type,label] of [[settings.top_k_ref,'integer','搜尋 Top K'],[settings.filters_ref,'array','過濾條件']]){
+  if((type!=='integer'||usesPlatformRetrieval(c))&&ref&&!c.inference_input.parameters.some(p=>p.name===referencedParameter(ref)&&p.type===type))errors.push('[Retrieval／'+label+'] '+ref+' 需引用已宣告的 '+type+' 參數。');
+ }
+ return [...errors,...resolveInference(c,{}, {checkRequired:false}).errors,...filterErrors(c,settings.filters,'系統預設 filters')];
+}
+function sampleFilter(c){
+ const field=c.indexing.filters.find(value=>filterCandidates(c).includes(value));
+ return field?[{field,operator:'eq',value:filterExample(field,c)}]:[];
+}
+function exampleParameterValue(p){
+ if(p.default_json.trim())try{const value=JSON.parse(p.default_json);if(parameterMatches(value,p.type))return value;}catch{}
+ const values={string:'示例文字',integer:1,number:1,boolean:true,array:[],object:{},secret_ref:'demo-remote/token'};
+ return values[p.type];
+}
+function exampleInferenceParameters(c){
+ return Object.fromEntries(c.inference_input.parameters.filter(p=>validFieldName(p.name)).map(p=>{
+  if(p.name===referencedParameter(retrievalInputSettings(c).top_k_ref)&&p.type==='integer')return [p.name,5];
+  if(p.name===referencedParameter(retrievalInputSettings(c).filters_ref)&&p.type==='array')return [p.name,sampleFilter(c)];
+  return [p.name,exampleParameterValue(p)];
+ }));
+}
+function inferenceRequestExample(c){
+ return {query:'設備多久需要保養？',...(c.inference_input.parameters.length?{parameters:exampleInferenceParameters(c)}:{}),filters:retrievalInputSettings(c).filters_ref?[]:sampleFilter(c),metadata:{language:'zh-TW'}};
+}
+function inferenceParametersForm(c){
+ if(!c.inference_input.parameters.length)return '';
+ return '<label class="label" for="queryParameters">parameters（JSON object）</label><textarea class="control" id="queryParameters" rows="5">{}</textarea><button class="btn" onclick="loadInferenceParameterExample()">帶入參數範例</button><p class="rule">選填參數未提供時使用宣告的預設值。'+(usesPlatformRetrieval(c)?'過濾條件與本次附加及系統預設條件全部 AND。':'Remote API 依 parameters JSON 的引用取得參數。')+'</p>';
+}
+function loadInferenceParameterExample(){
+ $('queryParameters').value=JSON.stringify(exampleInferenceParameters(active.config),null,2);
+ updateInferenceInput();
+}
+function inferenceInputState(){
+ const c=active.config,state=queryFilterState(c,$('queryFilters').value),meta=queryMetadataState($('queryMetadata').value);
+ let parameters={},issues=[];
+ const text=$('queryParameters')?.value.trim();
+ if(text)try{parameters=JSON.parse(text);}catch{issues=['[Inference Input] parameters 必須是有效 JSON。'];}
+ const effective=resolveInference(c,parameters);
+ return {...effective,metadata:meta.metadata,filters:[...(Array.isArray(state.filters)?state.filters:[]),...effective.filters],errors:[...issues,...state.errors,...meta.errors,...effective.errors]};
+}
+function updateInferenceInput(){
+ const state=inferenceInputState(),c=active.config,query=$('question').value.trim();
+ $('queryFilterValidation').textContent=state.errors.join('\n');
+ $('inferenceRun').disabled=!!state.errors.length||!inferenceReady(active);
+ $('effectiveInferenceInput').textContent=state.errors.length?'請先修正 Inference 輸入。':JSON.stringify({parameters:state.parameters,...(usesPlatformRetrieval(c)?{top_k:state.topK}:{}),filters:[...retrievalInputSettings(c).filters,...state.filters],...(query&&!coveredByRemote(c,'transform')&&c.transform.method!=='None'?{query_prompt:renderQueryPrompt(c,query,state.parameters)}:{}),remote_apis:inferenceRemotePlan(c,state.parameters)},null,2);
+}
+function renderQueryPrompt(c,query,parameters){
+ const settings=c.transform;
+ const context=Object.fromEntries(c.inference_input.parameters.map(p=>{
+  const value=Object.hasOwn(parameters,p.name)?parameters[p.name]:undefined;
+  return ['params.'+p.name,value===undefined?'':Array.isArray(value)||objectValue(value)?JSON.stringify(value):value];
+ }));
+ return substitute(settings.method==='Multi-query'?settings.multi_prompt:settings.rewrite_prompt,{query,count:settings.count,...context});
+}
+function loadInferenceParameterDemo(){
+ config=exampleConfig();resetHelper();
+ config.inference_input.parameters=[schemaField('top_k','integer',false,'8'),schemaField('filters','array',false,'[]'),schemaField('language','string',false,'"zh-TW"')];
+ config.retrieval.top_k_ref=parameterRef('top_k');config.retrieval.filters_ref=parameterRef('filters');
+ config.transform.method='Rewrite';config.transform.rewrite_prompt='請用 {{params.language}} 改寫以下問題，保留原意。\n問題：{{query}}';
+ selectMod('inference_input');
+}
+
+const importParameterTypes=[...inferenceParameterTypes];
+const secretRefPattern=/^[a-z0-9][a-z0-9.-]*\/[A-Za-z0-9._-]+$/;
+function importParameterSchema(c){
+ return parameterObjectSchema(c.import.parameters,p=>p.type==='secret_ref'?{type:'string',pattern:secretRefPattern.source}:{type:p.type});
+}
+function ingestionRequestSchema(c){
+ const parameters=importParameterSchema(c);
+ return {type:'object',properties:{documents:{type:'array',items:ingestSchema(c),minItems:1},parameters},
+  required:['documents',...(parameters.required.length?['parameters']:[])],additionalProperties:false};
+}
+function ingestionRequest(documents,parameters={}){
+ return {documents,...(Object.keys(parameters).length?{parameters}:{})};
+}
+function exampleImportParameters(c){
+ return Object.fromEntries(c.import.parameters.filter(p=>validFieldName(p.name)).map(p=>[p.name,exampleParameterValue(p)]));
+}
+function exampleIngestionRequest(c){
+ return ingestionRequest([exampleIngestion(c)],exampleImportParameters(c));
+}
+function ingestParametersForm(c){
+ if(!c.import.parameters.length)return '';
+ return '<label class="label" for="ingestParameters">本次匯入參數（JSON object）</label><textarea class="control" id="ingestParameters" rows="5">{}</textarea><button class="btn" onclick="loadImportParameterExample()">帶入匯入參數範例</button><p class="rule">套用至這次匯入的各筆資料，並覆蓋檔案中的同名參數。</p>';
+}
+function readIngestParameters(){
+ try{
+  const value=JSON.parse($('ingestParameters')?.value.trim()||'{}');
+  if(!objectValue(value))throw Error();
+  return {value,errors:[]};
+ }catch{return {value:{},errors:['[Import] 匯入參數必須是有效的 JSON object。']};}
+}
+function loadImportParameterExample(){
+ $('ingestParameters').value=JSON.stringify(exampleImportParameters(active.config),null,2);
+ updateIngestPreview();
+}
+function resolveRemoteParameterValues(value,lookup){
+ const name=typeof value==='string'?referencedParameter(value):null;
+ if(name)return lookup(name);
+ if(Array.isArray(value))return value.map(item=>resolveRemoteParameterValues(item,lookup));
+ if(objectValue(value))return Object.fromEntries(Object.entries(value).map(([key,item])=>[key,resolveRemoteParameterValues(item,lookup)]));
+ return value;
+}
+function remoteParameterDefinitions(c,module){return inferenceRemoteModules.includes(module)?c.inference_input.parameters:c.import.parameters;}
+function remoteParameterDefinition(c,name,module='parsing'){return remoteParameterDefinitions(c,module).find(p=>p.name===name);}
+function resolvedRemoteInvocation(c,module,provided){
+ const api=remote(c,module);
+ const resolve=name=>{
+  if(!Object.hasOwn(provided,name))throw Error('缺少執行參數 '+name+'。');
+  return provided[name];
+ };
+ const parameters=resolveRemoteParameterValues(remoteParameters(api),resolve);
+ const refName=referencedParameter(api.secret_ref);
+ const secretRef=api.auth==='Bearer'?(refName?resolve(refName):api.secret_ref):null;
+ return {module:remoteScope(c,module).map(moduleLabel).join(' + '),endpoint:api.endpoint,parameters,...(secretRef?{secret_ref:secretRef,authorization:'Bearer <由 Secret 取得>'}:{})};
+}
+function ingestRemoteInvocations(c,provided){
+ return ingestionRemoteModules.filter(module=>remote(c,module)&&!managedBy(c,module)).map(module=>resolvedRemoteInvocation(c,module,provided));
+}
+function remoteReferenceErrors(c,api,label,module='parsing'){
+ const errors=[];
+ function declared(name,secret){
+  const field=remoteParameterDefinition(c,name,module),stage=inferenceRemoteModules.includes(module)?'Inference Input':'Import';
+  if(!field||(secret?field.type!=='secret_ref':field.type==='secret_ref'))errors.push(label+parameterRef(name)+(secret?' 需引用 '+stage+' 宣告的 secret_ref。':' 需引用 '+stage+' 宣告的一般參數。'));
+  else if(!field.required&&!field.default_json.trim())errors.push(label+name+' 需設為必填或提供預設值。');
+ }
+ if(api.auth==='Bearer'){
+  const name=referencedParameter(api.secret_ref);
+  if(name)declared(name,true);
+  else if(!secretRefPattern.test(api.secret_ref))errors.push(label+'請填 Secret reference（secret-name/key）或參數引用。');
+ }
+ try{resolveRemoteParameterValues(remoteParameters(api),name=>{declared(name,false);return null;});}
+ catch{errors.push(label+'parameters 需為有效 JSON object。');}
+ return errors;
+}
+
+const adminTemplates=Object.freeze([
+ {demo:0,name:'純文字 Hybrid 檢索',version:'1'},
+ {demo:14,name:'PDF 文件檢索',version:'1'},
+ {demo:3,name:'Local / Memory',version:'1'},
+ {demo:10,name:'Remote API · Parsing + Chunking',version:'1'},
+ {demo:17,name:'Remote API · Parsing → Embedding',version:'1'},
+ {demo:13,name:'Inference 參數',version:'1'},
+ {demo:15,name:'Remote API · Query → Rerank',version:'1'},
+ {demo:16,name:'Remote Retrieval · 自有資料',version:'1'}
+]);
+function renderSharedTemplates(){
+ $('sharedRemoteTemplates').innerHTML=adminTemplates.map((template,i)=>`<button class="btn" type="button" onclick="applySharedTemplate(${i})">${esc(template.name)} · v${esc(template.version)}</button>`).join('');
+}
+function applySharedTemplate(index){
+ const template=adminTemplates[index];
+ if(!template)return;
+ demoCase(template.demo);
+ $('templateStatus').textContent='已套用「'+template.name+'」v'+template.version+' 至目前草稿。';
+}
+const scalarTypes=['string','integer','number','boolean'];
+const objectValue=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+const validFieldName=name=>/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)&&!blockedKeys.includes(name);
+const validMetadataPath=path=>path.startsWith('metadata.')&&path.split('.').slice(1).every(validFieldName);
+const readPath=(value,path)=>path.split('.').reduce((node,key)=>objectValue(node)&&Object.hasOwn(node,key)?node[key]:undefined,value);
+function writePath(value,path,fieldValue){
+ const keys=path.split('.'),last=keys.pop();
+ for(const key of keys){if(!Object.hasOwn(value,key))value[key]={};if(!objectValue(value[key]))throw Error('與既有欄位路徑衝突。');value=value[key];}
+ if(Object.hasOwn(value,last)&&objectValue(value[last]))throw Error('與既有欄位路徑衝突。');
+ value[last]=fieldValue;
+}
+function fieldEditor(path,title){
+ const rows=get(path).map((field,i)=>`<div class="schema-edit-row"><div>${input(path+'.'+i+'.name','欄位名稱 '+(i+1))}</div><div>${select(path+'.'+i+'.type','型別 '+(i+1),scalarTypes)}</div>${flag(path+'.'+i+'.required','必填')}<button class="btn" type="button" aria-label="移除欄位 ${i+1}" onclick="removeRow('${path}',${i})">×</button></div>`).join('');
+ return '<fieldset class="schema-editor"><legend>'+esc(title)+'</legend>'+rows+`<button class="btn" type="button" onclick="addDataField('${path}')">＋ 新增欄位</button></fieldset>`;
+}
+function addDataField(path){const fields=get(path);let i=fields.length+1;while(fields.some(f=>f.name==='field_'+i))i++;fields.push(schemaField('field_'+i));selectMod(selected);}
+function schemaFieldErrors(fields,label){
+ const seen=new Set(),errors=[];
+ for(const field of fields){
+  if(!validFieldName(field.name)||seen.has(field.name))errors.push('['+label+'] 欄位名稱需有效且唯一：'+field.name);
+  if(!scalarTypes.includes(field.type))errors.push('['+label+'] '+field.name+' 需為平面純量型別。');
+  seen.add(field.name);
+ }
+ return errors;
+}
+function sourceForm(){
+ const parser=activeFileParser(config);
+ return '<p class="rule">在入口定義原始 <code>structdata</code> 欄位。待 Parser 解析的文件或 JSON 以 <code>content</code> 帶入。</p>'+
+  choice('import.source','入口資料形式',[{value:'structdata',label:'已整理欄位（structdata）'},{value:'content',label:'待解析來源（content，可附 structdata）'}])+
+  (parser?'<p class="rule">所選 Parser 接受 <code>'+esc(parser.mediaTypes.join('、'))+'</code>。</p>':'')+
+  fieldEditor('import.fields','入口 Document Schema · structdata')+
+  '<p class="rule">structdata 限一層。metadata 可含巢狀資料，選作索引時再指定型別。</p>'+
+  '<details '+(config.import.parameters.length?'open':'')+'><summary>匯入參數 · 傳遞到下游</summary><p class="rule">這些參數隨本次匯入流程傳遞。Remote API 可在參數欄位使用 <code>{{params.name}}</code>；Bearer token 請使用 <code>secret_ref</code> 型別。</p>'+runParameterEditor('import',importParameterTypes)+'</details>'+
+  '<h4>Ingestion Request 範例</h4><p class="rule"><code>POST /v1/ingestions</code> · <code>documents</code> 接收一筆或多筆 Document，整批共用 <code>parameters</code>。</p>'+
+  jsonPreview(exampleIngestionRequest(config))+
+  '<details><summary>查看入口 JSON Schema</summary>'+jsonPreview(ingestionRequestSchema(config))+'</details>';
+}
+function propertiesFor(fields){return Object.fromEntries(fields.map(f=>[f.name,{type:f.type}]));}
+function fieldSchema(fields){return {type:'object',properties:propertiesFor(fields),required:fields.filter(f=>f.required).map(f=>f.name),additionalProperties:false};}
+const fileParsers=[
+ {value:'pdf',label:'PDF · 文字擷取',filename:'manual.pdf',mediaTypes:['application/pdf']},
+ {value:'pdf_ocr',label:'PDF · OCR',filename:'scan.pdf',mediaTypes:['application/pdf']},
+ {value:'office',label:'Office · Word／PowerPoint／Excel',filename:'manual.docx',mediaTypes:['application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']},
+ {value:'image',label:'圖片 · OCR',filename:'manual.png',mediaTypes:['image/png','image/jpeg']},
+ {value:'text',label:'TXT／Markdown · 純文字',filename:'manual.txt',mediaTypes:['text/plain','text/markdown']},
+ {value:'json',label:'巢狀 JSON · 文字擷取',filename:'manual.json',mediaTypes:['application/json']}
+];
+const parserTextField='contenttext';
+function activeFileParser(c){
+ return c.import.source==='content'&&!remote(c,'parsing')?fileParsers.find(parser=>parser.value===c.parsing.file_parser):null;
+}
+function builtinParsingErrors(c){
+ if(c.import.source!=='content'||remote(c,'parsing'))return [];
+ if(!activeFileParser(c))return ['[Parsing] 請選擇一個內建檔案解析方法。'];
+ return c.import.fields.some(field=>field.name===parserTextField)?['[Parsing] structdata.'+parserTextField+' 由內建 Parser 產生，請從 Import 移除同名欄位。']:[];
+}
+function builtinParserForm(c){
+ if(c.import.source==='structdata')return '<div class="notice">入口已提供 structdata。內建流程直接把欄位交給 Chunking。</div>';
+ const parser=activeFileParser(c);
+ return choice('parsing.file_parser','內建檔案解析方法',fileParsers,{hint:'每個 System 選一個方法，Import 依此接受對應的檔案格式。'})+
+  (parser?'<p class="rule">接受格式 <code>'+esc(parser.mediaTypes.join('、'))+'</code>。</p>':'')+
+  '<div class="notice">保留入口的 structdata 欄位，解析成功後新增 <strong>structdata.'+parserTextField+'</strong>（必填字串），用來帶出文件文字。</div>'+
+  '<details open><summary>解析輸出範例 · Document[]</summary>'+jsonPreview(exampleDocument(c))+'</details>'+
+  '<p class="rule">範例使用示意文字。本頁只做設定與契約驗證。</p>';
+}
+const sourceContentSchema={type:'object',properties:{uri:{type:'string',minLength:1},base64:{type:'string',minLength:1},media_type:{type:'string',minLength:1}},required:['media_type'],oneOf:[{required:['uri']},{required:['base64']}],additionalProperties:false};
+function documentSchema(fields,{source=null,chunk=false,vectors=null}={}){
+ const str={type:'string',minLength:1};
+ const properties={document_id:str,source_revision:str,data_id:str,structdata:fieldSchema(fields),metadata:{type:'object'},vectors:{type:'object',maxProperties:0}};
+ const required=['document_id'];
+ if(source){
+  if(source!=='structdata')properties.content=sourceContentSchema;
+  if(source==='content')required.push('content');
+  if(source==='structdata'||source==='content'&&fields.some(f=>f.required))required.push('structdata');
+  return {title:'Document',type:'object',properties,required,additionalProperties:false};
+ }
+ required.push('source_revision','structdata');if(chunk)required.push('data_id');
+ if(vectors){properties.vectors=vectorMapSchema(vectors,true);required.push('vectors');}
+ return {title:'Document',type:'object',properties,required,additionalProperties:false};
+}
+function ingestSchema(c){
+ const schema=documentSchema(c.import.fields,{source:c.import.source}),parser=activeFileParser(c);
+ if(parser){
+  const content=clone(sourceContentSchema);
+  content.properties.media_type.enum=[...parser.mediaTypes];
+  schema.properties.content=content;
+ }
+ return schema;
+}
+function schemaIssues(value,schema,path){
+ if(schema.type&&!matchesType(value,schema.type)&&!(schema.type==='object'&&objectValue(value)))return [path+' 需為 '+schema.type+'。'];
+ const issues=[];
+ if(schema.enum&&!schema.enum.includes(value))issues.push(path+' 需為允許的值：'+schema.enum.join('、')+'。');
+ if(schema.pattern&&typeof value==='string'&&!new RegExp(schema.pattern).test(value))issues.push(path+' 格式不符合契約。');
+ if(typeof value==='number'&&schema.minimum!==undefined&&value<schema.minimum)issues.push(path+' 不可小於 '+schema.minimum+'。');
+ if(typeof value==='string'&&schema.minLength&&!value.trim())issues.push(path+' 不可空白。');
+ if(Array.isArray(value)){
+  if(value.length<(schema.minItems||0))issues.push(path+' 至少需要 '+schema.minItems+' 筆。');
+  if(schema.maxItems!==undefined&&value.length>schema.maxItems)issues.push(path+' 最多接受 '+schema.maxItems+' 筆。');
+  if(schema.items)value.forEach((item,i)=>issues.push(...schemaIssues(item,schema.items,path+'['+i+']')));
+ }
+ if(objectValue(value)){
+  for(const key of schema.required||[])if(!Object.hasOwn(value,key))issues.push(path+'.'+key+' 為必填。');
+  if(schema.maxProperties!==undefined&&Object.keys(value).length>schema.maxProperties)issues.push(path+' 必須為空物件。');
+  if(schema.oneOf&&schema.oneOf.filter(rule=>rule.required.every(key=>Object.hasOwn(value,key))).length!==1)issues.push(path+' 的 uri／base64 必須二選一。');
+  for(const [key,item] of Object.entries(value)){
+   if(Object.hasOwn(schema.properties||{},key))issues.push(...schemaIssues(item,schema.properties[key],path+'.'+key));
+   else if(schema.additionalProperties===false)issues.push(path+'.'+key+' 未宣告。');
+  }
+ }
+ return issues;
+}
+function exampleMetadata(c){
+ const result={};
+ for(const {path,type} of c.indexing.metadata_fields){if(!validMetadataPath(path))continue;try{writePath(result,path.slice('metadata.'.length),type==='string'?'設備工程':type==='boolean'?true:7);}catch{}}
+ return result;
+}
+function sampleData(c,fields,{parsed=false,chunk=false}={}){
+ const data={document_id:'manual-001',source_revision:'v1',structdata:Object.fromEntries(fields.map(f=>[f.name,exampleValue(f)])),metadata:exampleMetadata(c)};
+ if(parsed||chunk)data.data_id=data.document_id+(chunk?':chunk-1':':unit-1');
+ return data;
+}
+function exampleIngestion(c){
+ const data=sampleData(c,c.import.fields);
+ if(c.import.source==='content'){
+  const parser=activeFileParser(c);
+  data.content={uri:'https://files.example.invalid/'+(parser?.filename||'manual.pdf'),media_type:parser?.mediaTypes[0]||'application/pdf'};
+ }
+ if(!c.import.fields.length&&c.import.source!=='structdata')delete data.structdata;
+ return data;
+}
+function exampleDocument(c){return [sampleData(c,parsedFields(c),{parsed:true})];}
+function metadataErrors(c){
+ const seen=new Set(),errors=[];
+ for(const {path,type} of c.indexing.metadata_fields){if(!validMetadataPath(path)||seen.has(path)||!scalarTypes.includes(type))errors.push('[Indexing] Metadata 索引路徑需有效且唯一：'+path);seen.add(path);}
+ return errors;
+}
+function metadataIndexForm(){
+ const rows=config.indexing.metadata_fields.map((field,i)=>`<div class="metadata-edit-row"><div>${input('indexing.metadata_fields.'+i+'.path','Metadata 路徑 '+(i+1))}</div><div>${select('indexing.metadata_fields.'+i+'.type','索引型別 '+(i+1),scalarTypes)}</div><button class="btn" aria-label="移除 Metadata 路徑 ${i+1}" onclick="removeRow('indexing.metadata_fields',${i})">×</button></div>`).join('');
+ return '<details '+(rows?'open':'')+'><summary>Metadata 索引路徑</summary><p class="rule">只對選入索引的路徑宣告型別，例如 metadata.source.department。</p>'+rows+'<button class="btn" onclick="addMetadataIndexField()">＋ 新增 Metadata 路徑</button></details>';
+}
+function addMetadataIndexField(){config.indexing.metadata_fields.push({path:'metadata.source.field_'+(config.indexing.metadata_fields.length+1),type:'string'});selectMod('indexing');}
+
+const ingestionRemoteModules=['parsing','chunking','embedding'];
+const inferenceRemoteModules=['transform','retrieval','rerank'];
+const remoteModules=[...ingestionRemoteModules,...inferenceRemoteModules];
+const remoteScopes={
+ parsing:[['parsing'],['parsing','chunking'],['parsing','chunking','embedding']],
+ chunking:[['chunking'],['chunking','embedding']],
+ embedding:[['embedding']],
+ transform:[['transform'],['transform','retrieval'],['transform','retrieval','rerank']],retrieval:[['retrieval'],['retrieval','rerank']],rerank:[['rerank']]};
+function remote(c,module){return Object.hasOwn(c.remote_apis,module)?c.remote_apis[module]:null;}
+function remoteScope(c,module){const scope=remote(c,module)?.scope||module;return remoteScopes[module]?.find(items=>items.join('_')===scope)||[module];}
+function managedBy(c,module){return remoteModules.find(owner=>owner!==module&&remote(c,owner)&&remoteScope(c,owner).includes(module))||null;}
+function coveredByRemote(c,module){return !!remote(c,module)||!!managedBy(c,module);}
+function embeddingRemoteOwner(c){return managedBy(c,'embedding')||(remote(c,'embedding')?'embedding':null);}
+function usesPlatformRetrieval(c){return !coveredByRemote(c,'retrieval');}
+function retrievalInputSettings(c){return usesPlatformRetrieval(c)?c.retrieval:{top_k_ref:'',per_route_k:null,filters_ref:'',filters:[]};}
+function inferenceReady(system){return !usesPlatformRetrieval(system.config)||system.docs>0&&!system.needsIngest;}
+function moduleLabel(id){return modules.find(m=>m[0]===id)?.[1]||id;}
+function chooseComponent(module,mode){
+ if(!remoteModules.includes(module)||managedBy(config,module))return;
+ if(mode==='remote')config.remote_apis[module]={scope:module,endpoint:'',auth:'None',secret_ref:'',parameters_json:'{}',...(['parsing','chunking'].includes(module)?{output_fields:[schemaField('text','string',true)]}:{}),...(module==='embedding'?{output_vectors:[]}:{})};
+ else delete config.remote_apis[module];
+ selectMod(module);
+}
+function remoteParameters(api){const value=JSON.parse(api.parameters_json);if(!objectValue(value))throw Error('parameters 需為 JSON object。');return value;}
+function jsonPreview(value){return '<pre class="preview">'+esc(JSON.stringify(value,null,2))+'</pre>';}
+function candidateDocumentSchema(c){
+ const schema=documentSchema(embeddedFields(c),{chunk:true});
+ schema.properties.content=clone(sourceContentSchema);
+ schema.properties.vectors=vectorMapSchema(resolvedVectors(c));
+ const metadata={type:'object',properties:{}};
+ for(const field of c.indexing.metadata_fields){
+  if(!validMetadataPath(field.path))continue;
+  const parts=field.path.slice('metadata.'.length).split('.');let node=metadata;
+  for(const key of parts.slice(0,-1)){node.properties[key]??={type:'object',properties:{}};node=node.properties[key];node.properties??={};}
+  node.properties[parts.at(-1)]={type:field.type};
+ }
+ schema.properties.metadata=metadata;
+ return schema;
+}
+function queryContextSchema(c){
+ const str={type:'string',minLength:1};
+ const filter={type:'object',properties:{field:str,operator:{type:'string',enum:['eq','in']},value:{}},required:['field','operator','value'],additionalProperties:false};
+ const item={type:'object',properties:{data:candidateDocumentSchema(c),score:{type:'number'}},required:['data'],additionalProperties:false};
+ const resultSet={type:'object',properties:{key:str,items:{type:'array',items:item}},required:['key','items'],additionalProperties:false};
+ return {type:'array',minItems:1,items:{type:'object',properties:{ori_query:str,query:str,filters:{type:'array',items:filter},result_sets:{type:'array',items:resultSet},metadata:{type:'object'}},required:['ori_query','query','filters','result_sets','metadata'],additionalProperties:false}};
+}
+function initialQueryContexts(c,query,filters=[],metadata={}){return [{ori_query:query,query,filters:clone([...retrievalInputSettings(c).filters,...filters]),result_sets:[],metadata:clone(metadata)}];}
+function exampleQueryContexts(c,module){
+ const request=inferenceRequestExample(c),resolved=resolveInference(c,request.parameters||{}),initial=initialQueryContexts(c,request.query,[...request.filters,...resolved.filters],request.metadata);
+ if(module==='rerank')initial[0].result_sets=[{key:'remote-search',items:[{data:{...sampleData(c,embeddedFields(c),{chunk:true}),vectors:{}},score:0.7}]}];
+ return initial;
+}
+function inferenceRemoteOutput(c,module,input){
+ const output=clone(input),scope=remoteScope(c,module);
+ if(scope.includes('transform'))output[0].query='設備保養週期';
+ if(scope.includes('retrieval'))for(const context of output)context.result_sets=[{key:'remote-search',items:[{data:{...sampleData(c,embeddedFields(c),{chunk:true}),vectors:{}},score:0.9}]}];
+ if(scope.includes('rerank'))for(const context of output)for(const set of context.result_sets)set.items=set.items.map(item=>({...item,score:0.95}));
+ return output;
+}
+function exampleInferenceResponse(c,query,filters=[],metadata={}){const output=initialQueryContexts(c,query,filters,metadata);output[0].result_sets=[{key:'remote-search',items:[{data:{...sampleData(c,embeddedFields(c),{chunk:true}),vectors:{}},score:0.9}]}];return output;}
+function stableJSON(value){if(Array.isArray(value))return '['+value.map(stableJSON).join(',')+']';if(objectValue(value))return '{'+Object.keys(value).sort().map(key=>JSON.stringify(key)+':'+stableJSON(value[key])).join(',')+'}';return JSON.stringify(value);}
+function queryContextIssues(c,module,output,input){
+ const issues=schemaIssues(output,queryContextSchema(c),'output');if(issues.length)return issues;
+ const scope=remoteScope(c,module),transforms=scope.includes('transform'),retrieves=scope.includes('retrieval'),seen=new Set();
+ if(!transforms&&output.length!==input.length)issues.push('此替換範圍需保留輸入 QueryContext 數量。');
+ for(const [i,context] of output.entries()){
+  const path='output['+i+']',identity=stableJSON([context.ori_query,context.query]);
+  if(seen.has(identity))issues.push(path+' 重複 QueryContext。');seen.add(identity);
+  const upstream=input.find(item=>item.ori_query===context.ori_query&&(transforms||item.query===context.query));
+  if(!upstream){issues.push(path+' 改變了範圍外的 query／ori_query。');continue;}
+  if(stableJSON(context.filters)!==stableJSON(upstream.filters))issues.push(path+' 需保留有效 filters。');
+  if(stableJSON(context.metadata)!==stableJSON(upstream.metadata))issues.push(path+' 需保留 Query metadata。');
+  issues.push(...filterErrors(c,context.filters,'Remote output filters'));
+  if(!retrieves&&!scope.includes('rerank')&&stableJSON(context.result_sets)!==stableJSON(upstream.result_sets))issues.push(path+' Query Transformation 需保留輸入 result_sets。');
+  const keys=new Set();
+  for(const set of context.result_sets){
+   if(keys.has(set.key))issues.push(path+' result_sets.key 需唯一。');keys.add(set.key);
+   const ids=new Set(),previous=upstream.result_sets.find(item=>item.key===set.key);
+   if(!retrieves&&scope.includes('rerank')&&!previous)issues.push(path+' Rerank 不可新增 ResultSet。');
+   for(const item of set.items){
+    if(ids.has(item.data.data_id))issues.push(path+' 同一 ResultSet 的 data_id 需唯一。');ids.add(item.data.data_id);
+    if(!retrieves&&scope.includes('rerank')&&!previous?.items.some(candidate=>stableJSON(candidate.data)===stableJSON(item.data)))issues.push(path+' Rerank 只能排序／裁切輸入候選，需保留原始 data。');
+   }
+  }
+  if(!retrieves&&scope.includes('rerank')&&upstream.result_sets.some(set=>!keys.has(set.key)))issues.push(path+' Rerank 需保留 ResultSet key，無命中時回空 items。');
+ }
+ if(!transforms&&input.some(context=>!output.some(item=>item.ori_query===context.ori_query&&item.query===context.query)))issues.push('需保留每個輸入 QueryContext 的 query／ori_query。');
+ return [...new Set(issues)];
+}
+function remoteBoundary(c,module){
+ const api=remote(c,module),scope=remoteScope(c,module),inference=inferenceRemoteModules.includes(module);
+ const embeds=scope.includes('embedding'),chunk=scope.includes('chunking')||embeds;
+ const inputFields=module==='embedding'?rawChunkSpec(c):parsedFields(c);
+ const outputFields=module==='embedding'?inputFields:api.output_fields;
+ const vectors=embeds?resolvedVectors(c):null;
+ const inputShape=inference?queryContextSchema(c):module==='parsing'?ingestSchema(c):{type:'array',items:documentSchema(inputFields,{chunk:module==='embedding'}),minItems:1};
+ const outputShape=inference?queryContextSchema(c):{type:'array',items:documentSchema(outputFields,{chunk,vectors}),minItems:1};
+ const input=inference?exampleQueryContexts(c,module):module==='parsing'?exampleIngestion(c):module==='embedding'?[sampleData(c,inputFields,{chunk:true})]:exampleDocument(c);
+ let output;
+ if(inference)output=inferenceRemoteOutput(c,module,input);
+ else if(module==='embedding')output=input.map(data=>({...data,vectors:sampleVectors(vectors)}));
+ else {
+  const data=sampleData(c,outputFields,{parsed:!chunk,chunk});
+  if(embeds)data.vectors=sampleVectors(vectors);
+  output=[data];
+ }
+ let invocation;try{invocation=resolvedRemoteInvocation(c,module,inference?exampleInferenceParameters(c):exampleImportParameters(c));}catch{}
+ return {invocation,
+  requestSchema:{type:'object',properties:{input:inputShape,parameters:{type:'object'}},required:['input','parameters'],additionalProperties:false},
+  responseSchema:{type:'object',properties:{output:outputShape},required:['output'],additionalProperties:false},
+  request:{input,parameters:invocation?.parameters||{}},response:{output}
+ };
+}
+function remoteResponseIssues(c,module,value){
+ const boundary=remoteBoundary(c,module),issues=schemaIssues(value,boundary.responseSchema,'response');if(issues.length)return issues;
+ if(inferenceRemoteModules.includes(module))return queryContextIssues(c,module,value.output,boundary.request.input);
+ const scope=remoteScope(c,module);
+ if(scope.includes('embedding'))issues.push(...remoteVectorErrors(c,module));
+ if((scope.includes('chunking')||scope.includes('embedding'))&&new Set(value.output.map(item=>item.data_id)).size!==value.output.length)issues.push('output 中的 data_id 需唯一。');
+ if(module==='embedding'){
+  const withoutVectors=items=>items.map(({vectors,...data})=>stableJSON(data)).sort();
+  if(stableJSON(withoutVectors(value.output))!==stableJSON(withoutVectors(boundary.request.input)))issues.push('Embedding 輸出需保留每筆輸入 Document，並附上 vectors。');
+ }
+ return issues;
+}
+function inferenceContractPanel(c){
+ return '<div class="notice">固定契約 · QueryContext[] → QueryContext[]。候選位於 result_sets[].items[].data，依 System Document Schema 驗證。</div><p class="rule">Query Transformation 可產生多個 QueryContext；Retrieval 填入候選；Rerank 排序與裁切候選。parameters 由執行環境傳遞，與 QueryContext 分開。</p><details><summary>共用 QueryContext[] JSON Schema（唯讀）</summary>'+jsonPreview(queryContextSchema(c))+'</details><details><summary>System Document Schema（唯讀）</summary>'+jsonPreview(candidateDocumentSchema(c))+'</details>';
+}
+function remoteScopeChoice(module){
+ const options=remoteScopes[module];if(options.length<2)return '';
+ return choice('remote_apis.'+module+'.scope','API 替換範圍',options.map(items=>({value:items.join('_'),label:items.map(moduleLabel).join(' → '),disabled:items.some(target=>target!==module&&!!remote(config,target))})),{hint:'由同一支 API 處理選定的連續節點。被涵蓋節點沿用此處設定。'});
+}
+function componentForm(module){
+ if(!remoteModules.includes(module))return '';
+ const api=remote(config,module),inference=inferenceRemoteModules.includes(module);
+ let h='<label class="label" for="moduleMethod">執行方式</label><select class="control" id="moduleMethod" data-component="'+module+'"><option value="builtin">內建方法</option><option value="remote" '+(api?'selected':'')+'>Remote API · 自帶服務</option></select>';
+ if(!api)return h;
+ const path='remote_apis.'+module,b=remoteBoundary(config,module),scope=remoteScope(config,module).map(moduleLabel).join(' → '),stage=inference?'Inference Input':'Import';
+ h+=remoteScopeChoice(module)+'<p class="rule">由 User 提供並維護服務。平台以 POST 呼叫 <strong>'+esc(scope)+'</strong> 的邊界。</p>';
+ if(inference)h+=inferenceContractPanel(config);
+ if(module==='embedding')h+='<p class="rule">輸入沿用 Chunking 的 Document Schema，每筆輸出保留原資料並附上 vectors。</p>';
+ if(remoteScope(config,module).includes('retrieval'))h+='<div class="notice">此 Remote API 可搜尋自有資料來源，Inference 無須先完成平台 Ingestion。回傳的候選 Document 依 System Schema 驗證，檢索與排序由服務實作。</div><p class="rule">服務所需參數在下方 parameters JSON 設定，可引用 Inference Input 宣告的 <code>{{params.name}}</code>。</p>';
+ h+=input(path+'.endpoint','Remote API Endpoint','url','填完整的 HTTPS URL，包含 API 路徑。')+
+  select(path+'.auth','Remote API 認證',['None','Bearer'])+(api.auth==='Bearer'?input(path+'.secret_ref','Secret reference 或 '+stage+' 參數','text','可填 secret-name/key，或引用 {{params.remote_api_secret_ref}}。'):'')+
+  textarea(path+'.parameters_json','parameters（JSON object）','可在 JSON 的值填入完整 {{params.name}}。一般參數保留原型別，Secret 引用只用於認證。')+
+  (['parsing','chunking'].includes(module)?fieldEditor(path+'.output_fields','輸出 structdata 欄位'):'')+
+  (remoteScope(config,module).includes('embedding')?remoteVectorForm(module):'')+
+  (b.invocation?.authorization?'<p class="rule">Authorization 使用 <code>'+esc(b.invocation.secret_ref)+'</code> 對應的 Secret。</p>':'')+
+  '<div class="remote-contract"><div><h4>Request <span class="chip">'+(inference?'固定 QueryContext[]':'Builder 由上游推導')+'</span></h4>'+jsonPreview(b.request)+'<details><summary>Request JSON Schema</summary>'+jsonPreview(b.requestSchema)+'</details></div><div><h4>Response <span class="chip">'+(inference?'固定 QueryContext[]':'Builder 依輸出宣告產生')+'</span></h4>'+jsonPreview(b.response)+'<details><summary>Response JSON Schema</summary>'+jsonPreview(b.responseSchema)+'</details></div></div>'+
+  '<details class="remote-test"><summary>用範例 Response 驗證契約</summary><label class="label" for="remoteResponse">Response JSON</label><textarea id="remoteResponse" class="control" rows="7">'+esc(JSON.stringify(b.response,null,2))+'</textarea><button class="btn" onclick="testRemoteResponse()">驗證 Response（本機）</button><p id="remoteTestResult" class="rule" role="status">本機檢查 JSON、欄位契約與節點邊界。範例內容用於說明契約。</p></details>';
+ return h;
+}
+function testRemoteResponse(){
+ const result=$('remoteTestResult');let issues=[];
+ try{issues=remoteResponseIssues(config,selected,JSON.parse($('remoteResponse').value));}catch{issues=['Response 必須為有效的 JSON。'];}
+ result.textContent=issues.length?issues.join('\n'):'Response 契約驗證通過 · 本機模擬';result.className=issues.length?'invalid remote-test-result':'rule';
+}
+function remoteErrors(c){
+ const issues=[];
+ for(const module of Object.keys(c.remote_apis))if(!remoteModules.includes(module))issues.push('[Config] '+module+' 不支援 Remote API。');
+ for(const module of remoteModules){
+  const api=remote(c,module);if(!api)continue;
+  const title=moduleLabel(module);
+  try{const url=new URL(api.endpoint);if(url.protocol!=='https:'||!url.hostname||url.username||url.password||url.hash)throw Error();}catch{issues.push('['+title+'／Remote API] 請填有效的 HTTPS Endpoint。');}
+  issues.push(...remoteReferenceErrors(c,api,'['+title+'／Remote API] ',module));
+  if(!remoteScopes[module].some(items=>items.join('_')===api.scope))issues.push('['+title+'／Remote API] 替換範圍需從本節點開始且連續。');
+  if(managedBy(c,module))issues.push('['+title+'／Remote API] 替換範圍重疊。');
+  if(['parsing','chunking'].includes(module)){
+   if(!api.output_fields?.length)issues.push('['+title+'／Remote API] 請宣告至少一個輸出欄位。');
+   issues.push(...schemaFieldErrors(api.output_fields||[],title+'／Remote API'));
+  }else if(inferenceRemoteModules.includes(module)&&Object.hasOwn(api,'output_fields'))issues.push('['+title+'／Remote API] 使用固定 QueryContext[]，請移除自訂 output_fields。');
+  if(remoteScope(c,module).includes('embedding')&&!managedBy(c,module))issues.push(...remoteVectorErrors(c,module));
+ }
+ return issues;
+}
+function remoteBindings(c){
+ return remoteModules.filter(module=>remote(c,module)&&!managedBy(c,module)).map(module=>{
+  const api=remote(c,module);let parameters;try{parameters=remoteParameters(api);}catch{parameters=null;}
+  const covers=remoteScope(c,module);
+  return {module,endpoint:api.endpoint,auth:api.auth,...(api.auth==='Bearer'?{secret_ref:api.secret_ref}:{}),covers,parameters,
+   ...(inferenceRemoteModules.includes(module)?{io_contract:'QueryContext[]',data_schema_source:'system'}:{}),
+   ...(['parsing','chunking'].includes(module)?{output_fields:clone(api.output_fields)}:{}),
+   ...(covers.includes('embedding')?{output_vectors:clone(api.output_vectors||[])}:{})};
+ });
+}
+function inferenceRemotePlan(c,parameters){return inferenceRemoteModules.filter(module=>remote(c,module)&&!managedBy(c,module)).map(module=>({covers:remoteScope(c,module).map(moduleLabel),...resolvedRemoteInvocation(c,module,parameters),input_contract:'QueryContext[]',output_contract:'QueryContext[]',data_schema_source:'system',input_status:module==='transform'?'入口 QueryContext[]':module==='retrieval'&&!coveredByRemote(c,'transform')&&c.transform.method==='None'?'入口 QueryContext[]':'待上游執行後提供'}));}
+function loadInferenceRemoteDemo(combined=true){
+ config=exampleConfig();resetHelper();
+ config.inference_input.parameters=[schemaField('top_k','integer',false,'8'),schemaField('filters','array',false,'[]'),schemaField('remote_api_secret_ref','secret_ref',true)];
+ config.retrieval.top_k_ref=parameterRef('top_k');config.retrieval.filters_ref=parameterRef('filters');
+ const module=combined?'transform':'retrieval';
+ config.remote_apis[module]={scope:combined?'transform_retrieval_rerank':'retrieval',endpoint:'https://search-service.example.invalid/'+(combined?'query-pipeline':'search'),auth:'Bearer',secret_ref:parameterRef('remote_api_secret_ref'),parameters_json:JSON.stringify({top_k:parameterRef('top_k'),filters:parameterRef('filters')},null,2)};
+ selectMod(module);
+}
+function loadRemoteDemo(scope='parsing_chunking'){
+ config=defaults();resetHelper();
+ config.import.source='content';config.import.fields=[schemaField('title','string',true)];
+ config.import.parameters=[schemaField('remote_api_secret_ref','secret_ref',true),schemaField('language','string',false,'"zh-TW"')];
+ config.remote_apis.parsing={scope,endpoint:'https://document-service.example.invalid/'+(scope==='parsing'?'parse':scope==='parsing_chunking_embedding'?'parse-chunk-embed':'parse-chunk'),auth:'Bearer',secret_ref:parameterRef('remote_api_secret_ref'),parameters_json:JSON.stringify({language:parameterRef('language'),...(scope==='parsing'?{}:{chunk_size:512})},null,2),output_fields:[schemaField('title','string',true),schemaField('text','string',true),schemaField('page_number','integer',true)]};
+ if(scope==='parsing_chunking_embedding'){
+  const profile='maintenance-embed-v1';
+  config.remote_apis.parsing.output_vectors=[{name:'text',source_field:'text',dimension:4,embedding_profile_id:profile}];
+  config.retrieval.query_encoders=[{...service(profile),mode:'Embedding API',profile,url:'https://embedding-service.example.invalid/v1'}];
+ }
+ config.chunking.copy=['title','page_number'];config.indexing.metadata_fields=[{path:'metadata.source.department',type:'string'}];config.indexing.filters=['metadata.source.department','structdata.page_number'];
+ selectMod('parsing');
+}
+function openRemoteDemo(){openCreate();$('systemName').value='設備手冊檢索';loadRemoteDemo();}
+// Local stand-in for the Engine's declared I/O projection. It does not inspect uploads.
+function fieldReason(f,expected=null){return !f?'上游未提供':f.reason||(!f.required?'不是每筆都保證有此欄位':expected&&f.type!==expected?'需為 '+expected+'（目前 '+f.type+'）':'');}
+function parsedFields(c){
+ const api=remote(c,'parsing');
+ if(api)return api.output_fields;
+ if(!activeFileParser(c)||c.import.fields.some(field=>field.name===parserTextField))return c.import.fields;
+ return [...c.import.fields,schemaField(parserTextField,'string',true)];
+}
+function rawChunkSpec(c){
+ const api=remote(c,managedBy(c,'chunking')||'chunking');
+ if(api)return api.output_fields;
+ const source=new Map(parsedFields(c).map(f=>[f.name,f]));
+ const branches=chunkTasks(c).map(t=>({id:t.task_id,fields:new Map([
+  [t.output_field,{type:'string',required:!fieldReason(source.get(t.split_field),'string')}],
+  ...t.copy_fields.map(m=>[m.output_field,{type:source.get(m.source_field)?.type||'unknown',required:!fieldReason(source.get(m.source_field))}])
+ ])}));
+ const names=new Set(branches.flatMap(b=>[...b.fields.keys()]));
+ return [...names].map(name=>{
+  const types=[...new Set(branches.flatMap(b=>b.fields.has(name)?[b.fields.get(name).type]:[]))];
+  const missing=branches.filter(b=>!b.fields.get(name)?.required).map(b=>b.id);
+  const reason=missing.length?'任務 '+missing.join('、')+' 不保證此欄位':types.length!==1?'各任務欄位型別不同：'+types.join(' / '):'';
+  return {name,type:types.length===1?types[0]:'mixed',required:!reason,reason};
+ });
+}
+function rawChunkFields(c){return rawChunkSpec(c).map(f=>f.name);}
+function compositionOn(c){return !embeddingRemoteOwner(c)&&!!c.embedding.composition?.enabled;}
+function compositionErrors(c,fields=rawChunkSpec(c)){
+ if(!compositionOn(c))return [];
+ const s=c.embedding.composition,e=[],add=t=>e.push('[Embedding／欄位組合] '+t);
+ if(!/^[A-Za-z_][A-Za-z0-9_]*$/.test(s.output_field)||blockedKeys.includes(s.output_field))add('輸出欄位名稱無效。');
+ if(fields.some(f=>f.name===s.output_field))add('輸出欄位 '+s.output_field+' 已存在；不可覆寫。');
+ if(!s.template.trim()||/[{}]/.test(s.template.replace(/{{\s*([^{}]+?)\s*}}/g,'')))add('請使用非空模板及完整 {{structdata.name}} 語法。');
+ for(const v of templateVars(s.template)){const f=fields.find(f=>v==='structdata.'+f.name);if(fieldReason(f,'string'))add('未知或非文字來源：'+v+'（'+fieldReason(f,'string')+'）');}
+ return e;
+}
+function embeddingInputs(c){
+ const fields=rawChunkSpec(c);
+ if(compositionOn(c)&&!compositionErrors(c,fields).length)return [...fields,{name:c.embedding.composition.output_field,type:'string',required:true,derived:true}];
+ return fields;
+}
+function embeddedFields(c){return embeddingInputs(c);}
+function outputFields(c){return embeddedFields(c).map(f=>f.name);}
+function fieldIsText(c,key){return !fieldReason(embeddedFields(c).find(f=>f.name===key),'string');}
+function resolvedVectors(c){
+ const owner=embeddingRemoteOwner(c),inputs=embeddingInputs(c);
+ const vectors=owner?remote(c,owner).output_vectors||[]:c.embedding.mappings.map(mapping=>({name:mapping.output,source_field:mapping.source,dimension:c.embedding.dimension,embedding_profile_id:mockProfileId(c)}));
+ return vectors.map(vector=>{
+  const {name,source_field:source,dimension,embedding_profile_id:profile}=vector;
+  let reason=fieldReason(inputs.find(field=>field.name===source),'string');
+  if(typeof name!=='string'||!validFieldName(name))reason='向量名稱無效';
+  else if(vectors.some(other=>other!==vector&&other.name===name))reason='向量名稱重複';
+  else if(!Number.isSafeInteger(dimension)||dimension<1)reason='維度需為正整數';
+  else if(typeof profile!=='string'||!profile.trim())reason='請填 Embedding Profile ID';
+  else if(vectors.some(other=>other.embedding_profile_id===profile&&other.dimension!==dimension))reason='同一 Embedding Profile 的維度需一致';
+  return {name,type:'DenseVector',source,dimension,profile,required:!reason,reason};
+ });
+}
+function vectorMapSchema(vectors,requireAll=false){
+ const valid=vectors.filter(vector=>vector.required);
+ const properties=Object.fromEntries(valid.map(({name,dimension,profile,source})=>[name,{
+  type:'object',properties:{
+   values:{type:'array',items:{type:'number'},minItems:dimension,maxItems:dimension},
+   embedding_profile_id:{type:'string',enum:[profile]},
+   source_field:{type:'string',enum:[source]}
+  },required:['values','embedding_profile_id','source_field'],additionalProperties:false
+ }]));
+ return {type:'object',properties,required:requireAll?valid.map(vector=>vector.name):[],additionalProperties:false};
+}
+function sampleVectors(vectors){
+ return Object.fromEntries(vectors.filter(vector=>vector.required).map(({name,dimension,profile,source})=>[name,{
+  values:Array.from({length:Math.min(dimension,8192)},(_,i)=>i===0?1:0),embedding_profile_id:profile,source_field:source
+ }]));
+}
+function remoteVectorErrors(c,module){
+ const vectors=resolvedVectors(c),prefix='['+moduleLabel(module)+'／Remote API] ';
+ if(!vectors.length)return [prefix+'請宣告至少一個輸出向量欄位。'];
+ return vectors.flatMap((vector,i)=>vector.reason?[prefix+'向量 '+(vector.name||i+1)+'：'+vector.reason+'。']:[]);
+}
+function remoteVectorForm(module){
+ const api=remote(config,module),path='remote_apis.'+module+'.output_vectors',vectors=api.output_vectors??=[];
+ const fields=embeddedFields(config);
+ const rows=vectors.map((_,i)=>{
+  const row=path+'.'+i;
+  return '<fieldset><legend>向量 '+(i+1)+'</legend>'+input(row+'.name','向量欄位名稱')+
+   resolvedSelect(row+'.source_field','來源 structdata 欄位',fields,'string')+
+   numberControl(row+'.dimension','向量維度')+input(row+'.embedding_profile_id','Embedding Profile ID')+
+   `<button class="btn" type="button" onclick="removeRow('${path}',${i})">移除向量</button></fieldset>`;
+ });
+ const capped=vectors.some(vector=>vector.dimension>8192)?'<p class="rule">範例最多列出 8192 個值，驗證時仍需提供宣告的完整維度。</p>':'';
+ return '<h4>輸出 vectors 欄位</h4><p class="rule">每筆 Document 需包含宣告的向量。每個向量固定包含 values、embedding_profile_id 與 source_field。</p>'+rows.join('')+
+  `<button class="btn" type="button" onclick="addRemoteVector('${module}')">＋ 新增向量欄位</button>`+capped;
+}
+function addRemoteVector(module){
+ const vectors=remote(config,module).output_vectors??=[];
+ const source=embeddedFields(config).find(field=>!fieldReason(field,'string'))?.name||'';
+ let name=source||'vector',i=2;
+ while(vectors.some(vector=>vector.name===name))name=(source||'vector')+'_'+i++;
+ vectors.push({name,source_field:source,dimension:1024,embedding_profile_id:''});
+ selectMod(module);
+}
+function queryEmbeddingProfiles(c){
+ if(!embeddingRemoteOwner(c)||!usesPlatformRetrieval(c))return [];
+ const vectors=resolvedVectors(c).filter(vector=>vector.required&&c.retrieval.vectors.includes(vector.name)&&c.indexing.vectors.includes(vector.name));
+ return [...new Map(vectors.map(vector=>[vector.profile,vector])).values()];
+}
+function queryEncoderForm(){
+ const encoders=config.retrieval.query_encoders||[];
+ const rows=queryEmbeddingProfiles(config).map(({profile,dimension},index)=>{
+  const binding=encoders.findIndex(encoder=>encoder.profile===profile);
+  const settings=binding<0?`<button class="btn" type="button" onclick="addQueryEncoder(${index})">設定 Query Encoder</button>`:serviceForm('retrieval.query_encoders.'+binding,'Embedding API',{mode:false});
+  return '<fieldset><legend>'+esc(profile)+' · '+dimension+' 維</legend>'+settings+'</fieldset>';
+ });
+ return '<h4>Query Encoder</h4><p class="rule">每個 Embedding Profile 選用相容的查詢向量服務。服務需輸出同一向量空間與相同維度的 query vector。</p>'+rows.join('');
+}
+function addQueryEncoder(index){
+ const vector=queryEmbeddingProfiles(config)[index];if(!vector)return;
+ const encoders=config.retrieval.query_encoders??=[];
+ if(!encoders.some(encoder=>encoder.profile===vector.profile))encoders.push({...service(),mode:'Embedding API',profile:vector.profile});
+ selectMod('retrieval');
+}
+function queryEncoderErrors(c){
+ const encoders=c.retrieval.query_encoders||[];
+ return queryEmbeddingProfiles(c).flatMap(({profile})=>{
+  const matches=encoders.filter(encoder=>encoder.profile===profile),label='Retrieval／Query Encoder';
+  if(matches.length!==1||matches[0].mode!=='Embedding API')return ['['+label+'] 請為 '+profile+' 設定一個相容的 Query Encoder。'];
+  return serviceErrors(matches[0],'Embedding API',label).map(error=>error+' Profile：'+profile);
+ });
+}
+function mockProfileId(c){return 'mock:'+c.embedding.model;}
+function usableVectorNames(c){return resolvedVectors(c).filter(f=>!fieldReason(f)).map(f=>f.name);}
+function schemaRows(fields,prefix){
+ if(!fields.length)return '<p class="rule">沒有已宣告欄位。</p>';
+ return '<ul class="io-rows">'+fields.map(f=>`<li><code>${esc(prefix+f.name)}</code> · ${esc(f.type)}${f.dimension?' · '+esc(f.dimension)+' 維':''}${f.source?' · 來源 '+esc(f.source):''}${f.profile?' · Profile '+esc(f.profile):''}${f.derived?' · 由模板產生':''}${f.required?' · 保證存在':' · '+esc(f.reason||'選填')}</li>`).join('')+'</ul>';
+}
+function schemaIOPanel(module,c){
+ let h='';
+ if(inferenceRemoteModules.includes(module))h=inferenceContractPanel(c);
+ if(module==='parsing')h='<h4>輸入 · Document（由 Ingestion 入口推導）</h4>'+schemaRows(c.import.fields,'structdata.')+'<h4>輸出 · Document[]（每筆是一個 Unit）</h4>'+schemaRows(parsedFields(c),'structdata.');
+ if(module==='chunking')h='<h4>輸入 · Document[]（每筆是一個 Unit）</h4>'+schemaRows(parsedFields(c),'structdata.')+'<h4>輸出 · Document[]（每筆是一個 Chunk）</h4>'+schemaRows(rawChunkSpec(c),'structdata.');
+ if(module==='embedding')h='<h4>輸入 · Document[]（來自 '+(managedBy(c,'chunking')?'Remote API · Parsing + Chunking':'Chunking')+'）</h4>'+schemaRows(rawChunkSpec(c),'structdata.')+'<h4>輸出 · Document[]</h4>'+schemaRows(embeddedFields(c),'structdata.')+schemaRows(resolvedVectors(c),'vectors.');
+ if(module==='indexing')h='<h4>輸入 · Document[]</h4>'+schemaRows(embeddedFields(c),'structdata.')+schemaRows(resolvedVectors(c),'vectors.')+'<h4>過濾路徑</h4><p class="rule">'+esc(c.indexing.filters.join('、')||'尚未選擇')+'</p>';
+ return h?'<details id="schemaIO" class="io-panel" '+(ioDetailsOpen?'open':'')+'><summary>有效輸入／輸出規格</summary><p class="rule">共用 Document 物件，依模組與設定驗證欄位。</p>'+h+'</details>':'';
+}
+function composeChunk(c,chunk){if(!compositionOn(c))return clone(chunk);const errors=compositionErrors(c);if(errors.length)throw Error(errors.join('\n'));const s=c.embedding.composition,fields=clone(chunk.structdata);if(Object.hasOwn(fields,s.output_field))throw Error('[Embedding] 不可覆寫 '+s.output_field);const text=s.template.replace(/{{\s*([^{}]+?)\s*}}/g,(_,v)=>{const key=v.slice('structdata.'.length);if(typeof fields[key]!=='string')throw Error('[Embedding] 缺少文字欄位 '+v);return fields[key];});if(!text.trim())throw Error('[Embedding] 組合結果不可空白');fields[s.output_field]=text;return {...clone(chunk),structdata:fields};}
+let compositionAdvancedOpen=false,chunkExtrasOpen=false;
+function compositionForm(){return '<details id="compositionAdvanced" '+(compositionAdvancedOpen?'open':'')+'><summary>進階：Embedding 前組合文字欄位</summary>'+flag('embedding.composition.enabled','啟用欄位模板組合（預設關閉）')+(compositionOn(config)?input('embedding.composition.output_field','新文字欄位名稱','text','預設 embedding_text；不覆寫既有欄位。')+textarea('embedding.composition.template','欄位模板','固定文字與 {{structdata.text}}／{{structdata.title}}；來源需由 Chunking 複製。不是 Python 或 LLM。')+'<p class="rule">啟用後請將下方向量映射來源選成新欄位。結果存入 structdata；vectors.source_field 使用該名稱。模板後、模型前綴後仍需由真實 Tokenizer 驗證模型上限；此原型未計 Token。</p>':'')+'<button class="btn" onclick="showCompositionExample()">查看組合前後範例</button></details>';}
+function showCompositionExample(){const base=previewChunks(config,exampleDocument(config),{embed:false,compose:false})[0];let next;try{next=composeChunk(config,base);}catch(e){next={error:e.message};}help('Embedding 欄位組合 · 配置預覽','<p>未執行模型／Token 計量。更改模板或映射需重新 Ingestion。</p><h4>組合前</h4><pre class="preview">'+esc(JSON.stringify(base?.structdata||{},null,2))+'</pre><h4>組合後</h4><pre class="preview">'+esc(JSON.stringify(next?.structdata||next,null,2))+'</pre>');}
+function originalSlices(slices,text,enabled){return enabled&&!slices.includes(text)?[...slices,text]:slices;}
+function previewChunks(c,units,{characterSize=null,embed=true,compose=true}={}){
+ if(unitErrors(c,units).length||remote(c,'parsing')||remote(c,'chunking'))return [];
+ const output=[];
+ units.forEach((unit,unitIndex)=>chunkTasks(c).forEach(task=>{
+  const text=unit.structdata[task.split_field],passthrough=unit.metadata?.chunking_mode==='passthrough';
+  const chars=Array.from(text),slices=characterSize&&!passthrough?Array.from({length:Math.ceil(chars.length/characterSize)},(_,i)=>chars.slice(i*characterSize,(i+1)*characterSize).join('')):[text];
+  for(const [sliceIndex,value] of originalSlices(slices,text,!!c.chunking.include_original_chunk).entries()){
+   const structdata={[task.output_field]:value};for(const m of task.copy_fields)structdata[m.output_field]=clone(unit.structdata[m.source_field]);
+   let chunk={data_id:unit.document_id+':'+unit.source_revision+':'+unitIndex+':'+task.task_id+':'+sliceIndex,document_id:unit.document_id,source_revision:unit.source_revision,structdata,metadata:clone(unit.metadata||{}),vectors:{}};
+   if(compose)chunk=composeChunk(c,chunk);
+   if(embed&&!embeddingRemoteOwner(c))chunk.vectors=Object.fromEntries(c.embedding.mappings.filter(m=>typeof chunk.structdata[m.source]==='string').map(m=>[m.output,{values:Array.from({length:Math.max(1,Math.min(8192,c.embedding.dimension||1))},()=>0),embedding_profile_id:mockProfileId(c),source_field:m.source}]));
+   output.push(chunk);
+  }
+ }));return output;
+}
+function showChunkExample(){
+ const c=clone(config);c.embedding.composition.enabled=false;
+ const units=['清潔前先斷電。','每月清潔散熱孔並檢查風扇運轉。'].map((text,i)=>({document_id:'manual-001',source_revision:'v1',structdata:{text,title:'設備保養手冊',page:i+1},metadata:{}}));
+ c.chunking.tasks=[{task_id:'text',split_field:'text',output_field:'text',copy_fields:[{source_field:'page',output_field:'page'}]}];
+ const chunks=previewChunks(c,units,{characterSize:10,embed:false});
+ help('原文 Chunk · 每 10 字元切分示意','<p>此案例以字元切分，overlap 為 0。預設 3 筆，啟用原文 Chunk 為 4 筆。</p>'+jsonPreview(chunks));
+}
+function chunkExtras(){return '<details id="chunkExtras" '+(chunkExtrasOpen?'open':'')+'><summary>進階：原文與文件處理提示</summary>'+flag('chunking.preserve_original','在每個切片保留 original_text 欄位').replace('<input ',config.chunking.tasks?'<input disabled ':'<input ')+flag('chunking.include_original_chunk','額外保留一筆完整原文 Chunk')+'<p class="rule">第一項複製完整欄位；第二項每 Unit／任務多一筆 Chunk，輸出到任務的 output_field。已有相同完整片段時不重複。不同 Unit／任務不互相去重。完整原文仍須通過 Embedding 模型上限，不自動截斷。進階任務可自行映射完整欄位；第一項只套用預設單一任務。</p><button class="btn" onclick="showChunkExample()">查看 3／4 筆切分範例</button><p class="rule">內建 Chunker 支援 metadata.chunking_mode="passthrough"：逐 Unit 完整輸出，不跨 Unit 合併。由 User 在 metadata 提供 chunking_mode。未帶入時正常切分；Remote API 依自家服務的實作處理。_rag 追溯為選填，本原型不捏造來源。</p></details>';}
+function queryMetadataState(text){try{const metadata=text.trim()?JSON.parse(text):{};if(!metadata||typeof metadata!=='object'||Array.isArray(metadata))throw Error();JSON.stringify(metadata,(_,value)=>{if(typeof value==='number'&&!Number.isFinite(value))throw Error();return value;});return {metadata,errors:[]};}catch{return {metadata:{},errors:['[Retrieval] metadata 必須是 JSON object。']};}}
+function mockRetrieval(c,query,filters=[],metadata={},topK=c.retrieval.per_route_k){
+ const chunks=previewChunks(c,exampleDocument(c)),plan=resultPlan(c,topK),groups=new Map();
+ for(const g of plan.final){const current=g.queries.length===1&&g.queries[0]!=='original'?'示意改寫 '+g.queries.join('+')+'：'+query:query;if(!groups.has(current))groups.set(current,[]);groups.get(current).push({key:g.routes.length>1?'merged':g.routes[0]||'merged',items:chunks.slice(0,Math.min(3,g.upper)).map((chunk,j)=>({data:{...chunk,vectors:{}},score:0.9-j*0.1}))});}
+ return [...groups].map(([current,result_sets])=>({ori_query:query,query:current,filters:clone([...retrievalInputSettings(c).filters,...filters]),result_sets,metadata:clone(metadata)}));
+}
+function validate(c){
+ const types=[];
+ for(const [i,mapping] of (embeddingRemoteOwner(c)?[]:c.embedding.mappings).entries()){
+  const why=fieldReason(embeddingInputs(c).find(f=>f.name===mapping.source),'string');
+  if(why)types.push('[Embedding] 第 '+(i+1)+' 筆來源「'+mapping.source+'」：'+why+' (/mappings/'+i+'/source_field)');
+ }
+ for(const field of c.indexing.fulltext)if(!fieldIsText(c,field))types.push('[Indexing] 全文索引需為文字欄位：'+field);
+ const custom=new Set(remoteModules.filter(module=>remote(c,module)||managedBy(c,module)).map(moduleLabel)),builtin=builtinConfiguration(c);
+ return [...new Set([...types,...validateBuiltin(builtin).filter(message=>!custom.has(message.match(/^\[([^／\]]+)/)?.[1])),...remoteErrors(c),...queryEncoderErrors(c),...metadataErrors(c),...compositionErrors(c),...inferenceConfigErrors(c),...importParameterErrors(c)])];
+}
+function builtinConfiguration(raw){const c=clone(raw);if(coveredByRemote(raw,'transform')){c.transform.method='None';c.llms=[];}if(coveredByRemote(raw,'rerank'))c.rerank.mode='None';if(!usesPlatformRetrieval(raw))c.retrieval=clone(defaults().retrieval);return c;}
+function effectiveConfig(raw){
+ const c=effectiveBuiltin(builtinConfiguration(raw));delete c.remote_apis;
+ c.inference_input={parameters_schema:inferenceParameterSchema(raw)};
+ c.import.parameters_schema=importParameterSchema(raw);delete c.import.parameters;
+ if(!c.retrieval.top_k_ref)delete c.retrieval.top_k_ref;
+ if(!c.retrieval.filters_ref)delete c.retrieval.filters_ref;
+ if(!compositionOn(raw))delete c.embedding.composition;
+ const queryProfiles=new Map(queryEmbeddingProfiles(raw).map(vector=>[vector.profile,vector.dimension]));
+ const queryEncoders=(c.retrieval.query_encoders||[]).filter(encoder=>queryProfiles.has(encoder.profile)).map(encoder=>({...encoder,dimension:queryProfiles.get(encoder.profile)}));
+ if(queryEncoders.length)c.retrieval.query_encoders=queryEncoders;
+ else delete c.retrieval.query_encoders;
+ if(coveredByRemote(raw,'transform'))c.llms=[];
+ c.inference_input.output_contract='QueryContext[]';c.inference_input.output_schema=queryContextSchema(raw);
+ if(usesPlatformRetrieval(raw))c.inference_input.retrieval_parameters={top_k_ref:raw.retrieval.top_k_ref,fixed_top_k:raw.retrieval.per_route_k,filters_ref:raw.retrieval.filters_ref,default_filters:clone(raw.retrieval.filters)};
+ for(const binding of remoteBindings(raw)){c[binding.module]={method:'remote_api',...binding};for(const covered of binding.covers.slice(1))c[covered]={managed_by:binding.module};}
+ return c;
+}
+const builtinScreen=selectMod;
+selectMod=function(id){
+ if($('compositionAdvanced'))compositionAdvancedOpen=$('compositionAdvanced').open;
+ if($('chunkExtras'))chunkExtrasOpen=$('chunkExtras').open;
+ if($('chunkSources'))chunkSourcesOpen=$('chunkSources').open;
+ if($('schemaIO'))ioDetailsOpen=$('schemaIO').open;
+ const owner=managedBy(config,id),api=remote(config,id);
+ if(owner||api){
+  selected=id;nodes();$('modtitle').textContent=moduleLabel(id);
+  $('moddesc').textContent=owner?'由同一支 Remote API 一起處理':'User 在此模組接入自己的服務';
+  $('dynamicfields').innerHTML=owner?'<div class="notice">由 '+esc(remoteScope(config,owner).map(moduleLabel).join(' → '))+' 的 Remote API 一次完成。</div><button class="btn" onclick="selectMod(\''+owner+'\')">查看這支 Remote API</button>':componentForm(id);
+  valid();return;
+ }
+ builtinScreen(id);if(id==='llms'||id==='import')return;
+ const panel=$('dynamicfields');panel.insertAdjacentHTML('afterbegin',componentForm(id));
+ if(id==='chunking')panel.insertAdjacentHTML('beforeend',chunkExtras());
+ if(id==='embedding')panel.insertAdjacentHTML('afterbegin',compositionForm());
+ panel.insertAdjacentHTML('beforeend',schemaIOPanel(id,config));
+};
+const builtinExport=exportSystem;
+exportSystem=function(id){
+ builtinExport(id);const bindings=remoteBindings(exportDraft);
+ if(!usesPlatformRetrieval(exportDraft))$('exportBody').insertAdjacentHTML('afterbegin','<p class="rule">Inference 使用 Remote Retrieval，自有資料由遠端服務管理。下列平台 Ingestion 服務設定供執行匯入流程時使用。</p>');
+ if(bindings.length)$('exportBody').insertAdjacentHTML('afterbegin','<h4>Remote API · System 設定</h4><p class="rule">匯出包含 User 提供的 Endpoint、替換範圍與資料契約。</p>'+jsonPreview(bindings));
+};
+const builtinDemo=demoCase;
+demoCase=function(n){
+ if(n===0){config=defaults();resetHelper();selectMod('import');return;}
+ if(n===14){config=defaults();resetHelper();config.import.source='content';config.import.fields=[];config.chunking.split=parserTextField;selectMod('import');return;}
+ if(n<8){builtinDemo(n);return;}
+ if(n===10||n===11){loadRemoteDemo(n===10?'parsing_chunking':'parsing');return;}
+ if(n===13){loadInferenceParameterDemo();return;}
+ if(n===17){loadRemoteDemo('parsing_chunking_embedding');return;}
+ if(n===15||n===16){loadInferenceRemoteDemo(n===15);return;}
+ config=defaults();resetHelper();
+ if(n===8){config.import.fields.push(schemaField('title','string',true));config.chunking.copy=['title'];config.embedding.composition.enabled=true;config.embedding.mappings[0].source='embedding_text';selectMod('embedding');}
+ if(n===9){config.chunking.include_original_chunk=true;selectMod('chunking');}
+ if(n===12){config.import.fields.push(schemaField('title','string',true),schemaField('page','integer',true));Object.assign(config.chunking,{output_field:'body_text',copy:['title','page']});config.embedding.mappings=[{source:'body_text',output:'body_vec'}];Object.assign(config.indexing,{fulltext:['body_text'],vectors:['body_vec']});Object.assign(config.retrieval,{fulltext:['body_text'],vectors:['body_vec']});config.rerank.content=['body_text'];selectMod('chunking');if($('schemaIO'))$('schemaIO').open=true;if($('chunkSources'))$('chunkSources').open=true;}
+};
+render();
+
+
+</script></body></html>
+
+
+
+
+
+
+

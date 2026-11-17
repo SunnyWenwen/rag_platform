@@ -13,4 +13,10 @@ python3 examples/user_remote_api/validate.py
 
 ## UI prototype 回歸
 
-本目錄的九支 `.cjs` 測試直接載入 [UI prototype](../01_ui_prototype.html)，其中 `schema-contract.test.cjs` 涵蓋 Prototype 的舊欄位格式。執行時依檔案匯入安裝 jsdom 或 Playwright 等依賴。舊資料契約的離線測資見[歷史契約快照](../docs/history/superseded/legacy_contracts/README.md)。
+瀏覽器回歸涵蓋草稿保存、無效選值、索引發布、CSV 映射、Run 狀態、Filter、索引沿用／重建及窄版畫面。在 repo 根目錄用已安裝 Playwright 和 Chromium 的 Node.js 環境執行。
+
+```sh
+node tests/w1-prototype.browser.test.cjs
+```
+
+可用 `CHROMIUM_EXECUTABLE` 指定 Chromium。舊版的九支測試和對應 HTML 一起保留在[舊 Prototype 快照](../docs/history/source_snapshots/ui-prototype-v015/)。
