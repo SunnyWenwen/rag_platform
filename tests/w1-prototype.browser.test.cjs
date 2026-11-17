@@ -122,8 +122,92 @@ async function main() {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),true);
     await openCardAction('⚙ Edit Config');
     assert.equal(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth),true);
+    await page.setViewportSize({width:1440,height:900});
+
+    const picker = page.getByRole('combobox',{name:'Component',exact:true});
+    const plannedOptions = {
+      Import:['platform'],
+      Parsing:['passthrough','pdf','pdf_ocr','office','image','text','json','remote_api'],
+      Chunking:['recursive','fixed_size','header_aware','remote_api'],
+      Embedding:['dense','remote_api'],
+      Indexing:['elasticsearch','local'],
+      'Inference Input':['platform'],
+      'Query Transformation':['none','rewrite','remote_api'],
+      Retrieval:['builtin','remote_api'],
+      Rerank:['none','model_api','remote_api']
+    };
+    for (const [name,options] of Object.entries(plannedOptions)) {
+      await module(name).click();
+      assert.deepEqual(await picker.locator('option').evaluateAll(entries => entries.map(entry => entry.value)),options);
+    }
+
+    await module('Chunking').click();
+    await picker.selectOption('fixed_size');
+    await page.getByLabel('切分上限（tokens）').fill('384');
+    await picker.selectOption('header_aware');
+    await page.locator('#advanced summary').click();
+    assert.equal(await page.getByLabel('標題層級',{exact:true}).count(),3);
+    await picker.selectOption('fixed_size');
+    assert.equal(await page.getByLabel('切分上限（tokens）').inputValue(),'384');
+    assert.equal(await page.getByLabel('標題層級',{exact:true}).count(),0);
+    await picker.selectOption('recursive');
+    assert.equal(await page.getByLabel('切分上限（tokens）').inputValue(),'450');
+
+    await module('Parsing').click();
+    await picker.selectOption('pdf');
+    await module('Chunking').click();
+    assert.match(await page.getByLabel('切分來源').innerText(),/contenttext/);
+    await module('Parsing').click();
+    await picker.selectOption('remote_api');
+    await page.getByLabel('API Endpoint').fill('https://example.invalid/parser');
+    await page.getByLabel('替換範圍').selectOption('embedding');
+    await module('Embedding').click();
+    assert.equal(await picker.count(),0);
+    assert.match(await dialog.locator('.info').innerText(),/Parsing Remote API/);
+    await module('Parsing').click();
+    await page.getByLabel('替換範圍').selectOption('parsing');
+    await page.getByLabel('輸出 structdata 欄位宣告（JSON）').fill('{"title":{"type":"string","required":true}}');
+    await module('Chunking').click();
+    assert.match(await page.getByLabel('切分來源').innerText(),/title/);
+    assert.match(await page.getByLabel('切分來源').innerText(),/body（已失效）/);
+    await module('Parsing').click();
+    await picker.selectOption('passthrough');
+
+    await module('Indexing').click();
+    await picker.selectOption('local');
+    assert.equal(await page.getByLabel('MongoDB 服務引用').count(),0);
+    await page.getByLabel('持久化').selectOption('MongoDB');
+    await page.getByLabel('MongoDB 服務引用').fill('team-mongodb');
+    await module('Retrieval').click();
+    assert.match(await dialog.locator('.info').innerText(),/Local Search/);
+    await module('Query Transformation').click();
+    await picker.selectOption('rewrite');
+    await page.getByLabel('Rewrite Prompt').fill('Rewrite {{query}}');
+    await page.getByLabel('同時檢索原始問題').check();
+    assert.equal(await page.getByLabel('跨 Query 融合策略').count(),1);
+    await button('保存草稿').click();
+    await button('驗證並發布').click();
+    assert.match(await page.getByRole('alert').innerText(),/可先保存草稿/);
+    assert.equal(await page.locator('#publish').evaluate(el => el.open),false);
+    await closeSystem();
+    assert.match(await card.locator('.meta').innerText(),/revision-3/);
+
+    await page.reload();
+    await openCardAction('⚙ Edit Config');
+    await module('Query Transformation').click();
+    assert.equal(await picker.inputValue(),'rewrite');
+    assert.equal(await page.getByLabel('Rewrite Prompt').inputValue(),'Rewrite {{query}}');
+    await picker.selectOption('none');
+    await module('Indexing').click();
+    await picker.selectOption('elasticsearch');
+    await module('Chunking').click();
+    await picker.selectOption('fixed_size');
+    assert.equal(await page.getByLabel('切分上限（tokens）').inputValue(),'384');
+    await picker.selectOption('recursive');
+    await button('驗證並發布').click();
+    assert.match(await impact.innerText(),/沿用索引/);
     assert.deepEqual(errors,[]);
-    console.log('PASS: original workspace and dialogs, draft, publishing, CSV, runs, filters, index impact, persistence and mobile width');
+    console.log('PASS: W1 workflow, planned component catalog, method-specific settings, remote scopes, and saved draft variants');
   } finally {
     await browser.close();
   }

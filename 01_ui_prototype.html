@@ -206,21 +206,158 @@ const labels = {
   structdata_overrides:'索引欄位用途', query_profile:'查詢 Embedding Profile', per_route_k:'每路 Top K',
   fulltext_fields:'全文欄位', group_by:'分組欄位', fixed_filters:'固定 Filter'
 };
-const componentNames = {platform:'平台預設',passthrough:'結構化 JSON',recursive:'Recursive',dense:'Dense Embedding',elasticsearch:'Elasticsearch',none:'停用',builtin:'內建檢索'};
+const componentNames = {
+  platform:'平台預設',passthrough:'結構化 JSON',pdf:'PDF · 文字擷取',pdf_ocr:'PDF · OCR',
+  office:'Office · Word／PowerPoint／Excel',image:'圖片 · OCR',text:'TXT／Markdown · 純文字',
+  json:'巢狀 JSON · 文字擷取',fixed_size:'Fixed-size',recursive:'Recursive',header_aware:'Header-aware',
+  dense:'Dense Embedding',elasticsearch:'Elasticsearch',local:'Local Search',none:'停用',rewrite:'Rewrite',
+  builtin:'內建檢索',model_api:'Rerank 服務',remote_api:'Remote API'
+};
 const displayNames = {'dev-search':'DEV Elasticsearch',fixture:'DEV Tokenizer','text-v1':'text-v1'};
 const types = ['string','string_array','integer','number','boolean','date','datetime'];
 const fieldName = /^[^.\s]+$/u;
 const groups = ['Customer Support','Engineering','Operations'];
 const lanes = {ingestion:['import','parsing','chunking','embedding','indexing'], inference:['inference_input','query_transformation','retrieval','rerank']};
+const remoteModules = {
+  ingestion:['parsing','chunking','embedding'], inference:['query_transformation','retrieval','rerank']
+};
 const laneOf = module => lanes.ingestion.includes(module) ? 'ingestion' : 'inference';
 const prefix = module => `/config/pipelines/${laneOf(module)}/${module}/parameters`;
-const descriptor = module => fixture.catalog.descriptors.find(item => item.module === module);
-const params = (config, module) => config.pipelines[laneOf(module)][module].parameters;
+const node = (config,module) => config.pipelines[laneOf(module)][module];
+const params = (config,module) => node(config,module).parameters;
+const baseline = Object.fromEntries(fixture.catalog.descriptors.map(item => [item.module,item]));
+
+const str = (title, choices) => ({type:'string',title,enum:choices});
+const num = (title, minimum = 1) => ({type:'integer',title,minimum});
+const bool = title => ({type:'boolean',title});
+const list = (title, items) => ({type:'array',title,items});
+const row = properties => ({type:'object',properties});
+const textArea = title => ({type:'string',title,multiline:true});
+const selectFrom = (source, types, required) => ({source,types,required});
+const parameterList = list('Request 參數',row({
+  name:str('參數名稱'),type:str('型別',['string','integer','number','boolean','array','object']),
+  required:bool('必填'),default_value:str('預設值（JSON）')
+}));
+const separators = {
+  separators:list('分隔符順序',str('分隔符')),
+  keep_separator:bool('保留分隔符')
+};
+const searchPlan = {
+  vector_fields:list('額外向量欄位',str('向量欄位')), fusion:str('同 Query 多路融合',['RRF','Sum Score']),
+  rrf_k:num('RRF k'), top_n:num('Retrieval Top N')
+};
+const mappingSources = {
+  '/mappings/*/source_field':selectFrom('input.structdata',['string'],true)
+};
+const additions = {
+  import:{properties:{request_parameters:parameterList}},
+  chunking:{properties:{...separators,preserve_original:bool('複製完整原文'),include_original_chunk:bool('額外保留原文 Chunk')}},
+  embedding:{properties:{
+    service_source:str('服務來源',['DEV test use','Embedding API']),
+    embedding_service_ref:str('Embedding 服務引用'), embedding_model:str('模型'), dimensions:num('向量維度'),
+    mappings:list('額外向量映射',row({source_field:str('來源欄位'),vector_name:str('向量欄位')})),
+    compose_text:bool('組合文字欄位'),composition_field:str('組合輸出欄位'),composition_template:textArea('文字模板')
+  },sources:mappingSources},
+  indexing:{properties:{
+    service_source:str('服務來源',['DEV test use','自行提供 Elasticsearch']),
+    elasticsearch_service_ref:str('外部 Elasticsearch 服務引用'),
+    vector_fields:list('額外向量欄位',str('向量欄位'))
+  },sources:{'/vector_fields/*':selectFrom('input.vectors')}},
+  inference_input:{properties:{request_parameters:parameterList}},
+  retrieval:{properties:searchPlan,sources:{'/vector_fields/*':selectFrom('index_plan.vectors')}}
+};
+
+function withProperties(item, {properties = {},sources = {},advanced = Object.keys(properties)} = {}) {
+  return {...item,
+    parameters_schema:{...item.parameters_schema,properties:{...item.parameters_schema.properties,...properties}},
+    option_sources:{...item.option_sources,...sources},
+    ui_hints:{advanced:[...(item.ui_hints?.advanced ?? []), ...advanced.map(key => '/' + key)]}
+  };
+}
+
+function planned(module, component_id, properties = {}, defaults = {}, options = {}) {
+  return {module,component_id,component_version:'1.0.0',planned:true,defaults,
+    parameters_schema:{type:'object',properties,required:[]},
+    option_sources:options.sources ?? {},ui_hints:{advanced:(options.advanced ?? []).map(key => '/' + key)}};
+}
+
+const chunkChanges = {preserve_original:bool('複製完整原文'),include_original_chunk:bool('額外保留原文 Chunk')};
+const chunkAlternative = (component, extra = {}, defaults = {}) => {
+  const {properties} = baseline.chunking.parameters_schema;
+  return planned('chunking',component,{...properties,...extra,...chunkChanges},
+    {...clone(params(fixture.config,'chunking')),...defaults},
+    {sources:baseline.chunking.option_sources,advanced:['copy_fields','overlap_tokens',...Object.keys(extra),...Object.keys(chunkChanges)]});
+};
+const plannedMethods = [
+  ...['pdf','pdf_ocr','office','image','text','json'].map(component => planned('parsing',component,{
+    preserve_headings:bool('保留 Markdown 標題')
+  },{preserve_headings:false},{advanced:['preserve_headings']})),
+  chunkAlternative('fixed_size'),
+  chunkAlternative('header_aware',{...separators,header_levels:list('標題層級',num('層級'))},{header_levels:[1,2,3]}),
+  planned('indexing','local',{
+    persistence:str('持久化',['Memory','MongoDB']), mongo_service_ref:str('MongoDB 服務引用'),
+    database:str('資料庫'), collection:str('Collection'),
+    vector_name:str('向量欄位'), vector_fields:list('額外向量欄位',str('向量欄位')),
+    structdata_overrides:baseline.indexing.parameters_schema.properties.structdata_overrides
+  },{persistence:'Memory',vector_name:'text',structdata_overrides:clone(params(fixture.config,'indexing').structdata_overrides)},
+  {sources:{'/vector_name':selectFrom('input.vectors'),'/vector_fields/*':selectFrom('input.vectors')}}),
+  planned('query_transformation','rewrite',{
+    llm_ref:str('共用 LLM 引用'),prompt:textArea('Rewrite Prompt'),count:num('改寫數量'),include_original:bool('同時檢索原始問題'),
+    cross_query_at:str('跨 Query 融合時點',['Retrieval 後','Rerank 後']),cross_query_method:str('跨 Query 融合策略',['RRF','Sum Score']),
+    cross_query_group_by:list('跨 Query 分組欄位',str('欄位')), cross_query_top_n:num('跨 Query Top N')
+  },{llm_ref:'default-llm',prompt:'以不同搜尋角度產生 {{count}} 個檢索問題。\n問題：{{query}}',
+    count:1,include_original:false,cross_query_at:'Retrieval 後',cross_query_method:'RRF'},
+  {sources:{'/cross_query_group_by/*':selectFrom('candidate.document_fields',['string'])},
+    advanced:['cross_query_at','cross_query_method','cross_query_group_by','cross_query_top_n']}),
+  planned('rerank','model_api',{
+    service_source:str('服務來源',['DEV test use','Rerank API']), rerank_service_ref:str('Rerank 服務引用'),
+    model:str('模型'),text_field:str('評分內容欄位'),query_source:str('提問來源',['原始問題','當前 Query']),
+    top_n:num('Rerank Top N'),group_by:list('分組欄位',str('欄位')), timeout_ms:num('Timeout（ms）')
+  },{service_source:'DEV test use',model:'demo-reranker',text_field:'text',query_source:'原始問題',top_n:3},
+  {sources:{'/text_field':selectFrom('input.structdata',['string'],true),'/group_by/*':selectFrom('candidate.document_fields',['string'])},
+    advanced:['group_by','timeout_ms']}),
+  ...Object.values(remoteModules).flat().map(module => planned(module,'remote_api'))
+];
+
+const componentCatalog = [...Object.values(baseline).map(item => withProperties(item,additions[item.module])), ...plannedMethods];
+const choicesFor = module => componentCatalog.filter(item => item.module === module);
+const descriptor = (module,config) => choicesFor(module).find(item => item.component_id === node(config,module).component_id);
+
+function remoteOwnership(config, lane) {
+  const modules = remoteModules[lane];
+  const owners = {};
+  modules.forEach((module,index) => {
+    if (owners[module] || node(config,module).component_id !== 'remote_api') return;
+    const end = Math.max(index,modules.indexOf(node(config,module).through));
+    for (const covered of modules.slice(index+1,end+1)) owners[covered] = module;
+  });
+  return owners;
+}
+
+function needsMoreRuntime(module, config) {
+  const item = descriptor(module, config);
+  const values = params(config,module);
+  if (item.planned) return true;
+  if (module === 'retrieval' && values.fulltext_fields?.length) return true;
+  const baseProperties = baseline[module].parameters_schema.properties;
+  return Object.keys(values).some(key => !Object.hasOwn(baseProperties,key) && configuredExtension(key,values));
+}
+
+function configuredExtension(key,values) {
+  const value = values[key];
+  if (key === 'service_source') return Boolean(value && value !== 'DEV test use');
+  if (['embedding_service_ref','embedding_model','dimensions'].includes(key)) return values.service_source === 'Embedding API' && Boolean(value);
+  if (key === 'elasticsearch_service_ref') return values.service_source === '自行提供 Elasticsearch' && Boolean(value);
+  if (key.startsWith('composition_')) return values.compose_text === true && Boolean(value);
+  if (key === 'fusion' || key === 'rrf_k') return searchRouteCount(values) > 1 && Boolean(value);
+  return Array.isArray(value) ? value.length > 0 : value !== '' && value != null && value !== false;
+}
 const storageKey = 'retrieval-builder-w1';
 const stored = load();
 let model = stored || {systems:[]};
 let workspace = 0, id = null, screen = 'config', selected = 'import';
 let pendingSystem = null, draftName = '';
+let componentDrafts = {};
 let draft = null, draftDirty = false, issues = [], checked = null, detailOpen = false;
 let ingestText = '', ingestError = '', csv = null, mapping = {}, batchPreview = null, viewRun = null;
 let queryText = '', filterText = '[]', queryError = '', queryResult = null;
@@ -264,6 +401,7 @@ function openSystem(systemId, target = 'config') {
   if (!system) return;
   resetOperation();
   draft = clone(system.draft);
+  componentDrafts = clone(system.componentDrafts ?? {});
   draftName = system.name;
   draftDirty = false;
   checked = null;
@@ -329,33 +467,110 @@ const option = (value, label, selected = false) => `<option value="${escapeHTML(
 
 function derive(config) {
   const input = params(config,'import').structdata;
+  const owners = remoteOwnership(config,'ingestion');
+  const remoteAt = module => node(config,owners[module] ?? module);
+  const parsing = remoteAt('parsing');
+  const parsed = parsing.component_id === 'remote_api'
+    ? declaredFields(parsing.output?.structdata)
+    : parsing.component_id === 'passthrough' ? input : {...input,contenttext:{type:'string',required:true}};
   const chunking = params(config,'chunking');
-  const embedding = params(config,'embedding');
+  const chunkNode = remoteAt('chunking');
+  const chunkFields = chunkNode.component_id === 'remote_api' ? declaredFields(chunkNode.output?.structdata)
+    : Object.fromEntries([
+      [chunking.output_field,{type:'string',required:true}],
+      ...chunking.copy_fields.filter(entry => Object.hasOwn(parsed,entry.source_field)).map(entry => [entry.output_field,parsed[entry.source_field]])
+    ].filter(([name]) => name));
+  const embedNode = remoteAt('embedding');
+  const embedding = embedNode.component_id === 'remote_api' ? {} : params(config,'embedding');
+  const fields = embedding.compose_text && embedding.composition_field
+    ? {...chunkFields,[embedding.composition_field]:{type:'string',required:true}} : chunkFields;
+  const vector = embedNode.component_id === 'remote_api' ? Object.keys(declaredFields(embedNode.output?.vectors))
+    : [...new Set([embedding,...(embedding.mappings ?? [])]
+      .filter(entry => fields[entry.source_field]?.type === 'string' && fields[entry.source_field].required)
+      .map(entry => entry.vector_name).filter(Boolean))];
   const index = params(config,'indexing');
-  const fields = Object.fromEntries([
-    [chunking.output_field,{type:'string',required:true}],
-    ...chunking.copy_fields.filter(row => Object.hasOwn(input,row.source_field)).map(row => [row.output_field,input[row.source_field]])
-  ].filter(([name]) => name));
   const indexed = Object.fromEntries(Object.entries(fields).map(([key,data]) => [key,{...data,...index.structdata_overrides[key]}]));
-  const vector = Object.hasOwn(fields, embedding.source_field) && fields[embedding.source_field].type === 'string'
-    && fields[embedding.source_field].required && embedding.vector_name ? [embedding.vector_name] : [];
-  return {input,fields,indexed,vector};
+  return {input,parsed,fields,indexed,vector};
+}
+
+function declaredFields(value) {
+  return object(value) ? Object.fromEntries(Object.entries(value).filter(([,field]) => object(field))) : {};
 }
 
 function optionValues(config, module, path) {
-  const spec = descriptor(module).option_sources[path];
+  const spec = descriptor(module,config).option_sources[path];
   if (!spec) return null;
   const data = derive(config);
   const chooseFields = fields => Object.entries(fields).filter(([,field]) =>
     (!spec.types || spec.types.includes(field.type)) && (!spec.required || field.required)).map(([key]) => key);
   return ({
-    'input.structdata': () => chooseFields(module === 'chunking' ? data.input : data.fields),
+    'input.structdata': () => chooseFields(module === 'chunking' ? data.parsed : data.fields),
     'input.vectors': () => data.vector,
-    'index_plan.vectors': () => data.vector.filter(value => value === params(config,'indexing').vector_name),
+    'index_plan.vectors': () => data.vector.filter(value => [params(config,'indexing').vector_name,...(params(config,'indexing').vector_fields ?? [])].includes(value)),
     'index_plan.fulltext': () => Object.keys(data.indexed).filter(key => data.indexed[key].searchable).map(key => 'structdata.' + key),
     'candidate.document_fields': () => ['document_id',...chooseFields(data.indexed).map(key => 'structdata.' + key)],
     tokenizer_profiles: () => ['fixture'], profiles: () => ['text-v1'], elasticsearch_services: () => ['dev-search']
   })[spec.source]();
+}
+
+function chooseComponent(componentId) {
+  const item = choicesFor(selected).find(option => option.component_id === componentId);
+  const currentNode = node(draft,selected);
+  if (!item || item.component_id === currentNode.component_id) return;
+  const variants = componentDrafts[selected] ??= {};
+  variants[currentNode.component_id] = currentNode;
+  let next = variants[componentId];
+  if (!next) {
+    next = {component_id:componentId,component_version:item.component_version,
+      parameters:clone(item.defaults ?? params(fixture.config,selected))};
+    if (componentId === 'remote_api') {
+      next.through = selected;
+      next.service_ref = '';
+      next.connection = {};
+      if (laneOf(selected) === 'ingestion') next.output = {structdata:{},vectors:{}};
+    }
+  }
+  draft.pipelines[laneOf(selected)][selected] = next;
+  detailOpen = false;
+  markDirty();
+  render();
+  $('component-picker')?.focus();
+}
+
+function fieldVisible(key,values) {
+  if (['mongo_service_ref','database','collection'].includes(key)) return values.persistence === 'MongoDB';
+  if (['embedding_service_ref','embedding_model','dimensions'].includes(key)) return values.service_source === 'Embedding API';
+  if (key === 'elasticsearch_service_ref') return values.service_source === '自行提供 Elasticsearch';
+  if (key === 'rerank_service_ref') return values.service_source === 'Rerank API';
+  if (key.startsWith('composition_')) return values.compose_text;
+  if (key.startsWith('cross_query_')) return values.count > 1 || values.include_original;
+  if (key === 'fusion') return searchRouteCount(values) > 1;
+  if (key === 'rrf_k') return searchRouteCount(values) > 1 && values.fusion === 'RRF';
+  return true;
+}
+
+function remoteSettings(config,module) {
+  const lane = laneOf(module);
+  const currentNode = node(config,module);
+  const members = remoteModules[lane];
+  const start = members.indexOf(module);
+  const through = currentNode.through;
+  const inputShape = lane === 'ingestion' ? module === 'parsing' ? 'Document' : 'Document[]' : 'QueryContext[]';
+  const outputShape = lane === 'ingestion' ? 'Document[]' : 'QueryContext[]';
+  const label = (key,title,value) => `<label class="field">${title}<input class="control" data-remote="${key}" value="${escapeHTML(value)}"></label>`;
+  const jsonField = (key,title,value) => `<label class="field wide">${title}<textarea class="control code" data-remote="${key}" rows="4">${escapeHTML(typeof value === 'string' ? value : json(value))}</textarea></label>`;
+  return `<div class="form-grid">
+    <label class="field wide">替換範圍<select class="control" data-remote="through">
+      ${members.slice(start).map(end => option(end,end === module ? labels[module] : labels[module] + ' → ' + labels[end],through === end)).join('')}
+    </select></label>
+    ${label('service_ref','Remote 服務引用',currentNode.service_ref)}
+    ${label('endpoint','API Endpoint',currentNode.connection.endpoint)}
+    ${label('secret_ref','認證 Secret 引用',currentNode.connection.secret_ref)}
+    <label class="field">Timeout（ms）<input type="number" min="1" class="control" data-remote="timeout_ms" value="${escapeHTML(currentNode.connection.timeout_ms)}"></label>
+    ${jsonField('parameters','Request parameters（JSON）',currentNode.parameters)}
+    ${lane === 'ingestion' && module !== 'embedding' ? jsonField('structdata','輸出 structdata 欄位宣告（JSON）',currentNode.output.structdata) : ''}
+    ${lane === 'ingestion' && through === 'embedding' ? jsonField('vectors','輸出向量宣告（JSON）',currentNode.output.vectors) : ''}
+  </div><p class="info">POST · ${inputShape} → ${outputShape}</p>`;
 }
 
 function selectField(value, values, attrs) {
@@ -366,15 +581,18 @@ function selectField(value, values, attrs) {
 }
 
 function settings(system) {
-  const item = descriptor(selected);
+  const item = descriptor(selected,draft);
   const values = params(draft,selected);
-  const properties = Object.entries(item.parameters_schema.properties);
+  const properties = Object.entries(item.parameters_schema.properties).filter(([key]) => fieldVisible(key,values));
   const advanced = new Set(item.ui_hints?.advanced?.map(path => path.slice(1)) ?? []);
   const renderFields = entries => entries.map(([key,schema]) => renderField(key,schema,values[key])).join('');
+  const owners = {...remoteOwnership(draft,'ingestion'),...remoteOwnership(draft,'inference')};
+  const owner = owners[selected];
   const nav = Object.entries(lanes).map(([lane,modules]) => `<section class="panel pipeline">
     <h3>${lane === 'ingestion' ? 'Ingestion' : 'Inference'}</h3><div class="module-line">${modules.map(module => {
-      const component = descriptor(module);
-      const note = issues.some(issue => issue.module === module) ? '⚠ 待修正' : componentNames[component.component_id];
+      const component = descriptor(module,draft);
+      const note = owners[module] ? labels[owners[module]] + ' Remote API'
+        : issues.some(issue => issue.module === module) ? '⚠ 待修正' : componentNames[component.component_id];
       return `<button class="module ${selected === module ? 'selected' : ''}" data-action="module" data-value="${module}"
         aria-label="${labels[module]}" aria-pressed="${selected === module}"><strong>${labels[module]}</strong><small>${note}</small></button>`;
     }).join('')}</div></section>`).join('');
@@ -385,38 +603,61 @@ function settings(system) {
     </div>
     <div class="builder"><nav aria-label="模組">${nav}</nav><section class="panel">
     <div class="bar flow-title"><h3>${labels[selected]}</h3><span class="muted">草稿 ${system.draftRevision}${draftDirty ? ' · 未保存' : ''}</span></div>
-    <label class="field">Component<select class="control" aria-label="Component"><option>${componentNames[item.component_id]} · ${item.component_version}</option></select></label>
-    <div class="form-grid">${renderFields(properties.filter(([key]) => !advanced.has(key)))}</div>
-    ${advanced.size ? `<details id="advanced" ${detailOpen || issues.some(issue => issue.module === selected && [...advanced].some(key => issue.path.startsWith(prefix(selected) + '/' + key))) ? 'open' : ''}><summary>進階設定</summary><div class="form-grid">${renderFields(properties.filter(([key]) => advanced.has(key)))}</div></details>` : ''}
-    ${selected === 'inference_input' ? filterEditor('fixed',draft) : ''}
+    ${owner ? `<div class="info">由 <button class="quiet" data-action="module" data-value="${owner}">${labels[owner]} Remote API</button> 處理此模組。</div>` : `
+      <label class="field">Component<select class="control" id="component-picker" aria-label="Component">
+        ${choicesFor(selected).map(choice => option(choice.component_id,componentNames[choice.component_id] + (choice.planned ? '（規劃中）' : ' · ' + choice.component_version),choice.component_id === item.component_id)).join('')}
+      </select></label>
+      ${item.component_id === 'remote_api' ? remoteSettings(draft,selected) : `
+        ${selected === 'retrieval' ? `<p class="info">索引：${componentNames[node(draft,'indexing').component_id]} · ${retrievalMode(values)}</p>` : ''}
+        <div class="form-grid">${renderFields(properties.filter(([key]) => !advanced.has(key)))}</div>
+        ${advanced.size ? `<details id="advanced" ${detailOpen || issues.some(issue => issue.module === selected && [...advanced].some(key => issue.path.startsWith(prefix(selected) + '/' + key))) ? 'open' : ''}><summary>進階設定</summary><div class="form-grid">${renderFields(properties.filter(([key]) => advanced.has(key)))}</div></details>` : ''}
+        ${selected === 'inference_input' ? filterEditor('fixed',draft) : ''}
+      `}
+    `}
     ${issues.length ? `<div class="info bad" role="alert"><strong>請修正設定</strong><ul>${issues.map(issue =>
       `<li><button class="quiet" data-action="module" data-value="${issue.module}">${labels[issue.module]}</button> · ${escapeHTML(issue.message)}</li>`).join('')}</ul></div>` : ''}
   </section></div>`;
 }
 
+function retrievalMode(values) {
+  const vector = values.vector_name || values.vector_fields?.some(Boolean);
+  const fulltext = values.fulltext_fields?.some(Boolean);
+  return fulltext && vector ? 'Hybrid' : fulltext ? '全文檢索' : vector ? '向量檢索' : '尚未選擇檢索欄位';
+}
+
+function searchRouteCount(values) {
+  return new Set([values.vector_name,...(values.vector_fields ?? [])].filter(Boolean)).size
+    + new Set((values.fulltext_fields ?? []).filter(Boolean)).size;
+}
+
 function renderField(key, schema, value) {
-  const title = labels[key] || key;
+  const title = schema.title || labels[key] || key;
   const path = prefix(selected) + '/' + key;
   const error = issues.find(issue => issue.path === path);
   const feedback = error ? `<span class="inline-error">${escapeHTML(error.message)}</span>` : '';
-  const values = optionValues(draft, selected, '/' + key);
   if (key === 'structdata') return importFields(value);
   if (key === 'structdata_overrides') return indexFields(value);
   if (schema.type === 'array') {
-    const choices = optionValues(draft, selected, '/' + key + '/*');
-    const rows = (value ?? []).map((entry,index) => `<tr>${schema.items.type === 'object' ? Object.keys(schema.items.properties).map(sub => {
-      const attrs = `data-param="${key}" data-row="${index}" data-column="${sub}" aria-label="${title} ${index+1}：${labels[sub]}"`;
-      const available = optionValues(draft, selected, '/' + key + '/*/' + sub);
-      return `<td>${available ? selectField(entry[sub],available,attrs) : `<input class="control" ${attrs} value="${escapeHTML(entry[sub])}">`}</td>`;
-    }).join('') : `<td>${selectField(entry,choices,`data-param="${key}" data-row="${index}" aria-label="${title}"`)}</td>`}
+    const rows = (value ?? []).map((entry,index) => `<tr>${schema.items.type === 'object' ? Object.entries(schema.items.properties).map(([sub,shape]) => {
+      const attrs = `data-param="${key}" data-row="${index}" data-column="${sub}" aria-label="${title} ${index+1}：${shape.title || labels[sub] || sub}"`;
+      return `<td>${renderControl(shape,entry[sub],attrs,'/' + key + '/*/' + sub)}</td>`;
+    }).join('') : `<td>${renderControl(schema.items,entry,`data-param="${key}" data-row="${index}" aria-label="${title}"`,'/' + key + '/*')}</td>`}
     <td><button class="btn small" data-action="remove-item" data-value="${key}" data-index="${index}" aria-label="移除此項">移除</button></td></tr>`).join('');
-    const headings = schema.items.type === 'object' ? Object.keys(schema.items.properties).map(sub => `<th>${labels[sub]}</th>`).join('') : '<th>欄位</th>';
+    const headings = schema.items.type === 'object' ? Object.entries(schema.items.properties).map(([sub,shape]) => `<th>${shape.title || labels[sub] || sub}</th>`).join('') : '<th>欄位</th>';
     return `<div class="field wide"><strong>${title}</strong>${rows ? `<div class="table-wrap"><table><thead><tr>${headings}<th></th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}
       ${feedback}<div><button class="btn small" data-action="add-item" data-value="${key}">＋ 新增</button></div></div>`;
   }
   const attrs = `data-param="${key}" aria-label="${title}"`;
-  return `<label class="field">${title}${values ? selectField(value,values,attrs)
-    : `<input ${attrs} class="control" type="${schema.type === 'integer' ? 'number' : 'text'}" ${schema.minimum === undefined ? '' : 'min="' + schema.minimum + '"'} value="${escapeHTML(value)}" aria-invalid="${Boolean(error)}">`}${feedback}</label>`;
+  return `<label class="field ${schema.multiline ? 'wide' : ''}">${title}${renderControl(schema,value,attrs,'/' + key,Boolean(error))}${feedback}</label>`;
+}
+
+function renderControl(schema,value,attrs,path,invalid = false) {
+  const choices = optionValues(draft,selected,path) ?? schema.enum;
+  if (choices) return selectField(value,choices,attrs);
+  if (schema.type === 'boolean') return `<input type="checkbox" class="check" ${attrs} ${value ? 'checked' : ''}>`;
+  if (schema.multiline) return `<textarea class="control" ${attrs} rows="4">${escapeHTML(value)}</textarea>`;
+  const type = schema.type === 'integer' ? 'number' : 'text';
+  return `<input ${attrs} class="control" type="${type}" ${schema.minimum === undefined ? '' : 'min="' + schema.minimum + '"'} value="${escapeHTML(value)}" aria-invalid="${invalid}">`;
 }
 
 function importFields(fields) {
@@ -457,6 +698,7 @@ function saveDraft(system) {
   if (!draftDirty) return;
   system.name = draftName.trim();
   system.draft = clone(draft);
+  system.componentDrafts = clone(componentDrafts);
   draftDirty = false;
   persist();
 }
@@ -555,7 +797,7 @@ function configIssues(config) {
   const add = (module,key,message) => result.push({module,path:prefix(module) + '/' + key,message});
   const {input,fields} = derive(config);
   for (const module of Object.values(lanes).flat()) {
-    const spec = descriptor(module).parameters_schema;
+    const spec = baseline[module].parameters_schema;
     const values = params(config,module);
     for (const [key,shape] of Object.entries(spec.properties)) {
       const value = values[key];
@@ -604,14 +846,27 @@ function indexImpact(system, config) {
 
 function checkPublish(system) {
   if (!hasDraftName()) return;
-  issues = configIssues(draft);
+  issues = Object.values(lanes).flat().filter(module => needsMoreRuntime(module,draft)).map(module => ({
+    module, message:'此 Component 或設定尚未接入 W1 Runtime，可先保存草稿。'
+  }));
+  const effective = clone(draft);
+  if (!issues.length) {
+    // The draft also stores inactive options so switching between methods is reversible.
+    for (const module of Object.values(lanes).flat()) {
+      const properties = baseline[module].parameters_schema.properties;
+      for (const key of Object.keys(params(effective,module))) {
+        if (!Object.hasOwn(properties,key)) delete params(effective,module)[key];
+      }
+    }
+    issues = configIssues(effective);
+  }
   if (issues.length) {
     selected = issues[0].module;
     render();
     return;
   }
-  const action = indexImpact(system,draft);
-  checked = {action,validated:clone(draft),expected:activeRevision(system)};
+  const action = indexImpact(system,effective);
+  checked = {action,validated:effective,expected:activeRevision(system)};
   const messages = {
     create:['建立索引','發布後建立空索引。完成初次匯入即可查詢。'],
     reuse:['沿用索引','這次發布會保留現有索引與資料。'],
@@ -1069,14 +1324,17 @@ document.addEventListener('click',event => {
     }
     case 'add-item': {
       const parameters = params(draft,selected);
-      const shape = descriptor(selected).parameters_schema.properties[value].items;
-      (parameters[value] ??= []).push(shape.type === 'object' ? {source_field:'',output_field:''} : '');
+      const shape = descriptor(selected,draft).parameters_schema.properties[value].items;
+      const initial = field => field.enum?.[0] ?? (field.type === 'boolean' ? false : field.minimum ?? '');
+      (parameters[value] ??= []).push(shape.type === 'object'
+        ? Object.fromEntries(Object.entries(shape.properties).map(([key,field]) => [key,initial(field)]))
+        : initial(shape));
       break;
     }
     case 'remove-item': {
       const parameters = params(draft,selected);
       parameters[value].splice(Number(index),1);
-      if (!parameters[value].length && !descriptor(selected).parameters_schema.required.includes(value)) delete parameters[value];
+      if (!parameters[value].length && !descriptor(selected,draft).parameters_schema.required.includes(value)) delete parameters[value];
       break;
     }
     case 'ingest-sample': uploadRevision++; csv = null; ingestText = json(fixture.ingestion); ingestError = ''; batchPreview = null; render(); return;
@@ -1095,11 +1353,24 @@ document.addEventListener('click',event => {
 function changeParameter(input) {
   const {param,row,column} = input.dataset;
   const values = params(draft,selected);
-  if (row !== undefined) {
-    if (column) values[param][Number(row)][column] = input.value;
-    else values[param][Number(row)] = input.value;
-  } else if (input.type === 'number') values[param] = input.value === '' ? null : Number(input.value);
-  else values[param] = input.value;
+  const value = input.type === 'checkbox' ? input.checked : input.type === 'number' ? (input.value ? Number(input.value) : null) : input.value;
+  if (row === undefined) values[param] = value;
+  else if (column) values[param][Number(row)][column] = value;
+  else values[param][Number(row)] = value;
+  markDirty();
+}
+
+function changeRemote(input) {
+  const key = input.dataset.remote;
+  const currentNode = node(draft,selected);
+  if (key === 'service_ref' || key === 'through') currentNode[key] = input.value;
+  else if (key === 'parameters' || key === 'structdata' || key === 'vectors') {
+    let value;
+    try { value = JSON.parse(input.value); }
+    catch { value = input.value; }
+    if (key === 'parameters') currentNode.parameters = value;
+    else currentNode.output[key] = value;
+  } else currentNode.connection[key] = input.type === 'number' ? (input.value ? Number(input.value) : null) : input.value;
   markDirty();
 }
 
@@ -1110,6 +1381,7 @@ document.addEventListener('input',event => {
     markDirty();
   }
   if (input.dataset.param !== undefined) changeParameter(input);
+  if (input.dataset.remote && input.dataset.remote !== 'through') changeRemote(input);
   if (input.id === 'fixed-filters') {
     try { draft.pipelines.inference.fixed_filters = JSON.parse(input.value); }
     catch { draft.pipelines.inference.fixed_filters = input.value; }
@@ -1127,6 +1399,18 @@ document.addEventListener('input',event => {
 
 document.addEventListener('change',event => {
   const input = event.target;
+  if (input.id === 'component-picker') {
+    chooseComponent(input.value);
+    return;
+  }
+  if (input.dataset.remote === 'through') {
+    changeRemote(input);
+    render();
+    return;
+  }
+  if (['persistence','service_source','compose_text','fusion','include_original','count','vector_name','vector_fields','fulltext_fields'].includes(input.dataset.param)) {
+    if (selected === 'retrieval' || !['vector_fields','vector_name','fulltext_fields'].includes(input.dataset.param)) render();
+  }
   if (input.dataset.filter) {
     const {filter,filterKey,index} = input.dataset;
     const filters = editableFilters(filter);
