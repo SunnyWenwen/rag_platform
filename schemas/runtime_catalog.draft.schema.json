@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:retrieval-builder:runtime-catalog:0.2-draft",
+  "title": "W1 Runtime Catalog",
+  "type": "object",
+  "required": ["runtime_ref", "catalog_revision", "descriptors", "resources"],
+  "additionalProperties": false,
+  "properties": {
+    "runtime_ref": {"type": "string", "minLength": 1},
+    "catalog_revision": {"type": "string", "minLength": 1},
+    "descriptors": {
+      "type": "array",
+      "items": {"$ref": "urn:retrieval-builder:component-descriptor:0.2-draft"},
+      "uniqueItems": true
+    },
+    "resources": {
+      "type": "object",
+      "required": ["profiles", "tokenizer_profiles", "models", "elasticsearch_services"],
+      "additionalProperties": false,
+      "properties": {
+        "profiles": {
+          "type": "object",
+          "propertyNames": {"minLength": 1},
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "label": {"type": "string", "minLength": 1},
+              "dimensions": {"type": "integer", "minimum": 1}
+            },
+            "required": ["dimensions"],
+            "additionalProperties": false
+          }
+        },
+        "tokenizer_profiles": {"$ref": "#/$defs/resources_by_id"},
+        "models": {"$ref": "#/$defs/resources_by_id"},
+        "elasticsearch_services": {"$ref": "#/$defs/resources_by_id"}
+      }
+    }
+  },
+  "$defs": {
+    "resources_by_id": {
+      "type": "object",
+      "propertyNames": {"minLength": 1},
+      "additionalProperties": {
+        "type": "object",
+        "properties": {"label": {"type": "string", "minLength": 1}},
+        "additionalProperties": false
+      }
+    }
+  }
+}

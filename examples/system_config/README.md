@@ -30,6 +30,6 @@ python3 examples/user_remote_api/validate.py
 
 ## Builder 表單 Descriptor
 
-[builder_form.descriptors.json](builder_form.descriptors.json) 提供 Import、檔案 Parsing、Dense Embedding、Indexing 及 Rerank 的表單與資料推導規則。單檔 Prototype 的 `builder-form-descriptors` JSON 區塊內嵌同一份 Catalog。更新 Catalog 或內嵌的共用資料 Schema 時同步更新 HTML。離線驗證會檢查兩邊內容一致，並驗證來源與 Parser 相容性、文字組合和向量選擇。
+[builder_form.descriptors.json](builder_form.descriptors.json) 涵蓋 Prototype 的 20 個內建 Component。單檔 Prototype 的 `builder-form-descriptors` JSON 區塊內嵌相同描述。更新表單 Descriptor 或內嵌的共用資料 Schema 時同步更新 HTML。離線驗證檢查清冊、控制項型別、可見性及內嵌內容。完整清冊見 [Component Descriptor 手冊](../../docs/04_component_descriptor.md#prototype-component-inventory)。
 
-[W1 config:options 案例](w1_config_options.http.json) 提供具體 HTTP request／response。以 [驗證入口](../../tests/README.md) 重放未完成草稿、相依未就緒、空候選、來源更名與回應晚到的案例。表單實作以 [Renderer 對照表](../../docs/07_builder_ui.md#descriptor-form-rendering)為準。
+[W1 Catalog 回應](w1_catalog.response.json) 提供範例 Runtime 的 9 個 Component 及四類資源清單。用 [Catalog Schema](../../schemas/runtime_catalog.draft.schema.json) 驗證。Builder 依草稿推導欄位候選，並從同一份 Catalog 取得 Profile、Tokenizer、模型及 Elasticsearch 服務選項。表單實作見 [Renderer 對照表](../../docs/07_builder_ui.md#descriptor-form-rendering)。

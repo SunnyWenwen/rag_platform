@@ -162,7 +162,7 @@ Builder 以選定方法的 `parameters_schema.properties` 產生參數欄位，�
 | Descriptor 宣告 | UI 控制項與保存格式 | 驗收 |
 |---|---|---|
 | `const` | 唯讀值，Config 保存原始 JSON 型別 | 可看見值且無法修改。新建套用固定值。 |
-| `option_sources` 指向字串欄位 | 動態下拉。若同時宣告 `enum`，可選值須符合兩者 | 請求送具體欄位路徑，含陣列列號。保留失效值並顯示原因。 |
+| `option_sources` 指向字串欄位 | 動態下拉。Builder 從 Catalog 資源或草稿有效 I/O 解析候選，並依宣告的 `enum` 篩選 | 例如每列的來源讀取 `/copy_fields/*/source_field` 宣告。保留失效值並顯示原因。 |
 | 固定 `enum` | 固定下拉，寫回原始 JSON 值 | 不發出選項查詢。數值與布林選項保存為數值與布林。 |
 | `string` | 單行文字輸入，長文可宣告 `textarea` | 依 Schema 檢查長度及格式。 |
 | `boolean` | 勾選框 | 勾選和取消分別保存 `true` 與 `false`。 |
@@ -174,7 +174,7 @@ Builder 以選定方法的 `parameters_schema.properties` 產生參數欄位，�
 
 `default` 用於初始化缺值，已有草稿值優先。必填和格式問題在欄位及錯誤摘要顯示，由 Runtime 在發布前做完整驗證。遇到超出 Renderer 支援的必要格式或專用控制項，Builder 顯示不相容原因並保留草稿，待支援後才可發布。
 
-動態候選使用目前的有效欄位、服務與索引能力。可信的相依資料由 Runtime 推導。多個相同 Module 的錯誤以 `node_ref` 和欄位路徑定位。SUI-01～14 互動驗收見 UIB-010。
+Builder 用草稿推導有效欄位及索引計畫，並讀取 Catalog 的環境資源清單。Runtime 執行發布前的權威驗證。多個相同 Module 的錯誤以 `node_ref` 和欄位路徑定位。SUI-01～14 互動驗收見 UIB-010。
 
 <a id="ui-hints-contract"></a>
 #### `ui_hints` 定義與 Renderer 輸入
@@ -189,8 +189,11 @@ Renderer 的共同輸入是已選 Component 的 Descriptor、目前草稿與該�
 | `controls` | `{參數路徑: 專用控制項名稱}`。每項取得該路徑的 Schema、目前值和下表所列資料 | 依名稱使用專用 Renderer。該路徑未指定時按前述通用規則選控制項。 |
 | `previews` | 支援 `effective_io` 和 `ingestion_request`，各接受選填的布林 `collapsed`，預設 `true`。搭配目前草稿推導的唯讀內容 | `effective_io` 顯示有效輸入與輸出 Schema，預設提供收合區。Import 宣告 `ingestion_request` 時另顯示匯入 Request 的 JSON Schema 和範例。`collapsed: false` 初次展開該預覽。 |
 | `fixed_filters` | Inference Input 可宣告 `"advanced"`。Renderer 讀取 `pipelines.inference.fixed_filters` 的草稿值，以及可過濾的索引欄位、型別和適用運算子 | 在進階區畫固定 Filter 編輯器，編輯值寫回原路徑。無既有 Filter 時顯示空清單。省略 hint 時，Renderer 略過該編輯區。 |
+| `visible_when` | `{參數路徑: boolean 或條件物件}`。條件物件以 `all` 或 `any` 包住一組條件，讀取同一 Component 的草稿值及缺值時的 Schema 預設 | 控制欄位顯示。省略時預設顯示。欄位收起後保留草稿，參數合法性和有效執行分支仍依 Config 契約處理。 |
 
-`order`、`groups[].fields`、`advanced` 和 `controls` 的路徑相對於該 Component 的 `parameters`。例如 `/structdata` 讀取 `parameters.structdata`。查動態選項時，則依 [W1 config:options 契約](06_runtime_api_and_deployment.md#w1-config-options) 送從 Request body 根起算的完整路徑。
+`order`、`groups[].fields`、`advanced`、`controls`、`visible_when` 和 `option_sources` 的路徑相對於該 Component 的 `parameters`。例如 `/structdata` 讀取 `parameters.structdata`。`visible_when` 的目標及條件只引用第一層參數。條件支援 `{path, equals}`、`{path, minimum}`、`{paths, minimum_selected}`。最後一種按每個字串陣列計算非空且不重複的選值，再將數量相加。同一欄若同時指定 `advanced`，會先判斷可見性。
+
+例如 Embedding 的 `visible_when["/composition_template"] = {"all":[{"path":"/compose_text","equals":true}]}`。Retrieval 的 `fusion` 則在 `vector_fields` 和 `fulltext_fields` 合計至少選定兩條路徑時顯示。
 
 | `controls` 值 | 額外輸入與來源 | UI 與寫回 |
 |---|---|---|
@@ -199,7 +202,7 @@ Renderer 的共同輸入是已選 Component 的 Descriptor、目前草稿與該�
 | `vector_checklist` | `input.vectors` 的候選向量名稱和可用狀態、上游向量的來源欄位與 Profile、草稿中已勾選的向量名稱 | Indexing 向量勾選表，回寫選取的向量名稱陣列。 |
 | `textarea` | 字串 Schema 與草稿字串 | 多行文字欄，例如 Rewrite Prompt 或 Embedding 組合文字。保存字串和換行。 |
 
-欄位文字來自 `parameters_schema.properties.<欄位>.title` 與 `description`，分別顯示為欄位標籤和控制項下方的輔助文字。省略標題時使用 Builder 已有的本地化名稱或參數名稱。群組文字使用 `groups[].title` 和選填的 `example`，目前群組格式沒有 `description`。專用表格的固定表頭、按鈕與提示由 Renderer 提供。動態選項的失效或相依未就緒原因使用 Runtime 回傳的 `reason` 或 `dependency_issue.message`。
+欄位文字來自 `parameters_schema.properties.<欄位>.title` 與 `description`，分別顯示為欄位標籤和控制項下方的輔助文字。省略標題時使用 Builder 已有的本地化名稱或參數名稱。群組文字使用 `groups[].title` 和選填的 `example`，目前群組格式沒有 `description`。專用表格的固定表頭、按鈕與提示由 Renderer 提供。動態選項的失效及相依未就緒提示由 Builder 依 Catalog 與草稿推導，發布驗證錯誤由 Runtime 提供。
 
 Import 的 `platform` Descriptor 例如以下宣告。Renderer 依序顯示入口資料形式、文件欄位表，再將 Request 參數收進進階區。
 
@@ -217,7 +220,7 @@ Import 的 `platform` Descriptor 例如以下宣告。Renderer 依序顯示入�
 }
 ```
 
-正式串接時，`config:options` 可提供候選值與可用狀態。上游有效欄位及能力旗標、向量來源和 Profile、逐模組有效 I/O Schema 的交付介面仍待串接確認。Prototype 目前以本機 Catalog 和草稿推導填入這些資料，Builder 可用相同形狀的測資先實作 Renderer。
+W1 Builder 從 [Catalog](06_runtime_api_and_deployment.md#w1-catalog) 取得 Descriptor 與環境資源，並從草稿推導上游欄位與能力旗標、向量來源及各模組有效 I/O。Prototype 使用同形狀的內嵌 Catalog。全數 Module 與 Component 見[表單清冊](04_component_descriptor.md#prototype-component-inventory)。
 
 <a id="src-06-331-討論提案query-rewrite-單模組測試"></a>
 ### 討論提案：Query Rewrite 單模組測試

@@ -8,18 +8,60 @@
     "properties": {
       "llm_ref": {
         "type": "string",
-        "minLength": 1
+        "minLength": 1,
+        "title": "共用 LLM 引用",
+        "default": "default-llm"
       },
       "prompt": {
         "type": "string",
-        "pattern": "\\S"
+        "pattern": "\\S",
+        "title": "Rewrite Prompt",
+        "default": "以不同搜尋角度產生 {{count}} 個檢索問題。\n問題：{{query}}"
       },
       "count": {
         "type": "integer",
-        "minimum": 1
+        "minimum": 1,
+        "title": "改寫數量",
+        "default": 1
       },
       "include_original": {
-        "type": "boolean"
+        "type": "boolean",
+        "title": "同時檢索原始問題",
+        "default": false
+      },
+      "cross_query_at": {
+        "type": "string",
+        "title": "跨 Query 融合時點",
+        "enum": [
+          "Retrieval 後",
+          "Rerank 後"
+        ],
+        "default": "Retrieval 後"
+      },
+      "cross_query_method": {
+        "type": "string",
+        "title": "跨 Query 融合策略",
+        "enum": [
+          "RRF",
+          "Sum Score"
+        ],
+        "default": "RRF"
+      },
+      "cross_query_group_by": {
+        "type": "array",
+        "title": "跨 Query 分組欄位",
+        "items": {
+          "type": "string",
+          "title": "欄位",
+          "minLength": 1
+        },
+        "minItems": 1,
+        "uniqueItems": true
+      },
+      "cross_query_top_n": {
+        "type": "integer",
+        "title": "跨 Query Top N",
+        "minimum": 1
       }
     },
     "required": [
@@ -37,11 +79,73 @@
   "option_sources": {
     "/llm_ref": {
       "source": "models"
+    },
+    "/cross_query_group_by/*": {
+      "source": "candidate.document_fields",
+      "types": [
+        "string"
+      ]
     }
   },
   "ui_hints": {
     "controls": {
       "/prompt": "textarea"
+    },
+    "advanced": [
+      "/cross_query_at",
+      "/cross_query_method",
+      "/cross_query_group_by",
+      "/cross_query_top_n"
+    ],
+    "visible_when": {
+      "/cross_query_at": {
+        "any": [
+          {
+            "path": "/count",
+            "minimum": 2
+          },
+          {
+            "path": "/include_original",
+            "equals": true
+          }
+        ]
+      },
+      "/cross_query_method": {
+        "any": [
+          {
+            "path": "/count",
+            "minimum": 2
+          },
+          {
+            "path": "/include_original",
+            "equals": true
+          }
+        ]
+      },
+      "/cross_query_group_by": {
+        "any": [
+          {
+            "path": "/count",
+            "minimum": 2
+          },
+          {
+            "path": "/include_original",
+            "equals": true
+          }
+        ]
+      },
+      "/cross_query_top_n": {
+        "any": [
+          {
+            "path": "/count",
+            "minimum": 2
+          },
+          {
+            "path": "/include_original",
+            "equals": true
+          }
+        ]
+      }
     }
   }
 }

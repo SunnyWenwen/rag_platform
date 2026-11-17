@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const path = require('node:path');
 const {pathToFileURL} = require('node:url');
 const {chromium} = require('playwright');
@@ -25,6 +26,24 @@ async function main() {
     const openCardAction = name => card.getByRole('button',{name,exact:true}).click();
     const closeSystem = () => dialog.getByRole('button',{name:'關閉',exact:true}).click();
     await page.goto(url);
+    const readFixture = name => JSON.parse(fs.readFileSync(path.join(__dirname,'../examples',name),'utf8'));
+    const storedConfig = readFixture('system_config/local_memory.builtin.json').config;
+    const candidate = readFixture('user_remote_api/effective_document.schema.json').allOf[1].properties.structdata;
+    const derived = await page.evaluate(config => {
+      const data = derive(config);
+      return {
+        properties:Object.fromEntries(Object.entries(data.indexed).map(([key,value]) => [key,fieldValueSchema(value.type)])),
+        required:Object.keys(data.indexed).filter(key => data.indexed[key].required).sort(),
+        fulltext:optionValues(config,'retrieval','/fulltext_fields/*'),
+        vectors:optionValues(config,'retrieval','/vector_fields/*'),
+        profile:data.vectorBindings.text
+      };
+    },storedConfig);
+    assert.deepEqual(derived.properties,candidate.properties);
+    assert.deepEqual(derived.required,[...candidate.required].sort());
+    assert.deepEqual(derived.fulltext,['structdata.text']);
+    assert.deepEqual(derived.vectors,['text']);
+    assert.equal(derived.profile.dimensions,3);
     assert.equal(await page.getByRole('heading',{level:1}).innerText(),'Customer Support');
     assert.equal(await page.locator('.card').count(),3);
     assert.equal(await page.locator('.sidebar').evaluate(node => getComputedStyle(node).backgroundColor),'rgb(255, 255, 255)');
@@ -38,6 +57,8 @@ async function main() {
     assert.equal(await page.getByRole('navigation',{name:'模組'}).locator('.module-line').count(),2);
 
     await module('Chunking').click();
+    assert.equal(await page.getByLabel('Tokenizer',{exact:true}).inputValue(),'fixture');
+    assert.equal(await page.getByRole('option',{name:'DEV Tokenizer'}).count(),1);
     assert.equal(await page.getByLabel('切分上限（tokens）').getAttribute('step'),'1');
     await page.evaluate(() => {
       descriptor('chunking',draft).parameters_schema.properties.test_ratio = {
@@ -295,6 +316,9 @@ async function main() {
     assert.match(await dialog.locator('.info').innerText(),/Local Search/);
     await module('Query Transformation').click();
     await picker.selectOption('rewrite');
+    assert.equal(await page.getByLabel('共用 LLM 引用').inputValue(),'default-llm');
+    assert.equal(await page.getByRole('option',{name:'DEV LLM'}).count(),1);
+    assert.equal(await page.getByLabel('跨 Query 融合策略').count(),0);
     await page.getByLabel('Rewrite Prompt').fill('Rewrite {{query}}');
     await page.getByLabel('同時檢索原始問題').check();
     assert.equal(await page.getByLabel('跨 Query 融合策略').count(),1);

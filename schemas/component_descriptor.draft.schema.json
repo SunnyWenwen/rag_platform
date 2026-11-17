@@ -298,6 +298,52 @@
               "textarea"
             ]
           }
+        },
+        "visible_when": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^/[^/]+$"
+          },
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "all": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "$ref": "#/$defs/visibility_condition"
+                    }
+                  }
+                },
+                "required": [
+                  "all"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "any": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "$ref": "#/$defs/visibility_condition"
+                    }
+                  }
+                },
+                "required": [
+                  "any"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
         }
       }
     },
@@ -337,6 +383,74 @@
   ],
   "additionalProperties": false,
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:retrieval-builder:component-descriptor:0.2-draft",
   "title": "Component Descriptor v0.2 draft",
-  "description": "Offline schema for the reviewed subset. Module I/O, pointer targets and context-dependent validity are also checked semantically."
+  "description": "Offline schema for the reviewed subset. Module I/O, pointer targets and context-dependent validity are also checked semantically.",
+  "$defs": {
+    "visibility_condition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "pattern": "^/[^/]+$"
+            },
+            "equals": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            }
+          },
+          "required": [
+            "path",
+            "equals"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "pattern": "^/[^/]+$"
+            },
+            "minimum": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "path",
+            "minimum"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^/[^/]+$"
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "minimum_selected": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "paths",
+            "minimum_selected"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
 }

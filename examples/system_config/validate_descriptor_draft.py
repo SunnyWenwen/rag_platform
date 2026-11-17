@@ -19,7 +19,7 @@ BUILTIN_COMPONENTS = {
     "import": (("platform",), ("IngestionRequest", "Document")),
     "parsing": (("passthrough", "pdf", "pdf_ocr", "office", "image_ocr", "text", "json"),
                 ("Document", "Document[]")),
-    "chunking": (("fixed", "recursive", "header_aware"), ("Document[]", "Document[]")),
+    "chunking": (("recursive", "fixed_size", "header_aware"), ("Document[]", "Document[]")),
     "embedding": (("dense",), ("Document[]", "Document[]")),
     "indexing": (("elasticsearch", "local"), ("Document[]", "IndexBinding")),
     "inference_input": (("platform",), ("InferenceRequest", "QueryContext[]")),
@@ -45,17 +45,16 @@ def array(items):
 
 
 NAME = {"type": "string", "minLength": 1}
-NAT = {"type": "integer", "minimum": 0}
-POS = {"type": "integer", "minimum": 1}
 DESCRIPTOR_SCHEMA = json.loads((REPO / "schemas/component_descriptor.draft.schema.json").read_text())
 BUILDER_FORM_DESCRIPTORS = json.loads((HERE / "builder_form.descriptors.json").read_text())
+CATALOG_SCHEMA = json.loads((REPO / "schemas/runtime_catalog.draft.schema.json").read_text())
+W1_CATALOG = json.loads((HERE / "w1_catalog.response.json").read_text())
 SYSTEM_CONFIG_SCHEMA = json.loads((REPO / "schemas/system_config.draft.schema.json").read_text())
 DATA_META = json.loads((REPO / "schemas/data_meta.schema.json").read_text())
 QUERY_CONTEXT = json.loads((REPO / "schemas/query_context.schema.json").read_text())
 SCHEMA_REGISTRY = Registry().with_resources(
-    (schema["$id"], Resource.from_contents(schema)) for schema in (DATA_META, QUERY_CONTEXT)
+    (schema["$id"], Resource.from_contents(schema)) for schema in (DATA_META, QUERY_CONTEXT, DESCRIPTOR_SCHEMA)
 )
-VALUE_TYPES = DATA_META["$defs"]["field_type"]["enum"]
 DATE_FORMATS = {
     kind: Draft202012Validator(DATA_META["$defs"][kind], format_checker=FormatChecker())
     for kind in ("date", "datetime")
@@ -88,8 +87,7 @@ def fail(code):
     raise ConfigError(code)
 
 
-def descriptor(module, component_id, params, io, selectors=None, rules=(), constraints=(), required=None,
-               ui_hints=None):
+def descriptor(module, component_id, params, io, selectors=None, rules=(), constraints=(), required=None):
     value = {
         "descriptor_version": "0.2-draft", "module": module, "component_id": component_id,
         "component_version": "1.0.0", "parameters_schema": obj(params, required),
@@ -97,8 +95,6 @@ def descriptor(module, component_id, params, io, selectors=None, rules=(), const
         "option_sources": {"/" + key.lstrip("/"): spec for key, spec in (selectors or {}).items()},
         "data_rules": list(rules), "constraints": list(constraints),
     }
-    if ui_hints is not None:
-        value["ui_hints"] = ui_hints
     validate_descriptor(value)
     return value
 
@@ -152,6 +148,24 @@ def validate_descriptor(value):
                           and pointer not in value.get("option_sources", {}))
         if not compatible:
             fail("incompatible UI control:" + pointer)
+    for pointer, rule in hints.get("visible_when", {}).items():
+        schema_at(root, pointer)
+        if isinstance(rule, bool):
+            continue
+        for condition in next(iter(rule.values())):
+            if "paths" in condition:
+                shapes = [schema_at(root, path) for path in condition["paths"]]
+                if any(shape.get("type") != "array" or shape.get("items", {}).get("type") != "string"
+                       for shape in shapes):
+                    fail("visibility selection count requires string arrays")
+            else:
+                shape = schema_at(root, condition["path"])
+                if "minimum" in condition and shape.get("type") not in ("integer", "number"):
+                    fail("visibility minimum requires a number")
+                if "equals" in condition and not Draft202012Validator(shape).is_type(
+                    condition["equals"], shape.get("type", "null")
+                ):
+                    fail("visibility equality requires a matching type")
     for rule in value.get("data_rules", ()):
         if rule["op"] == "compose":
             if (schema_at(root, rule["enabled"]).get("type") != "boolean"
@@ -175,21 +189,6 @@ def selector(source, *types):
 
 
 STRING_INPUT = selector("input.structdata", "string")
-CHUNK = descriptor(
-    "chunking", "recursive",
-    {"split_field": NAME, "output_field": NAME,
-     "copy_fields": array(obj({"source_field": NAME, "output_field": NAME})),
-     "max_tokens": POS, "overlap_tokens": NAT, "tokenizer_profile_id": NAME},
-    ("Document[]", "Document[]"),
-    {"split_field": STRING_INPUT, "tokenizer_profile_id": selector("tokenizer_profiles"),
-     "/copy_fields/*/source_field": {
-        "source": "input.structdata", "types": VALUE_TYPES,
-    }},
-    [{"op": "declare", "target": "/output_field", "schema": {"type": "string", "required": True}},
-     {"op": "copy", "source": "/source_field", "target": "/output_field", "for_each": "/copy_fields"}],
-    [{"op": "lt", "left": "/overlap_tokens", "right": "/max_tokens"}],
-    ui_hints={"advanced": ["/copy_fields", "/overlap_tokens"]},
-)
 
 
 def form_descriptor(module, component_id):
@@ -197,23 +196,18 @@ def form_descriptor(module, component_id):
                 if (item["module"], item["component_id"]) == (module, component_id))
 
 
+CHUNK = form_descriptor("chunking", "recursive")
 EMBED = form_descriptor("embedding", "dense")
 INDEX = form_descriptor("indexing", "local")
 RETRIEVE = form_descriptor("retrieval", "builtin")
 RERANK = form_descriptor("rerank", "model_api")
-REWRITE = json.loads((HERE / "rewrite.descriptor.json").read_text())
-validate_descriptor(REWRITE)
-FIXTURE_DESCRIPTORS = (
-    CHUNK, REWRITE, *BUILDER_FORM_DESCRIPTORS,
-    descriptor("parsing", "passthrough", {}, ("Document", "Document[]")),
-    descriptor("query_transformation", "none", {}, ("QueryContext[]", "QueryContext[]")),
-    descriptor("rerank", "none", {}, ("QueryContext[]", "QueryContext[]")),
-)
+REWRITE = form_descriptor("query_transformation", "rewrite")
 for form in BUILDER_FORM_DESCRIPTORS:
     validate_descriptor(form)
 
-REGISTRY = {(d["module"], d["component_id"], d["component_version"]): d for d in FIXTURE_DESCRIPTORS}
-PROFILES = {"text-v1": 3, "other-space-v1": 3}
+REGISTRY = {(d["module"], d["component_id"], d["component_version"]): d for d in BUILDER_FORM_DESCRIPTORS}
+RESOURCES = W1_CATALOG["resources"]
+PROFILES = {key: value["dimensions"] for key, value in RESOURCES["profiles"].items()}
 
 def node(component_id, **parameters):
     return {"component_id": component_id, "component_version": "1.0.0",
@@ -317,8 +311,7 @@ def data_effects(desc, values, fields, vectors):
 
 
 def context(fields, vectors):
-    return {"input.structdata": fields, "input.vectors": vectors, "profiles": PROFILES,
-            "tokenizer_profiles": {"fixture": None}}
+    return {**RESOURCES, "input.structdata": fields, "input.vectors": vectors}
 
 
 def candidate_context(fields):
@@ -554,7 +547,7 @@ def compile_local_example(snapshot):
         if module == "retrieval":
             compile_retrieval(index, config)
         else:
-            parameters(module, config, {**candidate_context(index["fields"]), "models": {"default-llm": None}})
+            parameters(module, config, {**RESOURCES, **candidate_context(index["fields"])})
     return index["fields"], vectors, index
 
 
@@ -878,11 +871,12 @@ def _():
     rejects(lambda: schema.validate(bad), "ValidationError")
 
 
-@case("descriptor envelope represents all planned builtin component families")
+@case("the form catalog covers all planned builtin ids with a real descriptor")
 def _():
-    for module, (components, io) in BUILTIN_COMPONENTS.items():
-        for component_id in components:
-            descriptor(module, component_id, {}, io)
+    expected = {(module, component) for module, (components, _) in BUILTIN_COMPONENTS.items()
+                for component in components}
+    assert {(module, component) for module, component, _ in REGISTRY} == expected
+    assert len(REGISTRY) == len(BUILDER_FORM_DESCRIPTORS) == len(expected) == 20
 
 
 @case("external retrieval candidate uses effective output schema without an IndexBinding")
@@ -965,7 +959,14 @@ def _():
         return json.loads(source.split(start,1)[1].split("</script>",1)[0])
     assert embedded("builder-form-descriptors") == BUILDER_FORM_DESCRIPTORS
     runtime = embedded("runtime-fixture")
-    assert CHUNK == next(item for item in runtime["catalog"]["descriptors"] if item["module"] == "chunking")
+    assert runtime["catalog"] == W1_CATALOG
+    assert len(runtime["catalog"]["descriptors"]) == len(BUILTIN_COMPONENTS)
+    assert {item["module"] for item in runtime["catalog"]["descriptors"]} == BUILTIN_COMPONENTS.keys()
+    Draft202012Validator(CATALOG_SCHEMA, registry=SCHEMA_REGISTRY).validate(W1_CATALOG)
+    for desc in W1_CATALOG["descriptors"]:
+        validate_descriptor(desc)
+        assert desc == REGISTRY[desc["module"], desc["component_id"], desc["component_version"]]
+    assert PROFILES["text-v1"] == 3
     for name, schema in runtime["schemas"].items():
         assert schema == json.loads((REPO / f"schemas/{name}.schema.json").read_text())
     for module, component in (("embedding","dense"), ("indexing","elasticsearch"),
@@ -986,6 +987,34 @@ def _():
         rejects(lambda: validate_descriptor(bad), "incompatible UI control:" + pointer)
         controls[pointer] = "unknown_editor"
         rejects(lambda: validate_descriptor(bad), "ValidationError")
+
+
+@case("visibility references use the right parameter types")
+def _():
+    bad = deepcopy(RETRIEVE)
+    condition = bad["ui_hints"]["visible_when"]["/fusion"]["all"][0]
+    condition["paths"] = ["/per_route_k"]
+    rejects(lambda: validate_descriptor(bad), "visibility selection count requires string arrays")
+    condition["paths"] = ["/unknown"]
+    rejects(lambda: validate_descriptor(bad), "unknown parameter path:/unknown")
+    bad["ui_hints"]["visible_when"]["/fusion"] = {"all": [{"path": "/per_route_k", "equals": "2"}]}
+    rejects(lambda: validate_descriptor(bad), "visibility equality requires a matching type")
+
+
+@case("catalog resources cover registered option sources and invalid references fail at publish")
+def _():
+    sources = {entry["source"] for descriptor in BUILDER_FORM_DESCRIPTORS
+               for entry in descriptor.get("option_sources", {}).values()}
+    assert sources - FIELD_SOURCES - {"input.vectors", "index_plan.vectors"} == RESOURCES.keys()
+    catalog = deepcopy(W1_CATALOG)
+    catalog["resources"]["profiles"]["text-v1"]["dimensions"] = 0
+    validator = Draft202012Validator(CATALOG_SCHEMA, registry=SCHEMA_REGISTRY)
+    rejects(lambda: validator.validate(catalog), "ValidationError")
+    catalog["resources"]["profiles"] = {}
+    validator.validate(catalog)
+    existing = node("dense", mappings=[{"source_field": "text", "vector_name": "text"}], profile="removed")
+    rejects(lambda: parameters("embedding", existing, context({"text": Field("string")}, {})),
+            "invalid selection:/profile")
 
 
 @case("Import source controls built-in Parser compatibility")
@@ -1034,8 +1063,10 @@ def _():
 if __name__ == "__main__":
     Draft202012Validator.check_schema(DATA_META)
     Draft202012Validator.check_schema(DESCRIPTOR_SCHEMA)
+    Draft202012Validator.check_schema(CATALOG_SCHEMA)
     Draft202012Validator.check_schema(SYSTEM_CONFIG_SCHEMA)
     assert CHUNK == json.loads((HERE / "recursive.descriptor.json").read_text())
+    assert REWRITE == json.loads((HERE / "rewrite.descriptor.json").read_text())
     for name, test in TESTS:
         test()
         print("PASS", name)

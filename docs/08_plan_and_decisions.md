@@ -436,7 +436,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 
 - 仍待：完整 CRUD／助手／管理 API、OpenAPI／完整錯誤碼、檔案 manifest、冪等鍵、內部路由的部署保護、Header／認證接線及暴露 Trace。D-64 已確認核心回應／錯誤、retire 結果、System 路由方向與 22 的初始限制，不再把這些全部視為未決。
 - D-41 補充：Builder 與 Runtime 透過 API／Component 目錄合作；需核定目標 Runtime 版本識別、Config Schema／能力目錄、完整 Config 驗證、快取失效與接口相容政策。能力範圍見 [Runtime API／部署](06_runtime_api_and_deployment.md#src-07-58-runtime-component-目錄與-config-驗證邊界)，精確端點與 Envelope 仍 OPEN。
-- D-42 已按建議規劃描述／Context／選項及驗證關聯值，候選格式見 Descriptor手冊；精確路徑、認證、版本識別與公開 Meta-schema 仍 OPEN，不影響既有 Ingest／Query 範例。
+- D-42 的 W1 編輯方案採 [Catalog 與草稿推導](06_runtime_api_and_deployment.md#w1-catalog)。Catalog 提供 Descriptor 與目標環境資源，Builder 推導上游欄位和候選，Runtime 驗證待發布設定。更廣的 API 認證、版本相容及公開 Meta-schema 見本節其餘待決項目。
 - Query API 成功 body 直接回傳 QueryContext[]，只保留目前 key／items／score；排名以陣列順序表示。request／版本進 Headers／Logs；精確 HTTP 版本協商及錯誤待核定。
 - D-64 已確認 retire 同步 200＋deleted／not_found、忙碌 409，狀態／錯誤核心欄位與可信內部 System 路由；後續 D-65 已確認 documents[]＋next_cursor 的摘要形式及 source_revisions[]；精確分頁參數／cursor、完整 OpenAPI、Backend 管理 API 與部署保護仍 OPEN；HTTP 與領域錯誤分層。
 - 替代：沿用既有企業 API 規範並明確映射。

@@ -96,6 +96,25 @@
   {
     "descriptor_version": "0.2-draft",
     "module": "parsing",
+    "component_id": "passthrough",
+    "component_version": "1.0.0",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "io": {
+      "input": "Document",
+      "output": "Document[]"
+    },
+    "option_sources": {},
+    "data_rules": [],
+    "constraints": []
+  },
+  {
+    "descriptor_version": "0.2-draft",
+    "module": "parsing",
     "component_id": "pdf",
     "component_version": "1.0.0",
     "parameters_schema": {
@@ -327,6 +346,433 @@
   },
   {
     "descriptor_version": "0.2-draft",
+    "module": "chunking",
+    "component_id": "recursive",
+    "component_version": "1.0.0",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "split_field": {
+          "type": "string",
+          "minLength": 1
+        },
+        "output_field": {
+          "type": "string",
+          "minLength": 1
+        },
+        "copy_fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_field": {
+                "type": "string",
+                "minLength": 1
+              },
+              "output_field": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "source_field",
+              "output_field"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "overlap_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tokenizer_profile_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "separators": {
+          "type": "array",
+          "title": "分隔符順序",
+          "items": {
+            "type": "string",
+            "title": "分隔符"
+          }
+        },
+        "keep_separator": {
+          "type": "boolean",
+          "title": "保留分隔符"
+        },
+        "preserve_original": {
+          "type": "boolean",
+          "title": "複製完整原文"
+        },
+        "include_original_chunk": {
+          "type": "boolean",
+          "title": "額外保留原文 Chunk"
+        }
+      },
+      "required": [
+        "split_field",
+        "output_field",
+        "copy_fields",
+        "max_tokens",
+        "overlap_tokens",
+        "tokenizer_profile_id"
+      ],
+      "additionalProperties": false
+    },
+    "io": {
+      "input": "Document[]",
+      "output": "Document[]"
+    },
+    "option_sources": {
+      "/split_field": {
+        "source": "input.structdata",
+        "types": [
+          "string"
+        ],
+        "required": true
+      },
+      "/tokenizer_profile_id": {
+        "source": "tokenizer_profiles"
+      },
+      "/copy_fields/*/source_field": {
+        "source": "input.structdata",
+        "types": [
+          "string",
+          "string_array",
+          "integer",
+          "number",
+          "boolean",
+          "date",
+          "datetime"
+        ]
+      }
+    },
+    "data_rules": [
+      {
+        "op": "declare",
+        "target": "/output_field",
+        "schema": {
+          "type": "string",
+          "required": true
+        }
+      },
+      {
+        "op": "copy",
+        "source": "/source_field",
+        "target": "/output_field",
+        "for_each": "/copy_fields"
+      }
+    ],
+    "constraints": [
+      {
+        "op": "lt",
+        "left": "/overlap_tokens",
+        "right": "/max_tokens"
+      }
+    ],
+    "ui_hints": {
+      "advanced": [
+        "/copy_fields",
+        "/overlap_tokens",
+        "/separators",
+        "/keep_separator",
+        "/preserve_original",
+        "/include_original_chunk"
+      ]
+    }
+  },
+  {
+    "descriptor_version": "0.2-draft",
+    "module": "chunking",
+    "component_id": "fixed_size",
+    "component_version": "1.0.0",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "split_field": {
+          "type": "string",
+          "minLength": 1
+        },
+        "output_field": {
+          "type": "string",
+          "minLength": 1
+        },
+        "copy_fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_field": {
+                "type": "string",
+                "minLength": 1
+              },
+              "output_field": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "source_field",
+              "output_field"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "overlap_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tokenizer_profile_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "preserve_original": {
+          "type": "boolean",
+          "title": "複製完整原文"
+        },
+        "include_original_chunk": {
+          "type": "boolean",
+          "title": "額外保留原文 Chunk"
+        }
+      },
+      "required": [
+        "split_field",
+        "output_field",
+        "copy_fields",
+        "max_tokens",
+        "overlap_tokens",
+        "tokenizer_profile_id"
+      ],
+      "additionalProperties": false
+    },
+    "io": {
+      "input": "Document[]",
+      "output": "Document[]"
+    },
+    "option_sources": {
+      "/split_field": {
+        "source": "input.structdata",
+        "types": [
+          "string"
+        ],
+        "required": true
+      },
+      "/tokenizer_profile_id": {
+        "source": "tokenizer_profiles"
+      },
+      "/copy_fields/*/source_field": {
+        "source": "input.structdata",
+        "types": [
+          "string",
+          "string_array",
+          "integer",
+          "number",
+          "boolean",
+          "date",
+          "datetime"
+        ]
+      }
+    },
+    "data_rules": [
+      {
+        "op": "declare",
+        "target": "/output_field",
+        "schema": {
+          "type": "string",
+          "required": true
+        }
+      },
+      {
+        "op": "copy",
+        "source": "/source_field",
+        "target": "/output_field",
+        "for_each": "/copy_fields"
+      }
+    ],
+    "constraints": [
+      {
+        "op": "lt",
+        "left": "/overlap_tokens",
+        "right": "/max_tokens"
+      }
+    ],
+    "ui_hints": {
+      "advanced": [
+        "/copy_fields",
+        "/overlap_tokens",
+        "/preserve_original",
+        "/include_original_chunk"
+      ]
+    }
+  },
+  {
+    "descriptor_version": "0.2-draft",
+    "module": "chunking",
+    "component_id": "header_aware",
+    "component_version": "1.0.0",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "split_field": {
+          "type": "string",
+          "minLength": 1
+        },
+        "output_field": {
+          "type": "string",
+          "minLength": 1
+        },
+        "copy_fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_field": {
+                "type": "string",
+                "minLength": 1
+              },
+              "output_field": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "source_field",
+              "output_field"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "overlap_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tokenizer_profile_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "separators": {
+          "type": "array",
+          "title": "分隔符順序",
+          "items": {
+            "type": "string",
+            "title": "分隔符"
+          }
+        },
+        "keep_separator": {
+          "type": "boolean",
+          "title": "保留分隔符"
+        },
+        "preserve_original": {
+          "type": "boolean",
+          "title": "複製完整原文"
+        },
+        "include_original_chunk": {
+          "type": "boolean",
+          "title": "額外保留原文 Chunk"
+        },
+        "header_levels": {
+          "type": "array",
+          "title": "標題層級",
+          "items": {
+            "type": "integer",
+            "title": "層級",
+            "minimum": 1
+          },
+          "default": [
+            1,
+            2,
+            3
+          ]
+        }
+      },
+      "required": [
+        "split_field",
+        "output_field",
+        "copy_fields",
+        "max_tokens",
+        "overlap_tokens",
+        "tokenizer_profile_id"
+      ],
+      "additionalProperties": false
+    },
+    "io": {
+      "input": "Document[]",
+      "output": "Document[]"
+    },
+    "option_sources": {
+      "/split_field": {
+        "source": "input.structdata",
+        "types": [
+          "string"
+        ],
+        "required": true
+      },
+      "/tokenizer_profile_id": {
+        "source": "tokenizer_profiles"
+      },
+      "/copy_fields/*/source_field": {
+        "source": "input.structdata",
+        "types": [
+          "string",
+          "string_array",
+          "integer",
+          "number",
+          "boolean",
+          "date",
+          "datetime"
+        ]
+      }
+    },
+    "data_rules": [
+      {
+        "op": "declare",
+        "target": "/output_field",
+        "schema": {
+          "type": "string",
+          "required": true
+        }
+      },
+      {
+        "op": "copy",
+        "source": "/source_field",
+        "target": "/output_field",
+        "for_each": "/copy_fields"
+      }
+    ],
+    "constraints": [
+      {
+        "op": "lt",
+        "left": "/overlap_tokens",
+        "right": "/max_tokens"
+      }
+    ],
+    "ui_hints": {
+      "advanced": [
+        "/copy_fields",
+        "/overlap_tokens",
+        "/separators",
+        "/keep_separator",
+        "/preserve_original",
+        "/include_original_chunk",
+        "/header_levels"
+      ]
+    }
+  },
+  {
+    "descriptor_version": "0.2-draft",
     "module": "embedding",
     "component_id": "dense",
     "component_version": "1.0.0",
@@ -512,6 +958,48 @@
       ],
       "controls": {
         "/composition_template": "textarea"
+      },
+      "visible_when": {
+        "/embedding_service_ref": {
+          "all": [
+            {
+              "path": "/service_source",
+              "equals": "Embedding API"
+            }
+          ]
+        },
+        "/embedding_model": {
+          "all": [
+            {
+              "path": "/service_source",
+              "equals": "Embedding API"
+            }
+          ]
+        },
+        "/dimensions": {
+          "all": [
+            {
+              "path": "/service_source",
+              "equals": "Embedding API"
+            }
+          ]
+        },
+        "/composition_field": {
+          "all": [
+            {
+              "path": "/compose_text",
+              "equals": true
+            }
+          ]
+        },
+        "/composition_template": {
+          "all": [
+            {
+              "path": "/compose_text",
+              "equals": true
+            }
+          ]
+        }
       }
     }
   },
@@ -603,6 +1091,25 @@
       "controls": {
         "/vector_fields": "vector_checklist",
         "/structdata_overrides": "structdata_overrides_editor"
+      },
+      "visible_when": {
+        "/service_ref": {
+          "all": [
+            {
+              "path": "/service_source",
+              "equals": "DEV test use"
+            }
+          ]
+        },
+        "/elasticsearch_service_ref": {
+          "all": [
+            {
+              "path": "/service_source",
+              "equals": "自行提供 Elasticsearch"
+            }
+          ]
+        },
+        "/vector_name": false
       }
     }
   },
@@ -708,109 +1215,53 @@
       "controls": {
         "/vector_fields": "vector_checklist",
         "/structdata_overrides": "structdata_overrides_editor"
-      }
-    }
-  },
-  {
-    "descriptor_version": "0.2-draft",
-    "module": "rerank",
-    "component_id": "model_api",
-    "component_version": "1.0.0",
-    "parameters_schema": {
-      "type": "object",
-      "required": [
-        "text_field"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "service_source": {
-          "type": "string",
-          "enum": [
-            "DEV test use",
-            "Rerank API"
-          ],
-          "default": "DEV test use",
-          "title": "服務來源"
-        },
-        "rerank_service_ref": {
-          "type": "string",
-          "minLength": 1,
-          "title": "Rerank 服務引用"
-        },
-        "model": {
-          "type": "string",
-          "minLength": 1,
-          "default": "demo-reranker",
-          "title": "模型"
-        },
-        "text_field": {
-          "type": "string",
-          "minLength": 1,
-          "default": "text",
-          "title": "評分內容欄位"
-        },
-        "query_source": {
-          "type": "string",
-          "enum": [
-            "原始問題",
-            "當前 Query"
-          ],
-          "default": "原始問題",
-          "title": "提問來源"
-        },
-        "top_n": {
-          "type": "integer",
-          "minimum": 1,
-          "default": 3,
-          "title": "Rerank Top N"
-        },
-        "group_by": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
-          "minItems": 1,
-          "uniqueItems": true,
-          "title": "分組欄位"
-        },
-        "timeout_ms": {
-          "type": "integer",
-          "minimum": 1,
-          "title": "Timeout（ms）"
-        }
-      }
-    },
-    "io": {
-      "input": "QueryContext[]",
-      "output": "QueryContext[]"
-    },
-    "option_sources": {
-      "/text_field": {
-        "source": "candidate.structdata",
-        "types": [
-          "string"
-        ],
-        "required": true
       },
-      "/group_by/*": {
-        "source": "candidate.document_fields",
-        "types": [
-          "string"
-        ]
-      }
-    },
-    "data_rules": [],
-    "constraints": [],
-    "ui_hints": {
-      "advanced": [
-        "/group_by",
-        "/timeout_ms"
-      ],
-      "previews": {
-        "effective_io": {
-          "collapsed": true
-        }
+      "visible_when": {
+        "/service_source": {
+          "all": [
+            {
+              "path": "/persistence",
+              "equals": "mongodb"
+            }
+          ]
+        },
+        "/mongo_service_ref": {
+          "all": [
+            {
+              "path": "/persistence",
+              "equals": "mongodb"
+            },
+            {
+              "path": "/service_source",
+              "equals": "自行提供 MongoDB"
+            }
+          ]
+        },
+        "/database": {
+          "all": [
+            {
+              "path": "/persistence",
+              "equals": "mongodb"
+            },
+            {
+              "path": "/service_source",
+              "equals": "自行提供 MongoDB"
+            }
+          ]
+        },
+        "/collection": {
+          "all": [
+            {
+              "path": "/persistence",
+              "equals": "mongodb"
+            },
+            {
+              "path": "/service_source",
+              "equals": "自行提供 MongoDB"
+            }
+          ]
+        },
+        "/vector_name": false
       }
     }
   },
@@ -883,6 +1334,176 @@
         "/request_parameters"
       ],
       "fixed_filters": "advanced"
+    }
+  },
+  {
+    "descriptor_version": "0.2-draft",
+    "module": "query_transformation",
+    "component_id": "none",
+    "component_version": "1.0.0",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "io": {
+      "input": "QueryContext[]",
+      "output": "QueryContext[]"
+    },
+    "option_sources": {},
+    "data_rules": [],
+    "constraints": []
+  },
+  {
+    "descriptor_version": "0.2-draft",
+    "module": "query_transformation",
+    "component_id": "rewrite",
+    "component_version": "1.0.0",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "llm_ref": {
+          "type": "string",
+          "minLength": 1,
+          "title": "共用 LLM 引用",
+          "default": "default-llm"
+        },
+        "prompt": {
+          "type": "string",
+          "pattern": "\\S",
+          "title": "Rewrite Prompt",
+          "default": "以不同搜尋角度產生 {{count}} 個檢索問題。\n問題：{{query}}"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "title": "改寫數量",
+          "default": 1
+        },
+        "include_original": {
+          "type": "boolean",
+          "title": "同時檢索原始問題",
+          "default": false
+        },
+        "cross_query_at": {
+          "type": "string",
+          "title": "跨 Query 融合時點",
+          "enum": [
+            "Retrieval 後",
+            "Rerank 後"
+          ],
+          "default": "Retrieval 後"
+        },
+        "cross_query_method": {
+          "type": "string",
+          "title": "跨 Query 融合策略",
+          "enum": [
+            "RRF",
+            "Sum Score"
+          ],
+          "default": "RRF"
+        },
+        "cross_query_group_by": {
+          "type": "array",
+          "title": "跨 Query 分組欄位",
+          "items": {
+            "type": "string",
+            "title": "欄位",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "cross_query_top_n": {
+          "type": "integer",
+          "title": "跨 Query Top N",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "llm_ref",
+        "prompt",
+        "count",
+        "include_original"
+      ],
+      "additionalProperties": false
+    },
+    "io": {
+      "input": "QueryContext[]",
+      "output": "QueryContext[]"
+    },
+    "option_sources": {
+      "/llm_ref": {
+        "source": "models"
+      },
+      "/cross_query_group_by/*": {
+        "source": "candidate.document_fields",
+        "types": [
+          "string"
+        ]
+      }
+    },
+    "ui_hints": {
+      "controls": {
+        "/prompt": "textarea"
+      },
+      "advanced": [
+        "/cross_query_at",
+        "/cross_query_method",
+        "/cross_query_group_by",
+        "/cross_query_top_n"
+      ],
+      "visible_when": {
+        "/cross_query_at": {
+          "any": [
+            {
+              "path": "/count",
+              "minimum": 2
+            },
+            {
+              "path": "/include_original",
+              "equals": true
+            }
+          ]
+        },
+        "/cross_query_method": {
+          "any": [
+            {
+              "path": "/count",
+              "minimum": 2
+            },
+            {
+              "path": "/include_original",
+              "equals": true
+            }
+          ]
+        },
+        "/cross_query_group_by": {
+          "any": [
+            {
+              "path": "/count",
+              "minimum": 2
+            },
+            {
+              "path": "/include_original",
+              "equals": true
+            }
+          ]
+        },
+        "/cross_query_top_n": {
+          "any": [
+            {
+              "path": "/count",
+              "minimum": 2
+            },
+            {
+              "path": "/include_original",
+              "equals": true
+            }
+          ]
+        }
+      }
     }
   },
   {
@@ -1000,7 +1621,167 @@
       ],
       "advanced": [
         "/rrf_k"
-      ]
+      ],
+      "visible_when": {
+        "/fusion": {
+          "all": [
+            {
+              "paths": [
+                "/vector_fields",
+                "/fulltext_fields"
+              ],
+              "minimum_selected": 2
+            }
+          ]
+        },
+        "/rrf_k": {
+          "all": [
+            {
+              "paths": [
+                "/vector_fields",
+                "/fulltext_fields"
+              ],
+              "minimum_selected": 2
+            },
+            {
+              "path": "/fusion",
+              "equals": "RRF"
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "descriptor_version": "0.2-draft",
+    "module": "rerank",
+    "component_id": "none",
+    "component_version": "1.0.0",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "io": {
+      "input": "QueryContext[]",
+      "output": "QueryContext[]"
+    },
+    "option_sources": {},
+    "data_rules": [],
+    "constraints": []
+  },
+  {
+    "descriptor_version": "0.2-draft",
+    "module": "rerank",
+    "component_id": "model_api",
+    "component_version": "1.0.0",
+    "parameters_schema": {
+      "type": "object",
+      "required": [
+        "text_field"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "service_source": {
+          "type": "string",
+          "enum": [
+            "DEV test use",
+            "Rerank API"
+          ],
+          "default": "DEV test use",
+          "title": "服務來源"
+        },
+        "rerank_service_ref": {
+          "type": "string",
+          "minLength": 1,
+          "title": "Rerank 服務引用"
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "default": "demo-reranker",
+          "title": "模型"
+        },
+        "text_field": {
+          "type": "string",
+          "minLength": 1,
+          "default": "text",
+          "title": "評分內容欄位"
+        },
+        "query_source": {
+          "type": "string",
+          "enum": [
+            "原始問題",
+            "當前 Query"
+          ],
+          "default": "原始問題",
+          "title": "提問來源"
+        },
+        "top_n": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 3,
+          "title": "Rerank Top N"
+        },
+        "group_by": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "title": "分組欄位"
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "title": "Timeout（ms）"
+        }
+      }
+    },
+    "io": {
+      "input": "QueryContext[]",
+      "output": "QueryContext[]"
+    },
+    "option_sources": {
+      "/text_field": {
+        "source": "candidate.structdata",
+        "types": [
+          "string"
+        ],
+        "required": true
+      },
+      "/group_by/*": {
+        "source": "candidate.document_fields",
+        "types": [
+          "string"
+        ]
+      }
+    },
+    "data_rules": [],
+    "constraints": [],
+    "ui_hints": {
+      "advanced": [
+        "/group_by",
+        "/timeout_ms"
+      ],
+      "previews": {
+        "effective_io": {
+          "collapsed": true
+        }
+      },
+      "visible_when": {
+        "/rerank_service_ref": {
+          "all": [
+            {
+              "path": "/service_source",
+              "equals": "Rerank API"
+            }
+          ]
+        }
+      }
     }
   }
 ]

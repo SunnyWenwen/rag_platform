@@ -1,0 +1,881 @@
+{
+  "runtime_ref": "dev-runtime",
+  "catalog_revision": "catalog-2",
+  "descriptors": [
+    {
+      "descriptor_version": "0.2-draft",
+      "module": "import",
+      "component_id": "platform",
+      "component_version": "1.0.0",
+      "parameters_schema": {
+        "type": "object",
+        "properties": {
+          "structdata": {
+            "$ref": "https://rag-builder.example/schemas/data_meta.schema.json"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "structdata",
+              "content"
+            ],
+            "default": "structdata",
+            "title": "入口資料形式"
+          },
+          "request_parameters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "title": "參數名稱"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "string",
+                    "integer",
+                    "number",
+                    "boolean",
+                    "array",
+                    "object"
+                  ],
+                  "title": "型別"
+                },
+                "required": {
+                  "type": "boolean",
+                  "title": "必填"
+                },
+                "default_value": {
+                  "type": "string",
+                  "title": "預設值（JSON）"
+                }
+              },
+              "required": [
+                "name",
+                "type",
+                "required"
+              ],
+              "additionalProperties": false
+            },
+            "title": "Request 參數"
+          }
+        },
+        "required": [
+          "structdata"
+        ],
+        "additionalProperties": false
+      },
+      "io": {
+        "input": "IngestionRequest",
+        "output": "Document"
+      },
+      "option_sources": {},
+      "data_rules": [],
+      "constraints": [],
+      "ui_hints": {
+        "previews": {
+          "effective_io": {
+            "collapsed": true
+          },
+          "ingestion_request": {
+            "collapsed": true
+          }
+        },
+        "order": [
+          "/source",
+          "/structdata"
+        ],
+        "advanced": [
+          "/request_parameters"
+        ],
+        "controls": {
+          "/structdata": "structdata_editor"
+        }
+      }
+    },
+    {
+      "descriptor_version": "0.2-draft",
+      "module": "parsing",
+      "component_id": "passthrough",
+      "component_version": "1.0.0",
+      "parameters_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "io": {
+        "input": "Document",
+        "output": "Document[]"
+      },
+      "option_sources": {},
+      "data_rules": [],
+      "constraints": []
+    },
+    {
+      "descriptor_version": "0.2-draft",
+      "module": "chunking",
+      "component_id": "recursive",
+      "component_version": "1.0.0",
+      "parameters_schema": {
+        "type": "object",
+        "properties": {
+          "split_field": {
+            "type": "string",
+            "minLength": 1
+          },
+          "output_field": {
+            "type": "string",
+            "minLength": 1
+          },
+          "copy_fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source_field": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "output_field": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "source_field",
+                "output_field"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "max_tokens": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "overlap_tokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "tokenizer_profile_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "separators": {
+            "type": "array",
+            "title": "分隔符順序",
+            "items": {
+              "type": "string",
+              "title": "分隔符"
+            }
+          },
+          "keep_separator": {
+            "type": "boolean",
+            "title": "保留分隔符"
+          },
+          "preserve_original": {
+            "type": "boolean",
+            "title": "複製完整原文"
+          },
+          "include_original_chunk": {
+            "type": "boolean",
+            "title": "額外保留原文 Chunk"
+          }
+        },
+        "required": [
+          "split_field",
+          "output_field",
+          "copy_fields",
+          "max_tokens",
+          "overlap_tokens",
+          "tokenizer_profile_id"
+        ],
+        "additionalProperties": false
+      },
+      "io": {
+        "input": "Document[]",
+        "output": "Document[]"
+      },
+      "option_sources": {
+        "/split_field": {
+          "source": "input.structdata",
+          "types": [
+            "string"
+          ],
+          "required": true
+        },
+        "/tokenizer_profile_id": {
+          "source": "tokenizer_profiles"
+        },
+        "/copy_fields/*/source_field": {
+          "source": "input.structdata",
+          "types": [
+            "string",
+            "string_array",
+            "integer",
+            "number",
+            "boolean",
+            "date",
+            "datetime"
+          ]
+        }
+      },
+      "data_rules": [
+        {
+          "op": "declare",
+          "target": "/output_field",
+          "schema": {
+            "type": "string",
+            "required": true
+          }
+        },
+        {
+          "op": "copy",
+          "source": "/source_field",
+          "target": "/output_field",
+          "for_each": "/copy_fields"
+        }
+      ],
+      "constraints": [
+        {
+          "op": "lt",
+          "left": "/overlap_tokens",
+          "right": "/max_tokens"
+        }
+      ],
+      "ui_hints": {
+        "advanced": [
+          "/copy_fields",
+          "/overlap_tokens",
+          "/separators",
+          "/keep_separator",
+          "/preserve_original",
+          "/include_original_chunk"
+        ]
+      }
+    },
+    {
+      "descriptor_version": "0.2-draft",
+      "module": "embedding",
+      "component_id": "dense",
+      "component_version": "1.0.0",
+      "parameters_schema": {
+        "type": "object",
+        "properties": {
+          "profile": {
+            "type": "string",
+            "minLength": 1,
+            "description": "向量空間的識別。Profile 定義模型與版本、向量維度及文件／查詢的編碼設定。Retrieval 需使用相容的 Query Encoder。"
+          },
+          "service_source": {
+            "type": "string",
+            "enum": [
+              "DEV test use",
+              "Embedding API"
+            ],
+            "default": "DEV test use",
+            "title": "服務來源"
+          },
+          "embedding_service_ref": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Embedding 服務引用"
+          },
+          "embedding_model": {
+            "type": "string",
+            "minLength": 1,
+            "title": "模型"
+          },
+          "dimensions": {
+            "type": "integer",
+            "minimum": 1,
+            "title": "向量維度"
+          },
+          "mappings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source_field": {
+                  "type": "string",
+                  "minLength": 1,
+                  "title": "來源欄位"
+                },
+                "vector_name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "title": "向量欄位"
+                }
+              },
+              "required": [
+                "source_field",
+                "vector_name"
+              ],
+              "additionalProperties": false
+            },
+            "title": "向量映射",
+            "minItems": 1,
+            "default": [
+              {
+                "source_field": "text",
+                "vector_name": "text"
+              }
+            ]
+          },
+          "compose_text": {
+            "type": "boolean",
+            "default": false,
+            "title": "啟用組合文字"
+          },
+          "composition_field": {
+            "type": "string",
+            "minLength": 1,
+            "default": "embedding_text",
+            "title": "組合輸出欄位"
+          },
+          "composition_template": {
+            "type": "string",
+            "minLength": 1,
+            "title": "文字模板",
+            "default": "標題：{{structdata.title}}\n內容：{{structdata.text}}"
+          }
+        },
+        "required": [
+          "mappings",
+          "profile"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "required": [
+                "compose_text"
+              ],
+              "properties": {
+                "compose_text": {
+                  "const": true
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "composition_field",
+                "composition_template"
+              ]
+            }
+          }
+        ]
+      },
+      "io": {
+        "input": "Document[]",
+        "output": "Document[]"
+      },
+      "option_sources": {
+        "/profile": {
+          "source": "profiles"
+        },
+        "/mappings/*/source_field": {
+          "source": "input.structdata",
+          "types": [
+            "string"
+          ],
+          "required": true
+        }
+      },
+      "data_rules": [
+        {
+          "op": "compose",
+          "enabled": "/compose_text",
+          "target": "/composition_field",
+          "template": "/composition_template"
+        },
+        {
+          "op": "vector",
+          "for_each": "/mappings",
+          "source": "/source_field",
+          "target": "/vector_name",
+          "profile": "/profile"
+        }
+      ],
+      "constraints": [],
+      "ui_hints": {
+        "previews": {
+          "effective_io": {
+            "collapsed": true
+          }
+        },
+        "order": [
+          "/mappings"
+        ],
+        "groups": [
+          {
+            "title": "組合文字欄位",
+            "fields": [
+              "/compose_text",
+              "/composition_field",
+              "/composition_template"
+            ],
+            "example": {
+              "原始 structdata": {
+                "title": "維護指南",
+                "text": "定期清潔濾網"
+              },
+              "文字模板": "標題：{{structdata.title}}\n內容：{{structdata.text}}",
+              "產生的 structdata.embedding_text": "標題：維護指南\n內容：定期清潔濾網",
+              "向量映射": {
+                "source_field": "embedding_text",
+                "vector_name": "combined"
+              }
+            }
+          },
+          {
+            "title": "Embedding 模型設定",
+            "fields": [
+              "/service_source",
+              "/profile",
+              "/embedding_service_ref",
+              "/embedding_model",
+              "/dimensions"
+            ]
+          }
+        ],
+        "controls": {
+          "/composition_template": "textarea"
+        },
+        "visible_when": {
+          "/embedding_service_ref": {
+            "all": [
+              {
+                "path": "/service_source",
+                "equals": "Embedding API"
+              }
+            ]
+          },
+          "/embedding_model": {
+            "all": [
+              {
+                "path": "/service_source",
+                "equals": "Embedding API"
+              }
+            ]
+          },
+          "/dimensions": {
+            "all": [
+              {
+                "path": "/service_source",
+                "equals": "Embedding API"
+              }
+            ]
+          },
+          "/composition_field": {
+            "all": [
+              {
+                "path": "/compose_text",
+                "equals": true
+              }
+            ]
+          },
+          "/composition_template": {
+            "all": [
+              {
+                "path": "/compose_text",
+                "equals": true
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "descriptor_version": "0.2-draft",
+      "module": "indexing",
+      "component_id": "elasticsearch",
+      "component_version": "1.0.0",
+      "parameters_schema": {
+        "type": "object",
+        "properties": {
+          "service_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "vector_name": {
+            "type": "string",
+            "minLength": 1,
+            "deprecated": true
+          },
+          "structdata_overrides": {
+            "$ref": "https://rag-builder.example/schemas/data_meta.schema.json#/$defs/overrides"
+          },
+          "service_source": {
+            "type": "string",
+            "enum": [
+              "DEV test use",
+              "自行提供 Elasticsearch"
+            ],
+            "default": "DEV test use",
+            "title": "服務來源"
+          },
+          "elasticsearch_service_ref": {
+            "type": "string",
+            "minLength": 1,
+            "title": "外部 Elasticsearch 服務引用"
+          },
+          "vector_fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true,
+            "title": "向量欄位"
+          }
+        },
+        "required": [
+          "service_ref"
+        ],
+        "additionalProperties": false,
+        "not": {
+          "required": [
+            "vector_name",
+            "vector_fields"
+          ]
+        }
+      },
+      "io": {
+        "input": "Document[]",
+        "output": "IndexBinding"
+      },
+      "option_sources": {
+        "/service_ref": {
+          "source": "elasticsearch_services"
+        },
+        "/vector_name": {
+          "source": "input.vectors"
+        },
+        "/vector_fields/*": {
+          "source": "input.vectors"
+        }
+      },
+      "data_rules": [],
+      "constraints": [],
+      "ui_hints": {
+        "previews": {
+          "effective_io": {
+            "collapsed": true
+          }
+        },
+        "order": [
+          "/service_source",
+          "/service_ref",
+          "/elasticsearch_service_ref",
+          "/structdata_overrides",
+          "/vector_fields"
+        ],
+        "controls": {
+          "/vector_fields": "vector_checklist",
+          "/structdata_overrides": "structdata_overrides_editor"
+        },
+        "visible_when": {
+          "/service_ref": {
+            "all": [
+              {
+                "path": "/service_source",
+                "equals": "DEV test use"
+              }
+            ]
+          },
+          "/elasticsearch_service_ref": {
+            "all": [
+              {
+                "path": "/service_source",
+                "equals": "自行提供 Elasticsearch"
+              }
+            ]
+          },
+          "/vector_name": false
+        }
+      }
+    },
+    {
+      "descriptor_version": "0.2-draft",
+      "module": "inference_input",
+      "component_id": "platform",
+      "component_version": "1.0.0",
+      "parameters_schema": {
+        "type": "object",
+        "properties": {
+          "request_parameters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "title": "參數名稱"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "string",
+                    "integer",
+                    "number",
+                    "boolean",
+                    "array",
+                    "object"
+                  ],
+                  "title": "型別"
+                },
+                "required": {
+                  "type": "boolean",
+                  "title": "必填"
+                },
+                "default_value": {
+                  "type": "string",
+                  "title": "預設值（JSON）"
+                }
+              },
+              "required": [
+                "name",
+                "type",
+                "required"
+              ],
+              "additionalProperties": false
+            },
+            "title": "Request 參數"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "io": {
+        "input": "InferenceRequest",
+        "output": "QueryContext[]"
+      },
+      "option_sources": {},
+      "data_rules": [],
+      "constraints": [],
+      "ui_hints": {
+        "previews": {
+          "effective_io": {
+            "collapsed": true
+          }
+        },
+        "advanced": [
+          "/request_parameters"
+        ],
+        "fixed_filters": "advanced"
+      }
+    },
+    {
+      "descriptor_version": "0.2-draft",
+      "module": "query_transformation",
+      "component_id": "none",
+      "component_version": "1.0.0",
+      "parameters_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "io": {
+        "input": "QueryContext[]",
+        "output": "QueryContext[]"
+      },
+      "option_sources": {},
+      "data_rules": [],
+      "constraints": []
+    },
+    {
+      "descriptor_version": "0.2-draft",
+      "module": "retrieval",
+      "component_id": "builtin",
+      "component_version": "1.0.0",
+      "parameters_schema": {
+        "type": "object",
+        "properties": {
+          "vector_fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true,
+            "title": "向量欄位"
+          },
+          "fulltext_fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true,
+            "title": "全文欄位"
+          },
+          "per_route_k": {
+            "type": "integer",
+            "minimum": 1,
+            "title": "每路 Top K"
+          },
+          "fusion": {
+            "type": "string",
+            "enum": [
+              "RRF",
+              "Sum Score"
+            ],
+            "title": "同 Query 多路融合"
+          },
+          "group_by": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true,
+            "title": "Group by 合併欄位"
+          },
+          "top_n": {
+            "type": "integer",
+            "minimum": 1,
+            "title": "Top N"
+          },
+          "rrf_k": {
+            "type": "integer",
+            "minimum": 1,
+            "title": "RRF k"
+          }
+        },
+        "required": [
+          "per_route_k"
+        ],
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "required": [
+              "vector_fields"
+            ]
+          },
+          {
+            "required": [
+              "fulltext_fields"
+            ]
+          }
+        ]
+      },
+      "io": {
+        "input": "QueryContext[]",
+        "output": "QueryContext[]"
+      },
+      "option_sources": {
+        "/vector_fields/*": {
+          "source": "index_plan.vectors"
+        },
+        "/fulltext_fields/*": {
+          "source": "index_plan.fulltext"
+        },
+        "/group_by/*": {
+          "source": "candidate.document_fields",
+          "types": [
+            "string"
+          ]
+        }
+      },
+      "data_rules": [],
+      "constraints": [],
+      "ui_hints": {
+        "previews": {
+          "effective_io": {
+            "collapsed": true
+          }
+        },
+        "order": [
+          "/vector_fields",
+          "/fulltext_fields",
+          "/per_route_k",
+          "/fusion",
+          "/group_by",
+          "/top_n"
+        ],
+        "advanced": [
+          "/rrf_k"
+        ],
+        "visible_when": {
+          "/fusion": {
+            "all": [
+              {
+                "paths": [
+                  "/vector_fields",
+                  "/fulltext_fields"
+                ],
+                "minimum_selected": 2
+              }
+            ]
+          },
+          "/rrf_k": {
+            "all": [
+              {
+                "paths": [
+                  "/vector_fields",
+                  "/fulltext_fields"
+                ],
+                "minimum_selected": 2
+              },
+              {
+                "path": "/fusion",
+                "equals": "RRF"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "descriptor_version": "0.2-draft",
+      "module": "rerank",
+      "component_id": "none",
+      "component_version": "1.0.0",
+      "parameters_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "io": {
+        "input": "QueryContext[]",
+        "output": "QueryContext[]"
+      },
+      "option_sources": {},
+      "data_rules": [],
+      "constraints": []
+    }
+  ],
+  "resources": {
+    "profiles": {
+      "text-v1": {
+        "label": "text-v1",
+        "dimensions": 3
+      }
+    },
+    "tokenizer_profiles": {
+      "fixture": {
+        "label": "DEV Tokenizer"
+      }
+    },
+    "models": {
+      "default-llm": {
+        "label": "DEV LLM"
+      }
+    },
+    "elasticsearch_services": {
+      "dev-search": {
+        "label": "DEV Elasticsearch"
+      }
+    }
+  }
+}

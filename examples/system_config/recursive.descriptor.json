@@ -46,6 +46,26 @@
       "tokenizer_profile_id": {
         "type": "string",
         "minLength": 1
+      },
+      "separators": {
+        "type": "array",
+        "title": "分隔符順序",
+        "items": {
+          "type": "string",
+          "title": "分隔符"
+        }
+      },
+      "keep_separator": {
+        "type": "boolean",
+        "title": "保留分隔符"
+      },
+      "preserve_original": {
+        "type": "boolean",
+        "title": "複製完整原文"
+      },
+      "include_original_chunk": {
+        "type": "boolean",
+        "title": "額外保留原文 Chunk"
       }
     },
     "required": [
@@ -112,7 +132,11 @@
   "ui_hints": {
     "advanced": [
       "/copy_fields",
-      "/overlap_tokens"
+      "/overlap_tokens",
+      "/separators",
+      "/keep_separator",
+      "/preserve_original",
+      "/include_original_chunk"
     ]
   }
 }

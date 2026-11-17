@@ -158,39 +158,37 @@ Builder 管理的 System 重建索引後，由 Builder 使用保存的原始資�
 
 直接 Python 使用 Engine／M4 助手時仍可在本機取得同一 Registry／Validator，不因此強制所有呼叫都走 HTTP。平台整合使用公開服務邊界，Runtime 的可信管理與能力接口不等於允許外部一般使用者更改 System 綁定。
 
-D-42 的 Descriptor、動態選項／能力 Context、規則與驗證回傳草案見 [Descriptor](04_component_descriptor.md)。除了靜態 Component 目錄，整合需提供依當前草稿／上游能力／授權解析的候選與欄位狀態；相依驗證與有效 Config 編譯由 Engine 統一處理，API 不另寫一套。服務 URL／Secret 綁定仍在部署設定，目錄／Context 不含憑證值。
+D-42 的 Descriptor、動態選項／能力 Context、規則與驗證回傳草案見 [Descriptor](04_component_descriptor.md)。W1 Builder 依 Catalog、草稿及上游輸出規則產生編輯候選。發布前的相依驗證與有效 Config 編譯由 Engine 統一處理。服務 URL／Secret 綁定仍在部署設定，目錄／Context 不含憑證值。
 
 設定檢查結果需對回 runtime_ref、catalog_revision、draft_revision、context_revision，錯誤使用 Module／節點引用／相對參數路徑定位。過期或取得失敗的結果不能沿用為新版設定驗證成功；建立／套用時再次核對版本。完整端點、Envelope、Context 型別及授權仍待 Q-019，12 不變更本文件的 Ingest／Query 公共 API 範例，也不把 UI 支援性與 Engine 設定合法性混為一談。
 
+<a id="w1-catalog"></a>
 <a id="w1-config-options"></a>
-### W1 `config:options` 編輯契約
+### W1 Catalog、草稿選項與發布驗證
 
-Builder Backend 向 DEV Runtime 發送 `POST /internal/v1/systems/{system_id}/config:options`。請求有 `runtime_ref`、`catalog_revision`、`draft_revision`、`config` 草稿及單一 `path`。草稿帶目前有效分支的元件 ID、版本和已填參數，允許缺少尚未設定的欄位與模組。以請求 body 為根的 `path` 指向實際參數，例如 `/config/pipelines/ingestion/chunking/parameters/copy_fields/0/source_field`。Runtime 以列索引查現值，並以 Descriptor 的 `/copy_fields/*/source_field` 找到選項規則。目標元件與路徑必須可識別且具備選項來源，否則回 `422 CONFIG_VALIDATION_FAILED`。目錄版本不符回 `409 STALE_CATALOG`。
+開啟設定編輯時，Builder Backend 呼叫目標 DEV Runtime 的 `GET /internal/v1/catalog`。回應提供 `runtime_ref`、`catalog_revision`、該 Runtime 的 `descriptors` 及可用的 `resources`。每個 Descriptor 以 `(module, component_id, component_version)` 識別，每種資源以 Config 使用的 ID 為鍵。目錄可附顯示名稱。Embedding Profile 提供向量維度。
 
-Runtime 從所選 Descriptor、草稿及資源目錄推導目標的候選。只檢查這次查詢需要的來源。例如 Recursive `split_field` 需要 Import 的 `structdata` 宣告及可推導輸出的 Parsing，但 Chunking 的 `max_tokens` 可以還沒填。Tokenizer 候選可由 Runtime 目錄獨立取得。目標欄位或新陣列列尚無值時，仍可依其 Schema 路徑查候選，現選值視為空。完整發布門檻由 `config:validate` 檢查。
-
-`200` 回傳請求的三個版本值、Runtime 產生的 `context_revision` 及 `options`。每筆選項有 `value`、`enabled`。四種狀態在 Builder 有不同呈現。
-
-| 結果 | Response | Builder |
-|---|---|---|
-| 有候選 | `options` 有 `enabled: true` 項目 | 顯示可選項目。 |
-| 來源可解析，但沒有相符候選且沒有現選值 | `options: []`，省略 `dependency_issue` | 停用下拉並顯示「無符合條件的選項」。 |
-| 來源可解析，現選值已失效 | 候選清單保留原選值一筆，`enabled: false` 且附 `reason`。即使其餘候選為空仍保留 | 保留草稿中的原值，標示失效與原因。使用者可改選可用項目。 |
-| 來源尚不足以推導 | `options: []`，附 `dependency_issue: {code, module, path, message}`。W1 使用 `DEPENDENCY_NOT_READY`，`path` 指向需處理的上游欄位 | 保留草稿中的原值，顯示上游尚未就緒及其位置。 |
-
-#### Builder 何時查詢
-
-首次要呈現可操作的動態欄位，或所依賴的草稿／Runtime 資料變更時查詢。未展開的進階區可在使用時查詢。Builder 依來源決定要重查哪些欄位，Runtime 仍負責候選推導。
-
-| `option_sources.source` | 要重查的變更 |
+| Catalog 資源清單 | 用途 |
 |---|---|
-| `input.structdata`、`input.vectors` | 影響該模組有效輸入的上游元件或欄位宣告，以及本步會改變候選來源的參數，如 Embedding 的文字組合。改 Import 的 `body` 會刷新 Chunking 的切分及複製來源。只改 Chunking `max_tokens` 可沿用這兩欄和 Tokenizer 的既有候選。 |
-| `index_plan.fulltext`、`index_plan.vectors`、`candidate.structdata`、`candidate.document_fields` | 上游有效欄位／向量或 Indexing 設定更動，影響對應的索引能力或候選欄位。 |
-| `profiles`、`models`、`tokenizer_profiles`、`elasticsearch_services` | 目標 Runtime、Catalog、依賴的服務來源或資源授權改變。 |
+| `resources.profiles` | Embedding Profile ID、顯示名稱及向量維度。 |
+| `resources.tokenizer_profiles` | Chunking 可引用的 Tokenizer Profile ID 及顯示名稱。 |
+| `resources.models` | 可選的邏輯模型引用及顯示名稱。 |
+| `resources.elasticsearch_services` | 可選的 Elasticsearch 邏輯服務引用及顯示名稱。 |
 
-切換 Component 或新增要編輯的陣列列時，按新 Descriptor 的參數路徑查詢其可見動態欄位。Builder 以每次編輯後的草稿版本識別送查快照，未保存的編輯也更新該版本。Builder 可合併連續編輯後的重查，以 System、Runtime、Catalog、草稿版本和欄位路徑關聯請求。只套用仍對應當前草稿且是該欄位最新請求的回應。若一個尚未完成的請求因草稿更新而過期，且該欄位仍需要候選，使用最新草稿補查。連線錯誤保留選值並提供重試，與合法的空候選分開顯示。
+以 [Catalog Schema](../schemas/runtime_catalog.draft.schema.json) 驗證 [W1 Catalog 回應範例](../examples/system_config/w1_catalog.response.json)。四種資源集合皆可為空。Catalog 不帶實際認證憑證或連線測試結果。Runtime 變更 Descriptor 或可用資源清單時更新 `catalog_revision`。Builder 在同一次目標環境編輯中共用目錄，切換目標或收到 `409 STALE_CATALOG` 時重新取得，並以新目錄再次檢查既有選值。已選版本找不到時保留原值並提示修正。
 
-完整請求、回應與舊請求晚到的接收順序見 [W1 HTTP 驗收案例](../examples/system_config/w1_config_options.http.json)。[表單控制項](07_builder_ui.md#descriptor-form-rendering)定義欄位的呈現與存值。
+#### 在 Builder 解析 `option_sources`
+
+| Descriptor 指定的來源 | Builder 的解析依據 |
+|---|---|
+| `profiles`、`models`、`tokenizer_profiles`、`elasticsearch_services` | 同一份 Catalog 的對應 `resources` 子表。 |
+| `input.structdata`、`input.vectors` | 目前草稿沿 Pipeline 推導的上游有效輸出。 |
+| `index_plan.fulltext`、`index_plan.vectors` | 草稿推導的 Indexing 欄位用途及選定的向量。 |
+| `candidate.structdata`、`candidate.document_fields` | 草稿推導的有效候選文件欄位。 |
+
+Builder 依來源及 Descriptor 宣告的型別、必填條件和固定 `enum` 篩選。改 Import 的欄名後，Builder 重新推導受影響的下游候選。合法來源沒有相符欄位時顯示空清單；上游尚未填完時提示相依設定；現選值失效時留在草稿並標示原因。索引欄位表、向量表與有效 I/O 預覽共用推導結果。W1 編輯流程由 Catalog 與 Builder 推導提供選項，省略逐欄 `config:options`。正式發布前，Builder 送草稿及 Catalog 版本呼叫 `config:validate`，由 Runtime 確認元件與資源引用、有效設定及索引影響，再走既有套用流程。
+
+[Renderer 契約](07_builder_ui.md#ui-hints-contract)定義呈現與存值。逐欄查詢的舊 W1 測資見[歷史提交](https://github.com/SunnyWenwen/rag_platform/commit/8f9f93cbb7b9ab67cbe01e5c4f306192f805aa1a)。
 
 <a id="src-21-1-範圍與已確認基準"></a>
 ## 範圍與已確認基準
