@@ -275,8 +275,8 @@ function withProperties(item, {properties = {},sources = {},advanced = Object.ke
   };
 }
 
-function planned(module, component_id, properties = {}, defaults = {}, options = {}) {
-  return {module,component_id,component_version:'1.0.0',planned:true,defaults,
+function draftComponent(module, component_id, properties = {}, defaults = {}, options = {}) {
+  return {module,component_id,component_version:'1.0.0',defaults,
     parameters_schema:{type:'object',properties,required:[]},
     option_sources:options.sources ?? {},ui_hints:{advanced:(options.advanced ?? []).map(key => '/' + key)}};
 }
@@ -284,24 +284,24 @@ function planned(module, component_id, properties = {}, defaults = {}, options =
 const chunkChanges = {preserve_original:bool('複製完整原文'),include_original_chunk:bool('額外保留原文 Chunk')};
 const chunkAlternative = (component, extra = {}, defaults = {}) => {
   const {properties} = baseline.chunking.parameters_schema;
-  return planned('chunking',component,{...properties,...extra,...chunkChanges},
+  return draftComponent('chunking',component,{...properties,...extra,...chunkChanges},
     {...clone(params(fixture.config,'chunking')),...defaults},
     {sources:baseline.chunking.option_sources,advanced:['copy_fields','overlap_tokens',...Object.keys(extra),...Object.keys(chunkChanges)]});
 };
-const plannedMethods = [
-  ...['pdf','pdf_ocr','office','image','text','json'].map(component => planned('parsing',component,{
+const draftComponents = [
+  ...['pdf','pdf_ocr','office','image','text','json'].map(component => draftComponent('parsing',component,{
     preserve_headings:bool('保留 Markdown 標題')
   },{preserve_headings:false},{advanced:['preserve_headings']})),
   chunkAlternative('fixed_size'),
   chunkAlternative('header_aware',{...separators,header_levels:list('標題層級',num('層級'))},{header_levels:[1,2,3]}),
-  planned('indexing','local',{
+  draftComponent('indexing','local',{
     persistence:str('持久化',['Memory','MongoDB']), mongo_service_ref:str('MongoDB 服務引用'),
     database:str('資料庫'), collection:str('Collection'),
     vector_name:str('向量欄位'), vector_fields:list('額外向量欄位',str('向量欄位')),
     structdata_overrides:baseline.indexing.parameters_schema.properties.structdata_overrides
   },{persistence:'Memory',vector_name:'text',structdata_overrides:clone(params(fixture.config,'indexing').structdata_overrides)},
   {sources:{'/vector_name':selectFrom('input.vectors'),'/vector_fields/*':selectFrom('input.vectors')}}),
-  planned('query_transformation','rewrite',{
+  draftComponent('query_transformation','rewrite',{
     llm_ref:str('共用 LLM 引用'),prompt:textArea('Rewrite Prompt'),count:num('改寫數量'),include_original:bool('同時檢索原始問題'),
     cross_query_at:str('跨 Query 融合時點',['Retrieval 後','Rerank 後']),cross_query_method:str('跨 Query 融合策略',['RRF','Sum Score']),
     cross_query_group_by:list('跨 Query 分組欄位',str('欄位')), cross_query_top_n:num('跨 Query Top N')
@@ -309,17 +309,17 @@ const plannedMethods = [
     count:1,include_original:false,cross_query_at:'Retrieval 後',cross_query_method:'RRF'},
   {sources:{'/cross_query_group_by/*':selectFrom('candidate.document_fields',['string'])},
     advanced:['cross_query_at','cross_query_method','cross_query_group_by','cross_query_top_n']}),
-  planned('rerank','model_api',{
+  draftComponent('rerank','model_api',{
     service_source:str('服務來源',['DEV test use','Rerank API']), rerank_service_ref:str('Rerank 服務引用'),
     model:str('模型'),text_field:str('評分內容欄位'),query_source:str('提問來源',['原始問題','當前 Query']),
     top_n:num('Rerank Top N'),group_by:list('分組欄位',str('欄位')), timeout_ms:num('Timeout（ms）')
   },{service_source:'DEV test use',model:'demo-reranker',text_field:'text',query_source:'原始問題',top_n:3},
   {sources:{'/text_field':selectFrom('input.structdata',['string'],true),'/group_by/*':selectFrom('candidate.document_fields',['string'])},
     advanced:['group_by','timeout_ms']}),
-  ...Object.values(remoteModules).flat().map(module => planned(module,'remote_api'))
+  ...Object.values(remoteModules).flat().map(module => draftComponent(module,'remote_api'))
 ];
 
-const componentCatalog = [...Object.values(baseline).map(item => withProperties(item,additions[item.module])), ...plannedMethods];
+const componentCatalog = [...Object.values(baseline).map(item => withProperties(item,additions[item.module])), ...draftComponents];
 const choicesFor = module => componentCatalog.filter(item => item.module === module);
 const descriptor = (module,config) => choicesFor(module).find(item => item.component_id === node(config,module).component_id);
 
@@ -334,10 +334,9 @@ function remoteOwnership(config, lane) {
   return owners;
 }
 
-function needsMoreRuntime(module, config) {
-  const item = descriptor(module, config);
+function outsideW1Preview(module, config) {
+  if (node(config,module).component_id !== baseline[module].component_id) return true;
   const values = params(config,module);
-  if (item.planned) return true;
   if (module === 'retrieval' && values.fulltext_fields?.length) return true;
   const baseProperties = baseline[module].parameters_schema.properties;
   return Object.keys(values).some(key => !Object.hasOwn(baseProperties,key) && configuredExtension(key,values));
@@ -592,7 +591,7 @@ function settings(system) {
     <h3>${lane === 'ingestion' ? 'Ingestion' : 'Inference'}</h3><div class="module-line">${modules.map(module => {
       const component = descriptor(module,draft);
       const note = owners[module] ? labels[owners[module]] + ' Remote API'
-        : issues.some(issue => issue.module === module) ? '⚠ 待修正' : componentNames[component.component_id];
+        : issues.some(issue => issue.module === module) ? '⚠ 無法發布' : componentNames[component.component_id];
       return `<button class="module ${selected === module ? 'selected' : ''}" data-action="module" data-value="${module}"
         aria-label="${labels[module]}" aria-pressed="${selected === module}"><strong>${labels[module]}</strong><small>${note}</small></button>`;
     }).join('')}</div></section>`).join('');
@@ -605,7 +604,7 @@ function settings(system) {
     <div class="bar flow-title"><h3>${labels[selected]}</h3><span class="muted">草稿 ${system.draftRevision}${draftDirty ? ' · 未保存' : ''}</span></div>
     ${owner ? `<div class="info">由 <button class="quiet" data-action="module" data-value="${owner}">${labels[owner]} Remote API</button> 處理此模組。</div>` : `
       <label class="field">Component<select class="control" id="component-picker" aria-label="Component">
-        ${choicesFor(selected).map(choice => option(choice.component_id,componentNames[choice.component_id] + (choice.planned ? '（規劃中）' : ' · ' + choice.component_version),choice.component_id === item.component_id)).join('')}
+        ${choicesFor(selected).map(choice => option(choice.component_id,componentNames[choice.component_id],choice.component_id === item.component_id)).join('')}
       </select></label>
       ${item.component_id === 'remote_api' ? remoteSettings(draft,selected) : `
         ${selected === 'retrieval' ? `<p class="info">索引：${componentNames[node(draft,'indexing').component_id]} · ${retrievalMode(values)}</p>` : ''}
@@ -614,7 +613,7 @@ function settings(system) {
         ${selected === 'inference_input' ? filterEditor('fixed',draft) : ''}
       `}
     `}
-    ${issues.length ? `<div class="info bad" role="alert"><strong>請修正設定</strong><ul>${issues.map(issue =>
+    ${issues.length ? `<div class="info bad" role="alert"><strong>無法發布</strong><ul>${issues.map(issue =>
       `<li><button class="quiet" data-action="module" data-value="${issue.module}">${labels[issue.module]}</button> · ${escapeHTML(issue.message)}</li>`).join('')}</ul></div>` : ''}
   </section></div>`;
 }
@@ -846,8 +845,8 @@ function indexImpact(system, config) {
 
 function checkPublish(system) {
   if (!hasDraftName()) return;
-  issues = Object.values(lanes).flat().filter(module => needsMoreRuntime(module,draft)).map(module => ({
-    module, message:'此 Component 或設定尚未接入 W1 Runtime，可先保存草稿。'
+  issues = Object.values(lanes).flat().filter(module => outsideW1Preview(module,draft)).map(module => ({
+    module, message:'目前 Prototype 的 W1 模擬範圍未涵蓋此 Component 或設定。可先保存草稿。'
   }));
   const effective = clone(draft);
   if (!issues.length) {

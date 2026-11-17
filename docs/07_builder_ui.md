@@ -1,6 +1,6 @@
 # Retrieval Builder UI、原型狀態與 Backlog
 
-2026-11-17｜[目前的 UI Prototype](../01_ui_prototype.html) 沿用工作區側欄、System 卡片及設定與操作視窗。Component 選單包含已規劃方法，表單依選擇切換並保留各方法的草稿。索引發布、匯入與查詢以 W1 Elasticsearch 為執行範圍，規劃中的 Component 與設定可保存草稿。Remote API 可設定替換範圍與服務參數。下文的 v0.12～v0.15 操作紀錄對應[舊版快照](history/source_snapshots/ui-prototype-v015/01_ui_prototype.html)。
+2026-11-17｜[目前的 UI Prototype](../01_ui_prototype.html) 沿用工作區側欄、System 卡片及設定與操作視窗。Component 選單依設計文件列出方法名稱，表單依選擇切換並保留各方法的草稿。索引發布、匯入與查詢以 W1 Elasticsearch 為模擬範圍。超出範圍的設定可保存草稿，發布時會指出不支援的模組。各方法的規格與待決細節見 [Engine／Component 開發](03_engine_and_components.md) 及 [開發計畫與決策](08_plan_and_decisions.md)。Remote API 可設定替換範圍與服務參數。下文的 v0.12～v0.15 操作紀錄對應[舊版快照](history/source_snapshots/ui-prototype-v015/01_ui_prototype.html)。
 
 ## 閱讀目錄
 

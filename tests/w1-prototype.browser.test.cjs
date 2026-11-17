@@ -125,7 +125,7 @@ async function main() {
     await page.setViewportSize({width:1440,height:900});
 
     const picker = page.getByRole('combobox',{name:'Component',exact:true});
-    const plannedOptions = {
+    const componentOptions = {
       Import:['platform'],
       Parsing:['passthrough','pdf','pdf_ocr','office','image','text','json','remote_api'],
       Chunking:['recursive','fixed_size','header_aware','remote_api'],
@@ -136,9 +136,13 @@ async function main() {
       Retrieval:['builtin','remote_api'],
       Rerank:['none','model_api','remote_api']
     };
-    for (const [name,options] of Object.entries(plannedOptions)) {
+    for (const [name,options] of Object.entries(componentOptions)) {
       await module(name).click();
-      assert.deepEqual(await picker.locator('option').evaluateAll(entries => entries.map(entry => entry.value)),options);
+      const entries = await picker.locator('option').evaluateAll(options => options.map(option => ({
+        value:option.value, label:option.textContent.trim()
+      })));
+      assert.deepEqual(entries.map(entry => entry.value),options);
+      for (const {label} of entries) assert.doesNotMatch(label,/規劃中|W1/);
     }
 
     await module('Chunking').click();
@@ -187,7 +191,7 @@ async function main() {
     assert.equal(await page.getByLabel('跨 Query 融合策略').count(),1);
     await button('保存草稿').click();
     await button('驗證並發布').click();
-    assert.match(await page.getByRole('alert').innerText(),/可先保存草稿/);
+    assert.match(await page.getByRole('alert').innerText(),/W1 模擬範圍未涵蓋.*可先保存草稿/);
     assert.equal(await page.locator('#publish').evaluate(el => el.open),false);
     await closeSystem();
     assert.match(await card.locator('.meta').innerText(),/revision-3/);
@@ -207,7 +211,7 @@ async function main() {
     await button('驗證並發布').click();
     assert.match(await impact.innerText(),/沿用索引/);
     assert.deepEqual(errors,[]);
-    console.log('PASS: W1 workflow, planned component catalog, method-specific settings, remote scopes, and saved draft variants');
+    console.log('PASS: W1 workflow, component catalog, method-specific settings, remote scopes, and saved draft variants');
   } finally {
     await browser.close();
   }
