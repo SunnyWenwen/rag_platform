@@ -127,7 +127,7 @@ async function main() {
     const picker = page.getByRole('combobox',{name:'Component',exact:true});
     const componentOptions = {
       Import:['platform'],
-      Parsing:['passthrough','pdf','pdf_ocr','office','image','text','json','remote_api'],
+      Parsing:['passthrough','remote_api'],
       Chunking:['recursive','fixed_size','header_aware','remote_api'],
       Embedding:['dense','remote_api'],
       Indexing:['elasticsearch','local'],
@@ -143,6 +143,8 @@ async function main() {
       })));
       assert.deepEqual(entries.map(entry => entry.value),options);
       for (const {label} of entries) assert.doesNotMatch(label,/規劃中|W1/);
+      const preview = dialog.locator('details').filter({has:page.getByText('有效輸入／輸出規格',{exact:true})});
+      assert.equal(await preview.evaluate(element => element.open),false);
     }
 
     await module('Chunking').click();
@@ -157,8 +159,28 @@ async function main() {
     await picker.selectOption('recursive');
     assert.equal(await page.getByLabel('切分上限（tokens）').inputValue(),'450');
 
+    await module('Import').click();
+    const importPreview = dialog.locator('details').filter({has:page.getByText('Ingestion 入口 JSON Schema 與 Request 範例',{exact:true})});
+    assert.equal(await importPreview.evaluate(element => element.open),false);
+    await importPreview.locator('summary').click();
+    const importContract = async () => JSON.parse(await importPreview.locator('pre').first().textContent());
+    const importSample = async () => JSON.parse(await importPreview.locator('pre').last().textContent());
+    assert.deepEqual((await importContract()).properties.documents.items.required,['document_id','structdata']);
+    assert.ok((await importSample()).documents[0].structdata.body);
+    await page.getByLabel('body 欄位名稱',{exact:true}).fill('source_body');
+    await page.getByLabel('title 欄位名稱',{exact:true}).focus();
+    assert.ok((await importContract()).properties.documents.items.properties.structdata.properties.source_body);
+    await page.getByLabel('body 欄位名稱',{exact:true}).fill('body');
+    await page.getByLabel('title 欄位名稱',{exact:true}).focus();
+    await page.getByLabel('入口資料形式').selectOption('content');
     await module('Parsing').click();
+    assert.equal(await picker.inputValue(),'');
+    assert.deepEqual(await picker.locator('option').evaluateAll(options => options.map(option => option.value)),
+      ['', 'pdf','pdf_ocr','office','image_ocr','text','json','remote_api']);
     await picker.selectOption('pdf');
+    await module('Import').click();
+    assert.deepEqual((await importSample()).documents[0].content,{media_type:'application/pdf',uri:'https://example.invalid/document'});
+    assert.ok((await importContract()).properties.documents.items.required.includes('content'));
     await module('Chunking').click();
     assert.match(await page.getByLabel('切分來源').innerText(),/contenttext/);
     await module('Parsing').click();
@@ -174,13 +196,45 @@ async function main() {
     await module('Chunking').click();
     assert.match(await page.getByLabel('切分來源').innerText(),/title/);
     assert.match(await page.getByLabel('切分來源').innerText(),/body（已失效）/);
+    await module('Import').click();
+    await page.getByLabel('入口資料形式').selectOption('structdata');
     await module('Parsing').click();
     await picker.selectOption('passthrough');
+
+    await module('Embedding').click();
+    assert.equal(await page.getByLabel('服務來源').inputValue(),'DEV test use');
+    assert.match(await page.getByText('向量空間的識別。',{exact:false}).innerText(),/Query Encoder/);
+    assert.equal(await dialog.locator('fieldset legend').innerText(),'組合文字欄位');
+    await page.getByText('查看組合範例',{exact:true}).click();
+    assert.match(await dialog.locator('fieldset pre').innerText(),/維護指南/);
+    await page.getByLabel('啟用組合文字').check();
+    assert.equal(await page.getByLabel('組合輸出欄位').inputValue(),'embedding_text');
+    const extra = dialog.locator('.field').filter({has:page.getByText('額外向量映射',{exact:true})});
+    await extra.getByRole('button',{name:'＋ 新增'}).click();
+    await page.getByLabel('額外向量映射 1：來源欄位').selectOption('embedding_text');
+    await page.getByLabel('額外向量映射 1：向量欄位').fill('combined');
+    await module('Indexing').click();
+    assert.equal(await page.getByLabel('服務來源').inputValue(),'DEV test use');
+    assert.equal(await page.getByLabel('text 建立向量索引').isChecked(),true);
+    assert.equal(await page.getByLabel('combined 建立向量索引').isChecked(),false);
+    await page.getByLabel('combined 建立向量索引').check();
+    const effectiveIndex = JSON.parse(await dialog.locator('pre[data-contract-preview="output"]').textContent());
+    assert.equal(effectiveIndex.properties.vector_bindings.properties.combined.properties.source_field.const,'embedding_text');
+    await page.getByLabel('combined 建立向量索引').uncheck();
+    await module('Embedding').click();
+    await extra.getByRole('button',{name:'移除此項'}).click();
+    await page.getByLabel('啟用組合文字').uncheck();
+    await module('Rerank').click();
+    await picker.selectOption('model_api');
+    assert.equal(await page.getByLabel('服務來源').inputValue(),'DEV test use');
+    await picker.selectOption('none');
 
     await module('Indexing').click();
     await picker.selectOption('local');
     assert.equal(await page.getByLabel('MongoDB 服務引用').count(),0);
-    await page.getByLabel('持久化').selectOption('MongoDB');
+    await page.getByLabel('持久化').selectOption('mongodb');
+    assert.equal(await page.getByLabel('服務來源').inputValue(),'DEV test use');
+    await page.getByLabel('服務來源').selectOption('自行提供 MongoDB');
     await page.getByLabel('MongoDB 服務引用').fill('team-mongodb');
     await module('Retrieval').click();
     assert.match(await dialog.locator('.info').innerText(),/Local Search/);

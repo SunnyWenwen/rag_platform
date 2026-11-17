@@ -4,6 +4,7 @@ from dataclasses import dataclass, replace
 from math import isfinite
 from pathlib import Path
 import json
+import re
 
 from jsonschema import Draft202012Validator, FormatChecker, ValidationError
 from referencing import Registry, Resource
@@ -49,6 +50,7 @@ BOOL = {"type": "boolean"}
 NAT = {"type": "integer", "minimum": 0}
 POS = {"type": "integer", "minimum": 1}
 DESCRIPTOR_SCHEMA = json.loads((REPO / "schemas/component_descriptor.draft.schema.json").read_text())
+BUILDER_FORM_DESCRIPTORS = json.loads((HERE / "builder_form.descriptors.json").read_text())
 SYSTEM_CONFIG_SCHEMA = json.loads((REPO / "schemas/system_config.draft.schema.json").read_text())
 DATA_META = json.loads((REPO / "schemas/data_meta.schema.json").read_text())
 QUERY_CONTEXT = json.loads((REPO / "schemas/query_context.schema.json").read_text())
@@ -121,6 +123,8 @@ def validate_descriptor(value):
     root = value["parameters_schema"]
     Draft202012Validator.check_schema(root)
     expected_io = BUILTIN_COMPONENTS[value["module"]][1]
+    if "content_media_types" in value["io"] and value["module"] != "parsing":
+        fail("content media types require a Parsing Component")
     if (value["io"]["input"], value["io"]["output"]) != expected_io:
         fail("invalid module I/O")
     for pointer, spec in value.get("option_sources", {}).items():
@@ -128,12 +132,22 @@ def validate_descriptor(value):
             fail("field filters require a field source")
         if schema_at(root, pointer).get("type") != "string":
             fail("selector must target a string")
+    hints = value.get("ui_hints", {})
+    for pointer in (*hints.get("order", ()), *hints.get("advanced", ()),
+                    *hints.get("controls", ()),
+                    *(field for group in hints.get("groups", ()) for field in group["fields"])):
+        schema_at(root, pointer)
     for rule in value.get("data_rules", ()):
+        if rule["op"] == "compose":
+            if (schema_at(root, rule["enabled"]).get("type") != "boolean"
+                    or any(schema_at(root, rule[key]).get("type") != "string" for key in ("target", "template"))):
+                fail("invalid composition rule")
+            continue
         scope = schema_at(root, rule["for_each"]).get("items") if "for_each" in rule else root
         if scope is None:
             fail("for_each must target an array")
         for key in ("source", "target", "profile"):
-            if key in rule and schema_at(scope, rule[key]).get("type") != "string":
+            if key in rule and schema_at(root if key == "profile" else scope, rule[key]).get("type") != "string":
                 fail("data rule must reference a string")
     for rule in value.get("constraints", ()):
         for key in ("left", "right"):
@@ -159,20 +173,13 @@ CHUNK = descriptor(
      {"op": "copy", "source": "/source_field", "target": "/output_field", "for_each": "/copy_fields"}],
     [{"op": "lt", "left": "/overlap_tokens", "right": "/max_tokens"}],
 )
-EMBED = descriptor(
-    "embedding", "dense",
-    {"source_field": NAME, "vector_name": NAME, "profile": NAME},
-    ("Document[]", "Document[]"),
-    {"source_field": STRING_INPUT, "profile": selector("profiles")},
-    [{"op": "vector", "source": "/source_field", "target": "/vector_name", "profile": "/profile"}],
-)
-INDEX = descriptor(
-    "indexing", "local",
-    {"persistence": {"const": "memory"}, "vector_name": NAME,
-     "structdata_overrides": {"$ref": DATA_META["$id"] + "#/$defs/overrides"}},
-    ("Document[]", "IndexBinding"),
-    {"vector_name": selector("input.vectors")}, required=["persistence", "vector_name"],
-)
+def form_descriptor(module, component_id):
+    return next(item for item in BUILDER_FORM_DESCRIPTORS
+                if (item["module"], item["component_id"]) == (module, component_id))
+
+
+EMBED = form_descriptor("embedding", "dense")
+INDEX = form_descriptor("indexing", "local")
 RETRIEVE = descriptor(
     "retrieval", "builtin",
     {"vector_name": NAME, "query_profile": NAME, "per_route_k": POS,
@@ -183,26 +190,19 @@ RETRIEVE = descriptor(
      "/group_by/*": {"source": "candidate.document_fields", "types": ["string"]}},
     required=["vector_name", "query_profile", "per_route_k"],
 )
-RERANK = descriptor(
-    "rerank", "model_api",
-    {"text_field": NAME, "group_by": FIELD_SELECTION},
-    ("QueryContext[]", "QueryContext[]"),
-    {"text_field": selector("candidate.structdata", "string"),
-     "/group_by/*": {"source": "candidate.document_fields", "types": ["string"]}},
-    required=["text_field"],
-)
+RERANK = form_descriptor("rerank", "model_api")
 REWRITE = json.loads((HERE / "rewrite.descriptor.json").read_text())
 validate_descriptor(REWRITE)
 FIXTURE_DESCRIPTORS = (
-    CHUNK, EMBED, INDEX, RETRIEVE, RERANK, REWRITE,
-    descriptor("import", "platform",
-               {"structdata": {"$ref": DATA_META["$id"]}},
-               ("IngestionRequest", "Document")),
+    CHUNK, RETRIEVE, REWRITE, *BUILDER_FORM_DESCRIPTORS,
     descriptor("parsing", "passthrough", {}, ("Document", "Document[]")),
     descriptor("inference_input", "platform", {}, ("InferenceRequest", "QueryContext[]")),
     descriptor("query_transformation", "none", {}, ("QueryContext[]", "QueryContext[]")),
     descriptor("rerank", "none", {}, ("QueryContext[]", "QueryContext[]")),
 )
+for form in BUILDER_FORM_DESCRIPTORS:
+    validate_descriptor(form)
+
 REGISTRY = {(d["module"], d["component_id"], d["component_version"]): d for d in FIXTURE_DESCRIPTORS}
 PROFILES = {"text-v1": 3, "other-space-v1": 3}
 
@@ -239,6 +239,8 @@ def parameters(module, config, context):
     desc = REGISTRY[key]
     values = config["parameters"]
     Draft202012Validator(desc["parameters_schema"], registry=SCHEMA_REGISTRY).validate(values)
+    if module == "embedding":
+        context = {**context, "input.structdata": composition_fields(desc, values, context.get("input.structdata", {}))}
     for key, spec in desc.get("option_sources", {}).items():
         selected = selected_values(values, key)
         if selected and any(value not in options(spec, context) for value in selected):
@@ -249,28 +251,49 @@ def parameters(module, config, context):
     return desc, values
 
 
-def data_effects(desc, values, fields, vectors):
-    result = {} if desc["module"] == "chunking" else fields.copy()
-    vector_result = vectors.copy()
+TEMPLATE_FIELD = re.compile(r"\{\{\s*structdata\.([^{}]+?)\s*\}\}")
+
+
+def composition_fields(desc, values, fields):
+    result = fields.copy()
     for rule in desc["data_rules"]:
-        if "for_each" in rule:
-            for item in values[rule["for_each"][1:]]:
-                target = item[rule["target"][1:]]
-                if target in result:
-                    fail("duplicate field")
-                result[target] = fields[item[rule["source"][1:]]]
+        if rule["op"] != "compose" or not values.get(rule["enabled"][1:]):
             continue
         target = values[rule["target"][1:]]
-        if rule["op"] == "vector":
-            if target in vector_result:
-                fail("duplicate vector")
-            profile = values[rule["profile"][1:]]
-            vector_result[target] = Vector(values[rule["source"][1:]], profile, PROFILES[profile])
-        else:
-            if target in result:
-                fail("duplicate field")
-            result[target] = (Field(**rule["schema"]) if rule["op"] == "declare"
-                              else fields[values[rule["source"][1:]]])
+        if target in result:
+            fail("duplicate field")
+        template = values[rule["template"][1:]]
+        remainder = TEMPLATE_FIELD.sub("", template)
+        if not template.strip() or "{{" in remainder or "}}" in remainder:
+            fail("invalid composition template")
+        for name in TEMPLATE_FIELD.findall(template):
+            field = fields.get(name)
+            if not field or field.type != "string" or not field.required:
+                fail("invalid composition source:" + name)
+        result[target] = Field("string")
+    return result
+
+
+def data_effects(desc, values, fields, vectors):
+    result = {} if desc["module"] == "chunking" else composition_fields(desc, values, fields)
+    vector_result = vectors.copy()
+    for rule in desc["data_rules"]:
+        op = rule["op"]
+        if op == "compose":
+            continue
+        rows = values.get(rule["for_each"][1:], []) if "for_each" in rule else [values]
+        for row in rows:
+            target = row[rule["target"][1:]]
+            if op == "vector":
+                if target in vector_result:
+                    fail("duplicate vector")
+                profile = values[rule["profile"][1:]]
+                vector_result[target] = Vector(row[rule["source"][1:]], profile, PROFILES[profile])
+            else:
+                if target in result:
+                    fail("duplicate field")
+                result[target] = (Field(**rule["schema"]) if op == "declare"
+                                  else fields[row[rule["source"][1:]]])
     return result, vector_result
 
 
@@ -300,7 +323,8 @@ def compile_index(fields, vectors, config):
         "fields": effective,
         "fulltext": {f"structdata.{name}": value for name, value in effective.items() if value.searchable},
         "filters": {f"structdata.{name}": value for name, value in effective.items() if value.filterable},
-        "vectors": {params["vector_name"]: vectors[params["vector_name"]]},
+        "vectors": {name: vectors[name] for name in
+                    ([params["vector_name"]] if "vector_name" in params else params.get("vector_fields", []))},
     }
 
 
@@ -486,6 +510,15 @@ def compile_local_example(snapshot):
             if module == "import":
                 fields = field_specs(values["structdata"])
             else:
+                if module == "parsing":
+                    source = pipelines["ingestion"]["import"]["parameters"].get("source", "structdata")
+                    file_parser = bool(desc["io"].get("content_media_types"))
+                    if file_parser != (source == "content"):
+                        fail("Parser does not match Import source")
+                    if file_parser:
+                        if "contenttext" in fields:
+                            fail("duplicate field")
+                        fields = {**fields, "contenttext": Field("string")}
                 fields, vectors = data_effects(desc, values, fields, vectors)
 
     inference = pipelines["inference"]
@@ -876,6 +909,56 @@ def _():
     bad = deepcopy(EMBED)
     bad["option_sources"]["/profile"]["types"] = ["string"]
     rejects(lambda: validate_descriptor(bad), "field filters require a field source")
+
+
+@case("Builder form descriptors and data contracts match the standalone Prototype")
+def _():
+    source = (REPO / "01_ui_prototype.html").read_text()
+    def embedded(script_id):
+        start = f'<script type="application/json" id="{script_id}">'
+        return json.loads(source.split(start,1)[1].split("</script>",1)[0])
+    assert embedded("builder-form-descriptors") == BUILDER_FORM_DESCRIPTORS
+    for name, schema in embedded("runtime-fixture")["schemas"].items():
+        assert schema == json.loads((REPO / f"schemas/{name}.schema.json").read_text())
+    for module, component in (("embedding","dense"), ("indexing","elasticsearch"),
+                              ("indexing","local"), ("rerank","model_api")):
+        assert form_descriptor(module, component)["parameters_schema"]["properties"]["service_source"]["default"] == "DEV test use"
+
+
+@case("Import source controls built-in Parser compatibility")
+def _():
+    snapshot = local_snapshot("builtin")
+    ingestion = snapshot["config"]["pipelines"]["ingestion"]
+    ingestion["parsing"] = node("pdf")
+    rejects(lambda: compile_local_example(snapshot), "Parser does not match Import source")
+    ingestion["import"]["parameters"]["source"] = "content"
+    ingestion["chunking"]["parameters"]["split_field"] = "contenttext"
+    compile_local_example(snapshot)
+    ingestion["parsing"] = node("passthrough")
+    rejects(lambda: compile_local_example(snapshot), "Parser does not match Import source")
+
+
+@case("Embedding composition and multiple named vectors feed Indexing selections")
+def _():
+    config = deepcopy(EMBED_CONFIG)
+    config["parameters"].update(
+        compose_text=True, composition_field="embedding_text",
+        composition_template="{{structdata.title}}｜{{structdata.text}}",
+        mappings=[{"source_field":"embedding_text", "vector_name":"combined"}],
+    )
+    fields = {"title": Field("string"), "text": Field("string")}
+    desc, values = parameters("embedding", config, context(fields, {}))
+    expanded, vectors = data_effects(desc, values, fields, {})
+    assert expanded["embedding_text"] == Field("string")
+    assert vectors["combined"] == Vector("embedding_text", "text-v1", 3)
+    index_config = node("local", persistence="memory", vector_fields=["text", "combined"])
+    assert compile_index(expanded, vectors, index_config)["vectors"] == vectors
+    index_config["parameters"]["vector_fields"] = ["combined"]
+    assert set(compile_index(expanded, vectors, index_config)["vectors"]) == {"combined"}
+    config["parameters"]["composition_template"] = "{{structdata.missing}}"
+    rejects(lambda: parameters("embedding", config, context(fields, {})), "invalid composition source:missing")
+    config["parameters"]["composition_template"] = "{{not_structdata.title}}"
+    rejects(lambda: parameters("embedding", config, context(fields, {})), "invalid composition template")
 
 
 if __name__ == "__main__":

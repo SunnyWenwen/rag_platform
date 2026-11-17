@@ -71,7 +71,7 @@ D-53 的保留完整原文功能已在 Prototype v0.12 以舊 Unit 模型示範�
 3. 按 Batch Size 呼叫 Embedding Adapter；現有 Prototype 的格式基線為 OpenAI-compatible embeddings。正式首組服務、相容範圍及模型契約仍待 Q-003，不把原型格式當作所有 Embedding API 的通用標準。
 4. 驗證回應 index 對應、數量、維度與有限值；不能因回傳順序錯誤把向量寫給其他 Chunk。
 5. normalization 與 metric 依 Profile 執行；記錄模型／版本／Provider request ID。
-6. 寫回原 Document.vectors 的命名物件（values、embedding_profile_id、source_field），精確格式引用 Document 契約；保留 structdata／metadata。預設 structdata.text → vectors.text，其他映射由進階設定；純全文 Pipeline 不初始化此服務。
+6. 寫回原 Document.vectors 的命名物件（values、embedding_profile_id、source_field），精確格式引用 Document 契約；保留 structdata／metadata。預設 structdata.text → vectors.text，額外向量映射在主要表單設定；純全文 Pipeline 不初始化此服務。
 
 **例外**：缺欄位、超長、429／Timeout、批次缺項、維度錯誤與非法數值。截斷或 partial 需明確政策，不能默默處理。
 
@@ -84,7 +84,7 @@ D-53 的保留完整原文功能已在 Prototype v0.12 以舊 Unit 模型示範�
 
 **目的**：保存 Chunk，依欄位用途建索引，回報寫入與可搜尋狀態。Runtime 套用設定時由 Engine 推導索引定義，再由 Elasticsearch 索引存取層建立或接回目標。索引存取層驗證實際 mapping、索引歸屬與相容性指紋，並依 [Runtime 索引生命週期](06_runtime_api_and_deployment.md#system-index-lifecycle) 執行重建或卸載。
 
-Indexing 保存全部有效 structdata、metadata 與向量。全文與 Filter 能力從 structdata 的有效宣告及 [Indexing 覆寫](05_system_config.md#data-schema-config) 推導，向量能力依向量欄位與 Profile 推導。只保存的 structdata 字串可供 Rerank 或顯示使用，metadata 整包保存供取回。
+Indexing 保存全部有效 structdata、metadata 與向量。全文與 Filter 能力從 structdata 的有效宣告及 [Indexing 覆寫](05_system_config.md#data-schema-config) 推導，向量能力依逐欄選定的 `vector_fields` 及其 Profile 推導。只保存的 structdata 字串可供 Rerank 或顯示使用，metadata 整包保存供取回。
 
 **處理**：
 

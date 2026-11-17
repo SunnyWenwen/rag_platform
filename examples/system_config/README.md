@@ -27,3 +27,7 @@ python3 examples/user_remote_api/validate.py
 ```
 
 完整 System Config 序列化依 Q-002 定稿。[歷史草案](../../docs/history/superseded/system_config_d66/README.md)保留 D-66 的原始測資。
+
+## Builder 表單 Descriptor
+
+[builder_form.descriptors.json](builder_form.descriptors.json) 提供 Import、檔案 Parsing、Dense Embedding、Indexing 及 Rerank 的表單與資料推導規則。單檔 Prototype 的 `builder-form-descriptors` JSON 區塊內嵌同一份 Catalog。更新 Catalog 或內嵌的共用資料 Schema 時同步更新 HTML。離線驗證會檢查兩邊內容一致，並驗證來源與 Parser 相容性、文字組合和向量選擇。
