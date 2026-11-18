@@ -2,7 +2,7 @@
   "output": [
     {
       "document_id": "manual-001",
-      "source_revision": "v1",
+      "source_revision": null,
       "data_id": "manual-001:chunk-1",
       "structdata": {
         "title": "設備維護",

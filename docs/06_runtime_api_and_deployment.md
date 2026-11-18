@@ -307,7 +307,7 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 | `GET /ingestions/{run_id}` | 無 | `200` ＋ `{run_id,status,config_revision,counts,documents:RunDocument[]}`。查無紀錄或到期回 `{run_id,status:"unknown"}`。 |
 | `GET /documents/{document_id}/ingestion-status` | 無 | `200` ＋ `RunDocument` 加 `run_id: string \| null`。查無紀錄時 `status:"unknown"`，`run_id`、`module`、`updated_at`、`error` 為 `null`。 |
 | `GET /documents/{document_id}/exists` | 無 | `200` ＋ `{document_id,exists:boolean}`，讀實際文件資料。 |
-| `GET /documents?limit=…&cursor=…` | `limit` 預設 `100`，範圍 `1–1000`，選填 `cursor`。 | `200` ＋ `{documents:[{document_id,source_revisions:string[]}],next_cursor:string \| null}`。以 `document_id` 升冪分頁，Cursor 限同一 System，終頁回 `null`。列出實際可見版本，資料寫入期間可變動。 |
+| `GET /documents?limit=…&cursor=…` | `limit` 預設 `100`，範圍 `1–1000`，選填 `cursor`。 | `200` ＋ `{documents:[{document_id,source_revisions:string[]}],next_cursor:string \| null}`。以 `document_id` 升冪分頁，Cursor 限同一 System，終頁回 `null`。僅彙整實際可見的非空版本字串，沒有就回 `[]`。資料寫入期間可變動。 |
 | `POST /documents/{document_id}:retire` | 無 | `200` ＋ `{document_id,result:"deleted" \| "not_found"}`，同步完成，文件忙碌回 `409`。 |
 | [`POST /queries`](#inference-api) | [InferenceRequest](../schemas/inference_request.schema.json)。 | `200` ＋根層 [QueryContext[]](../schemas/query_context.schema.json)。 |
 
@@ -701,7 +701,7 @@ GET /v1/documents?limit=100&cursor=...
 }
 ```
 
-D-65 採 documents[]＋next_cursor，取代早期 document_ids[]；每筆為 document_id＋source_revisions[]。直接查該 System 實際保存的 Chunk／ES／Local 資料，以 document_id 去重並分頁，一份文件不論多少 Chunk 都只列一筆。每筆 `source_revisions` 為實際 Chunk 所帶 `source_revision` 的去重集合。所有 Chunk 均省略來源版本時回 `[]`；更新中或部分寫入失敗時可能有多版。這不是最新成功版本或持久歷史，不依 Run／文件工作紀錄推定，不將單一 Chunk 的 source_revision 改成陣列。
+D-65 的文件清單採 `documents[]` 與 `next_cursor`。直接查該 System 實際保存的 Chunk，以 `document_id` 去重並分頁。每筆 `source_revisions` 為實際 Chunk 所帶非空 `source_revision` 字串的去重集合。省略、`""` 與 `null` 略過，沒有非空版本字串的文件仍列出並回 `[]`。更新中或部分寫入失敗時可能有多版。清單反映當下儲存狀態，不依 Run 或文件工作紀錄推定最新成功版本。
 
 W1 清單每頁預設 100／上限 1,000、依 document_id 升冪、Cursor 綁定 System，分頁期間可反映更新。實作細節與進階分頁需求留 API-D07。
 

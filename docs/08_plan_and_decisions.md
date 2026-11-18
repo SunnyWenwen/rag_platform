@@ -320,7 +320,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 
 - 2026-11-03 D-52：必要 data_id 仍須有效／清單內唯一，但不強制由 fingerprint／ordinal 計算，也不強制將計算資訊寫入 _rag。SDK helper 可選用；穩定／更新語意按實作及此 Q-ID 核定。
 - 2026-10-30 D-47：已同意可重現 ID 方向；[資料契約](02_data_contracts.md#data-flow)～6 提供有效切分計畫 fingerprint＋文件內全域 ordinal 的 Python 參考演算法。仍待檔案拆多文件、CSV 整批替換的 ID 生成、跨語言 canonicalization 與正式遷移。
-- D-65 確認文件摘要清單回 document_id＋source_revisions[]，彙整實際儲存 Chunk 的版本。覆寫以 `document_id` 為準，接受相同 `source_revision` 帶入新內容。來源版本供追溯，省略時下游也省略，文件清單對沒有版本的文件回空陣列。
+- D-65 確認文件摘要清單回 document_id＋source_revisions[]，彙整實際儲存 Chunk 的非空版本字串。覆寫以 `document_id` 為準，接受相同 `source_revision` 帶入新內容。來源版本供追溯，`""`、`null` 或版本字串都原樣保留，省略時下游也省略。沒有非空版本字串的文件回 `source_revisions: []`。
 - 建議：跨批更新要求穩定 document_id，內容版本與 Config 分開；採明確可重現的衍生 ID 規則。
 - 替代：每批當新文件；需接受無法自然更新與重複資料後果。
 - 負責角色：Engine＋資料／產品；阻擋 M1 正式 ID 規範及 M2 更新。
@@ -592,7 +592,7 @@ Builder 可按 [W1 開發契約索引](09_w1_builder_runtime_contract.md) 實作
 | 跨 Query 融合的發布與執行 | Query Transformation 位置與多 Query 必須啟用已確認。內建 Rewrite 的 [發布格式](05_system_config.md#inference-result-processing)可供 Builder 開發，演算法參數、Remote 節點設定及 M2 真實執行驗收見 [Q-014](#q-014)。 |
 | 自行提供模型／索引服務的發布 | 定義每種服務引用對應哪個環境綁定，自訂模型和維度如何對上 Profile。見 [Q-003](#q-003)、[Q-021](#q-021) 與 [參數適用範圍](04_component_descriptor.md#component-parameter-scope)。 |
 | Remote 動態 Secret 引用 | 對齊 `request_parameters` 的宣告、授權及環境綁定範例。現有 Remote fixture 已示範傳輸內容，Config 端待 [Q-028](#q-028) 補齊。 |
-| 真實 Ingestion 的識別與追溯 | W1 Mock 可帶明確 `document_id`、`source_revision` 並模擬候選的 `data_id`。省略來源版本可跑完整流程。切分 ID 的穩定性與更新語意依 [Q-007](#q-007) 核定。 |
+| 真實 Ingestion 的識別與追溯 | W1 Mock 可帶明確 `document_id` 並模擬候選的 `data_id`。來源版本可省略或原樣保留字串及 `null`。切分 ID 的穩定性與更新語意依 [Q-007](#q-007) 核定。 |
 | Runtime 重新啟動後沿用既有 ES 索引 | [指紋 v1](06_runtime_api_and_deployment.md#index-fingerprint-v1-proposal) 已有 JSON Schema、序列化規則和可驗證範例。既有索引遷移與實際 ES 整合依 [Q-015](#q-015) 驗收。 |
 | Runtime 多副本共用同一 System | [跨 Pod 寫入 v1](06_runtime_api_and_deployment.md#multi-pod-concurrency-proposal) 採 ES 共享占用、本地派工與未知結果安全查核。須以雙 Pod＋實際 ES 驗證競態、收尾及容量，見 [Q-020](#q-020)、[Q-027](#q-027)。 |
 

@@ -266,7 +266,7 @@ Builder 的 CSV 資料上傳以目標 System 的索引資料為替換範圍。�
 |---|---|
 | CSV 預檢 | 處理 BOM／引號／換行；欄名非空唯一；每列欄數一致；正式編碼／超限政策待決 |
 | 目標 | document_id、source_revision、Parser 接受的 content.*／外層 metadata.*；解析後的 Unit 欄位宣告用來核對內容映射 |
-| 映射 | 可將同一 column 填入多個目標；未映射欄位不送出 |
+| 映射 | 可將同一 column 填入多個目標；未映射欄位不送出。已映射的 `source_revision` 保留 CSV 原始文字，空儲存格傳 `""`。 |
 | 必填 | 無預設值的 input 必填欄位須映射 |
 | 型別 | number 有限值；boolean 規則明確；array 用 JSON 解析；正式強制轉型政策 Q-002 |
 | ID | 可映射來源主鍵；整批替換時須確保本次資料集的文件 ID 唯一，自動 ID 生成方式待定 |
@@ -593,7 +593,7 @@ ResultSet.key 對應 Config 路徑／群組，items 位置即名次。RRF 可用
 ### D-65：文件摘要清單（UI 位置仍待規劃）
 
 - 文件清單的 HTTP 格式已定，回傳 `documents[]` 與 `next_cursor`，每筆含 `document_id`、`source_revisions[]`。見 [Runtime 文件摘要 API](06_runtime_api_and_deployment.md#src-21-93-文件摘要清單d-65-已確認核心)。
-- [ ] 來源版本取實際儲存；多版可代表更新中／失敗後混合，不將其標為成功歷史或自行挑選最新。最近工作結果仍使用 ingestion-status。
+- [ ] 來源版本取實際儲存的非空版本字串。多版可代表更新中／失敗後混合，不將其標為成功歷史或自行挑選最新。最近工作結果仍使用 ingestion-status。
 
 沿用 UIB-023。面板位置與分頁控制項仍待規劃，分頁參數依 [Runtime API](06_runtime_api_and_deployment.md#data-lifecycle-api)。
 

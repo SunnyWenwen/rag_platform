@@ -9,8 +9,7 @@
       "minLength": 1
     },
     "source_revision": {
-      "type": "string",
-      "minLength": 1
+      "type": ["string", "null"]
     },
     "data_id": {
       "type": "string",

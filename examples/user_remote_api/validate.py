@@ -41,8 +41,7 @@ batch_check.validate(batch)
 reject(batch_check, {"documents": []})
 reject(batch_check, batch["documents"])
 reject(batch_check, {"documents": [{**batch["documents"][0], "parameters": {}}]})
-for missing_value in ("", None):
-    reject(batch_check, {"documents": [{**batch["documents"][0], "source_revision": missing_value}]})
+reject(batch_check, {"documents": [{**batch["documents"][0], "source_revision": 1}]})
 remote_ingestion = read(HERE / "remote_ingestion.request.json")
 assert set(remote_ingestion) == {"input", "parameters"}
 assert remote_ingestion["input"] == batch["documents"][0]
@@ -93,6 +92,11 @@ for context in contexts:
     for result_set in context["result_sets"]:
         for item in result_set["items"]:
             effective_check.validate(item["data"])
+for document in batch["documents"]:
+    revision = document["source_revision"]
+    effective_check.validate({**candidate, "source_revision": revision})
+    vector_check.validate({"output": [{**item, "source_revision": revision} for item in output["output"]]})
+reject(effective_check, {**candidate, "source_revision": 1})
 wrong_field = deepcopy(candidate)
 wrong_field["structdata"]["text"] = 123
 reject(effective_check, wrong_field)

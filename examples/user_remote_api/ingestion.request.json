@@ -2,7 +2,7 @@
   "documents": [
     {
       "document_id": "manual-001",
-      "source_revision": "v1",
+      "source_revision": null,
       "structdata": {
         "title": "設備維護"
       },
@@ -13,7 +13,7 @@
     },
     {
       "document_id": "manual-002",
-      "source_revision": "v1",
+      "source_revision": "",
       "structdata": {
         "title": "設備維護"
       },

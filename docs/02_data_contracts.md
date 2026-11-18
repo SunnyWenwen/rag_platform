@@ -11,7 +11,7 @@ Elasticsearch 索引存取層另在每筆 ES Chunk 保存內部 `write_id`，同
 | 欄位 | 責任與語意 |
 |---|---|
 | `document_id` | 原始文件穩定識別。多頁、多切片保留原文件 ID。外部候選也需填可辨識來源的 ID。 |
-| `source_revision` | 來源系統提供的文件版本，供追溯及文件摘要使用。給值時須為非空字串並原樣保留；省略時，匯入、Chunk 及檢索候選都可省略此欄位。按照同一 System 的 `document_id` 覆寫，版本值不參與更新判斷。 |
+| `source_revision` | 選填的來源文件版本。接受字串（含 `""`）與 `null`。匯入時有帶值，解析單位、Chunk 與檢索候選原樣保留。匯入時省略，下游維持省略。同一 System 以 `document_id` 判斷覆寫。文件清單只彙整非空版本字串。 |
 | `data_id` | 每筆可檢索 Document 的識別，Chunking 產出後必填。不同切片可共用 document_id，data_id 須能區分它們。去重使用 data_id，文件分組及刪除使用 document_id。 |
 | `structdata` | 平面業務欄位，依 [Data Meta Schema](#data-meta-schema) 宣告型別、必填性與搜尋能力。 |
 | `content` | 待解析來源，`media_type` 加 `uri` 或 `base64` 二選一。與已知 structdata 可並存。 |
