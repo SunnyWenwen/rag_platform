@@ -2,7 +2,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
@@ -15,6 +15,7 @@ SCHEMAS = {path.name: json.loads(path.read_text()) for path in (HERE.parents[1] 
 REGISTRY = Registry().with_resources((schema["$id"], Resource.from_contents(schema)) for schema in SCHEMAS.values())
 SYSTEM_PATH = "/internal/v1/systems/"
 DRAFT_KEYS = ("runtime_ref", "catalog_revision", "draft_revision")
+DOCUMENT_STATES = ("queued", "running", "completed", "failed", "unknown")
 
 
 def schema(name):
@@ -28,28 +29,50 @@ def assert_error(body, request_body):
         assert body["path"].startswith("/") and request_body is not None
 
 
+def assert_run_document(item):
+    assert set(item) == {"document_id", "status", "module", "updated_at", "error"}
+    assert isinstance(item["document_id"], str) and item["document_id"]
+    assert item["status"] in DOCUMENT_STATES
+    assert item["module"] is None or isinstance(item["module"], str)
+    if item["updated_at"] is not None:
+        assert datetime.fromisoformat(item["updated_at"]).utcoffset() is not None
+    if item["status"] == "failed":
+        assert item["error"] is not None
+    if item["error"] is not None:
+        assert_error(item["error"], None)
+
+
 def assert_run(body, run_id):
     assert body["run_id"] == run_id
     if set(body) == {"run_id", "status"}:
         assert body["status"] == "unknown"
         return
+    assert set(body) == {"run_id", "status", "config_revision", "counts", "documents"}
+    assert isinstance(body["config_revision"], str) and body["config_revision"]
     counts = body["counts"]
-    outcomes = ("queued", "running", "completed", "failed", "unknown")
-    assert set(counts) == {"total", *outcomes}
+    assert set(counts) == {"total", *DOCUMENT_STATES}
+    assert all(type(count) is int and count >= 0 for count in counts.values())
     statuses = [item["status"] for item in body["documents"]]
-    assert counts["total"] == len(statuses) == sum(counts[state] for state in outcomes)
-    assert all(counts[state] == statuses.count(state) for state in outcomes)
-    if body["status"] == "partial":
-        assert counts["completed"] and counts["failed"]
-        assert not (counts["queued"] or counts["running"] or counts["unknown"])
+    assert counts["total"] == len(statuses) == sum(counts[state] for state in DOCUMENT_STATES) > 0
+    assert all(counts[state] == statuses.count(state) for state in DOCUMENT_STATES)
+    if counts["queued"] == counts["total"]:
+        expected = "queued"
+    elif counts["queued"] or counts["running"]:
+        expected = "running"
+    elif counts["unknown"]:
+        expected = "unknown"
+    elif counts["completed"] and counts["failed"]:
+        expected = "partial"
+    else:
+        expected = "completed" if counts["completed"] else "failed"
+    assert body["status"] == expected
     for item in body["documents"]:
-        assert item["document_id"]
-        datetime.fromisoformat(item["updated_at"])
-        if item["error"] is not None:
-            assert_error(item["error"], None)
+        assert_run_document(item)
 
 
 def assert_system_status(body, system_id):
+    assert set(body) == {"system_id", "active_config_revision", "index_ready", "index_generation",
+                         "busy", "can_ingest", "can_query"}
     assert body["system_id"] == system_id and body["active_config_revision"]
     assert all(isinstance(body[key], bool) for key in ("busy", "can_ingest", "can_query"))
     assert body["index_ready"] is None or isinstance(body["index_ready"], bool)
@@ -58,9 +81,12 @@ def assert_system_status(body, system_id):
 
 
 def verify(scenarios):
+    for definition in SCHEMAS.values():
+        Draft202012Validator.check_schema(definition)
     catalog = json.loads((HERE / "runtime_catalog.response.json").read_text())
     schema("runtime_catalog.draft.schema.json").validate(catalog)
     published = {(item["module"], item["component_id"], item["component_version"]) for item in catalog["descriptors"]}
+    assert len(published) == len(catalog["descriptors"])
     happy = scenarios["happy_path"]
     initial_config = next(item["request"]["body"]["config"] for item in happy if item["request"]["method"] == "PUT")
     fields, _, index = compile_local_example({"system_id": "es-example", "config_revision": "revision-1",
@@ -70,12 +96,16 @@ def verify(scenarios):
         previews = {}
         for step in steps:
             request, response = step["request"], step["response"]
-            path = urlsplit(request["path"]).path
+            url = urlsplit(request["path"])
+            path = url.path
             method, sent = request["method"], request.get("body")
             status, body = response["status"], response.get("body")
 
             if status >= 400:
+                assert set(body) == {"error"}
                 assert_error(body["error"], sent)
+            if status == 204:
+                assert "body" not in response and "body_file" not in response
             if "body_file" in response:
                 assert path == "/internal/v1/catalog" and response["body_file"] == "runtime_catalog.response.json"
             if path.startswith(SYSTEM_PATH) and method in ("POST", "PUT"):
@@ -99,6 +129,10 @@ def verify(scenarios):
                                 assert (module, config["component_id"], config["component_version"]) in published
                     if method == "POST":
                         assert all(body[key] == sent[key] for key in DRAFT_KEYS)
+                        assert set(body) == {*DRAFT_KEYS, "context_revision", "active_config_revision", "index_impact"}
+                        impact = body["index_impact"]
+                        assert set(impact) == {"action", "code", "message"}
+                        assert impact["action"] in {"create", "reuse", "rebuild_required", "blocked", "none"}
                         previews[body["context_revision"]] = (sent, body)
                     else:
                         draft, preview = previews[sent["context_revision"]]
@@ -109,11 +143,30 @@ def verify(scenarios):
                         assert body["active_config_revision"] == sent["config_revision"]
             if path.endswith("/ingestions") and status == 202:
                 schema("ingestion_request.schema.json").validate(sent)
+                assert set(body) == {"run_id", "status", "config_revision", "documents"}
+                assert body["status"] == "queued"
                 assert response["headers"]["Location"] == f"{path}/{body['run_id']}"
                 assert body["documents"] == [{"document_id": doc["document_id"], "status": "queued"}
                                              for doc in sent["documents"]]
             if "/ingestions/" in path and status == 200:
                 assert_run(body, path.rsplit("/", 1)[1])
+            if path.endswith("/ingestion-status") and status == 200:
+                document = {key: value for key, value in body.items() if key != "run_id"}
+                assert_run_document(document)
+                assert document["document_id"] == path.split("/")[-2]
+                if body["run_id"] is None:
+                    assert document["status"] == "unknown"
+                    assert all(document[key] is None for key in ("module", "updated_at", "error"))
+            if path.endswith("/documents") and status == 200:
+                assert set(body) == {"documents", "next_cursor"}
+                ids = [item["document_id"] for item in body["documents"]]
+                assert ids == sorted(set(ids))
+                assert len(ids) <= int(parse_qs(url.query).get("limit", ["100"])[0])
+                for item in body["documents"]:
+                    assert set(item) == {"document_id", "source_revisions"}
+                    revisions = item["source_revisions"]
+                    assert len(revisions) == len(set(revisions))
+                assert body["next_cursor"] is None or isinstance(body["next_cursor"], str)
             if path.endswith("/queries"):
                 schema("inference_request.schema.json").validate(sent)
                 if status == 200:
@@ -122,6 +175,10 @@ def verify(scenarios):
                     assert response["headers"]["X-Config-Revision"] == "revision-1"
                     for context in body:
                         assert context["ori_query"] == sent["query"]
+                        assert context["filters"] == (
+                            initial_config["pipelines"]["inference"].get("fixed_filters", [])
+                            + sent.get("filters", [])
+                        )
                         for result in context["result_sets"]:
                             for item in result["items"]:
                                 assert all(name in item["data"]["structdata"] for name, field in fields.items()
@@ -132,6 +189,17 @@ def verify(scenarios):
                if item["request"]["method"] == "PUT" and item["response"]["status"] == 200]
     assert put["index_generation"] == updates[0]["index_generation"] != updates[1]["index_generation"]
     assert updates[1] == updates[2]
+
+    first, second, invalid = scenarios["document_pagination"]
+    next_cursor = first["response"]["body"]["next_cursor"]
+    assert next_cursor
+    assert parse_qs(urlsplit(second["request"]["path"]).query)["cursor"] == [next_cursor]
+    assert second["response"]["body"]["next_cursor"] is None
+    last_id_on_first_page = first["response"]["body"]["documents"][-1]["document_id"]
+    first_id_on_second_page = second["response"]["body"]["documents"][0]["document_id"]
+    assert last_id_on_first_page < first_id_on_second_page
+    assert invalid["response"]["status"] == 422
+    assert invalid["response"]["body"]["error"]["code"] == "INVALID_CURSOR"
     print(f"PASS: {len(scenarios)} scenarios, {sum(map(len, scenarios.values()))} HTTP exchanges")
 
 

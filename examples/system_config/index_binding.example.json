@@ -1,0 +1,13 @@
+{
+  "artifact_type": "builtin.local/v1",
+  "target": {"collection": "test-only"},
+  "fulltext_fields": ["structdata.text"],
+  "filter_fields": ["structdata.title", "structdata.price", "structdata.tags"],
+  "vector_bindings": {
+    "text": {
+      "source_field": "text",
+      "embedding_profile_id": "text-v1",
+      "dimensions": 3
+    }
+  }
+}

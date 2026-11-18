@@ -91,6 +91,19 @@ Dense Embedding 使用一份 `mappings[]` 清單，每筆有 `source_field` 和 
 
 `profile` 識別向量空間及模型／版本、維度、文件與查詢的編碼設定。Query Encoder 須與文件向量相容。同時選用多個向量欄位時，每路檢索依其索引綁定的 Profile 進行。
 
+<a id="component-parameter-scope"></a>
+### 內建服務參數的適用範圍
+
+| 參數 | 現行契約 |
+|---|---|
+| Chunking 的 `tokenizer_profile_id` | 取自 Catalog 的 `resources.tokenizer_profiles`。切分方式及參數見 [Engine Chunking](03_engine_and_components.md#chunking)。 |
+| Embedding 的 `profile` | 取自 Catalog 的 `resources.profiles`，來源欄位與向量名稱寫在 `mappings[]`。W1 HTTP 範例以這份 Profile 的維度為準。 |
+| Elasticsearch 的 `service_ref` | W1 以 Catalog 的 `resources.elasticsearch_services` 解析此邏輯引用。主機及認證資料屬環境綁定。 |
+| Local Search 的 `persistence` | `memory` 或 `mongodb`，隨有效 Config 跨環境沿用。MongoDB 的綁定及恢復見 [Q-012](08_plan_and_decisions.md#q-012) 與 [Q-021](08_plan_and_decisions.md#q-021)。 |
+| Rerank 的 `text_field`、`query_source` | `text_field` 存候選 `structdata` 的裸欄名，例如 `text`。`query_source` 選原始問題或當前 Query，評分邊界見 [Engine Rerank](03_engine_and_components.md#src-04-53-rerank)。 |
+
+Descriptor 另有 `service_source` 及自行提供服務的編輯欄位，例如 `embedding_service_ref`、`embedding_model`、`dimensions`、`elasticsearch_service_ref`、`mongo_service_ref`、`rerank_service_ref`。這些欄位可供表單開發。發布時如何映射至正式服務綁定，以及自訂 Embedding 設定如何與 `profile` 一致，依 [Q-003](08_plan_and_decisions.md#q-003)、[Q-021](08_plan_and_decisions.md#q-021) 確認。W1 的發布與匯入 Mock 採 Catalog 已註冊的資源。
+
 Indexing 的 `vector_fields` 接受要建立索引的具名向量清單。既有的單欄 `vector_name` 仍可讀取，同一有效設定只採其中一種表示。W1 Prototype 的發布模擬使用單欄格式。Embedding 產生多個向量後，Builder 可選擇要讓 Retrieval 搜尋的欄位。
 
 內建 Retrieval 的 `vector_fields` 和 `fulltext_fields` 都可多選，選項分別來自 `index_plan.vectors` 和 `index_plan.fulltext`。至少選一個欄位。每個向量路徑的查詢 Profile 由對應的 IndexBinding 推導。兩組欄位下方依序顯示每路 Top K、多路時的融合策略、Group by 合併欄位和 Top N。

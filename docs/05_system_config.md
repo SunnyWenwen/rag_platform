@@ -10,6 +10,21 @@ Workspace 管理多個 System。System ID、Config Revision、source_revision、
 
 每個有效節點以 `component_id` 選擇執行方式，並以 `component_version` 固定元件版本。內建元件使用該版本的 Descriptor 驗證參數。Remote API 共用平台保留的 `component_id: remote_api`，由 `service_ref` 選擇外部服務。Builder 設計可用同一個「執行方式」欄位選 Recursive、Fixed-size 或 Remote API。
 
+<a id="config-fields"></a>
+### Config 快照與節點欄位
+
+| 路徑 | 責任與語意 |
+|---|---|
+| `system_id` | 快照所屬的 System。HTTP 驗證和套用時由路徑提供。 |
+| `config_revision` | Builder 指派的發布版本。新版本在套用請求傳入，草稿驗證使用自己的 `draft_revision`。 |
+| `config` | 有效邏輯設定。Runtime 驗證與套用請求直接帶這個內層物件。 |
+| `config.contract_version` | 此 Config 的格式版本，現行為 `0.2-draft`。 |
+| `config.pipelines` | 包含 `ingestion`、`inference`。每個有效模組對應一個節點。 |
+| 節點的 `component_id`、`component_version`、`parameters` | 分別選方法、固定版本、保存該方法的設定。個別參數由所選 Descriptor 的 `parameters_schema` 定義。 |
+| Remote 節點的 `through`、`service_ref`、`output` | `through` 含括區段最後一個模組，首節點由 Pipeline 上的 key 指定。 `service_ref` 引用環境的外部服務綁定。Ingestion Remote 另須以 `output` 宣告適用的 `structdata` 或 `vectors`，Inference 依 System 的有效候選 Schema 驗證。 |
+
+發布時依固定的 Pipeline 順序核對節點。Remote 區段涵蓋的後續節點在有效設定中省略，由首節點涵蓋。JSON Schema 驗證結構，編譯器檢查覆蓋是否完整且無重疊、元件版本、欄位相依及引用。見 [Runtime 驗證契約](06_runtime_api_and_deployment.md#config-validation-api)。
+
 ## 設定位置
 
 | 模組 | 設定與推導 |
@@ -24,7 +39,7 @@ Workspace 管理多個 System。System ID、Config Revision、source_revision、
 | Retrieval／Rerank | 內建方法／模型、查詢參數引用、融合與截斷，也可選 Remote 替換。固定 Filter 由 Inference Pipeline 共用 |
 | Remote API | 首節點與連續範圍、服務引用、parameters JSON、Ingestion 輸出欄位及向量宣告 |
 
-有效資料欄位由 Import 與後續有效方法推導，外部 Retrieval 沿用這份 System 候選 Schema。整體 Config 包裝依 Q-002 收斂。Prototype 匯出是設定示意。
+有效資料欄位由 Import 與後續有效方法推導，外部 Retrieval 沿用這份 System 候選 Schema。W1 開發依 [Schema 與範例](../examples/system_config/README.md)。後續版本凍結和遷移依 [Q-002](08_plan_and_decisions.md#q-002)，部署 Bundle 依 [Q-021](08_plan_and_decisions.md#q-021)。Prototype 匯出用於示意。
 
 <a id="data-schema-config"></a>
 ## 欄位宣告、索引覆寫與發布
@@ -44,7 +59,7 @@ Workspace 管理多個 System。System ID、Config Revision、source_revision、
 <a id="inference-result-processing"></a>
 ## Inference 的結果處理
 
-Retrieval 與 Rerank 各自在 Component `parameters` 設定當步分組與 Top N。跨 Query 規則由 Query Transformation 的 UI 編輯，正式 Config 草案規劃放在 `config.pipelines.inference.result_processing.cross_query`，由 Engine 在選定步驟末尾執行。
+Retrieval 與 Rerank 各自在 Component `parameters` 設定當步分組與 Top N。跨 Query 的 UI 由 Query Transformation 編輯，Engine 在選定步驟末尾執行；發布欄位位置待 [Q-014](08_plan_and_decisions.md#q-014) 核定。
 
 | 設定 | 內容 |
 |---|---|
@@ -68,13 +83,17 @@ result_processing:
     top_n: 5
 ```
 
-這段是正式格式的候選片段。現有 `0.2-draft` 的機器 Schema 尚待加入此規則和逐 Component 參數。Remote 涵蓋整段 Query Transformation → Rerank 時，結果處理由外部服務負責，平台驗證並交付回應。
+上例是後續格式的候選。現行 System Config Schema 尚未接受 `inference.result_processing`。Rewrite 表單 Descriptor 的 `cross_query_at`、`cross_query_method`、`cross_query_group_by`、`cross_query_top_n` 是原型編輯欄位，與候選發布結構的映射依 Q-014 收斂。W1 HTTP 範例採單 Query，實作跨 Query 發布與執行前須確認序列化契約。Remote 涵蓋整段 Query Transformation → Rerank 時，結果處理由外部服務負責，平台驗證並交付回應。
 
 ## 執行參數
 
 Import／Inference Input 各自宣告名稱、型別、必填與預設值。Import 的值放在整批 Ingestion Request 的 `parameters`，Inference 的值放在該次查詢的 `parameters`。Runtime 先檢查型別、套預設及拒絕缺少的必填值。下游用 `{{params.name}}` 引用。Remote parameters JSON 中完整參數引用保留原值型別，例如 `{"top_k":"{{params.top_k}}"}` 在值為整數 5 時解析為 `{"top_k":5}`。執行參數留在呼叫環境，與 Document、metadata、索引內容分開。
 
+現行表單在 `import.parameters.request_parameters` 或 `inference_input.parameters.request_parameters` 宣告。每列包含 `name`（Request 當中的 key）、`type`（`string`、`integer`、`number`、`boolean`、`array`、`object`）、`required`（是否必填），以及選填的 `default_value`。 `default_value` 存 JSON 文字，例如字串預設值的設定為 `"default_value": "\"zh-TW\""`，解碼後依所選型別驗證。
+
 認證欄位可填固定 Secret reference 或 `{{params.remote_secret_ref}}`。動態引用必須宣告為 `secret_ref`，由 Runtime 檢查本 System 可使用該引用，再解析成認證 Header。一般業務參數傳入 Remote 的 parameters，實際認證憑證走 Header。
+
+動態認證的 `secret_ref` 宣告尚未納入現行表單 Descriptor 的 `request_parameters.type`。Remote 範例展示驗證後的傳輸邊界。開發動態認證設定與發布前，須依 [Q-028](08_plan_and_decisions.md#q-028) 補齊 Config 宣告與端到端範例。
 
 ## Admin 全域模板
 

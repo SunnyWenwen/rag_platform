@@ -2,6 +2,8 @@
 
 以下契約可供 Builder 實作表單、API Client 與 Mock。
 
+[W1 開發基準與待決邊界](08_plan_and_decisions.md#w1-contract-readiness)
+
 | 契約 | 規格與範例 |
 |---|---|
 | System Config／Component Descriptor | [System Config 規格](05_system_config.md) · [Config Schema](../schemas/system_config.draft.schema.json) · [Config 範例](../examples/system_config/README.md#可驗證的-local-search-設定) · [Descriptor 欄位說明](04_component_descriptor.md#descriptor-fields) · [Descriptor Schema](../schemas/component_descriptor.draft.schema.json) · [各模組 Descriptor JSON](../examples/system_config/builder_form.descriptors.json) · [Component 清冊與 Remote 入口](04_component_descriptor.md#prototype-component-inventory) · [表單 Renderer](07_builder_ui.md#descriptor-form-rendering) |

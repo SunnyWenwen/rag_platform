@@ -42,12 +42,16 @@ reject(batch_check, {"documents": []})
 reject(batch_check, batch["documents"])
 reject(batch_check, {"documents": [{**batch["documents"][0], "parameters": {}}]})
 remote_ingestion = read(HERE / "remote_ingestion.request.json")
+assert set(remote_ingestion) == {"input", "parameters"}
 assert remote_ingestion["input"] == batch["documents"][0]
 assert remote_ingestion["parameters"] == {"language": batch["parameters"]["language"]}
 
 vector_check = validator(read(HERE / "remote_ingestion.response.schema.json"))
 output = read(HERE / "remote_ingestion.response.json")
 vector_check.validate(output)
+for item in output["output"]:
+    for key in ("document_id", "source_revision"):
+        assert item[key] == remote_ingestion["input"][key]
 wrong_dimension = deepcopy(output)
 wrong_dimension["output"][0]["vectors"]["text"]["values"].pop()
 reject(vector_check, wrong_dimension)
@@ -63,7 +67,10 @@ invalid_filters = ([{"any": []}], [{"any": inference["filters"]}],
                    [{"field": "structdata.price", "operator": "eq", "value": None}],
                    [{"field": "metadata.department", "operator": "eq", "value": "製造部"}])
 query_check = validator(schemas["query_context"])
-remote_input = read(HERE / "remote_retrieval.request.json")["input"]
+remote_request = read(HERE / "remote_retrieval.request.json")
+assert set(remote_request) == {"input", "parameters"}
+assert remote_request["parameters"] == inference["parameters"]
+remote_input = remote_request["input"]
 query_check.validate(remote_input)
 for filters in invalid_filters:
     reject(inference_check, {**inference, "filters": filters})
@@ -71,11 +78,19 @@ for filters in invalid_filters:
 system_config = read(HERE.parent / "system_config" / "local_memory.builtin.json")
 fixed_filters = system_config["config"]["pipelines"]["inference"]["fixed_filters"]
 assert remote_input[0]["filters"] == fixed_filters + inference["filters"]
-contexts = read(HERE / "remote_retrieval.response.json")["output"]
+assert remote_input[0]["ori_query"] == remote_input[0]["query"] == inference["query"]
+response = read(HERE / "remote_retrieval.response.json")
+assert set(response) == {"output"}
+contexts = response["output"]
 query_check.validate(contexts)
 candidate = contexts[0]["result_sets"][0]["items"][0]["data"]
 effective_check = validator(read(HERE / "effective_document.schema.json"))
-effective_check.validate(candidate)
+for context in contexts:
+    for key in ("ori_query", "query", "filters", "metadata"):
+        assert context[key] == remote_input[0][key]
+    for result_set in context["result_sets"]:
+        for item in result_set["items"]:
+            effective_check.validate(item["data"])
 wrong_field = deepcopy(candidate)
 wrong_field["structdata"]["text"] = 123
 reject(effective_check, wrong_field)

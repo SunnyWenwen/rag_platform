@@ -119,7 +119,7 @@
 | [Engine／Component](03_engine_and_components.md) | 執行、方法、SDK、開發／發布、Local／Remote 教學 |
 | [Descriptor](04_component_descriptor.md) | B 的細化／動態選項／表單、候選 Schema、DS-01～DS-13 |
 | [System Config](05_system_config.md) | D 的版本、有效設定、變更影響與 SC-01～SC-10 |
-| [Runtime API／部署](06_runtime_api_and_deployment.md) | 九支 API、Queue／狀態、14 項控制預設、環境與 Export |
+| [Runtime API／部署](06_runtime_api_and_deployment.md) | 管理／業務／Health API、Queue／狀態、控制預設、環境與 Export |
 | [Builder UI／Backlog](07_builder_ui.md) | 目標互動、v0.12 現況、UIB 待辦；修改 UI 時才實作 |
 | 本文件 | 已確認基線、M0～M7、Q-001～Q-028、驗收與狀態 |
 
@@ -435,6 +435,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - 仍待正式環境部署接線、OpenAPI 整理、Builder 自有 CRUD／助手／檔案 manifest、資料保留、Trace 及版本相容政策。W1 DEV Runtime 的 HTTP、ES 與模型還需整合驗收。
 - 負責角色為 Backend、Runtime、Frontend 與身分團隊。以 W1 Mock 開發，真實串接按 M3／M5 驗收。
 
+<a id="q-020"></a>
 ### Q-020 DEV 共享 Runtime 與資源隔離
 
 - Builder DEV 共用 Runtime，外部 API 由服務提供者維運，資源隔離與配額另行驗證。
@@ -574,11 +575,25 @@ Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract�
 
 ## 9. 目前交付狀態與下一步
 
-目前可審閱的交付為 03～23 的現行規格／討論稿、共用 JSON Schema、契約資料／參考驗證器、模擬 Prototype 及架構圖。三份 Ingestion 資料以 資料契約手冊 為準；Inference 的 ResultItem 引用共用 Chunk。
+目前交付包含 01～08 主責手冊、W1 開發索引、JSON Schema、契約範例與離線驗證器、Prototype 及架構圖。Ingestion 使用共用 `Document`，Inference 候選為 `ResultItem.data`。見 [共用資料契約](02_data_contracts.md)。
 
 - 資料驗證：[System Config／Descriptor](../examples/system_config/README.md) 與 [Document／Remote API](../examples/user_remote_api/README.md)。[測試入口](../tests/README.md)另列 UI prototype 回歸。
 - Parser 對照：現行映射與驗收界線見 [資料契約](02_data_contracts.md#data-flow)；舊版供應者對照／試驗保存在 history/superseded，不等同目前契約的完整 Parser 驗收。範例通過不表示已交付 Engine Component。
 - Prototype v0.12：現行原型完成／提案／後端待辦以 [Builder UI／Backlog](07_builder_ui.md#src-10-1-已完成的原型能力)相關章節為準。不可再把 UIB-001～013 全列未實作；多項已完成模擬，UIB-007／008 仍未核定，UIB-021～024 等累積項仍待改 UI／正式整合。
 - 優先決策：正式共用契約／SDK、模型與 Tokenizer、ID／更新／發布政策，再按 M0～M7 推進。D-53 的 Chunk 後模板組合與額外原文 Chunk 已確認需求，尚待實作及凍結具體設定格式，見 [資料契約](02_data_contracts.md#data-flow)。
+
+<a id="w1-contract-readiness"></a>
+### W1 開發基準與待決邊界
+
+Builder 可按 [W1 開發契約索引](09_w1_builder_runtime_contract.md) 實作表單、API Client 與 Mock。現行端到端 Mock 採已註冊的 Catalog 資源、內建 Elasticsearch Pipeline 與單 Query。Runtime 回傳的 Schema 和範例仍需在 DEV 實機串接驗收。
+
+| 要進入的開發範圍 | 還需要定清楚的契約 |
+|---|---|
+| 跨 Query 融合的發布與執行 | 選定發布位置及 enum，定義原型欄位映射和示例。現行表單的 `cross_query_*` 與 `inference.result_processing.cross_query` 候選見 [Q-014](#q-014) 與 [System Config](05_system_config.md#inference-result-processing)。 |
+| 自行提供模型／索引服務的發布 | 定義每種服務引用對應哪個環境綁定，自訂模型和維度如何對上 Profile。見 [Q-003](#q-003)、[Q-021](#q-021) 與 [參數適用範圍](04_component_descriptor.md#component-parameter-scope)。 |
+| Remote 動態 Secret 引用 | 對齊 `request_parameters` 的宣告、授權及環境綁定範例。現有 Remote fixture 已示範傳輸內容，Config 端待 [Q-028](#q-028) 補齊。 |
+| 真實 Ingestion 的識別與追溯 | W1 Mock 可帶明確 `document_id`、`source_revision` 並模擬候選的 `data_id`。省略來源版本時的生成方式，以及切分 ID 的穩定性與更新語意，依 [Q-007](#q-007) 核定。 |
+| Runtime 重新啟動後沿用既有 ES 索引 | 依 [Q-015](#q-015) 定下指紋輸入欄位、正規化及規則版本，並驗證既有 mapping／Profile 的相容性。 |
+| Runtime 多副本共用同一 System | 確認跨程序的寫入互斥、工作狀態結算與設定生效版本管理。見 [Q-020](#q-020)、[Q-027](#q-027) 與 [Runtime 排程](06_runtime_api_and_deployment.md#src-07-6-非同步工作與一致性)。 |
 
 歷史決策來源、過時提案、驗證及校對過程集中於 [history/](history/README.md)，包括 D-01～D-66 的來源與演變。Q-001～Q-028 及 SC-01～SC-10 仍是現行待決／討論項目；文件歸檔不代表功能驗收完成。

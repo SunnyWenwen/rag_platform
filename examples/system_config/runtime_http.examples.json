@@ -1598,6 +1598,35 @@
           "body": {"error": {"code": "UPSTREAM_ERROR", "message": "檢索服務回應失敗。", "module": "retrieval"}}
         }
       }
+    ],
+    "document_pagination": [
+      {
+        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/documents?limit=1"},
+        "response": {
+          "status": 200,
+          "body": {
+            "documents": [{"document_id": "guide-1", "source_revisions": ["v1"]}],
+            "next_cursor": "page-token-1"
+          }
+        }
+      },
+      {
+        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/documents?limit=1&cursor=page-token-1"},
+        "response": {
+          "status": 200,
+          "body": {
+            "documents": [{"document_id": "guide-2", "source_revisions": ["v1", "v2"]}],
+            "next_cursor": null
+          }
+        }
+      },
+      {
+        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/documents?limit=1&cursor=invalid"},
+        "response": {
+          "status": 422,
+          "body": {"error": {"code": "INVALID_CURSOR", "message": "無效的分頁游標。", "module": null}}
+        }
+      }
     ]
   }
 }

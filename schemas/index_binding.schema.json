@@ -47,7 +47,7 @@
     },
     "fulltext_fields": {
       "items": {
-        "minLength": 1,
+        "pattern": "^structdata\\..+$",
         "type": "string"
       },
       "title": "Fulltext Fields",
@@ -56,7 +56,7 @@
     },
     "filter_fields": {
       "items": {
-        "minLength": 1,
+        "pattern": "^structdata\\..+$",
         "type": "string"
       },
       "title": "Filter Fields",

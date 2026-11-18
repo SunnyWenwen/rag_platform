@@ -330,9 +330,9 @@ Builder 對新建立或清空後重新建置的資料集，等預定的初次資
 |---|---|
 | 基本 | 檢索內容、分數／排名／來源、索引未就緒／服務錯誤 |
 | 進階 | 原始與衍生 Query、各路候選、融合結果、Rerank 前後、實際 Context、耗時／用量 |
-| 版本 | config_revision、index_generation、request_id；不可顯示為另一版的結果 |
+| 版本 | 取自 Inference 的 `X-Config-Revision`、`X-Index-Generation`。Trace 使用的 `request_id` 依 Q-019 後續契約。 |
 
-Trace 保存與敏感內容政策見 Q-016，診斷顯示範圍見 Q-025。Filter 表單分別顯示固定條件與本次附加條件，日期時間預設顯示 Asia/Taipei。Inference 執行失敗時顯示 Runtime 的錯誤，成功但無候選時顯示無命中。API 說明隨時可查看，不需先 Ingestion。Ingest／Inference 皆有「查看 API 端點」入口，內容包含當前 Base URL、認證示意、JSON／multipart、cURL、回應與錯誤；Ingest 另示範 run_id 輪詢。查看說明不執行工作或模型／DB 測試。
+Trace 保存與敏感內容政策見 Q-016，診斷顯示範圍見 Q-025。Filter 表單分別顯示固定條件與本次附加條件，日期時間預設顯示 Asia/Taipei。Inference 執行失敗時顯示 Runtime 的錯誤，成功但無候選時顯示無命中。Ingest／Inference 的「查看 API 端點」呈現 Base URL、認證、JSON、cURL、回應及錯誤。Ingest 另示範 `run_id` 輪詢。檔案上傳由 Builder 轉為 Runtime Ingestion JSON，見 [Runtime 上傳邊界](06_runtime_api_and_deployment.md#src-07-54-builder-上傳與自行部署)。查看說明不會觸發工作。
 
 <a id="src-06-7-evaluation-與-edit-config"></a>
 ## Evaluation 與 Edit Config
@@ -592,10 +592,10 @@ ResultSet.key 對應 Config 路徑／群組，items 位置即名次。RRF 可用
 <a id="src-10-d-65文件摘要清單ui-位置仍待規劃"></a>
 ### D-65：文件摘要清單（UI 位置仍待規劃）
 
-- [ ] API 說明將文件清單回應更新為 documents[]＋next_cursor，每筆顯示 document_id／source_revisions[]，不再只列 document_ids[]。
+- 文件清單的 HTTP 格式已定，回傳 `documents[]` 與 `next_cursor`，每筆含 `document_id`、`source_revisions[]`。見 [Runtime 文件摘要 API](06_runtime_api_and_deployment.md#src-21-93-文件摘要清單d-65-已確認核心)。
 - [ ] 來源版本取實際儲存；多版可代表更新中／失敗後混合，不將其標為成功歷史或自行挑選最新。最近工作結果仍使用 ingestion-status。
 
-沿用 UIB-023，不新增文件內容、版本回復或清理按鈕。分頁參數與實際面板位置後續整理；本輪未修改 Prototype。
+沿用 UIB-023。面板位置與分頁控制項仍待規劃，分頁參數依 [Runtime API](06_runtime_api_and_deployment.md#data-lifecycle-api)。
 
 
 <a id="src-10-d-66system-config-整合草案先記錄待討論改-ui"></a>

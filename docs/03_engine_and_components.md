@@ -14,6 +14,8 @@ User 提供已部署的 HTTP 服務並在 System 設定完整 Endpoint、認證�
 | Ingestion | Parsing、Chunking、Embedding 各自可替換，也可選 Parsing → Chunking、Chunking → Embedding、Parsing → Chunking → Embedding | 從 Parsing 開始時 input 是單筆 Document，其餘為同文件 Document[]。output 為 Document[]。涵蓋 Parsing／Chunking 時宣告輸出 structdata，涵蓋 Embedding 時宣告 vectors。 |
 | Inference | Query Transformation、Retrieval、Rerank 各自可替換，也可選 Transformation → Retrieval、Retrieval → Rerank、Transformation → Retrieval → Rerank | input／output 皆為 QueryContext[]，候選 Document 遵守從 Ingestion 設定推導的 System Schema。 |
 
+Remote Ingestion 的 `output` 在 Config 中是 Schema 宣告，在 HTTP Response 中是實際 Document 陣列。涵蓋 Parsing 或 Chunking 時，Config 宣告 `output.structdata`。涵蓋 Embedding 時宣告 `output.vectors`，每個向量列出 `source_field`（有效必填字串欄名）、`embedding_profile_id` 及 `dimensions`。同時涵蓋兩類時需要兩份宣告。見 [System Config 欄位](05_system_config.md#config-fields) 與 [Remote API 範例](../examples/user_remote_api/README.md)。
+
 區段只執行一次，涵蓋模組由首節點管理，編譯拒絕重疊。Indexing 與 Inference Input 由平台執行。只替換 Embedding 時，輸出保留原 Document 並附上向量。外部 Retrieval 自行執行搜尋及授權，平台無須等 Ingestion／IndexBinding 就緒。當區段涵蓋 Retrieval，Engine 以共用 I/O 傳入已驗證、合併後的 QueryContext.filters，並驗證回傳候選。過濾、排序及截斷由外部服務決定。未被替換的後段使用驗證過的候選。Inference 區段內的融合、分組和截斷由 Remote 負責，Engine 驗證平台規則與區段不重疊。Remote Retrieval 若留下可識別的 Query／ResultSet，區段外可顯式接平台跨 Query 處理或內建 Rerank。整段 Query Transformation → Rerank 由 Remote 執行時，Runtime 驗證回應及候選契約，按回傳順序交付。平台保留內建擴充的能力，由平台團隊維護方法及相容契約。
 
 呼叫前解析 `{{params.name}}` 與固定／動態 Secret reference。實際 Secret 經授權解析後放認證 Header。檢查回應形狀、欄位型別、資料識別、向量維度／Profile 與 Inference 邊界語意。HTTP 錯誤、Timeout、無效 JSON、違反契約及查無候選分別處理。服務失敗的重試依操作冪等性及 Runtime 政策。保留 request ID、模組範圍與錯誤摘要，遮罩憑證。
@@ -36,9 +38,9 @@ User 提供已部署的 HTTP 服務並在 System 設定完整 Endpoint、認證�
 
 | 方法 | 切分依據 | 有效設定 |
 |---|---|---|
-| Fixed-size | 按固定 Token 視窗前進，不依句子、分隔符或標題找邊界 | size、overlap、tokenizer；共用 split／copy，metadata 預設全部繼承 |
-| Recursive | 依分隔符優先序找邊界，過長片段繼續細切 | 共用設定＋separators、keep_separator |
-| Header-aware | 先依標題層級切分，超長章節再用 Recursive | 共用設定＋header_levels、標題能力及 Recursive 備援參數 |
+| Fixed-size | 按固定 Token 視窗切分 | `max_tokens`、`overlap_tokens`、`tokenizer_profile_id`，共用 `split_field`、`output_field`、`copy_fields`。 |
+| Recursive | 依分隔符優先序找邊界，過長片段繼續細切 | 共用設定加上 `separators`（分隔符順序）及 `keep_separator`（是否保留分隔符）。 |
+| Header-aware | 先依標題層級切分，超長章節再用 Recursive | 共用設定加上 `header_levels`、標題能力及 Recursive 備援參數。 |
 
 Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一塊不足 size 時保留、不補齊。視窗涵蓋文件結尾即停止，不再產生只重複末尾 overlap 的多餘 Chunk。例如 Token 串長 11、size=4、overlap=1，半開區間依序為 `[0:4]`、`[3:7]`、`[6:10]`、`[9:11]`；長度為 10 時則在 `[6:10]` 結束。這是 Token 視窗語意例子；Unicode 完整邊界、offset 映射及實際模型輸入重新計數的精確策略仍由 Q-004 核定，不能靠任意 decode Token 片段破壞原文。
 

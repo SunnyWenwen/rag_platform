@@ -6,4 +6,6 @@
 
 首版模板由 Admin 維護版本化設定檔，套用時複製設定。這組資料是 HTTP 與 Schema 測資。正式 Config 檔案包裝及 Runtime 連線整合另行驗收。
 
+這組 Remote Ingestion 例子涵蓋 Parsing → Embedding，與 Local Search 的 [Remote Parsing Config](../system_config/local_memory.remote_parsing.json) 是不同情境。前者展示動態 Secret 參數進入 Runtime 後的傳輸邊界。Builder 的 `secret_ref` 宣告及完整環境綁定見 [System Config 執行參數](../../docs/05_system_config.md#執行參數) 和 [Q-028](../../docs/08_plan_and_decisions.md#q-028)。
+
 在 repo 根目錄執行 `python3 examples/user_remote_api/validate.py`，使用 Python jsonschema 與 referencing。

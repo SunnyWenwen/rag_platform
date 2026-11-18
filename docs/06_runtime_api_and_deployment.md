@@ -186,6 +186,13 @@ Descriptor 的欄位推導規則見 [Component Descriptor](04_component_descript
 
 開啟設定編輯或切換 Runtime 時，Builder Backend 呼叫目標 DEV Runtime 的 `GET /internal/v1/catalog`，無 Request body。成功回 `200`，提供 `runtime_ref`、`catalog_revision`、該 Runtime 的 `descriptors` 及可用的 `resources`。每個 Descriptor 以 `(module, component_id, component_version)` 識別，每種資源以 Config 使用的 ID 為鍵。目錄可附顯示名稱。Embedding Profile 提供向量維度。
 
+| Catalog 回應欄位 | 用途 |
+|---|---|
+| `runtime_ref` | 識別這份 Catalog 所屬的目標 Runtime。驗證與套用須回送。 |
+| `catalog_revision` | Descriptor 與資源清單的版本。Builder 與 Runtime 以此判斷是否使用相同目錄。 |
+| `descriptors` | 已交付方法的 Descriptor 陣列。每組 `(module, component_id, component_version)` 在同份 Catalog 只出現一次。見 [Descriptor 欄位](04_component_descriptor.md#descriptor-fields)。 |
+| `resources` | 四個以 ID 為鍵的資源清單。每個資源可附 `label`，Embedding Profile 須附正整數 `dimensions`。 |
+
 | Catalog 資源清單 | 用途 |
 |---|---|
 | `resources.profiles` | Embedding Profile ID、顯示名稱及向量維度。 |
@@ -217,6 +224,8 @@ Builder 編輯時依 Descriptor 與推導出的有效 I/O 先查必填、型別�
 | `Validation` | 回傳本次 `runtime_ref`、`catalog_revision`、`draft_revision`，另含 `context_revision: string`、`active_config_revision: string \| null`、`index_impact: {action, code, message}`。`code`、`message` 為字串。 |
 
 Runtime 檢查完整 Config、Component 版本、資源引用與上下游契約，並讀取實際索引狀態。驗證為唯讀。Config 驗證失敗回 `422 CONFIG_VALIDATION_FAILED`，定位方式見 [HTTP 錯誤格式](#runtime-http-errors)。Builder 以 `draft_revision` 對回本次草稿，捨棄過期結果。
+
+`draft_revision` 識別 Builder 送驗的草稿，`context_revision` 識別 Runtime 產生的驗證結果，套用時原樣送回。`active_config_revision` 是驗證當下的生效版本，尚未載入時為 `null`。Builder 用 `index_impact.action` 判斷下一步，以 `code` 識別原因，用 `message` 顯示說明。
 
 Builder 依 `index_impact.action` 顯示發布影響，再按下表處理。可發布時進入 [System 套用流程](#system-lifecycle-api)。
 
@@ -388,7 +397,18 @@ Location: /v1/ingestions/ing-001
 
 文件最新狀態索引以可信的 (System, document_id) 對應最近一次 run_id；每次合法重新提交建立新 run_id，先前 Run 的結果在保留期內仍能查，不被文件最新狀態覆寫。這不要求持久儲存完整執行歷史。
 
-D-57 已確認 Batch 彙總方向：仍有 running 為 running，只有等待且尚無終態為 queued；已處理部分且還有待處理文件時為 running；全成功為 completed、全失敗為 failed、已全部終結但有成功亦有失敗為 partial。**partial 只適用 Run 彙總，半份處理不能標文件 completed；不代表更新期間讀取有原子保證。**沒有活躍工作但至少一筆結果未確認時，Run 為 unknown，不偽裝為全失敗或已確認 partial。已接受的工作結果從 GET 查詢，HTTP 回 `200`。
+D-57 的 Run 狀態由逐文件狀態彙總，按下表從上往下採第一個符合的條件。已接受的工作以 `GET` 查詢並回 `200`。
+
+| 逐文件狀態 | Run 狀態 |
+|---|---|
+| 全部仍在等待 | `queued` |
+| 尚有排隊或執行中的文件 | `running` |
+| 至少一筆結果未確認 | `unknown` |
+| 全部成功 | `completed` |
+| 全部確認失敗 | `failed` |
+| 成功和失敗皆有 | `partial` |
+
+`partial` 只用於 Run 彙總。單份文件完整處理及索引發布後才標為 `completed`。更新期間的資料可見性見 [Elasticsearch 文件覆寫](#elasticsearch-document-replacement)。
 
 ```json
 {
@@ -765,7 +785,7 @@ Local Search 第一版仍同程序／單副本。背景執行不能把唯一 Mem
 
 尚待 Q-008～Q-010／Q-015／Q-017／Q-019：
 
-- 21 的 counts／錯誤 Envelope 與文件管理細節；批次物件、整批預檢、Run partial 與 retire 直接刪除方向已確認。
+- Run counts、HTTP 錯誤與文件管理的 W1 格式依本手冊。後端的清理、分頁與部署整合依 API-D03／API-D07 驗收。
 - ES 文件覆寫順序已定，仍待驗證清理失敗、未知結果查核及崩潰後殘留處理。其他後端的寫入與搜尋可見性另議。
 - 固定快照、System 切版／卸載及持久索引相容規則見 [System 管理](#src-07-4-systemrevision-與-engine-生命週期)。一般寫入與 Query 依 D-60 併行，未知寫入與失敗清理仍依 API-D05 追蹤。
 - 已定 ES 寫入結果未確認時限制同文件重送，直到查核並安全收尾。前次操作終止證據、Idempotency-Key／版本控制、清理 API、進度管控及取消仍待定。

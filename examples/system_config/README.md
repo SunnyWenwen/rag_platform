@@ -11,6 +11,8 @@
 
 離線驗證同時檢查 JSON 形狀及跨節點規則。這兩份 Config 使用現行契約版本 `0.2-draft`，涵蓋 Local Search、固定測試 Profile 與內建 Inference。
 
+[IndexBinding JSON](index_binding.example.json) 對應上述兩份 Config 的實際全文、過濾與向量計畫。欄位語意見 [IndexBinding 規格](../../docs/02_data_contracts.md#indexbinding)。
+
 ## Component Descriptor 驗證
 
 - [Meta-schema 草案](../../schemas/component_descriptor.draft.schema.json)驗證 Descriptor 的外層及目前測試的宣告語法。
@@ -48,5 +50,6 @@ python3 examples/user_remote_api/validate.py
 | `reuse_and_rebuild`、`blocked_or_stale_publish`，涵蓋索引沿用／重建、欄位錯誤及版本衝突 | [System 生命週期](../../docs/06_runtime_api_and_deployment.md#system-lifecycle-api) · [索引重建](../../docs/06_runtime_api_and_deployment.md#system-index-lifecycle) · [錯誤格式](../../docs/06_runtime_api_and_deployment.md#runtime-http-errors) |
 | `ingestion_status_and_errors`，涵蓋無效請求、文件忙碌、Run 部分失敗及紀錄過期 | [資料生命週期](../../docs/06_runtime_api_and_deployment.md#data-lifecycle-api) |
 | `query_empty_and_errors`，涵蓋無命中、無效 Filter、索引未就緒及上游失敗 | [Inference API](../../docs/06_runtime_api_and_deployment.md#inference-api) |
+| `document_pagination`，涵蓋沿用 `next_cursor`、最後一頁及無效 Cursor | [文件摘要清單](../../docs/06_runtime_api_and_deployment.md#src-21-93-文件摘要清單d-65-已確認核心) |
 
 以 `validate_runtime_http_examples.py` 檢查測資 Schema 與跨步驟關聯。實際 HTTP、Elasticsearch 與模型由 DEV 環境串接驗收。

@@ -269,7 +269,7 @@ TEMPLATE_FIELD = re.compile(r"\{\{\s*structdata\.([^{}]+?)\s*\}\}")
 
 def composition_fields(desc, values, fields):
     result = fields.copy()
-    for rule in desc["data_rules"]:
+    for rule in desc.get("data_rules", ()):
         if rule["op"] != "compose" or not values.get(rule["enabled"][1:]):
             continue
         target = values[rule["target"][1:]]
@@ -290,7 +290,7 @@ def composition_fields(desc, values, fields):
 def data_effects(desc, values, fields, vectors):
     result = {} if desc["module"] == "chunking" else composition_fields(desc, values, fields)
     vector_result = vectors.copy()
-    for rule in desc["data_rules"]:
+    for rule in desc.get("data_rules", ()):
         op = rule["op"]
         if op == "compose":
             continue
@@ -381,15 +381,8 @@ def compile_retrieval(index_plan, config):
 
 
 def binding_fixture():
-    return {
-        "artifact_type": "builtin.local/v1",
-        "target": {"collection": "test-only"},
-        "fulltext_fields": ["structdata.text"],
-        "filter_fields": [],
-        "vector_bindings": {
-            "text": {"source_field": "text", "embedding_profile_id": "text-v1", "dimensions": 3},
-        },
-    }
+    binding = json.loads((HERE / "index_binding.example.json").read_text())
+    return {**binding, "filter_fields": []}
 
 
 def check_runtime_binding(index_plan, binding):
@@ -430,7 +423,7 @@ def remote_effects(start, end, declarations, previous_fields=None):
     vectors = declarations.get("vectors", {})
     for vector in vectors.values():
         field = fields.get(vector.source)
-        if field != Field("string"):
+        if not field or field.type != "string" or not field.required:
             fail("invalid remote vector source")
         if PROFILES.get(vector.profile) != vector.dimensions:
             fail("remote profile dimension mismatch")
@@ -603,9 +596,10 @@ def _():
         "tags": Field("string_array", required=False, filterable=True),
     }
     assert vectors == {"text": Vector("text", "text-v1", 3)}
-    binding = binding_fixture()
-    binding["filter_fields"] = ["structdata.title", "structdata.price", "structdata.tags"]
+    binding = json.loads((HERE / "index_binding.example.json").read_text())
     check_runtime_binding(index, binding)
+    for field in ("fulltext_fields", "filter_fields"):
+        rejects(lambda: check_runtime_binding(index, {**binding, field: ["text"]}), "ValidationError")
     snapshot = local_snapshot("builtin")
     retrieval = snapshot["config"]["pipelines"]["inference"]["retrieval"]["parameters"]
     retrieval["group_by"] = ["document_id", "structdata.title"]
@@ -851,12 +845,17 @@ def _():
     assert compile_index(*remote_effects("parsing", "embedding", remote), INDEX_CONFIG) == compile_index(
         fields, vectors, INDEX_CONFIG)
     assert remote_effects("embedding", "embedding", {"vectors": vectors}, fields) == (fields, vectors)
+    searchable_text = {**fields, "text": Field("string", searchable=True, filterable=True)}
+    assert remote_effects("embedding", "embedding", {"vectors": vectors}, searchable_text) == (
+        searchable_text, vectors)
     rejects(lambda: remote_effects("parsing", "embedding", {"structdata": fields}),
             "wrong remote declarations")
     rejects(lambda: remote_effects("parsing", "embedding", {"structdata": fields,
             "vectors": {"text": Vector("text", "text-v1", 4)}}), "remote profile dimension mismatch")
     rejects(lambda: remote_effects("parsing", "embedding", {"structdata": {"title": Field("string")},
             "vectors": vectors}), "invalid remote vector source")
+    rejects(lambda: remote_effects("embedding", "embedding", {"vectors": vectors},
+            {**fields, "text": Field("string", required=False)}), "invalid remote vector source")
 
 
 @case("published Document and vector envelopes still validate example payloads")

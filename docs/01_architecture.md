@@ -115,8 +115,10 @@ Config 與部署設定的欄位、有效設定規則及範例見 [資料契約�
 | 開發文件版本 | 本 repository 規格內容的修訂，例如文件集 v0.12；不代表 Config 或程式版本，也不代表功能已完成 |
 | Config Revision（config_revision） | 同一 System 的邏輯設定版本；改方法、參數、Prompt 等可形成新版本 |
 | 文件內容版本（source_revision） | 每份匯入 Retrieval 的來源文件之內容版本；不同文件各自追蹤 |
-| 索引資料版本（index_generation） | 某次可追蹤的索引資料狀態／發布批次，對應納入的文件版本及處理／建索引結果；可涵蓋多份文件 |
-| 契約版本（contract_version） | 資料／Config 結構契約的格式版本；目前欄位與遷移規則屬建議，仍待 Q-002 核定 |
+| 索引世代（index_generation） | Runtime 在建立或重建索引時分配的識別。沿用同一索引、匯入或刪除文件時維持相同值。 |
+| 契約版本（contract_version） | System Config 的格式版本。現行 W1 開發基準為 `0.2-draft`，後續版本遷移依 Q-002。 |
+| Descriptor 版本（descriptor_version） | Component Descriptor 的格式版本。Component 本身的版本由 `component_version` 指定。 |
+| Catalog 版本（catalog_revision） | 單個 Runtime 的 Descriptor 與資源清單版本，用於確認編輯及發布依據是否仍有效。 |
 
 本節的「文件內容版本」指**匯入 Retrieval 的來源資料**，與 03～08 Markdown 規格的文件版本不同。改來源內容可在相同 Config 下形成新索引資料；來源不變而改切分／Embedding 也可能需要重建。只改 Inference Prompt 則可沿用相容的索引資料。
 
