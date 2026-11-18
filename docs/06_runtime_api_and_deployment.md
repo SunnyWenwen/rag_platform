@@ -113,6 +113,27 @@ Elasticsearch 在 `mappings._meta` 記錄 `system_id`、`index_fingerprint` 與�
 
 Local Memory 使用同一套相容判定與 `system_id` 隔離；程序重啟後記憶體索引遺失，需重新匯入。外部 Retrieval 查詢自有資料時，依其服務就緒狀態與候選契約執行；上述索引建立、重建與卸載的刪除範圍只涵蓋平台管理的資料。
 
+<a id="index-fingerprint-v1-proposal"></a>
+#### ES 索引指紋 v1 評估草案
+
+建議由 Runtime 的 Config 編譯器產生索引計畫和指紋。採明列欄位投影，只放會改變索引內容、向量語意或搜尋能力的生效值。索引歸屬和實體目標另行比對。
+
+| 投影項目 | 建議納入 |
+|---|---|
+| Import／Parsing | 有效輸入及輸出欄位、實際使用的解析模式、方法版本及影響內容的參數。 |
+| Chunking | 方法及版本、來源／輸出／複製欄位、切分長度、overlap、有效分隔符／標題規則，以及 Tokenizer 的可重現識別。 |
+| 文件 Embedding | 寫入索引的向量名稱與來源欄位、模板或前處理、向量空間 Profile、模型版本、維度及影響向量的設定。 |
+| Indexing | 生效欄位型別、`searchable`／`filterable`、向量選擇，以及有效 ES mapping、analyzer、normalizer、similarity 等必須相容的索引設定。 |
+| Remote Ingestion | 受影響的區段與輸出契約、改變輸出的參數及外部實作的穩定版本識別。若外部實作可原地變更且無法確認版本，應標記相容性未確認。 |
+
+純 Inference 的 Rewrite、融合、Rerank、固定 Filter 與 `top_n`、Builder 草稿資訊、批次並行／逾時、Endpoint、憑證和 `source_revision` 留在各自契約。實體 ES index／cluster 的變更經由環境綁定重新定位和核對歸屬。文件內容更新走文件覆寫。
+
+1. 先解析預設值、舊欄位名稱、實際元件與 Profile 版本，產生只含生效值的投影。無順序意義的欄位集合依固定規則排序；分隔符等具順序語意的陣列保留原序。
+2. 將投影和指紋規則版本以 [RFC 8785 JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785.html) 正規化後計算 SHA-256。將規則版本與結果記入 `mappings._meta`，實際 mapping 與索引必要設定另外核對。
+3. 同一歸屬、指紋規則版本、指紋及實際儲存相容時可沿用。指紋不符時由明確發布走重建流程。規則版本未知、歸屬無法確認或無法讀取 mapping 時，保留既有索引並回報需要查核。
+
+驗收至少包含物件鍵換序、等效預設值、只改 Inference 參數、改 Chunking 長度、同維度換 Embedding 模型、改欄位搜尋能力、實際 mapping 偏離，以及缺少指紋版本。確切投影鍵與既有索引的版本遷移依 [Q-015](08_plan_and_decisions.md#q-015) 核定。
+
 <a id="src-07-411-remote-imageexternal-的生命週期"></a>
 ### 外部 Remote API 的生命週期
 
@@ -792,6 +813,26 @@ Local Search 第一版仍同程序／單副本。背景執行不能把唯一 Mem
 - Queue／並行／Rate／Deadline／紀錄保留初始值已依 D-64 記於Runtime 控制手冊；尚待正式設定 Schema／載入方式、已確認寫入紀錄的保留細節，以及多 replica 的 instance 結算與一致控制。
 
 方向已確認不表示提交機制已實作；詳細盤點與待決子項見 Runtime API／部署。
+
+<a id="multi-pod-concurrency-proposal"></a>
+### 同一 System 跨 Pod 的併發評估草案
+
+範圍為共用外部索引的 Runtime。不同 Pod 服務不同 System 時，跨程序互斥以 System 為界。當同一 System 可由多個 Pod 接收請求或執行工作時，以下狀態需要跨程序共用。滾動部署也要納入驗收，因為新舊 Pod 可同時存在。[Kubernetes RollingUpdate](https://kubernetes.io/docs/tasks/run-application/update-deployment-rolling/)
+
+| 競態 | 建議調整 |
+|---|---|
+| 兩個 Pod 同時提交同一文件，或提交與 retire 同時發生 | 用共用控制儲存原子占用 `(system_id, document_id)`。批次一起檢查與保留全部文件，有一份已忙即整批拒絕。退役與覆寫共用同一條件。 |
+| 兩個 Worker 同時領到或結算同一項工作 | 用條件式狀態轉移記錄 `runtime_instance_id` 與單調遞增的擁有者世代。Run／文件紀錄成為所有 Pod 讀取的狀態來源。逾時或失去擁有權時，舊 Worker 的狀態更新須被儲存層拒絕。 |
+| 兩個管理請求同時 Apply，或重建／卸載與入庫交錯 | 共用每 System 的管理狀態與 active revision。以 `expected_active_revision` 原子比對，關閉受影響的請求入口後跨 Pod 排空；索引建好才發布新 binding。耗時 I/O 在短交易外執行，以持久化階段紀錄查核結果。 |
+| Inference 讀到新版 Config 和舊 Index，或在查詢途中切換 binding | 在請求受理時取得同一份 `(config_revision, index_generation, index binding)`，整次請求釘住該快照及必要資源。跨 Pod 快取按版本辨識。實體索引若要刪除，須確認使用該世代的請求已排空。一般文件寫入維持與 Query 併行。 |
+| Pod 失聯、ES Bulk／刪除逾時，舊請求稍後抵達 ES | 寫入前持久化實體索引世代、`write_id`、預期 Chunk ID 與舊批次清理範圍。不明時保持 `unknown`，確認舊執行者無法再送寫入且既送操作已結束，再按精確範圍收尾或接受重送。 |
+| 每 Pod 各自套用限流或併發上限 | 明訂哪些上限是 Pod 本地、System 全域或服務全域。需要全域語意的配額與已接收工作數由共享狀態計算或預留。 |
+
+如已具備交易型資料庫，建議用它管理短交易的 System 閘門、文件占用和 Run 狀態。例如 PostgreSQL 的 row lock 可在交易內同步檢查多筆資料。ES 繼續保存搜尋資料。若只使用既有 ES 控制索引，`if_seq_no`／`if_primary_term` 能保護單筆狀態文件。批次文件的原子受理、System 閘門與文件占用之間的協調仍須另定協定。[PostgreSQL row locks](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-ROWS) · [ES optimistic concurrency control](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/optimistic-concurrency-control) · [ES Bulk API](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-bulk)
+
+Kubernetes Lease 可協助選出執行者。通過 DB 的世代檢查，只能證明該次控制狀態更新有效。ES 仍可能處理先前送達的 Bulk；若無法在寫入邊界拒絕舊世代，就維持文件 `unknown` 並查核，直到可以安全接手。Replay 已啟動或未領取工作的政策須分開定義，包含目前只結算舊工作、由呼叫方重新提交的語意。[client-go leader election](https://pkg.go.dev/k8s.io/client-go/tools/leaderelection)
+
+建議先讓同一 System 維持一個寫入執行者，同時把受理、查詢狀態和發布快照放進共享控制儲存。需要多 Worker 時再啟用每文件的跨 Pod 領取。驗收須覆蓋雙提交、提交對退役、Apply 對 Apply、查詢中重建、舊 Pod／Worker 寫入晚到、Bulk 部分成功、收件後崩潰，以及滾動更新。共用儲存選型、佇列接管和 ES 結果查核證據依 [Q-008](08_plan_and_decisions.md#q-008)、[Q-010](08_plan_and_decisions.md#q-010)、[Q-017](08_plan_and_decisions.md#q-017)、[Q-020](08_plan_and_decisions.md#q-020) 及 [Q-027](08_plan_and_decisions.md#q-027) 核定。
 
 <a id="src-07-7-local-search-恢復與儲存"></a>
 ## Local Search 恢復與儲存

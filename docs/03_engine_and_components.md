@@ -228,7 +228,7 @@ Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root ar
 | Rerank | 每份清單模型評分並重排 → 可選 `group_by` → Rerank Top N |
 | 跨 Query | 等所選步驟完成 → 跨 Query 融合 → 可選 `group_by` → 可選跨 Query Top N |
 
-跨 Query 融合以同一原始問題為範圍，將各 Query 已完成當步處理的清單合併。若接入 Remote Retrieval 且平台負責跨 Query 融合，服務須提供可辨識的 Query／ResultSet 分組。只有一個有效 Query 時略過跨 Query 規則。若選 `after_rerank` 且 Rerank 為 None，跨 Query 使用到達該時點的清單及排名。
+跨 Query 融合以同一原始問題為範圍。平台收到兩個以上有效 Query 時，必須合併各 Query 在指定步驟完成後的清單。只有一個有效 Query 時略過融合。若接入 Remote Retrieval 且平台負責融合，服務須提供可辨識的 Query／ResultSet 分組。若 `cross_query_at` 選 `"Rerank 後"` 且 Rerank 為 None，融合使用到達該時點的清單及排名。
 
 ### 分組代表
 

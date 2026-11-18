@@ -384,8 +384,8 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 
 - 已確認：內建 Retrieval 先依 `per_route_k` 限制每 Query／每路，多路時須以所選 RRF 或 Sum Score 融合，每 Query 交付一份。跨 Query 可選 Retrieval 或 Rerank 完成後，並可再分組及截斷。
 - 已確認：融合以 `data_id` 對齊。分組可選多個候選 Document 單值欄位，每組留目前排名最高的候選。開啟時預選 `document_id`。Rerank=None 時仍可執行後置跨 Query 規則。
-- 待實作與驗收：逐 Component 參數（含 RRF／Sum Score 各自開放的參數與預設值）、正式 Config 序列化與動態候選欄位來源。需用人工可驗算資料驗證 RRF／Sum Score、分數可比性、同分順序、ES／Local Search Adapter 與完整 Remote 邊界。
-- 決策：2026-11-12 確認流程與 UI 責任，可開始逐 Component 參數設計。真實資料與服務的整合驗收留在 M2。
+- 2026-11-18 確認：跨 Query 融合設定保存在 Query Transformation，平台處理兩個以上有效 Query 時必須融合。內建 Rewrite 沿用現有 Descriptor 的 `cross_query_*` 欄位與預設值。見 [發布格式](05_system_config.md#inference-result-processing)。
+- 待實作與驗收：RRF／Sum Score 的專屬參數、可驗算的融合分數與同分順序、ES／Local Search Adapter，以及 Remote Query Transformation 將多 Query 交給平台處理時的節點設定。真實資料與服務的整合驗收留在 M2。
 
 <a id="q-015"></a>
 ### Q-015 Revision、有效 Config Hash 與 Index 版本
@@ -589,11 +589,11 @@ Builder 可按 [W1 開發契約索引](09_w1_builder_runtime_contract.md) 實作
 
 | 要進入的開發範圍 | 還需要定清楚的契約 |
 |---|---|
-| 跨 Query 融合的發布與執行 | 選定發布位置及 enum，定義原型欄位映射和示例。現行表單的 `cross_query_*` 與 `inference.result_processing.cross_query` 候選見 [Q-014](#q-014) 與 [System Config](05_system_config.md#inference-result-processing)。 |
+| 跨 Query 融合的發布與執行 | Query Transformation 位置與多 Query 必須啟用已確認。內建 Rewrite 的 [發布格式](05_system_config.md#inference-result-processing)可供 Builder 開發，演算法參數、Remote 節點設定及 M2 真實執行驗收見 [Q-014](#q-014)。 |
 | 自行提供模型／索引服務的發布 | 定義每種服務引用對應哪個環境綁定，自訂模型和維度如何對上 Profile。見 [Q-003](#q-003)、[Q-021](#q-021) 與 [參數適用範圍](04_component_descriptor.md#component-parameter-scope)。 |
 | Remote 動態 Secret 引用 | 對齊 `request_parameters` 的宣告、授權及環境綁定範例。現有 Remote fixture 已示範傳輸內容，Config 端待 [Q-028](#q-028) 補齊。 |
 | 真實 Ingestion 的識別與追溯 | W1 Mock 可帶明確 `document_id`、`source_revision` 並模擬候選的 `data_id`。省略來源版本時的生成方式，以及切分 ID 的穩定性與更新語意，依 [Q-007](#q-007) 核定。 |
-| Runtime 重新啟動後沿用既有 ES 索引 | 依 [Q-015](#q-015) 定下指紋輸入欄位、正規化及規則版本，並驗證既有 mapping／Profile 的相容性。 |
-| Runtime 多副本共用同一 System | 確認跨程序的寫入互斥、工作狀態結算與設定生效版本管理。見 [Q-020](#q-020)、[Q-027](#q-027) 與 [Runtime 排程](06_runtime_api_and_deployment.md#src-07-6-非同步工作與一致性)。 |
+| Runtime 重新啟動後沿用既有 ES 索引 | [指紋 v1 草案](06_runtime_api_and_deployment.md#index-fingerprint-v1-proposal)列出欄位、序列化和驗收例。精確鍵名與既有索引遷移待 [Q-015](#q-015) 核定。 |
+| Runtime 多副本共用同一 System | [多 Pod 評估草案](06_runtime_api_and_deployment.md#multi-pod-concurrency-proposal)列出受理互斥、工作結算、發布快照、切換和驗收。共享狀態選型與接管政策待 [Q-020](#q-020)、[Q-027](#q-027) 核定。 |
 
 歷史決策來源、過時提案、驗證及校對過程集中於 [history/](history/README.md)，包括 D-01～D-66 的來源與演變。Q-001～Q-028 及 SC-01～SC-10 仍是現行待決／討論項目；文件歸檔不代表功能驗收完成。

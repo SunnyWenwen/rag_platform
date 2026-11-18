@@ -564,14 +564,26 @@ def _():
     compile_local_example(snapshot)
     _, multiple = parameters("query_transformation", config, context)
     assert multiple["count"] + int(multiple["include_original"]) == 3
+    config["parameters"].update(
+        cross_query_at="Rerank 後", cross_query_method="RRF",
+        cross_query_group_by=["document_id"], cross_query_top_n=5,
+    )
+    compile_local_example(snapshot)
 
     bad = deepcopy(config)
     bad["component_id"] = "multi_query"
     rejects(lambda: parameters("query_transformation", bad, context), "unknown component version")
-    for key, value in (("count", 0), ("count", "2"), ("prompt", "  "), ("include_original", 1)):
+    for key, value in (("count", 0), ("count", "2"), ("prompt", "  "), ("include_original", 1),
+                       ("cross_query_at", "after_rerank"), ("cross_query_method", "off"),
+                       ("cross_query_top_n", 0)):
         bad = deepcopy(config)
         bad["parameters"][key] = value
         rejects(lambda: parameters("query_transformation", bad, context), "ValidationError")
+    bad = deepcopy(snapshot)
+    bad["config"]["pipelines"]["inference"]["query_transformation"]["parameters"][
+        "cross_query_group_by"
+    ] = ["structdata.unknown"]
+    rejects(lambda: compile_local_example(bad), "invalid selection:/cross_query_group_by/*")
     bad = deepcopy(config)
     bad["parameters"]["llm_ref"] = "unknown"
     rejects(lambda: parameters("query_transformation", bad, context), "invalid selection:/llm_ref")

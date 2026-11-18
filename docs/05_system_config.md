@@ -59,31 +59,40 @@ Workspace 管理多個 System。System ID、Config Revision、source_revision、
 <a id="inference-result-processing"></a>
 ## Inference 的結果處理
 
-Retrieval 與 Rerank 各自在 Component `parameters` 設定當步分組與 Top N。跨 Query 的 UI 由 Query Transformation 編輯，Engine 在選定步驟末尾執行；發布欄位位置待 [Q-014](08_plan_and_decisions.md#q-014) 核定。
+Retrieval 與 Rerank 各自在 Component `parameters` 設定當步分組與 Top N。跨 Query 融合由 Query Transformation 配置。內建 `rewrite` 的發布欄位位於 `config.pipelines.inference.query_transformation.parameters`，沿用 [Rewrite Descriptor](../examples/system_config/rewrite.descriptor.json) 的欄位和值。
 
 | 設定 | 內容 |
 |---|---|
 | Retrieval 參數 | `fulltext_fields`、`vector_fields`、`per_route_k`、多路時必填的同 Query 融合策略、可選 `group_by` 和 `top_n` |
 | Rerank 參數 | 評分服務、內容欄位、提問來源、`group_by`、Rerank Top N |
-| 跨 Query 規則 | `at` 可選 `after_retrieval` 或 `after_rerank`，另選融合方法、`group_by` 和可選的最終 Top N |
+| 跨 Query 融合時點 | `cross_query_at` 可選 `"Retrieval 後"` 或 `"Rerank 後"`，預設 `"Retrieval 後"`。 |
+| 跨 Query 融合策略 | `cross_query_method` 可選 `"RRF"` 或 `"Sum Score"`，預設 `"RRF"`。 |
+| 跨 Query 分組與截斷 | 選填 `cross_query_group_by` 和 `cross_query_top_n`。 |
 
 內建 Retrieval 的全文與向量欄位皆可多選，每個向量欄位依 IndexBinding 的 `embedding_profile_id` 決定 Query Encoder。`per_route_k` 是每個 Query 在個別路徑的搜尋上限。多路時必選 RRF 或 Sum Score，交付時每個 Query 只有一份清單。Adapter 負責執行選定的策略。策略的專屬參數與預設值留待定義。全文和 Filter 選項依 [欄位總表及 Filter 契約](02_data_contracts.md#data-meta-schema) 推導。
 
 `group_by` 可選 `document_id` 或一個以上有效的 `structdata` 字串欄位，也可以組合使用。選多欄時以欄位值組合作為分組鍵；未設定分組時沿用排序後的清單。當步分組在排序後、當步 Top N 前執行。跨 Query 的融合、分組及 Top N 在該步驟的 Top N 之後執行。
 
-例如 Retrieval 先以 `[structdata.parent_chunk_id]` 收斂每個 Query 的候選，逐 Query Rerank 後，再執行以下跨 Query 規則。
+Builder 依 `count + (include_original ? 1 : 0)` 決定是否顯示跨 Query 設定。Engine 依進入平台結果處理的有效 Query 數執行，達兩個即啟用融合，省略時點或策略時套用上表預設。單 Query 略過跨 Query 融合；表單切回多 Query 時可恢復草稿中的原設定。
+
+以下是 `config.pipelines.inference` 的 Query Transformation 節點片段。它產生兩個改寫 Query 並保留原始 Query，三份清單逐 Query Rerank 後再融合。
 
 ```yaml
-result_processing:
-  cross_query:
-    at: after_rerank
-    method: rrf
-    rrf_k: 60
-    group_by: [document_id]
-    top_n: 5
+query_transformation:
+  component_id: rewrite
+  component_version: "1.0.0"
+  parameters:
+    llm_ref: default-llm
+    prompt: "為 {{query}} 產生 {{count}} 個查詢。"
+    count: 2
+    include_original: true
+    cross_query_at: "Rerank 後"
+    cross_query_method: "RRF"
+    cross_query_group_by: [document_id]
+    cross_query_top_n: 5
 ```
 
-上例是後續格式的候選。現行 System Config Schema 尚未接受 `inference.result_processing`。Rewrite 表單 Descriptor 的 `cross_query_at`、`cross_query_method`、`cross_query_group_by`、`cross_query_top_n` 是原型編輯欄位，與候選發布結構的映射依 Q-014 收斂。W1 HTTP 範例採單 Query，實作跨 Query 發布與執行前須確認序列化契約。Remote 涵蓋整段 Query Transformation → Rerank 時，結果處理由外部服務負責，平台驗證並交付回應。
+W1 HTTP 範例採單 Query，多 Query 執行與融合留在 M2 驗收。Remote 區段涵蓋結果處理時，由外部服務負責該區段的融合。Remote 只產生多 Query 並交由平台融合時，平台設定如何存於 Query Transformation 節點，需依 [Q-014](08_plan_and_decisions.md#q-014)／[Q-028](08_plan_and_decisions.md#q-028) 定義，Remote 的 `parameters` 仍承載外部服務自身的參數。
 
 ## 執行參數
 
