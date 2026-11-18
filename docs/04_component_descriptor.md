@@ -168,4 +168,4 @@ option_sources:
 
 ## Remote 與模板的來源
 
-System Config 保存 User 的區段選擇、參數引用及實際輸出欄位宣告。模板帶入這些設定的可編輯副本。User 或 AI 助手修改後重新推導與驗證。Remote I/O、參數與錯誤語意見 [Engine](03_engine_and_components.md#remote-api)，環境連線及認證見 [Runtime](06_runtime_api_and_deployment.md#remote-service-deployment)。
+System Config 保存 User 的區段選擇、參數引用及實際輸出欄位宣告。Descriptor 的參數 Schema 描述解析後的型別與限制，Runtime 先解析 System 級 `{{secret.KEY}}` 再驗證可引用的參數。見 [System Secret](05_system_config.md#system-secret)。模板帶入這些設定的可編輯副本。User 或 AI 助手修改後重新推導與驗證。Remote I/O、參數與錯誤語意見 [Engine](03_engine_and_components.md#remote-api)，環境連線及認證見 [Runtime](06_runtime_api_and_deployment.md#remote-service-deployment)。

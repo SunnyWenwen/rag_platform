@@ -23,7 +23,7 @@
 - User 直接設定外部 API。Admin 管理全域模板版本，Builder 只提供選用，套用時複製至草稿。平台團隊維護內建方法與 Schema 描述。
 - 共用資料物件定名為 `Document`。Ingestion 以非空 `documents` 與選填批次 `parameters` 接收，Parser 前拆成逐文件工作。檢索候選放在 `ResultItem.data`。
 - Remote Retrieval 的候選遵守 Ingestion 設定推導的有效 System Document Schema。外部資料可直接查詢，無須執行平台 Ingestion 或建立平台索引。
-- Remote 認證設定支援固定 Secret reference 或參數引用，由 Runtime 在呼叫前解析後注入 Header。
+- System 共用 `config.secret`，各 Module 以 `{{secret.KEY}}` 取值。Remote 認證使用這個引用並由 Runtime 注入 Header。
 
 - Component Descriptor 與發布的 System Config 用 `component_id`／`component_version` 固定元件版本。節點由 Component ID 選擇格式，`remote_api` 為平台保留的共用 Adapter，外部服務由 `service_ref` 選擇。
 
@@ -452,11 +452,11 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 <a id="q-021"></a>
 ### Q-021 Export、FTEST／ENT 與 Secret Vault
 
-- Export 交付 Runtime 設定、環境連線及 Secret 引用，外部服務由其提供者維運。
+- Export 交付 Runtime 設定、環境連線及 `config.secret` 的 Key 與部署注入。外部服務由其提供者維運。
 
 - 2026-10-28 D-41 確認：rag_engine 統一建置含 Engine／核可 Components／Runtime API 的完整 Image，rag_platform 建置 Builder Image；採用新版 Engine／Component 時仍需更新 Runtime，接口相容的 Builder 可維持原版。目標 Image 須包含 Config 所需 Component packages 並保存版本；Component 清單／鎖定格式與缺失錯誤仍待決，YAML 不會自動提供 Python 方法程式。建置／發布／部署範圍見 [Runtime API／部署](06_runtime_api_and_deployment.md#src-07-94-建置發布與部署的變更範圍)。
 
-- 已確認：同版邏輯 Config 不隨環境改變，環境連線／Secret／資源為部署設定；Memory／MongoDB 模式也跨環境保持一致（D-33），不能只換部署設定切換。不清楚的是 Image／Bundle 包裝、Vault／注入、Secret 型別、K8s 資源／Ingress／Probe 及 CD 流程。
+- 已確認：同版邏輯 Config 跨環境沿用，連線與資源由部署設定提供。Memory／MongoDB 模式跨環境保持一致（D-33）。System Secret 使用字串 KV，匯出保留 Key，正式 Runtime 啟動時讀取同名環境變數。待定為 Image／Bundle 包裝、外部 Vault 供應、DEV 憑證保存期限、K8s 資源／Ingress／Probe 及 CD 流程。
 - 建議：版本鎖定 Runtime Image＋有效 Config＋環境覆寫；Local 單副本；明示未帶資料且無 Builder 依賴。
 - 替代：使用單位既有 Helm／GitOps 形式；仍需相同可驗證交付內容。
 - 負責角色：平台／DevOps＋Backend；阻擋 M7 正式部署交付。
@@ -520,7 +520,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 <a id="q-028"></a>
 ### Q-028 User Remote API 整合
 
-- 已確認：支援連續區段、固定 HTTP 封裝、上游推導 Request、輸出欄位與向量宣告、共用 QueryContext[]、外部候選符合有效 System Schema。Remote 可使用傳入的 filters，自行決定過濾、排序與截斷。
+- 已確認：支援連續區段、固定 HTTP 封裝、上游推導 Request、輸出欄位與向量宣告、共用 QueryContext[]、外部候選符合有效 System Schema。Remote 可使用傳入的 filters，自行決定過濾、排序與截斷。Bearer 認證以 `{{secret.KEY}}` 取用同一 System 的啟動設定，由 Adapter 組成 Header。
 - 待核定：正式 Config 序列化、連線驗證、逾時及重試政策、錯誤觀測與容量門檻。
 - 驗收：同區段呼叫一次、無重疊、驗證失敗可定位、內建與 Remote 切換、外部 Retrieval 與下游相容、匯出可解析部署綁定。見 [Engine](03_engine_and_components.md#remote-api)。
 
@@ -591,7 +591,7 @@ Builder 可按 [W1 開發契約索引](09_w1_builder_runtime_contract.md) 實作
 |---|---|
 | 跨 Query 融合的發布與執行 | Query Transformation 位置與多 Query 必須啟用已確認。內建 Rewrite 的 [發布格式](05_system_config.md#inference-result-processing)可供 Builder 開發，演算法參數、Remote 節點設定及 M2 真實執行驗收見 [Q-014](#q-014)。 |
 | 自行提供模型／索引服務的發布 | 定義每種服務引用對應哪個環境綁定，自訂模型和維度如何對上 Profile。見 [Q-003](#q-003)、[Q-021](#q-021) 與 [參數適用範圍](04_component_descriptor.md#component-parameter-scope)。 |
-| Remote 動態 Secret 引用 | 對齊 `request_parameters` 的宣告、授權及環境綁定範例。現有 Remote fixture 已示範傳輸內容，Config 端待 [Q-028](#q-028) 補齊。 |
+| System Secret | [System Secret](05_system_config.md#system-secret) 已定義 DEV 測試值、部署注入與 Module 引用；實際 Builder／Runtime 串接依 [Q-021](#q-021)／[Q-028](#q-028) 驗收。 |
 | 真實 Ingestion 的識別與追溯 | W1 Mock 可帶明確 `document_id` 並模擬候選的 `data_id`。來源版本可省略或原樣保留字串及 `null`。切分 ID 的穩定性與更新語意依 [Q-007](#q-007) 核定。 |
 | Runtime 重新啟動後沿用既有 ES 索引 | [指紋 v1](06_runtime_api_and_deployment.md#index-fingerprint-v1-proposal) 已有 JSON Schema、序列化規則和可驗證範例。既有索引遷移與實際 ES 整合依 [Q-015](#q-015) 驗收。 |
 | Runtime 多副本共用同一 System | [跨 Pod 寫入 v1](06_runtime_api_and_deployment.md#multi-pod-concurrency-proposal) 採 ES 共享占用、本地派工與未知結果安全查核。須以雙 Pod＋實際 ES 驗證競態、收尾及容量，見 [Q-020](#q-020)、[Q-027](#q-027)。 |

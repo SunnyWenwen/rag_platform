@@ -203,7 +203,7 @@ const makeButton = (title, action, options = '') => `<button class="btn ${option
 const badge = (title, kind = '') => `<span class="badge ${kind}">${title}</span>`;
 const status = {queued:'已排入',running:'處理中',completed:'已完成',partial:'部分失敗',failed:'失敗',unknown:'狀態未知'};
 const labels = {
-  import:'Import', parsing:'Parsing', chunking:'Chunking', embedding:'Embedding', indexing:'Indexing',
+  other_settings:'其他設定', import:'Import', parsing:'Parsing', chunking:'Chunking', embedding:'Embedding', indexing:'Indexing',
   inference_input:'Inference Input', query_transformation:'Query Transformation', retrieval:'Retrieval', rerank:'Rerank',
   structdata:'文件欄位', split_field:'切分來源', output_field:'輸出欄位', copy_fields:'複製欄位',
   max_tokens:'切分上限（tokens）', overlap_tokens:'重疊長度（tokens）', tokenizer_profile_id:'Tokenizer',
@@ -307,8 +307,16 @@ function load() {
   catch { return null; }
 }
 
+function withoutSecretValues(config) {
+  if (!config?.secret) return config;
+  return {...config,secret:Object.fromEntries(Object.keys(config.secret).map(key => [key,null]))};
+}
+
 function persist() {
-  try { localStorage.setItem(storageKey, JSON.stringify(model)); }
+  const systems = model.systems.map(system => ({
+    ...system,draft:withoutSecretValues(system.draft),active:withoutSecretValues(system.active)
+  }));
+  try { localStorage.setItem(storageKey, JSON.stringify({...model,systems})); }
   catch { notify('瀏覽器無法保存這次變更。'); }
 }
 
@@ -576,7 +584,7 @@ function remoteSettings(config,module) {
     </select></label>
     ${label('service_ref','Remote 服務引用',currentNode.service_ref)}
     ${label('endpoint','API Endpoint',currentNode.connection.endpoint)}
-    ${label('secret_ref','認證 Secret 引用',currentNode.connection.secret_ref)}
+    ${label('bearer_token','Bearer Token 引用（{{secret.KEY}}）',currentNode.auth?.bearer_token)}
     <label class="field">Timeout（ms）<input type="number" min="1" class="control" data-remote="timeout_ms" value="${escapeHTML(currentNode.connection.timeout_ms)}"></label>
     ${jsonField('parameters','Request parameters（JSON）',currentNode.parameters)}
     ${lane === 'ingestion' && module !== 'embedding' ? jsonField('structdata','輸出 structdata 欄位宣告（JSON）',currentNode.output.structdata) : ''}
@@ -768,9 +776,24 @@ function refreshContractPreviews() {
   }
 }
 
+function secretSettings(config) {
+  return `<div class="field"><h4>Secret</h4>
+    <p class="muted">各模組可用 <code>{{secret.KEY}}</code>。測試值保存在本頁記憶體，下載只保留 Key。</p>
+    <div class="table-wrap"><table><thead><tr><th>Key</th><th>DEV 測試值</th><th></th></tr></thead>
+    <tbody>${Object.entries(config.secret ?? {}).map(([key,value]) => `<tr>
+      <td><input class="control" data-secret-key="${escapeHTML(key)}" aria-label="Secret Key" value="${escapeHTML(key)}"></td>
+      <td><input class="control" type="password" autocomplete="off" data-secret-value="${escapeHTML(key)}" aria-label="${escapeHTML(key)} DEV 測試值" value="${escapeHTML(value)}"></td>
+      <td><button class="btn small" data-action="remove-secret" data-value="${escapeHTML(key)}">移除</button></td>
+    </tr>`).join('')}</tbody></table></div>
+    <div>${makeButton('新增 Secret','add-secret','small')}</div>
+  </div>`;
+}
+
 function settings(system) {
-  const item = descriptor(selected,draft);
-  const values = params(draft,selected);
+  const isOtherSettings = selected === 'other_settings';
+  const module = isOtherSettings ? 'import' : selected;
+  const item = descriptor(module,draft);
+  const values = params(draft,module);
   const schemas = item.parameters_schema.properties;
   const hints = item.ui_hints ?? {};
   const groups = hints.groups ?? [];
@@ -784,7 +807,7 @@ function settings(system) {
     showFixedFilters && issue.path === '/config/pipelines/inference/fixed_filters'
     || advancedFields.some(key => issue.path?.startsWith(prefix(selected) + '/' + key))));
   const renderFields = keys => keys.map(key => renderField(key,schemas[key],values[key])).join('');
-  const componentChoices = choicesFor(selected).filter(choice => selected !== 'parsing' || parserChoiceAllowed(choice,draft));
+  const componentChoices = choicesFor(module).filter(choice => module !== 'parsing' || parserChoiceAllowed(choice,draft));
   const compatible = componentChoices.includes(item);
   const owners = {...remoteOwnership(draft,'ingestion'),...remoteOwnership(draft,'inference')};
   const owner = owners[selected];
@@ -801,9 +824,11 @@ function settings(system) {
       placeholder="例如：Maintenance Retrieval" value="${escapeHTML(draftName)}"></label>
     ${system === pendingSystem ? '<label class="field">設定模板<select class="control"><option>Elasticsearch · 向量檢索</option></select></label>' : ''}
     </div>
-    <div class="builder"><nav aria-label="模組">${nav}</nav><section class="panel">
+    <div class="builder"><nav aria-label="設定區域">${nav}
+    <section class="panel pipeline"><button class="module ${isOtherSettings ? 'selected' : ''}" data-action="module" data-value="other_settings"
+      aria-pressed="${isOtherSettings}"><strong>其他設定</strong><small>Secret</small></button></section></nav><section class="panel">
     <div class="bar flow-title"><h3>${labels[selected]}</h3><span class="muted">草稿 ${system.draftRevision}${draftDirty ? ' · 未保存' : ''}</span></div>
-    ${owner ? `<div class="info">由 <button class="quiet" data-action="module" data-value="${owner}">${labels[owner]} Remote API</button> 處理此模組。</div>` : `
+    ${isOtherSettings ? secretSettings(draft) : owner ? `<div class="info">由 <button class="quiet" data-action="module" data-value="${owner}">${labels[owner]} Remote API</button> 處理此模組。</div>` : `
       <label class="field">Component<select class="control" id="component-picker" aria-label="Component">
         ${compatible ? '' : '<option value="" selected disabled>請選擇適用的 Parser</option>'}
         ${componentChoices.map(choice => option(choice.component_id,componentNames[choice.component_id],choice.component_id === item.component_id)).join('')}
@@ -823,7 +848,7 @@ function settings(system) {
           ? '<p class="info">請在 Parsing 選擇適用的檔案 Parser。</p>' : ''}
       `}
     `}
-    ${contractPreview(selected,owner,item)}
+    ${isOtherSettings ? '' : contractPreview(selected,owner,item)}
     ${issues.length ? `<div class="info bad" role="alert"><strong>無法發布</strong><ul>${issues.map(issue =>
       `<li><button class="quiet" data-action="module" data-value="${issue.module}">${labels[issue.module]}</button> · ${escapeHTML(issue.message)}</li>`).join('')}</ul></div>` : ''}
   </section></div>`;
@@ -1112,6 +1137,9 @@ function checkPublish(system) {
   issues = Object.values(lanes).flat().filter(module => outsideW1Preview(module,draft)).map(module => ({
     module, message:'目前 Prototype 的 W1 模擬範圍未涵蓋此 Component 或設定。可先保存草稿。'
   }));
+  for (const [key,value] of Object.entries(draft.secret ?? {})) {
+    if (value === null) issues.push({module:'other_settings',message:'請補填 DEV 測試值：' + key});
+  }
   const effective = clone(draft);
   if (!issues.length) {
     // Normalize single-field settings to the W1 simulation's original config shape.
@@ -1509,7 +1537,7 @@ async function readUpload(file) {
 }
 
 function download(system) {
-  const file = new Blob([json({system_id:system.id,config_revision:activeRevision(system),config:system.active}) + '\n'],{type:'application/json'});
+  const file = new Blob([json({system_id:system.id,config_revision:activeRevision(system),config:withoutSecretValues(system.active)}) + '\n'],{type:'application/json'});
   const url = URL.createObjectURL(file);
   const link = document.createElement('a');
   link.href = url;
@@ -1571,6 +1599,14 @@ document.addEventListener('click',event => {
     case 'validate': checkPublish(system); return;
     case 'publish': applyPublish(system); return;
     case 'download': download(system); return;
+    case 'add-secret': {
+      const values = draft.secret ??= {};
+      let number = 1;
+      while (Object.hasOwn(values,'SECRET_' + number)) number++;
+      values['SECRET_' + number] = null;
+      break;
+    }
+    case 'remove-secret': delete draft.secret[value]; break;
     case 'add-field': {
       const fields = params(draft,selected)[button.dataset.editorParam] ??= {};
       let number = 1;
@@ -1650,7 +1686,10 @@ function changeRemote(input) {
   const key = input.dataset.remote;
   const currentNode = node(draft,selected);
   if (key === 'service_ref' || key === 'through') currentNode[key] = input.value;
-  else if (key === 'parameters' || key === 'structdata' || key === 'vectors') {
+  else if (key === 'bearer_token') {
+    if (input.value) currentNode.auth = {bearer_token:input.value};
+    else delete currentNode.auth;
+  } else if (key === 'parameters' || key === 'structdata' || key === 'vectors') {
     let value;
     try { value = JSON.parse(input.value); }
     catch { value = input.value; }
@@ -1664,6 +1703,10 @@ document.addEventListener('input',event => {
   const input = event.target;
   if (input.id === 'system-name') {
     draftName = input.value;
+    markDirty();
+  }
+  if (input.dataset.secretValue !== undefined) {
+    draft.secret[input.dataset.secretValue] = input.value;
     markDirty();
   }
   if (input.dataset.param !== undefined) changeParameter(input);
@@ -1685,6 +1728,20 @@ document.addEventListener('input',event => {
 
 document.addEventListener('change',event => {
   const input = event.target;
+  if (input.dataset.secretKey !== undefined) {
+    const previous = input.dataset.secretKey;
+    const next = input.value.trim();
+    if (previous === next) return;
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(next) || Object.hasOwn(draft.secret,next)) {
+      input.value = previous;
+      notify('Secret Key 格式不符或已存在。');
+      return;
+    }
+    draft.secret = Object.fromEntries(Object.entries(draft.secret).map(([key,value]) => [key === previous ? next : key,value]));
+    markDirty();
+    render();
+    return;
+  }
   if (input.id === 'component-picker') {
     chooseComponent(input.value);
     return;

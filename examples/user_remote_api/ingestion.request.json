@@ -24,7 +24,6 @@
     }
   ],
   "parameters": {
-    "language": "zh-TW",
-    "remote_secret_ref": "parser/api-token"
+    "language": "zh-TW"
   }
 }

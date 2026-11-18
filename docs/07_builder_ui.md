@@ -124,9 +124,13 @@ Import 可選已整理欄位或待解析來源。選待解析來源時，入口�
 User 在節點切換到 Remote API，設定 Endpoint、認證、參數及替換範圍。涵蓋的節點顯示管理來源，原內建設定留在草稿。Builder 顯示由上游推導的 Request 與有效 Response Schema，並提供本機回應驗證。涵蓋 Embedding 時宣告向量輸出；內建向量 Retrieval 按 Profile 設定 Query Encoder。
 
 Admin 在 Builder 以外維護版本化全域模板。Builder 顯示可選版本，套用時複製至目前草稿。User 可調整設定及環境綁定。模板目錄為唯讀，系統儲存沿用既有驗證。
+### 其他設定 → Secret
+
+此區與 Ingestion、Inference 同層。使用者可新增、編輯及刪除多組 Key／Value，Value 輸入採遮罩。各 Module 可引用同一個 System 定義的 Key，例如 `{{secret.PARSER_API_TOKEN}}`。Builder 測試使用此處輸入的值，匯出預覽只顯示 Key 與環境注入設定。驗證訊息定位 Key、Module 或欄位，遮罩實際值。單檔 Prototype 的測試值保留於本頁記憶體，瀏覽器保存與下載只保留 Key。實際 DEV Runtime 串接仍待整合。見 [System Secret](05_system_config.md#system-secret)。
+
 ### 條件欄位與相依驗證
 
-- 自行提供模型／DB 或 Remote API 時填必要連線與 Secret reference。平台測試資源使用部署綁定。
+- 自行提供模型／DB 或 Remote API 時填必要連線，認證欄位使用 `{{secret.KEY}}`。平台測試資源使用部署綁定。
 - Local Search 選 MongoDB 才呈現 DB 連線；Memory 不要求資料庫。
 - Query Transformation 只選 llm_ref；共用服務只管理一次。
 - None 的 Top-N／Prompt 等欄位可保留草稿但停用，不參與有效 Config 驗證／匯出。
@@ -364,7 +368,7 @@ Runtime 的新舊 Revision／Index 發布策略見 Q-010／Q-015。原始資料�
 - 沿用選定 System 的同版 Config，逐項填入部署環境的 LLM、Embedding、Rerank、ES／MongoDB 綁定；同 llm_ref 不重複填連線。改 URL／Secret 不覆寫邏輯 Config。
 - 使用 DEV 綁定者可下載待設定草稿；必要資訊已填妥者標示「已填妥，尚未驗證」。
 - 只允許合法環境覆寫；更改 Embedding Model 提示返回 Edit Config 並重建。
-- Remote API 匯出環境連線與 Secret 引用。
+- 匯出保留 `config.secret` 的 Key，值設為 `null`。部署設定提供同名環境變數及對應的 Secret／ConfigMap。Remote API 另匯出目標環境的連線設定。
 - 不含實際 Secret、Image 本體、Chunk／vectors 或測試原文；提醒需在目標環境準備資料／Ingestion。
 - Local Search 單程序／單副本；不可透過 UI 匯出多副本而宣稱可共享索引。
 - FTEST／ENT 檔名、環境值與完整 Bundle 待 Q-021；正式文案稱 Config／部署設定。原型舊的 RAGBlueprint／blueprint.json 僅是待遷移標籤，不是另立的產品物件；單份示意 YAML 不代表正式交付完成。

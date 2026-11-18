@@ -62,6 +62,7 @@ DATE_FORMATS = {
 FILTER_SHAPE = Draft202012Validator({"$ref": QUERY_CONTEXT["$id"] + "#/$defs/filters"}, registry=SCHEMA_REGISTRY)
 BUILTIN_SCHEMA = SYSTEM_CONFIG_SCHEMA["$defs"]["builtin_node"]
 REMOTE_ADAPTER_VERSIONS = {"1.0.0"}
+SECRET_EXPRESSION = re.compile(SYSTEM_CONFIG_SCHEMA["$defs"]["secret_expression"]["pattern"])
 
 
 @dataclass(frozen=True)
@@ -497,10 +498,56 @@ def field_specs(values):
     return {name: Field(**value) for name, value in values.items()}
 
 
-def compile_local_example(snapshot):
-    """Exercise the Local Search examples using the offline descriptor registry."""
+def bind_system_parameters(snapshot, environment=None):
+    """Exercise startup binding for the published examples without using real credentials."""
     Draft202012Validator(SYSTEM_CONFIG_SCHEMA, registry=SCHEMA_REGISTRY).validate(snapshot)
-    pipelines = snapshot["config"]["pipelines"]
+    config = snapshot["config"]
+    declared = config.get("secret", {})
+    values = declared if environment is None else environment
+    for key, configured in declared.items():
+        if environment is not None and configured is not None:
+            fail(f"export contains a DEV value:/config/secret/{key}")
+        if not isinstance(values.get(key), str):
+            fail(f"missing System Secret:/config/secret/{key}")
+
+    def resolve(value, shape, path):
+        if isinstance(value, dict):
+            return {key: resolve(item, shape.get("properties", {}).get(key, {}), f"{path}/{key}")
+                    for key, item in value.items()}
+        if isinstance(value, list):
+            return [resolve(item, shape.get("items", {}), f"{path}/{i}") for i, item in enumerate(value)]
+        if not isinstance(value, str) or "{{secret." not in value:
+            return value
+        if not SECRET_EXPRESSION.fullmatch(value):
+            fail(f"invalid System Secret expression:{path}")
+        key = value[len("{{secret."):-2]
+        if key not in declared:
+            fail(f"undeclared System Secret {key}:{path}")
+        if shape.get("type") in ("integer", "number", "boolean", "array", "object"):
+            try:
+                return json.loads(values[key])
+            except ValueError:
+                raise ConfigError(f"invalid System Secret value:{path}") from None
+        return values[key]
+
+    pipelines = deepcopy(config["pipelines"])
+    for lane, nodes in pipelines.items():
+        for module, node_config in effective_nodes(lane, nodes):
+            key = module, node_config["component_id"], node_config["component_version"]
+            descriptor = REGISTRY.get(key, {})
+            path = f"/config/pipelines/{lane}/{module}"
+            node_config["parameters"] = resolve(node_config["parameters"], descriptor.get("parameters_schema", {}),
+                                               f"{path}/parameters")
+            if "auth" in node_config:
+                node_config["auth"] = resolve(node_config["auth"], {}, f"{path}/auth")
+                if not node_config["auth"]["bearer_token"]:
+                    fail(f"missing bearer token:{path}/auth/bearer_token")
+    return pipelines
+
+
+def compile_local_example(snapshot, environment=None):
+    """Exercise the Local Search examples using the offline descriptor registry."""
+    pipelines = bind_system_parameters(snapshot, environment)
     fields, vectors = {}, {}
     for module, config in effective_nodes("ingestion", pipelines["ingestion"]):
         if config["component_id"] == "remote_api":
@@ -589,15 +636,47 @@ def _():
     rejects(lambda: parameters("query_transformation", bad, context), "invalid selection:/llm_ref")
 
 
+@case("System Secrets resolve DEV values and deployment environment at startup")
+def _():
+    dev = local_snapshot("remote_parsing")
+    exported = local_snapshot("remote_parsing.export")
+    dev_secrets = dev["config"]["secret"]
+    assert exported["config"]["secret"] == dict.fromkeys(dev_secrets)
+    assert exported["config"]["pipelines"] == dev["config"]["pipelines"]
+    environment = {"PARSER_API_TOKEN": "fixture-deploy-token", "CHUNK_MAX_TOKENS": "500"}
+    assert compile_local_example(dev) == compile_local_example(exported, environment)
+    dev_ingestion = bind_system_parameters(dev)["ingestion"]
+    deployed_ingestion = bind_system_parameters(exported, environment)["ingestion"]
+    assert dev_ingestion["parsing"]["auth"] == {"bearer_token": dev_secrets["PARSER_API_TOKEN"]}
+    assert deployed_ingestion["parsing"]["auth"] == {"bearer_token": environment["PARSER_API_TOKEN"]}
+    assert deployed_ingestion["chunking"]["parameters"]["max_tokens"] == 500
+
+    rejects(lambda: compile_local_example(exported, {"CHUNK_MAX_TOKENS": "500"}),
+            "missing System Secret:/config/secret/PARSER_API_TOKEN")
+    rejects(lambda: compile_local_example(dev, environment),
+            "export contains a DEV value:/config/secret/PARSER_API_TOKEN")
+    rejects(lambda: compile_local_example(exported, {**environment, "CHUNK_MAX_TOKENS": "invalid"}),
+            "invalid System Secret value:/config/pipelines/ingestion/chunking/parameters/max_tokens")
+    undeclared = deepcopy(dev)
+    undeclared["config"]["pipelines"]["ingestion"]["parsing"]["auth"]["bearer_token"] = "{{secret.UNDECLARED}}"
+    rejects(lambda: compile_local_example(undeclared),
+            "undeclared System Secret UNDECLARED:/config/pipelines/ingestion/parsing/auth/bearer_token")
+    literal = deepcopy(dev)
+    literal["config"]["pipelines"]["ingestion"]["parsing"]["auth"]["bearer_token"] = "fixture-inline-token"
+    rejects(lambda: compile_local_example(literal), "ValidationError")
+
+
 @case("published Local Search examples compile to the same index and candidate contracts")
 def _():
     builtin = local_snapshot("builtin")
     remote = local_snapshot("remote_parsing")
     assert builtin["system_id"] == remote["system_id"]
     assert builtin["config_revision"] != remote["config_revision"]
-    builtin["config"]["pipelines"]["ingestion"].pop("parsing")
-    parser = remote["config"]["pipelines"]["ingestion"].pop("parsing")
-    assert builtin["config"] == remote["config"]
+    builtin_pipelines = bind_system_parameters(builtin)
+    remote_pipelines = bind_system_parameters(remote)
+    builtin_pipelines["ingestion"].pop("parsing")
+    parser = remote_pipelines["ingestion"].pop("parsing")
+    assert builtin_pipelines == remote_pipelines
     assert remote_contract("ingestion", "parsing", parser["through"])[1:3] == ("Document", "Document[]")
     fields, vectors, index = compile_local_example(local_snapshot("builtin"))
     assert (fields, vectors, index) == compile_local_example(local_snapshot("remote_parsing"))

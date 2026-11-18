@@ -66,6 +66,9 @@
                 "filterable": true
               }
             }
+          },
+          "auth": {
+            "bearer_token": "{{secret.PARSER_API_TOKEN}}"
           }
         },
         "chunking": {
@@ -88,7 +91,7 @@
                 "output_field": "tags"
               }
             ],
-            "max_tokens": 500,
+            "max_tokens": "{{secret.CHUNK_MAX_TOKENS}}",
             "overlap_tokens": 50,
             "tokenizer_profile_id": "fixture"
           }
@@ -157,6 +160,10 @@
           }
         ]
       }
+    },
+    "secret": {
+      "PARSER_API_TOKEN": "fixture-dev-token",
+      "CHUNK_MAX_TOKENS": "500"
     }
   }
 }

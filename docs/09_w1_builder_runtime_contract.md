@@ -12,4 +12,4 @@
 | Catalog／Config Validation API | [Catalog](06_runtime_api_and_deployment.md#w1-catalog) · [Catalog 回應範例](../examples/system_config/runtime_catalog.response.json) · [Config Validation](06_runtime_api_and_deployment.md#config-validation-api) |
 | Inference API | [查詢 Request／Response](06_runtime_api_and_deployment.md#inference-api) |
 
-[共用 HTTP 與認證](06_runtime_api_and_deployment.md#runtime-http-common) · [錯誤格式與狀態碼](06_runtime_api_and_deployment.md#runtime-http-errors) · [整套 HTTP Mock JSON](../examples/system_config/runtime_http.examples.json)
+[System Secret 設定與匯出範例](../examples/system_config/README.md#system-secret-examples) · [共用 HTTP 與認證](06_runtime_api_and_deployment.md#runtime-http-common) · [錯誤格式與狀態碼](06_runtime_api_and_deployment.md#runtime-http-errors) · [整套 HTTP Mock JSON](../examples/system_config/runtime_http.examples.json)

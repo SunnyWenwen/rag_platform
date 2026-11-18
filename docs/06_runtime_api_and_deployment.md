@@ -52,7 +52,7 @@
 | ConfigRevision | 同一 System 的邏輯 Config、草稿關聯、版本／Hash、時間與作者；不因環境 URL 不同另改邏輯版本 |
 | 部署紀錄（建議形狀） | 對應同一 system_id／config_revision，另記環境、連線／Secret 引用、資料目標及 Runtime 資源；欄位與部署 ID 待 Q-015／Q-021 |
 | IndexBinding | 單 System 唯一索引的格式、target、欄位／向量能力；資料版本／就緒狀態另由 Runtime 管理 |
-| ServiceReference | DEV 或使用者服務設定與 Secret 引用；System 的 llms 有明確作用域 |
+| ServiceReference | DEV 或使用者服務連線設定。認證欄位可引用所屬 System 的 `{{secret.KEY}}`。System 的 llms 有明確作用域。 |
 | Runtime IngestionRun／文件工作狀態 | ES 模式的 Run 收件與逐文件結果保存在控制索引。Queue 本身由 Runtime 在記憶體執行。見 [紀錄的保存與重啟](#ingestion-job-records) |
 | ES 寫入控制紀錄 | IndexStore 在 Bulk 前保存特定文件的寫入及清理查核資訊，與 Run 以識別碼關聯。見 [ES 寫入控制紀錄](#es-write-control-record) |
 | EvaluationRun | 評估的 Config／資料版本、狀態、數量、錯誤與報告引用，依 M6／Q-018 處理 |
@@ -70,7 +70,7 @@ Builder 保存並管理可供重新匯入的原始資料（原始檔、CSV 或�
 <a id="system-lifecycle-api"></a>
 ### System 生命週期 API
 
-Builder 保存 System、草稿與發布歷史，Runtime 持有已載入的 `system_id`、生效的 `config_revision`、索引綁定與工作狀態。Builder DEV 的 Runtime 獨立於 Builder Backend，啟動時可有零組 Config。Builder Backend 透過受保護的內部管理 API 下發設定。單組 Config 獨立部署在啟動時直接呼叫同一套 Python 管理函數，並停用管理 API 路由。
+Builder 保存 System、草稿與發布歷史，Runtime 持有已載入的 `system_id`、生效的 `config_revision`、索引綁定與工作狀態。Builder DEV 的 Runtime 獨立於 Builder Backend，啟動時可有零組 Config。Builder Backend 透過受保護的內部管理 API 下發設定。DEV 請求可在 `config.secret` 提供測試值，驗證與套用回應只回報 Secret Key／欄位路徑與狀態。單組 Config 獨立部署在啟動時直接呼叫同一套 Python 管理函數，並停用管理 API 路由。
 
 | Method／Path | Request | 成功回應 |
 |---|---|---|
@@ -128,7 +128,7 @@ Runtime 的 Config 編譯器輸出 [指紋投影 Schema](../schemas/index_finger
 | `index.vector_bindings`、`embedding_spaces` | 兩個物件都以已選入索引的向量名稱為鍵，鍵集合必須一致。前者沿用 IndexBinding 的來源欄位、Profile ID 與維度，後者記錄實際模型 ID 與穩定版本。沒有索引向量時皆為 `{}`。 |
 | `index.mapping`、`settings` | 解析後的 ES 欄位、動態規則、runtime fields、`_source` 及會影響相容性的原生 `analysis`、`similarity`。預設值由目標後端能力與設定解析；無宣告的 `dynamic_templates` 用 `[]`，無定義的 `runtime`、`analysis`、`similarity` 用 `{}`。原生 ES 物件由 ES 驗證。後端若有會改變索引語意而 v1 投影未涵蓋的設定，回報相容性未確認。 |
 
-純 Inference 的 Rewrite、融合、Rerank、固定 Filter、`top_n`、運作限額、端點、憑證與單文件的 `source_revision` 都不參與指紋。遷移 ES 叢集或索引名稱時，Runtime 依環境綁定重新查找實體目標並核對歸屬。
+純 Inference 的 Rewrite、融合、Rerank、固定 Filter、`top_n`、運作限額、端點、憑證與單文件的 `source_revision` 都不參與指紋。以 System Secret 提供的切分長度等入庫設定，按解析後的有效參數判定索引相容性。遷移 ES 叢集或索引名稱時，Runtime 依環境綁定重新查找實體目標並核對歸屬。
 
 1. 編譯器先解析預設值、舊欄位名稱及依賴版本，檢查階段順序與覆蓋範圍、向量鍵集合及 mapping 維度。無順序語意的陣列按穩定鍵排序，例如 `copy_fields` 按唯一的 `output_field`；切分分隔符、分析器 pipeline 及 `dynamic_templates` 保留順序。
 2. 對整份投影執行 [RFC 8785 JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785.html)，以 canonical UTF-8 bytes 計算 SHA-256。將小寫十六進位摘要、`index_fingerprint_version` 和 `system_id` 寫入 ES `mappings._meta`。完整 [JSON 範例](../examples/system_config/index_fingerprint.v1.example.json) 可離線核對。
@@ -877,11 +877,11 @@ Runtime Image 可自 M3 開始建置；M7 才驗收完整 FTEST／ENT 獨立交�
 
 - Runtime Image 版本／Digest、Module 版本、Config Revision／Hash。
 - 選定 System／Revision 的相同邏輯 Config，及另存的目標環境部署設定；不能把 URL／Secret 差異當成不同處理邏輯。
-- ConfigMap／Deployment／Service 等 K8s 設定及 Secret references。
+- ConfigMap／Deployment／Service 等 K8s 設定。部署 Config 的 `secret` 保留 Key 與 `null`，Deployment 指定同名環境變數的注入。
 - FTEST／ENT 的環境檔案、啟動與 API 說明、資料準備步驟。
 - 若有評估報告，清楚綁定測試環境／資料版本，不能宣稱目標環境已驗證。
 
-Remote API 匯出目標環境的連線／Secret 引用。
+Remote API 匯出目標環境的連線設定及 System Secret 引用表達式。
 
 不含 Image 本體、真實 Secret、原始文件、Chunk／vectors、Builder DB 或外部 DB／模型資料。目標環境需有相容資料或執行 Ingestion；部署後仍可持續 API 匯入。
 
@@ -891,7 +891,14 @@ Local Search 的持久化模式沿用同版 Config：DEV 為 Memory，FTEST／EN
 <a id="src-07-911-remote-service-manifest-與環境綁定"></a>
 ### Remote API 與環境綁定
 
-同版邏輯 Config 使用環境 Endpoint、認證與 Secret 綁定。認證欄位支援固定 Secret reference 或 `{{params.remote_secret_ref}}`。Runtime 使用本次已驗證的 secret_ref 參數，檢查系統使用權限、解析並注入 Header。認證值與業務 Document、Remote parameters、模板、索引及記錄分離。匯出包含 Runtime 與外部依賴引用，外部服務維運由服務提供者負責。
+Remote API 在部署設定解析 Endpoint。需要 Bearer 認證時，節點的 `auth.bearer_token` 填 `{{secret.KEY}}`。Runtime 使用該 System 啟動時載入的值來組出認證 Header。業務 Request、Document、Remote 業務參數、模板、索引及記錄只承載各自的業務資料或引用。
+
+<a id="system-secret-deployment"></a>
+### Runtime 啟動與 Secret 注入
+
+同一 System 在 DEV 及正式環境使用相同的 `{{secret.KEY}}`。DEV 由 Builder 提供測試值。正式 Deployment 使用 `env[].valueFrom.secretKeyRef` 注入憑證，可用 `configMapKeyRef` 注入一般環境設定。環境變數名稱與 `config.secret` 的 Key 完全相同，每個 Pod 各自在 Runtime 啟動時讀值。缺少 Key 時中止啟動，錯誤訊息列出缺少的 Key，遮罩解析出的值。Kubernetes 以環境變數注入 Secret 時，更新後需重新啟動容器才會取得新值。
+
+[DEV Config](../examples/system_config/local_memory.remote_parsing.json)、[匯出 Config](../examples/system_config/local_memory.remote_parsing.export.json)與[容器 env 片段](../examples/system_config/deployment.secret-env.example.yaml)示範同一份設定在兩個環境如何供值。
 
 <a id="src-07-92-驗證與部署"></a>
 ### 驗證與部署
@@ -900,12 +907,12 @@ Local Search 的持久化模式沿用同版 Config：DEV 為 Memory，FTEST／EN
 
 Local Search replicas=1 且單 API worker；ES 是否多副本需驗證工作／權限／版本策略。resource limits、Probe、TLS／Ingress、CD 工具與 FTEST／ENT 命名見 Q-021／Q-027。
 
-Secret Vault 位於 Runtime 外，以環境支援的解析／注入方式提供；`secret-name/key` 為目前示意引用。正式產品、SDK、檔案掛載路徑與更新政策 Q-021。URL、Header、Trace 與匯出均不得內嵌帳密。換 Embedding Profile 要回 Engine 重建，不能只在匯出改模型 ID。
+若環境使用 Vault，可在部署流程先供應 Kubernetes Secret，Runtime 按 [System Secret 注入規則](#system-secret-deployment)啟動。對外的驗證結果及 Trace 遮罩認證資訊。換 Embedding Profile 要回 Engine 重建，不能只在匯出改模型 ID。
 
 <a id="src-07-93-獨立啟動"></a>
 ### 獨立啟動
 
-建議步驟：讀選定 Config Revision＋該環境部署設定 → 解析服務／資料綁定與 Secret → 04 驗證 Config 快照／準備 Component 及資源 → 驗證資料／恢復索引 → 啟動 HTTP，以共用 Executor 執行該配置。Live／Ready 與 IndexReady 分開。相容索引可查詢後即接受 Ingestion 和 Inference，空索引回成功空候選。部署後 Config 更新可先經重新部署，熱更新／零停機另案。
+建議步驟：讀選定 Config Revision＋該環境部署設定 → 載入 `config.secret` 指定的環境變數並解析服務／資料綁定 → 04 驗證 Config 快照／準備 Component 及資源 → 驗證資料／恢復索引 → 啟動 HTTP，以共用 Executor 執行該配置。Live／Ready 與 IndexReady 分開。相容索引可查詢後即接受 Ingestion 和 Inference，空索引回成功空候選。部署後 Config 更新可先經重新部署，熱更新／零停機另案。
 
 <a id="release-deployment-boundaries"></a>
 

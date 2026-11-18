@@ -45,6 +45,9 @@
             "inference"
           ],
           "additionalProperties": false
+        },
+        "secret": {
+          "$ref": "#/$defs/system_secret"
         }
       },
       "required": [
@@ -216,6 +219,9 @@
         },
         "output": {
           "$ref": "#/$defs/remote_ingestion_output"
+        },
+        "auth": {
+          "$ref": "#/$defs/remote_auth"
         }
       },
       "required": [
@@ -251,6 +257,9 @@
         },
         "parameters": {
           "type": "object"
+        },
+        "auth": {
+          "$ref": "#/$defs/remote_auth"
         }
       },
       "required": [
@@ -301,6 +310,36 @@
       "required": [],
       "additionalProperties": false,
       "minProperties": 1
+    },
+    "system_secret": {
+      "description": "System-scoped values. The DEV activation supplies strings. An exported Config retains the same keys with null values and resolves them from the environment at startup.",
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "additionalProperties": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "secret_expression": {
+      "type": "string",
+      "pattern": "^\\{\\{secret\\.[A-Za-z_][A-Za-z0-9_]*\\}\\}$"
+    },
+    "remote_auth": {
+      "description": "Bearer authentication for the Remote HTTP request.",
+      "type": "object",
+      "properties": {
+        "bearer_token": {
+          "$ref": "#/$defs/secret_expression"
+        }
+      },
+      "required": [
+        "bearer_token"
+      ],
+      "additionalProperties": false
     }
   }
 }

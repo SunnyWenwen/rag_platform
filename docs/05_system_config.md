@@ -4,7 +4,7 @@
 
 Workspace 管理多個 System。System ID、Config Revision、source_revision、索引版本、Runtime Image 版本各自獨立。Builder 草稿可保存未啟用方法；編譯只使用所選方法與 Remote 涵蓋區段，拒絕範圍重疊。切回內建方法時恢復原草稿設定。
 
-同一 Config Revision 在 DEV／FTEST／ENT 沿用相同邏輯設定。端點、Secret 引用、DB／索引實體目標及 Runtime 限制屬環境綁定。變更方法、模型語意、維度或資料欄位產生新 Revision，依相依範圍判斷重建。每次請求採單一有效設定快照；有 queued／running Ingestion 時可存草稿，等該 System 工作完成再啟用新版。
+同一 Config Revision 在 DEV／FTEST／ENT 沿用相同邏輯設定。端點、Secret 的實際值、DB／索引實體目標及 Runtime 限制屬環境綁定。變更方法、模型語意、維度或資料欄位產生新 Revision，依相依範圍判斷重建。每次請求採單一有效設定快照；有 queued／running Ingestion 時可存草稿，等該 System 工作完成再啟用新版。
 
 [System Config Schema 草案](../schemas/system_config.draft.schema.json)和[內建／Remote Parsing 對照](../examples/system_config/README.md#可驗證的-local-search-設定)提供發布快照的機器驗證範例。
 
@@ -19,9 +19,10 @@ Workspace 管理多個 System。System ID、Config Revision、source_revision、
 | `config_revision` | Builder 指派的發布版本。新版本在套用請求傳入，草稿驗證使用自己的 `draft_revision`。 |
 | `config` | 有效邏輯設定。Runtime 驗證與套用請求直接帶這個內層物件。 |
 | `config.contract_version` | 此 Config 的格式版本，現行為 `0.2-draft`。 |
+| `config.secret` | 選填的 System 級 KV。Builder 啟用測試時提供字串值，部署匯出保留 Key 並將值設為 `null`。見 [System Secret](#system-secret)。 |
 | `config.pipelines` | 包含 `ingestion`、`inference`。每個有效模組對應一個節點。 |
 | 節點的 `component_id`、`component_version`、`parameters` | 分別選方法、固定版本、保存該方法的設定。個別參數由所選 Descriptor 的 `parameters_schema` 定義。 |
-| Remote 節點的 `through`、`service_ref`、`output` | `through` 含括區段最後一個模組，首節點由 Pipeline 上的 key 指定。 `service_ref` 引用環境的外部服務綁定。Ingestion Remote 另須以 `output` 宣告適用的 `structdata` 或 `vectors`，Inference 依 System 的有效候選 Schema 驗證。 |
+| Remote 節點的 `through`、`service_ref`、`auth`、`output` | `through` 含括區段最後一個模組，首節點由 Pipeline 上的 key 指定。 `service_ref` 引用環境的外部服務綁定。選填的 `auth.bearer_token` 使用 `{{secret.KEY}}`。Ingestion Remote 另須以 `output` 宣告適用的 `structdata` 或 `vectors`，Inference 依 System 的有效候選 Schema 驗證。 |
 
 發布時依固定的 Pipeline 順序核對節點。Remote 區段涵蓋的後續節點在有效設定中省略，由首節點涵蓋。JSON Schema 驗證結構，編譯器檢查覆蓋是否完整且無重疊、元件版本、欄位相依及引用。見 [Runtime 驗證契約](06_runtime_api_and_deployment.md#config-validation-api)。
 
@@ -37,6 +38,7 @@ Workspace 管理多個 System。System ID、Config Revision、source_revision、
 | Inference Input | 查詢執行參數、型別、必填性與預設值。平台初始化 QueryContext[] |
 | Query Transformation | `none` 沿用原始問題；`rewrite` 以 `llm_ref`、`prompt`、`count`、`include_original` 設定單筆或多筆改寫；也可用 Remote |
 | Retrieval／Rerank | 內建方法／模型、查詢參數引用、融合與截斷，也可選 Remote 替換。固定 Filter 由 Inference Pipeline 共用 |
+| 其他設定 → Secret | 管理同一 System 各 Module 可引用的 KV；輸入 DEV 測試值。 |
 | Remote API | 首節點與連續範圍、服務引用、parameters JSON、Ingestion 輸出欄位及向量宣告 |
 
 有效資料欄位由 Import 與後續有效方法推導，外部 Retrieval 沿用這份 System 候選 Schema。W1 開發依 [Schema 與範例](../examples/system_config/README.md)。後續版本凍結和遷移依 [Q-002](08_plan_and_decisions.md#q-002)，部署 Bundle 依 [Q-021](08_plan_and_decisions.md#q-021)。Prototype 匯出用於示意。
@@ -100,9 +102,22 @@ Import／Inference Input 各自宣告名稱、型別、必填與預設值。Impo
 
 現行表單在 `import.parameters.request_parameters` 或 `inference_input.parameters.request_parameters` 宣告。每列包含 `name`（Request 當中的 key）、`type`（`string`、`integer`、`number`、`boolean`、`array`、`object`）、`required`（是否必填），以及選填的 `default_value`。 `default_value` 存 JSON 文字，例如字串預設值的設定為 `"default_value": "\"zh-TW\""`，解碼後依所選型別驗證。
 
-認證欄位可填固定 Secret reference 或 `{{params.remote_secret_ref}}`。動態引用必須宣告為 `secret_ref`，由 Runtime 檢查本 System 可使用該引用，再解析成認證 Header。一般業務參數傳入 Remote 的 parameters，實際認證憑證走 Header。
+<a id="system-secret"></a>
+## System Secret
 
-動態認證的 `secret_ref` 宣告尚未納入現行表單 Descriptor 的 `request_parameters.type`。Remote 範例展示驗證後的傳輸邊界。開發動態認證設定與發布前，須依 [Q-028](08_plan_and_decisions.md#q-028) 補齊 Config 宣告與端到端範例。
+Builder 在 **其他設定 → Secret** 提供 System 共用的 Key／Value 編輯區。Key 採 `[A-Za-z_][A-Za-z0-9_]*`，大小寫有別且在同一 System 內唯一。Value 是環境提供的文字，可用於憑證或一般環境設定。
+
+| 值來源 | 設定表示 | 解析時間 |
+|---|---|---|
+| 固定值 | 直接填值，例如 `"zh-TW"` 或 `500` | 驗證 Config 時 |
+| Request | `{{params.language}}`，由 Import／Inference Input 宣告 | 每次接收 Ingestion／Inference Request 時 |
+| System Secret | `{{secret.PARSER_API_TOKEN}}`，由 `config.secret` 宣告 Key | DEV 驗證及啟用、正式 Runtime 啟動時載入同一 System 的值 |
+
+各 Module 可在支援參數引用的欄位使用完整的 `{{secret.KEY}}`。第一版以整個欄位作為一個引用，不做字串片段展開或遞迴展開。先依 Key 解析原始文字，再按目標參數驗證。字串欄位原樣保留，明確為數字、整數、布林、陣列或物件的參數以 JSON 解析後驗證；Remote 業務參數若沒有型別宣告，保留字串。個別 Module 的結構宣告，如 Import `structdata`、Indexing `structdata_overrides` 及 Remote `output`，用原有 Schema 直接宣告。
+
+DEV 驗證與啟用使用 Builder 在同一個 System 填寫的字串。實際值在受保護的測試設定保存，Builder 組出有效設定給 Runtime。匯出的 Config 在同一個 `config.secret` 保留全部 Key，值一律為 `null`。正式 Runtime 啟動時用這些 Key 讀取同名環境變數，缺少任一 Key 時在就緒前回報 Key 與設定路徑。引用未宣告 Key、語法錯誤或解析後型別不符，都應阻擋啟用並回報欄位位置。
+
+憑證值由 Module 的連線或認證欄位使用。例如 Remote 節點填 `auth.bearer_token: "{{secret.PARSER_API_TOKEN}}"`，Adapter 把實際值放到 `Authorization` Header。業務 Request、Document、Queue、公開驗證結果與 Log 均不承載 Secret 明文。部署方式與成對範例見 [Runtime 啟動與 Secret 注入](06_runtime_api_and_deployment.md#system-secret-deployment)。
 
 ## Admin 全域模板
 

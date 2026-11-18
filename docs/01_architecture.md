@@ -91,13 +91,13 @@ Module／Component 是職責與選擇層次，不以 Python Class 或 Function �
 | 名詞 | 定義 |
 |---|---|
 | Config | System 的邏輯處理設定，包含 Module 的 Component／參數，以及 Pipeline、資料欄位相關參數、Prompt、模型語意 Profile 與邏輯服務引用；I/O 資料細節由 Component 宣告＋Config 推導，見 [Descriptor](04_component_descriptor.md) |
-| 部署設定（Deployment Settings） | 特定環境的執行與連線綁定，包含服務 URL、認證／Secret 引用、DB／實體索引目標及 Runtime／K8s 資源 |
+| 部署設定（Deployment Settings） | 特定環境的執行與連線綁定，包含服務 URL、認證／Secret 的環境注入、DB／實體索引目標及 Runtime／K8s 資源 |
 | Builder DEV | Retrieval Builder 提供的開發／測試環境，涵蓋前後端、測試 Runtime 與可選平台測試資源；既有文件未特別註明的 DEV 指此情境 |
 | FTEST／ENT | 使用單位匯出設定後自行部署 Runtime／必要服務的目標環境；不預設平台測試資源或資料會一併移轉 |
 | UI Draft（UI 草稿） | 編輯過程中的設定狀態，可保存尚未啟用的方法／欄位；不表示所有內容都參與執行 |
 | Effective Config（有效 Config） | 從草稿或輸入設定中，取出實際使用的方法、參數及引用後形成的有效邏輯設定；手動、AI 與手寫設定使用相同驗證規則 |
 
-同一 System、同一 Config Revision 在 Builder DEV／FTEST／ENT 沿用相同邏輯 Config，各環境可使用不同部署設定。例如只換服務 URL 或 Secret 引用屬部署綁定；改 Chunk Size、Query Rewrite Prompt 或模型語意 Profile 屬 Config 變更，不能以環境覆寫掩蓋。System 日後編輯會產生新 Revision，不要求它永遠只有一版 Config。
+同一 System、同一 Config Revision 在 Builder DEV／FTEST／ENT 沿用相同邏輯 Config，各環境可使用不同部署設定。例如只換服務 URL 或同一 Secret Key 的值屬部署綁定；改 Chunk Size、Query Rewrite Prompt 或模型語意 Profile 屬 Config 變更，不能以環境覆寫掩蓋。System 日後編輯會產生新 Revision，不要求它永遠只有一版 Config。
 
 Builder DEV 與 FTEST／ENT 都使用環境綁定，但用途與管理邊界不同：前者由平台支援開發／測試，後者由使用單位準備部署資源。`DEV test use` 只是選用平台測試資源，不能視為 FTEST／ENT 已有可用連線；匯出時需補齊目標綁定，模型／索引語意仍須相容。Memory 可以沿用到目標環境，不因部署而自動改成 MongoDB；重啟後需重新 Ingestion。責任分工與案例見 [A～E 責任](#src-20-3-最終詳細總表)。
 
