@@ -132,8 +132,8 @@ Admin 在 Builder 以外維護版本化全域模板。Builder 顯示可選版本
 - None 的 Top-N／Prompt 等欄位可保留草稿但停用，不參與有效 Config 驗證／匯出。
 - 上游刪除欄位或模型引用失效時，保留草稿選擇、標示原因並阻擋發布。
 - 不支援能力顯示且停用，附可理解原因；不能讓顯示的 Mock 選項假裝正式可用。
-- 前端 Validator 提供即時回饋，Backend／Engine 仍重新驗證。Schema 及規則來源需共用或由後端產生，避免手寫三份不同規則。
-- Component 目錄／Config Schema 與驗證結果綁定目標 Runtime 版本；目錄變動不靜默升級既有 System 或覆寫草稿。API／Schema 與既有控制項相容時，新增 Component 可在 Runtime 更新後供原版 Builder 選用；未知控制項／不相容格式明示需支援，不假裝可完整設定。目錄快取與版本協調見 07，畫面待辦見 Builder UI／Backlog手冊 UIB-010。
+- Builder 在編輯時依 Descriptor 與有效 I/O 提供即時驗證。通過本地檢查後，發布前呼叫 Runtime 的 [Config Validation API](06_runtime_api_and_deployment.md#config-validation-api) 做最終驗證。正式套用時，Runtime 再核對版本與索引狀態。Schema 與推導規則由 Builder 和 Engine 共用。
+- Component 目錄／Config Schema 與驗證結果綁定目標 Runtime 版本；目錄變動不靜默升級既有 System 或覆寫草稿。API／Schema 與既有控制項相容時，新增 Component 可在 Runtime 更新後供原版 Builder 選用；未知控制項／不相容格式明示需支援，不假裝可完整設定。目錄快取與版本協調見 [Catalog API](06_runtime_api_and_deployment.md#w1-catalog)，畫面待辦見 UIB-010。
 
 錯誤顯示 `[模組] 原因`；進一步可提供欄位位置、修正方式與是否需重新 Ingestion。UI 不要求使用者理解內部 Python 類別或堆疊。
 

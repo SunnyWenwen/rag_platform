@@ -430,7 +430,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 <a id="q-019"></a>
 ### Q-019 API／HTTP Envelope 與呼叫認證
 
-- [W1 Builder ↔ Runtime HTTP 契約](09_w1_builder_runtime_contract.md)為 A/B 開發基線，涵蓋 Catalog、Config 驗證、System 生命週期、Ingestion、Run、文件管理、Inference 與 Health。JSON fixtures 提供同一個 System 的完整成功流程及錯誤案例。
+- [Runtime API 規格](06_runtime_api_and_deployment.md)定義 W1 HTTP 契約。[Builder 開發契約索引](09_w1_builder_runtime_contract.md)提供所需規格、Schema 與 Mock 入口。
 - D-60 的 Basic Auth、D-64 的可信 System 路由與錯誤核心、D-65 的文件摘要格式沿用。D-42 的欄位選項由 Builder 依 Catalog 與草稿推導。Query 成功 body 保持 `QueryContext[]`，版本以 Header 回傳。
 - 仍待正式環境部署接線、OpenAPI 整理、Builder 自有 CRUD／助手／檔案 manifest、資料保留、Trace 及版本相容政策。W1 DEV Runtime 的 HTTP、ES 與模型還需整合驗收。
 - 負責角色為 Backend、Runtime、Frontend 與身分團隊。以 W1 Mock 開發，真實串接按 M3／M5 驗收。

@@ -34,6 +34,9 @@ python3 examples/user_remote_api/validate.py
 
 [W1 Catalog 回應](w1_catalog.response.json) 提供範例 Runtime 的 9 個 Component 及四類資源清單。用 [Catalog Schema](../../schemas/runtime_catalog.draft.schema.json) 驗證。Builder 依草稿推導欄位候選，並從同一份 Catalog 取得 Profile、Tokenizer、模型及 Elasticsearch 服務選項。表單實作見 [Renderer 對照表](../../docs/07_builder_ui.md#descriptor-form-rendering)。
 
+<a id="w1-http-mock"></a>
 ## Builder ↔ Runtime HTTP Mock
 
-[W1 HTTP JSON 範例](w1_http.examples.json)提供從 Catalog、發布、匯入到 Query 的可連續使用範例，以及更新相容性、重建及錯誤回應。用 [HTTP 契約](../../docs/09_w1_builder_runtime_contract.md)對照路徑與欄位。從 repo 根目錄執行 `python3 examples/system_config/validate_w1_http_examples.py` 驗證測資。
+[W1 HTTP JSON 範例](w1_http.examples.json)每步提供 Method、Path、Body、Status 與相關 Headers。`body_file` 從同目錄載入完整 JSON，例如 Catalog 回應。`happy_path` 從 Catalog 和發布開始，涵蓋首次匯入、Query、文件管理與卸載。`reuse_and_rebuild` 從已生效的 `revision-1` 及既有索引開始。其餘情境提供獨立的 Mock，涵蓋版本過期、欄位驗證、索引歸屬、Run 部分失敗及 Query 無命中／失敗。
+
+[Runtime API 規格](../../docs/06_runtime_api_and_deployment.md)定義實作細節。從 repo 根目錄執行 `python3 examples/system_config/validate_w1_http_examples.py` 可檢查測資的 Schema 與跨步驟關聯。實際 HTTP、Elasticsearch 與模型由 DEV 環境串接驗收。
