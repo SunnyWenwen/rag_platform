@@ -1,5 +1,7 @@
 """Verify the HTTP Mock fixtures without starting Runtime or any backing service."""
 import json
+from dataclasses import asdict
+from hashlib import sha256
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
@@ -20,6 +22,37 @@ DOCUMENT_STATES = ("queued", "running", "completed", "failed", "unknown")
 
 def schema(name):
     return Draft202012Validator(SCHEMAS[name], registry=REGISTRY)
+
+
+def verify_index_fingerprint(fields, vectors):
+    expected = json.loads((HERE / "index_fingerprint.v1.example.json").read_text())
+    projection, meta = expected["projection"], expected["mapping_meta"]
+    definition = SCHEMAS["index_fingerprint.v1.schema.json"]
+    projection_check = schema("index_fingerprint.v1.schema.json")
+    projection_check.validate(projection)
+    Draft202012Validator({"$ref": definition["$id"] + "#/$defs/mapping_meta"}, registry=REGISTRY).validate(meta)
+
+    def simple_jcs_fixture(value):
+        # The fixture uses ASCII keys and safe integers, so sorted compact
+        # Python JSON has the same encoding as JCS for these values.
+        if isinstance(value, dict):
+            return all(key.isascii() and simple_jcs_fixture(item) for key, item in value.items())
+        if isinstance(value, list):
+            return all(map(simple_jcs_fixture, value))
+        return value is None or isinstance(value, (str, bool)) or type(value) is int and abs(value) < 2**53
+
+    assert simple_jcs_fixture(projection)
+    encoded = json.dumps(projection, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    assert sha256(encoded).hexdigest() == meta["index_fingerprint"]
+    assert projection["version"] == meta["index_fingerprint_version"]
+    index = projection["index"]
+    assert set(index["vector_bindings"]) == set(index["embedding_spaces"]) == set(vectors)
+    assert index["structdata"] == {name: asdict(field) for name, field in fields.items()}
+    assert index["vector_bindings"] == {
+        name: {"source_field": vector.source, "embedding_profile_id": vector.profile, "dimensions": vector.dimensions}
+        for name, vector in vectors.items()
+    }
+    assert not projection_check.is_valid({**projection, "source_revision": "v1"})
 
 
 def assert_error(body, request_body):
@@ -89,8 +122,9 @@ def verify(scenarios):
     assert len(published) == len(catalog["descriptors"])
     happy = scenarios["happy_path"]
     initial_config = next(item["request"]["body"]["config"] for item in happy if item["request"]["method"] == "PUT")
-    fields, _, index = compile_local_example({"system_id": "es-example", "config_revision": "revision-1",
-                                               "config": initial_config})
+    fields, vectors, index = compile_local_example({"system_id": "es-example", "config_revision": "revision-1",
+                                                    "config": initial_config})
+    verify_index_fingerprint(fields, vectors)
 
     for steps in scenarios.values():
         previews = {}
@@ -165,6 +199,7 @@ def verify(scenarios):
                 for item in body["documents"]:
                     assert set(item) == {"document_id", "source_revisions"}
                     revisions = item["source_revisions"]
+                    assert isinstance(revisions, list) and all(isinstance(revision, str) and revision for revision in revisions)
                     assert len(revisions) == len(set(revisions))
                 assert body["next_cursor"] is None or isinstance(body["next_cursor"], str)
             if path.endswith("/queries"):
@@ -183,6 +218,16 @@ def verify(scenarios):
                             for item in result["items"]:
                                 assert all(name in item["data"]["structdata"] for name, field in fields.items()
                                            if field.required)
+
+    document, = next(item["request"]["body"]["documents"] for item in happy
+                     if item["request"]["path"].endswith("/ingestions"))
+    contexts = next(item["response"]["body"] for item in happy if item["request"]["path"].endswith("/queries"))
+    candidate = contexts[0]["result_sets"][0]["items"][0]["data"]
+    listing = next(item["response"]["body"]["documents"] for item in happy
+                   if urlsplit(item["request"]["path"]).path.endswith("/documents"))
+    assert candidate["document_id"] == document["document_id"]
+    assert "source_revision" not in document and "source_revision" not in candidate
+    assert listing == [{"document_id": document["document_id"], "source_revisions": []}]
 
     put = next(item["response"]["body"] for item in happy if item["request"]["method"] == "PUT")
     updates = [item["response"]["body"] for item in scenarios["reuse_and_rebuild"]

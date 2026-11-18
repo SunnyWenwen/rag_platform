@@ -41,6 +41,8 @@ batch_check.validate(batch)
 reject(batch_check, {"documents": []})
 reject(batch_check, batch["documents"])
 reject(batch_check, {"documents": [{**batch["documents"][0], "parameters": {}}]})
+for missing_value in ("", None):
+    reject(batch_check, {"documents": [{**batch["documents"][0], "source_revision": missing_value}]})
 remote_ingestion = read(HERE / "remote_ingestion.request.json")
 assert set(remote_ingestion) == {"input", "parameters"}
 assert remote_ingestion["input"] == batch["documents"][0]

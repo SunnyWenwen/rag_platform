@@ -8,6 +8,7 @@
 | [inference_request](inference_request.schema.json) | [query、filters、metadata、parameters](../docs/06_runtime_api_and_deployment.md#inference-api) |
 | [query_context](query_context.schema.json) | [QueryContext[] 與 ResultItem.data 候選 Document](../docs/02_data_contracts.md#inference-contract) |
 | [index_binding](index_binding.schema.json) | [平台管理索引的格式、位置及能力](../docs/02_data_contracts.md#indexbinding) |
+| [index_fingerprint.v1](index_fingerprint.v1.schema.json) | [ES 索引相容性指紋投影與 mapping metadata](../docs/06_runtime_api_and_deployment.md#index-fingerprint-v1-proposal) |
 | [runtime_catalog](runtime_catalog.draft.schema.json) | [W1 Runtime 的 Descriptor 與環境資源清單](../docs/06_runtime_api_and_deployment.md#w1-catalog) |
 | [component_descriptor](component_descriptor.draft.schema.json) | [內建 Component 的識別、參數、推導與 UI 規則](../docs/04_component_descriptor.md#descriptor-fields) |
 | [system_config](system_config.draft.schema.json) | [有效 Config 快照與 Pipeline 節點](../docs/05_system_config.md#config-fields) |

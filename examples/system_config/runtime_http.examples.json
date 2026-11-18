@@ -246,8 +246,7 @@
             "documents": [
               {
                 "document_id": "guide-1",
-                "structdata": {"body": "定期清潔散熱孔。", "title": "設備保養", "price": 350},
-                "source_revision": "v1"
+                "structdata": {"body": "定期清潔散熱孔。", "title": "設備保養", "price": 350}
               }
             ]
           }
@@ -348,7 +347,6 @@
                     {
                       "data": {
                         "document_id": "guide-1",
-                        "source_revision": "v1",
                         "data_id": "guide-1-chunk-1",
                         "structdata": {"title": "設備保養", "text": "定期清潔散熱孔。", "price": 350}
                       },
@@ -371,7 +369,7 @@
         "request": {"method": "GET", "path": "/internal/systems/es-example/v1/documents?limit=1"},
         "response": {
           "status": 200,
-          "body": {"documents": [{"document_id": "guide-1", "source_revisions": ["v1"]}], "next_cursor": null}
+          "body": {"documents": [{"document_id": "guide-1", "source_revisions": []}], "next_cursor": null}
         }
       },
       {

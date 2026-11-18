@@ -28,7 +28,7 @@ Remote Ingestion 的 `output` 在 Config 中是 Schema 宣告，在 HTTP Respons
 
 ### Parsing
 
-依 System 選定一種內建檔案解析方法或 Remote。結構化資料可直傳，檔案來源依 content 讀取。內建解析保留原始欄位並新增 contenttext，每個解析單位是一筆 Document。解析輸出需保留 document_id 與來源版本，來源位置選填。
+依 System 選定一種內建檔案解析方法或 Remote。結構化資料可直傳，檔案來源依 content 讀取。內建解析保留原始欄位並新增 contenttext，每個解析單位是一筆 Document。解析輸出需保留 `document_id`。入口帶 `source_revision` 時原樣傳遞，省略時維持省略。來源位置選填。
 
 ### Chunking
 

@@ -11,14 +11,14 @@ Elasticsearch 索引存取層另在每筆 ES Chunk 保存內部 `write_id`，同
 | 欄位 | 責任與語意 |
 |---|---|
 | `document_id` | 原始文件穩定識別。多頁、多切片保留原文件 ID。外部候選也需填可辨識來源的 ID。 |
-| `source_revision` | 來源版本，供追溯及文件摘要使用。入口可省略，Runtime 於下游使用已解析的版本。文件按同一 System 的 `document_id` 覆寫，`source_revision` 的值不影響是否接受覆寫。省略時的生成方式見 Q-007。 |
+| `source_revision` | 來源系統提供的文件版本，供追溯及文件摘要使用。給值時須為非空字串並原樣保留；省略時，匯入、Chunk 及檢索候選都可省略此欄位。按照同一 System 的 `document_id` 覆寫，版本值不參與更新判斷。 |
 | `data_id` | 每筆可檢索 Document 的識別，Chunking 產出後必填。不同切片可共用 document_id，data_id 須能區分它們。去重使用 data_id，文件分組及刪除使用 document_id。 |
 | `structdata` | 平面業務欄位，依 [Data Meta Schema](#data-meta-schema) 宣告型別、必填性與搜尋能力。 |
 | `content` | 待解析來源，`media_type` 加 `uri` 或 `base64` 二選一。與已知 structdata 可並存。 |
 | `metadata` | 選填 JSON object，可含巢狀值。整包傳遞、儲存與回傳，子欄位不參與檢索、Filter、分組、文字處理或計算。選填的 `_rag` 可附帶平台追溯資訊。 |
 | `vectors` | 名稱到 DenseVector 的物件。每筆向量含 `values`、`embedding_profile_id`、`source_field`。 |
 
-共用外層只要求 `document_id`。Import 依設定決定是否要求 `content`、`structdata` 及其欄位。檢索候選額外必須提供 `source_revision`、`data_id`、`structdata`，詳細欄位由有效 System Schema 決定。`content.media_type` 指定來源格式，`uri` 引用可取得的來源，`base64` 承載同一來源的編碼內容。
+共用外層只要求 `document_id`。Import 依設定決定是否要求 `content`、`structdata` 及其欄位。檢索候選額外必須提供 `data_id`、`structdata`，詳細欄位由有效 System Schema 決定。`content.media_type` 指定來源格式，`uri` 引用可取得的來源，`base64` 承載同一來源的編碼內容。
 
 <a id="data-flow"></a>
 ## 各階段有效 Schema

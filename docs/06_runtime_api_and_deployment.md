@@ -107,32 +107,34 @@ Builder 保存 System、草稿與發布歷史，Runtime 持有已載入的 `syst
 | 明確更新 | 新版與本 System 的受管理索引不相容 | 驗證新版後排空請求，刪除舊索引及資料，再建立新索引與 mapping。新索引建立成功後才啟用新版並接收匯入，Builder 以保存的原始資料重新提交 Ingestion。 |
 | 明確卸載 | 已排空，且索引已不存在或可確認由本 System 管理 | 刪除仍存在的受管理索引及資料，完成卸載。無法確認歸屬時回報衝突。 |
 
-Runtime 從有效 Config 推導會影響索引內容、向量語意及搜尋能力的設定，將結果正規化後計算 SHA-256。輸入包括生效的解析／切分設定、文件 Embedding Profile（含模型版本與維度）及推導出的索引 mapping 和搜尋設定。正規化消除 JSON 物件鍵順序的影響，保留具語意的順序。純 Inference 參數如 `top_n` 不改變指紋。精確欄位與序列化規則依 Q-015 定義。
+Runtime 從有效 Config 推導會影響索引內容、向量語意及搜尋能力的設定，將結果正規化後計算 SHA-256。輸入包括生效的解析／切分設定、文件 Embedding Profile（含模型版本與維度）及推導出的索引 mapping 和搜尋設定。正規化消除 JSON 物件鍵順序的影響，保留具語意的順序。純 Inference 參數如 `top_n` 不改變指紋。精確欄位與序列化見[索引指紋 v1](#index-fingerprint-v1-proposal)。
 
 Elasticsearch 在 `mappings._meta` 記錄 `system_id`、`index_fingerprint` 與指紋規則版本。Runtime 比對歸屬、指紋及實際 mapping，判定是否可接回或沿用索引。完整 Config 由 Builder 按 `config_revision` 保存。參考 [Elasticsearch mapping `_meta`](https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/mapping-meta-field)。
 
 Local Memory 使用同一套相容判定與 `system_id` 隔離；程序重啟後記憶體索引遺失，需重新匯入。外部 Retrieval 查詢自有資料時，依其服務就緒狀態與候選契約執行；上述索引建立、重建與卸載的刪除範圍只涵蓋平台管理的資料。
 
 <a id="index-fingerprint-v1-proposal"></a>
-#### ES 索引指紋 v1 評估草案
+#### ES 索引指紋 v1
 
-建議由 Runtime 的 Config 編譯器產生索引計畫和指紋。採明列欄位投影，只放會改變索引內容、向量語意或搜尋能力的生效值。索引歸屬和實體目標另行比對。
+Runtime 的 Config 編譯器輸出 [指紋投影 Schema](../schemas/index_fingerprint.v1.schema.json)。輸入是解析預設值、別名與外部依賴後的有效索引計畫。Schema 的 `$defs.mapping_meta` 另驗證 Runtime 寫入 `mappings._meta` 的欄位。
 
-| 投影項目 | 建議納入 |
+| 投影欄位 | 內容及推導規則 |
 |---|---|
-| Import／Parsing | 有效輸入及輸出欄位、實際使用的解析模式、方法版本及影響內容的參數。 |
-| Chunking | 方法及版本、來源／輸出／複製欄位、切分長度、overlap、有效分隔符／標題規則，以及 Tokenizer 的可重現識別。 |
-| 文件 Embedding | 寫入索引的向量名稱與來源欄位、模板或前處理、向量空間 Profile、模型版本、維度及影響向量的設定。 |
-| Indexing | 生效欄位型別、`searchable`／`filterable`、向量選擇，以及有效 ES mapping、analyzer、normalizer、similarity 等必須相容的索引設定。 |
-| Remote Ingestion | 受影響的區段與輸出契約、改變輸出的參數及外部實作的穩定版本識別。若外部實作可原地變更且無法確認版本，應標記相容性未確認。 |
+| `version` | 投影規則版本，首版固定為 `1`，參與計算。 |
+| `ingestion` | 依 Import → Parsing → Chunking → Embedding 的實際執行順序列出階段。內建方法以 `kind: builtin`、`module`、`component_id`、`component_version` 識別。每個有效階段攜帶 `output_structdata`，欄位的 `required`、`searchable`、`filterable` 全部展開。 |
+| 內建階段的 `parameters` | 由 Component 投影允許清單產生。Import 保留有效 `source`，欄位約束取自 `output_structdata`。Parsing 保留會改變輸出的生效模式及參數，Passthrough 為 `{}`。Recursive Chunking 保留有效切分／輸出欄位、複製映射、長度、overlap、分隔符及切分選項，並以 `tokenizer_revision` 表示已解析的穩定 Tokenizer 識別。Dense Embedding 保留實際啟用的文字合成與有效模板，向量映射及模型識別由 `index` 記錄。其他 Component 需定義各自的輸出影響投影，編譯器才可判定相容。 |
+| Remote 階段 | `kind: remote` 以 `module`／`through` 表示含首尾的替代範圍，附 `adapter_version`、穩定的 `implementation_revision`、有效 `parameters` 和輸出 `output_structdata`。缺少可解析的實作版本時回報相容性未確認。 |
+| `index.component_id`、`component_version`、`structdata` | 解析後的 Indexing 實作識別及套用 overrides 後的有效欄位型別與搜尋能力。 |
+| `index.vector_bindings`、`embedding_spaces` | 兩個物件都以已選入索引的向量名稱為鍵，鍵集合必須一致。前者沿用 IndexBinding 的來源欄位、Profile ID 與維度，後者記錄實際模型 ID 與穩定版本。沒有索引向量時皆為 `{}`。 |
+| `index.mapping`、`settings` | 解析後的 ES 欄位、動態規則、runtime fields、`_source` 及會影響相容性的原生 `analysis`、`similarity`。預設值由目標後端能力與設定解析；無宣告的 `dynamic_templates` 用 `[]`，無定義的 `runtime`、`analysis`、`similarity` 用 `{}`。原生 ES 物件由 ES 驗證。後端若有會改變索引語意而 v1 投影未涵蓋的設定，回報相容性未確認。 |
 
-純 Inference 的 Rewrite、融合、Rerank、固定 Filter 與 `top_n`、Builder 草稿資訊、批次並行／逾時、Endpoint、憑證和 `source_revision` 留在各自契約。實體 ES index／cluster 的變更經由環境綁定重新定位和核對歸屬。文件內容更新走文件覆寫。
+純 Inference 的 Rewrite、融合、Rerank、固定 Filter、`top_n`、運作限額、端點、憑證與單文件的 `source_revision` 都不參與指紋。遷移 ES 叢集或索引名稱時，Runtime 依環境綁定重新查找實體目標並核對歸屬。
 
-1. 先解析預設值、舊欄位名稱、實際元件與 Profile 版本，產生只含生效值的投影。無順序意義的欄位集合依固定規則排序；分隔符等具順序語意的陣列保留原序。
-2. 將投影和指紋規則版本以 [RFC 8785 JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785.html) 正規化後計算 SHA-256。將規則版本與結果記入 `mappings._meta`，實際 mapping 與索引必要設定另外核對。
-3. 同一歸屬、指紋規則版本、指紋及實際儲存相容時可沿用。指紋不符時由明確發布走重建流程。規則版本未知、歸屬無法確認或無法讀取 mapping 時，保留既有索引並回報需要查核。
+1. 編譯器先解析預設值、舊欄位名稱及依賴版本，檢查階段順序與覆蓋範圍、向量鍵集合及 mapping 維度。無順序語意的陣列按穩定鍵排序，例如 `copy_fields` 按唯一的 `output_field`；切分分隔符、分析器 pipeline 及 `dynamic_templates` 保留順序。
+2. 對整份投影執行 [RFC 8785 JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785.html)，以 canonical UTF-8 bytes 計算 SHA-256。將小寫十六進位摘要、`index_fingerprint_version` 和 `system_id` 寫入 ES `mappings._meta`。完整 [JSON 範例](../examples/system_config/index_fingerprint.v1.example.json) 可離線核對。
+3. 只有歸屬、指紋版本、指紋、實際 mapping 及必要 settings 均符合才能沿用。可確認歸屬與不相容時走明確發布的重建流程。未知規則版本、缺少可信的依賴版本、無法確認歸屬或讀取 mapping 時保留現有索引並回報需要查核。
 
-驗收至少包含物件鍵換序、等效預設值、只改 Inference 參數、改 Chunking 長度、同維度換 Embedding 模型、改欄位搜尋能力、實際 mapping 偏離，以及缺少指紋版本。確切投影鍵與既有索引的版本遷移依 [Q-015](08_plan_and_decisions.md#q-015) 核定。
+Runtime 驗收要驗物件換序、等效預設值及只改 Inference 參數不改指紋，切分長度、同維度換模型或搜尋能力變更會改指紋，以及實際 mapping 偏離或缺少指紋版本時不得當作相容。已存在且缺少指紋的索引如何遷移，以及未來規則升版，由 [Q-015](08_plan_and_decisions.md#q-015) 追蹤。
 
 <a id="src-07-411-remote-imageexternal-的生命週期"></a>
 ### 外部 Remote API 的生命週期
@@ -356,7 +358,7 @@ Location: /v1/ingestions/ing-001
 
 **D-57 已確認：「預檢整批通過才入列；入列後逐文件獨立結果」。**例如外層不合法、同批重複 ID、某文件已 queued／running 或有未收尾的 ES 寫入、容量不足時，先拒絕整次請求，保證沒有未交代的部分入列；接收政策與批次物件包裝均已確認。錯誤碼見 [HTTP 錯誤格式](#runtime-http-errors)。合法文件入列後，另一份文件 Parsing 失敗不回滾已成功文件。
 
-併發與 Queue 容量建議以文件工作計數，並另限制排隊資料量／總請求大小，避免一個巨大 Batch 算一個 queue slot。已確認每次最多 100 份文件、body 20 MiB、每 System 100／Runtime 500 份等待容量等初始值集中見 Runtime API／部署手冊；參數可調，接收容量預留及公平排程細節仍見 API-D04。Runtime 保留整批容量及文件忙碌標記後，ES 模式先將 Run 和初始文件清單以單筆紀錄保存，再把整批工作放進記憶體 Queue 並回 202。只有確認收件紀錄已保存才可入列。若在保存後、入列前中斷，依 [重啟規則](#ingestion-job-records) 查核及結算。接收檢查、預留及入列須維持一致，避免同文件被同時接收兩次。
+併發與 Queue 容量建議以文件工作計數，並另限制排隊資料量／總請求大小，避免一個巨大 Batch 算一個 queue slot。已確認每次最多 100 份文件、body 20 MiB、每 System 100／Runtime 500 份等待容量等初始值集中見 Runtime API／部署手冊；參數可調，接收容量預留及公平排程細節仍見 API-D04。Runtime 保留整批容量及文件忙碌標記後，ES 模式依[多 Pod 寫入 v1](#multi-pod-concurrency-proposal)先保存 Run 收件資料，再原子提交整批占用與 System 容量，最後放進受理 Pod 的記憶體 Queue 並回 202。收件過程中斷時依[重啟規則](#ingestion-job-records)查核及結算。
 
 <a id="src-21-4-文件狀態與一次提交的狀態"></a>
 ## 文件狀態與一次提交的狀態
@@ -454,8 +456,9 @@ D-57 的 Run 狀態由逐文件狀態彙總，按下表從上往下採第一個�
 
 | 資料 | 保存位置 | 寫入時機與用途 |
 |---|---|---|
-| Ingestion Queue | Runtime 記憶體 | 整批預檢和確認收件後入列，供當前 worker 排程 |
-| Run 收件與逐文件狀態 | ES 控制索引的 Runtime 工作紀錄 | 入列前保存 `system_id`、`run_id`、`config_revision`、Runtime instance、收件時間及整批文件識別。逐份更新狀態、最後階段、時間和錯誤，供 Run／文件 API 查詢 |
+| Ingestion Queue | 受理 Pod 記憶體 | 整批預檢和確認收件後入列，供受理 Pod 派工 |
+| System 活動控制 | ES 控制索引，每 System 一筆 | 原子管理文件占用、領取、System 容量及生命週期，見[多 Pod 寫入 v1](#multi-pod-concurrency-proposal) |
+| Run 收件與逐文件狀態 | ES 控制索引的 Runtime 工作紀錄 | 入列前保存 `system_id`、`run_id`、`config_revision`、Runtime instance、收件時間及整批文件識別。批次確認受理後，逐份更新狀態、最後階段、時間及錯誤，供 Run／文件 API 查詢 |
 | ES 寫入控制紀錄 | 同一控制索引，由 IndexStore 管理 | 送第一個 Bulk 前保存，追蹤特定文件批次的寫入與清理。用相關識別碼關聯 Run 與文件 |
 
 Runtime 啟動時只結算已確認停止的 Runtime instance 所持有的工作，保留原有終態及其他 instance 的工作。Queue 重啟後由空佇列開始，202 表示收件及當次入列成功。結算只更新狀態，失敗或中斷文件由 Builder 或呼叫方依查核結果重新提交，平台不自動重試、重排或續跑。
@@ -590,7 +593,7 @@ Builder 儲存許多 UI Config 不等於建立等量 API service／Pod。Runtime
 
 Builder 下發新版時，依 [System 管理](#src-07-4-systemrevision-與-engine-生命週期)判斷忙碌、索引相容性及切換方式。Runtime 重啟會清除各 System 的記憶體 Queue 和 Local Memory 索引。ES 模式的工作紀錄保留並依重啟規則結算。Builder 可重新下發 Config，持久索引依相容性檢查接回。
 
-FTEST／ENT 的一 Pod 基準是主 Runtime。外部 API、ES／MongoDB 等資源以環境綁定提供。
+FTEST／ENT 的一 Pod 基準是主 Runtime。多副本 ES 模式依[跨 Pod 寫入 v1](#multi-pod-concurrency-proposal)執行。外部 API、ES／MongoDB 等資源以環境綁定提供。
 
 <a id="src-21-82-remote-寫入可能成功但-runtime-timeout"></a>
 ### 索引寫入逾時與未知結果
@@ -691,13 +694,14 @@ GET /v1/documents?limit=100&cursor=...
 {
   "documents": [
     {"document_id": "manual-001", "source_revisions": ["v2"]},
-    {"document_id": "manual-002", "source_revisions": ["v1", "v2"]}
+    {"document_id": "manual-002", "source_revisions": ["v1", "v2"]},
+    {"document_id": "manual-003", "source_revisions": []}
   ],
   "next_cursor": null
 }
 ```
 
-D-65 採 documents[]＋next_cursor，取代早期 document_ids[]；每筆為 document_id＋source_revisions[]。直接查該 System 實際保存的 Chunk／ES／Local 資料，以 document_id 去重並分頁，一份文件不論多少 Chunk 都只列一筆。每筆 source_revisions 為實際 Chunk.source_revision 的去重集合：正常通常一版，更新中／部分寫入失敗可能多版。這不是最新成功版本或持久歷史，不依 Run／文件工作紀錄推定，不將單一 Chunk 的 source_revision 改成陣列。
+D-65 採 documents[]＋next_cursor，取代早期 document_ids[]；每筆為 document_id＋source_revisions[]。直接查該 System 實際保存的 Chunk／ES／Local 資料，以 document_id 去重並分頁，一份文件不論多少 Chunk 都只列一筆。每筆 `source_revisions` 為實際 Chunk 所帶 `source_revision` 的去重集合。所有 Chunk 均省略來源版本時回 `[]`；更新中或部分寫入失敗時可能有多版。這不是最新成功版本或持久歷史，不依 Run／文件工作紀錄推定，不將單一 Chunk 的 source_revision 改成陣列。
 
 W1 清單每頁預設 100／上限 1,000、依 document_id 升冪、Cursor 綁定 System，分頁期間可反映更新。實作細節與進階分頁需求留 API-D07。
 
@@ -779,7 +783,7 @@ HTTP body、檔案及文件數限制各自生效。例如單個 Base64 檔案解
 - 完成、失敗與可安全回收的 Run 以時間與數量雙重限制保存，任一到達即清理最舊已結束 Run；不能只刪文件最新對照卻留下錯誤 Run 彙總，或無界保存全部歷史。
 - ES 模式下，Runtime 重啟可查保留期內的 Run 與逐文件結果。記憶體 Queue 重新初始化，舊工作按 [重啟規則](#ingestion-job-records) 結算。
 - ES 逾時後依控制紀錄查核，未確認結果的紀錄繼續保留。10,000 的初始上限只適用可回收的終態文件紀錄。
-- 調整併發須驗證 Component、Client 與索引的安全性；本文件不取消 D-60 的無 Query 讀寫鎖政策，也不新增分散式 Queue／多副本一致性承諾。
+- 調整併發須驗證 Component、Client 與索引的安全性；本文件不取消 D-60 的無 Query 讀寫鎖政策，ES 多副本依[共享占用與領取規則](#multi-pod-concurrency-proposal)執行，Queue 保存在受理 Pod。
 
 <a id="src-22-4-文件摘要與分頁參數"></a>
 ## Runtime 設定：文件摘要與分頁參數
@@ -810,29 +814,30 @@ Local Search 第一版仍同程序／單副本。背景執行不能把唯一 Mem
 - ES 文件覆寫順序已定，仍待驗證清理失敗、未知結果查核及崩潰後殘留處理。其他後端的寫入與搜尋可見性另議。
 - 固定快照、System 切版／卸載及持久索引相容規則見 [System 管理](#src-07-4-systemrevision-與-engine-生命週期)。一般寫入與 Query 依 D-60 併行，未知寫入與失敗清理仍依 API-D05 追蹤。
 - 已定 ES 寫入結果未確認時限制同文件重送，直到查核並安全收尾。前次操作終止證據、Idempotency-Key／版本控制、清理 API、進度管控及取消仍待定。
-- Queue／並行／Rate／Deadline／紀錄保留初始值已依 D-64 記於Runtime 控制手冊；尚待正式設定 Schema／載入方式、已確認寫入紀錄的保留細節，以及多 replica 的 instance 結算與一致控制。
+- Queue／並行／Rate／Deadline／紀錄保留初始值已依 D-64 記於Runtime 控制手冊；尚待正式設定 Schema／載入方式、已確認寫入紀錄的保留細節，以及多副本的真實 ES 終止證據與整合驗收。
 
 方向已確認不表示提交機制已實作；詳細盤點與待決子項見 Runtime API／部署。
 
 <a id="multi-pod-concurrency-proposal"></a>
-### 同一 System 跨 Pod 的併發評估草案
+### 同一 System 跨 Pod 寫入 v1
 
-範圍為共用外部索引的 Runtime。不同 Pod 服務不同 System 時，跨程序互斥以 System 為界。當同一 System 可由多個 Pod 接收請求或執行工作時，以下狀態需要跨程序共用。滾動部署也要納入驗收，因為新舊 Pod 可同時存在。[Kubernetes RollingUpdate](https://kubernetes.io/docs/tasks/run-application/update-deployment-rolling/)
+首版 ES Runtime 須能讓多個 Pod 同時受理同一 System 的請求。在 System 併發上限允許時，不同 Pod 可並行寫入不同文件。沿用既有共用 ES 控制索引，每個 System 增加一筆控制紀錄，保存生效的 Config／索引世代、管理狀態、未結束的文件占用及查詢世代引用。Run 歷史及 ES 寫入紀錄繼續分筆放在同一控制索引。System 控制紀錄只放有上限的當前狀態，入庫 payload 留在受理 Pod 的記憶體 Queue。Local Memory 仍維持單程序。
 
-| 競態 | 建議調整 |
+| 操作 | v1 一致性規則 |
 |---|---|
-| 兩個 Pod 同時提交同一文件，或提交與 retire 同時發生 | 用共用控制儲存原子占用 `(system_id, document_id)`。批次一起檢查與保留全部文件，有一份已忙即整批拒絕。退役與覆寫共用同一條件。 |
-| 兩個 Worker 同時領到或結算同一項工作 | 用條件式狀態轉移記錄 `runtime_instance_id` 與單調遞增的擁有者世代。Run／文件紀錄成為所有 Pod 讀取的狀態來源。逾時或失去擁有權時，舊 Worker 的狀態更新須被儲存層拒絕。 |
-| 兩個管理請求同時 Apply，或重建／卸載與入庫交錯 | 共用每 System 的管理狀態與 active revision。以 `expected_active_revision` 原子比對，關閉受影響的請求入口後跨 Pod 排空；索引建好才發布新 binding。耗時 I/O 在短交易外執行，以持久化階段紀錄查核結果。 |
-| Inference 讀到新版 Config 和舊 Index，或在查詢途中切換 binding | 在請求受理時取得同一份 `(config_revision, index_generation, index binding)`，整次請求釘住該快照及必要資源。跨 Pod 快取按版本辨識。實體索引若要刪除，須確認使用該世代的請求已排空。一般文件寫入維持與 Query 併行。 |
-| Pod 失聯、ES Bulk／刪除逾時，舊請求稍後抵達 ES | 寫入前持久化實體索引世代、`write_id`、預期 Chunk ID 與舊批次清理範圍。不明時保持 `unknown`，確認舊執行者無法再送寫入且既送操作已結束，再按精確範圍收尾或接受重送。 |
-| 每 Pod 各自套用限流或併發上限 | 明訂哪些上限是 Pod 本地、System 全域或服務全域。需要全域語意的配額與已接收工作數由共享狀態計算或預留。 |
+| 整批受理 | 先在本 Pod 預留暫存／排隊容量、完成全批預檢，持久化包含 `run_id`、受理 instance、快照、文件識別的 Run 收件資料。再對 System 控制紀錄做一次條件更新，同時確認可受理、同一快照、全批文件未占用及 System 排隊名額，然後一起登記成 `queued`。這次更新成功才算受理。Run API 以控制紀錄為活躍狀態來源，未提交的 Run 收件資料不得對外顯示為已受理。確認完成並入本地 Queue 後回 `202`。 |
+| 同文件／Retire | 文件占用以 `(system_id, document_id)` 為鍵。另一批有任何文件已占用，整批回 `409 DOCUMENT_BUSY`。同步 Retire 使用同一占用條件，直到刪除成功或可查明結果才釋放。 |
+| 領取工作 | Worker 必須原子把特定 Run 的特定文件從 `queued` 改為 `running`，一併記錄唯一的 `runtime_instance_id`、`owner_token` 並取得 System 執行名額。v1 由持有 payload 的受理 Pod 派工。即使兩個 Worker 都看到 `queued`，只有一次轉移可成功。比對失敗要重讀狀態，舊擁有者不得寫入控制狀態或結算。 |
+| 安全釋放占用 | 送出第一筆 Bulk 前保存所有者、實體索引世代、`write_id`、預期 Chunk ID 與清理範圍。確認寫入及清理結果後，先以同一擁有者條件在控制紀錄登記終態，等 Run 終態持久化後再原子釋放占用。中斷時可按已登記終態補齊 Run 紀錄與釋放，無須重做 ES 操作。回應不明時先查原操作及持久紀錄，避免重送同一次有副作用的操作。 |
+| 未知結果與 Pod 終止 | 寫入或 retire 結果不明時保留 `unknown` 和占用，停止後續同文件操作。確認舊執行者已無法繼續送寫入，而且已送操作已結束及收尾，才可釋放。逾時、Pod 無心跳或查無 Chunk 都不足以釋放。已確認停止的受理 instance 所遺留的 queued／running 工作依[重啟規則](#ingestion-job-records)結算，呼叫方確認後重送。 |
+| Apply／重建／卸載 | 在同一 System 控制紀錄比較 `expected_active_revision`、檢查占用並取得管理權。占用尚未清理時回 `409 SYSTEM_BUSY`。破壞性操作先關閉入口並跨 Pod 排空引用。索引就緒後原子發布同一份 Config 和 binding，所有 ES 寫入使用保留的實體索引名稱，每代名稱唯一。 |
+| Inference | 一般查詢與文件寫入併行。查詢受理時原子取得同一份 `(config_revision, index_generation, index binding)` 和世代引用，完成後釋放。需要刪除索引的管理操作等該代引用都結束再刪除。若引用來自已終止的 instance，須確認它已無法再讀取該代後回收。跨 Pod 快取以快照版本辨識。 |
 
-如已具備交易型資料庫，建議用它管理短交易的 System 閘門、文件占用和 Run 狀態。例如 PostgreSQL 的 row lock 可在交易內同步檢查多筆資料。ES 繼續保存搜尋資料。若只使用既有 ES 控制索引，`if_seq_no`／`if_primary_term` 能保護單筆狀態文件。批次文件的原子受理、System 閘門與文件占用之間的協調仍須另定協定。[PostgreSQL row locks](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-ROWS) · [ES optimistic concurrency control](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/optimistic-concurrency-control) · [ES Bulk API](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-bulk)
+對單筆 System 控制紀錄使用 ES 的即時 Get 與 `if_seq_no`／`if_primary_term`。要檢查及修改的多份文件占用都放在同一筆紀錄，讓整批預留一次提交。ES Bulk 適用於資料 Chunk 的寫入，各項結果獨立。衝突時重新讀取最新狀態並重做前置檢查。回應逾時時，使用相同 `run_id`／操作識別查證原先的條件更新是否已提交。耗時的解析、ES 寫入與重建在控制更新完成後執行。[ES optimistic concurrency control](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/optimistic-concurrency-control) · [ES Get](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-get) · [ES Bulk](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-bulk)
 
-Kubernetes Lease 可協助選出執行者。通過 DB 的世代檢查，只能證明該次控制狀態更新有效。ES 仍可能處理先前送達的 Bulk；若無法在寫入邊界拒絕舊世代，就維持文件 `unknown` 並查核，直到可以安全接手。Replay 已啟動或未領取工作的政策須分開定義，包含目前只結算舊工作、由呼叫方重新提交的語意。[client-go leader election](https://pkg.go.dev/k8s.io/client-go/tools/leaderelection)
+例如 Pod A 與 Pod B 同時收到 `guide-1`，即使兩者都讀到空閒，只有一個能成功更新同一版控制紀錄。另一個重新讀取時看見占用，回 `409 DOCUMENT_BUSY`。若 Pod B 收到的是 `guide-2`，它可以受理，在 System 併發上限大於 1 且有名額時與 A 同時寫入。
 
-建議先讓同一 System 維持一個寫入執行者，同時把受理、查詢狀態和發布快照放進共享控制儲存。需要多 Worker 時再啟用每文件的跨 Pod 領取。驗收須覆蓋雙提交、提交對退役、Apply 對 Apply、查詢中重建、舊 Pod／Worker 寫入晚到、Bulk 部分成功、收件後崩潰，以及滾動更新。共用儲存選型、佇列接管和 ES 結果查核證據依 [Q-008](08_plan_and_decisions.md#q-008)、[Q-010](08_plan_and_decisions.md#q-010)、[Q-017](08_plan_and_decisions.md#q-017)、[Q-020](08_plan_and_decisions.md#q-020) 及 [Q-027](08_plan_and_decisions.md#q-027) 核定。
+每 System 的等待與執行上限由所有 Pod 共用，預設文件執行上限仍為 1。活躍占用總數以 System 等待上限加執行上限為限，含未知結果及 Retire，避免查核未結束的項目無界堆積。容量不足依既有 `503 RUNTIME_CAPACITY_EXHAUSTED` 回應。既有 Runtime 程序總量上限各 Pod 各自執行。首版採本地派工及共享占用，故意外停止後依安全證據結算，無法自動轉交原始 payload。滾動部署時也須測試雙提交、同 Run 雙領取、不同文件並行、提交對 Retire、Apply 對 Apply、查詢中重建、收件確認前後崩潰、部分成功及舊 Pod 寫入晚到。控制紀錄競爭成本、ES 已送操作終止證據及容量上限需在雙 Pod＋實際 ES 的整合驗收確認。見 [Q-008](08_plan_and_decisions.md#q-008)、[Q-020](08_plan_and_decisions.md#q-020) 及 [Q-027](08_plan_and_decisions.md#q-027)。
 
 <a id="src-07-7-local-search-恢復與儲存"></a>
 ## Local Search 恢復與儲存

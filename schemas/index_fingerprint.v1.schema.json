@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rag-builder.example/schemas/index_fingerprint.v1.schema.json",
+  "title": "Elasticsearch index fingerprint projection v1",
+  "description": "Effective indexing inputs emitted by the Runtime compiler. The whole projection is canonicalized and hashed.",
+  "type": "object",
+  "properties": {
+    "version": {"const": 1},
+    "ingestion": {
+      "description": "Effective stages in pipeline order. A remote segment replaces every stage from the starting module to the ending module, inclusive.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {"$ref": "#/$defs/builtin_stage"},
+          {"$ref": "#/$defs/remote_segment"}
+        ]
+      }
+    },
+    "index": {"$ref": "#/$defs/index"}
+  },
+  "required": ["version", "ingestion", "index"],
+  "additionalProperties": false,
+  "$defs": {
+    "nonempty": {"type": "string", "minLength": 1},
+    "module": {"enum": ["import", "parsing", "chunking", "embedding"]},
+    "effective_structdata": {
+      "type": "object",
+      "propertyNames": {"minLength": 1},
+      "additionalProperties": {
+        "allOf": [
+          {"$ref": "data_meta.schema.json#/$defs/field"},
+          {"required": ["searchable", "filterable"]}
+        ]
+      }
+    },
+    "builtin_stage": {
+      "type": "object",
+      "properties": {
+        "kind": {"const": "builtin"},
+        "module": {"$ref": "#/$defs/module"},
+        "component_id": {"$ref": "#/$defs/nonempty"},
+        "component_version": {"$ref": "#/$defs/nonempty"},
+        "parameters": {
+          "description": "Component-specific, allowlisted output-affecting parameters with defaults and dependency revisions resolved.",
+          "type": "object"
+        },
+        "output_structdata": {"$ref": "#/$defs/effective_structdata"}
+      },
+      "required": ["kind", "module", "component_id", "component_version", "parameters", "output_structdata"],
+      "additionalProperties": false
+    },
+    "remote_segment": {
+      "type": "object",
+      "properties": {
+        "kind": {"const": "remote"},
+        "module": {"$ref": "#/$defs/module"},
+        "through": {"$ref": "#/$defs/module"},
+        "adapter_version": {"$ref": "#/$defs/nonempty"},
+        "implementation_revision": {"$ref": "#/$defs/nonempty"},
+        "parameters": {
+          "description": "Output-affecting parameters resolved from the remote contract. Runtime request values are excluded.",
+          "type": "object"
+        },
+        "output_structdata": {"$ref": "#/$defs/effective_structdata"}
+      },
+      "required": ["kind", "module", "through", "adapter_version", "implementation_revision", "parameters", "output_structdata"],
+      "additionalProperties": false
+    },
+    "index": {
+      "type": "object",
+      "properties": {
+        "component_id": {"$ref": "#/$defs/nonempty"},
+        "component_version": {"$ref": "#/$defs/nonempty"},
+        "structdata": {"$ref": "#/$defs/effective_structdata"},
+        "vector_bindings": {
+          "description": "Only the vectors that are written to the index, keyed by vector name.",
+          "type": "object",
+          "propertyNames": {"minLength": 1},
+          "additionalProperties": {"$ref": "urn:retrieval-builder:index-binding:0.2-draft#/$defs/VectorIndexBinding"}
+        },
+        "embedding_spaces": {
+          "description": "Effective semantic model identity for each indexed vector, keyed by the same vector name.",
+          "type": "object",
+          "propertyNames": {"minLength": 1},
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "model_id": {"$ref": "#/$defs/nonempty"},
+              "model_revision": {"$ref": "#/$defs/nonempty"}
+            },
+            "required": ["model_id", "model_revision"],
+            "additionalProperties": false
+          }
+        },
+        "mapping": {
+          "description": "Projected ES mapping. Native field and runtime definitions are preserved. Mapping _meta is stored separately.",
+          "type": "object",
+          "properties": {
+            "properties": {"type": "object"},
+            "dynamic": {"enum": [true, false, "strict", "runtime"]},
+            "dynamic_templates": {"type": "array", "items": {"type": "object"}},
+            "runtime": {"type": "object"},
+            "_source": {"type": "object"}
+          },
+          "required": ["properties", "dynamic", "dynamic_templates", "runtime", "_source"],
+          "additionalProperties": false
+        },
+        "settings": {
+          "description": "Effective native ES analysis and similarity definitions used by the mapping.",
+          "type": "object",
+          "properties": {
+            "analysis": {"type": "object"},
+            "similarity": {"type": "object"}
+          },
+          "required": ["analysis", "similarity"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["component_id", "component_version", "structdata", "vector_bindings", "embedding_spaces", "mapping", "settings"],
+      "additionalProperties": false
+    },
+    "mapping_meta": {
+      "description": "Runtime-owned metadata placed in the Elasticsearch mapping _meta object.",
+      "type": "object",
+      "properties": {
+        "system_id": {"$ref": "#/$defs/nonempty"},
+        "index_fingerprint": {"type": "string", "minLength": 64, "maxLength": 64, "pattern": "^[0-9a-f]{64}$"},
+        "index_fingerprint_version": {"const": 1}
+      },
+      "required": ["system_id", "index_fingerprint", "index_fingerprint_version"],
+      "additionalProperties": false
+    }
+  }
+}

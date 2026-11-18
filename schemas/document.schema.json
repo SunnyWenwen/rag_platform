@@ -118,7 +118,6 @@
         {
           "required": [
             "document_id",
-            "source_revision",
             "data_id",
             "structdata"
           ]

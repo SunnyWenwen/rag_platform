@@ -319,8 +319,8 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 ### Q-007 文件／Chunk ID 與 source_revision
 
 - 2026-11-03 D-52：必要 data_id 仍須有效／清單內唯一，但不強制由 fingerprint／ordinal 計算，也不強制將計算資訊寫入 _rag。SDK helper 可選用；穩定／更新語意按實作及此 Q-ID 核定。
-- 2026-10-30 D-47：已同意可重現 ID 方向；[資料契約](02_data_contracts.md#data-flow)～6 提供有效切分計畫 fingerprint＋文件內全域 ordinal 的 Python 參考演算法。仍待省略 revision 的生成、檔案拆多文件、CSV 整批替換的 ID 生成、跨語言 canonicalization 與正式遷移。
-- D-65 確認文件摘要清單回 document_id＋source_revisions[]，彙整實際儲存 Chunk 的版本。覆寫以 `document_id` 為準，接受相同 `source_revision` 帶入新內容；來源版本僅供追溯。
+- 2026-10-30 D-47：已同意可重現 ID 方向；[資料契約](02_data_contracts.md#data-flow)～6 提供有效切分計畫 fingerprint＋文件內全域 ordinal 的 Python 參考演算法。仍待檔案拆多文件、CSV 整批替換的 ID 生成、跨語言 canonicalization 與正式遷移。
+- D-65 確認文件摘要清單回 document_id＋source_revisions[]，彙整實際儲存 Chunk 的版本。覆寫以 `document_id` 為準，接受相同 `source_revision` 帶入新內容。來源版本供追溯，省略時下游也省略，文件清單對沒有版本的文件回空陣列。
 - 建議：跨批更新要求穩定 document_id，內容版本與 Config 分開；採明確可重現的衍生 ID 規則。
 - 替代：每批當新文件；需接受無法自然更新與重複資料後果。
 - 負責角色：Engine＋資料／產品；阻擋 M1 正式 ID 規範及 M2 更新。
@@ -392,7 +392,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 
 - 已確認：同一 System 的同版邏輯 Config 跨環境相同，部署設定分開；文件 source_revision 與 index_generation 概念分開。不清楚的是保存／生效時點、Hash、草稿衝突、CSV mapping 歸屬、環境部署識別／資料版本及快照切換。
 - 2026-10-28 補充：需定 Component／package／Engine 解析版本保存位置、如何納入可重現執行與相容判定、更新 Component 後的重測／重建與回復政策；新版發布不自動升級既有 System，僅看版本號不能判定索引相容。
-- 已確認：Runtime 從會影響索引的有效設定推導並正規化後計算 SHA-256，與實際 mapping／Profile 一併驗證。ES 將 System 歸屬、指紋及指紋規則版本存入 `mappings._meta`。精確輸入欄位、序列化及規則升版處理仍待定。
+- 已確認：Runtime 從會影響索引的有效設定推導並正規化後計算 SHA-256，與實際 mapping／Profile 一併驗證。ES 將 System 歸屬、指紋及指紋規則版本存入 `mappings._meta`。[指紋 v1](06_runtime_api_and_deployment.md#index-fingerprint-v1-proposal) 定義投影、序列化及 metadata Schema。無指紋索引的遷移、依賴版本解析及後續規則升版仍須整合確認。
 - 建議：分開保存版本與執行綁定；Hash 只納有效配置並保留有語意順序，使用樂觀版本檢查。
 - 替代：單一 active revision，改配置後阻擋到準備完成；仍須避免 lost update。
 - 負責角色：Engine＋Backend＋Frontend；阻擋 M0 Hash 凍結及 M5 版本操作。
@@ -443,7 +443,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - D-56 已確認：Builder DEV／獨立 Runtime 共用 System Queue／併發與 Inference Rate／併發／Deadline；Runtime 控制總量，Builder 另管理 User／Workspace 配額。上限可配置已確認；放 E 為先前建議，D-57 暫緩管理者／存放位置／Schema 的定案。Worker 是排程概念，不要求每 System 新 Pod。
 - D-61：共用 API service 啟動只綁服務／Registry 基礎設定，後續管理多份 System Config，不因每份 UI 設定新增服務；可依 Namespace／資源池分成少數共用服務，精確分組策略尚未選定。
 - D-62 已選 B：共用 Flow／Executor，逐請求／已接受文件固定 Config 快照，Module 依設定解析 Component；不要求每份 Config 建立專屬 Flow。Component 實例／資源是否共用依狀態與隔離需求決定。
-- 仍待：配置與 Component 快取、資源預載與釋放策略、管理 API 的正式協定、服務池分組、公平排程、正式參數 Schema、實際記憶體上限及多副本協調。Runtime 管理行為見 [生命週期](06_runtime_api_and_deployment.md#src-07-4-systemrevision-與-engine-生命週期)。
+- 仍待：配置與 Component 快取、資源預載與釋放策略、管理 API 的正式協定、服務池分組、公平排程、正式參數 Schema、實際記憶體上限。ES 首版多副本依[跨 Pod 寫入](06_runtime_api_and_deployment.md#multi-pod-concurrency-proposal)開發與驗收。Runtime 管理行為見 [生命週期](06_runtime_api_and_deployment.md#src-07-4-systemrevision-與-engine-生命週期)。
 - 建議：先有受限共享 Runtime 與明確隔離 Binding；Local Search 每 System 的 Ingest／Query 必須同程序。
 - 替代：每 System 獨立 Runtime，增加部署／資源管理成本。
 - 負責角色：平台＋Backend／Runtime；阻擋 M5 多 System 服務。
@@ -543,7 +543,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 | 1 | 最小完整 System Config 與環境綁定／Q-002、Q-015 | component_id／版本／parameters／服務引用如何放在 D，E 如何提供連線及 Runtime 設定；不把完整 Descriptor 複製進 Config | 一份可人工閱讀的 Elasticsearch Config，及切換 Remote Parser 的對照；機器 Schema 再按核定內容產出 |
 | 2 | User Remote API／Q-022、Q-028 | 邊界驗證、呼叫失敗與認證解析 | 完整 Remote 連續區段範例 |
 | 3 | Component SDK／Context 與資源生命週期／Q-002、Q-017、Q-020 | B 的 run(input, config, context)、初始化／關閉、Resolver 取得正確 System Client／IndexBinding、有狀態實例的作用範圍 | 一組 Local Parser／Remote Adapter 的 SDK 示意與契約驗收；不為每個 System 組裝專屬 Flow |
-| 4 | 資料更新／索引讀寫與恢復／Q-007～Q-015 | revision 生成／衝突、失敗清理與 Remote unknown、ES mapping、Filter／融合的可驗算規則 | backend 更新／清理與管理操作的具體約定；沿用完整覆寫、不續跑、無查詢讀寫鎖等已確認方向 |
+| 4 | 資料更新／索引讀寫與恢復／Q-007～Q-015 | 來源版本傳遞、失敗清理與 Remote unknown、ES mapping、Filter／融合的可驗算規則 | backend 更新／清理與管理操作的具體約定；沿用完整覆寫、不續跑、無查詢讀寫鎖等已確認方向 |
 | 5 | 最小可執行技術與驗收基線／Q-001、Q-003、Q-004、Q-011、Q-026 | 具體框架／套件版本、可實測模型 API、Tokenizer／搜尋實作與測資；既有 M1 範圍不重新擴張 | Structured JSON／Recursive／Dense／Elasticsearch 的真實 ingest→query，以及成功、失敗與多 System 隔離驗收 |
 
 優先用第 1 項完整 Config 驗證第 2～3 項是否足夠串接，再依 M1／M2 所需的第 4～5 項收斂。Builder 管理 API／動態 UI、AI 助手與 Export／部署仍依既有 M4～M7 階段補齊；Builder 登入繼續延後。技術與驗收基線可平行準備，不要求等整張待決清單全部關閉才開始受限的 M1 開發。
@@ -592,8 +592,8 @@ Builder 可按 [W1 開發契約索引](09_w1_builder_runtime_contract.md) 實作
 | 跨 Query 融合的發布與執行 | Query Transformation 位置與多 Query 必須啟用已確認。內建 Rewrite 的 [發布格式](05_system_config.md#inference-result-processing)可供 Builder 開發，演算法參數、Remote 節點設定及 M2 真實執行驗收見 [Q-014](#q-014)。 |
 | 自行提供模型／索引服務的發布 | 定義每種服務引用對應哪個環境綁定，自訂模型和維度如何對上 Profile。見 [Q-003](#q-003)、[Q-021](#q-021) 與 [參數適用範圍](04_component_descriptor.md#component-parameter-scope)。 |
 | Remote 動態 Secret 引用 | 對齊 `request_parameters` 的宣告、授權及環境綁定範例。現有 Remote fixture 已示範傳輸內容，Config 端待 [Q-028](#q-028) 補齊。 |
-| 真實 Ingestion 的識別與追溯 | W1 Mock 可帶明確 `document_id`、`source_revision` 並模擬候選的 `data_id`。省略來源版本時的生成方式，以及切分 ID 的穩定性與更新語意，依 [Q-007](#q-007) 核定。 |
-| Runtime 重新啟動後沿用既有 ES 索引 | [指紋 v1 草案](06_runtime_api_and_deployment.md#index-fingerprint-v1-proposal)列出欄位、序列化和驗收例。精確鍵名與既有索引遷移待 [Q-015](#q-015) 核定。 |
-| Runtime 多副本共用同一 System | [多 Pod 評估草案](06_runtime_api_and_deployment.md#multi-pod-concurrency-proposal)列出受理互斥、工作結算、發布快照、切換和驗收。共享狀態選型與接管政策待 [Q-020](#q-020)、[Q-027](#q-027) 核定。 |
+| 真實 Ingestion 的識別與追溯 | W1 Mock 可帶明確 `document_id`、`source_revision` 並模擬候選的 `data_id`。省略來源版本可跑完整流程。切分 ID 的穩定性與更新語意依 [Q-007](#q-007) 核定。 |
+| Runtime 重新啟動後沿用既有 ES 索引 | [指紋 v1](06_runtime_api_and_deployment.md#index-fingerprint-v1-proposal) 已有 JSON Schema、序列化規則和可驗證範例。既有索引遷移與實際 ES 整合依 [Q-015](#q-015) 驗收。 |
+| Runtime 多副本共用同一 System | [跨 Pod 寫入 v1](06_runtime_api_and_deployment.md#multi-pod-concurrency-proposal) 採 ES 共享占用、本地派工與未知結果安全查核。須以雙 Pod＋實際 ES 驗證競態、收尾及容量，見 [Q-020](#q-020)、[Q-027](#q-027)。 |
 
 歷史決策來源、過時提案、驗證及校對過程集中於 [history/](history/README.md)，包括 D-01～D-66 的來源與演變。Q-001～Q-028 及 SC-01～SC-10 仍是現行待決／討論項目；文件歸檔不代表功能驗收完成。

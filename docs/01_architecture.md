@@ -114,7 +114,7 @@ Config 與部署設定的欄位、有效設定規則及範例見 [資料契約�
 |---|---|
 | 開發文件版本 | 本 repository 規格內容的修訂，例如文件集 v0.12；不代表 Config 或程式版本，也不代表功能已完成 |
 | Config Revision（config_revision） | 同一 System 的邏輯設定版本；改方法、參數、Prompt 等可形成新版本 |
-| 文件內容版本（source_revision） | 每份匯入 Retrieval 的來源文件之內容版本；不同文件各自追蹤 |
+| 文件內容版本（source_revision） | 來源系統可選填的文件版本，供各文件追溯 |
 | 索引世代（index_generation） | Runtime 在建立或重建索引時分配的識別。沿用同一索引、匯入或刪除文件時維持相同值。 |
 | 契約版本（contract_version） | System Config 的格式版本。現行 W1 開發基準為 `0.2-draft`，後續版本遷移依 Q-002。 |
 | Descriptor 版本（descriptor_version） | Component Descriptor 的格式版本。Component 本身的版本由 `component_version` 指定。 |

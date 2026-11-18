@@ -1,0 +1,286 @@
+{
+  "projection": {
+    "version": 1,
+    "ingestion": [
+      {
+        "kind": "builtin",
+        "module": "import",
+        "component_id": "platform",
+        "component_version": "1.0.0",
+        "parameters": {
+          "source": "structdata"
+        },
+        "output_structdata": {
+          "body": {
+            "type": "string",
+            "required": true,
+            "searchable": false,
+            "filterable": false
+          },
+          "title": {
+            "type": "string",
+            "required": true,
+            "searchable": false,
+            "filterable": true
+          },
+          "price": {
+            "type": "number",
+            "required": false,
+            "searchable": false,
+            "filterable": false
+          },
+          "tags": {
+            "type": "string_array",
+            "required": false,
+            "searchable": false,
+            "filterable": true
+          }
+        }
+      },
+      {
+        "kind": "builtin",
+        "module": "parsing",
+        "component_id": "passthrough",
+        "component_version": "1.0.0",
+        "parameters": {},
+        "output_structdata": {
+          "body": {
+            "type": "string",
+            "required": true,
+            "searchable": false,
+            "filterable": false
+          },
+          "title": {
+            "type": "string",
+            "required": true,
+            "searchable": false,
+            "filterable": true
+          },
+          "price": {
+            "type": "number",
+            "required": false,
+            "searchable": false,
+            "filterable": false
+          },
+          "tags": {
+            "type": "string_array",
+            "required": false,
+            "searchable": false,
+            "filterable": true
+          }
+        }
+      },
+      {
+        "kind": "builtin",
+        "module": "chunking",
+        "component_id": "recursive",
+        "component_version": "1.0.0",
+        "parameters": {
+          "split_field": "body",
+          "output_field": "text",
+          "copy_fields": [
+            {
+              "source_field": "price",
+              "output_field": "price"
+            },
+            {
+              "source_field": "tags",
+              "output_field": "tags"
+            },
+            {
+              "source_field": "title",
+              "output_field": "title"
+            }
+          ],
+          "max_tokens": 500,
+          "overlap_tokens": 50,
+          "tokenizer_revision": "fixture@1",
+          "separators": [
+            "\n\n",
+            "\n",
+            " ",
+            ""
+          ],
+          "keep_separator": false,
+          "preserve_original": false,
+          "include_original_chunk": false
+        },
+        "output_structdata": {
+          "text": {
+            "type": "string",
+            "required": true,
+            "searchable": false,
+            "filterable": false
+          },
+          "title": {
+            "type": "string",
+            "required": true,
+            "searchable": false,
+            "filterable": true
+          },
+          "price": {
+            "type": "number",
+            "required": false,
+            "searchable": false,
+            "filterable": false
+          },
+          "tags": {
+            "type": "string_array",
+            "required": false,
+            "searchable": false,
+            "filterable": true
+          }
+        }
+      },
+      {
+        "kind": "builtin",
+        "module": "embedding",
+        "component_id": "dense",
+        "component_version": "1.0.0",
+        "parameters": {
+          "compose_text": false
+        },
+        "output_structdata": {
+          "text": {
+            "type": "string",
+            "required": true,
+            "searchable": false,
+            "filterable": false
+          },
+          "title": {
+            "type": "string",
+            "required": true,
+            "searchable": false,
+            "filterable": true
+          },
+          "price": {
+            "type": "number",
+            "required": false,
+            "searchable": false,
+            "filterable": false
+          },
+          "tags": {
+            "type": "string_array",
+            "required": false,
+            "searchable": false,
+            "filterable": true
+          }
+        }
+      }
+    ],
+    "index": {
+      "component_id": "elasticsearch",
+      "component_version": "1.0.0",
+      "structdata": {
+        "text": {
+          "type": "string",
+          "required": true,
+          "searchable": true,
+          "filterable": false
+        },
+        "title": {
+          "type": "string",
+          "required": true,
+          "searchable": false,
+          "filterable": true
+        },
+        "price": {
+          "type": "number",
+          "required": false,
+          "searchable": false,
+          "filterable": true
+        },
+        "tags": {
+          "type": "string_array",
+          "required": false,
+          "searchable": false,
+          "filterable": true
+        }
+      },
+      "vector_bindings": {
+        "text": {
+          "source_field": "text",
+          "embedding_profile_id": "text-v1",
+          "dimensions": 3
+        }
+      },
+      "embedding_spaces": {
+        "text": {
+          "model_id": "fixture-model",
+          "model_revision": "1"
+        }
+      },
+      "mapping": {
+        "dynamic": "strict",
+        "dynamic_templates": [],
+        "runtime": {},
+        "_source": {
+          "enabled": true
+        },
+        "properties": {
+          "document_id": {
+            "type": "keyword"
+          },
+          "data_id": {
+            "type": "keyword"
+          },
+          "source_revision": {
+            "type": "keyword"
+          },
+          "write_id": {
+            "type": "keyword"
+          },
+          "structdata": {
+            "properties": {
+              "title": {
+                "type": "keyword"
+              },
+              "price": {
+                "type": "double"
+              },
+              "tags": {
+                "type": "keyword"
+              },
+              "text": {
+                "type": "text",
+                "analyzer": "standard"
+              }
+            }
+          },
+          "vectors": {
+            "properties": {
+              "text": {
+                "type": "object",
+                "properties": {
+                  "values": {
+                    "type": "dense_vector",
+                    "dims": 3,
+                    "index": true,
+                    "similarity": "cosine"
+                  },
+                  "embedding_profile_id": {
+                    "type": "keyword",
+                    "index": false
+                  },
+                  "source_field": {
+                    "type": "keyword",
+                    "index": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "settings": {
+        "analysis": {},
+        "similarity": {}
+      }
+    }
+  },
+  "mapping_meta": {
+    "system_id": "es-example",
+    "index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27",
+    "index_fingerprint_version": 1
+  }
+}

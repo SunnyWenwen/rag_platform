@@ -13,6 +13,10 @@
 
 [IndexBinding JSON](index_binding.example.json) 對應上述兩份 Config 的實際全文、過濾與向量計畫。欄位語意見 [IndexBinding 規格](../../docs/02_data_contracts.md#indexbinding)。
 
+## Elasticsearch 索引指紋
+
+[索引指紋 v1 範例](index_fingerprint.v1.example.json)示範有效索引設定投影及 ES `mappings._meta` 的 Runtime 欄位。含假設已解析的 Tokenizer 及模型版本。HTTP 範例驗證器會核對兩份 Schema 形狀與範例的 SHA-256。見[索引指紋 v1 規格](../../docs/06_runtime_api_and_deployment.md#index-fingerprint-v1-proposal)。
+
 ## Component Descriptor 驗證
 
 - [Meta-schema 草案](../../schemas/component_descriptor.draft.schema.json)驗證 Descriptor 的外層及目前測試的宣告語法。
@@ -46,7 +50,7 @@ python3 examples/user_remote_api/validate.py
 
 | JSON 情境 | 對應規格 |
 |---|---|
-| `happy_path`，從取得 Catalog、驗證及發布設定，到首次匯入、查詢、文件管理及卸載 | [Catalog API](../../docs/06_runtime_api_and_deployment.md#w1-catalog) · [Config Validation API](../../docs/06_runtime_api_and_deployment.md#config-validation-api) · [System 生命週期](../../docs/06_runtime_api_and_deployment.md#system-lifecycle-api) · [資料生命週期](../../docs/06_runtime_api_and_deployment.md#data-lifecycle-api) |
+| `happy_path`，從取得 Catalog、驗證及發布設定，到省略來源版本的匯入、查詢、文件管理及卸載 | [Catalog API](../../docs/06_runtime_api_and_deployment.md#w1-catalog) · [Config Validation API](../../docs/06_runtime_api_and_deployment.md#config-validation-api) · [System 生命週期](../../docs/06_runtime_api_and_deployment.md#system-lifecycle-api) · [資料生命週期](../../docs/06_runtime_api_and_deployment.md#data-lifecycle-api) |
 | `reuse_and_rebuild`、`blocked_or_stale_publish`，涵蓋索引沿用／重建、欄位錯誤及版本衝突 | [System 生命週期](../../docs/06_runtime_api_and_deployment.md#system-lifecycle-api) · [索引重建](../../docs/06_runtime_api_and_deployment.md#system-index-lifecycle) · [錯誤格式](../../docs/06_runtime_api_and_deployment.md#runtime-http-errors) |
 | `ingestion_status_and_errors`，涵蓋無效請求、文件忙碌、Run 部分失敗及紀錄過期 | [資料生命週期](../../docs/06_runtime_api_and_deployment.md#data-lifecycle-api) |
 | `query_empty_and_errors`，涵蓋無命中、無效 Filter、索引未就緒及上游失敗 | [Inference API](../../docs/06_runtime_api_and_deployment.md#inference-api) |
