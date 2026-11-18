@@ -4,6 +4,26 @@
 
 內建 Component Descriptor 必須宣告 `component_id` 和 `component_version`。Registry 以 Module、ID 和版本共同定位一份描述。Builder 發布時在 System Config 固定所選版本。平台保留 `remote_api` 給共用 Adapter，遠端服務的連線與輸出宣告由 System Config 及部署綁定提供。
 
+<a id="descriptor-fields"></a>
+## Component Descriptor 頂層欄位
+
+下表對應 [Component Descriptor Meta-schema](../schemas/component_descriptor.draft.schema.json) 的全部頂層欄位。Catalog 的 `descriptors[]` 每筆都是一份 Descriptor。Builder 依 Descriptor 編輯該節點的 `parameters`，發布時將所選 Component 的 ID、版本與設定保存到 [System Config](05_system_config.md)。
+
+| 欄位 | 必填 | 用途與讀取者 |
+|---|---|---|
+| `descriptor_version` | 是 | Builder 與 Engine 用它辨識 Descriptor 格式。現行值為 `0.2-draft`。 |
+| `module` | 是 | 指定 Component 所屬的 Pipeline 模組，例如 `chunking`。Builder 據此列出可選方法，Engine 據此核對模組與 I/O。 |
+| `component_id` | 是 | 指定該模組內的執行方法，例如 Chunking 的 `recursive`。Builder 保存選值，Engine 以其查找實作。 |
+| `component_version` | 是 | 固定所選 Component 的版本，例如 `1.0.0`。Builder 保存版本，Engine 以 `(module, component_id, component_version)` 取得對應規格與實作。 |
+| `parameters_schema` | 是 | 定義該節點 `parameters` 的 JSON Schema，包括型別、必填、預設及固定選項等。Builder 用它生成表單及檢查草稿，Engine 用它驗證設定。 |
+| `io` | 是 | 宣告模組的 `input` 和 `output` 資料類型，例如 Chunking 的 `Document[]` → `Document[]`。Builder 用於預覽，Engine 核對模組邊界。檔案 Parser 也可宣告 `content_media_types`。 |
+| `option_sources` | 否 | 將參數路徑對應到動態候選來源。Builder 用於下拉選單，Engine 用於檢查已選的欄位或資源引用。例如 `/profile` 從 Catalog 的 `resources.profiles` 取選項。見 [候選來源與解析方式](06_runtime_api_and_deployment.md#在-builder-解析-option_sources)。 |
+| `data_rules` | 否 | 描述目前設定如何影響輸出欄位與向量。Builder 用於有效 I/O 預覽及下游欄位選項，Engine 用於編譯有效 Schema。見 [資料推導規則](#descriptor-data-rules)。 |
+| `ui_hints` | 否 | Builder Renderer 用於欄位順序、分組、進階區、可見條件、專用控制項及預覽。見 [Renderer 契約](07_builder_ui.md#ui-hints-contract)。 |
+| `constraints` | 否 | Builder 與 Engine 用於檢查同一 Component 內的參數關係，例如 Chunking 的 overlap 必須小於切分長度。見 [參數關聯驗證](#descriptor-constraints)。 |
+
+`option_sources` 的鍵從該 Component 的 `parameters` 起算。路徑 `/mappings/*/source_field` 對每筆映射的來源欄位套用同一條候選規則。規則中的 `source` 指定候選集合，例如 `input.structdata`。欄位型別與必填性可分別用 `types`、`required` 篩選。
+
 ## Schema 推導
 
 1. 從 Import 設定取得原始 `Document.structdata` 欄位，使用 [Data Meta Schema](02_data_contracts.md#data-meta-schema) 的型別與屬性。
@@ -14,6 +34,41 @@
 Builder 在草稿變更時推導有效 I/O 供欄位選項和預覽。W1 內建 Parser 在檔案來源模式沿用原有 structdata 並產生必填的 `contenttext`，Indexing 則以逐欄覆寫合併全文及 Filter 旗標。這兩條是 Builder 與 Engine 共用的內建推導規則。執行時，Runtime 用同一契約驗證資料及發布設定。
 
 例：Chunking 保留 text 與 title，Embedding 可選兩者作字串來源。若 Chunking 改名為 body，原 text 映射顯示失效。若 Remote 含 Embedding 並宣告 vectors.body，Indexing 選用 vectors.body，內建向量 Retrieval 再取得對應 Profile 的 Query Encoder。
+
+<a id="descriptor-data-rules"></a>
+### `data_rules` 資料推導規則
+
+每條規則用 `op` 指定如何從元件設定與輸入 Schema 得出輸出欄位。輸出 Schema 用於編輯和發布驗證，實際文字與向量由元件在執行時產生。
+
+| `op` | 規則欄位 | 推導結果 |
+|---|---|---|
+| `declare` | `target`、`schema` | 用 `target` 讀取輸出欄名，套用 `schema` 的欄位定義。例如 Chunking 由 `/output_field` 宣告一個必填字串欄位。 |
+| `copy` | `source`、`target`，可加 `for_each` | 依 `source` 取上游欄名，將它的型別、必填性和搜尋旗標繼承到 `target` 指定的輸出欄名。例如逐筆處理 `copy_fields`。 |
+| `vector` | `source`、`target`、`profile`，可加 `for_each` | 以 `source` 選輸入字串欄位，`target` 命名輸出向量，再用 `profile` 讀到的 ID 查 Catalog 的向量維度。 |
+| `compose` | `enabled`、`target`、`template` | 啟用時，依模板引用的必填字串欄位推導一個新的必填文字欄位。Embedding 先推導此欄位，再讓各筆向量映射引用它。 |
+
+各路徑預設從 `parameters` 起算。`for_each` 從根層選定一個陣列，`source` 和 `target` 改從當前項目取值。`vector` 規則的 `profile` 仍從 `parameters` 根層取值，各項共用同一 Profile。
+
+例如 Embedding 的 Catalog 規則為：
+
+```json
+{
+  "op": "vector",
+  "for_each": "/mappings",
+  "source": "/source_field",
+  "target": "/vector_name",
+  "profile": "/profile"
+}
+```
+
+當 `parameters.mappings[0]` 是 `{"source_field": "text", "vector_name": "body_vec"}` 且 `parameters.profile` 為 `"text-v1"`，規則就會從當前列讀到 `text` 與 `body_vec`，再從根層讀到 `text-v1`。有效輸出因此包含由 `structdata.text` 產生的 `vectors.body_vec`，其維度來自 Catalog 的 `resources.profiles["text-v1"]`。
+
+其他實例見 [Recursive Chunking Descriptor](../examples/system_config/recursive.descriptor.json) 與 [Runtime Catalog 回應](../examples/system_config/runtime_catalog.response.json)。
+
+<a id="descriptor-constraints"></a>
+## `constraints` 參數關聯驗證
+
+現行支援 `lt`。它從 `parameters` 讀取 `left`、`right` 指定的數值，要求左值嚴格小於右值。例如 `{"op": "lt", "left": "/overlap_tokens", "right": "/max_tokens"}` 在兩者相等時也會驗證失敗。這項規則由 Builder 在編輯時檢查，Engine 在發布驗證時再次檢查。
 
 ## Builder 表單與契約預覽
 

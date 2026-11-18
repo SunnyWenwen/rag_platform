@@ -1,6 +1,6 @@
 # System Config、Component Descriptor 與 Runtime API 範例
 
-這裡提供 Builder 開發用的 JSON 與離線驗證。契約定義見 [System Config](../../docs/05_system_config.md)、[Component Descriptor](../../docs/04_component_descriptor.md)和 [Runtime API](../../docs/06_runtime_api_and_deployment.md)。
+這裡提供 Builder 開發用的 JSON 與離線驗證。契約定義見 [System Config](../../docs/05_system_config.md)、[Component Descriptor 欄位說明](../../docs/04_component_descriptor.md#descriptor-fields)和 [Runtime API](../../docs/06_runtime_api_and_deployment.md)。
 
 ## 可驗證的 Local Search 設定
 
