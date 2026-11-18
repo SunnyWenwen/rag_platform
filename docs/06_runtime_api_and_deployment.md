@@ -31,7 +31,7 @@
 - [Observability、認證與權限](#src-07-10-observability認證與權限)
 
 
-更新日期為 2026-11-18。本手冊定義 Builder Backend／Runtime 整合、HTTP、Queue、狀態、環境控制與 Export。業務資料結構見 [共用資料契約](02_data_contracts.md)，可執行的 Mock 測資見 [HTTP JSON 範例](../examples/system_config/README.md#w1-http-mock)。
+更新日期為 2026-11-18。本手冊定義 Builder Backend／Runtime 整合、HTTP、Queue、狀態、環境控制與 Export。業務資料結構見 [共用資料契約](02_data_contracts.md)，可執行的 Mock 測資見 [HTTP JSON 範例](../examples/system_config/README.md#runtime-http-examples)。
 
 <a id="runtime-http-common"></a>
 ## HTTP 共通規格
@@ -193,7 +193,7 @@ Descriptor 的欄位推導規則見 [Component Descriptor](04_component_descript
 | `resources.models` | 可選的邏輯模型引用及顯示名稱。 |
 | `resources.elasticsearch_services` | 可選的 Elasticsearch 邏輯服務引用及顯示名稱。 |
 
-以 [Catalog Schema](../schemas/runtime_catalog.draft.schema.json) 驗證 [W1 Catalog 回應範例](../examples/system_config/w1_catalog.response.json)。四種資源集合皆可為空。Catalog 不帶實際認證憑證或連線測試結果。Runtime 變更 Descriptor 或可用資源清單時更新 `catalog_revision`。Builder 在同一次目標環境編輯中共用目錄。驗證或套用若發現 Runtime 識別或 Catalog 版本不符，回 `409 STALE_CATALOG`。Builder 重新取目錄並檢查既有選值。已選版本找不到時保留原值並提示修正。
+以 [Catalog Schema](../schemas/runtime_catalog.draft.schema.json) 驗證 [Catalog 回應範例](../examples/system_config/runtime_catalog.response.json)。四種資源集合皆可為空。Catalog 不帶實際認證憑證或連線測試結果。Runtime 變更 Descriptor 或可用資源清單時更新 `catalog_revision`。Builder 在同一次目標環境編輯中共用目錄。驗證或套用若發現 Runtime 識別或 Catalog 版本不符，回 `409 STALE_CATALOG`。Builder 重新取目錄並檢查既有選值。已選版本找不到時保留原值並提示修正。
 
 #### 在 Builder 解析 `option_sources`
 
@@ -436,7 +436,7 @@ Runtime 啟動時只結算已確認停止的 Runtime instance 所持有的工作
 <a id="src-21-51-request-與結果"></a>
 ### Request 與結果
 
-`POST /queries` 使用 [InferenceRequest Schema](../schemas/inference_request.schema.json) 與 [QueryContext[] Schema](../schemas/query_context.schema.json)。有命中、無命中及上游失敗的完整回應見 [HTTP JSON 範例](../examples/system_config/README.md#w1-http-mock)。
+`POST /queries` 使用 [InferenceRequest Schema](../schemas/inference_request.schema.json) 與 [QueryContext[] Schema](../schemas/query_context.schema.json)。有命中、無命中及上游失敗的完整回應見 [HTTP JSON 範例](../examples/system_config/README.md#runtime-http-examples)。
 
 ```json
 {"query": "設備多久需要清潔？", "filters": [{"field": "structdata.department", "operator": "eq", "value": "manufacturing"}], "metadata": {"language": "zh-TW"}, "parameters": {"top_k": 5}}
@@ -524,7 +524,7 @@ Retire 已確認為直接刪除，不做 soft delete／restore API；再次使�
 | API-D06 | Builder 登入延後；Runtime API 暫用一組 HTTP Basic 帳密操作全部 API；首期不做角色／逐 API 授權 | D-64 已選 相關章節 的受保護內部 System 路由；HTTPS／Secret 注入／網路保護與檢查位置待細化；對外 Health 同一帳密，Probe 接法為部署細節 | Q-006／Q-019／Q-020 |
 | API-D07 | 查 document_id 是否存在；D-65 文件清單回 documents[]＋next_cursor，每筆 document_id／source_revisions[]，讀取實際 Chunk 而非工作表 | Remote 讀取操作與實際分頁一致性驗收 | Q-019／Q-028 |
 
-HTTP 範例見 [W1 Mock 測資](../examples/system_config/README.md#w1-http-mock)。實作待辦依上表的 Q-ID 追蹤。
+HTTP 範例見 [Runtime HTTP 測資](../examples/system_config/README.md#runtime-http-examples)。實作待辦依上表的 Q-ID 追蹤。
 
 
 

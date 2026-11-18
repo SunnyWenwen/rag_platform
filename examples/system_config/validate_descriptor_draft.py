@@ -48,7 +48,7 @@ NAME = {"type": "string", "minLength": 1}
 DESCRIPTOR_SCHEMA = json.loads((REPO / "schemas/component_descriptor.draft.schema.json").read_text())
 BUILDER_FORM_DESCRIPTORS = json.loads((HERE / "builder_form.descriptors.json").read_text())
 CATALOG_SCHEMA = json.loads((REPO / "schemas/runtime_catalog.draft.schema.json").read_text())
-W1_CATALOG = json.loads((HERE / "w1_catalog.response.json").read_text())
+RUNTIME_CATALOG = json.loads((HERE / "runtime_catalog.response.json").read_text())
 SYSTEM_CONFIG_SCHEMA = json.loads((REPO / "schemas/system_config.draft.schema.json").read_text())
 DATA_META = json.loads((REPO / "schemas/data_meta.schema.json").read_text())
 QUERY_CONTEXT = json.loads((REPO / "schemas/query_context.schema.json").read_text())
@@ -206,7 +206,7 @@ for form in BUILDER_FORM_DESCRIPTORS:
     validate_descriptor(form)
 
 REGISTRY = {(d["module"], d["component_id"], d["component_version"]): d for d in BUILDER_FORM_DESCRIPTORS}
-RESOURCES = W1_CATALOG["resources"]
+RESOURCES = RUNTIME_CATALOG["resources"]
 PROFILES = {key: value["dimensions"] for key, value in RESOURCES["profiles"].items()}
 
 def node(component_id, **parameters):
@@ -959,11 +959,11 @@ def _():
         return json.loads(source.split(start,1)[1].split("</script>",1)[0])
     assert embedded("builder-form-descriptors") == BUILDER_FORM_DESCRIPTORS
     runtime = embedded("runtime-fixture")
-    assert runtime["catalog"] == W1_CATALOG
+    assert runtime["catalog"] == RUNTIME_CATALOG
     assert len(runtime["catalog"]["descriptors"]) == len(BUILTIN_COMPONENTS)
     assert {item["module"] for item in runtime["catalog"]["descriptors"]} == BUILTIN_COMPONENTS.keys()
-    Draft202012Validator(CATALOG_SCHEMA, registry=SCHEMA_REGISTRY).validate(W1_CATALOG)
-    for desc in W1_CATALOG["descriptors"]:
+    Draft202012Validator(CATALOG_SCHEMA, registry=SCHEMA_REGISTRY).validate(RUNTIME_CATALOG)
+    for desc in RUNTIME_CATALOG["descriptors"]:
         validate_descriptor(desc)
         assert desc == REGISTRY[desc["module"], desc["component_id"], desc["component_version"]]
     assert PROFILES["text-v1"] == 3
@@ -1006,7 +1006,7 @@ def _():
     sources = {entry["source"] for descriptor in BUILDER_FORM_DESCRIPTORS
                for entry in descriptor.get("option_sources", {}).values()}
     assert sources - FIELD_SOURCES - {"input.vectors", "index_plan.vectors"} == RESOURCES.keys()
-    catalog = deepcopy(W1_CATALOG)
+    catalog = deepcopy(RUNTIME_CATALOG)
     catalog["resources"]["profiles"]["text-v1"]["dimensions"] = 0
     validator = Draft202012Validator(CATALOG_SCHEMA, registry=SCHEMA_REGISTRY)
     rejects(lambda: validator.validate(catalog), "ValidationError")

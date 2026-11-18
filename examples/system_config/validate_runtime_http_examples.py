@@ -58,12 +58,12 @@ def assert_system_status(body, system_id):
 
 
 def verify(scenarios):
-    catalog = json.loads((HERE / "w1_catalog.response.json").read_text())
+    catalog = json.loads((HERE / "runtime_catalog.response.json").read_text())
     schema("runtime_catalog.draft.schema.json").validate(catalog)
     published = {(item["module"], item["component_id"], item["component_version"]) for item in catalog["descriptors"]}
     happy = scenarios["happy_path"]
     initial_config = next(item["request"]["body"]["config"] for item in happy if item["request"]["method"] == "PUT")
-    fields, _, index = compile_local_example({"system_id": "es-w1-example", "config_revision": "revision-1",
+    fields, _, index = compile_local_example({"system_id": "es-example", "config_revision": "revision-1",
                                                "config": initial_config})
 
     for steps in scenarios.values():
@@ -77,7 +77,7 @@ def verify(scenarios):
             if status >= 400:
                 assert_error(body["error"], sent)
             if "body_file" in response:
-                assert path == "/internal/v1/catalog" and response["body_file"] == "w1_catalog.response.json"
+                assert path == "/internal/v1/catalog" and response["body_file"] == "runtime_catalog.response.json"
             if path.startswith(SYSTEM_PATH) and method in ("POST", "PUT"):
                 system_id = path[len(SYSTEM_PATH):].removesuffix("/config:validate")
                 snapshot = {"system_id": system_id, "config_revision": sent.get("config_revision", "preview"),
@@ -136,4 +136,4 @@ def verify(scenarios):
 
 
 if __name__ == "__main__":
-    verify(json.loads((HERE / "w1_http.examples.json").read_text())["scenarios"])
+    verify(json.loads((HERE / "runtime_http.examples.json").read_text())["scenarios"])

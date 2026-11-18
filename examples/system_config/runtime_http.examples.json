@@ -11,7 +11,7 @@
       },
       {
         "request": {"method": "GET", "path": "/internal/v1/catalog"},
-        "response": {"status": 200, "body_file": "w1_catalog.response.json"}
+        "response": {"status": 200, "body_file": "runtime_catalog.response.json"}
       },
       {
         "request": {"method": "GET", "path": "/internal/v1/systems"},
@@ -20,7 +20,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-w1-example/config:validate",
+          "path": "/internal/v1/systems/es-example/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-2",
@@ -111,7 +111,7 @@
       {
         "request": {
           "method": "PUT",
-          "path": "/internal/v1/systems/es-w1-example",
+          "path": "/internal/v1/systems/es-example",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-2",
@@ -194,7 +194,7 @@
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-w1-example",
+            "system_id": "es-example",
             "active_config_revision": "revision-1",
             "busy": false,
             "index_ready": true,
@@ -205,11 +205,11 @@
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/v1/systems/es-w1-example"},
+        "request": {"method": "GET", "path": "/internal/v1/systems/es-example"},
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-w1-example",
+            "system_id": "es-example",
             "active_config_revision": "revision-1",
             "busy": false,
             "index_ready": true,
@@ -226,7 +226,7 @@
           "body": {
             "systems": [
               {
-                "system_id": "es-w1-example",
+                "system_id": "es-example",
                 "active_config_revision": "revision-1",
                 "busy": false,
                 "index_ready": true,
@@ -241,7 +241,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-w1-example/v1/ingestions",
+          "path": "/internal/systems/es-example/v1/ingestions",
           "body": {
             "documents": [
               {
@@ -260,11 +260,11 @@
             "config_revision": "revision-1",
             "documents": [{"document_id": "guide-1", "status": "queued"}]
           },
-          "headers": {"Location": "/internal/systems/es-w1-example/v1/ingestions/ing-001"}
+          "headers": {"Location": "/internal/systems/es-example/v1/ingestions/ing-001"}
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-w1-example/v1/ingestions/ing-001"},
+        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/ingestions/ing-001"},
         "response": {
           "status": 200,
           "body": {
@@ -285,7 +285,7 @@
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-w1-example/v1/ingestions/ing-001"},
+        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/ingestions/ing-001"},
         "response": {
           "status": 200,
           "body": {
@@ -308,7 +308,7 @@
       {
         "request": {
           "method": "GET",
-          "path": "/internal/systems/es-w1-example/v1/documents/guide-1/ingestion-status"
+          "path": "/internal/systems/es-example/v1/documents/guide-1/ingestion-status"
         },
         "response": {
           "status": 200,
@@ -325,7 +325,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-w1-example/v1/queries",
+          "path": "/internal/systems/es-example/v1/queries",
           "body": {
             "query": "散熱孔怎麼清潔？",
             "filters": [{"field": "structdata.price", "operator": "lt", "value": 500}]
@@ -364,34 +364,34 @@
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-w1-example/v1/documents/guide-1/exists"},
+        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/documents/guide-1/exists"},
         "response": {"status": 200, "body": {"document_id": "guide-1", "exists": true}}
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-w1-example/v1/documents?limit=1"},
+        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/documents?limit=1"},
         "response": {
           "status": 200,
           "body": {"documents": [{"document_id": "guide-1", "source_revisions": ["v1"]}], "next_cursor": null}
         }
       },
       {
-        "request": {"method": "POST", "path": "/internal/systems/es-w1-example/v1/documents/guide-1:retire"},
+        "request": {"method": "POST", "path": "/internal/systems/es-example/v1/documents/guide-1:retire"},
         "response": {"status": 200, "body": {"document_id": "guide-1", "result": "deleted"}}
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-w1-example/v1/documents/guide-1/exists"},
+        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/documents/guide-1/exists"},
         "response": {"status": 200, "body": {"document_id": "guide-1", "exists": false}}
       },
       {
-        "request": {"method": "POST", "path": "/internal/systems/es-w1-example/v1/documents/guide-1:retire"},
+        "request": {"method": "POST", "path": "/internal/systems/es-example/v1/documents/guide-1:retire"},
         "response": {"status": 200, "body": {"document_id": "guide-1", "result": "not_found"}}
       },
       {
-        "request": {"method": "DELETE", "path": "/internal/v1/systems/es-w1-example"},
+        "request": {"method": "DELETE", "path": "/internal/v1/systems/es-example"},
         "response": {"status": 204}
       },
       {
-        "request": {"method": "GET", "path": "/internal/v1/systems/es-w1-example"},
+        "request": {"method": "GET", "path": "/internal/v1/systems/es-example"},
         "response": {
           "status": 404,
           "body": {"error": {"code": "SYSTEM_NOT_FOUND", "message": "System 未載入。", "module": null}}
@@ -402,7 +402,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-w1-example/config:validate",
+          "path": "/internal/v1/systems/es-example/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-2",
@@ -493,7 +493,7 @@
       {
         "request": {
           "method": "PUT",
-          "path": "/internal/v1/systems/es-w1-example",
+          "path": "/internal/v1/systems/es-example",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-2",
@@ -576,7 +576,7 @@
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-w1-example",
+            "system_id": "es-example",
             "active_config_revision": "revision-2",
             "busy": false,
             "index_ready": true,
@@ -589,7 +589,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-w1-example/config:validate",
+          "path": "/internal/v1/systems/es-example/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-2",
@@ -684,7 +684,7 @@
       {
         "request": {
           "method": "PUT",
-          "path": "/internal/v1/systems/es-w1-example",
+          "path": "/internal/v1/systems/es-example",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-2",
@@ -774,7 +774,7 @@
       {
         "request": {
           "method": "PUT",
-          "path": "/internal/v1/systems/es-w1-example",
+          "path": "/internal/v1/systems/es-example",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-2",
@@ -858,7 +858,7 @@
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-w1-example",
+            "system_id": "es-example",
             "active_config_revision": "revision-3",
             "busy": false,
             "index_ready": true,
@@ -871,7 +871,7 @@
       {
         "request": {
           "method": "PUT",
-          "path": "/internal/v1/systems/es-w1-example",
+          "path": "/internal/v1/systems/es-example",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-2",
@@ -955,7 +955,7 @@
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-w1-example",
+            "system_id": "es-example",
             "active_config_revision": "revision-3",
             "busy": false,
             "index_ready": true,
@@ -970,7 +970,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-w1-example/config:validate",
+          "path": "/internal/v1/systems/es-example/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-2",
@@ -1061,7 +1061,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-w1-example/config:validate",
+          "path": "/internal/v1/systems/es-example/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-2",
@@ -1152,7 +1152,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-w1-example/config:validate",
+          "path": "/internal/v1/systems/es-example/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-1",
@@ -1236,7 +1236,7 @@
       {
         "request": {
           "method": "PUT",
-          "path": "/internal/v1/systems/es-w1-example",
+          "path": "/internal/v1/systems/es-example",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-2",
@@ -1324,7 +1324,7 @@
       {
         "request": {
           "method": "PUT",
-          "path": "/internal/v1/systems/es-w1-example",
+          "path": "/internal/v1/systems/es-example",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-2",
@@ -1410,18 +1410,18 @@
         }
       },
       {
-        "request": {"method": "DELETE", "path": "/internal/v1/systems/es-w1-example"},
+        "request": {"method": "DELETE", "path": "/internal/v1/systems/es-example"},
         "response": {
           "status": 409,
           "body": {"error": {"code": "SYSTEM_BUSY", "message": "System 有執行中的匯入。", "module": null}}
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/v1/systems/es-w1-example"},
+        "request": {"method": "GET", "path": "/internal/v1/systems/es-example"},
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-w1-example",
+            "system_id": "es-example",
             "active_config_revision": "revision-1",
             "busy": false,
             "index_ready": false,
@@ -1436,7 +1436,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-w1-example/v1/ingestions",
+          "path": "/internal/systems/es-example/v1/ingestions",
           "body": {"documents": [{"structdata": {"title": "設備保養"}}]}
         },
         "response": {
@@ -1454,7 +1454,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-w1-example/v1/ingestions",
+          "path": "/internal/systems/es-example/v1/ingestions",
           "body": {
             "documents": [
               {
@@ -1473,7 +1473,7 @@
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-w1-example/v1/ingestions/ing-001"},
+        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/ingestions/ing-001"},
         "response": {
           "status": 200,
           "body": {
@@ -1501,13 +1501,13 @@
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-w1-example/v1/ingestions/ing-expired"},
+        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/ingestions/ing-expired"},
         "response": {"status": 200, "body": {"run_id": "ing-expired", "status": "unknown"}}
       },
       {
         "request": {
           "method": "GET",
-          "path": "/internal/systems/es-w1-example/v1/documents/guide-1/ingestion-status"
+          "path": "/internal/systems/es-example/v1/documents/guide-1/ingestion-status"
         },
         "response": {
           "status": 200,
@@ -1526,7 +1526,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-w1-example/v1/queries",
+          "path": "/internal/systems/es-example/v1/queries",
           "body": {
             "query": "散熱孔怎麼清潔？",
             "filters": [{"field": "structdata.price", "operator": "lt", "value": 500}]
@@ -1552,7 +1552,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-w1-example/v1/queries",
+          "path": "/internal/systems/es-example/v1/queries",
           "body": {
             "query": "散熱孔怎麼清潔？",
             "filters": [{"field": "structdata.price", "operator": "lt", "value": "500"}]
@@ -1573,7 +1573,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-w1-example/v1/queries",
+          "path": "/internal/systems/es-example/v1/queries",
           "body": {
             "query": "散熱孔怎麼清潔？",
             "filters": [{"field": "structdata.price", "operator": "lt", "value": 500}]
@@ -1587,7 +1587,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-w1-example/v1/queries",
+          "path": "/internal/systems/es-example/v1/queries",
           "body": {
             "query": "散熱孔怎麼清潔？",
             "filters": [{"field": "structdata.price", "operator": "lt", "value": 500}]

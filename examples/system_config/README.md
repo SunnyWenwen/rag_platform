@@ -1,6 +1,6 @@
-# System Config 與 Component Descriptor 草案
+# System Config、Component Descriptor 與 Runtime API 範例
 
-現行設計見 [System Config](../../docs/05_system_config.md)及 [Component Descriptor](../../docs/04_component_descriptor.md)。
+這裡提供 Builder 開發用的 JSON 與離線驗證。契約定義見 [System Config](../../docs/05_system_config.md)、[Component Descriptor](../../docs/04_component_descriptor.md)和 [Runtime API](../../docs/06_runtime_api_and_deployment.md)。
 
 ## 可驗證的 Local Search 設定
 
@@ -9,12 +9,12 @@
 
 節點以 `component_id` 選執行方式，以 `component_version` 固定版本。內建節點用對應 Descriptor 驗證 `parameters`。使用 `component_id: remote_api` 的節點放在替換區段的第一個 Module，以 `through` 指定最後一個 Module，已涵蓋的後續節點從有效設定省略。Remote Parsing 宣告輸出 `structdata`，Request 依上游 Import 設定推導。Remote 服務以 `service_ref` 引用，Endpoint 與認證由環境綁定解析。
 
-離線驗證同時檢查 JSON 形狀及跨節點規則。案例驗證以 Local Search、固定測試 Profile 與內建 Inference 為範圍。這版使用 `0.2-draft`。逐 Component 參數、完整部署綁定及 Runtime 執行仍待定稿與整合。
+離線驗證同時檢查 JSON 形狀及跨節點規則。這兩份 Config 使用現行契約版本 `0.2-draft`，涵蓋 Local Search、固定測試 Profile 與內建 Inference。
 
 ## Component Descriptor 驗證
 
 - [Meta-schema 草案](../../schemas/component_descriptor.draft.schema.json)驗證 Descriptor 的外層及目前測試的宣告語法。
-- [Recursive Descriptor](recursive.descriptor.json)示範一個切分欄位、動態選項、欄位複製及 overlap 約束。
+- [Recursive Descriptor](recursive.descriptor.json)示範切分欄位、由上游 Schema 推導的選項、欄位複製及 overlap 約束。
 - [Rewrite Descriptor](rewrite.descriptor.json)用同一個 Component 驗證單筆及多筆改寫、共用 LLM 引用與原始問題選項。
 - Python 驗證涵蓋代表性內建鏈、欄位移除後的覆寫失效、IndexBinding、固定與動態 Filter 型別、日期時間、外部候選及 Remote 區段。其他內建方法驗共用外層。IndexBinding 驗證使用符合現行 Schema 的 fixture，檢查全文／向量能力。
 - Remote API fixture 涵蓋批次請求、向量輸出與外部檢索候選。實際 Parser、Tokenizer、模型、索引、權限、服務可用性與跨環境部署仍需整合驗收。
@@ -23,6 +23,7 @@
 
 ```sh
 python3 examples/system_config/validate_descriptor_draft.py
+python3 examples/system_config/validate_runtime_http_examples.py
 python3 examples/user_remote_api/validate.py
 ```
 
@@ -32,11 +33,20 @@ python3 examples/user_remote_api/validate.py
 
 [builder_form.descriptors.json](builder_form.descriptors.json) 涵蓋 Prototype 的 20 個內建 Component。單檔 Prototype 的 `builder-form-descriptors` JSON 區塊內嵌相同描述。更新表單 Descriptor 或內嵌的共用資料 Schema 時同步更新 HTML。離線驗證檢查清冊、控制項型別、可見性及內嵌內容。完整清冊見 [Component Descriptor 手冊](../../docs/04_component_descriptor.md#prototype-component-inventory)。
 
-[W1 Catalog 回應](w1_catalog.response.json) 提供範例 Runtime 的 9 個 Component 及四類資源清單。用 [Catalog Schema](../../schemas/runtime_catalog.draft.schema.json) 驗證。Builder 依草稿推導欄位候選，並從同一份 Catalog 取得 Profile、Tokenizer、模型及 Elasticsearch 服務選項。表單實作見 [Renderer 對照表](../../docs/07_builder_ui.md#descriptor-form-rendering)。
+## Runtime Catalog
 
-<a id="w1-http-mock"></a>
-## Builder ↔ Runtime HTTP Mock
+[Catalog 回應 JSON](runtime_catalog.response.json)包含 Elasticsearch 範例流程所用的 9 個 Component 和四類環境資源。Builder 依草稿推導欄位候選，並從 Catalog 取得 Profile、Tokenizer、模型及 Elasticsearch 服務選項。見 [Catalog API](../../docs/06_runtime_api_and_deployment.md#w1-catalog)、[Catalog Schema](../../schemas/runtime_catalog.draft.schema.json)和[表單 Renderer](../../docs/07_builder_ui.md#descriptor-form-rendering)。
 
-[W1 HTTP JSON 範例](w1_http.examples.json)每步提供 Method、Path、Body、Status 與相關 Headers。`body_file` 從同目錄載入完整 JSON，例如 Catalog 回應。`happy_path` 從 Catalog 和發布開始，涵蓋首次匯入、Query、文件管理與卸載。`reuse_and_rebuild` 從已生效的 `revision-1` 及既有索引開始。其餘情境提供獨立的 Mock，涵蓋版本過期、欄位驗證、索引歸屬、Run 部分失敗及 Query 無命中／失敗。
+<a id="runtime-http-examples"></a>
+## Builder ↔ Runtime HTTP 範例
 
-[Runtime API 規格](../../docs/06_runtime_api_and_deployment.md)定義實作細節。從 repo 根目錄執行 `python3 examples/system_config/validate_w1_http_examples.py` 可檢查測資的 Schema 與跨步驟關聯。實際 HTTP、Elasticsearch 與模型由 DEV 環境串接驗收。
+[HTTP Request／Response JSON](runtime_http.examples.json)可直接用於 Builder Mock。每步提供 Method、Path、Status，以及該情境的 Body 和 Headers。`body_file` 從同目錄載入完整 JSON，例如 Catalog 回應。實際呼叫所需的認證與 Content-Type 見 [HTTP 共通規格](../../docs/06_runtime_api_and_deployment.md#runtime-http-common)。
+
+| JSON 情境 | 對應規格 |
+|---|---|
+| `happy_path`，從取得 Catalog、驗證及發布設定，到首次匯入、查詢、文件管理及卸載 | [Catalog API](../../docs/06_runtime_api_and_deployment.md#w1-catalog) · [Config Validation API](../../docs/06_runtime_api_and_deployment.md#config-validation-api) · [System 生命週期](../../docs/06_runtime_api_and_deployment.md#system-lifecycle-api) · [資料生命週期](../../docs/06_runtime_api_and_deployment.md#data-lifecycle-api) |
+| `reuse_and_rebuild`、`blocked_or_stale_publish`，涵蓋索引沿用／重建、欄位錯誤及版本衝突 | [System 生命週期](../../docs/06_runtime_api_and_deployment.md#system-lifecycle-api) · [索引重建](../../docs/06_runtime_api_and_deployment.md#system-index-lifecycle) · [錯誤格式](../../docs/06_runtime_api_and_deployment.md#runtime-http-errors) |
+| `ingestion_status_and_errors`，涵蓋無效請求、文件忙碌、Run 部分失敗及紀錄過期 | [資料生命週期](../../docs/06_runtime_api_and_deployment.md#data-lifecycle-api) |
+| `query_empty_and_errors`，涵蓋無命中、無效 Filter、索引未就緒及上游失敗 | [Inference API](../../docs/06_runtime_api_and_deployment.md#inference-api) |
+
+以 `validate_runtime_http_examples.py` 檢查測資 Schema 與跨步驟關聯。實際 HTTP、Elasticsearch 與模型由 DEV 環境串接驗收。
