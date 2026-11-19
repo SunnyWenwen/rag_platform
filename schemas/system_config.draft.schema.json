@@ -324,16 +324,17 @@
         ]
       }
     },
-    "secret_expression": {
+    "parameter_expression": {
+      "description": "Whole-value reference. Authentication resolves the key exclusively from the active System Secret.",
       "type": "string",
-      "pattern": "^\\{\\{secret\\.[A-Za-z_][A-Za-z0-9_]*\\}\\}$"
+      "pattern": "^\\{\\{[A-Za-z_][A-Za-z0-9_]*\\}\\}$"
     },
     "remote_auth": {
       "description": "Bearer authentication for the Remote HTTP request.",
       "type": "object",
       "properties": {
         "bearer_token": {
-          "$ref": "#/$defs/secret_expression"
+          "$ref": "#/$defs/parameter_expression"
         }
       },
       "required": [

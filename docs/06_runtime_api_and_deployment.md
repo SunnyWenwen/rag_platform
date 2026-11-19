@@ -52,7 +52,7 @@
 | ConfigRevision | 同一 System 的邏輯 Config、草稿關聯、版本／Hash、時間與作者；不因環境 URL 不同另改邏輯版本 |
 | 部署紀錄（建議形狀） | 對應同一 system_id／config_revision，另記環境、連線／Secret 引用、資料目標及 Runtime 資源；欄位與部署 ID 待 Q-015／Q-021 |
 | IndexBinding | 單 System 唯一索引的格式、target、欄位／向量能力；資料版本／就緒狀態另由 Runtime 管理 |
-| ServiceReference | DEV 或使用者服務連線設定。認證欄位可引用所屬 System 的 `{{secret.KEY}}`。System 的 llms 有明確作用域。 |
+| ServiceReference | DEV 或使用者服務連線設定。認證欄位可引用所屬 System 的 `{{KEY}}`。System 的 llms 有明確作用域。 |
 | Runtime IngestionRun／文件工作狀態 | ES 模式的 Run 收件與逐文件結果保存在控制索引。Queue 本身由 Runtime 在記憶體執行。見 [紀錄的保存與重啟](#ingestion-job-records) |
 | ES 寫入控制紀錄 | IndexStore 在 Bulk 前保存特定文件的寫入及清理查核資訊，與 Run 以識別碼關聯。見 [ES 寫入控制紀錄](#es-write-control-record) |
 | EvaluationRun | 評估的 Config／資料版本、狀態、數量、錯誤與報告引用，依 M6／Q-018 處理 |
@@ -891,12 +891,12 @@ Local Search 的持久化模式沿用同版 Config：DEV 為 Memory，FTEST／EN
 <a id="src-07-911-remote-service-manifest-與環境綁定"></a>
 ### Remote API 與環境綁定
 
-Remote API 在部署設定解析 Endpoint。需要 Bearer 認證時，節點的 `auth.bearer_token` 填 `{{secret.KEY}}`。Runtime 使用該 System 啟動時載入的值來組出認證 Header。業務 Request、Document、Remote 業務參數、模板、索引及記錄只承載各自的業務資料或引用。
+Remote API 在部署設定解析 Endpoint。需要 Bearer 認證時，節點的 `auth.bearer_token` 填 `{{KEY}}`。Runtime 只使用該 System 啟動時載入的值來組出認證 Header。一般執行參數按 [Request 優先規則](05_system_config.md#parameter-references)解析。業務 Request、Document、Remote 業務參數、模板、索引及記錄只承載各自的業務資料或引用。
 
 <a id="system-secret-deployment"></a>
 ### Runtime 啟動與 Secret 注入
 
-同一 System 在 DEV 及正式環境使用相同的 `{{secret.KEY}}`。DEV 由 Builder 提供測試值。正式 Deployment 使用 `env[].valueFrom.secretKeyRef` 注入憑證，可用 `configMapKeyRef` 注入一般環境設定。環境變數名稱與 `config.secret` 的 Key 完全相同，每個 Pod 各自在 Runtime 啟動時讀值。缺少 Key 時中止啟動，錯誤訊息列出缺少的 Key，遮罩解析出的值。Kubernetes 以環境變數注入 Secret 時，更新後需重新啟動容器才會取得新值。
+同一 System 在 DEV 及正式環境使用相同的 `{{KEY}}`。DEV 由 Builder 提供測試值。正式 Deployment 使用 `env[].valueFrom.secretKeyRef` 注入憑證，可用 `configMapKeyRef` 注入一般環境設定。環境變數名稱與 `config.secret` 的 Key 完全相同，每個 Pod 各自在 Runtime 啟動時讀值。缺少 Key 時中止啟動，錯誤訊息列出缺少的 Key，遮罩解析出的值。Kubernetes 以環境變數注入 Secret 時，更新後需重新啟動容器才會取得新值。
 
 [DEV Config](../examples/system_config/local_memory.remote_parsing.json)、[匯出 Config](../examples/system_config/local_memory.remote_parsing.export.json)與[容器 env 片段](../examples/system_config/deployment.secret-env.example.yaml)示範同一份設定在兩個環境如何供值。
 

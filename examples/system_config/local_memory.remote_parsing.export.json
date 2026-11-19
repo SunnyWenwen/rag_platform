@@ -31,7 +31,14 @@
                 "searchable": false,
                 "filterable": true
               }
-            }
+            },
+            "request_parameters": [
+              {
+                "name": "language",
+                "type": "string",
+                "required": false
+              }
+            ]
           }
         },
         "parsing": {
@@ -40,7 +47,7 @@
           "through": "parsing",
           "service_ref": "document-normalizer",
           "parameters": {
-            "language": "zh-TW"
+            "language": "{{language}}"
           },
           "output": {
             "structdata": {
@@ -68,7 +75,7 @@
             }
           },
           "auth": {
-            "bearer_token": "{{secret.PARSER_API_TOKEN}}"
+            "bearer_token": "{{PARSER_API_TOKEN}}"
           }
         },
         "chunking": {
@@ -91,7 +98,7 @@
                 "output_field": "tags"
               }
             ],
-            "max_tokens": "{{secret.CHUNK_MAX_TOKENS}}",
+            "max_tokens": "{{CHUNK_MAX_TOKENS}}",
             "overlap_tokens": 50,
             "tokenizer_profile_id": "fixture"
           }
@@ -163,7 +170,8 @@
     },
     "secret": {
       "PARSER_API_TOKEN": null,
-      "CHUNK_MAX_TOKENS": null
+      "CHUNK_MAX_TOKENS": null,
+      "language": null
     }
   }
 }

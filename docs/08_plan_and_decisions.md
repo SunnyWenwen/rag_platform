@@ -23,7 +23,7 @@
 - User 直接設定外部 API。Admin 管理全域模板版本，Builder 只提供選用，套用時複製至草稿。平台團隊維護內建方法與 Schema 描述。
 - 共用資料物件定名為 `Document`。Ingestion 以非空 `documents` 與選填批次 `parameters` 接收，Parser 前拆成逐文件工作。檢索候選放在 `ResultItem.data`。
 - Remote Retrieval 的候選遵守 Ingestion 設定推導的有效 System Document Schema。外部資料可直接查詢，無須執行平台 Ingestion 或建立平台索引。
-- System 共用 `config.secret`，各 Module 以 `{{secret.KEY}}` 取值。Remote 認證使用這個引用並由 Runtime 注入 Header。
+- 各 Module 共用 `{{KEYNAME}}` 引用。一般參數優先使用已驗證的 Request 值，缺值才讀取 `config.secret`。Remote 認證只從 `config.secret` 取值並注入 Header。
 
 - Component Descriptor 與發布的 System Config 用 `component_id`／`component_version` 固定元件版本。節點由 Component ID 選擇格式，`remote_api` 為平台保留的共用 Adapter，外部服務由 `service_ref` 選擇。
 
@@ -520,7 +520,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 <a id="q-028"></a>
 ### Q-028 User Remote API 整合
 
-- 已確認：支援連續區段、固定 HTTP 封裝、上游推導 Request、輸出欄位與向量宣告、共用 QueryContext[]、外部候選符合有效 System Schema。Remote 可使用傳入的 filters，自行決定過濾、排序與截斷。Bearer 認證以 `{{secret.KEY}}` 取用同一 System 的啟動設定，由 Adapter 組成 Header。
+- 已確認：支援連續區段、固定 HTTP 封裝、上游推導 Request、輸出欄位與向量宣告、共用 QueryContext[]、外部候選符合有效 System Schema。Remote 可使用傳入的 filters，自行決定過濾、排序與截斷。Bearer 認證以 `{{KEY}}` 取用同一 System 的啟動設定，由 Adapter 組成 Header。
 - 待核定：正式 Config 序列化、連線驗證、逾時及重試政策、錯誤觀測與容量門檻。
 - 驗收：同區段呼叫一次、無重疊、驗證失敗可定位、內建與 Remote 切換、外部 Retrieval 與下游相容、匯出可解析部署綁定。見 [Engine](03_engine_and_components.md#remote-api)。
 

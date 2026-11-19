@@ -16,9 +16,9 @@
 <a id="system-secret-examples"></a>
 ## System Secret 的 DEV／部署對照
 
-- [DEV 完整 Config](local_memory.remote_parsing.json) 用示意測試值供應 `PARSER_API_TOKEN` 和 `CHUNK_MAX_TOKENS`。Remote Parser 的 `auth.bearer_token` 引用前者，內建 Chunking 的 `max_tokens` 引用後者並解析為整數。
+- [DEV 完整 Config](local_memory.remote_parsing.json) 用示意測試值供應 `PARSER_API_TOKEN`、`CHUNK_MAX_TOKENS` 和 `language`。Remote Parser 用 `{{PARSER_API_TOKEN}}` 取得認證值，內建 Chunking 用 `{{CHUNK_MAX_TOKENS}}` 並解析為整數。Remote 的 `{{language}}` 優先使用 [Ingestion Request](../user_remote_api/ingestion.request.json) 傳入的 `zh-TW`，省略時使用 System 值 `en-US`。
 - [部署匯出 Config](local_memory.remote_parsing.export.json) 保留相同 Key 與 Module 表達式，`config.secret` 的值以 `null` 表示由環境供應。
-- [Deployment 的 env 片段](deployment.secret-env.example.yaml) 映射同名環境變數。憑證使用已建立的 Kubernetes Secret，切分上限使用 ConfigMap。對應規格見 [System Config](../../docs/05_system_config.md#system-secret)及 [Runtime 啟動](../../docs/06_runtime_api_and_deployment.md#system-secret-deployment)。
+- [Deployment 的 env 片段](deployment.secret-env.example.yaml) 映射同名環境變數。憑證使用已建立的 Kubernetes Secret，切分上限和語言使用 ConfigMap。對應規格見 [System Config](../../docs/05_system_config.md#system-secret)及 [Runtime 啟動](../../docs/06_runtime_api_and_deployment.md#system-secret-deployment)。
 
 ## Elasticsearch 索引指紋
 

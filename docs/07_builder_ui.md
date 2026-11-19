@@ -126,11 +126,11 @@ User 在節點切換到 Remote API，設定 Endpoint、認證、參數及替換�
 Admin 在 Builder 以外維護版本化全域模板。Builder 顯示可選版本，套用時複製至目前草稿。User 可調整設定及環境綁定。模板目錄為唯讀，系統儲存沿用既有驗證。
 ### 其他設定 → Secret
 
-此區與 Ingestion、Inference 同層。使用者可新增、編輯及刪除多組 Key／Value，Value 輸入採遮罩。各 Module 可引用同一個 System 定義的 Key，例如 `{{secret.PARSER_API_TOKEN}}`。Builder 測試使用此處輸入的值，匯出預覽只顯示 Key 與環境注入設定。驗證訊息定位 Key、Module 或欄位，遮罩實際值。單檔 Prototype 的測試值保留於本頁記憶體，瀏覽器保存與下載只保留 Key。實際 DEV Runtime 串接仍待整合。見 [System Secret](05_system_config.md#system-secret)。
+此區與 Ingestion、Inference 同層。使用者可新增、編輯及刪除多組 Key／Value，Value 輸入採遮罩。各 Module 統一用 `{{KEYNAME}}`。一般參數優先取已驗證的同名 Request 參數，認證欄位只取同一 System 的 Secret。Builder 測試使用此處輸入的值，匯出預覽只顯示 Key 與環境注入設定。驗證訊息定位 Key、Module 或欄位，遮罩實際值。單檔 Prototype 的測試值保留於本頁記憶體，瀏覽器保存與下載只保留 Key。實際 DEV Runtime 串接仍待整合。見 [System Secret](05_system_config.md#system-secret)。
 
 ### 條件欄位與相依驗證
 
-- 自行提供模型／DB 或 Remote API 時填必要連線，認證欄位使用 `{{secret.KEY}}`。平台測試資源使用部署綁定。
+- 自行提供模型／DB 或 Remote API 時填必要連線，認證欄位使用 `{{KEY}}`。平台測試資源使用部署綁定。
 - Local Search 選 MongoDB 才呈現 DB 連線；Memory 不要求資料庫。
 - Query Transformation 只選 llm_ref；共用服務只管理一次。
 - None 的 Top-N／Prompt 等欄位可保留草稿但停用，不參與有效 Config 驗證／匯出。

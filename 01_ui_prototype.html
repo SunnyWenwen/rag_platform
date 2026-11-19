@@ -584,7 +584,7 @@ function remoteSettings(config,module) {
     </select></label>
     ${label('service_ref','Remote 服務引用',currentNode.service_ref)}
     ${label('endpoint','API Endpoint',currentNode.connection.endpoint)}
-    ${label('bearer_token','Bearer Token 引用（{{secret.KEY}}）',currentNode.auth?.bearer_token)}
+    ${label('bearer_token','Bearer Token 引用（{{KEYNAME}}，只讀取 System Secret）',currentNode.auth?.bearer_token)}
     <label class="field">Timeout（ms）<input type="number" min="1" class="control" data-remote="timeout_ms" value="${escapeHTML(currentNode.connection.timeout_ms)}"></label>
     ${jsonField('parameters','Request parameters（JSON）',currentNode.parameters)}
     ${lane === 'ingestion' && module !== 'embedding' ? jsonField('structdata','輸出 structdata 欄位宣告（JSON）',currentNode.output.structdata) : ''}
@@ -778,7 +778,7 @@ function refreshContractPreviews() {
 
 function secretSettings(config) {
   return `<div class="field"><h4>Secret</h4>
-    <p class="muted">各模組可用 <code>{{secret.KEY}}</code>。測試值保存在本頁記憶體，下載只保留 Key。</p>
+    <p class="muted">各模組可用 <code>{{KEYNAME}}</code>。一般參數優先取 Request 值，認證欄位取 System Secret。測試值保存在本頁記憶體，下載只保留 Key。</p>
     <div class="table-wrap"><table><thead><tr><th>Key</th><th>DEV 測試值</th><th></th></tr></thead>
     <tbody>${Object.entries(config.secret ?? {}).map(([key,value]) => `<tr>
       <td><input class="control" data-secret-key="${escapeHTML(key)}" aria-label="Secret Key" value="${escapeHTML(key)}"></td>
