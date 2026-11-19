@@ -7,6 +7,7 @@
 - [目標、相依與範圍](#src-06-1-目標相依與範圍)
 - [畫面與操作地圖](#src-06-2-畫面與操作地圖)
 - [Create／Edit 的資料與互動](#src-06-3-createedit-的資料與互動)
+- [其他設定 → Secret](#system-settings-rendering)
 - [Descriptor 與表單控制項](#descriptor-form-rendering)
 - [`ui_hints` 定義與 Renderer 輸入](#ui-hints-contract)
 - [從 CSV 開始](#src-06-4-從-csv-開始)
@@ -124,7 +125,11 @@ Import 可選已整理欄位或待解析來源。選待解析來源時，入口�
 User 在節點切換到 Remote API，設定 Endpoint、認證、參數及替換範圍。涵蓋的節點顯示管理來源，原內建設定留在草稿。Builder 顯示由上游推導的 Request 與有效 Response Schema，並提供本機回應驗證。涵蓋 Embedding 時宣告向量輸出；內建向量 Retrieval 按 Profile 設定 Query Encoder。
 
 Admin 在 Builder 以外維護版本化全域模板。Builder 顯示可選版本，套用時複製至目前草稿。User 可調整設定及環境綁定。模板目錄為唯讀，系統儲存沿用既有驗證。
+
+<a id="system-settings-rendering"></a>
 ### 其他設定 → Secret
+
+**由 Builder 直接實作固定的 System 設定畫面。** Secret 編輯器讀寫 System Config 的 `config.secret`，以 [System Config Schema](../schemas/system_config.draft.schema.json) 驗證資料形狀。Prototype 在選到「其他設定」時直接呼叫 `secretSettings(draft)`。Ingestion／Inference 中支援 Descriptor 的 Component 參數則由 [表單 Renderer](#descriptor-form-rendering) 依 `parameters_schema` 產生，寫回各節點的 `parameters`。
 
 此區與 Ingestion、Inference 同層。使用者可新增、編輯及刪除多組 Key／Value，Value 輸入採遮罩。各 Module 統一用 `{{KEYNAME}}`。一般參數優先取已驗證的同名 Request 參數，認證欄位只取同一 System 的 Secret。Builder 測試使用此處輸入的值，匯出預覽只顯示 Key 與環境注入設定。驗證訊息定位 Key、Module 或欄位，遮罩實際值。單檔 Prototype 的測試值保留於本頁記憶體，瀏覽器保存與下載只保留 Key。實際 DEV Runtime 串接仍待整合。見 [System Secret](05_system_config.md#system-secret)。
 
