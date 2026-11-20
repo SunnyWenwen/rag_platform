@@ -5,6 +5,7 @@
 | [data_meta](data_meta.schema.json) | [structdata 欄位型別、必填性、搜尋旗標與 Indexing 覆寫](../docs/02_data_contracts.md#data-meta-schema) |
 | [document](document.schema.json) | [Document 外層、content、DenseVector 與檢索候選](../docs/02_data_contracts.md#document) |
 | [ingestion_request](ingestion_request.schema.json) | [非空 documents 和共用 parameters](../docs/06_runtime_api_and_deployment.md#src-21-3-ingestion-的提交與接收) |
+| [ingestion_cancel_request](ingestion_cancel_request.schema.json) | [指定 Run 中要取消的 document_ids](../docs/06_runtime_api_and_deployment.md#ingestion-cancel-api) |
 | [inference_request](inference_request.schema.json) | [query、filters、metadata、parameters](../docs/06_runtime_api_and_deployment.md#inference-api) |
 | [query_context](query_context.schema.json) | [QueryContext[] 與 ResultItem.data 候選 Document](../docs/02_data_contracts.md#inference-contract) |
 | [index_binding](index_binding.schema.json) | [平台管理索引的格式、位置及能力](../docs/02_data_contracts.md#indexbinding) |

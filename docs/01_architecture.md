@@ -37,7 +37,7 @@ Retrieval Builder 協助 User 建立、測試與匯出 Retrieval System，提供
 | Workspace | Builder 中管理 System 的容器；正式階層為 Workspace → System |
 | Retrieval Engine Library | 可匯入的程式庫，提供 SDK 契約、Registry、Config 驗證、模組組裝與執行核心；本身不是已啟動服務，也不是某一個 System |
 | Retrieval Engine Framework | 提供 System Config Schema、Component Descriptor、Engine Library 與 Runtime 啟動入口，並交付共用 Runtime Image |
-| Retrieval Runtime | 載入 Library／Registry 與服務基礎設定，提供 Ingest／Query／文件管理／Health API；Builder 共用模式管理多個 System／Config，獨立模式啟動時綁定單一 System Config |
+| Retrieval Runtime | 載入 Engine Library／Registry 並提供 Ingest／Query／文件管理／Health API 的執行程序。Builder DEV 首版每個 Runtime 以一個 Pod 執行，可承載多個 System／Config；獨立模式啟動時綁定單一 System Config |
 | Retrieval System | Library 依特定 Config 組裝，並完成必要服務及資料／索引綁定後建立的具體檢索系統；可由 Python 直接使用，也可由 Runtime 對外提供 API |
 | Retrieval Service（圖面用語） | Runtime 內的 System 執行實例；不是新的管理層級、必要微服務或 Kubernetes Service 物件 |
 | AI 設定助手 | 依需求、樣本、可用方法及 Config Schema 產生設定草稿的能力；可獨立由 Python／API 使用，Builder 另外提供互動、差異預覽及套用介面，不是 Ingestion／Inference 的必經模組 |
@@ -54,7 +54,7 @@ Builder 管理設定與測試，Library 執行模組，Framework 交付設定契
 
 | 環境 | Config 與 API service 的對應 | API service 啟動時 | Config 更新 |
 |---|---|---|---|
-| Builder DEV | Builder Backend 與 Runtime 各為獨立程序，一個 Runtime 可承載多個 System | DEV Runtime 入口可直接載入 Engine Library、Registry 與共用 LangGraph，可先以零組 Config 啟動 | Builder Backend 經內部管理 API 下發設定。Runtime 依各 System 的工作狀態與索引相容性套用。 |
+| Builder DEV | Builder Backend 與 Runtime 各為獨立程序。首版每個 Runtime 以一個 Pod 執行，可承載多個 System。Builder 以 `runtime_ref` 區分各 Runtime。 | DEV Runtime 入口可直接載入 Engine Library、Registry 與共用 LangGraph，可先以零組 Config 啟動。 | Builder Backend 經內部管理 API 發布設定，並對重啟後的 Runtime 主動補載 Config。Runtime 依各 System 的工作狀態與索引相容性套用。[管理流程](06_runtime_api_and_deployment.md#builder-managed-dev-runtimes) |
 | FTEST／ENT | 主 Runtime 第一版基準為一個 Pod＋一組 API service＋一份 System Config | 同一套 Runtime 啟動時載入 Config，管理 API 關閉 | 透過重新部署採用新 Config，啟動時檢查既有索引的歸屬與相容性。 |
 
 Builder Backend 下發／註冊 Config 與目標 Runtime 的對應，Runtime 依可信 System 識別取得已驗證 Config 快照，由共用 Flow／Executor 執行；各 Module 解析所選 Component 並傳入該次 Config／Context，Library 不直接讀 Builder DB。服務啟動不綁單份 Config，不代表 Engine／已安裝 Component 版本可任意熱替換；新增 Local 程式仍按原 Image／版本交付流程。

@@ -17,7 +17,14 @@ SCHEMAS = {path.name: json.loads(path.read_text()) for path in (HERE.parents[1] 
 REGISTRY = Registry().with_resources((schema["$id"], Resource.from_contents(schema)) for schema in SCHEMAS.values())
 SYSTEM_PATH = "/internal/v1/systems/"
 DRAFT_KEYS = ("runtime_ref", "catalog_revision", "draft_revision")
-DOCUMENT_STATES = ("queued", "running", "completed", "failed", "unknown")
+APPLY_OPERATIONS = ("initialize", "reload", "update", "recover_index")
+DOCUMENT_STATES = ("queued", "running", "completed", "cancelled", "failed", "unknown")
+CANCEL_RESULT_STATES = {
+    "cancelled": {"cancelled"},
+    "already_finished": {"completed", "failed"},
+    "not_cancellable": {"unknown"},
+    "not_found": {None},
+}
 
 
 def schema(name):
@@ -55,15 +62,39 @@ def verify_index_fingerprint(fields, vectors):
     assert not projection_check.is_valid({**projection, "source_revision": "v1"})
 
 
-def assert_error(body, request_body):
-    assert {"code", "message", "module"} <= body.keys() <= {"code", "message", "module", "path", "run_id"}
+def assert_error(body, request_body, *, ingestion_conflicts=False):
+    required_fields = {"code", "message", "module"}
+    if ingestion_conflicts:
+        required_fields.update({"path", "conflicts"})
+    assert required_fields <= body.keys() <= required_fields | {"path", "run_id"}
     assert body["code"] and body["message"]
     if "path" in body:
         assert body["path"].startswith("/") and request_body is not None
+    if ingestion_conflicts:
+        schema("ingestion_request.schema.json").validate(request_body)
+        document_ids = [document["document_id"] for document in request_body["documents"]]
+        conflicts = body["conflicts"]
+        assert isinstance(conflicts, list) and conflicts
+        for conflict in conflicts:
+            assert {"document_id", "status"} <= conflict.keys() <= {"document_id", "status", "run_id"}
+            assert conflict["status"] is None or conflict["status"] in DOCUMENT_STATES
+            if "run_id" in conflict:
+                assert conflict["status"] is not None
+                assert isinstance(conflict["run_id"], str) and conflict["run_id"]
+        conflict_ids = [conflict["document_id"] for conflict in conflicts]
+        conflict_id_set = set(conflict_ids)
+        assert conflict_ids == [document_id for document_id in document_ids if document_id in conflict_id_set]
+        first = conflicts[0]
+        assert body["path"] == f"/documents/{document_ids.index(first['document_id'])}/document_id"
+        assert body.get("run_id") == first.get("run_id")
 
 
 def assert_run_document(item):
-    assert set(item) == {"document_id", "status", "module", "updated_at", "error"}
+    expected_fields = {"document_id", "status", "module", "updated_at", "error"}
+    if item["status"] == "cancelled":
+        expected_fields.add("cancellation_pending")
+        assert isinstance(item["cancellation_pending"], bool)
+    assert set(item) == expected_fields
     assert isinstance(item["document_id"], str) and item["document_id"]
     assert item["status"] in DOCUMENT_STATES
     assert item["module"] is None or isinstance(item["module"], str)
@@ -94,10 +125,14 @@ def assert_run(body, run_id):
         expected = "running"
     elif counts["unknown"]:
         expected = "unknown"
-    elif counts["completed"] and counts["failed"]:
+    elif counts["completed"] == counts["total"]:
+        expected = "completed"
+    elif counts["cancelled"] == counts["total"]:
+        expected = "cancelled"
+    elif counts["completed"]:
         expected = "partial"
     else:
-        expected = "completed" if counts["completed"] else "failed"
+        expected = "failed"
     assert body["status"] == expected
     for item in body["documents"]:
         assert_run_document(item)
@@ -105,12 +140,15 @@ def assert_run(body, run_id):
 
 def assert_system_status(body, system_id):
     assert set(body) == {"system_id", "active_config_revision", "index_ready", "index_generation",
-                         "busy", "can_ingest", "can_query"}
+                         "loaded", "busy", "can_ingest", "can_query"}
     assert body["system_id"] == system_id and body["active_config_revision"]
-    assert all(isinstance(body[key], bool) for key in ("busy", "can_ingest", "can_query"))
+    assert all(isinstance(body[key], bool) for key in ("loaded", "busy", "can_ingest", "can_query"))
     assert body["index_ready"] is None or isinstance(body["index_ready"], bool)
     if body["index_ready"]:
         assert body["index_generation"]
+    if not body["loaded"]:
+        assert body["index_generation"] and body["index_ready"] is not None
+        assert not body["can_ingest"] and not body["can_query"]
 
 
 def verify(scenarios):
@@ -128,25 +166,61 @@ def verify(scenarios):
 
     for steps in scenarios.values():
         previews = {}
+        requests_by_operation = {}
         for step in steps:
             request, response = step["request"], step["response"]
             url = urlsplit(request["path"])
             path = url.path
             method, sent = request["method"], request.get("body")
             status, body = response["status"], response.get("body")
+            system_route = path.startswith(SYSTEM_PATH)
+            is_detach = system_route and method == "POST" and path.endswith(":detach")
 
             if status >= 400:
                 assert set(body) == {"error"}
-                assert_error(body["error"], sent)
+                ingestion_conflicts = (
+                    method == "POST" and path.endswith("/ingestions")
+                    and status == 409 and body["error"]["code"] == "DOCUMENT_BUSY"
+                )
+                assert_error(body["error"], sent, ingestion_conflicts=ingestion_conflicts)
             if status == 204:
                 assert "body" not in response and "body_file" not in response
             if "body_file" in response:
                 assert path == "/internal/v1/catalog" and response["body_file"] == "runtime_catalog.response.json"
-            if path.startswith(SYSTEM_PATH) and method in ("POST", "PUT"):
+            if method == "GET" and status == 200:
+                if path == SYSTEM_PATH.rstrip("/"):
+                    assert set(body) == {"systems"}
+                    for system in body["systems"]:
+                        assert_system_status(system, system["system_id"])
+                        assert system["loaded"]
+                elif path.startswith(SYSTEM_PATH):
+                    assert_system_status(body, path[len(SYSTEM_PATH):])
+            if system_route and (method in ("PUT", "DELETE") or is_detach):
+                headers = request["headers"]
+                key = headers["Idempotency-Key"]
+                assert key
+                identity = (path.removesuffix(":detach"), key)
+                if identity in requests_by_operation:
+                    assert request == requests_by_operation[identity]
+                requests_by_operation[identity] = request
+                if method == "DELETE" or is_detach:
+                    assert sent is None
+                    assert headers["X-Expected-Config-Revision"] and headers["X-Expected-Index-Generation"]
+            if system_route and (method == "PUT" or path.endswith("/config:validate")):
                 system_id = path[len(SYSTEM_PATH):].removesuffix("/config:validate")
                 snapshot = {"system_id": system_id, "config_revision": sent.get("config_revision", "preview"),
                             "config": sent["config"]}
                 schema("system_config.draft.schema.json").validate(snapshot)
+                operation = sent.get("operation")
+                assert operation in APPLY_OPERATIONS or method == "POST" and operation is None
+                assert ("recovery_from" in sent) == (operation == "recover_index")
+                if operation == "recover_index":
+                    previous = sent["recovery_from"]
+                    assert set(previous) == {"config_revision", "index_generation"}
+                    assert all(isinstance(value, str) and value for value in previous.values())
+                    if method == "PUT":
+                        assert sent["config_revision"] == previous["config_revision"]
+                assert "allow_rebuild" not in sent or operation == "update" and method == "PUT"
                 if status == 422:
                     try:
                         compile_local_example(snapshot)
@@ -163,18 +237,36 @@ def verify(scenarios):
                                 assert (module, config["component_id"], config["component_version"]) in published
                     if method == "POST":
                         assert all(body[key] == sent[key] for key in DRAFT_KEYS)
-                        assert set(body) == {*DRAFT_KEYS, "context_revision", "active_config_revision", "index_impact"}
+                        assert set(body) == {*DRAFT_KEYS, "context_revision", "active_config_revision", "loaded",
+                                             "index_impact"}
+                        assert type(body["loaded"]) is bool
+                        if body["loaded"]:
+                            assert body["active_config_revision"]
                         impact = body["index_impact"]
                         assert set(impact) == {"action", "code", "message"}
-                        assert impact["action"] in {"create", "reuse", "rebuild_required", "blocked", "none"}
+                        assert impact["action"] in {"create", "reuse", "rebuild_required", "recover", "blocked", "none"}
                         previews[body["context_revision"]] = (sent, body)
                     else:
                         draft, preview = previews[sent["context_revision"]]
-                        assert all(sent[key] == draft[key] for key in (*DRAFT_KEYS, "config"))
+                        assert all(sent[key] == draft[key] for key in (*DRAFT_KEYS, "config", "operation"))
+                        assert sent.get("recovery_from") == draft.get("recovery_from")
                         assert sent["expected_active_revision"] == preview["active_config_revision"]
-                        assert bool(sent.get("allow_rebuild")) == (preview["index_impact"]["action"] == "rebuild_required")
+                        action = preview["index_impact"]["action"]
+                        assert bool(sent.get("allow_rebuild")) == (action == "rebuild_required")
+                        revision = sent["config_revision"]
+                        if operation == "initialize":
+                            assert sent["expected_active_revision"] is None and action in {"create", "none"}
+                        elif operation == "reload":
+                            assert sent["expected_active_revision"] == revision and action in {"reuse", "none"}
+                        elif operation == "update":
+                            assert sent["expected_active_revision"] != revision and action in {"reuse", "rebuild_required", "none"}
+                        else:
+                            assert action == "recover"
+                            assert sent["expected_active_revision"] in {None, revision}
+                            assert body["index_generation"] != sent["recovery_from"]["index_generation"]
                         assert_system_status(body, system_id)
-                        assert body["active_config_revision"] == sent["config_revision"]
+                        assert body["active_config_revision"] == revision
+                        assert body["loaded"]
             if path.endswith("/ingestions") and status == 202:
                 schema("ingestion_request.schema.json").validate(sent)
                 assert set(body) == {"run_id", "status", "config_revision", "documents"}
@@ -182,7 +274,27 @@ def verify(scenarios):
                 assert response["headers"]["Location"] == f"{path}/{body['run_id']}"
                 assert body["documents"] == [{"document_id": doc["document_id"], "status": "queued"}
                                              for doc in sent["documents"]]
-            if "/ingestions/" in path and status == 200:
+            if "/ingestions/" in path and method == "POST" and path.endswith("/cancel"):
+                cancel_request = schema("ingestion_cancel_request.schema.json")
+                if status == 422:
+                    assert not cancel_request.is_valid(sent)
+                    assert body["error"]["code"] == "REQUEST_VALIDATION_FAILED"
+                else:
+                    cancel_request.validate(sent)
+                if status == 200:
+                    assert set(body) == {"run_id", "documents"}
+                    assert body["run_id"] == path.split("/")[-2]
+                    assert [item["document_id"] for item in body["documents"]] == sent["document_ids"]
+                    for item in body["documents"]:
+                        assert item["status"] in CANCEL_RESULT_STATES[item["result"]]
+                        expected_fields = {"document_id", "result", "status"}
+                        if item["status"] == "cancelled":
+                            expected_fields.add("cancellation_pending")
+                            assert isinstance(item["cancellation_pending"], bool)
+                        assert set(item) == expected_fields
+                if status == 404:
+                    assert body["error"]["code"] == "INGESTION_RUN_NOT_FOUND"
+            if "/ingestions/" in path and method == "GET" and status == 200:
                 assert_run(body, path.rsplit("/", 1)[1])
             if path.endswith("/ingestion-status") and status == 200:
                 document = {key: value for key, value in body.items() if key != "run_id"}
@@ -234,6 +346,81 @@ def verify(scenarios):
                if item["request"]["method"] == "PUT" and item["response"]["status"] == 200]
     assert put["index_generation"] == updates[0]["index_generation"] != updates[1]["index_generation"]
     assert updates[1] == updates[2]
+    reload_status = scenarios["reload_existing_index"][-1]["response"]["body"]
+    assert reload_status == put
+    reload_unloaded = scenarios["reload_existing_index"][0]["response"]
+    assert reload_unloaded["status"] == 200 and not reload_unloaded["body"]["loaded"]
+    assert reload_unloaded["body"]["index_generation"] == reload_status["index_generation"]
+    before_unload, unload, after_unload = scenarios["unload_existing_index_without_config"]
+    assert before_unload["response"] == reload_unloaded
+    unload_headers = unload["request"]["headers"]
+    assert unload_headers["X-Expected-Config-Revision"] == reload_unloaded["body"]["active_config_revision"]
+    assert unload_headers["X-Expected-Index-Generation"] == reload_unloaded["body"]["index_generation"]
+    assert unload["response"]["status"] == 204
+    assert after_unload["response"]["status"] == 404
+
+    before_detach, busy_detach, detach, detach_retry, after_detach = scenarios["detach_shared_index_runtime"]
+    before_status = before_detach["response"]["body"]
+    assert before_status["loaded"]
+    assert busy_detach["response"]["status"] == 409
+    assert busy_detach["response"]["body"]["error"]["code"] == "SYSTEM_BUSY"
+    assert detach == detach_retry and detach["response"]["status"] == 204
+    assert detach["request"]["headers"]["X-Expected-Config-Revision"] == before_status["active_config_revision"]
+    assert detach["request"]["headers"]["X-Expected-Index-Generation"] == before_status["index_generation"]
+    assert after_detach["response"]["status"] == 200
+    after_status = after_detach["response"]["body"]
+    assert not after_status["loaded"] and after_status["index_ready"]
+    assert after_status["index_generation"] == before_status["index_generation"]
+    assert after_status["active_config_revision"] == before_status["active_config_revision"]
+
+    missing_loaded, loaded_preview, recovered_loaded, stale_delete, after_delete = scenarios["recover_index_loaded"]
+    assert not missing_loaded["response"]["body"]["index_ready"]
+    assert loaded_preview["response"]["body"]["loaded"]
+    assert stale_delete["response"]["body"]["error"]["code"] == "INDEX_CONFLICT"
+    assert stale_delete["request"]["headers"]["X-Expected-Index-Generation"] == put["index_generation"]
+    assert recovered_loaded["response"] == after_delete["response"]
+    missing_unloaded, unloaded_preview, recovered_unloaded, replay = scenarios["recover_index_unloaded"]
+    assert missing_unloaded["response"]["status"] == 404
+    assert not unloaded_preview["response"]["body"]["loaded"]
+    assert unloaded_preview["response"]["body"]["active_config_revision"] is None
+    assert recovered_unloaded == replay
+    assert recovered_unloaded["response"] == recovered_loaded["response"]
+    recovery_blocked, = scenarios["recover_index_es_unknown"]
+    assert recovery_blocked["response"]["body"]["index_impact"]["code"] == "INDEX_CHECK_UNAVAILABLE"
+
+    _, busy_ingestion, *_ = scenarios["ingestion_status_and_errors"]
+    assert busy_ingestion["response"]["status"] == 409
+    conflicts = busy_ingestion["response"]["body"]["error"]["conflicts"]
+    assert [item["document_id"] for item in conflicts] == ["guide-1", "guide-2", "guide-retiring"]
+
+    before_cancel, cancel, cancel_retry, after_cancel, after_write, missing_run, invalid_cancel = (
+        scenarios["cancel_ingestion_documents"]
+    )
+    assert cancel == cancel_retry and cancel["response"]["status"] == 200
+    assert missing_run["response"]["status"] == 404 and invalid_cancel["response"]["status"] == 422
+    assert before_cancel["request"] == after_cancel["request"] == after_write["request"]
+    before_documents = {item["document_id"]: item for item in before_cancel["response"]["body"]["documents"]}
+    after_documents = {item["document_id"]: item for item in after_cancel["response"]["body"]["documents"]}
+    final_documents = {item["document_id"]: item for item in after_write["response"]["body"]["documents"]}
+    assert before_documents.keys() == after_documents.keys()
+    assert before_documents["guide-unselected"] == after_documents["guide-unselected"]
+    pending_by_document = {"guide-queued": False, "guide-prewrite": False, "guide-running": True}
+    for item in cancel["response"]["body"]["documents"]:
+        document_id = item["document_id"]
+        if item["result"] == "not_found":
+            assert document_id not in after_documents
+            continue
+        assert item["status"] == after_documents[document_id]["status"]
+        if document_id in pending_by_document:
+            assert before_documents[document_id]["status"] in {"queued", "running"}
+            assert item["result"] == "cancelled"
+            assert item["cancellation_pending"] == after_documents[document_id]["cancellation_pending"]
+            assert item["cancellation_pending"] is pending_by_document[document_id]
+        else:
+            assert before_documents[document_id] == after_documents[document_id]
+    assert after_documents.pop("guide-running")["cancellation_pending"]
+    assert final_documents.pop("guide-running")["status"] == "completed"
+    assert after_documents == final_documents
 
     first, second, invalid = scenarios["document_pagination"]
     next_cursor = first["response"]["body"]["next_cursor"]

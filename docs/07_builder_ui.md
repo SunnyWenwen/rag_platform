@@ -319,10 +319,10 @@ Prototype 限制 ≤1 MB 且在瀏覽器讀取，不等於正式產品限制。�
 上傳／JSON → 批次 Request 預覽與檢查 → 明確啟動 → 顯示 run_id／狀態 → 結果。長工作由 Runtime API／部署手冊 管理，不依靠前端視窗存活。
 
 - 區分接收成功、處理完成、索引可查詢；202 不代表可檢索查詢。
-- 文件數與 Chunk 數各自標示。Ingestion 進度的呈現方式與工作操作留待後續討論。
+- 文件數與 Chunk 數各自標示。Ingestion 進度的呈現方式留待後續討論。
 - 部分失敗列出可對應 item 的錯誤，不用單一成功 Toast 遮蔽。
 - 重新打開視窗可用 run_id 查工作。ES 模式的逐文件狀態在 Runtime 重啟後仍可在保留期內查詢，依 [重啟結算規則](06_runtime_api_and_deployment.md#ingestion-job-records) 顯示結果。
-- 失敗或中斷的文件由呼叫方決定是否重新提交。ES 寫入未查清時顯示待查核。重送與取消的 UI 操作依對應 API 驗收。
+- 失敗或中斷的文件由呼叫方決定是否重新提交。ES 寫入未查清時顯示待查核。[批量取消](06_runtime_api_and_deployment.md#ingestion-cancel-api)依 `run_id` 送出選定的 `document_ids`，逐筆顯示結果。已取消但 `cancellation_pending: true` 的文件仍需等待結算，Builder 繼續查同一 Run 並依最新狀態顯示。
 - 真實 Parser／Chunk 小量試跑是建議能力，Q-025 核定前不能用瀏覽器格式預覽冒充。
 
 <a id="src-06-6-inference-與診斷"></a>
@@ -333,7 +333,7 @@ Prototype 限制 ≤1 MB 且在瀏覽器讀取，不等於正式產品限制。�
 <a id="builder-initial-ingestion-readiness"></a>
 ### 初次匯入與查詢入口
 
-Builder 對新建立或清空後重新建置的資料集，等預定的初次資料全部匯入成功且可搜尋後才開放查詢。若初次匯入有失敗文件，仍等待補齊。之後一般新增或逐文件更新不關閉查詢入口。Runtime 的 Inference API 依索引與查詢依賴的就緒狀態服務，索引可查時接受空索引查詢。
+Builder 對新建立、清空後重新建置或同版本恢復索引的資料集，等預定的初次資料全部匯入成功且可搜尋後才開放查詢。若初次匯入有失敗文件，仍等待補齊。之後一般新增或逐文件更新不關閉查詢入口。Runtime 的 Inference API 依索引與查詢依賴的就緒狀態服務，索引可查時接受空索引查詢。
 
 | 層級 | 建議呈現 |
 |---|---|
@@ -365,7 +365,7 @@ Comparison、門檻與 Release Gate 為 Q-018；UI 不自行認定所有測試�
 | Inference 配置 | 不需重匯；需重新測試／評估 |
 | 顯示名稱／未啟用草稿 | 不更換實體 collection，不誤判需重建 |
 
-Runtime 的新舊 Revision／Index 發布策略見 Q-010／Q-015。原始資料與重匯入的管理流程由 Builder 後續規劃，見 [Q-016](08_plan_and_decisions.md#q-016)。UI 依 Runtime 狀態呈現正式可查詢狀態。
+Runtime 回報已發布部署的索引確認遺失時，Builder 顯示受影響的 System 暫停查詢與匯入，並提示新索引為空、須重新匯入。使用者確認後，Builder 才以原 Config Revision 發起 [recover_index](06_runtime_api_and_deployment.md#system-index-lifecycle)。Runtime 建立新世代後，Builder 依初次匯入規則重新開放查詢。Runtime 的新舊 Revision／Index 發布策略見 Q-010／Q-015。原始資料與重匯入的管理流程由 Builder 後續規劃，見 [Q-016](08_plan_and_decisions.md#q-016)。UI 依 Runtime 狀態呈現正式可查詢狀態。
 
 <a id="src-06-8-export-與部署說明"></a>
 ## Export 與部署說明
@@ -563,8 +563,8 @@ ResultSet.key 對應 Config 路徑／群組，items 位置即名次。RRF 可用
 ## Prototype／Backlog：UIB-022：D-56 非同步 Ingestion／文件狀態與 Runtime 控制（已確認，待改 UI）
 
 - [ ] API 說明呈現 202 僅代表接收，顯示 run_id 及可用的狀態查詢入口；精確 Batch 路徑／Envelope 待 21 核定。
-- [ ] 依 Run／文件狀態與錯誤契約顯示查詢結果。進度粒度、呈現與工作操作（含取消）延後討論。
-- [ ] 同文件 queued／running 或 ES 寫入未收尾時顯示忙碌原因。呼叫方可在結果已確認且安全收尾後重新提交。
+- [ ] 依 Run／文件狀態與錯誤契約顯示查詢結果及同一 Run 的批量取消結果。進度粒度與呈現延後討論。
+- [ ] 批量匯入收到 `409 DOCUMENT_BUSY` 時，顯示 `error.conflicts` 中所有被占用的文件及狀態，包括 `cancelled` 但仍待收尾的工作。呼叫方可在占用釋放後重新提交。[衝突回應規格](06_runtime_api_and_deployment.md#ingestion-document-busy)
 - [ ] ES 模式重啟後以 Runtime 回傳的逐文件狀態為準。未送出 Bulk 的中斷工作顯示 failed 與原因，結果未確認時顯示 unknown。查無紀錄時結束一般工作輪詢。
 - [ ] Ingestion Queue 額滿、Inference Rate／併發／Timeout 有可理解提示；不在每次文件／Query 表單加入環境上限設定。
 - [ ] 區分文件工作狀態、索引是否可查與 Runtime Health；Local／Remote 的未知結果不冒充可安全重試。
