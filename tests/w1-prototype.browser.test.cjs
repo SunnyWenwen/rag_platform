@@ -161,7 +161,7 @@ async function main() {
     await button('確認發布').click();
     assert.match(await page.locator('#dialog-subtitle').innerText(),/revision-2/);
     assert.equal(await page.evaluate(() => params(current().active,'retrieval').top_n),2);
-    assert.match(await card.locator('.meta').innerText(),/1 documents/);
+    assert.match(await card.locator('.meta').innerText(),/1 份文件/);
     await module('Chunking').click();
     await page.getByLabel('切分上限（tokens）').fill('450');
     await button('驗證並發布').click();
@@ -172,7 +172,7 @@ async function main() {
     assert.equal(await button('執行查詢').isDisabled(),true);
 
     await page.reload();
-    assert.match(await card.locator('.meta').innerText(),/0 documents.*revision-3/);
+    assert.match(await card.locator('.meta').innerText(),/0 份文件.*revision-3/);
     await page.setViewportSize({width:390,height:844});
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),true);
     await openCardAction('⚙ Edit Config');
@@ -306,14 +306,9 @@ async function main() {
     await picker.selectOption('none');
 
     await module('Indexing').click();
-    await picker.selectOption('local');
+    assert.equal(await picker.locator('option[value="local"]').count(),0);
+    assert.equal(await picker.inputValue(),'elasticsearch');
     assert.equal(await page.getByLabel('MongoDB 服務引用').count(),0);
-    await page.getByLabel('持久化').selectOption('mongodb');
-    assert.equal(await page.getByLabel('服務來源').inputValue(),'DEV test use');
-    await page.getByLabel('服務來源').selectOption('自行提供 MongoDB');
-    await page.getByLabel('MongoDB 服務引用').fill('team-mongodb');
-    await module('Retrieval').click();
-    assert.match(await dialog.locator('.info').innerText(),/Local Search/);
     await module('Query Transformation').click();
     await picker.selectOption('rewrite');
     assert.equal(await page.getByLabel('共用 LLM 引用').inputValue(),'default-llm');
@@ -343,8 +338,38 @@ async function main() {
     await picker.selectOption('recursive');
     await button('驗證並發布').click();
     assert.match(await impact.innerText(),/沿用索引/);
+    await button('返回').click();
+    await closeSystem();
+    await openCardAction('Runtime');
+    await page.getByLabel('Runtime 拓撲').selectOption('split');
+    assert.match(await dialog.innerText(),/dev-ingestion/);
+    assert.match(await dialog.innerText(),/dev-inference/);
+    assert.match(await dialog.innerText(),/index-2/);
+    await button('卸載 Inference').click();
+    await button('執行 Builder 同步').click();
+    assert.match(await dialog.innerText(),/PIPELINE_NOT_ENABLED/);
+    await button('補載 Inference').click();
+    assert.equal(await button('卸載 Inference').isVisible(),true);
+    await closeSystem();
+
+    await openCardAction('↑ Ingest');
+    await button('載入範例').click();
+    const request = JSON.parse(await page.getByLabel('Ingestion Request').inputValue());
+    request.documents = [request.documents[0]];
+    await page.getByLabel('Ingestion Request').fill(JSON.stringify(request));
+    await page.getByLabel('模擬首筆 ES Bulk 逾時').check();
+    await button('預檢資料').click();
+    await button('開始匯入').click();
+    await run.getByText(/ES_BULK_TIMEOUT/).waitFor();
+    assert.match(await run.innerText(),/失敗/);
+    await button('預檢資料').click();
+    await button('開始匯入').click();
+    await run.getByText('已完成',{exact:true}).first().waitFor();
+    await page.getByLabel('文件 ID',{exact:true}).fill(request.documents[0].document_id);
+    await button('查最近 Run').click();
+    assert.match(await run.innerText(),/已完成/);
     assert.deepEqual(errors,[]);
-    console.log('PASS: W1 workflow, component catalog, method-specific settings, remote scopes, and saved draft variants');
+    console.log('PASS: W1 workflow, component settings, Runtime deployment, and Bulk timeout retry');
   } finally {
     await browser.close();
   }

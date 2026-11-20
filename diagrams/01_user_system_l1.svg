@@ -1,128 +1,85 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="2360" height="1620" viewBox="0 0 2360 1620" role="img" aria-labelledby="title desc">
-<title id="title">Retrieval Builder 測試平台、共用 Library、全域模板與 Remote API</title>
-<desc id="desc">Build 到 Deploy 六步同水平。共用 Library 供 Builder DEV 和 FTEST／ENT Runtime 執行。下方兩排分別表示 Admin 維護版本化模板和 User 接入外部 Remote API。</desc>
-<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 Z" fill="#66788b" /></marker></defs>
-<style>
-text{font-family:'Noto Sans CJK TC','Noto Sans TC','Microsoft JhengHei',sans-serif;font-weight:400;text-anchor:middle;dominant-baseline:central;fill:#143054}
-.step rect{fill:#e9f2ff;stroke:#6086c8}.object rect{fill:#ecf8f2;stroke:#599d85}.object text{fill:#153f32}
-.deploy rect{fill:#fff5e5;stroke:#cf9b4a}.deploy text{fill:#624516}.engine rect{fill:#eee9fa;stroke:#9380bf}.engine text{fill:#443267}
-.node rect{stroke-width:1.8}.edge{fill:none;stroke:#60768e;stroke-width:2;marker-end:url(#arrow)}
-.relation{stroke:#66788b;stroke-dasharray:7 7}.edge-label{fill:#485d71;stroke:white;stroke-width:11;stroke-linejoin:round;paint-order:stroke fill}
-.frame-title{font-size:26;text-anchor:start;font-weight:500}.note{font-size:18;fill:#66788b}
-</style><rect width="2360" height="1620" fill="white" />
-<g id="BUILDER" class="frame"><rect x="30" y="35" width="1700" height="700" rx="12" fill="#f7faff" stroke="#9aafc9" stroke-width="1.8" /><text class="frame-title" x="55" y="65" style="stroke:none">Retrieval Builder 測試平台 (for Retrieval Builder User)</text></g>
-<g id="ENGINE" class="frame"><rect x="30" y="830" width="1700" height="180" rx="12" fill="#f7f4fc" stroke="#b5a4d0" stroke-width="1.8" /><text class="frame-title" x="55" y="860" style="stroke:none">Retrieval Engine Library</text></g>
-<g id="SETUP" class="frame"><rect x="30" y="1110" width="2250" height="450" rx="12" fill="#faf8fd" stroke="#b5a4d0" stroke-width="1.8" /><text class="frame-title" x="55" y="1140" style="stroke:none;font-size:16px">全域模板與外部服務接入</text></g>
-<path id="edge-B-I" data-source="B" data-target="I" data-label="" class="edge" d="M300,352 L360,352" />
-<path id="edge-I-Q" data-source="I" data-target="Q" data-label="" class="edge" d="M600,352 L660,352" />
-<path id="edge-Q-E" data-source="Q" data-target="E" data-label="" class="edge" d="M900,352 L960,352" />
-<path id="edge-E-X" data-source="E" data-target="X" data-label="準備部署到 k8s" class="edge" d="M1200,352 L1460,352" />
-<path id="edge-E-C" data-source="E" data-target="C" data-label="驗證不達標，需調整" class="edge" d="M1140,310 L1140,185" />
-<path id="edge-C-I" data-source="C" data-target="I" data-label="調整 Ingestion 設定，需重新 Ingestion" class="edge" d="M1020,125 L480,125 L480,310" />
-<path id="edge-C-Q" data-source="C" data-target="Q" data-label="只調整 Inference 設定，不需重新 Ingestion" class="edge" d="M1020,170 L780,170 L780,310" />
-<path id="edge-B-F" data-source="B" data-target="F" data-label="產出" class="edge relation" d="M180,395 L180,520" />
-<path id="edge-C-F" data-source="C" data-target="F" data-label="更新設定" class="edge relation" d="M1140,100 L1140,90 L330,90 L330,342 Q346,352 330,362 L330,560 L290,560" />
-<path id="edge-F-S" data-source="F" data-target="S" data-label="套用 Config" class="edge relation" d="M290,580 L365,580 L365,660 L420,660" />
-<path id="edge-I-S" data-source="I" data-target="S" data-label="切片與建立索引" class="edge relation" d="M480,395 L480,610" />
-<path id="edge-Q-S" data-source="Q" data-target="S" data-label="查詢" class="edge relation" d="M780,395 L780,610" />
-<path id="edge-E-S" data-source="E" data-target="S" data-label="評估" class="edge relation" d="M1080,520 L860,520 L860,610" />
-<path id="edge-E-R" data-source="E" data-target="R" data-label="產出" class="edge relation" d="M1080,395 L1080,620" />
-<path id="edge-X-Y" data-source="X" data-target="Y" data-label="產出" class="edge relation" d="M1580,395 L1580,620" />
-<path id="edge-X-D" data-source="X" data-target="D" data-label="使用匯出的 YAML" class="edge" d="M1700,352 L1900,352" />
-<path id="edge-D-K" data-source="D" data-target="K" data-label="部署" class="edge relation" d="M2080,395 L2080,620" />
-<path id="edge-Y-K" data-source="Y" data-target="K" data-label="套用 YAML" class="edge relation" d="M1700,660 L1900,660" />
-<path id="edge-GE-S" data-source="GE" data-target="S" data-label="依 Config 建立" class="edge relation" d="M1000,865 L1000,785 L660,785 L660,710" />
-<path id="edge-GE-K" data-source="GE" data-target="K" data-label="Library 執行核心（由 Platform Image 封裝）" class="edge relation" d="M1360,865 L1360,785 L2080,785 L2080,700" />
-<path id="edge-GE-B" data-source="GE" data-target="B" data-label="提供可選 Module／Component" class="edge relation" d="M850,920 L42,920 L42,352 L60,352" />
-<circle cx="1080" cy="520" r="3" fill="#66788b" />
-<g id="B" class="node step" data-label="1. Build（設定 System Config）"><rect x="60" y="310" width="240" height="85" rx="10" />
-<text x="180.0" y="337.0" font-size="23" style="stroke:none">1. Build</text>
-<text x="180.0" y="368.0" font-size="19" style="stroke:none">設定 System Config</text>
-</g>
-<g id="I" class="node step" data-label="2. Ingestion"><rect x="360" y="310" width="240" height="85" rx="10" />
-<text x="480.0" y="352.5" font-size="23" style="stroke:none">2. Ingestion</text>
-</g>
-<g id="Q" class="node step" data-label="3. Inference"><rect x="660" y="310" width="240" height="85" rx="10" />
-<text x="780.0" y="352.5" font-size="23" style="stroke:none">3. Inference</text>
-</g>
-<g id="E" class="node step" data-label="4. Evaluation"><rect x="960" y="310" width="240" height="85" rx="10" />
-<text x="1080.0" y="352.5" font-size="23" style="stroke:none">4. Evaluation</text>
-</g>
-<g id="X" class="node step" data-label="5. Export YAML"><rect x="1460" y="310" width="240" height="85" rx="10" />
-<text x="1580.0" y="352.5" font-size="23" style="stroke:none">5. Export YAML</text>
-</g>
-<g id="C" class="node step" data-label="修改 Config"><rect x="1020" y="100" width="240" height="85" rx="10" />
-<text x="1140.0" y="142.5" font-size="24" style="stroke:none">修改 Config</text>
-</g>
-<g id="F" class="node object" data-label="Config"><rect x="90" y="520" width="200" height="80" rx="10" />
-<text x="190.0" y="560.0" font-size="25" style="stroke:none">Config</text>
-</g>
-<g id="S" class="node object" data-label="Retrieval System for Retrieval Builder 測試"><rect x="420" y="610" width="480" height="100" rx="10" />
-<text x="660.0" y="644.5" font-size="26" style="stroke:none">Retrieval System for</text>
-<text x="660.0" y="675.5" font-size="26" style="stroke:none">Retrieval Builder 測試</text>
-</g>
-<g id="R" class="node object" data-label="評估報告"><rect x="980" y="620" width="240" height="80" rx="10" />
-<text x="1100.0" y="660.0" font-size="25" style="stroke:none">評估報告</text>
-</g>
-<g id="Y" class="node object" data-label="YAML 設定檔（Config＋部署設定）"><rect x="1460" y="620" width="240" height="80" rx="10" />
-<text x="1580.0" y="644.5" font-size="24" style="stroke:none">YAML 設定檔</text>
-<text x="1580.0" y="675.5" font-size="18" style="stroke:none">Config＋部署設定</text>
-</g>
-<g id="D" class="node deploy" data-label="6. Deploy YAML in FTEST/ENT"><rect x="1900" y="310" width="360" height="85" rx="10" />
-<text x="2080.0" y="337.0" font-size="24" style="stroke:none">6. Deploy YAML</text>
-<text x="2080.0" y="368.0" font-size="22" style="stroke:none">in FTEST/ENT</text>
-</g>
-<g id="K" class="node object" data-label="Retrieval System in k8s"><rect x="1900" y="620" width="360" height="80" rx="10" />
-<text x="2080.0" y="660.0" font-size="26" style="stroke:none">Retrieval System in k8s</text>
-</g>
-<g id="GE" class="node engine" data-label="共用 Retrieval Engine Library（Module／Component）"><rect x="850" y="865" width="660" height="100" rx="10" />
-<text x="1180.0" y="899.5" font-size="28" style="stroke:none">共用 Retrieval Engine Library</text>
-<text x="1180.0" y="930.5" font-size="22" style="stroke:none">Module／Component</text>
-</g>
-
-<text class="edge-label" x="1330" y="330" font-size="20" style="stroke:none">準備部署到 k8s</text>
-<text class="edge-label" x="1160" y="250" font-size="20" style="stroke:none">驗證不達標，需調整</text>
-<text class="edge-label" x="730" y="110" font-size="20" style="stroke:none">調整 Ingestion 設定，需重新 Ingestion</text>
-<text class="edge-label" x="770" y="245" font-size="20" style="stroke:none">只調整 Inference 設定，不需重新 Ingestion</text>
-<text class="note" x="815" y="275" style="text-anchor:start;font-size:16px">Remote Retrieval 可直接查外部資料</text>
-<text class="edge-label" x="820" y="78" font-size="20" style="stroke:none">更新設定</text>
-<text class="edge-label" x="180" y="465" font-size="21" style="stroke:none">產出</text>
-<text class="edge-label" x="365" y="630" font-size="19" style="stroke:none">套用 Config</text>
-<text class="edge-label" x="480" y="465" font-size="20" style="stroke:none">切片與建立索引</text>
-<text class="edge-label" x="780" y="465" font-size="21" style="stroke:none">查詢</text>
-<text class="edge-label" x="950" y="520" font-size="21" style="stroke:none">評估</text>
-<text class="edge-label" x="1080" y="575" font-size="21" style="stroke:none">產出</text>
-<text class="edge-label" x="1580" y="515" font-size="21" style="stroke:none">產出</text>
-<text class="edge-label" x="1800" y="305" font-size="19" style="stroke:none">使用匯出的 YAML</text>
-<text class="edge-label" x="2080" y="510" font-size="21" style="stroke:none">部署</text>
-<text class="edge-label" x="1800" y="640" font-size="20" style="stroke:none">套用 YAML</text>
-<text class="edge-label" x="825" y="785" font-size="22" style="stroke:none">依 Config 建立</text>
-<text class="edge-label" x="1760" y="785" font-size="22" style="stroke:none">Library 執行核心（由 Platform Image 封裝）</text>
-<text class="edge-label" x="450" y="920" font-size="23" style="stroke:none">提供可選 Module／Component</text>
-
-<text class="note" x="1180" y="1595" style="stroke:none">實線：操作流程與發布　 ·　 虛線：設定、產出及共用能力</text>
-<text class="note" x="80" y="1170" style="text-anchor:start;fill:#443267;font-size:16px">Admin 維護全域模板</text>
-<path id="edge-ADMIN1-ADMIN2" data-source="ADMIN1" data-target="ADMIN2" data-label="" class="edge" d="M520,1229 L650,1229" />
-<g id="ADMIN1" class="node engine" data-label="A1. 建立全域模板"><rect x="90" y="1185" width="430" height="88" rx="10" /><text x="305" y="1213" font-size="24" style="stroke:none">A1. 建立全域模板</text><text x="305" y="1248" font-size="22" style="stroke:none">整理可重用的方法與參數</text></g>
-<path id="edge-ADMIN2-ADMIN3" data-source="ADMIN2" data-target="ADMIN3" data-label="" class="edge" d="M1080,1229 L1210,1229" />
-<g id="ADMIN2" class="node engine" data-label="A2. 驗證模板設定"><rect x="650" y="1185" width="430" height="88" rx="10" /><text x="865" y="1213" font-size="24" style="stroke:none">A2. 驗證模板設定</text><text x="865" y="1248" font-size="20" style="stroke:none">檢查方法、欄位與 API 契約</text></g>
-<path id="edge-ADMIN3-ADMIN4" data-source="ADMIN3" data-target="ADMIN4" data-label="" class="edge" d="M1640,1229 L1770,1229" />
-<g id="ADMIN3" class="node engine" data-label="A3. 發布模板版本"><rect x="1210" y="1185" width="430" height="88" rx="10" /><text x="1425" y="1213" font-size="24" style="stroke:none">A3. 發布模板版本</text><text x="1425" y="1248" font-size="20" style="stroke:none">Builder 顯示可選版本</text></g>
-<g id="ADMIN4" class="node engine" data-label="A4. User 選用模板"><rect x="1770" y="1185" width="430" height="88" rx="10" /><text x="1985" y="1213" font-size="24" style="stroke:none">A4. User 選用模板</text><text x="1985" y="1248" font-size="20" style="stroke:none">複製至 System 草稿</text></g>
-
-<path id="edge-GE-RS" data-source="GE" data-target="RS" data-label="透過 Remote API Adapter 呼叫" class="edge relation" d="M1510,905 L1830,905" />
-<text class="edge-label" x="1670" y="880" font-size="18">Remote API Adapter 呼叫</text>
-<g id="RS" class="node deploy" data-label="User 外部服務（Remote API）"><rect x="1830" y="865" width="430" height="100" rx="10"/><text x="2045" y="898" font-size="24">User 外部服務</text><text x="2045" y="933" font-size="22">Remote API</text></g>
-<text class="note" x="2045" y="990" style="font-size:16px">由使用者部署與維運</text>
-<path id="edge-REMOTE4-RS" data-source="REMOTE4" data-target="RS" data-label="Config 綁定外部 Endpoint" class="edge relation" d="M2200,1434 L2310,1434 L2310,915 L2260,915" />
-<text class="edge-label" x="2170" y="1032" font-size="21">Config 綁定 Endpoint</text>
-<text class="note" x="80" y="1345" style="text-anchor:start;fill:#443267;font-size:16px">User 接入 Remote API</text>
-<g id="REMOTE1" class="node engine" data-label="R1. 選擇替換範圍"><rect x="90" y="1390" width="430" height="88" rx="10"/><text x="305" y="1418" font-size="24">R1. 選擇替換範圍</text><text x="305" y="1453" font-size="20">可替換的單節點或連續區段</text></g>
-<path id="edge-REMOTE1-REMOTE2" data-source="REMOTE1" data-target="REMOTE2" data-label="" class="edge" d="M520,1434 L650,1434" />
-<g id="REMOTE2" class="node engine" data-label="R2. 實作並部署 API"><rect x="650" y="1390" width="430" height="88" rx="10"/><text x="865" y="1418" font-size="24">R2. 實作並部署 API</text><text x="865" y="1453" font-size="20">遵守輸入／輸出契約</text></g>
-<path id="edge-REMOTE2-REMOTE3" data-source="REMOTE2" data-target="REMOTE3" data-label="" class="edge" d="M1080,1434 L1210,1434" />
-<g id="REMOTE3" class="node engine" data-label="R3. 在 Builder 設定 API"><rect x="1210" y="1390" width="430" height="88" rx="10"/><text x="1425" y="1418" font-size="24">R3. 在 Builder 設定 API</text><text x="1425" y="1453" font-size="20">Endpoint、認證與參數</text></g>
-<path id="edge-REMOTE3-REMOTE4" data-source="REMOTE3" data-target="REMOTE4" data-label="" class="edge" d="M1640,1434 L1770,1434" />
-<g id="REMOTE4" class="node engine" data-label="R4. 驗證有效契約"><rect x="1770" y="1390" width="430" height="88" rx="10"/><text x="1985" y="1418" font-size="24">R4. 驗證有效契約</text><text x="1985" y="1453" font-size="20">儲存至 System Config</text></g>
-<text class="note" x="1180" y="1525" style="font-size:16px">Builder 依上游產生 Request Schema，依輸出宣告與共用契約產生 Response Schema。</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="926" viewBox="0 0 1800 926" role="img" aria-labelledby="title description">
+<title id="title">Retrieval System 設定與部署流程</title><desc id="description">先在 Builder DEV 發布與測試，再將同版設定部署至 FTEST／ENT。</desc>
+<style>text{font-family:"Noto Sans CJK TC","Microsoft JhengHei",sans-serif}</style>
+<defs>
+<marker id="blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#4065b2"/></marker>
+<marker id="teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#287d6c"/></marker>
+<marker id="amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#9e5c1e"/></marker>
+<marker id="purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#6d5b9f"/></marker>
+<marker id="white" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52647b"/></marker>
+</defs>
+<rect width="1800" height="926" fill="#f7f9fd"/>
+<text x="48" y="69" fill="#18294c" font-size="40" font-weight="750" text-anchor="start">Retrieval System 設定與部署流程</text>
+<text x="49" y="112" fill="#52647b" font-size="21" font-weight="400" text-anchor="start">先在 Builder DEV 發布與測試，再將同版設定部署至 FTEST／ENT。</text>
+<rect x="44" y="147" width="1712" height="231" rx="18" fill="#f1f4ff" stroke="#acbce6" stroke-width="1.5"/>
+<text x="67" y="184" fill="#4065b2" font-size="22" font-weight="720" text-anchor="start">Builder DEV · 設定與測試</text>
+<path d="M374 272H400" fill="none" stroke="#4065b2" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#blue)"/>
+<path d="M713 272H739" fill="none" stroke="#4065b2" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#blue)"/>
+<path d="M1052 272H1078" fill="none" stroke="#4065b2" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#blue)"/>
+<path d="M1391 272H1417" fill="none" stroke="#4065b2" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#blue)"/>
+<rect x="66" y="215" width="308" height="116" rx="14" fill="#ffffff" stroke="#d9e2ef" stroke-width="1.5"/>
+<rect x="80" y="232" width="4" height="20" rx="2" fill="#52647b"/>
+<text x="93" y="250" fill="#18294c" font-size="23" font-weight="730" text-anchor="start">設定與發布</text>
+<text x="93" y="280" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">選用模板或自行設定</text>
+<text x="93" y="307" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">預檢 ES 索引影響</text>
+<rect x="405" y="215" width="308" height="116" rx="14" fill="#ffffff" stroke="#d9e2ef" stroke-width="1.5"/>
+<rect x="419" y="232" width="4" height="20" rx="2" fill="#52647b"/>
+<text x="432" y="250" fill="#18294c" font-size="23" font-weight="730" text-anchor="start">Ingestion</text>
+<text x="432" y="280" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">提交文件並取得 run_id</text>
+<text x="432" y="307" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">逐份查詢匯入結果</text>
+<rect x="744" y="215" width="308" height="116" rx="14" fill="#ffffff" stroke="#d9e2ef" stroke-width="1.5"/>
+<rect x="758" y="232" width="4" height="20" rx="2" fill="#52647b"/>
+<text x="771" y="250" fill="#18294c" font-size="23" font-weight="730" text-anchor="start">Inference</text>
+<text x="771" y="280" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">完成初次匯入後可查詢</text>
+<text x="771" y="307" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">檢查結果與版本</text>
+<rect x="1083" y="215" width="308" height="116" rx="14" fill="#ffffff" stroke="#d9e2ef" stroke-width="1.5"/>
+<rect x="1097" y="232" width="4" height="20" rx="2" fill="#52647b"/>
+<text x="1110" y="250" fill="#18294c" font-size="23" font-weight="730" text-anchor="start">Evaluation</text>
+<text x="1110" y="280" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">批次查詢與檢索評估</text>
+<text x="1110" y="307" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">依結果調整 Config</text>
+<rect x="1422" y="215" width="308" height="116" rx="14" fill="#ffffff" stroke="#d9e2ef" stroke-width="1.5"/>
+<rect x="1436" y="232" width="4" height="20" rx="2" fill="#52647b"/>
+<text x="1449" y="250" fill="#18294c" font-size="23" font-weight="730" text-anchor="start">Export</text>
+<text x="1449" y="280" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">選定已發布的 Config</text>
+<text x="1449" y="307" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">帶入目標環境部署設定</text>
+<path d="M1237 331V353H221V333" fill="none" stroke="#4065b2" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#blue)"/>
+<text x="675" y="372" fill="#4065b2" font-size="17" font-weight="660" text-anchor="start">評估後調整並重新發布</text>
+<path d="M1576 331V409" fill="none" stroke="#9e5c1e" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#amber)"/>
+<path d="M559 331V428" fill="none" stroke="#287d6c" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#teal)"/>
+<path d="M898 331V428" fill="none" stroke="#287d6c" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#teal)"/>
+<rect x="382" y="432" width="330" height="150" rx="14" fill="#ecf8f4" stroke="#a0c7b8" stroke-width="1.5"/>
+<rect x="396" y="449" width="4" height="20" rx="2" fill="#287d6c"/>
+<text x="409" y="467" fill="#18294c" font-size="23" font-weight="730" text-anchor="start">逐文件工作</text>
+<text x="409" y="497" fill="#52647b" font-size="17" font-weight="400" text-anchor="start">選取排隊或執行中的文件取消</text>
+<text x="409" y="524" fill="#52647b" font-size="17" font-weight="400" text-anchor="start">原批次成功可更新為 completed</text>
+<text x="409" y="551" fill="#52647b" font-size="17" font-weight="400" text-anchor="start">Bulk 逾時可重新匯入</text>
+<rect x="733" y="432" width="376" height="150" rx="14" fill="#ecf8f4" stroke="#a0c7b8" stroke-width="1.5"/>
+<rect x="747" y="449" width="4" height="20" rx="2" fill="#287d6c"/>
+<text x="760" y="467" fill="#18294c" font-size="23" font-weight="730" text-anchor="start">切版與重建</text>
+<text x="760" y="497" fill="#52647b" font-size="17" font-weight="400" text-anchor="start">沿用索引：Inference 補載期間停查</text>
+<text x="760" y="524" fill="#52647b" font-size="17" font-weight="400" text-anchor="start">重建空索引：重新匯入後開放查詢</text>
+<text x="760" y="551" fill="#52647b" font-size="17" font-weight="400" text-anchor="start">版本與索引世代對齊後恢復</text>
+<rect x="1170" y="412" width="586" height="170" rx="14" fill="#fff5e7" stroke="#e1b982" stroke-width="1.5"/>
+<rect x="1184" y="429" width="4" height="20" rx="2" fill="#9e5c1e"/>
+<text x="1197" y="447" fill="#18294c" font-size="24" font-weight="730" text-anchor="start">FTEST／ENT 部署</text>
+<text x="1197" y="477" fill="#52647b" font-size="19" font-weight="400" text-anchor="start">使用單位套用部署設定並供應 ES 綁定</text>
+<text x="1197" y="504" fill="#52647b" font-size="19" font-weight="400" text-anchor="start">Runtime 啟動時選擇 Ingestion／Inference，可分 Pod</text>
+<text x="1197" y="531" fill="#52647b" font-size="19" font-weight="400" text-anchor="start">兩條流程使用同版 Config，連到同一 ES 索引</text>
+<rect x="44" y="637" width="1712" height="231" rx="18" fill="#f6f2fe" stroke="#c9bce6" stroke-width="1.5"/>
+<text x="67" y="674" fill="#6d5b9f" font-size="22" font-weight="720" text-anchor="start">Builder 設定來源及共用執行核心</text>
+<rect x="66" y="703" width="518" height="119" rx="14" fill="#ffffff" stroke="#d9e2ef" stroke-width="1.5"/>
+<rect x="80" y="720" width="4" height="20" rx="2" fill="#52647b"/>
+<text x="93" y="738" fill="#18294c" font-size="23" font-weight="730" text-anchor="start">全域模板</text>
+<text x="93" y="768" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">Admin 維護並發布模板版本</text>
+<text x="93" y="795" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">User 選用後複製至 System 草稿</text>
+<rect x="617" y="703" width="518" height="119" rx="14" fill="#ffffff" stroke="#d9e2ef" stroke-width="1.5"/>
+<rect x="631" y="720" width="4" height="20" rx="2" fill="#52647b"/>
+<text x="644" y="738" fill="#18294c" font-size="23" font-weight="730" text-anchor="start">自備 Remote API</text>
+<text x="644" y="768" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">指定單模組或連續區段及環境綁定</text>
+<text x="644" y="795" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">按有效 I/O 契約驗證輸入與輸出</text>
+<rect x="1168" y="703" width="562" height="119" rx="14" fill="#ffffff" stroke="#d9e2ef" stroke-width="1.5"/>
+<rect x="1182" y="720" width="4" height="20" rx="2" fill="#52647b"/>
+<text x="1195" y="738" fill="#18294c" font-size="23" font-weight="730" text-anchor="start">共用 Engine Library</text>
+<text x="1195" y="768" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">DEV 與獨立 Runtime 均使用同一套 Library</text>
+<text x="1195" y="795" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">Config 選定 Component 及執行參數</text>
 </svg>

@@ -14,7 +14,7 @@ python3 examples/user_remote_api/validate.py
 
 ## UI prototype 回歸
 
-瀏覽器回歸涵蓋草稿保存、無效選值、索引發布、CSV 映射、Run 狀態、Filter、索引沿用／重建及窄版畫面。在 repo 根目錄用已安裝 Playwright 和 Chromium 的 Node.js 環境執行。
+瀏覽器回歸涵蓋草稿保存、元件選擇、索引發布及重建、CSV 映射、Run 狀態與 Filter，也檢查 Runtime 分開部署、逐流程卸載／補載及 Bulk 逾時重匯。在 repo 根目錄用已安裝 Playwright 和 Chromium 的 Node.js 環境執行。
 
 ```sh
 node tests/w1-prototype.browser.test.cjs

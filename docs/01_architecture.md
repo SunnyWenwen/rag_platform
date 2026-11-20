@@ -151,32 +151,32 @@ Config 與部署設定的欄位、有效設定規則及範例見 [資料契約�
 User 在 Workspace 建立 System，選用模板或自行設定 Import、Ingestion 和 Inference。以 Builder DEV 驗證設定及試跑，再匯出 Config／環境綁定供 FTEST／ENT 獨立 Runtime。Admin 維護全域模板；套用時複製所選版本至 User 草稿。Engine 依有效設定選用內建方法或呼叫 User 設定的外部 API。
 
 - [User 流程](../diagrams/01_user_system_l1.png)
-- [Builder 啟動後、使用者操作前](../diagrams/02_infra_architecture_startup.png) · [SVG](../diagrams/02_infra_architecture_startup.svg) · [Mermaid](../diagrams/02_infra_architecture_startup.mmd)
+- [Builder 啟動與 Runtime 補載](../diagrams/02_infra_architecture_startup.png) · [SVG](../diagrams/02_infra_architecture_startup.svg) · [Mermaid](../diagrams/02_infra_architecture_startup.mmd)
 - [使用者操作後](../diagrams/02_infra_architecture.png) · [SVG](../diagrams/02_infra_architecture.svg) · [Mermaid](../diagrams/02_infra_architecture.mmd)
 - [模組與 System](../diagrams/03_module_component_concept.png)
 
 ### 02 基礎架構的兩個階段
 
-**首次啟動後、使用者操作前**，A-2 Backend 載入 B-1 的設定契約與元件目錄並連接 Config Store。A-1 Frontend 依 Schema、Descriptor 與有效相依產生可設定欄位和選項。A-4 以獨立程序啟動，由 DEV Runtime 入口直接載入 B-2，初始化 API、Registry、Executor 及記憶體 Queue，此時可零組 System Config 就緒。已有 System 的重新載入依 Runtime 管理規則處理。[Runtime 啟動與管理](06_runtime_api_and_deployment.md#src-07-41-建立與啟動建議流程)
+**啟動與補載**。A-2 Backend 讀取已發布的 Config 及各流程的部署意圖。A-4 Pod 由 DEV Runtime 入口載入 B-2，初始化 API、Registry、Executor 及記憶體 Queue，可零組 Config 就緒。Builder 在啟動、Runtime 恢復連線及每 60 秒查核已載入版本與索引世代。預期上線的流程若缺少有效快照，且 ES 綁定相容，就補載已發布版本。索引確認遺失時，等使用者確認後再恢復。 [Runtime 啟動與補載](06_runtime_api_and_deployment.md#builder-managed-dev-runtimes)
 
 **使用者操作後**，從發布 Config、啟用 DEV 測試 System，到匯出後部署目標 System，分工如下。
 
 | 圖面區塊 | 責任與交付物 |
 |---|---|
-| **A · Retrieval Builder** | **A-1 Frontend** 依 B-1 的契約與有效資料相依產生設定欄位和選項。**A-2 Backend** 驗證並保存 **A-3 System Config Revision**，經 **A-4 共用 DEV Runtime** 的內部管理 API 下發設定，啟用 **A-5 測試 Retrieval System**。Ingest、Inference 與 Evaluation 由 A 發起，A-4 依 `system_id` 路由到 A-5，並使用 **A-6 DEV 外部依賴**。 |
+| **A · Builder DEV** | **A-1 Frontend** 依 B-1 的契約呈現設定與測試。**A-2 Backend** 驗證設定並維護 **A-3 Config Revision 與部署意圖**，依 `runtime_ref` 及 `pipeline` 管理 **A-4 Ingestion／Inference**。兩條流程可在同一 Runtime Pod 啟用，也可分開部署，使用 **A-6 共用 Elasticsearch** 的同一檢索索引。 |
 | **B · Retrieval Engine Framework** | **B-1 System Config Schema** 搭配 Component Descriptor 與動態相依規則，供 A 產生表單和驗證設定。**B-2 Engine Library** 依 Config 組裝 System 並執行 Pipeline，DEV Runtime 入口直接載入 B-2 啟動 A-4。**B-3 共用 Runtime Image** 封裝 Runtime API 與 B-2，供 C-3 部署。 |
-| **C · FTEST／ENT 部署** | **C-1 K8s 部署 Bundle** 包含同版 A-3、B-3 Image 引用、K8s manifests 與目標環境綁定。使用單位經 **C-2 K8s CD** 啟動 **C-3 獨立 Retrieval Runtime**，載入 A-3 後建立 **C-4 目標環境的 Retrieval System**，並提供 **C-5 目標環境依賴**。 |
+| **C · FTEST／ENT 部署** | **C-1 部署 Bundle** 包含同版 Config、B-3 Image 引用與目標環境綁定。**C-2 使用單位部署**以環境設定的 `pipeline` 選擇 **C-3 獨立 Runtime** 啟用的流程。分 Pod 時沿用同版 Config 及同一 ES 綁定。**C-5** 為部署環境供應的 ES、模型、Remote API、Secret 與觀測資源。 |
 
 DEV 與目標環境各自綁定服務及索引。對使用 Elasticsearch 的 System，Runtime 使用檢索資料索引及環境共用的控制索引。匯出交付同版邏輯 Config 和部署所需引用，目標資料由部署方準備或重新匯入。[部署 Bundle 與資料準備](06_runtime_api_and_deployment.md#src-07-91-bundle-目標)
 
 | 使用者步驟 | 圖面對應 |
 |---|---|
-| 1 設定與啟用 | 使用者在 A-1 設定，A-2 驗證並發布 A-3。A-4 套用設定，驗證服務及索引綁定後啟用 A-5。 |
-| 2 Ingest | 使用者從 A-1 上傳資料，A-2 提交匯入。A-4 路由到 A-5，由 A-5 處理文件並寫入 A-6 的 DEV 索引。 |
-| 3 Inference | 使用者在 A-1 提問，A-2 送出查詢。A-4 路由到 A-5 並回傳檢索結果。 |
-| 4 Evaluation | 使用者在 A-1 啟動評估，Runner 經 A-4 批次查詢 A-5 並彙整結果。評估後可調整 A-3 並重測受影響的步驟。 |
+| 1 設定與啟用 | A-2 驗證並發布 A-3。Ingestion 建立或沿用索引，Inference 補載生效版本與索引世代後才受理查詢。 |
+| 2 Ingest | A-2 提交匯入並取得 `run_id`。Ingestion 逐份處理文件，寫入 A-6 的資料索引，並在控制索引保存工作結果。 |
+| 3 Inference | A-2 向就緒的 Inference 流程送出查詢。Builder 測試入口等初次資料匯入完成後開放。 |
+| 4 Evaluation | Runner 批次查詢同一 System 並彙整結果。評估後可調整 A-3 並重測受影響的步驟。 |
 | 5 Export | A-2 將同版 A-3 與目標部署所需引用匯出成 C-1。 |
-| 6 Deploy | 使用單位透過 C-2 啟動 C-3。C-3 載入 A-3，建立 C-4。 |
+| 6 Deploy | 使用單位透過 C-2 啟動 C-3，載入匯出版本及目標環境綁定。 |
 
 
 ## 歷史名稱與遷移對照

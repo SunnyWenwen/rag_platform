@@ -2,7 +2,7 @@
 
 [流程圖](03_module_component_concept.png) · [Mermaid](03_module_component_concept.mmd)
 
-上半部列出模組契約及可選元件。Ingestion 共用 Document，Inference 共用 QueryContext[]。
+上半部列出首版模組與邊界。Ingestion 共用 Document，Inference 共用 QueryContext[]。索引與檢索沿用同一 Elasticsearch 綁定。Rewrite 的單筆或多 Query 共用同一 Component。
 
 下半部示範用同一份 Library 組裝三套 System。A 直接選用內建元件，B 由 Admin 維護的全域模板起始，C 的 Parsing 接入 User 已部署的 Remote API。
 

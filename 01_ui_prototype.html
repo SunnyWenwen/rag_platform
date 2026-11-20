@@ -146,6 +146,12 @@ fieldset.field{margin-inline:0;min-width:0;border:1px solid var(--line);border-r
 fieldset.field legend{color:var(--ink);padding-inline:4px}
 summary{cursor:pointer;color:var(--accent);font-weight:650}
 .modalfoot{flex-wrap:wrap}
+.runtime-facts{display:flex;flex-wrap:wrap;gap:10px 24px;margin:12px 0}
+.runtime-facts div{min-width:120px}
+.runtime-facts dt{color:var(--muted);font-size:12px}
+.runtime-facts dd{margin:2px 0 0;font-weight:650;overflow-wrap:anywhere}
+.run-selection{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+.check-label{display:flex;align-items:center;gap:7px;margin-top:12px;font-size:12px;color:#646c82}
 @media(max-width:850px){.builder,.operation{grid-template-columns:1fr}}
 @media(max-width:550px){.form-grid{grid-template-columns:1fr}.modalhead,.modalbody,.modalfoot{padding:16px}.card{padding:18px}}
 </style>
@@ -201,7 +207,7 @@ const record = (value, label) => {
 };
 const makeButton = (title, action, options = '') => `<button class="btn ${options}" data-action="${action}">${title}</button>`;
 const badge = (title, kind = '') => `<span class="badge ${kind}">${title}</span>`;
-const status = {queued:'已排入',running:'處理中',completed:'已完成',partial:'部分失敗',failed:'失敗',unknown:'狀態未知'};
+const status = {queued:'已排入',running:'處理中',completed:'已完成',partial:'部分完成',failed:'失敗',cancelled:'已取消',unknown:'狀態未知'};
 const labels = {
   other_settings:'其他設定', import:'Import', parsing:'Parsing', chunking:'Chunking', embedding:'Embedding', indexing:'Indexing',
   inference_input:'Inference Input', query_transformation:'Query Transformation', retrieval:'Retrieval', rerank:'Rerank',
@@ -298,6 +304,7 @@ let pendingSystem = null, draftName = '';
 let componentDrafts = {};
 let draft = null, draftDirty = false, issues = [], checked = null, detailOpen = false;
 let ingestText = '', ingestError = '', csv = null, mapping = {}, batchPreview = null, viewRun = null;
+let selectedDocuments = new Set(), bulkTimeout = false;
 let queryText = '', filterText = '[]', queryError = '', queryResult = null;
 let toastTimer;
 let polling = false;
@@ -339,6 +346,7 @@ function notify(message) {
 
 function resetOperation() {
   ingestText = ''; ingestError = ''; csv = null; mapping = {}; batchPreview = null; viewRun = null;
+  selectedDocuments.clear(); bulkTimeout = false;
   queryText = ''; filterText = '[]'; queryError = ''; queryResult = null;
 }
 
@@ -398,7 +406,8 @@ function openSystem(systemId, target = 'config') {
 function readiness(system) {
   if (!system.active) return '<span class="status">草稿</span>';
   if (!system.indexReady) return '<span class="status warn">索引未就緒</span>';
-  return system.initialized ? '<span class="status ready">可測試</span>' : '<span class="status warn">需 Ingestion</span>';
+  if (!pipelineReady(system,'inference')) return '<span class="status warn">查詢暫停</span>';
+  return system.initialized ? '<span class="status ready">可查詢</span>' : '<span class="status warn">待初次匯入</span>';
 }
 
 function renderWorkspace() {
@@ -411,7 +420,7 @@ function renderWorkspace() {
   $('cards').innerHTML = entries.length ? entries.map(system => `<article class="card">
     <div class="cardtop"><span class="system-icon" aria-hidden="true">▧</span>${readiness(system)}</div>
     <h2>${escapeHTML(system.name)}</h2>
-    <div class="meta">${system.documents.length} documents · Vector · ${activeRevision(system) ?? '未發布'}</div>
+    <div class="meta">${system.documents.length} 份文件 · Elasticsearch · ${activeRevision(system) ?? '未發布'}</div>
     <div class="actions">
       <button data-action="system" data-value="${system.id}" data-view="ingest">↑ Ingest</button>
       <button data-action="system" data-value="${system.id}" data-view="query">◇ Inference</button>
@@ -419,6 +428,7 @@ function renderWorkspace() {
     </div>
     <div class="cardlinks">
       <button class="export" data-action="system" data-value="${system.id}" data-view="config">⚙ Edit Config</button>
+      <button class="export" data-action="system" data-value="${system.id}" data-view="runtime">Runtime</button>
       <button class="export" disabled title="部署匯出待整合">↗ Export YAML</button>
     </div>
   </article>`).join('') : '<div class="empty">此 Workspace 尚無 Retrieval System。</div>';
@@ -431,18 +441,99 @@ function render() {
 
   const actions = $('editor-actions');
   const creating = system === pendingSystem;
-  $('dialog-title').textContent = screen === 'config' ? creating ? 'Create Retrieval System' : 'Edit Config' : screen === 'ingest' ? 'Ingest' : 'Inference';
+  $('dialog-title').textContent = screen === 'config' ? creating ? 'Create Retrieval System' : 'Edit Config'
+    : {ingest:'Ingest',query:'Inference',runtime:'Runtime'}[screen];
   $('dialog-subtitle').textContent = creating ? groups[workspace] : [system.name,activeRevision(system)].filter(Boolean).join(' / ');
   actions.hidden = screen !== 'config';
   if (screen === 'config') {
     actions.innerHTML = `${system.active ? makeButton('下載生效設定','download') : ''}
       ${makeButton('取消','close-dialog')}${makeButton('保存草稿','save')}${makeButton('驗證並發布','validate','primary')}`;
   }
-  $('page').innerHTML = screen === 'config' ? settings(system) : screen === 'ingest' ? ingestion(system) : inference(system);
+  $('page').innerHTML = {config:settings,ingest:ingestion,query:inference,runtime:runtimePage}[screen](system);
   refreshContractPreviews();
 }
 
 const activeRevision = system => system.active ? 'revision-' + system.revision : null;
+const indexGeneration = system => system.active ? 'index-' + (system.indexEpoch ?? 1) : null;
+const runtimePipelines = ['ingestion','inference'];
+const pipelineNames = {ingestion:'Ingestion',inference:'Inference'};
+const snapshot = system => ({config_revision:activeRevision(system),index_generation:indexGeneration(system)});
+
+function deployment(system) {
+  return system.deployment ??= {
+    layout:'shared',
+    desired:Object.fromEntries(runtimePipelines.map(pipeline => [pipeline,Boolean(system.active)])),
+    loaded:Object.fromEntries(runtimePipelines.map(pipeline => [pipeline,system.active ? snapshot(system) : null]))
+  };
+}
+
+function pipelineReady(system,pipeline) {
+  const loaded = deployment(system).loaded[pipeline];
+  return Boolean(system.indexReady && loaded && loaded.config_revision === activeRevision(system)
+    && loaded.index_generation === indexGeneration(system));
+}
+
+function pipelineMessage(system,pipeline) {
+  if (!system.active) return '先發布設定並建立 Elasticsearch 索引。';
+  if (!deployment(system).loaded[pipeline]) return '409 PIPELINE_NOT_ENABLED · 此流程尚未載入。';
+  if (!system.indexReady) return '503 INDEX_NOT_READY · Elasticsearch 索引未就緒。';
+  if (!pipelineReady(system,pipeline)) return '503 PIPELINE_NOT_READY · 正在切版，等待載入生效版本。';
+  return '';
+}
+
+function reconcileRuntime(system) {
+  const target = deployment(system);
+  if (!system.indexReady) return false;
+  const missing = runtimePipelines.filter(pipeline => target.desired[pipeline] && !pipelineReady(system,pipeline));
+  for (const pipeline of missing) target.loaded[pipeline] = snapshot(system);
+  return missing.length > 0;
+}
+
+function scheduleRuntimeReconcile(system) {
+  setTimeout(() => {
+    if (reconcileRuntime(system)) {
+      persist();
+      if (!current() || current() === system && ['runtime','query'].includes(screen)) render();
+    }
+  },2200);
+}
+
+function runtimePage(system) {
+  const target = deployment(system);
+  const busy = hasActiveWork(system);
+  const rows = runtimePipelines.map(pipeline => {
+    const loaded = target.loaded[pipeline];
+    const runtimeRef = target.layout === 'shared' ? 'dev-runtime' : 'dev-' + pipeline;
+    const ready = pipelineReady(system,pipeline);
+    const message = pipelineMessage(system,pipeline);
+    const state = ready ? '已就緒' : loaded ? '待同步' : '未載入';
+    return `<tr><td><strong>${pipelineNames[pipeline]}</strong></td><td><code>${runtimeRef}</code></td>
+      <td>${badge(state,ready ? 'good' : loaded ? 'warn' : '')}</td><td>${loaded?.config_revision ?? '—'} / ${loaded?.index_generation ?? '—'}</td>
+      <td>${loaded ? `<button class="btn small" data-action="detach-pipeline" data-value="${pipeline}" ${pipeline === 'ingestion' && busy ? 'disabled' : ''}>卸載 ${pipelineNames[pipeline]}</button>`
+        : `<button class="btn small" data-action="reload-pipeline" data-value="${pipeline}" ${!system.indexReady ? 'disabled' : ''}>補載 ${pipelineNames[pipeline]}</button>`}
+      ${message && system.active ? `<div class="muted">${escapeHTML(message.split(' · ')[0])}</div>` : ''}</td></tr>`;
+  }).join('');
+  return `<div class="stack"><section class="panel" aria-label="Runtime 版本與部署">
+    <div class="bar"><h3>DEV Runtime</h3>${badge('Elasticsearch')}</div>
+    <dl class="runtime-facts"><div><dt>生效版 Config</dt><dd>${activeRevision(system) ?? '未發布'}</dd></div>
+      <div><dt>索引世代</dt><dd>${indexGeneration(system) ?? '—'}</dd></div>
+      <div><dt>索引狀態</dt><dd>${system.indexReady ? '已就緒' : system.active ? '遺失' : '未建立'}</dd></div></dl>
+    <label class="field">Runtime 拓撲<select class="control" id="runtime-layout" ${busy ? 'disabled' : ''}>
+      ${option('shared','一個 Runtime Pod · 啟用兩條流程',target.layout === 'shared')}
+      ${option('split','兩個 Runtime Pod · 分開部署',target.layout === 'split')}</select></label>
+    <div class="table-wrap"><table><thead><tr><th>流程</th><th>Runtime ref</th><th>狀態</th><th>本機版本／索引世代</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="toolbar"><button class="btn" data-action="sync-runtime" ${!system.indexReady ? 'disabled' : ''}>執行 Builder 同步</button>
+      <button class="btn" data-action="restart-runtime" ${!system.indexReady || busy ? 'disabled' : ''}>模擬重啟後未載入</button>
+      ${system.active && !system.indexReady ? makeButton('恢復索引','recover-index','primary')
+        : `<button class="btn" data-action="lose-index" ${!system.indexReady || busy ? 'disabled' : ''}>模擬索引遺失</button>`}</div>
+    <details><summary>部署與同步規則</summary><p>同一 System 共用完整 Config 與 ES 綁定。Builder 按 Runtime ref 發送管理操作，以 pipeline 指定流程。每 60 秒查核已載入版本，啟動或恢復連線時也查核。逐流程卸載保留索引。System DELETE 清除受管索引，Builder 保留 System 資料及發布歷史。</p>
+      <pre>GET /internal/v1/systems/${escapeHTML(encodeURIComponent(system.id))}
+POST /internal/v1/systems/${escapeHTML(encodeURIComponent(system.id))}/config:validate
+PUT /internal/v1/systems/${escapeHTML(encodeURIComponent(system.id))} · operation + pipeline
+POST /internal/v1/systems/${escapeHTML(encodeURIComponent(system.id))}:detach?pipeline=…
+DELETE /internal/v1/systems/${escapeHTML(encodeURIComponent(system.id))}</pre></details>
+    </section></div>`;
+}
 const analysisPanel = (title, value) => `<details><summary>${title}</summary><pre>${escapeHTML(json(value))}</pre></details>`;
 const option = (value, label, selected = false) => `<option value="${escapeHTML(value)}" ${selected ? 'selected' : ''}>${escapeHTML(label)}</option>`;
 
@@ -807,7 +898,8 @@ function settings(system) {
     showFixedFilters && issue.path === '/config/pipelines/inference/fixed_filters'
     || advancedFields.some(key => issue.path?.startsWith(prefix(selected) + '/' + key))));
   const renderFields = keys => keys.map(key => renderField(key,schemas[key],values[key])).join('');
-  const componentChoices = choicesFor(module).filter(choice => module !== 'parsing' || parserChoiceAllowed(choice,draft));
+  const componentChoices = choicesFor(module).filter(choice => choice.component_id !== 'local'
+    && (module !== 'parsing' || parserChoiceAllowed(choice,draft)));
   const compatible = componentChoices.includes(item);
   const owners = {...remoteOwnership(draft,'ingestion'),...remoteOwnership(draft,'inference')};
   const owner = owners[selected];
@@ -1126,8 +1218,8 @@ function orderedJSON(value) {
 }
 
 function indexImpact(system, config) {
-  if (system.indexIssue) return 'blocked';
-  if (!system.active || !system.indexReady) return 'create';
+  if (system.indexIssue || system.active && !system.indexReady) return 'blocked';
+  if (!system.active) return 'create';
   const fingerprint = value => JSON.stringify(orderedJSON(value.pipelines.ingestion));
   return fingerprint(config) === fingerprint(system.active) ? 'reuse' : 'rebuild_required';
 }
@@ -1166,9 +1258,9 @@ function checkPublish(system) {
   checked = {action,validated:effective,expected:activeRevision(system)};
   const messages = {
     create:['建立索引','發布後建立空索引。完成初次匯入即可查詢。'],
-    reuse:['沿用索引','這次發布會保留現有索引與資料。'],
+    reuse:['沿用索引','保留索引與資料。Inference 載入新版前會暫停查詢。'],
     rebuild_required:['重建索引','發布後目前資料會清除，查詢將暫停，須重新匯入。'],
-    blocked:['無法發布',system.indexIssue?.message]
+    blocked:['無法發布',system.indexIssue?.message ?? '已發布的 Elasticsearch 索引遺失。請從 Runtime 面板恢復索引。']
   };
   const [title, description] = messages[action];
   const tone = action === 'blocked' ? 'bad' : action === 'rebuild_required' ? 'warn' : '';
@@ -1186,20 +1278,33 @@ function applyPublish(system) {
     notify('設定版本或索引狀態已變更，請重新驗證。');
     return;
   }
-  if (system.runs.some(run => ['queued','running'].includes(run.status))) {
+  if (hasActiveWork(system)) {
     $('publish').close();
     notify('資料匯入進行中。請待工作結束後重新發布。');
     return;
   }
+  const firstPublish = !system.active;
+  const target = deployment(system);
   saveDraft(system);
   if (checked.action !== 'reuse') {
+    system.indexEpoch = (system.indexEpoch ?? (system.active ? 1 : 0)) + 1;
     system.initialized = false;
     system.documents = [];
+    delete system.initialDocuments;
     viewRun = null;
   }
   system.revision++;
   system.active = checked.validated;
   system.indexReady = true;
+  if (firstPublish) {
+    for (const pipeline of runtimePipelines) {
+      target.desired[pipeline] = true;
+      target.loaded[pipeline] = snapshot(system);
+    }
+  } else {
+    if (target.desired.ingestion) target.loaded.ingestion = snapshot(system);
+    scheduleRuntimeReconcile(system);
+  }
   batchPreview = null;
   queryResult = null;
   checked = null;
@@ -1210,41 +1315,49 @@ function applyPublish(system) {
 }
 
 function ingestion(system) {
-  const enabled = system.active && system.indexReady;
-  const running = system.runs.some(run => ['queued','running'].includes(run.status));
-  const run = viewRun ? system.runs.find(item => item.run_id === viewRun) ?? {run_id:viewRun,status:'unknown'} : system.runs[0];
+  const message = pipelineMessage(system,'ingestion');
+  const enabled = !message;
+  const run = enabled ? viewRun ? system.runs.find(item => item.run_id === viewRun) ?? {run_id:viewRun,status:'unknown'} : system.runs[0] : null;
   return `<div class="operation"><div class="stack"><section class="panel">
     <div class="bar"><h2>準備匯入</h2>${makeButton('載入範例','ingest-sample','small')}</div>
-    ${!enabled ? '<div class="info warn">先發布系統設定，建立索引後即可匯入資料。</div>' : ''}
+    ${message ? `<div class="info warn">${escapeHTML(message)}</div>` : ''}
     <label class="field">上傳 CSV 或 JSON<input class="control" type="file" id="upload" accept=".csv,.json"></label>
     ${csv ? mapForm(system) : `<label class="field">Ingestion Request
     <textarea class="control code" id="ingest-json" rows="9" placeholder='{"documents": [...]}'>${escapeHTML(ingestText)}</textarea></label>`}
     ${ingestError ? `<div class="info bad" role="alert">${escapeHTML(ingestError)}</div>` : ''}
     ${batchPreview ? `<div id="batch-summary"><div class="info" role="status">預檢通過 · ${batchPreview.documents.length} 份文件${csv && system.documents.length ? ' · 將替換目前索引資料' : ''}</div>
       ${analysisPanel('預覽 Request',batchPreview)}</div>` : ''}
+    <label class="check-label"><input class="check" type="checkbox" id="bulk-timeout" ${bulkTimeout ? 'checked' : ''} ${enabled ? '' : 'disabled'}>模擬首筆 ES Bulk 逾時</label>
     <div class="toolbar"><button class="btn" data-action="preview-batch" ${!enabled ? 'disabled' : ''}>預檢資料</button>
-      <button class="btn primary" data-action="start-run" ${!enabled || running || !batchPreview ? 'disabled' : ''}>開始匯入</button></div>
+      <button class="btn primary" data-action="start-run" ${!enabled || !batchPreview ? 'disabled' : ''}>開始匯入</button></div>
     <details><summary>API 端點</summary><pre>POST ${apiRoot(system)}/ingestions
-GET  ${apiRoot(system)}/ingestions/{run_id}</pre></details>
+GET  ${apiRoot(system)}/ingestions/{run_id}
+POST ${apiRoot(system)}/ingestions/{run_id}/cancel
+GET  ${apiRoot(system)}/documents/{document_id}/ingestion-status</pre></details>
     </section>
     ${run ? renderRun(run) : ''}</div>
     <aside class="panel"><h2>匯入紀錄</h2>
-    <form id="run-lookup"><label class="field">查詢 Run ID<input class="control code" name="run_id" placeholder="ing-001" required></label>
-      <div class="toolbar"><button class="btn small">查詢工作</button></div></form>
-    ${system.runs.length ? system.runs.map(item => `<div class="summary-row"><button class="quiet" data-action="run" data-value="${item.run_id}">${item.run_id}</button>${runBadge(item.status)}</div>`).join('') : '<p class="empty">尚無匯入紀錄</p>'}</aside></div>`;
+    <form id="run-lookup"><label class="field">查詢 Run ID<input class="control code" name="run_id" placeholder="ing-001" required ${enabled ? '' : 'disabled'}></label>
+      <div class="toolbar"><button class="btn small" ${enabled ? '' : 'disabled'}>查詢工作</button></div></form>
+    <form id="document-lookup"><label class="field">文件 ID<input class="control code" name="document_id" required ${enabled ? '' : 'disabled'}></label>
+      <div class="toolbar"><button class="btn small" ${enabled ? '' : 'disabled'}>查最近 Run</button></div></form>
+    ${enabled && system.runs.length ? system.runs.map(item => `<div class="summary-row"><button class="quiet" data-action="run" data-value="${item.run_id}">${item.run_id}</button>${runBadge(item.status)}</div>`).join('') : '<p class="muted">無可查詢的匯入紀錄</p>'}</aside></div>`;
 }
 
-const apiRoot = system => '/internal/systems/' + system.id + '/v1';
+const apiRoot = system => '/internal/systems/' + escapeHTML(encodeURIComponent(system.id)) + '/v1';
 const runBadge = value => badge(status[value], value === 'completed' ? 'good' : ['failed','unknown'].includes(value) ? 'bad' : 'warn');
 
 function renderRun(run) {
-  if (run.status === 'unknown') return `<section class="panel" aria-label="匯入結果"><div class="bar"><h2>工作結果</h2>${runBadge(run.status)}</div>
+  if (!run.documents) return `<section class="panel" aria-label="匯入結果"><div class="bar"><h2>工作結果</h2>${runBadge(run.status)}</div>
     <p class="muted">找不到工作 ${escapeHTML(run.run_id)}，或紀錄已到期。</p></section>`;
+  const counts = Object.fromEntries(Object.keys(status).map(state => [state,run.documents.filter(item => item.status === state).length]));
   return `<section class="panel" aria-label="匯入結果"><div class="bar"><h2>工作結果</h2>${runBadge(run.status)}</div>
     <p class="muted">${run.run_id} · ${run.config_revision} · ${run.documents.length} 份文件</p>
-    <p class="muted">成功 ${run.documents.filter(item => item.status === 'completed').length} · 失敗 ${run.documents.filter(item => item.status === 'failed').length}</p>
-    <div class="table-wrap"><table><thead><tr><th>文件 ID</th><th>狀態</th><th>詳細</th></tr></thead><tbody>${run.documents.map(item => `<tr><td>${escapeHTML(item.document_id)}</td>
-    <td>${runBadge(item.status)}</td><td>${escapeHTML(item.error?.message || '—')}</td></tr>`).join('')}</tbody></table></div></section>`;
+    <p class="muted">成功 ${counts.completed} · 取消 ${counts.cancelled} · 失敗 ${counts.failed}</p>
+    <div class="table-wrap"><table><thead><tr><th>選取</th><th>文件 ID</th><th>狀態</th><th>詳細</th></tr></thead><tbody>${run.documents.map(item => `<tr><td><input class="check" type="checkbox" data-run-document="${escapeHTML(item.document_id)}" aria-label="選取 ${escapeHTML(item.document_id)}"
+    ${selectedDocuments.has(item.document_id) ? 'checked' : ''} ${['queued','running'].includes(item.status) ? '' : 'disabled'}></td><td>${escapeHTML(item.document_id)}</td>
+    <td>${runBadge(item.status)}</td><td>${escapeHTML(item.error ? item.error.code + ' · ' + item.error.message : item.module ?? '—')}</td></tr>`).join('')}</tbody></table></div>
+    <div class="run-selection"><button class="btn small" data-action="cancel-run-documents" data-value="${run.run_id}" ${run.documents.some(item => selectedDocuments.has(item.document_id) && ['queued','running'].includes(item.status)) ? '' : 'disabled'}>取消選取文件</button></div></section>`;
 }
 
 function parseCSV(text) {
@@ -1353,17 +1466,31 @@ function previewBatch(system) {
 }
 
 function startRun(system) {
-  if (!batchPreview || !system.active || !system.indexReady || system.runs.some(run => ['queued','running'].includes(run.status))) return;
+  if (!batchPreview || !pipelineReady(system,'ingestion')) return;
+  const occupied = new Set(system.runs.flatMap(run => run.documents.filter(documentOccupied).map(item => item.document_id)));
+  const conflicts = batchPreview.documents.map(doc => doc.document_id).filter(id => occupied.has(id));
+  if (conflicts.length || csv && occupied.size) {
+    ingestError = conflicts.length ? '409 DOCUMENT_BUSY · ' + conflicts.join('、') : '409 SYSTEM_BUSY · CSV 整批替換須等現有工作結案。';
+    render();
+    return;
+  }
   if (csv && system.documents.length && !confirm('這次 CSV 匯入會替換目前索引中的所有文件。繼續？')) return;
-  if (csv) { system.documents = []; system.initialized = false; }
+  if (csv) { system.documents = []; system.initialized = false; delete system.initialDocuments; }
+  if (!system.initialized) {
+    system.initialDocuments = [...new Set([...(system.initialDocuments ?? []),...batchPreview.documents.map(doc => doc.document_id)])];
+  }
+  system.runSequence ??= Math.max(0,...system.runs.map(run => Number(run.run_id.replace(/^ing-/,'')) || 0));
+  system.runSequence++;
   const run = {
-    run_id:'ing-' + (system.runs.length+1).toString().padStart(3,'0'), status:'queued',
+    run_id:'ing-' + system.runSequence.toString().padStart(3,'0'), status:'queued',
     config_revision:activeRevision(system), started:Date.now(), payload:clone(batchPreview.documents),
-    documents:batchPreview.documents.map(doc => ({document_id:doc.document_id,status:'queued'}))
+    timeoutDocument:bulkTimeout ? batchPreview.documents[0].document_id : null,
+    documents:batchPreview.documents.map(doc => ({document_id:doc.document_id,status:'queued',module:null,error:null}))
   };
   system.runs.unshift(run);
   if (csv) system.mapping = clone(mapping);
   viewRun = run.run_id;
+  selectedDocuments.clear(); bulkTimeout = false; ingestError = '';
   batchPreview = null;
   if(!system.initialized) queryResult = null;
   persist();
@@ -1372,28 +1499,113 @@ function startRun(system) {
   pollRuns();
 }
 
+const documentOccupied = item => ['queued','running'].includes(item.status) || item.status === 'cancelled' && item.startedAt != null;
+const hasActiveWork = system => system.runs.some(run => run.documents.some(documentOccupied));
+const indexingDelay = 1000;
+const jobDuration = 2800;
+
+function rollupRun(run,now) {
+  const states = run.documents.map(item => item.status);
+  if (states.every(state => state === 'queued')) run.status = 'queued';
+  else if (states.some(state => state === 'queued' || state === 'running')) run.status = 'running';
+  else if (states.includes('unknown')) run.status = 'unknown';
+  else if (states.every(state => state === 'completed')) run.status = 'completed';
+  else if (states.every(state => state === 'cancelled')) run.status = 'cancelled';
+  else run.status = states.includes('completed') ? 'partial' : 'failed';
+  if (!run.documents.some(documentOccupied)) {
+    run.finishedAt ??= now;
+    delete run.payload;
+  }
+}
+
+function updateInitialReadiness(system,run) {
+  if (system.initialized || !run.finishedAt) return;
+  const expected = system.initialDocuments ?? run.documents.map(item => item.document_id);
+  const indexed = new Set(system.documents.map(doc => doc.document_id));
+  if (expected.every(documentId => indexed.has(documentId))) {
+    system.initialized = true;
+    delete system.initialDocuments;
+  }
+}
+
+function cancelDocuments(system,runId) {
+  if (!pipelineReady(system,'ingestion')) return;
+  const run = system.runs.find(item => item.run_id === runId);
+  if (!run) return;
+  const now = Date.now();
+  for (const item of run.documents) {
+    if (!selectedDocuments.has(item.document_id) || !['queued','running'].includes(item.status)) continue;
+    if (item.status === 'running' && now - (item.startedAt ?? run.started) >= indexingDelay) {
+      item.startedAt ??= run.started;
+      item.module = 'indexing';
+    } else delete item.startedAt;
+    item.status = 'cancelled';
+  }
+  rollupRun(run,now);
+  updateInitialReadiness(system,run);
+  selectedDocuments.clear(); persist(); render(); pollRuns();
+}
+
+function advanceRuns(system,now) {
+  const pending = system.runs.slice().reverse();
+  const workerRun = pending.find(run => run.documents.some(item => item.status !== 'queued' && documentOccupied(item)));
+  const item = workerRun?.documents.find(item => item.status !== 'queued' && documentOccupied(item));
+  if (item) {
+    const elapsed = now - (item.startedAt ?? workerRun.started);
+    if (elapsed < indexingDelay) return false;
+    if (elapsed < jobDuration) {
+      if (item.module === 'indexing') return false;
+      item.module = 'indexing';
+      return true;
+    }
+    if (workerRun.timeoutDocument === item.document_id) {
+      if (item.status !== 'cancelled') {
+        item.status = 'failed';
+        item.module = 'indexing';
+        item.error = {code:'ES_BULK_TIMEOUT',module:'indexing',message:'等待 Elasticsearch Bulk 回應逾時，可重新匯入。'};
+      }
+    } else {
+      const document = workerRun.payload.find(doc => doc.document_id === item.document_id);
+      system.documents = [...system.documents.filter(doc => doc.document_id !== document.document_id),document];
+      item.status = 'completed';
+      item.module = null;
+    }
+    delete item.startedAt;
+    rollupRun(workerRun,now);
+    updateInitialReadiness(system,workerRun);
+    return true;
+  }
+  const run = pending.find(item => now - item.started >= 400 && item.documents.some(doc => doc.status === 'queued'));
+  if (!run) return false;
+  const queued = run.documents.find(item => item.status === 'queued');
+  Object.assign(queued,{status:'running',module:'embedding',startedAt:now});
+  rollupRun(run,now);
+  return true;
+}
+
+function pruneRuns(system,now) {
+  let completedDocuments = 0;
+  const remaining = system.runs.filter(run => {
+    if (run.documents.some(documentOccupied)) return true;
+    if (now - (run.finishedAt ?? run.started) >= 259200000) return false;
+    completedDocuments += run.documents.length;
+    return completedDocuments <= 10000;
+  });
+  if (remaining.length === system.runs.length) return false;
+  system.runs = remaining;
+  return true;
+}
+
 function pollRuns() {
   if (polling) return;
   polling = true;
   const tick = () => {
     let changed = false, pending = false;
-    for (const system of model.systems) for (const run of system.runs) {
-      if (!['queued','running'].includes(run.status)) continue;
-      const age = Date.now() - run.started;
-      const next = age >= 1700 ? 'completed' : age >= 550 ? 'running' : 'queued';
-      if (next !== run.status) {
-        run.status = next;
-        for (const item of run.documents) item.status = next;
-        if (next === 'completed') {
-          const newDocs = new Map(system.documents.map(doc => [doc.document_id,doc]));
-          for (const doc of run.payload) newDocs.set(doc.document_id,{...doc});
-          system.documents = [...newDocs.values()];
-          system.initialized = true;
-          delete run.payload;
-        }
-        changed = true;
-      }
-      if (next !== 'completed') pending = true;
+    const now = Date.now();
+    for (const system of model.systems) {
+      if (advanceRuns(system,now)) changed = true;
+      if (pruneRuns(system,now)) changed = true;
+      if (hasActiveWork(system)) pending = true;
     }
     if (changed) {
       persist();
@@ -1414,19 +1626,20 @@ function pollRuns() {
 }
 
 function inference(system) {
-  const available = system.active && system.indexReady && system.initialized;
+  const message = pipelineMessage(system,'inference') || (system.initialized ? '' : '完成初次匯入後即可查詢。');
+  const available = !message;
   const fixed = system.active?.pipelines.inference.fixed_filters ?? [];
   const fields = system.active ? Object.entries(derive(system.active).indexed).filter(([,spec]) => spec.filterable) : [];
   const items = queryResult?.contexts.flatMap(context => context.result_sets.flatMap(set => set.items)) ?? [];
   return `<div class="operation"><div class="stack"><section class="panel">
     <div class="bar"><h2>查詢測試</h2>${makeButton('載入範例','query-sample','small')}</div>
-    ${!available ? '<div class="info warn">完成初次匯入後即可查詢。</div>' : ''}
+    ${message ? `<div class="info warn">${escapeHTML(message)}</div>` : ''}
     <label class="field">問題<textarea class="control" id="query-text" rows="3" placeholder="輸入要搜尋的問題">${escapeHTML(queryText)}</textarea></label>
     ${filterEditor('query',system.active)}
     ${queryError ? `<div class="info bad" role="alert">${escapeHTML(queryError)}</div>` : ''}
     <div class="toolbar"><button class="btn primary" data-action="query" ${available ? '' : 'disabled'}>執行查詢</button></div>
     <details><summary>API 端點</summary><pre>POST ${apiRoot(system)}/queries</pre></details></section>
-    ${queryResult ? `<section class="panel" aria-label="查詢結果"><div class="bar"><h2>檢索結果</h2><small>${queryResult.revision} · ${items.length} 筆結果</small></div>
+    ${queryResult ? `<section class="panel" aria-label="查詢結果"><div class="bar"><h2>檢索結果</h2><small>${queryResult.revision} · ${queryResult.generation} · ${items.length} 筆結果</small></div>
       ${items.length ? items.map(({data,score},index) => `<article class="result"><div class="bar"><h3>${index+1}. ${escapeHTML(data.structdata.title ?? data.document_id)}</h3>
         ${score === undefined ? '' : badge(score.toFixed(3))}</div><p>${escapeHTML(data.structdata[params(system.active,'embedding').source_field])}</p>
         <small>來源 ${escapeHTML(data.document_id)}${data.source_revision ? ' · ' + escapeHTML(data.source_revision) : ''}</small></article>`).join('') : '<p class="empty">沒有符合條件的結果。</p>'}
@@ -1502,7 +1715,7 @@ function query(system) {
       seen.add(key);
       return true;
     }).slice(0,retrieve.top_n);
-    queryResult = {revision:activeRevision(system),contexts:[{ori_query:question,query:question,filters,result_sets:[{key:'retrieval',items}],metadata:{}}]};
+    queryResult = {revision:activeRevision(system),generation:indexGeneration(system),contexts:[{ori_query:question,query:question,filters,result_sets:[{key:'retrieval',items}],metadata:{}}]};
     queryError = '';
   } catch (error) {
     queryResult = null;
@@ -1565,9 +1778,18 @@ systemDialog.addEventListener('close',() => {
 });
 
 document.addEventListener('submit',event => {
-  if (event.target.id !== 'run-lookup') return;
+  if (!['run-lookup','document-lookup'].includes(event.target.id)) return;
   event.preventDefault();
-  viewRun = event.target.elements.run_id.value.trim() || null;
+  const system = current();
+  if (!pipelineReady(system,'ingestion')) return;
+  if (event.target.id === 'run-lookup') viewRun = event.target.elements.run_id.value.trim() || null;
+  else {
+    const documentId = event.target.elements.document_id.value.trim();
+    const recent = system.runs.find(run => run.documents.some(item => item.document_id === documentId));
+    if (!recent) { notify('查無此文件的 Run 紀錄。'); return; }
+    viewRun = recent.run_id;
+  }
+  selectedDocuments.clear();
   render();
 });
 
@@ -1599,6 +1821,39 @@ document.addEventListener('click',event => {
     case 'validate': checkPublish(system); return;
     case 'publish': applyPublish(system); return;
     case 'download': download(system); return;
+    case 'sync-runtime':
+      reconcileRuntime(system); persist(); render(); return;
+    case 'restart-runtime': {
+      if (hasActiveWork(system)) return;
+      const target = deployment(system);
+      for (const pipeline of runtimePipelines) target.loaded[pipeline] = null;
+      persist(); render(); scheduleRuntimeReconcile(system); return;
+    }
+    case 'detach-pipeline': {
+      if (value === 'ingestion' && hasActiveWork(system)) return;
+      const target = deployment(system);
+      target.desired[value] = false;
+      target.loaded[value] = null;
+      persist(); render(); return;
+    }
+    case 'reload-pipeline': {
+      if (!system.indexReady) return;
+      deployment(system).desired[value] = true;
+      reconcileRuntime(system); persist(); render(); return;
+    }
+    case 'lose-index':
+      if (!system.indexReady || hasActiveWork(system)) return;
+      system.indexReady = false; system.initialized = false; system.documents = [];
+      delete system.initialDocuments;
+      persist(); render(); return;
+    case 'recover-index': {
+      if (!system.active || system.indexReady || !confirm('以原 Config Revision 建立新的空索引。恢復後須重新匯入資料。繼續？')) return;
+      system.indexEpoch = (system.indexEpoch ?? 1) + 1;
+      system.indexReady = true;
+      const target = deployment(system);
+      if (target.desired.ingestion) target.loaded.ingestion = snapshot(system);
+      persist(); render(); scheduleRuntimeReconcile(system); return;
+    }
     case 'add-secret': {
       const values = draft.secret ??= {};
       let number = 1;
@@ -1654,9 +1909,10 @@ document.addEventListener('click',event => {
     case 'use-json': uploadRevision++; csv = null; batchPreview = null; ingestError = ''; render(); return;
     case 'preview-batch': previewBatch(system); return;
     case 'start-run': startRun(system); return;
-    case 'run': viewRun = value; render(); return;
+    case 'run': viewRun = value; selectedDocuments.clear(); render(); return;
+    case 'cancel-run-documents': cancelDocuments(system,value); return;
     case 'query-sample': queryText = fixture.query.query; filterText = json(fixture.query.filters ?? []); queryError = ''; queryResult = null; render(); return;
-    case 'query': if (system.active && system.indexReady && system.initialized) query(system); return;
+    case 'query': if (pipelineReady(system,'inference') && system.initialized) query(system); return;
     default: return;
   }
   markDirty();
@@ -1728,6 +1984,17 @@ document.addEventListener('input',event => {
 
 document.addEventListener('change',event => {
   const input = event.target;
+  if (input.id === 'runtime-layout') {
+    deployment(current()).layout = input.value;
+    persist(); render(); return;
+  }
+  if (input.id === 'bulk-timeout') bulkTimeout = input.checked;
+  if (input.dataset.runDocument !== undefined) {
+    if (input.checked) selectedDocuments.add(input.dataset.runDocument);
+    else selectedDocuments.delete(input.dataset.runDocument);
+    const button = $('page').querySelector('[data-action="cancel-run-documents"]');
+    button.disabled = !$('page').querySelector('[data-run-document]:checked:not(:disabled)');
+  }
   if (input.dataset.secretKey !== undefined) {
     const previous = input.dataset.secretKey;
     const next = input.value.trim();
@@ -1852,6 +2119,11 @@ if (!stored) {
     model.systems.push(system);
   }
   persist();
+}
+for (const system of model.systems) {
+  if (runtimePipelines.some(pipeline => deployment(system).desired[pipeline] && !pipelineReady(system,pipeline))) {
+    scheduleRuntimeReconcile(system);
+  }
 }
 render();
 pollRuns();
