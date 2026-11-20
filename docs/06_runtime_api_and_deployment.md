@@ -256,10 +256,12 @@ Builder 管理的 System 重建索引後，由 Builder 使用保存的原始資�
 
 Builder Backend 透過 Runtime API 取得目錄並驗證草稿。共用的路由、認證與錯誤格式見 [HTTP 共通規格](#runtime-http-common)與 [HTTP 錯誤格式](#runtime-http-errors)。
 
-- **方法與能力目錄**：提供目標 Runtime 已交付的內建方法、版本、Schema 與能力。Remote API 的有效契約由 User 設定及 System Schema 推導。
+- **方法與能力目錄**：提供目標 Runtime 已交付的內建方法、版本、Component Schema 與能力。Remote API 的有效契約由 User 設定及 System Schema 推導。
 - **完整 Config 驗證**：Builder／助手提交有效設定與目標版本，重用 Engine 的型別、跨模組相依與索引相容檢查；回傳可定位到 `[MODULE NAME]`／欄位的結果。格式有效、可組裝、服務已連通與資料可查詢分開，不把目錄查詢當成真實連線測試。
 - **版本與目錄一致性**：目錄／Schema／驗證結果要能對回同一目標 Runtime 版本；Runtime 更新後，舊快取或過期驗證不得靜默套用。既有 System 保留所選版本，尚未安裝／不相容方法應明示，不自動取最新版。
 - **相容範圍**：既有 API、Config Schema 與 UI 控制項足以支援時，新增 Component 可只發布／部署 Runtime；需要新型表單或破壞性接口時，需更新 Builder 並完成契約相容測試。長期欄位演進政策由 Q-002／Q-019／Q-025 追蹤。
+
+System Config Schema 由目標 Runtime 提供，版本須與 Catalog 及 Config 驗證結果對應。現行 Catalog API 回傳 Component Descriptor 與資源，完整 System Config Schema 的 HTTP 交付方式待定。
 
 直接 Python 使用 Engine／M4 助手時仍可在本機取得同一 Registry／Validator，不因此強制所有呼叫都走 HTTP。平台整合使用公開服務邊界，Runtime 的可信管理與能力接口不等於允許外部一般使用者更改 System 綁定。
 

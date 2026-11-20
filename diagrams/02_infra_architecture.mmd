@@ -1,12 +1,13 @@
 flowchart LR
   %% Architecture groups A, B and C contain locally numbered boxes.
-  %% Solid blue: Config publication and deployment. Teal: business API use.
+  %% Magenta: Config publication and index initialization. Teal: test operations on the index.
+  %% Solid blue: general setup and deployment.
   %% Dashed: artifacts or contracts delivered by the Engine Framework.
   %% Orange: export of the approved logical Config and target deployment settings.
-  %% 1 設定與啟用：在 A-1 設定，A-2 驗證並發布 A-3。A-4 套用設定，啟用 A-5。
-  %% 2 Ingest：從 A-1 上傳，A-2 提交匯入。A-5 處理文件，寫入 A-6 的索引。
-  %% 3 Inference：從 A-1 提問，A-2 送出查詢。A-4 路由到 A-5，並回傳結果。
-  %% 4 Evaluation：在 A-1 啟動評估。Runner 批次查詢 A-5 並彙整結果。
+  %% 1 設定與啟用：從 A-1 UI 選擇設定。A-2 發布 A-3，Ingestion 在 A-6 準備索引，Inference 補載後啟用查詢。
+  %% 2 Ingest：從 A-1 UI 上傳資料。A-5 將文件寫入步驟 1 準備好的 A-6 索引，回報 Run 狀態。
+  %% 3 Inference：在 A-1 UI 提問。A-5 查詢同一索引並回傳結果，切版待 Inference 對齊後恢復查詢。
+  %% 4 Evaluation：在 A-1 UI 啟動評估。Runner 透過 A-5 批次查詢同一索引並彙整結果。
   %% 5 Export：A-2 匯出同版 A-3 與部署設定。產生 C-1 部署 Bundle。
   %% 6 Deploy：使用單位透過 C-2 套用 C-1。啟動 C-3，建立 C-4。
   %% A starts shared A-4 directly from B-2. B-3 carries the Runtime API and Library for deployment to C-3.
@@ -14,26 +15,29 @@ flowchart LR
 
   subgraph A["A · Retrieval Builder（DEV）"]
     direction TB
-    A1["A-1 · Frontend · 依 Schema、Descriptor 與有效相依產生設定選項"]
-    A2["A-2 · Backend · 讀取部署意圖，啟動、重連與每 60 秒查核 Runtime"]
-    A3["A-3 · 已驗證的 System Config Revision 與流程部署意圖"]
-    subgraph A4["A-4 · DEV Retrieval Runtime · 初始化 API、Registry、Executor、Queue · 可零組 Config"]
+    A1["A-1 · Frontend UI · 依 Schema、Descriptor 與有效相依產生設定選項"]
+    A2["A-2 · Backend · 向 Runtime 取得設定契約，管理 Config Revision 與部署意圖"]
+    A3["A-3 · 已驗證的 System Config Revision"]
+    subgraph A4["A-4 · DEV Retrieval Runtime · 提供 Schema 與 Catalog，可零組 Config 啟動"]
       direction TB
-      A5["A-5 · 測試 Retrieval System · 同版 Config、同索引綁定，兩條流程可分 Pod"]
+      A5["A-5 · 測試 Retrieval System · 兩條流程可同 Pod 或分 Pod，共用受管 ES 索引"]
     end
     A6["A-6 · DEV 外部依賴 · Elasticsearch（資料／控制索引）、模型與 Remote API"]
-    A1 -->|"① 編輯設定並提交驗證"| A2
-    A2 -->|"驗證並保存"| A3
-    A3 -->|"① 依 pipeline 套用；Ingestion 建立或沿用索引，Inference 補載"| A5
+    A1 -->|"① 選擇 Config 設定並提交驗證"| A2
+    A1 -->|"② 上傳資料／③ 提問／④ 啟動評估"| A2
+    A2 -->|"① 驗證並保存"| A3
+    A3 -->|"① 管理 API 依 pipeline 套用，Inference 補載生效版本"| A5
     A2 -->|"② Ingest／③ Inference／④ Evaluation 批次 Query · 經 A-4 API 依 system_id 路由"| A5
-    A5 --> A6
+    A4 -->|"① 由 Ingestion 建立空索引或沿用相容索引"| A6
+    A5 -->|"② 寫入文件／③④ 查詢同一索引"| A6
   end
 
   subgraph B["B · Retrieval Engine Framework"]
     direction TB
-    B1["B-1 · System Config Schema · Component Descriptor 與動態選項規則"]
+    B1["B-1 · 設定契約定義 · System Config Schema 與 Component Descriptor"]
     B2["B-2 · Retrieval Engine Library · 驗證、組裝與執行"]
     B3["B-3 · 共用 Runtime Image · Runtime API ＋ Engine Library"]
+    B1 -.->|"契約定義"| B2
     B2 -->|"封裝"| B3
   end
 
@@ -43,7 +47,7 @@ flowchart LR
     C2["C-2 · K8s CD · 使用單位套用"]
     subgraph C3["C-3 · 獨立 Retrieval Runtime · 依 pipeline 啟動對應流程"]
       direction TB
-      C4["C-4 · 目標環境的 Retrieval System"]
+      C4["C-4 · 目標環境的 Retrieval System · 分 Pod 時共用同版 Config 與 ES 綁定"]
     end
     C5["C-5 · 目標環境依賴 · Elasticsearch（資料／控制索引）、模型、Remote API、Secret Vault、觀測"]
     C1 --> C2
@@ -51,7 +55,7 @@ flowchart LR
     C4 --> C5
   end
 
-  B1 -.->|"提供設定契約"| A2
+  A4 -->|"提供 System Config Schema 與 Catalog"| A2
   B2 -.->|"由 DEV Runtime 入口直接啟動 A-4"| A4
   B3 -.->|"同版 Image 啟動 C-3"| C3
   A3 -->|"⑤ A-2 匯出同版 A-3 與目標部署設定"| C1
@@ -73,5 +77,7 @@ flowchart LR
   style C fill:#edf7f2,stroke:#b6dace
   style A4 fill:#e6f3f3,stroke:#a0c2c5
   style C3 fill:#e6f3f3,stroke:#a0c2c5
-  linkStyle 3 stroke:#147e75,stroke-width:2.5px
-  linkStyle 12 stroke:#af6217,stroke-width:2.5px
+  linkStyle 0,2,3,5 stroke:#94275e,stroke-width:3px
+  linkStyle 1,4,6 stroke:#0b6559,stroke-width:3px
+  linkStyle 12 stroke:#315e9b,stroke-width:2.5px
+  linkStyle 15 stroke:#af6217,stroke-width:2.5px
