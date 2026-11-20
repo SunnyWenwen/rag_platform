@@ -268,9 +268,9 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 <a id="q-002"></a>
 ### Q-002 共用 Schema、Config、SDK 與版本凍結
 
-- 平台內部描述規則沿用 D-67 的相依推導，精確 Meta-schema 待核定。舊例見歷史索引。
+- 平台內部描述規則沿用 D-67 的相依推導。W1 使用現行 `0.2-draft` Meta-schema，正式版本及遷移政策待核定。見 [Component Descriptor](04_component_descriptor.md#descriptor-fields)。
 
-- 已確認：邏輯 Config 與部署設定分離，正式名稱不使用 Blueprint；Workspace → System；Local Search 持久化模式隨 Config 跨環境固定（D-33）；全部 Document.structdata／metadata 保存與合法 metadata 全繼承（D-39）。structdata 的型別、旗標預設、空值及欄位宣告已依 11-16 決策確認。仍待整體 Config 鍵名、錯誤 Envelope、SDK 及多 Profile；QueryContext[]／ResultSet 業務欄位已依 D-54 確認。仍待核定的是舊保存／繼承投影、原型短名稱／匯出標籤 migration。
+- 已確認：Workspace → System，邏輯 Config 與部署設定分離。後續的 Local Search 持久化模式隨 Config 跨環境固定（D-33）。Document 的 `structdata` 與 `metadata` 保存規則沿用 D-39，QueryContext[]／ResultSet 欄位沿用 D-54。W1 Config 鍵名及 HTTP 錯誤 Envelope 分別以 [Config 草案](05_system_config.md#config-fields)和 [Runtime 錯誤格式](06_runtime_api_and_deployment.md#runtime-http-errors)為準。正式版本的相容性、SDK、多 Profile 及原型舊欄位遷移仍待核定。
 - D-62 已確認選項 B（共用 Flow）：共用 Flow／Executor，依固定 Config 快照在各 Module 選 Component，並傳入 input／本次 config／Context；不強制所有實例共用。精確 SDK 簽名及 Resolver／資源作用域仍待凍結。
 - 2026-10-28 補充：Component SDK 的 Module-specific I/O 包裝、run／初始化／釋放簽名、RunContext、Registry／Factory 與 Config Schema 介面待凍結；Registry 草案改稱 component_id，不直接改寫既有 Config。精確方法／版本引用、舊 module_id 別名與遷移須一致驗證；11 的 Python 程式只作介面示意。
 - [System Config：System Config 討論稿](05_system_config.md#草稿有效設定與部署) 依 D-67 取消頂層 document_schema，資料細節由 B／C＋D 提供；首版六類宣告與相依推導見 [Descriptor](04_component_descriptor.md)。規則語法／SDK／解析 API 仍待凍結；D-66 舊機器稿及五案例已歸 [歷史快照](history/superseded/system_config_d66/README.md)，不作新功能驗收。前輪校對過程見 [歷史報告](history/reviews/2026-11-05_spec_alignment_review.md)。
@@ -621,4 +621,4 @@ Builder 可按 [W1 開發契約索引](09_w1_builder_runtime_contract.md) 實作
 | 多個 Runtime 共用同一 System 的 ES 索引 | 以雙 Pod 與實際 ES 驗證[跨 Pod 寫入](06_runtime_api_and_deployment.md#multi-pod-concurrency-proposal)的共享占用、本地派工、逾時重匯、晚到寫入清理及容量。見 [Q-020](#q-020)、[Q-027](#q-027)。 |
 | FTEST／ENT 獨立部署 | Export 的設定載體、服務與探針接線、索引不存在時的建立入口及滾動切換順序。見 [Q-021](#q-021)。 |
 
-歷史決策來源、過時提案、驗證及校對過程集中於 [history/](history/README.md)，包括 D-01～D-66 的來源與演變。Q-001～Q-028 及 SC-01～SC-10 仍是現行待決／討論項目；文件歸檔不代表功能驗收完成。
+歷史決策來源、過時提案、驗證及校對過程集中於 [history/](history/README.md)，包括 D-01～D-68 的來源與演變。現行待決事項依 Q-001～Q-028 與各項 SC 的最新說明追蹤。

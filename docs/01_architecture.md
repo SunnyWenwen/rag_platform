@@ -192,7 +192,7 @@ DEV 與目標環境各自綁定服務及索引。對使用 Elasticsearch 的 Sys
 | rag_engine.methods | rag_engine.components | 候選 entry point group；精確載入協定仍待核定 |
 | method-ui-0.1-draft、目錄 methods、target.kind=method | component-ui-0.1-draft、目錄 components、target.kind=component | 尚未實作的設定描述協定同步改名 |
 
-這是術語及草案介面的一致性更新，沒有改變模組分工、I/O、相依規則或兩個 repo 的部署流程。`module_type`、`implementation_version`、`config_type`、`node_ref` 仍各有用途；不因改名重產生 Component 識別值或自動升級 System。
+`module_type`、`implementation_version`、`config_type`、`node_ref` 可在舊草案中查到。現行 Component 識別與版本見 [Descriptor 頂層欄位](04_component_descriptor.md#descriptor-fields)。W1 HTTP 錯誤定位使用 `module` 和 `path`。 [Runtime 錯誤格式](06_runtime_api_and_deployment.md#runtime-http-errors)
 
 Python 的 method／`@classmethod`／abstract method、HTTP method，以及融合 Config 中表示演算法的 `method` 保留原義。Prototype 仍使用部分 `method` 選擇欄位，屬明確標示的待遷移草案；不是新 Component Registry 的 component_id。正式 Config 遷移由 Q-002／Q-015 處理，需按格式版本明確映射與檢查衝突，不能全域替換所有 method 或宣稱 Runtime 已接受舊別名。
 

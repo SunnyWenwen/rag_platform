@@ -119,7 +119,7 @@ Indexing 的 `vector_fields` 接受要建立索引的具名向量清單。既有
 | Parsing | `passthrough`、`pdf`、`pdf_ocr`、`office`、`image_ocr`、`text`、`json` | 本次補齊 `passthrough`。檔案方法依 `io.content_media_types` 與 Import 入口形式決定可選性，Parser 參數沿用通用欄位。 |
 | Chunking | `recursive`、`fixed_size`、`header_aware` | 本次補齊三份完整表單。切分及複製來源依上游欄位，Tokenizer 由 Catalog 提供。分隔符、標題層級及保留原文沿用列表、布林及進階區。 |
 | Embedding | `dense` | 既有群組、模板文字欄、映射陣列保留。服務選擇和組合文字的欄位開關採 `visible_when`。 |
-| Indexing | `elasticsearch`、`local` | 既有欄位覆寫表和向量清單保留。Elasticsearch／MongoDB 的連線相關欄位採 `visible_when`。 |
+| Indexing | `elasticsearch`、`local` | 首版部署與驗收使用 Elasticsearch。完整表單清單保留 `local` 及 MongoDB 連線欄位供後續開發。欄位覆寫表和向量清單共用。 |
 | Inference Input | `platform` | 既有 Request 參數進階區和 `fixed_filters`。 |
 | Query Transformation | `none`、`rewrite` | 本次補齊兩份表單。Rewrite Prompt 沿用 `textarea`，有多條 Query 時依 `visible_when` 顯示跨 Query 規則。跨 Query 設定的正式位置見 [System Config](05_system_config.md#inference-result-processing)。 |
 | Retrieval | `builtin` | 既有全文／向量選項、Group by 和 Top N。多路與 RRF 專屬設定採 `visible_when`。 |

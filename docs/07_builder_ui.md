@@ -184,7 +184,7 @@ Builder 以選定方法的 `parameters_schema.properties` 產生參數欄位，�
 
 `default` 用於初始化缺值，已有草稿值優先。必填和格式問題在欄位及錯誤摘要顯示，由 Runtime 在發布前做完整驗證。遇到超出 Renderer 支援的必要格式或專用控制項，Builder 顯示不相容原因並保留草稿，待支援後才可發布。
 
-Builder 用草稿推導有效欄位及索引計畫，並讀取 Catalog 的環境資源清單。Runtime 執行發布前的權威驗證。多個相同 Module 的錯誤以 `node_ref` 和欄位路徑定位。SUI-01～14 互動驗收見 UIB-010。
+Builder 用草稿推導有效欄位及索引計畫，並讀取 Catalog 的環境資源清單。Runtime 在發布前執行驗證。Builder 依 `error.module` 和相對於當次 Request body 的 `error.path` 定位設定或欄位，缺少 `path` 時顯示錯誤摘要。SUI-01～14 互動驗收見 UIB-010。 [Runtime 錯誤格式](06_runtime_api_and_deployment.md#runtime-http-errors)
 
 <a id="ui-hints-contract"></a>
 #### `ui_hints` 定義與 Renderer 輸入
@@ -576,7 +576,7 @@ ResultSet.key 對應 Config 路徑／群組，items 位置即名次。RRF 可用
 
 - [x] Prototype 的 Ingestion API 範例及 CSV／JSON 預覽採批次物件。逐文件 Queue 仍待 Runtime 整合。
 - [ ] API 說明區分工作狀態與實際文件存在／ID 清單，retire 是直接刪除，不是取消工作或保留資料的停用。
-- [ ] 文件 ID 清單／存在查詢／retire 在 UI 的操作位置、分頁、確認與錯誤呈現，待需求及 21 的精確介面對齊後規劃；本輪不先實作面板或刪除按鈕。
+- [ ] 文件 ID 清單、存在查詢及 Retire 的操作位置、分頁控制項、確認與錯誤呈現待規劃。分頁請求及回應依 [Runtime 文件管理 API](06_runtime_api_and_deployment.md#data-lifecycle-api)。
 - [ ] 需由 Runtime／backend 實際查詢及刪除，不用前端記憶體列表或 Ingestion 成功紀錄假裝資料來源。
 
 
@@ -608,13 +608,13 @@ ResultSet.key 對應 Config 路徑／群組，items 位置即名次。RRF 可用
 
 
 <a id="src-10-d-66system-config-整合草案先記錄待討論改-ui"></a>
-### D-66：System Config 整合草案（先記錄，待討論／改 UI）
+### System Config 匯出與 Prototype 整合待辦
 
-- [ ] 定稿 System Config 後同步 Prototype 匯出示意與 Runtime 編譯。
-- [ ] UI Draft 保留停用選擇；Engine 編譯出有效參數／引用並做共同驗證，錯誤仍以 Module／欄位定位。具體正規化與 Hash 依 23 的 SC-08 討論。
-- [ ] Runtime 限制、URL／Secret／實體目標在 E 的資源／部署區處理，模型語意與演算法參數留 D；不增加每次 Request 任意覆寫或一般 User 的 Admin 控制頁。
+- [ ] 依 [現行 System Config 與 Schema](05_system_config.md#config-fields)對齊 Prototype 匯出示意與 Runtime 編譯。
+- [ ] UI Draft 保留停用選擇。Engine 編譯有效參數及引用，驗證錯誤以 Module 與欄位定位。Config 正規化與 Hash 依 [Q-015](08_plan_and_decisions.md#q-015)。
+- [ ] 環境綁定提供 Runtime 限制、URL、Secret 值及 ES 實體目標。模型語意、演算法參數與 System Secret 的 Key 沿用 System Config。匯出行為見 [Export 與部署說明](#src-06-8-export-與部署說明)。
 
-分頁精確參數、實際文件管理面板位置及 System Config 遷移仍依 21～System Config手冊／SC 決策；原型未接通真實服務。需求先記待辦，收到改 UI 指示後再實作。逐輪文件整理說明見 [歷史 UI 記錄](history/changes/ui_backlog_notes.md)。
+舊 D-66 格式及逐輪整理見 [System Config 歷史快照](history/superseded/system_config_d66/README.md)和 [UI 整理紀錄](history/changes/ui_backlog_notes.md)。
 
 <a id="uib-021-io-schema-refinement"></a>
 <a id="src-10-uib-024descriptor-驅動-io-規格與逐層相依d-67"></a>

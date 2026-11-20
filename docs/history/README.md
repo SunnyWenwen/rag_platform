@@ -16,7 +16,6 @@
 | superseded | 從固定 Git commit 恢復的 ParsedDocument 0.1 舊規格／Parser 對照 | [ParsedDocument 0.1](superseded/parsed_document_0.1.md) |
 | superseded | D-54 前的 InferenceState／歷史推論物件提案 | [舊 Inference 規格](superseded/inference_state_pre_d54.md) |
 | superseded | D-66 System Config 舊 document_schema 骨架、五案例及離線驗證 | [舊 System Config](superseded/system_config_d66/README.md) |
-
 | superseded | 舊 Document／Inference Schema、Descriptor 0.1 與離線測資 | [舊資料契約快照](superseded/legacy_contracts/README.md) |
 
 ## 歸檔原則

@@ -260,6 +260,6 @@ D-66 含 document_schema 的舊 Schema／五案例／Fixture／驗證器移至 [
 <a id="d-68"></a>
 ## 2026-11-05 D-68：先提出 Descriptor Schema 候選再整合 System Config
 
-來源：使用者要求依目前功能先提出 Descriptor Schema 初版、列出待決項目並給範例。交付 [25 初版](../../04_component_descriptor.md)及 [離線範例](../../../examples/component_descriptor/README.md)，以 Parser／Chunker／Embedding／模板／Remote 區段對照 Descriptor、Config、資料及人工明列的預期 I/O Schema。
+來源：使用者要求依目前功能先提出 Descriptor Schema 初版、列出待決項目並給範例。交付 [25 初版](../source_snapshots/2026-11-05_pre_consolidation/docs/25_component_descriptor_schema_draft.md)及 [離線範例](../superseded/legacy_contracts/examples/component_descriptor/README.md)，以 Parser／Chunker／Embedding／模板／Remote 區段對照 Descriptor、Config、資料及人工明列的預期 I/O Schema。
 
 本次授權的是草案／範例整理；DS-01～DS-13 的包裝、語法、版本與解析介面未核定，不覆寫 D-67 上位行為。離線結構、部分路徑／約束與樣本檢查不代表 data_rules 編譯、Registry、UI、服務或部署已實作。UI 仍追蹤 UIB-021；D 的其他 SC 決策仍 OPEN。

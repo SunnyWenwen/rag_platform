@@ -30,7 +30,7 @@ Parser 開發示範：[三種交付模式圖](https://github.com/SunnyWenwen/rag
 2026-11-05 D-60：Builder 共用 Runtime 是同一 API service／程序承載多個 System，service 程序重啟與 Pod 重建分開看。平台不加寫入阻擋 Query 的讀寫鎖，接受更新中讀不一致；同文件重複 Ingestion 拒絕保留。Runtime API 暫採一組 Basic 帳密操作全部 API，Builder 登入延後；未改 UI／Runtime／共用 Schema。
 
 
-2026-11-05 D-61／D-62：Builder 多份 UI Config 共用一組或少數 Ingestion＋Inference API service，並採 B：共用 Flow／Executor，每次請求固定 Config 快照，各 Module 依設定解析 Component 與逐次參數；不要求每份 Config 建立專屬 Flow。Component 實例與模型／Client／索引資源依狀態及隔離需求分開管理。FTEST／ENT 主 Runtime 初期一 Pod＋一組 API service＋一份 Config，使用相同 Executor；Remote Image 服務仍依需要另外部署。模式見 [03](../../01_architecture.md#runtime-deployment-modes)，執行介面草案見 [04](../../03_engine_and_components.md#shared-flow-execution)，API 範圍與剩餘決策見 [21](../../06_runtime_api_and_deployment.md)；未改 UI／圖面／Runtime 程式。
+2026-11-05 D-61／D-62：Builder 多份 UI Config 共用一組或少數 Ingestion＋Inference API service，並採 B：共用 Flow／Executor，每次請求固定 Config 快照，各 Module 依設定解析 Component 與逐次參數；不要求每份 Config 建立專屬 Flow。Component 實例與模型／Client／索引資源依狀態及隔離需求分開管理。FTEST／ENT 主 Runtime 初期一 Pod＋一組 API service＋一份 Config，使用相同 Executor；Remote Image 服務仍依需要另外部署。模式見 [03](../../01_architecture.md#runtime-deployment-modes)，執行介面草案見 [04 當時的快照](../source_snapshots/2026-11-05_pre_consolidation/docs/04_module_components_io_contracts.md#shared-flow-execution)，API 範圍與剩餘決策見 [21](../../06_runtime_api_and_deployment.md)；未改 UI／圖面／Runtime 程式。
 
 
 2026-11-05 D-63／D-64：該 System Ingestion 結束後才允許新版 Config 生效；retire 同步回 200，以 deleted／not_found 區分結果，忙碌文件 409。工作失敗留 Runtime 記憶體可查，重啟／到期 unknown；API 成功／錯誤核心欄位已確認。共用 Runtime 透過可信內部 System 路由選配置，S1 代表 system_id。可調參數集中在 [22](../../06_runtime_api_and_deployment.md)，每頁 100／上限 1,000 等文件 ID 分頁細節仍待確認；未改 UI、Runtime 程式或共用資料 Schema。
