@@ -1,36 +1,30 @@
-flowchart TB
-  %% 同名 SVG 固定版面，PNG 由 SVG 轉出。
+flowchart LR
+  %% DEV startup and reload of published configurations.
+  %% Component IDs match the architecture after user operations.
+  %% Builder 補載預期上線的流程；ES 索引確認遺失時，由使用者確認後恢復。
+
   subgraph B["B · Retrieval Engine Framework"]
-    direction LR
-    B1["B-1 · Schema／Component Descriptor"]
-    B2["B-2 · Engine Library"]
-  end
-  subgraph A["A · DEV 啟動與補載"]
     direction TB
-    A2["A-2 · Builder Backend<br/>讀取發布紀錄與部署意圖"]
-    A4["A-4 · Runtime Pod<br/>初始化 API、Registry 與 Queue"]
-    A3["A-3 · 已發布 Config<br/>預期上線的流程"]
-    Verify["查核 System 狀態<br/>啟動、恢復連線與每 60 秒"]
-    Decision{"預期上線的流程<br/>已載入有效快照？"}
-    Keep["繼續提供業務 API"]
-    Reload["以原發布版 reload<br/>核對同一 ES 索引"]
-    Wait["索引確認遺失<br/>等使用者確認 recover_index"]
-    Empty["首建時可有零組 Config<br/>等待首次發布"]
-
-    A2 --> A3 --> Verify
-    A4 --> Verify
-    Verify --> Decision
-    Decision -->|"相符"| Keep
-    Decision -->|"缺失或舊版，ES 相容"| Reload
-    Decision -->|"ES 索引遺失"| Wait
-    A4 -->|"無已發布部署"| Empty
+    B1["B-1 · System Config Schema · Component Descriptor 與動態選項規則"]
+    B2["B-2 · Retrieval Engine Library · 驗證 Config、組裝 System、執行 Pipeline"]
   end
-  B1 -.-> A2
-  B2 -.-> A4
 
-  classDef service fill:#eef2ff,stroke:#a0aee4,color:#1b2d57
-  classDef ready fill:#edf8f4,stroke:#8fbcac,color:#173e36
-  classDef wait fill:#fff4e4,stroke:#d5a665,color:#5a3c16
-  class B1,B2,A2,A3,A4,Verify,Decision service
-  class Keep,Reload ready
-  class Wait,Empty wait
+  subgraph A["A · Retrieval Builder（DEV）"]
+    direction TB
+    A2["A-2 · Backend · 讀取部署意圖，啟動、重連及每 60 秒查核"]
+    A1["A-1 · Frontend · 依 Schema、Descriptor 與有效相依產生設定欄位及選項"]
+    A4["A-4 · DEV Retrieval Runtime · 獨立程序初始化 API、Registry、Executor、記憶體 Queue，可零組 Config 啟動，回報各流程與索引世代"]
+    A2 -->|"提供設定契約與元件目錄"| A1
+  end
+
+  B1 -.->|"載入設定契約"| A2
+  B2 -.->|"由 DEV Runtime 入口直接載入"| A4
+
+  classDef builder fill:#ffffff,stroke:#aec2df,color:#172c48
+  classDef engine fill:#ffffff,stroke:#c8c2e9,color:#253450
+  classDef runtime fill:#e8f4f4,stroke:#96bcc2,color:#172c48
+  class A1,A2 builder
+  class B1,B2 engine
+  class A4 runtime
+  style A fill:#eef4ff,stroke:#bbcee8
+  style B fill:#f2effa,stroke:#d1c9e8

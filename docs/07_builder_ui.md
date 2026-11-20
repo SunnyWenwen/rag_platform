@@ -126,6 +126,8 @@ User 在節點切換到 Remote API，設定 Endpoint、認證、參數及替換�
 
 Admin 在 Builder 以外維護版本化全域模板。Builder 顯示可選版本，套用時複製至目前草稿。User 可調整設定及環境綁定。模板目錄為唯讀，系統儲存沿用既有驗證。
 
+原型在 Create／Edit 提供「維護知識庫」與「短文件 FAQ」兩組模組設定。選擇模板後按「載入模組設定」，將 Ingestion 與 Inference 設定複製到目前草稿，保留 System 名稱及 Secret。完成調整後，仍需驗證並發布才能啟用。
+
 <a id="system-settings-rendering"></a>
 ### 其他設定 → Secret
 

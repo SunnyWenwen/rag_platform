@@ -1,38 +1,77 @@
-flowchart TB
-  %% 同名 SVG 固定版面，PNG 由 SVG 轉出。
-  subgraph B["B · Retrieval Engine Framework"]
-    direction LR
-    B1["B-1 · Schema／Component Descriptor"]
-    B2["B-2 · 共用 Engine Library"] --> B3["B-3 · Runtime Image<br/>Runtime API ＋ Library"]
-  end
-  subgraph A["A · Builder DEV"]
-    direction TB
-    A1["A-1 · Builder UI"] --> A2["A-2 · Builder Backend<br/>管理 API、業務路由與同步"]
-    A2 --> A3["A-3 · Config Revision 與部署意圖"]
-    A2 -->|"initialize／update／recover_index · ingestion"| Ing["A-4 · Ingestion Runtime"]
-    A2 -->|"reload · inference"| Inf["A-4 · Inference Runtime"]
-    %% detach 卸載單一流程並保留 ES 索引。System DELETE 清除受管索引。
-    Ing -->|"寫入與占用"| ES["Elasticsearch<br/>檢索資料索引 ＋ 共用控制索引"]
-    Inf -->|"查詢同一索引"| ES
-    A3 -. "同版 Config 與同一索引綁定" .-> Ing
-    A3 -. "同版 Config 與同一索引綁定" .-> Inf
-  end
-  subgraph C["C · FTEST／ENT"]
-    direction TB
-    C1["C-1 · 同版 Config ＋部署設定 ＋ Image 版本"]
-    C1 --> C2["C-2 · 使用單位部署"]
-    C2 -->|"以 pipeline 選擇啟動流程"| C3["C-3 · 同一 Runtime Image<br/>Ingestion 與 Inference 可分 Pod"]
-    C3 --> C5["目標環境 ES、模型、Remote API 與 Secret"]
-  end
-  B1 -.-> A2
-  B2 -.-> Ing
-  B2 -.-> Inf
-  B3 -.-> C3
-  A3 -->|"Export"| C1
+flowchart LR
+  %% Architecture groups A, B and C contain locally numbered boxes.
+  %% Solid blue: Config publication and deployment. Teal: business API use.
+  %% Dashed: artifacts or contracts delivered by the Engine Framework.
+  %% Orange: export of the approved logical Config and target deployment settings.
+  %% 1 設定與啟用：在 A-1 設定，A-2 驗證並發布 A-3。A-4 套用設定，啟用 A-5。
+  %% 2 Ingest：從 A-1 上傳，A-2 提交匯入。A-5 處理文件，寫入 A-6 的索引。
+  %% 3 Inference：從 A-1 提問，A-2 送出查詢。A-4 路由到 A-5，並回傳結果。
+  %% 4 Evaluation：在 A-1 啟動評估。Runner 批次查詢 A-5 並彙整結果。
+  %% 5 Export：A-2 匯出同版 A-3 與部署設定。產生 C-1 部署 Bundle。
+  %% 6 Deploy：使用單位透過 C-2 套用 C-1。啟動 C-3，建立 C-4。
+  %% A starts shared A-4 directly from B-2. B-3 carries the Runtime API and Library for deployment to C-3.
+  %% A-4 can start with no Config; publishing A-3 enables A-5.
 
-  classDef builder fill:#eef2ff,stroke:#a0aee4,color:#1b2d57
-  classDef runtime fill:#edf8f4,stroke:#8fbcac,color:#173e36
-  classDef deploy fill:#fff4e4,stroke:#d5a665,color:#5a3c16
-  class B1,B2,B3,A1,A2,A3 builder
-  class Ing,Inf,ES runtime
-  class C1,C2,C3,C5 deploy
+  subgraph A["A · Retrieval Builder（DEV）"]
+    direction TB
+    A1["A-1 · Frontend · 依 Schema、Descriptor 與有效相依產生設定選項"]
+    A2["A-2 · Backend · 讀取部署意圖，啟動、重連與每 60 秒查核 Runtime"]
+    A3["A-3 · 已驗證的 System Config Revision 與流程部署意圖"]
+    subgraph A4["A-4 · DEV Retrieval Runtime · 初始化 API、Registry、Executor、Queue · 可零組 Config"]
+      direction TB
+      A5["A-5 · 測試 Retrieval System · 同版 Config、同索引綁定，兩條流程可分 Pod"]
+    end
+    A6["A-6 · DEV 外部依賴 · Elasticsearch（資料／控制索引）、模型與 Remote API"]
+    A1 -->|"① 編輯設定並提交驗證"| A2
+    A2 -->|"驗證並保存"| A3
+    A3 -->|"① 依 pipeline 套用；Ingestion 建立或沿用索引，Inference 補載"| A5
+    A2 -->|"② Ingest／③ Inference／④ Evaluation 批次 Query · 經 A-4 API 依 system_id 路由"| A5
+    A5 --> A6
+  end
+
+  subgraph B["B · Retrieval Engine Framework"]
+    direction TB
+    B1["B-1 · System Config Schema · Component Descriptor 與動態選項規則"]
+    B2["B-2 · Retrieval Engine Library · 驗證、組裝與執行"]
+    B3["B-3 · 共用 Runtime Image · Runtime API ＋ Engine Library"]
+    B2 -->|"封裝"| B3
+  end
+
+  subgraph C["C · FTEST／ENT 部署"]
+    direction TB
+    C1["C-1 · K8s 部署 Bundle · 同版 A-3、Image 引用、目標環境綁定"]
+    C2["C-2 · K8s CD · 使用單位套用"]
+    subgraph C3["C-3 · 獨立 Retrieval Runtime · 依 pipeline 啟動對應流程"]
+      direction TB
+      C4["C-4 · 目標環境的 Retrieval System"]
+    end
+    C5["C-5 · 目標環境依賴 · Elasticsearch（資料／控制索引）、模型、Remote API、Secret Vault、觀測"]
+    C1 --> C2
+    C2 -->|"⑥ Deploy · 啟動 C-3 並載入 A-3"| C4
+    C4 --> C5
+  end
+
+  B1 -.->|"提供設定契約"| A2
+  B2 -.->|"由 DEV Runtime 入口直接啟動 A-4"| A4
+  B3 -.->|"同版 Image 啟動 C-3"| C3
+  A3 -->|"⑤ A-2 匯出同版 A-3 與目標部署設定"| C1
+
+  classDef builder fill:#ffffff,stroke:#aec2df,color:#172c48
+  classDef engine fill:#ffffff,stroke:#c8c2e9,color:#253450
+  classDef config fill:#eaf1ff,stroke:#88a9d9,color:#17365d
+  classDef system fill:#ddf1ec,stroke:#78b3a4,color:#153c3b
+  classDef infra fill:#ffffff,stroke:#a7cbbe,color:#2e4b45
+  classDef bundle fill:#fff2e2,stroke:#e5b47c,color:#58381e
+  class A1,A2 builder
+  class B1,B2,B3 engine
+  class A3 config
+  class A5,C4 system
+  class A6,C5,C2 infra
+  class C1 bundle
+  style A fill:#eef4ff,stroke:#bbcee8
+  style B fill:#f2effa,stroke:#d1c9e8
+  style C fill:#edf7f2,stroke:#b6dace
+  style A4 fill:#e6f3f3,stroke:#a0c2c5
+  style C3 fill:#e6f3f3,stroke:#a0c2c5
+  linkStyle 3 stroke:#147e75,stroke-width:2.5px
+  linkStyle 12 stroke:#af6217,stroke-width:2.5px

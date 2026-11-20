@@ -1,67 +1,49 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1720" height="901" viewBox="0 0 1720 901" role="img" aria-labelledby="title description">
-<title id="title">Builder 啟動與 DEV Runtime 補載</title><desc id="description">Runtime 可零組 Config 啟動。Builder 依已發布的部署意圖與 Runtime 回報補載。</desc>
-<style>text{font-family:"Noto Sans CJK TC","Microsoft JhengHei",sans-serif}</style>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="751" viewBox="0 0 1500 751" role="img" aria-labelledby="title desc">
+<title id="title">Retrieval Builder 啟動與補載</title>
+<desc id="desc">首次啟動，使用者尚未發布設定。B-1 提供契約給 A-2。B-2 由 DEV Runtime 入口直接載入，讓 A-4 以零組 System Config 就緒。</desc>
 <defs>
-<marker id="blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#4065b2"/></marker>
-<marker id="teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#287d6c"/></marker>
-<marker id="amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#9e5c1e"/></marker>
-<marker id="purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#6d5b9f"/></marker>
-<marker id="white" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52647b"/></marker>
+<marker id="arrow-blue" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5.5 L0 11Z" fill="#315e9b"/></marker>
+<marker id="arrow-purple" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5.5 L0 11Z" fill="#6e5ea3"/></marker>
+<marker id="arrow-teal" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5.5 L0 11Z" fill="#13796f"/></marker>
+<marker id="arrow-orange" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5.5 L0 11Z" fill="#a55b18"/></marker>
 </defs>
-<rect width="1720" height="901" fill="#f7f9fd"/>
-<text x="48" y="69" fill="#18294c" font-size="40" font-weight="750" text-anchor="start">Builder 啟動與 DEV Runtime 補載</text>
-<text x="49" y="112" fill="#52647b" font-size="21" font-weight="400" text-anchor="start">Runtime 可零組 Config 啟動。Builder 依已發布的部署意圖與 Runtime 回報補載。</text>
-<rect x="44" y="146" width="1632" height="186" rx="18" fill="#f6f2fe" stroke="#c9bce6" stroke-width="1.5"/>
-<text x="67" y="183" fill="#6d5b9f" font-size="22" font-weight="720" text-anchor="start">B · Retrieval Engine Framework</text>
-<rect x="69" y="205" width="604" height="88" rx="14" fill="#ffffff" stroke="#d9e2ef" stroke-width="1.5"/>
-<rect x="83" y="222" width="4" height="20" rx="2" fill="#52647b"/>
-<text x="96" y="240" fill="#18294c" font-size="23" font-weight="730" text-anchor="start">B-1 · Schema 與 Component Descriptor</text>
-<text x="96" y="270" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">Builder 使用契約編輯與驗證 Config</text>
-<rect x="1045" y="205" width="604" height="88" rx="14" fill="#ffffff" stroke="#d9e2ef" stroke-width="1.5"/>
-<rect x="1059" y="222" width="4" height="20" rx="2" fill="#52647b"/>
-<text x="1072" y="240" fill="#18294c" font-size="23" font-weight="730" text-anchor="start">B-2 · 共用 Engine Library</text>
-<text x="1072" y="270" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">DEV Runtime 入口載入 Library</text>
-<rect x="44" y="376" width="1632" height="466" rx="18" fill="#f1f4ff" stroke="#acbce6" stroke-width="1.5"/>
-<text x="67" y="413" fill="#4065b2" font-size="22" font-weight="720" text-anchor="start">A · DEV 啟動與補載</text>
-<path d="M371 293V436" fill="none" stroke="#6d5b9f" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#purple)"/>
-<path d="M1347 293V436" fill="none" stroke="#6d5b9f" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#purple)"/>
-<rect x="69" y="441" width="603" height="112" rx="14" fill="#ffffff" stroke="#d9e2ef" stroke-width="1.5"/>
-<rect x="83" y="458" width="4" height="20" rx="2" fill="#52647b"/>
-<text x="96" y="476" fill="#18294c" font-size="23" font-weight="730" text-anchor="start">A-2 · Builder Backend</text>
-<text x="96" y="506" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">讀取已發布 Config Revision 與部署意圖</text>
-<text x="96" y="533" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">Builder 啟動、Runtime 恢復連線及每 60 秒查核</text>
-<rect x="1045" y="441" width="604" height="112" rx="14" fill="#ffffff" stroke="#d9e2ef" stroke-width="1.5"/>
-<rect x="1059" y="458" width="4" height="20" rx="2" fill="#52647b"/>
-<text x="1072" y="476" fill="#18294c" font-size="23" font-weight="730" text-anchor="start">A-4 · Runtime Pod</text>
-<text x="1072" y="506" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">初始化 API、Registry、Executor 與 Queue</text>
-<text x="1072" y="533" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">回報本機流程、版本、索引世代及就緒狀態</text>
-<path d="M672 497H1040" fill="none" stroke="#4065b2" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#blue)"/>
-<text x="858" y="478" fill="#4065b2" font-size="17" font-weight="660" text-anchor="middle">GET 單一 System 狀態</text>
-<path d="M371 553V600H1445" fill="none" stroke="#4065b2" stroke-width="2.3" stroke-linejoin="round"/>
-<path d="M371 600H258" fill="none" stroke="#4065b2" stroke-width="2.3" stroke-linejoin="round"/>
-<path d="M257 600V650" fill="none" stroke="#4065b2" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#blue)"/>
-<path d="M652 600V650" fill="none" stroke="#4065b2" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#blue)"/>
-<path d="M1047 600V650" fill="none" stroke="#4065b2" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#blue)"/>
-<path d="M1445 600V650" fill="none" stroke="#4065b2" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#blue)"/>
-<rect x="69" y="654" width="376" height="125" rx="14" fill="#ffffff" stroke="#d9e2ef" stroke-width="1.5"/>
-<rect x="83" y="671" width="4" height="20" rx="2" fill="#52647b"/>
-<text x="96" y="689" fill="#18294c" font-size="22" font-weight="730" text-anchor="start">尚無發布紀錄</text>
-<text x="96" y="719" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">Runtime 保持就緒</text>
-<text x="96" y="746" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">等待首次發布與建立索引</text>
-<rect x="464" y="654" width="376" height="125" rx="14" fill="#ecf8f4" stroke="#a0c7b8" stroke-width="1.5"/>
-<rect x="478" y="671" width="4" height="20" rx="2" fill="#287d6c"/>
-<text x="491" y="689" fill="#18294c" font-size="22" font-weight="730" text-anchor="start">快照與索引相符</text>
-<text x="491" y="719" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">維持既有業務 API</text>
-<text x="491" y="746" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">各流程按就緒狀態受理</text>
-<rect x="859" y="654" width="376" height="125" rx="14" fill="#ecf8f4" stroke="#a0c7b8" stroke-width="1.5"/>
-<rect x="873" y="671" width="4" height="20" rx="2" fill="#287d6c"/>
-<text x="886" y="689" fill="#18294c" font-size="22" font-weight="730" text-anchor="start">快照缺失或落後</text>
-<text x="886" y="719" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">按部署意圖 reload 原發布版</text>
-<text x="886" y="746" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">核對既有 ES 索引與世代</text>
-<rect x="1254" y="654" width="395" height="125" rx="14" fill="#fff5e7" stroke="#e1b982" stroke-width="1.5"/>
-<rect x="1268" y="671" width="4" height="20" rx="2" fill="#9e5c1e"/>
-<text x="1281" y="689" fill="#18294c" font-size="22" font-weight="730" text-anchor="start">ES 索引確認遺失</text>
-<text x="1281" y="719" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">暫停受影響的匯入與查詢</text>
-<text x="1281" y="746" fill="#52647b" font-size="18" font-weight="400" text-anchor="start">使用者確認後 recover_index</text>
-<text x="69" y="813" fill="#52647b" font-size="18" font-weight="500" text-anchor="start">Builder 只補載預期上線的流程。Runtime 以 runtime_ref 核對管理目標。</text>
+<style>
+text{font-family:'Noto Sans CJK TC','Noto Sans CJK SC',sans-serif;text-rendering:geometricPrecision}
+</style>
+<rect x="0" y="0" width="1500" height="751" rx="0" fill="#f9fbfe" stroke="none" stroke-width="1.4"/>
+<text x="55" y="72" fill="#172a45" font-size="49" font-weight="800" text-anchor="start">Retrieval Builder 啟動與補載</text>
+<text x="57" y="113" fill="#4b5e75" font-size="21" font-weight="500" text-anchor="start">首次部署可從零組 Config 開始，已有部署由 Builder 查核並補載。</text>
+<rect x="55" y="153" width="780" height="524" rx="22" fill="#edf4fd" stroke="#b8cde8" stroke-width="1.4"/>
+<rect x="986" y="153" width="459" height="524" rx="22" fill="#f2eff9" stroke="#cec6e5" stroke-width="1.4"/>
+<rect x="85" y="180" width="36" height="34" rx="8" fill="#dbe9fa" stroke="none" stroke-width="1.4"/>
+<text x="103" y="205" fill="#315e9b" font-size="21" font-weight="750" text-anchor="middle">A</text>
+<text x="135" y="206" fill="#172a45" font-size="29" font-weight="750" text-anchor="start">Retrieval Builder</text>
+<text x="135" y="235" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">Frontend／Backend ＋ DEV Runtime</text>
+<rect x="1016" y="180" width="36" height="34" rx="8" fill="#e5dff4" stroke="none" stroke-width="1.4"/>
+<text x="1034" y="205" fill="#6e5ea3" font-size="21" font-weight="750" text-anchor="middle">B</text>
+<text x="1066" y="206" fill="#172a45" font-size="25" font-weight="750" text-anchor="start">Retrieval Engine Framework</text>
+<text x="1066" y="235" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">設定契約與執行核心</text>
+<path d="M1017 407 H804" fill="none" stroke="#6e5ea3" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#arrow-purple)"/>
+<path d="M1017 559 H804" fill="none" stroke="#6e5ea3" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#arrow-purple)"/>
+<path d="M445 364 V320" fill="none" stroke="#315e9b" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+<text x="910" y="388" fill="#6e5ea3" font-size="18" font-weight="680" text-anchor="middle">載入設定契約</text>
+<text x="910" y="540" fill="#6e5ea3" font-size="18" font-weight="680" text-anchor="middle">直接載入 B-2</text>
+<text x="462" y="348" fill="#315e9b" font-size="17" font-weight="650" text-anchor="start">提供契約與元件目錄</text>
+<rect x="85" y="253" width="719" height="67" rx="13" fill="#ffffff" stroke="#bdcfe6" stroke-width="1.4"/>
+<text x="108" y="296" fill="#172a45" font-size="24" font-weight="750" text-anchor="start">A-1　Frontend</text>
+<text x="305" y="296" fill="#4b5e75" font-size="19" font-weight="500" text-anchor="start">依 Schema、Descriptor 與有效相依產生設定選項</text>
+<rect x="85" y="364" width="719" height="100" rx="13" fill="#ffffff" stroke="#bdcfe6" stroke-width="1.4"/>
+<text x="108" y="405" fill="#172a45" font-size="24" font-weight="750" text-anchor="start">A-2　Backend</text>
+<text x="108" y="438" fill="#4b5e75" font-size="19" font-weight="500" text-anchor="start">讀取部署意圖，啟動、重連及每 60 秒查核</text>
+<rect x="85" y="505" width="719" height="140" rx="15" fill="#e8f4f4" stroke="#96bcc2" stroke-width="1.4"/>
+<text x="108" y="545" fill="#172a45" font-size="25" font-weight="750" text-anchor="start">A-4　DEV Retrieval Runtime</text>
+<text x="108" y="583" fill="#4b5e75" font-size="17" font-weight="500" text-anchor="start">DEV Runtime 入口啟動獨立程序，初始化 API、Registry、Executor 與記憶體 Queue</text>
+<text x="108" y="615" fill="#13796f" font-size="19" font-weight="700" text-anchor="start">可零組 Config 啟動，回報各流程與索引世代</text>
+<rect x="1017" y="364" width="397" height="100" rx="13" fill="#ffffff" stroke="#c8bddf" stroke-width="1.4"/>
+<text x="1039" y="405" fill="#302450" font-size="23" font-weight="750" text-anchor="start">B-1　System Config Schema</text>
+<text x="1039" y="438" fill="#4b5e75" font-size="17" font-weight="500" text-anchor="start">搭配 Component Descriptor 與動態選項規則</text>
+<rect x="1017" y="505" width="397" height="114" rx="13" fill="#ffffff" stroke="#c8bddf" stroke-width="1.4"/>
+<text x="1039" y="545" fill="#302450" font-size="22" font-weight="750" text-anchor="start">B-2　Retrieval Engine Library</text>
+<text x="1039" y="578" fill="#4b5e75" font-size="17" font-weight="500" text-anchor="start">驗證 Config、組裝 System、執行 Pipeline</text>
+<text x="55" y="720" fill="#4b5e75" font-size="19" font-weight="500" text-anchor="start">Builder 補載預期上線的流程。ES 索引確認遺失時，由使用者確認後恢復。</text>
 </svg>

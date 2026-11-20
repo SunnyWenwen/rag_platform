@@ -152,6 +152,8 @@ summary{cursor:pointer;color:var(--accent);font-weight:650}
 .runtime-facts dd{margin:2px 0 0;font-weight:650;overflow-wrap:anywhere}
 .run-selection{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
 .check-label{display:flex;align-items:center;gap:7px;margin-top:12px;font-size:12px;color:#646c82}
+.template-picker{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}
+.template-picker .btn{white-space:nowrap}
 @media(max-width:850px){.builder,.operation{grid-template-columns:1fr}}
 @media(max-width:550px){.form-grid{grid-template-columns:1fr}.modalhead,.modalbody,.modalfoot{padding:16px}.card{padding:18px}}
 </style>
@@ -216,6 +218,10 @@ const labels = {
   source_field:'來源欄位', vector_name:'向量欄位', profile:'Embedding Profile', service_ref:'Elasticsearch 服務',
   structdata_overrides:'索引欄位用途', per_route_k:'每路 Top K',
   fulltext_fields:'全文欄位', group_by:'分組欄位', fixed_filters:'固定 Filter'
+};
+const moduleTemplates = {
+  maintenance:{label:'維護知識庫 · Recursive 向量檢索', settings:'切分上限 500 tokens、每路 Top K 10、固定篩選 price ≥ 300。'},
+  faq:{label:'短文件 FAQ · Recursive 向量檢索', settings:'切分上限 192 tokens、重疊 24 tokens、每路 Top K 6。'}
 };
 const componentNames = {
   platform:'平台預設',passthrough:'結構化 JSON',pdf:'PDF · 文字擷取',pdf_ocr:'PDF · OCR',
@@ -303,6 +309,7 @@ let workspace = 0, id = null, screen = 'config', selected = 'import';
 let pendingSystem = null, draftName = '';
 let componentDrafts = {};
 let draft = null, draftDirty = false, issues = [], checked = null, detailOpen = false;
+let selectedTemplate = '';
 let ingestText = '', ingestError = '', csv = null, mapping = {}, batchPreview = null, viewRun = null;
 let selectedDocuments = new Set(), bulkTimeout = false;
 let queryText = '', filterText = '[]', queryError = '', queryResult = null;
@@ -381,17 +388,22 @@ function normalizeIndexDraft(component) {
   }
 }
 
+function normalizeDraft(config) {
+  normalizeEmbeddingDraft(node(config,'embedding'));
+  normalizeRetrievalDraft(node(config,'retrieval'));
+  normalizeIndexDraft(node(config,'indexing'));
+  return config;
+}
+
 function openSystem(systemId, target = 'config') {
   const system = pendingSystem?.id === systemId ? pendingSystem : model.systems.find(entry => entry.id === systemId);
   if (!system) return;
   resetOperation();
-  draft = clone(system.draft);
-  normalizeEmbeddingDraft(node(draft,'embedding'));
-  normalizeRetrievalDraft(node(draft,'retrieval'));
-  normalizeIndexDraft(node(draft,'indexing'));
+  draft = normalizeDraft(clone(system.draft));
   componentDrafts = clone(system.componentDrafts ?? {});
   draftName = system.name;
   draftDirty = false;
+  selectedTemplate = '';
   checked = null;
   issues = [];
   selected = 'import';
@@ -638,6 +650,28 @@ function chooseComponent(componentId) {
   markDirty();
   render();
   $('component-picker')?.focus();
+}
+
+function loadModuleTemplate(templateKey) {
+  const entry = moduleTemplates[templateKey];
+  if (!entry) return;
+  const saved = normalizeDraft(clone(current().draft));
+  const pipelineJSON = config => JSON.stringify(orderedJSON(config.pipelines));
+  if (pipelineJSON(draft) !== pipelineJSON(saved) &&
+      !confirm('載入模板會替換目前尚未保存的模組設定。繼續？')) return;
+  const template = clone(fixture.config);
+  if (templateKey === 'faq') {
+    Object.assign(params(template,'chunking'),{max_tokens:192,overlap_tokens:24});
+    Object.assign(params(template,'retrieval'),{per_route_k:6});
+    delete template.pipelines.inference.fixed_filters;
+  }
+  draft.pipelines = normalizeDraft(template).pipelines;
+  componentDrafts = {};
+  selected = 'import';
+  detailOpen = false;
+  markDirty();
+  render();
+  notify('已載入模組設定：' + entry.label);
 }
 
 function fieldVisible(item,key,values) {
@@ -914,7 +948,14 @@ function settings(system) {
   return `<div class="editor-meta">
     <label class="field">Retrieval System 名稱<input class="control" id="system-name" maxlength="80" required
       placeholder="例如：Maintenance Retrieval" value="${escapeHTML(draftName)}"></label>
-    ${system === pendingSystem ? '<label class="field">設定模板<select class="control"><option>Elasticsearch · 向量檢索</option></select></label>' : ''}
+    <div class="template-picker">
+      <label class="field">模組設定模板<select class="control" id="module-template">
+        ${option('','選擇模板',!selectedTemplate)}
+        ${Object.entries(moduleTemplates).map(([key,entry]) => option(key,entry.label,key === selectedTemplate)).join('')}
+      </select></label>
+      <button class="btn" data-action="load-module-template" ${selectedTemplate ? '' : 'disabled'}>載入模組設定</button>
+    </div>
+    ${selectedTemplate ? `<p class="muted">${escapeHTML(moduleTemplates[selectedTemplate].settings)} 載入會替換草稿中的兩條流程設定。</p>` : ''}
     </div>
     <div class="builder"><nav aria-label="設定區域">${nav}
     <section class="panel pipeline"><button class="module ${isOtherSettings ? 'selected' : ''}" data-action="module" data-value="other_settings"
@@ -1821,6 +1862,7 @@ document.addEventListener('click',event => {
     case 'validate': checkPublish(system); return;
     case 'publish': applyPublish(system); return;
     case 'download': download(system); return;
+    case 'load-module-template': loadModuleTemplate(selectedTemplate); return;
     case 'sync-runtime':
       reconcileRuntime(system); persist(); render(); return;
     case 'restart-runtime': {
@@ -1984,6 +2026,13 @@ document.addEventListener('input',event => {
 
 document.addEventListener('change',event => {
   const input = event.target;
+  if (input.id === 'module-template') {
+    selectedTemplate = input.value;
+    render();
+    $('module-template')?.focus();
+    $('module-template').focus();
+    return;
+  }
   if (input.id === 'runtime-layout') {
     deployment(current()).layout = input.value;
     persist(); render(); return;

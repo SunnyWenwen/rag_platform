@@ -163,9 +163,9 @@ User 在 Workspace 建立 System，選用模板或自行設定 Import、Ingestio
 
 | 圖面區塊 | 責任與交付物 |
 |---|---|
-| **A · Builder DEV** | **A-1 Frontend** 依 B-1 的契約呈現設定與測試。**A-2 Backend** 驗證設定並維護 **A-3 Config Revision 與部署意圖**，依 `runtime_ref` 及 `pipeline` 管理 **A-4 Ingestion／Inference**。兩條流程可在同一 Runtime Pod 啟用，也可分開部署，使用 **A-6 共用 Elasticsearch** 的同一檢索索引。 |
+| **A · Builder DEV** | **A-1 Frontend** 依 B-1 的契約呈現設定與測試。**A-2 Backend** 驗證設定並維護 **A-3 Config Revision 與部署意圖**，依 `runtime_ref` 及 `pipeline` 管理 **A-4 DEV Runtime**。**A-5 測試 System** 的 Ingestion 與 Inference 可在同一 Runtime Pod 啟用或分開部署，使用 **A-6 共用 Elasticsearch** 的同一檢索索引。 |
 | **B · Retrieval Engine Framework** | **B-1 System Config Schema** 搭配 Component Descriptor 與動態相依規則，供 A 產生表單和驗證設定。**B-2 Engine Library** 依 Config 組裝 System 並執行 Pipeline，DEV Runtime 入口直接載入 B-2 啟動 A-4。**B-3 共用 Runtime Image** 封裝 Runtime API 與 B-2，供 C-3 部署。 |
-| **C · FTEST／ENT 部署** | **C-1 部署 Bundle** 包含同版 Config、B-3 Image 引用與目標環境綁定。**C-2 使用單位部署**以環境設定的 `pipeline` 選擇 **C-3 獨立 Runtime** 啟用的流程。分 Pod 時沿用同版 Config 及同一 ES 綁定。**C-5** 為部署環境供應的 ES、模型、Remote API、Secret 與觀測資源。 |
+| **C · FTEST／ENT 部署** | **C-1 部署 Bundle** 包含同版 Config、B-3 Image 引用與目標環境綁定。**C-2 使用單位部署**以環境設定的 `pipeline` 選擇 **C-3 獨立 Runtime** 啟用的流程。**C-4 目標 System** 的兩條流程分 Pod 時沿用同版 Config 及同一 ES 綁定。**C-5** 為部署環境供應的 ES、模型、Remote API、Secret 與觀測資源。 |
 
 DEV 與目標環境各自綁定服務及索引。對使用 Elasticsearch 的 System，Runtime 使用檢索資料索引及環境共用的控制索引。匯出交付同版邏輯 Config 和部署所需引用，目標資料由部署方準備或重新匯入。[部署 Bundle 與資料準備](06_runtime_api_and_deployment.md#src-07-91-bundle-目標)
 

@@ -56,6 +56,24 @@ async function main() {
     await page.getByLabel('Retrieval System 名稱').fill('W1 驗收');
     assert.equal(await page.getByRole('navigation',{name:'模組'}).locator('.module-line').count(),2);
 
+    const template = page.getByLabel('模組設定模板');
+    const loadTemplate = button('載入模組設定');
+    assert.equal(await template.getByRole('option').count(),3);
+    assert.equal(await loadTemplate.isDisabled(),true);
+    await template.selectOption('faq');
+    await loadTemplate.click();
+    assert.deepEqual(await page.evaluate(() => ({
+      maxTokens:params(draft,'chunking').max_tokens,
+      topK:params(draft,'retrieval').per_route_k,
+      fixedFilters:draft.pipelines.inference.fixed_filters ?? [],
+      active:current().active
+    })),{maxTokens:192,topK:6,fixedFilters:[],active:null});
+    assert.equal(await page.getByLabel('Retrieval System 名稱').inputValue(),'W1 驗收');
+    await template.selectOption('maintenance');
+    page.once('dialog',dialog => dialog.accept());
+    await loadTemplate.click();
+    assert.equal(await page.evaluate(() => params(draft,'chunking').max_tokens),500);
+
     await module('Chunking').click();
     assert.equal(await page.getByLabel('Tokenizer',{exact:true}).inputValue(),'fixture');
     assert.equal(await page.getByRole('option',{name:'DEV Tokenizer'}).count(),1);
