@@ -113,11 +113,11 @@ Import 可選已整理欄位或待解析來源。選待解析來源時，入口�
 |---|---|---|
 | Embedding | DEV test use／Embedding API | 自行提供時設定 API URL、Model、認證引用及必要模型資訊；不另增加使用者管理本地模型的選項 |
 | Indexing／Elasticsearch | DEV test use／使用者提供 Elasticsearch | 後者才要求 ES URL／認證等連線設定 |
-| Indexing／Local Search | Memory／MongoDB | 選 MongoDB 才展開 DEV test use／使用者提供 MongoDB；Memory 不要求 DB。模式隨 Config 跨環境固定，不在 Export 中改模式 |
+| Indexing／Local Search（後續） | Memory／MongoDB | 選 MongoDB 才展開連線設定。模式隨 Config 跨環境固定 |
 | 共用 LLM 服務 | DEV test use／OpenAI-compatible API | 自行提供時設定 Base URL、Model、認證引用；Query Transformation 以下拉 llm_ref 引用，不各填一份連線 |
 | Rerank | None／DEV test use／Rerank API | 啟用時設定內容欄位與 Top-N；自行提供時另填 API URL、Model、認證引用 |
 
-內建服務的來源預設為 DEV test use，使用平台測試資源。匯出部署時需填入使用單位的綁定。Embedding／LLM 的現有原型格式分別為 OpenAI-compatible embeddings／Chat Completions，Rerank 為 04 的平台契約；首組真實服務的相容範圍仍由 Q-003 核定。
+首版 Indexing 預設使用 ES。Builder DEV 預設用平台測試資源，FTEST／ENT 匯出時填入使用單位的 ES 綁定。Local Search 選項留待後續交付。Embedding／LLM 的現有原型格式分別為 OpenAI-compatible embeddings／Chat Completions，Rerank 為 04 的平台契約；首組真實服務的相容範圍仍由 Q-003 核定。
 
 <a id="src-06-322-已註冊-developer-serviceremote-pipelined-51已有原型模擬真實整合待做"></a>
 ### User Remote API 與選用模板
@@ -136,12 +136,13 @@ Admin 在 Builder 以外維護版本化全域模板。Builder 顯示可選版本
 ### 條件欄位與相依驗證
 
 - 自行提供模型／DB 或 Remote API 時填必要連線，認證欄位使用 `{{KEY}}`。平台測試資源使用部署綁定。
-- Local Search 選 MongoDB 才呈現 DB 連線；Memory 不要求資料庫。
 - Query Transformation 只選 llm_ref；共用服務只管理一次。
 - None 的 Top-N／Prompt 等欄位可保留草稿但停用，不參與有效 Config 驗證／匯出。
 - 上游刪除欄位或模型引用失效時，保留草稿選擇、標示原因並阻擋發布。
 - 不支援能力顯示且停用，附可理解原因；不能讓顯示的 Mock 選項假裝正式可用。
 - Builder 在編輯時依 Descriptor 與有效 I/O 提供即時驗證。通過本地檢查後，發布前呼叫 Runtime 的 [Config Validation API](06_runtime_api_and_deployment.md#config-validation-api) 做最終驗證。正式套用時，Runtime 再核對版本與索引狀態。Schema 與推導規則由 Builder 和 Engine 共用。
+- Builder 部署及卸載時分別選定 Ingestion／Inference 和目標 Runtime，並讀取 `SystemStatus.pipelines` 顯示載入版本、索引世代與就緒狀態。同一 DEV Runtime 可承載兩條流程。匯入、文件管理及查詢按相應流程的就緒狀態開放。[流程部署契約](06_runtime_api_and_deployment.md#runtime-pipeline-deployment)
+- 共用版本已發布而 Inference 尚未載入時，顯示切版中並暫停新查詢。補載失敗時，顯示已發布的版本及各目標的失敗原因。待目標載入對應版本及索引世代且 `ready: true` 後，恢復受理新查詢，仍依初次匯入規則判斷是否開放測試查詢。[切版規則](06_runtime_api_and_deployment.md#runtime-pipeline-deployment)
 - Component 目錄／Config Schema 與驗證結果綁定目標 Runtime 版本；目錄變動不靜默升級既有 System 或覆寫草稿。API／Schema 與既有控制項相容時，新增 Component 可在 Runtime 更新後供原版 Builder 選用；未知控制項／不相容格式明示需支援，不假裝可完整設定。目錄快取與版本協調見 [Catalog API](06_runtime_api_and_deployment.md#w1-catalog)，畫面待辦見 UIB-010。
 
 錯誤顯示 `[模組] 原因`；進一步可提供欄位位置、修正方式與是否需重新 Ingestion。UI 不要求使用者理解內部 Python 類別或堆疊。
@@ -150,7 +151,7 @@ Admin 在 Builder 以外維護版本化全域模板。Builder 顯示可選版本
 
 | 上游條件 | 下游呈現與驗證 |
 |---|---|
-| Indexing 選 ES／Local Search | Retrieval 顯示繼承的後端資訊，不增加 Implementation 選單 |
+| Indexing 使用 ES | Retrieval 顯示繼承的 ES 後端資訊 |
 | 欄位未建立全文／向量索引 | 對應搜尋選項顯示且停用，說明需先在 Indexing 建立能力；既有選擇失效則保留草稿並阻擋發布 |
 | Embedding 移除某個 output_name | Indexing／Retrieval 的向量引用標為失效，不默默改為其他向量或欄位 |
 | 欄位未建立全文／向量索引，但已存在於 Chunk | 仍可用於 Rerank／檢索結果消費端 等內容消費；只有相對應的搜尋能力不能選，不能以「未勾儲存」拒絕 |
@@ -321,8 +322,8 @@ Prototype 限制 ≤1 MB 且在瀏覽器讀取，不等於正式產品限制。�
 - 區分接收成功、處理完成、索引可查詢；202 不代表可檢索查詢。
 - 文件數與 Chunk 數各自標示。Ingestion 進度的呈現方式留待後續討論。
 - 部分失敗列出可對應 item 的錯誤，不用單一成功 Toast 遮蔽。
-- 重新打開視窗可用 run_id 查工作。ES 模式的逐文件狀態在 Runtime 重啟後仍可在保留期內查詢，依 [重啟結算規則](06_runtime_api_and_deployment.md#ingestion-job-records) 顯示結果。
-- 失敗或中斷的文件由呼叫方決定是否重新提交。ES 寫入未查清時顯示待查核。[批量取消](06_runtime_api_and_deployment.md#ingestion-cancel-api)依 `run_id` 送出選定的 `document_ids`，逐筆顯示結果。已取消但 `cancellation_pending: true` 的文件仍需等待結算，Builder 繼續查同一 Run 並依最新狀態顯示。
+- 重新打開視窗可用 `run_id` 查工作。遺失收件回應時，依已知 `document_id` 查詢最近一次 `run_id`，再核對該 Run 的文件。ES 的 Run 與逐文件紀錄在全部文件結案後預設保留 3 天。卸載 Ingestion 後可改用仍載入同一綁定的目標，或等原目標補載後查詢。[工作紀錄與重啟規則](06_runtime_api_and_deployment.md#ingestion-job-records)
+- 失敗或中斷的文件由呼叫方決定是否重新提交。ES Bulk 逾時顯示為文件失敗，可重新匯入。[批量取消](06_runtime_api_and_deployment.md#ingestion-cancel-api)依 `run_id` 送出選定的 `document_ids`，收到 `cancelled` 即顯示已取消。原寫入若成功，重新取得 Run 或文件狀態時改顯示 `completed`。若重匯收到 `409 DOCUMENT_BUSY`，依衝突回應顯示仍被占用的文件。
 - 真實 Parser／Chunk 小量試跑是建議能力，Q-025 核定前不能用瀏覽器格式預覽冒充。
 
 <a id="src-06-6-inference-與診斷"></a>
@@ -370,12 +371,11 @@ Runtime 回報已發布部署的索引確認遺失時，Builder 顯示受影響�
 <a id="src-06-8-export-與部署說明"></a>
 ## Export 與部署說明
 
-- 沿用選定 System 的同版 Config，逐項填入部署環境的 LLM、Embedding、Rerank、ES／MongoDB 綁定；同 llm_ref 不重複填連線。改 URL／Secret 不覆寫邏輯 Config。
+- 沿用選定 System 的同版 Config，逐項填入部署環境的 LLM、Embedding、Rerank 與 ES 綁定；同 llm_ref 不重複填連線。改 URL／Secret 不覆寫邏輯 Config。
 - 使用 DEV 綁定者可下載待設定草稿；必要資訊已填妥者標示「已填妥，尚未驗證」。
 - 只允許合法環境覆寫；更改 Embedding Model 提示返回 Edit Config 並重建。
 - 匯出保留 `config.secret` 的 Key，值設為 `null`。部署設定提供同名環境變數及對應的 Secret／ConfigMap。Remote API 另匯出目標環境的連線設定。
 - 不含實際 Secret、Image 本體、Chunk／vectors 或測試原文；提醒需在目標環境準備資料／Ingestion。
-- Local Search 單程序／單副本；不可透過 UI 匯出多副本而宣稱可共享索引。
 - FTEST／ENT 檔名、環境值與完整 Bundle 待 Q-021；正式文案稱 Config／部署設定。原型舊的 RAGBlueprint／blueprint.json 僅是待遷移標籤，不是另立的產品物件；單份示意 YAML 不代表正式交付完成。
 
 <a id="src-06-9-互動品質與驗收"></a>
@@ -565,7 +565,7 @@ ResultSet.key 對應 Config 路徑／群組，items 位置即名次。RRF 可用
 - [ ] API 說明呈現 202 僅代表接收，顯示 run_id 及可用的狀態查詢入口；精確 Batch 路徑／Envelope 待 21 核定。
 - [ ] 依 Run／文件狀態與錯誤契約顯示查詢結果及同一 Run 的批量取消結果。進度粒度與呈現延後討論。
 - [ ] 批量匯入收到 `409 DOCUMENT_BUSY` 時，顯示 `error.conflicts` 中所有被占用的文件及狀態，包括 `cancelled` 但仍待收尾的工作。呼叫方可在占用釋放後重新提交。[衝突回應規格](06_runtime_api_and_deployment.md#ingestion-document-busy)
-- [ ] ES 模式重啟後以 Runtime 回傳的逐文件狀態為準。未送出 Bulk 的中斷工作顯示 failed 與原因，結果未確認時顯示 unknown。查無紀錄時結束一般工作輪詢。
+- [ ] Runtime 重啟後顯示逐文件結算結果。舊 Worker 已確認停止且未進入清舊時，遺失 Bulk 結果的文件顯示 `failed`。清舊結果未確認時顯示 `unknown`。查無紀錄時結束該次 Run 輪詢。
 - [ ] Ingestion Queue 額滿、Inference Rate／併發／Timeout 有可理解提示；不在每次文件／Query 表單加入環境上限設定。
 - [ ] 區分文件工作狀態、索引是否可查與 Runtime Health；Local／Remote 的未知結果不冒充可安全重試。
 

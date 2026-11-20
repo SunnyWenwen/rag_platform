@@ -94,17 +94,17 @@ Indexing 保存全部有效 structdata、metadata 與向量。全文與 Filter �
 2. 比較目標 Schema／Profile，拒絕不相容寫入，避免不同模型混在同一向量欄位。
 3. 依版本／冪等策略寫入 Chunk，維護 data_id 對照及 Binding。
 4. 按後端 refresh／發布規則回報 searchable；write_acknowledged 不等於 searchable。
-5. 同一 System／`document_id` 以一次 `write_id` 寫入新版。IndexStore 在第一個 ES Bulk 前持久化預期 Chunk 與清理範圍。新版完整可搜尋後才清舊。若確認寫入已結束且新版未完成，清理本次寫入殘留並保留舊資料。結果待查核時標 `unknown` 並限制同文件重送。文件存在、清單與 retire 也使用索引存取層。見 [ES 寫入控制紀錄與查核](06_runtime_api_and_deployment.md#es-write-control-record)。
+5. 同一 System／`document_id` 的每次索引寫入使用新的 `write_id`。IndexStore 在第一個 ES Bulk 前持久化預期 Chunk 與清理範圍，新版完整可搜尋後才清舊。Bulk 回應逾時回報 `ES_BULK_TIMEOUT`，由 Runtime 結案並釋放占用。殘留清理限原批次的 `write_id`。文件存在、清單與 Retire 也使用索引存取層。見 [ES 寫入控制紀錄與查核](06_runtime_api_and_deployment.md#es-write-control-record)。
 
 | 後端 | 內部責任 |
 |---|---|
 | ES | 組合 Mapping；全文 text、精確 keyword、Dense vector；全部內容可取回但只替選定欄位建立對應搜尋能力；相容查詢及 refresh |
-| Local Search | 每個具名向量管理 FAISS index；每個全文欄位管理 BM25；向量 ID → data_id；完整 Chunk 共用一份 |
-| Local／MongoDB | 保存 Chunk／vectors／Profile Manifest；重啟按相容版本重建搜尋結構，不重新 Parsing／Embedding |
+| Local Search（後續） | 每個具名向量管理 FAISS index；每個全文欄位管理 BM25；向量 ID → data_id；完整 Chunk 共用一份 |
+| Local／MongoDB（後續） | 保存 Chunk／vectors／Profile Manifest；重啟按相容版本重建搜尋結構，不重新 Parsing／Embedding |
 
 FAISS 的維度／metric 不足以證明向量空間相容。cosine／inner product／L2 的 normalization 與對外 relevance 轉換必須定義；中文 BM25 需斷詞方案。不能把 post-filter 與 Top-K 前授權過濾視為等價。
 
-**驗收**：ES 與 Local 共用契約測試；未建搜尋索引的 structdata／metadata 仍完整可取回；巢狀 metadata 整包可取回；全文與 Filter 只使用已啟用的 structdata 欄位；不出現跨 System Chunk；寫入失敗／不就緒不回可查詢；Memory 重啟清空、MongoDB 可驗證恢復。
+**驗收**：首版使用 ES。未建搜尋索引的 structdata／metadata 仍完整可取回，巢狀 metadata 整包可取回，全文與 Filter 只使用已啟用的 structdata 欄位。驗證跨 System 隔離、寫入失敗和索引就緒狀態。Local Search 的契約及重啟驗收排入後續。
 
 **待決**：Q-008～Q-013、Q-015；ES 版本／授權 Q-001。
 

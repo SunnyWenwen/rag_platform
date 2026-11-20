@@ -204,7 +204,11 @@
             "index_ready": true,
             "index_generation": "index-1",
             "can_ingest": true,
-            "can_query": true
+            "can_query": true,
+            "pipelines": {
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-1"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-1"}
+            }
           }
         }
       },
@@ -220,7 +224,11 @@
             "index_ready": true,
             "index_generation": "index-1",
             "can_ingest": true,
-            "can_query": true
+            "can_query": true,
+            "pipelines": {
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-1"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-1"}
+            }
           }
         }
       },
@@ -238,7 +246,11 @@
                 "index_ready": true,
                 "index_generation": "index-1",
                 "can_ingest": true,
-                "can_query": true
+                "can_query": true,
+                "pipelines": {
+                  "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-1"},
+                  "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-1"}
+                }
               }
             ]
           }
@@ -399,6 +411,1058 @@
         "response": {
           "status": 404,
           "body": {"error": {"code": "SYSTEM_NOT_FOUND", "message": "查無載入狀態或既有索引綁定。", "module": null}}
+        }
+      }
+    ],
+    "pipeline_deployment": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/v1/systems/es-example/config:validate",
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-1",
+            "operation": "initialize",
+            "config": {
+              "contract_version": "0.2-draft",
+              "pipelines": {
+                "ingestion": {
+                  "import": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "structdata": {
+                        "body": {
+                          "type": "string",
+                          "required": true
+                        },
+                        "title": {
+                          "type": "string",
+                          "required": true,
+                          "filterable": true
+                        },
+                        "price": {
+                          "type": "number",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": false
+                        },
+                        "tags": {
+                          "type": "string_array",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": true
+                        }
+                      }
+                    }
+                  },
+                  "parsing": {
+                    "component_id": "passthrough",
+                    "component_version": "1.0.0",
+                    "parameters": {}
+                  },
+                  "chunking": {
+                    "component_id": "recursive",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "split_field": "body",
+                      "output_field": "text",
+                      "copy_fields": [
+                        {
+                          "source_field": "title",
+                          "output_field": "title"
+                        },
+                        {
+                          "source_field": "price",
+                          "output_field": "price"
+                        },
+                        {
+                          "source_field": "tags",
+                          "output_field": "tags"
+                        }
+                      ],
+                      "max_tokens": 500,
+                      "overlap_tokens": 50,
+                      "tokenizer_profile_id": "fixture"
+                    }
+                  },
+                  "embedding": {
+                    "component_id": "dense",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "profile": "text-v1",
+                      "mappings": [
+                        {
+                          "source_field": "text",
+                          "vector_name": "text"
+                        }
+                      ]
+                    }
+                  },
+                  "indexing": {
+                    "component_id": "elasticsearch",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "service_ref": "dev-search",
+                      "vector_name": "text",
+                      "structdata_overrides": {
+                        "text": {
+                          "searchable": true
+                        },
+                        "price": {
+                          "filterable": true
+                        }
+                      }
+                    }
+                  }
+                },
+                "inference": {
+                  "inference_input": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {}
+                  },
+                  "query_transformation": {
+                    "component_id": "none",
+                    "component_version": "1.0.0",
+                    "parameters": {}
+                  },
+                  "retrieval": {
+                    "component_id": "builtin",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "per_route_k": 10,
+                      "vector_fields": [
+                        "text"
+                      ]
+                    }
+                  },
+                  "rerank": {
+                    "component_id": "none",
+                    "component_version": "1.0.0",
+                    "parameters": {}
+                  },
+                  "fixed_filters": [
+                    {
+                      "field": "structdata.price",
+                      "operator": "gte",
+                      "value": 300
+                    }
+                  ]
+                }
+              }
+            },
+            "pipeline": "ingestion"
+          }
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-1",
+            "context_revision": "split-initialize",
+            "active_config_revision": null,
+            "loaded": false,
+            "index_impact": {
+              "action": "create",
+              "code": "INDEX_MISSING",
+              "message": "建立空索引。"
+            },
+            "pipeline": "ingestion"
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "PUT",
+          "path": "/internal/v1/systems/es-example",
+          "headers": {
+            "Idempotency-Key": "split-initialize"
+          },
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-1",
+            "config": {
+              "contract_version": "0.2-draft",
+              "pipelines": {
+                "ingestion": {
+                  "import": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "structdata": {
+                        "body": {
+                          "type": "string",
+                          "required": true
+                        },
+                        "title": {
+                          "type": "string",
+                          "required": true,
+                          "filterable": true
+                        },
+                        "price": {
+                          "type": "number",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": false
+                        },
+                        "tags": {
+                          "type": "string_array",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": true
+                        }
+                      }
+                    }
+                  },
+                  "parsing": {
+                    "component_id": "passthrough",
+                    "component_version": "1.0.0",
+                    "parameters": {}
+                  },
+                  "chunking": {
+                    "component_id": "recursive",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "split_field": "body",
+                      "output_field": "text",
+                      "copy_fields": [
+                        {
+                          "source_field": "title",
+                          "output_field": "title"
+                        },
+                        {
+                          "source_field": "price",
+                          "output_field": "price"
+                        },
+                        {
+                          "source_field": "tags",
+                          "output_field": "tags"
+                        }
+                      ],
+                      "max_tokens": 500,
+                      "overlap_tokens": 50,
+                      "tokenizer_profile_id": "fixture"
+                    }
+                  },
+                  "embedding": {
+                    "component_id": "dense",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "profile": "text-v1",
+                      "mappings": [
+                        {
+                          "source_field": "text",
+                          "vector_name": "text"
+                        }
+                      ]
+                    }
+                  },
+                  "indexing": {
+                    "component_id": "elasticsearch",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "service_ref": "dev-search",
+                      "vector_name": "text",
+                      "structdata_overrides": {
+                        "text": {
+                          "searchable": true
+                        },
+                        "price": {
+                          "filterable": true
+                        }
+                      }
+                    }
+                  }
+                },
+                "inference": {
+                  "inference_input": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {}
+                  },
+                  "query_transformation": {
+                    "component_id": "none",
+                    "component_version": "1.0.0",
+                    "parameters": {}
+                  },
+                  "retrieval": {
+                    "component_id": "builtin",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "per_route_k": 10,
+                      "vector_fields": [
+                        "text"
+                      ]
+                    }
+                  },
+                  "rerank": {
+                    "component_id": "none",
+                    "component_version": "1.0.0",
+                    "parameters": {}
+                  },
+                  "fixed_filters": [
+                    {
+                      "field": "structdata.price",
+                      "operator": "gte",
+                      "value": 300
+                    }
+                  ]
+                }
+              }
+            },
+            "context_revision": "split-initialize",
+            "operation": "initialize",
+            "expected_active_revision": null,
+            "config_revision": "revision-1",
+            "pipeline": "ingestion"
+          }
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "system_id": "es-example",
+            "active_config_revision": "revision-1",
+            "loaded": true,
+            "busy": false,
+            "index_ready": true,
+            "index_generation": "index-1",
+            "can_ingest": true,
+            "can_query": false,
+            "pipelines": {
+              "ingestion": {
+                "loaded": true,
+                "ready": true,
+                "config_revision": "revision-1",
+                "index_generation": "index-1"
+              },
+              "inference": {
+                "loaded": false,
+                "ready": false,
+                "config_revision": null,
+                "index_generation": null
+              }
+            }
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/systems/es-example/v1/queries",
+          "body": {
+            "query": "散熱孔怎麼清潔？",
+            "filters": [
+              {
+                "field": "structdata.price",
+                "operator": "lt",
+                "value": 500
+              }
+            ]
+          }
+        },
+        "response": {
+          "status": 409,
+          "body": {
+            "error": {
+              "code": "PIPELINE_NOT_ENABLED",
+              "message": "Inference 尚未載入。",
+              "module": null
+            }
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/v1/systems/es-example/config:validate",
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-1",
+            "operation": "initialize",
+            "config": {
+              "contract_version": "0.2-draft",
+              "pipelines": {
+                "ingestion": {
+                  "import": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "structdata": {
+                        "body": {
+                          "type": "string",
+                          "required": true
+                        },
+                        "title": {
+                          "type": "string",
+                          "required": true,
+                          "filterable": true
+                        },
+                        "price": {
+                          "type": "number",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": false
+                        },
+                        "tags": {
+                          "type": "string_array",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": true
+                        }
+                      }
+                    }
+                  },
+                  "parsing": {
+                    "component_id": "passthrough",
+                    "component_version": "1.0.0",
+                    "parameters": {}
+                  },
+                  "chunking": {
+                    "component_id": "recursive",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "split_field": "body",
+                      "output_field": "text",
+                      "copy_fields": [
+                        {
+                          "source_field": "title",
+                          "output_field": "title"
+                        },
+                        {
+                          "source_field": "price",
+                          "output_field": "price"
+                        },
+                        {
+                          "source_field": "tags",
+                          "output_field": "tags"
+                        }
+                      ],
+                      "max_tokens": 500,
+                      "overlap_tokens": 50,
+                      "tokenizer_profile_id": "fixture"
+                    }
+                  },
+                  "embedding": {
+                    "component_id": "dense",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "profile": "text-v1",
+                      "mappings": [
+                        {
+                          "source_field": "text",
+                          "vector_name": "text"
+                        }
+                      ]
+                    }
+                  },
+                  "indexing": {
+                    "component_id": "elasticsearch",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "service_ref": "dev-search",
+                      "vector_name": "text",
+                      "structdata_overrides": {
+                        "text": {
+                          "searchable": true
+                        },
+                        "price": {
+                          "filterable": true
+                        }
+                      }
+                    }
+                  }
+                },
+                "inference": {
+                  "inference_input": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {}
+                  },
+                  "query_transformation": {
+                    "component_id": "none",
+                    "component_version": "1.0.0",
+                    "parameters": {}
+                  },
+                  "retrieval": {
+                    "component_id": "builtin",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "per_route_k": 10,
+                      "vector_fields": [
+                        "text"
+                      ]
+                    }
+                  },
+                  "rerank": {
+                    "component_id": "none",
+                    "component_version": "1.0.0",
+                    "parameters": {}
+                  },
+                  "fixed_filters": [
+                    {
+                      "field": "structdata.price",
+                      "operator": "gte",
+                      "value": 300
+                    }
+                  ]
+                }
+              }
+            },
+            "pipeline": "inference"
+          }
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-1",
+            "context_revision": "split-blocked-initialize",
+            "active_config_revision": "revision-1",
+            "loaded": false,
+            "index_impact": {
+              "action": "blocked",
+              "code": "PIPELINE_OPERATION_UNSUPPORTED",
+              "message": "Inference 請使用 reload。"
+            },
+            "pipeline": "inference"
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/v1/systems/es-example/config:validate",
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-1",
+            "operation": "reload",
+            "config": {
+              "contract_version": "0.2-draft",
+              "pipelines": {
+                "ingestion": {
+                  "import": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "structdata": {
+                        "body": {
+                          "type": "string",
+                          "required": true
+                        },
+                        "title": {
+                          "type": "string",
+                          "required": true,
+                          "filterable": true
+                        },
+                        "price": {
+                          "type": "number",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": false
+                        },
+                        "tags": {
+                          "type": "string_array",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": true
+                        }
+                      }
+                    }
+                  },
+                  "parsing": {
+                    "component_id": "passthrough",
+                    "component_version": "1.0.0",
+                    "parameters": {}
+                  },
+                  "chunking": {
+                    "component_id": "recursive",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "split_field": "body",
+                      "output_field": "text",
+                      "copy_fields": [
+                        {
+                          "source_field": "title",
+                          "output_field": "title"
+                        },
+                        {
+                          "source_field": "price",
+                          "output_field": "price"
+                        },
+                        {
+                          "source_field": "tags",
+                          "output_field": "tags"
+                        }
+                      ],
+                      "max_tokens": 500,
+                      "overlap_tokens": 50,
+                      "tokenizer_profile_id": "fixture"
+                    }
+                  },
+                  "embedding": {
+                    "component_id": "dense",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "profile": "text-v1",
+                      "mappings": [
+                        {
+                          "source_field": "text",
+                          "vector_name": "text"
+                        }
+                      ]
+                    }
+                  },
+                  "indexing": {
+                    "component_id": "elasticsearch",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "service_ref": "dev-search",
+                      "vector_name": "text",
+                      "structdata_overrides": {
+                        "text": {
+                          "searchable": true
+                        },
+                        "price": {
+                          "filterable": true
+                        }
+                      }
+                    }
+                  }
+                },
+                "inference": {
+                  "inference_input": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {}
+                  },
+                  "query_transformation": {
+                    "component_id": "none",
+                    "component_version": "1.0.0",
+                    "parameters": {}
+                  },
+                  "retrieval": {
+                    "component_id": "builtin",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "per_route_k": 10,
+                      "vector_fields": [
+                        "text"
+                      ]
+                    }
+                  },
+                  "rerank": {
+                    "component_id": "none",
+                    "component_version": "1.0.0",
+                    "parameters": {}
+                  },
+                  "fixed_filters": [
+                    {
+                      "field": "structdata.price",
+                      "operator": "gte",
+                      "value": 300
+                    }
+                  ]
+                }
+              }
+            },
+            "pipeline": "inference"
+          }
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-1",
+            "context_revision": "split-reload",
+            "active_config_revision": "revision-1",
+            "loaded": false,
+            "index_impact": {
+              "action": "reuse",
+              "code": "INDEX_COMPATIBLE",
+              "message": "接回已發布的索引。"
+            },
+            "pipeline": "inference"
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "PUT",
+          "path": "/internal/v1/systems/es-example",
+          "headers": {
+            "Idempotency-Key": "split-reload"
+          },
+          "body": {
+            "runtime_ref": "dev-runtime",
+            "catalog_revision": "catalog-2",
+            "draft_revision": "draft-1",
+            "config": {
+              "contract_version": "0.2-draft",
+              "pipelines": {
+                "ingestion": {
+                  "import": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "structdata": {
+                        "body": {
+                          "type": "string",
+                          "required": true
+                        },
+                        "title": {
+                          "type": "string",
+                          "required": true,
+                          "filterable": true
+                        },
+                        "price": {
+                          "type": "number",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": false
+                        },
+                        "tags": {
+                          "type": "string_array",
+                          "required": false,
+                          "searchable": false,
+                          "filterable": true
+                        }
+                      }
+                    }
+                  },
+                  "parsing": {
+                    "component_id": "passthrough",
+                    "component_version": "1.0.0",
+                    "parameters": {}
+                  },
+                  "chunking": {
+                    "component_id": "recursive",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "split_field": "body",
+                      "output_field": "text",
+                      "copy_fields": [
+                        {
+                          "source_field": "title",
+                          "output_field": "title"
+                        },
+                        {
+                          "source_field": "price",
+                          "output_field": "price"
+                        },
+                        {
+                          "source_field": "tags",
+                          "output_field": "tags"
+                        }
+                      ],
+                      "max_tokens": 500,
+                      "overlap_tokens": 50,
+                      "tokenizer_profile_id": "fixture"
+                    }
+                  },
+                  "embedding": {
+                    "component_id": "dense",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "profile": "text-v1",
+                      "mappings": [
+                        {
+                          "source_field": "text",
+                          "vector_name": "text"
+                        }
+                      ]
+                    }
+                  },
+                  "indexing": {
+                    "component_id": "elasticsearch",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "service_ref": "dev-search",
+                      "vector_name": "text",
+                      "structdata_overrides": {
+                        "text": {
+                          "searchable": true
+                        },
+                        "price": {
+                          "filterable": true
+                        }
+                      }
+                    }
+                  }
+                },
+                "inference": {
+                  "inference_input": {
+                    "component_id": "platform",
+                    "component_version": "1.0.0",
+                    "parameters": {}
+                  },
+                  "query_transformation": {
+                    "component_id": "none",
+                    "component_version": "1.0.0",
+                    "parameters": {}
+                  },
+                  "retrieval": {
+                    "component_id": "builtin",
+                    "component_version": "1.0.0",
+                    "parameters": {
+                      "per_route_k": 10,
+                      "vector_fields": [
+                        "text"
+                      ]
+                    }
+                  },
+                  "rerank": {
+                    "component_id": "none",
+                    "component_version": "1.0.0",
+                    "parameters": {}
+                  },
+                  "fixed_filters": [
+                    {
+                      "field": "structdata.price",
+                      "operator": "gte",
+                      "value": 300
+                    }
+                  ]
+                }
+              }
+            },
+            "context_revision": "split-reload",
+            "operation": "reload",
+            "expected_active_revision": "revision-1",
+            "config_revision": "revision-1",
+            "pipeline": "inference"
+          }
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "system_id": "es-example",
+            "active_config_revision": "revision-1",
+            "loaded": true,
+            "busy": false,
+            "index_ready": true,
+            "index_generation": "index-1",
+            "can_ingest": true,
+            "can_query": true,
+            "pipelines": {
+              "ingestion": {
+                "loaded": true,
+                "ready": true,
+                "config_revision": "revision-1",
+                "index_generation": "index-1"
+              },
+              "inference": {
+                "loaded": true,
+                "ready": true,
+                "config_revision": "revision-1",
+                "index_generation": "index-1"
+              }
+            }
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/v1/systems/es-example:detach?pipeline=ingestion",
+          "headers": {
+            "Idempotency-Key": "split-detach-ingestion",
+            "X-Expected-Config-Revision": "revision-1",
+            "X-Expected-Index-Generation": "index-1"
+          }
+        },
+        "response": {
+          "status": 204
+        }
+      },
+      {
+        "request": {
+          "method": "GET",
+          "path": "/internal/v1/systems/es-example"
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "system_id": "es-example",
+            "active_config_revision": "revision-1",
+            "loaded": true,
+            "busy": false,
+            "index_ready": true,
+            "index_generation": "index-1",
+            "can_ingest": false,
+            "can_query": true,
+            "pipelines": {
+              "ingestion": {
+                "loaded": false,
+                "ready": false,
+                "config_revision": null,
+                "index_generation": null
+              },
+              "inference": {
+                "loaded": true,
+                "ready": true,
+                "config_revision": "revision-1",
+                "index_generation": "index-1"
+              }
+            }
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/systems/es-example/v1/ingestions",
+          "body": {
+            "documents": [
+              {
+                "document_id": "guide-1",
+                "structdata": {
+                  "body": "定期清潔散熱孔。",
+                  "title": "設備保養",
+                  "price": 350
+                }
+              }
+            ]
+          }
+        },
+        "response": {
+          "status": 409,
+          "body": {
+            "error": {
+              "code": "PIPELINE_NOT_ENABLED",
+              "message": "Ingestion 已卸載。",
+              "module": null
+            }
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/systems/es-example/v1/queries",
+          "body": {
+            "query": "散熱孔怎麼清潔？",
+            "filters": [
+              {
+                "field": "structdata.price",
+                "operator": "lt",
+                "value": 500
+              }
+            ]
+          }
+        },
+        "response": {
+          "status": 200,
+          "body": [
+            {
+              "ori_query": "散熱孔怎麼清潔？",
+              "query": "散熱孔怎麼清潔？",
+              "filters": [
+                {
+                  "field": "structdata.price",
+                  "operator": "gte",
+                  "value": 300
+                },
+                {
+                  "field": "structdata.price",
+                  "operator": "lt",
+                  "value": 500
+                }
+              ],
+              "result_sets": [
+                {
+                  "key": "retrieval",
+                  "items": [
+                    {
+                      "data": {
+                        "document_id": "guide-1",
+                        "data_id": "guide-1-chunk-1",
+                        "structdata": {
+                          "title": "設備保養",
+                          "text": "定期清潔散熱孔。",
+                          "price": 350
+                        }
+                      },
+                      "score": 0.92
+                    }
+                  ]
+                }
+              ],
+              "metadata": {}
+            }
+          ],
+          "headers": {
+            "X-Config-Revision": "revision-1",
+            "X-Index-Generation": "index-1"
+          }
+        }
+      }
+    ],
+    "pipeline_revision_mismatch": [
+      {
+        "request": {
+          "method": "GET",
+          "path": "/internal/v1/systems/es-example"
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "system_id": "es-example",
+            "active_config_revision": "revision-2",
+            "loaded": true,
+            "busy": false,
+            "index_ready": true,
+            "index_generation": "index-1",
+            "can_ingest": true,
+            "can_query": false,
+            "pipelines": {
+              "ingestion": {
+                "loaded": true,
+                "ready": true,
+                "config_revision": "revision-2",
+                "index_generation": "index-1"
+              },
+              "inference": {
+                "loaded": true,
+                "ready": false,
+                "config_revision": "revision-1",
+                "index_generation": "index-1"
+              }
+            }
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/systems/es-example/v1/queries",
+          "body": {
+            "query": "散熱孔怎麼清潔？",
+            "filters": [
+              {
+                "field": "structdata.price",
+                "operator": "lt",
+                "value": 500
+              }
+            ]
+          }
+        },
+        "response": {
+          "status": 503,
+          "body": {
+            "error": {
+              "code": "PIPELINE_NOT_READY",
+              "message": "Inference 尚未載入生效版本。",
+              "module": null
+            }
+          }
         }
       }
     ],
@@ -590,7 +1654,11 @@
             "index_ready": true,
             "index_generation": "index-1",
             "can_ingest": true,
-            "can_query": true
+            "can_query": true,
+            "pipelines": {
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-2", "index_generation": "index-1"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-2", "index_generation": "index-1"}
+            }
           }
         }
       },
@@ -877,7 +1945,11 @@
             "index_ready": true,
             "index_generation": "index-2",
             "can_ingest": true,
-            "can_query": true
+            "can_query": true,
+            "pipelines": {
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-3", "index_generation": "index-2"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-3", "index_generation": "index-2"}
+            }
           }
         }
       },
@@ -976,7 +2048,11 @@
             "index_ready": true,
             "index_generation": "index-2",
             "can_ingest": true,
-            "can_query": true
+            "can_query": true,
+            "pipelines": {
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-3", "index_generation": "index-2"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-3", "index_generation": "index-2"}
+            }
           }
         }
       }
@@ -1449,7 +2525,11 @@
             "index_ready": false,
             "index_generation": null,
             "can_ingest": false,
-            "can_query": false
+            "can_query": false,
+            "pipelines": {
+              "ingestion": {"loaded": true, "ready": false, "config_revision": "revision-1", "index_generation": "index-1"},
+              "inference": {"loaded": true, "ready": false, "config_revision": "revision-1", "index_generation": "index-1"}
+            }
           }
         }
       }
@@ -1558,6 +2638,78 @@
         }
       }
     ],
+    "ingestion_bulk_timeout_and_retry": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/systems/es-example/v1/ingestions",
+          "body": {"documents": [{"document_id": "guide-timeout", "structdata": {"body": "關閉電源。", "title": "安全操作"}}]}
+        },
+        "response": {
+          "status": 202,
+          "headers": {"Location": "/internal/systems/es-example/v1/ingestions/ing-timeout"},
+          "body": {"run_id": "ing-timeout", "status": "queued", "config_revision": "revision-1", "documents": [{"document_id": "guide-timeout", "status": "queued"}]}
+        }
+      },
+      {
+        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/documents/guide-timeout/ingestion-status"},
+        "response": {
+          "status": 200,
+          "body": {
+            "run_id": "ing-timeout",
+            "document_id": "guide-timeout",
+            "status": "failed",
+            "module": "indexing",
+            "updated_at": "2026-11-20T10:00:10+08:00",
+            "error": {"code": "ES_BULK_TIMEOUT", "message": "等待 Elasticsearch Bulk 回應逾時。", "module": "indexing"}
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/systems/es-example/v1/ingestions",
+          "body": {"documents": [{"document_id": "guide-timeout", "structdata": {"body": "關閉電源。", "title": "安全操作"}}]}
+        },
+        "response": {
+          "status": 202,
+          "headers": {"Location": "/internal/systems/es-example/v1/ingestions/ing-retry"},
+          "body": {"run_id": "ing-retry", "status": "queued", "config_revision": "revision-1", "documents": [{"document_id": "guide-timeout", "status": "queued"}]}
+        }
+      },
+      {
+        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/ingestions/ing-retry"},
+        "response": {
+          "status": 200,
+          "body": {
+            "run_id": "ing-retry",
+            "status": "completed",
+            "config_revision": "revision-1",
+            "counts": {"total": 1, "queued": 0, "running": 0, "completed": 1, "cancelled": 0, "failed": 0, "unknown": 0},
+            "documents": [{"document_id": "guide-timeout", "status": "completed", "module": null, "updated_at": "2026-11-20T10:00:20+08:00", "error": null}]
+          }
+        }
+      },
+      {
+        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/ingestions/ing-timeout"},
+        "response": {
+          "status": 200,
+          "body": {
+            "run_id": "ing-timeout",
+            "status": "failed",
+            "config_revision": "revision-1",
+            "counts": {"total": 1, "queued": 0, "running": 0, "completed": 0, "cancelled": 0, "failed": 1, "unknown": 0},
+            "documents": [{
+              "document_id": "guide-timeout",
+              "status": "failed",
+              "module": "indexing",
+              "updated_at": "2026-11-20T10:00:10+08:00",
+              "error": {"code": "ES_BULK_TIMEOUT", "message": "等待 Elasticsearch Bulk 回應逾時。", "module": "indexing"}
+            }]
+          }
+        }
+      }
+    ],
     "cancel_ingestion_documents": [
       {
         "request": {"method": "GET", "path": "/internal/systems/es-example/v1/ingestions/ing-cancel"},
@@ -1591,10 +2743,10 @@
           "body": {
             "run_id": "ing-cancel",
             "documents": [
-              {"document_id": "guide-queued", "result": "cancelled", "status": "cancelled", "cancellation_pending": false},
+              {"document_id": "guide-queued", "result": "cancelled", "status": "cancelled"},
               {"document_id": "guide-completed", "result": "already_finished", "status": "completed"},
-              {"document_id": "guide-running", "result": "cancelled", "status": "cancelled", "cancellation_pending": true},
-              {"document_id": "guide-prewrite", "result": "cancelled", "status": "cancelled", "cancellation_pending": false},
+              {"document_id": "guide-running", "result": "cancelled", "status": "cancelled"},
+              {"document_id": "guide-prewrite", "result": "cancelled", "status": "cancelled"},
               {"document_id": "guide-failed", "result": "already_finished", "status": "failed"},
               {"document_id": "guide-unknown", "result": "not_cancellable", "status": "unknown"},
               {"document_id": "guide-other-run", "result": "not_found", "status": null}
@@ -1613,10 +2765,10 @@
           "body": {
             "run_id": "ing-cancel",
             "documents": [
-              {"document_id": "guide-queued", "result": "cancelled", "status": "cancelled", "cancellation_pending": false},
+              {"document_id": "guide-queued", "result": "cancelled", "status": "cancelled"},
               {"document_id": "guide-completed", "result": "already_finished", "status": "completed"},
-              {"document_id": "guide-running", "result": "cancelled", "status": "cancelled", "cancellation_pending": true},
-              {"document_id": "guide-prewrite", "result": "cancelled", "status": "cancelled", "cancellation_pending": false},
+              {"document_id": "guide-running", "result": "cancelled", "status": "cancelled"},
+              {"document_id": "guide-prewrite", "result": "cancelled", "status": "cancelled"},
               {"document_id": "guide-failed", "result": "already_finished", "status": "failed"},
               {"document_id": "guide-unknown", "result": "not_cancellable", "status": "unknown"},
               {"document_id": "guide-other-run", "result": "not_found", "status": null}
@@ -1634,14 +2786,41 @@
             "config_revision": "revision-1",
             "counts": {"total": 7, "queued": 1, "running": 0, "completed": 1, "cancelled": 3, "failed": 1, "unknown": 1},
             "documents": [
-              {"document_id": "guide-queued", "status": "cancelled", "cancellation_pending": false, "module": null, "updated_at": "2026-11-20T10:10:05+08:00", "error": null},
+              {"document_id": "guide-queued", "status": "cancelled", "module": null, "updated_at": "2026-11-20T10:10:05+08:00", "error": null},
               {"document_id": "guide-completed", "status": "completed", "module": null, "updated_at": "2026-11-20T10:10:03+08:00", "error": null},
-              {"document_id": "guide-running", "status": "cancelled", "cancellation_pending": true, "module": "indexing", "updated_at": "2026-11-20T10:10:05+08:00", "error": null},
-              {"document_id": "guide-prewrite", "status": "cancelled", "cancellation_pending": false, "module": "embedding", "updated_at": "2026-11-20T10:10:05+08:00", "error": null},
+              {"document_id": "guide-running", "status": "cancelled", "module": "indexing", "updated_at": "2026-11-20T10:10:05+08:00", "error": null},
+              {"document_id": "guide-prewrite", "status": "cancelled", "module": "embedding", "updated_at": "2026-11-20T10:10:05+08:00", "error": null},
               {"document_id": "guide-failed", "status": "failed", "module": "parsing", "updated_at": "2026-11-20T10:10:02+08:00", "error": {"code": "PARSER_CONTENT_INVALID", "message": "無法解析文件。", "module": "parsing"}},
               {"document_id": "guide-unknown", "status": "unknown", "module": "indexing", "updated_at": "2026-11-20T10:10:04+08:00", "error": {"code": "UPSTREAM_TIMEOUT", "message": "索引寫入結果待查。", "module": "indexing"}},
               {"document_id": "guide-unselected", "status": "queued", "module": null, "updated_at": "2026-11-20T10:10:00+08:00", "error": null}
             ]
+          }
+        }
+      },
+      {
+        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/documents/guide-running/ingestion-status"},
+        "response": {
+          "status": 200,
+          "body": {"run_id": "ing-cancel", "document_id": "guide-running", "status": "cancelled", "module": "indexing", "updated_at": "2026-11-20T10:10:05+08:00", "error": null}
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/systems/es-example/v1/ingestions",
+          "body": {"documents": [{"document_id": "guide-running", "structdata": {"body": "關閉電源。", "title": "安全操作"}}]}
+        },
+        "response": {
+          "status": 409,
+          "body": {
+            "error": {
+              "code": "DOCUMENT_BUSY",
+              "message": "原匯入仍占用此文件。",
+              "module": null,
+              "path": "/documents/0/document_id",
+              "run_id": "ing-cancel",
+              "conflicts": [{"document_id": "guide-running", "status": "cancelled", "run_id": "ing-cancel"}]
+            }
           }
         }
       },
@@ -1655,10 +2834,10 @@
             "config_revision": "revision-1",
             "counts": {"total": 7, "queued": 1, "running": 0, "completed": 2, "cancelled": 2, "failed": 1, "unknown": 1},
             "documents": [
-              {"document_id": "guide-queued", "status": "cancelled", "cancellation_pending": false, "module": null, "updated_at": "2026-11-20T10:10:05+08:00", "error": null},
+              {"document_id": "guide-queued", "status": "cancelled", "module": null, "updated_at": "2026-11-20T10:10:05+08:00", "error": null},
               {"document_id": "guide-completed", "status": "completed", "module": null, "updated_at": "2026-11-20T10:10:03+08:00", "error": null},
               {"document_id": "guide-running", "status": "completed", "module": null, "updated_at": "2026-11-20T10:10:06+08:00", "error": null},
-              {"document_id": "guide-prewrite", "status": "cancelled", "cancellation_pending": false, "module": "embedding", "updated_at": "2026-11-20T10:10:05+08:00", "error": null},
+              {"document_id": "guide-prewrite", "status": "cancelled", "module": "embedding", "updated_at": "2026-11-20T10:10:05+08:00", "error": null},
               {"document_id": "guide-failed", "status": "failed", "module": "parsing", "updated_at": "2026-11-20T10:10:02+08:00", "error": {"code": "PARSER_CONTENT_INVALID", "message": "無法解析文件。", "module": "parsing"}},
               {"document_id": "guide-unknown", "status": "unknown", "module": "indexing", "updated_at": "2026-11-20T10:10:04+08:00", "error": {"code": "UPSTREAM_TIMEOUT", "message": "索引寫入結果待查。", "module": "indexing"}},
               {"document_id": "guide-unselected", "status": "queued", "module": null, "updated_at": "2026-11-20T10:10:00+08:00", "error": null}
@@ -1811,7 +2990,11 @@
             "index_ready": true,
             "index_generation": "index-1",
             "can_ingest": false,
-            "can_query": false
+            "can_query": false,
+            "pipelines": {
+              "ingestion": {"loaded": false, "ready": false, "config_revision": null, "index_generation": null},
+              "inference": {"loaded": false, "ready": false, "config_revision": null, "index_generation": null}
+            }
           }
         }
       },
@@ -1996,7 +3179,11 @@
             "index_ready": true,
             "index_generation": "index-1",
             "can_ingest": true,
-            "can_query": true
+            "can_query": true,
+            "pipelines": {
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-1"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-1"}
+            }
           }
         }
       }
@@ -2017,7 +3204,11 @@
             "index_ready": true,
             "index_generation": "index-1",
             "can_ingest": true,
-            "can_query": true
+            "can_query": true,
+            "pipelines": {
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-1"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-1"}
+            }
           }
         }
       },
@@ -2085,7 +3276,11 @@
             "index_ready": true,
             "index_generation": "index-1",
             "can_ingest": false,
-            "can_query": false
+            "can_query": false,
+            "pipelines": {
+              "ingestion": {"loaded": false, "ready": false, "config_revision": null, "index_generation": null},
+              "inference": {"loaded": false, "ready": false, "config_revision": null, "index_generation": null}
+            }
           }
         }
       }
@@ -2106,7 +3301,11 @@
             "index_ready": true,
             "index_generation": "index-1",
             "can_ingest": false,
-            "can_query": false
+            "can_query": false,
+            "pipelines": {
+              "ingestion": {"loaded": false, "ready": false, "config_revision": null, "index_generation": null},
+              "inference": {"loaded": false, "ready": false, "config_revision": null, "index_generation": null}
+            }
           }
         }
       },
@@ -2154,7 +3353,11 @@
             "index_ready": false,
             "index_generation": null,
             "can_ingest": false,
-            "can_query": false
+            "can_query": false,
+            "pipelines": {
+              "ingestion": {"loaded": true, "ready": false, "config_revision": "revision-1", "index_generation": "index-1"},
+              "inference": {"loaded": true, "ready": false, "config_revision": "revision-1", "index_generation": "index-1"}
+            }
           }
         }
       },
@@ -2341,7 +3544,11 @@
             "index_ready": true,
             "index_generation": "index-2",
             "can_ingest": true,
-            "can_query": true
+            "can_query": true,
+            "pipelines": {
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-2"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-2"}
+            }
           }
         }
       },
@@ -2372,7 +3579,11 @@
             "index_ready": true,
             "index_generation": "index-2",
             "can_ingest": true,
-            "can_query": true
+            "can_query": true,
+            "pipelines": {
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-2"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-2"}
+            }
           }
         }
       }
@@ -2568,7 +3779,11 @@
             "index_ready": true,
             "index_generation": "index-2",
             "can_ingest": true,
-            "can_query": true
+            "can_query": true,
+            "pipelines": {
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-2"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-2"}
+            }
           }
         }
       },
@@ -2664,7 +3879,11 @@
             "index_ready": true,
             "index_generation": "index-2",
             "can_ingest": true,
-            "can_query": true
+            "can_query": true,
+            "pipelines": {
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-2"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-2"}
+            }
           }
         }
       }

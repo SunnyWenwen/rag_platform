@@ -4,9 +4,10 @@
     "additionalProperties": false,
     "required": [
       "_id", "environment", "runtime_ref", "system_id", "schema_version", "state_version",
-      "desired", "pending_operation", "last_observation", "last_confirmed_index_generation",
+      "pending_operation", "last_observation", "last_confirmed_index_generation",
       "created_at", "updated_at"
     ],
+    "oneOf": [{"required": ["desired"]}, {"required": ["desired_pipelines"]}],
     "properties": {
       "_id": {"bsonType": "objectId"},
       "environment": {"bsonType": "string", "minLength": 1},
@@ -14,6 +15,43 @@
       "system_id": {"bsonType": "string", "minLength": 1},
       "schema_version": {"bsonType": "int", "enum": [1]},
       "state_version": {"bsonType": "long", "minimum": 0},
+      "desired_pipelines": {
+        "bsonType": "object",
+        "additionalProperties": false,
+        "required": ["ingestion", "inference"],
+        "properties": {
+          "ingestion": {
+            "bsonType": ["object", "null"],
+            "additionalProperties": false,
+            "required": ["state", "config_revision", "confirmed_at"],
+            "properties": {
+              "state": {"enum": ["online", "unloaded"]},
+              "config_revision": {"bsonType": ["string", "null"], "minLength": 1},
+              "confirmed_at": {"bsonType": "date"}
+            },
+            "oneOf": [
+              {"bsonType": "object", "properties": {"state": {"enum": ["online"]}, "config_revision": {"bsonType": "string"}}},
+              {"bsonType": "object", "properties": {"state": {"enum": ["unloaded"]}, "config_revision": {"bsonType": "null"}}},
+              {"bsonType": "null"}
+            ]
+          },
+          "inference": {
+            "bsonType": ["object", "null"],
+            "additionalProperties": false,
+            "required": ["state", "config_revision", "confirmed_at"],
+            "properties": {
+              "state": {"enum": ["online", "unloaded"]},
+              "config_revision": {"bsonType": ["string", "null"], "minLength": 1},
+              "confirmed_at": {"bsonType": "date"}
+            },
+            "oneOf": [
+              {"bsonType": "object", "properties": {"state": {"enum": ["online"]}, "config_revision": {"bsonType": "string"}}},
+              {"bsonType": "object", "properties": {"state": {"enum": ["unloaded"]}, "config_revision": {"bsonType": "null"}}},
+              {"bsonType": "null"}
+            ]
+          }
+        }
+      },
       "desired": {
         "bsonType": ["object", "null"],
         "additionalProperties": false,
@@ -45,6 +83,7 @@
         "properties": {
           "operation_id": {"bsonType": "string", "minLength": 1},
           "kind": {"enum": ["initialize", "reload", "update", "recover_index", "detach", "unload"]},
+          "pipeline": {"enum": ["ingestion", "inference"]},
           "target_config_revision": {"bsonType": ["string", "null"], "minLength": 1},
           "expected_active_revision": {"bsonType": ["string", "null"], "minLength": 1},
           "expected_index_generation": {"bsonType": ["string", "null"], "minLength": 1},
@@ -66,6 +105,7 @@
             "bsonType": "object",
             "properties": {
               "kind": {"enum": ["update"]},
+              "pipeline": {"enum": ["ingestion"]},
               "target_config_revision": {"bsonType": "string"},
               "expected_active_revision": {"bsonType": "string"},
               "apply_context": {"bsonType": "object"}
@@ -75,6 +115,7 @@
             "bsonType": "object",
             "properties": {
               "kind": {"enum": ["initialize"]},
+              "pipeline": {"enum": ["ingestion"]},
               "target_config_revision": {"bsonType": "string"},
               "expected_active_revision": {"bsonType": "null"},
               "expected_index_generation": {"bsonType": "null"},
@@ -96,6 +137,7 @@
             "bsonType": "object",
             "properties": {
               "kind": {"enum": ["recover_index"]},
+              "pipeline": {"enum": ["ingestion"]},
               "target_config_revision": {"bsonType": "string"},
               "expected_index_generation": {"bsonType": "string"},
               "apply_context": {"bsonType": "object"},
@@ -115,6 +157,7 @@
           },
           {
             "bsonType": "object",
+            "not": {"required": ["pipeline"]},
             "properties": {
               "kind": {"enum": ["unload"]},
               "target_config_revision": {"bsonType": "null"},
@@ -148,7 +191,36 @@
               "index_ready": {"bsonType": ["bool", "null"]},
               "index_generation": {"bsonType": ["string", "null"], "minLength": 1},
               "can_ingest": {"bsonType": "bool"},
-              "can_query": {"bsonType": "bool"}
+              "can_query": {"bsonType": "bool"},
+              "pipelines": {
+                "bsonType": "object",
+                "additionalProperties": false,
+                "required": ["ingestion", "inference"],
+                "properties": {
+                  "ingestion": {
+                    "bsonType": "object",
+                    "additionalProperties": false,
+                    "required": ["loaded", "ready", "config_revision", "index_generation"],
+                    "properties": {
+                      "loaded": {"bsonType": "bool"},
+                      "ready": {"bsonType": "bool"},
+                      "config_revision": {"bsonType": ["string", "null"], "minLength": 1},
+                      "index_generation": {"bsonType": ["string", "null"], "minLength": 1}
+                    }
+                  },
+                  "inference": {
+                    "bsonType": "object",
+                    "additionalProperties": false,
+                    "required": ["loaded", "ready", "config_revision", "index_generation"],
+                    "properties": {
+                      "loaded": {"bsonType": "bool"},
+                      "ready": {"bsonType": "bool"},
+                      "config_revision": {"bsonType": ["string", "null"], "minLength": 1},
+                      "index_generation": {"bsonType": ["string", "null"], "minLength": 1}
+                    }
+                  }
+                }
+              }
             }
           }
         },

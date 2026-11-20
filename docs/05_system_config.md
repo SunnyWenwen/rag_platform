@@ -6,7 +6,9 @@ Workspace 管理多個 System。System ID、Config Revision、source_revision、
 
 同一 Config Revision 在 DEV／FTEST／ENT 沿用相同邏輯設定。端點、Secret 的實際值、DB／索引實體目標及 Runtime 限制屬環境綁定。變更方法、模型語意、維度或資料欄位產生新 Revision，依相依範圍判斷重建。每次請求採單一有效設定快照；有 queued／running Ingestion 時可存草稿，等該 System 工作完成再啟用新版。
 
-[System Config Schema 草案](../schemas/system_config.draft.schema.json)和[內建／Remote Parsing 對照](../examples/system_config/README.md#可驗證的-local-search-設定)提供發布快照的機器驗證範例。
+[System Config Schema 草案](../schemas/system_config.draft.schema.json)驗證發布快照。首版 DEV／FTEST／ENT 使用受管 Elasticsearch，部署設定提供環境的 ES 綁定。可參照 [ES 發布請求](../examples/system_config/README.md#runtime-http-examples)及[內建／Remote Parsing 的離線對照](../examples/system_config/README.md#local-search-config-examples)。
+
+同一份發布快照包含 Ingestion 與 Inference。`pipeline` 是生命週期請求或環境部署設定的選擇欄位，位於 `config` 之外。獨立啟用其中一條流程時，沿用同一 System 的發布版本及索引綁定。[流程部署契約](06_runtime_api_and_deployment.md#runtime-pipeline-deployment)
 
 每個有效節點以 `component_id` 選擇執行方式，並以 `component_version` 固定元件版本。內建元件使用該版本的 Descriptor 驗證參數。Remote API 共用平台保留的 `component_id: remote_api`，由 `service_ref` 選擇外部服務。Builder 設計可用同一個「執行方式」欄位選 Recursive、Fixed-size 或 Remote API。
 

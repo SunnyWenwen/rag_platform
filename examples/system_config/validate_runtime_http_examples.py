@@ -18,6 +18,7 @@ REGISTRY = Registry().with_resources((schema["$id"], Resource.from_contents(sche
 SYSTEM_PATH = "/internal/v1/systems/"
 DRAFT_KEYS = ("runtime_ref", "catalog_revision", "draft_revision")
 APPLY_OPERATIONS = ("initialize", "reload", "update", "recover_index")
+PIPELINES = ("ingestion", "inference")
 DOCUMENT_STATES = ("queued", "running", "completed", "cancelled", "failed", "unknown")
 CANCEL_RESULT_STATES = {
     "cancelled": {"cancelled"},
@@ -90,11 +91,7 @@ def assert_error(body, request_body, *, ingestion_conflicts=False):
 
 
 def assert_run_document(item):
-    expected_fields = {"document_id", "status", "module", "updated_at", "error"}
-    if item["status"] == "cancelled":
-        expected_fields.add("cancellation_pending")
-        assert isinstance(item["cancellation_pending"], bool)
-    assert set(item) == expected_fields
+    assert set(item) == {"document_id", "status", "module", "updated_at", "error"}
     assert isinstance(item["document_id"], str) and item["document_id"]
     assert item["status"] in DOCUMENT_STATES
     assert item["module"] is None or isinstance(item["module"], str)
@@ -140,7 +137,7 @@ def assert_run(body, run_id):
 
 def assert_system_status(body, system_id):
     assert set(body) == {"system_id", "active_config_revision", "index_ready", "index_generation",
-                         "loaded", "busy", "can_ingest", "can_query"}
+                         "loaded", "busy", "can_ingest", "can_query", "pipelines"}
     assert body["system_id"] == system_id and body["active_config_revision"]
     assert all(isinstance(body[key], bool) for key in ("loaded", "busy", "can_ingest", "can_query"))
     assert body["index_ready"] is None or isinstance(body["index_ready"], bool)
@@ -149,6 +146,22 @@ def assert_system_status(body, system_id):
     if not body["loaded"]:
         assert body["index_generation"] and body["index_ready"] is not None
         assert not body["can_ingest"] and not body["can_query"]
+    pipelines = body["pipelines"]
+    assert set(pipelines) == set(PIPELINES)
+    assert body["loaded"] == any(status["loaded"] for status in pipelines.values())
+    for pipeline, capability in (("ingestion", "can_ingest"), ("inference", "can_query")):
+        status = pipelines[pipeline]
+        assert set(status) == {"loaded", "ready", "config_revision", "index_generation"}
+        assert type(status["loaded"]) is bool and type(status["ready"]) is bool
+        assert status["ready"] == body[capability]
+        if status["loaded"]:
+            assert isinstance(status["config_revision"], str) and status["config_revision"]
+        else:
+            assert not status["ready"] and status["config_revision"] is None and status["index_generation"] is None
+        if status["ready"]:
+            assert body["index_ready"] is not False
+            assert status["config_revision"] == body["active_config_revision"]
+            assert status["index_generation"] == body["index_generation"]
 
 
 def verify(scenarios):
@@ -206,12 +219,21 @@ def verify(scenarios):
                 if method == "DELETE" or is_detach:
                     assert sent is None
                     assert headers["X-Expected-Config-Revision"] and headers["X-Expected-Index-Generation"]
+                    query = parse_qs(url.query, keep_blank_values=True)
+                    if is_detach and query:
+                        assert set(query) == {"pipeline"}
+                        pipeline, = query["pipeline"]
+                        assert pipeline in PIPELINES
+                    if method == "DELETE":
+                        assert not query
             if system_route and (method == "PUT" or path.endswith("/config:validate")):
                 system_id = path[len(SYSTEM_PATH):].removesuffix("/config:validate")
                 snapshot = {"system_id": system_id, "config_revision": sent.get("config_revision", "preview"),
                             "config": sent["config"]}
                 schema("system_config.draft.schema.json").validate(snapshot)
                 operation = sent.get("operation")
+                pipeline_scope = sent.get("pipeline")
+                assert "pipeline" not in sent or pipeline_scope in PIPELINES
                 assert operation in APPLY_OPERATIONS or method == "POST" and operation is None
                 assert ("recovery_from" in sent) == (operation == "recover_index")
                 if operation == "recover_index":
@@ -237,18 +259,26 @@ def verify(scenarios):
                                 assert (module, config["component_id"], config["component_version"]) in published
                     if method == "POST":
                         assert all(body[key] == sent[key] for key in DRAFT_KEYS)
-                        assert set(body) == {*DRAFT_KEYS, "context_revision", "active_config_revision", "loaded",
-                                             "index_impact"}
+                        expected_fields = {*DRAFT_KEYS, "context_revision", "active_config_revision", "loaded",
+                                           "index_impact"}
+                        if pipeline_scope:
+                            expected_fields.add("pipeline")
+                            assert body["pipeline"] == pipeline_scope
+                        assert set(body) == expected_fields
                         assert type(body["loaded"]) is bool
                         if body["loaded"]:
                             assert body["active_config_revision"]
                         impact = body["index_impact"]
                         assert set(impact) == {"action", "code", "message"}
                         assert impact["action"] in {"create", "reuse", "rebuild_required", "recover", "blocked", "none"}
+                        if pipeline_scope == "inference" and operation not in (None, "reload"):
+                            assert impact["action"] == "blocked" and impact["code"] == "PIPELINE_OPERATION_UNSUPPORTED"
                         previews[body["context_revision"]] = (sent, body)
                     else:
                         draft, preview = previews[sent["context_revision"]]
                         assert all(sent[key] == draft[key] for key in (*DRAFT_KEYS, "config", "operation"))
+                        assert pipeline_scope == draft.get("pipeline")
+                        assert pipeline_scope != "inference" or operation == "reload"
                         assert sent.get("recovery_from") == draft.get("recovery_from")
                         assert sent["expected_active_revision"] == preview["active_config_revision"]
                         action = preview["index_impact"]["action"]
@@ -266,7 +296,10 @@ def verify(scenarios):
                             assert body["index_generation"] != sent["recovery_from"]["index_generation"]
                         assert_system_status(body, system_id)
                         assert body["active_config_revision"] == revision
-                        assert body["loaded"]
+                        if not pipeline_scope:
+                            assert body["loaded"]
+                        elif operation in ("initialize", "reload"):
+                            assert body["pipelines"][pipeline_scope]["loaded"]
             if path.endswith("/ingestions") and status == 202:
                 schema("ingestion_request.schema.json").validate(sent)
                 assert set(body) == {"run_id", "status", "config_revision", "documents"}
@@ -286,12 +319,8 @@ def verify(scenarios):
                     assert body["run_id"] == path.split("/")[-2]
                     assert [item["document_id"] for item in body["documents"]] == sent["document_ids"]
                     for item in body["documents"]:
+                        assert set(item) == {"document_id", "result", "status"}
                         assert item["status"] in CANCEL_RESULT_STATES[item["result"]]
-                        expected_fields = {"document_id", "result", "status"}
-                        if item["status"] == "cancelled":
-                            expected_fields.add("cancellation_pending")
-                            assert isinstance(item["cancellation_pending"], bool)
-                        assert set(item) == expected_fields
                 if status == 404:
                     assert body["error"]["code"] == "INGESTION_RUN_NOT_FOUND"
             if "/ingestions/" in path and method == "GET" and status == 200:
@@ -340,6 +369,31 @@ def verify(scenarios):
     assert candidate["document_id"] == document["document_id"]
     assert "source_revision" not in document and "source_revision" not in candidate
     assert listing == [{"document_id": document["document_id"], "source_revisions": []}]
+
+    (initial_preview, initialize_ingestion, query_while_disabled, blocked_initialization, inference_preview,
+     attach_inference, detach_ingestion, after_detach, ingest_while_disabled,
+     query_while_ingest_disabled) = scenarios["pipeline_deployment"]
+    assert initial_preview["request"]["body"]["runtime_ref"] == inference_preview["request"]["body"]["runtime_ref"]
+    ingestion_only = initialize_ingestion["response"]["body"]
+    assert ingestion_only["can_ingest"] and not ingestion_only["can_query"]
+    assert query_while_disabled["response"]["body"]["error"]["code"] == "PIPELINE_NOT_ENABLED"
+    assert blocked_initialization["response"]["body"]["index_impact"]["action"] == "blocked"
+    both = attach_inference["response"]["body"]
+    assert both["can_ingest"] and both["can_query"]
+    assert urlsplit(detach_ingestion["request"]["path"]).query == "pipeline=ingestion"
+    assert detach_ingestion["response"]["status"] == 204
+    inference_only = after_detach["response"]["body"]
+    assert not inference_only["can_ingest"] and inference_only["can_query"]
+    assert ingestion_only["index_generation"] == both["index_generation"] == inference_only["index_generation"]
+    assert ingest_while_disabled["response"]["body"]["error"]["code"] == "PIPELINE_NOT_ENABLED"
+    assert query_while_ingest_disabled["response"]["status"] == 200
+
+    stale_pipeline, stale_query = scenarios["pipeline_revision_mismatch"]
+    stale_status = stale_pipeline["response"]["body"]
+    assert stale_status["pipelines"]["inference"]["loaded"] and not stale_status["can_query"]
+    assert stale_status["pipelines"]["inference"]["config_revision"] != stale_status["active_config_revision"]
+    assert stale_query["response"]["status"] == 503
+    assert stale_query["response"]["body"]["error"]["code"] == "PIPELINE_NOT_READY"
 
     put = next(item["response"]["body"] for item in happy if item["request"]["method"] == "PUT")
     updates = [item["response"]["body"] for item in scenarios["reuse_and_rebuild"]
@@ -393,9 +447,26 @@ def verify(scenarios):
     conflicts = busy_ingestion["response"]["body"]["error"]["conflicts"]
     assert [item["document_id"] for item in conflicts] == ["guide-1", "guide-2", "guide-retiring"]
 
-    before_cancel, cancel, cancel_retry, after_cancel, after_write, missing_run, invalid_cancel = (
-        scenarios["cancel_ingestion_documents"]
+    first_submit, file_lookup, retry_submit, retry_lookup, original_lookup = (
+        scenarios["ingestion_bulk_timeout_and_retry"]
     )
+    assert first_submit["request"] == retry_submit["request"]
+    original_receipt, retry_receipt = (step["response"] for step in (first_submit, retry_submit))
+    assert original_receipt["status"] == retry_receipt["status"] == 202
+    original_result, retry_result = (step["response"]["body"] for step in (original_lookup, retry_lookup))
+    assert original_receipt["body"]["run_id"] == original_result["run_id"] != retry_result["run_id"]
+    assert retry_receipt["body"]["run_id"] == retry_result["run_id"]
+    latest = file_lookup["response"]["body"]
+    assert latest["run_id"] == original_result["run_id"]
+    assert original_result["documents"] == [{key: value for key, value in latest.items() if key != "run_id"}]
+    assert original_result["status"] == "failed" and latest["error"]["code"] == "ES_BULK_TIMEOUT"
+    assert retry_result["status"] == "completed"
+    assert [doc["document_id"] for doc in retry_result["documents"]] == [latest["document_id"]]
+
+    (
+        before_cancel, cancel, cancel_retry, after_cancel, cancelled_document,
+        busy_after_cancel, after_write, missing_run, invalid_cancel,
+    ) = scenarios["cancel_ingestion_documents"]
     assert cancel == cancel_retry and cancel["response"]["status"] == 200
     assert missing_run["response"]["status"] == 404 and invalid_cancel["response"]["status"] == 422
     assert before_cancel["request"] == after_cancel["request"] == after_write["request"]
@@ -404,21 +475,26 @@ def verify(scenarios):
     final_documents = {item["document_id"]: item for item in after_write["response"]["body"]["documents"]}
     assert before_documents.keys() == after_documents.keys()
     assert before_documents["guide-unselected"] == after_documents["guide-unselected"]
-    pending_by_document = {"guide-queued": False, "guide-prewrite": False, "guide-running": True}
+    cancelled_ids = {"guide-queued", "guide-prewrite", "guide-running"}
     for item in cancel["response"]["body"]["documents"]:
         document_id = item["document_id"]
         if item["result"] == "not_found":
             assert document_id not in after_documents
             continue
         assert item["status"] == after_documents[document_id]["status"]
-        if document_id in pending_by_document:
+        if document_id in cancelled_ids:
             assert before_documents[document_id]["status"] in {"queued", "running"}
             assert item["result"] == "cancelled"
-            assert item["cancellation_pending"] == after_documents[document_id]["cancellation_pending"]
-            assert item["cancellation_pending"] is pending_by_document[document_id]
         else:
             assert before_documents[document_id] == after_documents[document_id]
-    assert after_documents.pop("guide-running")["cancellation_pending"]
+    assert cancelled_document["response"]["body"] == {
+        "run_id": "ing-cancel", **after_documents["guide-running"]
+    }
+    assert busy_after_cancel["response"]["status"] == 409
+    assert busy_after_cancel["response"]["body"]["error"]["conflicts"] == [
+        {"document_id": "guide-running", "status": "cancelled", "run_id": "ing-cancel"}
+    ]
+    assert after_documents.pop("guide-running")["status"] == "cancelled"
     assert final_documents.pop("guide-running")["status"] == "completed"
     assert after_documents == final_documents
 

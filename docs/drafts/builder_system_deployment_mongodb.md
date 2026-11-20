@@ -6,7 +6,7 @@ Builder 保存 System、所有 Config Revision 及各目標 Runtime 的部署意
 
 Collection 名稱為 `builder_system_deployments`。每個 `(environment, runtime_ref, system_id)` 一筆，唯一鍵由三欄組成。環境與 Runtime 識別取自 Builder 選定的部署目標。同一目標的 Runtime 重啟或更換 Pod 時沿用 `runtime_ref`。完整 Config 依 `system_id` 與 `config_revision` 從 Builder 的 Config Revision 紀錄讀取。單純儲存或驗證草稿不建立部署紀錄。
 
-即使多個 Runtime 使用同一份 Config 和同一個受管 ES 索引，Builder 仍逐目標保存部署狀態。Runtime 依 System 與索引綁定共用 [ES 控制紀錄](../06_runtime_api_and_deployment.md#ingestion-job-records)。共用索引的加入、單目標卸載及整體刪除見 [Q-020](../08_plan_and_decisions.md#q-020)。
+Builder 在同一筆目標紀錄中追蹤兩條流程的部署意圖。分 Pod 時各 Runtime 各有一筆，使用同一份完整 Config 與受管 ES 索引。Runtime 依 System 與索引綁定共用 [ES 控制紀錄](../06_runtime_api_and_deployment.md#ingestion-job-records)。逐流程部署見 [Runtime 契約](../06_runtime_api_and_deployment.md#runtime-pipeline-deployment)。
 
 | 欄位 | BSON 型別 | 定義 |
 |---|---|---|
@@ -14,8 +14,9 @@ Collection 名稱為 `builder_system_deployments`。每個 `(environment, runtim
 | `environment`、`runtime_ref`、`system_id` | String | 環境、Runtime 部署目標及 Builder 配發的 System 識別。 |
 | `schema_version` | Int32 | Document 格式版本，初版為 `1`。 |
 | `state_version` | Int64 | Builder 條件更新的版本，初始為 `0`，成功更新時加一。避免較舊的同步結果覆寫新的操作。 |
-| `desired` | Object / Null | 最後確認的部署意圖，含 `state`、`config_revision`、`confirmed_at`。希望上線時使用 `online` 和生效版本，已確認卸載時使用 `unloaded` 和 `null`。第一次部署尚未確認時為 `null`。 |
-| `pending_operation` | Object / Null | 已發起且尚無確認結果的操作，含 `operation_id`、`kind`、`target_config_revision`、`expected_active_revision`、`expected_index_generation`、`apply_context`、`allow_rebuild`、`started_at`。操作種類為 `initialize`、`reload`、`update`、`recover_index`、`detach` 或 `unload`。`detach` 是單目標卸載；`unload` 對應 DELETE。兩者的目標 Config 版本均為 `null`。`recover_index` 的預期索引世代為已遺失的舊世代，目標版本是原發布版本。`allow_rebuild` 只在已確認重建的 `update` 使用 `true`。無待確認操作時為 `null`。 |
+| `desired_pipelines` | Object | 以 `ingestion`、`inference` 為鍵，各保存最近確認的部署意圖。每項含 `state`、`config_revision`、`confirmed_at`。`online` 保存預期部署的發布版本，`unloaded` 的版本為 `null`。仍未確認意圖的流程為 `null`。 |
+| `desired` | Object / Null | 相容舊部署紀錄。讀取時將原整組意圖套到兩條流程，首次條件更新以 `desired_pipelines` 取代。新紀錄使用 `desired_pipelines`。 |
+| `pending_operation` | Object / Null | 已發起且尚無確認結果的操作，含 `operation_id`、`kind`、選填 `pipeline`、`target_config_revision`、`expected_active_revision`、`expected_index_generation`、`apply_context`、`allow_rebuild`、`started_at`。`pipeline` 保存原請求目標，省略表示整組操作。`unload` 對應 System DELETE，省略 `pipeline`。`detach` 與 `unload` 的目標版本為 `null`；`recover_index` 以原發布版本與遺失索引世代為前置條件。`allow_rebuild` 只在已確認重建的 `update` 使用 `true`。每個 Runtime 的 System 紀錄一次保存一筆待確認操作。 |
 | `pending_operation.apply_context` | Object / Null | 保存 PUT 原預檢的 `draft_revision`、`catalog_revision`、`context_revision`，搭配發布快照重送同一操作。`detach` 與 DELETE 為 `null`，使用待確認紀錄中的預期版本及世代。若原快照或驗證條件無法重現，先查操作結果。 |
 | `last_observation` | Object / Null | Builder 最後取得的 Runtime 狀態，含 `state`、`observed_at`、`system_status`。從未查核時為 `null`，連線失敗則記 `unreachable`。`200` 時保存完整的 [SystemStatus](../06_runtime_api_and_deployment.md#system-lifecycle-api)，依其 `loaded` 選擇 `loaded` 或 `not_loaded`。`404` 也記為 `not_loaded`，`system_status` 則為 `null`。Runtime 回報狀態待查時為 `unknown`。 |
 | `last_confirmed_index_generation` | String / Null | 最近一次確認就緒的受管索引世代。連線失敗、查無載入或索引待查時保留，供後續比對。單目標 `detach` 後保留，DELETE 確認清除索引後清除。 |
@@ -32,13 +33,13 @@ db.builder_system_deployments.createIndex(
 
 ## 發布與同步
 
-1. Builder 先保存欲發布或恢復的不可變 Config Revision 與 `pending_operation`，再以 `operation_id` 作為 `Idempotency-Key` 送出 Runtime 管理請求。收到明確成功後，以一次條件更新提交該操作適用的欄位並清除該筆操作。`initialize`、`update`、`detach`、`unload` 更新 `desired`；`detach` 只更新目標部署並保留索引世代。`reload` 與 `recover_index` 沿用 Config Revision。重啟後補載時保留原部署意圖；明確將已卸載目標再次部署時，`reload` 成功後將目標設回 `online`。索引恢復後記下新世代並安排重新匯入。
-2. Builder 在**自身啟動**或**偵測到 Runtime 重連**時，逐目標核對預期上線的 System 和待確認的操作。發現目標尚未載入時，依第 4 項查核索引，再向原 `runtime_ref` 的管理入口下發已發布的 Config。草稿及已確認卸載且無待處理操作的 System 無須重新載入。
-3. 逾時或中斷時保留待確認操作。以 Runtime 狀態與該操作的結果補記成功。恢復前後版本相同，確認成功還須比對索引世代已更新且就緒。卸載前以單一 System GET 取得預期版本與索引世代。單目標 `detach` 待確認期間暫停該目標補載，以 `detach` 結果確認卸載。共用索引若正在刪除，Builder 在待確認期間暫停相關目標的補載與索引恢復，以 DELETE 的結果確認清除後更新受影響的部署狀態。明確失敗後可清除該次待處理操作並保留原部署意圖。
-4. 沒有待確認操作且 System 預期上線時，載入狀態不明、查無載入或索引未就緒，可由 Builder 取已發布版本請 Runtime 預檢。原索引相容且尚未載入時走 `reload`。確認索引遺失時，Builder 回報異常並保留 `desired` 和最後確認世代。使用者確認重建後，才保存 `pending_operation` 並以原 Config Revision 和最後確認世代發起 `recover_index`。新世代就緒後，Builder 向仍預期上線的其他共用目標下發 `reload`，並依[初次匯入規則](../07_builder_ui.md#builder-initial-ingestion-readiness)安排重新匯入。
-5. Runtime 回報 Builder 無法對應的生效版本時，保留版本差異供查核。Runtime 無法連線時保留 `desired` 及 `pending_operation`。原請求以同一操作鍵查核；需要重新發起操作時先確認原操作已結束，再重驗 Config 與索引影響。新出現的破壞性影響須另行確認。
+1. Builder 先保存不可變 Config Revision 與包含目標流程的 `pending_operation`，再以 `operation_id` 作為 `Idempotency-Key` 送出請求。收到明確成功後，以一次條件更新提交該操作的部署意圖並清除待確認紀錄。`detach` 只將指定流程設為 `unloaded`；明確重新部署後，`reload` 成功才將指定流程設回 `online`。逐流程 `update` 和 `recover_index` 保留上線／卸載意圖。DELETE 成功代表 System 索引已刪除，更新所有受影響的部署。
+2. Builder Backend 定期以單一 System GET 逐目標核對 `desired_pipelines` 和 `SystemStatus.pipelines`。預設每 60 秒，可由 Builder 部署設定調整，Builder 啟動及 Runtime 恢復連線後也查核。預期上線但未載入有效快照時，以已發布 Config 預檢並呼叫 `reload`。補載使用 System 的共用生效版本及索引世代；遇到部署紀錄仍指向舊版時，先查核 System 的發布結果。
+3. 逾時或中斷時保留 `pending_operation`，以同一操作鍵、版本和 `pipeline` 查核。`detach` 待確認期間暫停目標流程補載。DELETE 待確認期間暫停相關 Runtime 的補載及索引恢復。明確失敗後可清除該次待處理操作並保留原部署意圖。
+4. 確認索引遺失時，Builder 回報異常並保留部署意圖和最後確認世代。使用者確認後才向 Ingestion Runtime 發起 `recover_index`。成功時以索引世代更新確認結果，對仍預期上線的流程逐一 `reload`，依[初次匯入規則](../07_builder_ui.md#builder-initial-ingestion-readiness)安排重新匯入。
+5. Runtime 回報 Builder 無法對應的生效版本時，保留差異供查核。Runtime 無法連線時保留部署意圖及待確認操作。需要重新發起操作時先結算原操作，再重驗 Config 與索引影響。新出現的破壞性影響須另行確認。
 
-`desired` 是 Builder 用來重啟後重新載入的目標，`last_observation` 記錄目標 Runtime 最近一次查詢的結果。Runtime 依實際載入的快照和索引狀態回報即時能力。操作前置條件、恢復流程及重送語意見 [System 生命週期 API](../06_runtime_api_and_deployment.md#system-lifecycle-api)。
+`desired_pipelines` 是 Builder 用來重啟後重新載入的目標，`last_observation` 記錄最近一次 Runtime 查詢結果。操作前置條件、恢復流程及重送語意見 [System 生命週期 API](../06_runtime_api_and_deployment.md#system-lifecycle-api)。
 
 ## 已發布的紀錄範例
 
@@ -52,10 +53,9 @@ db.builder_system_deployments.createIndex(
   "system_id": "crm-search",
   "schema_version": 1,
   "state_version": {"$numberLong": "7"},
-  "desired": {
-    "state": "online",
-    "config_revision": "rev-003",
-    "confirmed_at": {"$date": "2026-11-19T02:00:00Z"}
+  "desired_pipelines": {
+    "ingestion": {"state": "online", "config_revision": "rev-003", "confirmed_at": {"$date": "2026-11-19T02:00:00Z"}},
+    "inference": {"state": "unloaded", "config_revision": null, "confirmed_at": {"$date": "2026-11-19T02:04:00Z"}}
   },
   "pending_operation": null,
   "last_observation": {
@@ -69,7 +69,11 @@ db.builder_system_deployments.createIndex(
       "index_ready": true,
       "index_generation": "g0001",
       "can_ingest": true,
-      "can_query": true
+      "can_query": false,
+      "pipelines": {
+        "ingestion": {"loaded": true, "ready": true, "config_revision": "rev-003", "index_generation": "g0001"},
+        "inference": {"loaded": false, "ready": false, "config_revision": null, "index_generation": null}
+      }
     }
   },
   "last_confirmed_index_generation": "g0001",
