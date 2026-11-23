@@ -1,0 +1,457 @@
+{
+  "type": "object",
+  "properties": {
+    "descriptor_version": {
+      "const": "0.2-draft"
+    },
+    "module": {
+      "enum": [
+        "import",
+        "parsing",
+        "chunking",
+        "embedding",
+        "indexing",
+        "inference_input",
+        "query_transformation",
+        "retrieval",
+        "rerank"
+      ]
+    },
+    "component_id": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "const": "remote_api"
+      }
+    },
+    "component_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "parameters_schema": {
+      "type": "object"
+    },
+    "io": {
+      "type": "object",
+      "properties": {
+        "input": {
+          "type": "string",
+          "minLength": 1
+        },
+        "output": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content_media_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "input",
+        "output"
+      ],
+      "additionalProperties": false
+    },
+    "option_sources": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^/"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "enum": [
+              "input.structdata",
+              "input.vectors",
+              "candidate.structdata",
+              "candidate.document_fields",
+              "index_plan.fulltext",
+              "index_plan.vectors",
+              "profiles",
+              "models",
+              "tokenizer_profiles",
+              "elasticsearch_services"
+            ]
+          },
+          "types": {
+            "type": "array",
+            "items": {
+              "$ref": "https://rag-builder.example/schemas/data_meta.schema.json#/$defs/field_type"
+            }
+          },
+          "required": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "source"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "data_rules": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "const": "declare"
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1
+              },
+              "schema": {
+                "$ref": "https://rag-builder.example/schemas/data_meta.schema.json#/$defs/field"
+              }
+            },
+            "required": [
+              "op",
+              "target",
+              "schema"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "const": "copy"
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1
+              },
+              "for_each": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "op",
+              "source",
+              "target"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "const": "vector"
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1
+              },
+              "profile": {
+                "type": "string",
+                "minLength": 1
+              },
+              "for_each": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "op",
+              "source",
+              "target",
+              "profile"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "const": "compose"
+              },
+              "enabled": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1
+              },
+              "template": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "op",
+              "enabled",
+              "target",
+              "template"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "ui_hints": {
+      "type": "object",
+      "properties": {
+        "fixed_filters": {
+          "const": "advanced"
+        },
+        "order": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^/"
+          },
+          "uniqueItems": true
+        },
+        "advanced": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^/"
+          },
+          "uniqueItems": true
+        },
+        "previews": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "effective_io": {
+              "type": "object",
+              "properties": {
+                "collapsed": {
+                  "type": "boolean",
+                  "default": true
+                }
+              },
+              "additionalProperties": false
+            },
+            "ingestion_request": {
+              "type": "object",
+              "properties": {
+                "collapsed": {
+                  "type": "boolean",
+                  "default": true
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "title",
+              "fields"
+            ],
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "fields": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^/"
+                },
+                "uniqueItems": true
+              },
+              "example": {
+                "type": "object"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "controls": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^/"
+          },
+          "additionalProperties": {
+            "enum": [
+              "structdata_editor",
+              "structdata_overrides_editor",
+              "vector_checklist",
+              "textarea",
+              "secret_password"
+            ]
+          }
+        },
+        "visible_when": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^/[^/]+$"
+          },
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "all": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "$ref": "#/$defs/visibility_condition"
+                    }
+                  }
+                },
+                "required": [
+                  "all"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "any": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "$ref": "#/$defs/visibility_condition"
+                    }
+                  }
+                },
+                "required": [
+                  "any"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "op": {
+            "const": "lt"
+          },
+          "left": {
+            "type": "string",
+            "minLength": 1
+          },
+          "right": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "op",
+          "left",
+          "right"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "descriptor_version",
+    "module",
+    "component_id",
+    "component_version",
+    "parameters_schema",
+    "io"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:retrieval-builder:component-descriptor:0.2-draft",
+  "title": "Component Descriptor v0.2 draft",
+  "description": "Offline schema for the reviewed subset. Module I/O, pointer targets and context-dependent validity are also checked semantically.",
+  "$defs": {
+    "visibility_condition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "pattern": "^/[^/]+$"
+            },
+            "equals": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            }
+          },
+          "required": [
+            "path",
+            "equals"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "pattern": "^/[^/]+$"
+            },
+            "minimum": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "path",
+            "minimum"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^/[^/]+$"
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "minimum_selected": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "paths",
+            "minimum_selected"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

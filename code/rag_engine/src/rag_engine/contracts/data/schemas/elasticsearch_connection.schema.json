@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rag-builder.example/schemas/elasticsearch_connection.schema.json",
+  "title": "Elasticsearch connection selection",
+  "type": "object",
+  "properties": {
+    "service_source": {
+      "$ref": "https://rag-builder.example/schemas/config_enums.schema.json#/$defs/elasticsearch_service_source"
+    },
+    "es_number": {
+      "type": "string",
+      "pattern": "\\S",
+      "description": "PLED instance identifier. A DEV literal preserves the identifier as text. Deployment exports use a System Secret reference.",
+      "x-deployment-secret-key": "PLED_ES_NUMBER"
+    },
+    "account": {
+      "type": "string",
+      "pattern": "\\S",
+      "description": "PLED login account. DEV accepts a literal. Deployment exports use a System Secret reference.",
+      "x-deployment-secret-key": "PLED_ES_ACCOUNT"
+    },
+    "password": {
+      "$ref": "https://rag-builder.example/schemas/system_config.draft.schema.json#/$defs/parameter_expression",
+      "x-deployment-secret-key": "PLED_ES_PASSWORD"
+    },
+    "service_ref": false,
+    "elasticsearch_service_ref": false
+  },
+  "required": [
+    "service_source"
+  ],
+  "if": {
+    "properties": {
+      "service_source": {
+        "const": "pled_es"
+      }
+    }
+  },
+  "then": {
+    "required": [
+      "es_number",
+      "account",
+      "password"
+    ]
+  },
+  "else": {
+    "not": {
+      "anyOf": [
+        {
+          "required": [
+            "es_number"
+          ]
+        },
+        {
+          "required": [
+            "account"
+          ]
+        },
+        {
+          "required": [
+            "password"
+          ]
+        }
+      ]
+    }
+  }
+}

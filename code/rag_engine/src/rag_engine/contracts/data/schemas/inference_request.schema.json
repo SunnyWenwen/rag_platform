@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rag-builder.example/schemas/inference_request.schema.json",
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "minLength": 1
+    },
+    "filters": {
+      "$ref": "https://rag-builder.example/schemas/query_context.schema.json#/$defs/filters"
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "parameters": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "query"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,31 @@
+# Runtime resources for the DEV Runtime. Mounted into the container and selected with
+# RAG_RESOURCES_FILE. Changing model_revision, tokenizer revision or text_analysis changes
+# the index fingerprint and forces affected Systems to rebuild.
+text_analysis: zh_ik
+
+profiles:
+  bge-m3:
+    label: BGE-M3 (1024)
+    dimensions: 1024
+    model_id: BAAI/bge-m3
+    # Fill in the Hugging Face commit you deploy, e.g. the snapshot hash under models--BAAI--bge-m3.
+    model_revision: "REPLACE_WITH_MODEL_COMMIT"
+    # OpenAI-compatible embeddings endpoint serving bge-m3 (for example Text Embeddings Inference).
+    endpoint: http://bge-m3-embedding/v1
+    request_model: BAAI/bge-m3
+    max_input_tokens: 8192
+    batch_size: 32
+    timeout_seconds: 30
+    tokenizer_profile_id: bge-m3
+    index_options:
+      type: int8_hnsw
+
+tokenizer_profiles:
+  bge-m3:
+    label: BGE-M3 tokenizer
+    kind: huggingface
+    # tokenizer.json from BAAI/bge-m3, baked into the image (no network at runtime).
+    path: /opt/models/bge-m3/tokenizer.json
+    revision: "bge-m3@REPLACE_WITH_MODEL_COMMIT"
+
+models: {}

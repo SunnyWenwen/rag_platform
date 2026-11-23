@@ -1,0 +1,51 @@
+# Example bge-m3 embedding service with Hugging Face Text Embeddings Inference (TEI).
+# TEI serves an OpenAI-compatible POST /v1/embeddings, which the Runtime calls.
+# Any service with the same API works (vLLM, Infinity, an internal model gateway).
+# Pin the TEI image tag and the model revision you validated; GPU images use another tag.
+apiVersion: v1
+kind: Service
+metadata:
+  name: bge-m3-embedding
+  namespace: rag-platform
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: bge-m3-embedding
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bge-m3-embedding
+  namespace: rag-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: bge-m3-embedding
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: bge-m3-embedding
+        app.kubernetes.io/part-of: rag-platform
+    spec:
+      containers:
+        - name: tei
+          image: ghcr.io/huggingface/text-embeddings-inference:cpu-REPLACE_WITH_VALIDATED_TAG
+          args: ["--model-id", "/models/bge-m3", "--port", "80", "--max-batch-tokens", "16384"]
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: model
+              mountPath: /models/bge-m3
+              readOnly: true
+          resources:
+            requests: {cpu: "2", memory: 4Gi}
+            limits: {memory: 8Gi}
+      volumes:
+        - name: model
+          persistentVolumeClaim:
+            claimName: bge-m3-model  # pre-populated with the BAAI/bge-m3 snapshot

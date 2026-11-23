@@ -1,0 +1,190 @@
+{
+  "system_id": "f44de426-675d-4e91-a001-17509b68a025",
+  "config_revision": "revision-2",
+  "config": {
+    "contract_version": "0.2-draft",
+    "pipelines": {
+      "ingestion": {
+        "import": {
+          "component_id": "platform",
+          "component_version": "1.0.0",
+          "parameters": {
+            "structdata": {
+              "body": {
+                "type": "string",
+                "required": true
+              },
+              "title": {
+                "type": "string",
+                "required": true,
+                "filterable": true
+              },
+              "price": {
+                "type": "number",
+                "required": false,
+                "searchable": false,
+                "filterable": false
+              },
+              "tags": {
+                "type": "string_array",
+                "required": false,
+                "searchable": false,
+                "filterable": true
+              }
+            },
+            "request_parameters": [
+              {
+                "name": "trace_label",
+                "type": "string",
+                "required": false
+              }
+            ]
+          }
+        },
+        "parsing": {
+          "component_id": "remote_api",
+          "contract_version": "1",
+          "component_version": "1.0.0",
+          "through": "parsing",
+          "connection": {
+            "url": "{{REMOTE_PARSING_URL}}",
+            "timeout_seconds": 30,
+            "headers": {
+              "X-Tenant": "{{REMOTE_PARSING_HEADER_X_TENANT}}"
+            }
+          },
+          "revision": "2026.11.1",
+          "parameters": {
+            "language": "zh-TW",
+            "trace_label": "{{trace_label}}"
+          },
+          "runtime_only_parameters": ["trace_label"],
+          "output": {
+            "structdata": {
+              "body": {
+                "type": "string",
+                "required": true
+              },
+              "title": {
+                "type": "string",
+                "required": true,
+                "filterable": true
+              },
+              "price": {
+                "type": "number",
+                "required": false,
+                "searchable": false,
+                "filterable": false
+              },
+              "tags": {
+                "type": "string_array",
+                "required": false,
+                "searchable": false,
+                "filterable": true
+              }
+            }
+          },
+          "auth": {
+            "bearer_token": "{{REMOTE_PARSING_TOKEN}}"
+          }
+        },
+        "chunking": {
+          "component_id": "recursive",
+          "component_version": "1.0.0",
+          "parameters": {
+            "split_field": "body",
+            "output_field": "text",
+            "copy_fields": [
+              {
+                "source_field": "title",
+                "output_field": "title"
+              },
+              {
+                "source_field": "price",
+                "output_field": "price"
+              },
+              {
+                "source_field": "tags",
+                "output_field": "tags"
+              }
+            ],
+            "max_tokens": 500,
+            "overlap_tokens": 50,
+            "tokenizer_profile_id": "fixture"
+          }
+        },
+        "embedding": {
+          "component_id": "dense",
+          "component_version": "1.0.0",
+          "parameters": {
+            "mappings": [
+              {
+                "source_field": "text",
+                "vector_name": "text"
+              }
+            ],
+            "profile": "text-v1"
+          }
+        },
+        "indexing": {
+          "component_id": "local",
+          "component_version": "1.0.0",
+          "parameters": {
+            "persistence": "memory",
+            "vector_name": "text",
+            "structdata_overrides": {
+              "text": {
+                "searchable": true
+              },
+              "price": {
+                "filterable": true
+              }
+            }
+          }
+        }
+      },
+      "inference": {
+        "inference_input": {
+          "component_id": "platform",
+          "component_version": "1.0.0",
+          "parameters": {}
+        },
+        "query_transformation": {
+          "component_id": "none",
+          "component_version": "1.0.0",
+          "parameters": {}
+        },
+        "retrieval": {
+          "component_id": "builtin",
+          "component_version": "1.0.0",
+          "parameters": {
+            "vector_fields": [
+              "text"
+            ],
+            "per_route_k": 10
+          }
+        },
+        "rerank": {
+          "component_id": "none",
+          "component_version": "1.0.0",
+          "parameters": {}
+        },
+        "fixed_filters": [
+          {
+            "field": "structdata.price",
+            "operator": "gte",
+            "value": 300
+          }
+        ]
+      }
+    },
+    "secret": {
+      "REMOTE_PARSING_TOKEN": "fixture-dev-token"
+    },
+    "variable": {
+      "REMOTE_PARSING_URL": "https://parser.dev.example/v1/normalize",
+      "REMOTE_PARSING_HEADER_X_TENANT": "tenant-dev",
+      "trace_label": "dev-parser"
+    }
+  }
+}

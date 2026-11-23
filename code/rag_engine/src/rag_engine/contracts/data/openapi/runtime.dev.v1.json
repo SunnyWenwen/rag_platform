@@ -1,0 +1,851 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Builder to DEV Retrieval Runtime",
+    "version": "1.0.0",
+    "description": "W1 HTTP contract for the DEV Runtime. Builder Backends use the ClusterIP Service over Istio strict mTLS; other callers with valid credentials use the Gateway HTTPS host. Inference also exposes an MCP endpoint at /internal/systems/{system_id}/mcp, specified in docs/06_runtime_api_and_deployment.md."
+  },
+  "servers": [
+    {
+      "url": "http://dev-runtime",
+      "description": "Example in-cluster DEV Runtime Service in the Builder namespace. Requires Istio strict mTLS. Routes authenticate with HTTP Basic."
+    },
+    {
+      "url": "http://127.0.0.1:8000",
+      "description": "Local mock on loopback. See the fixture credentials for management, Ingestion, and Inference."
+    }
+  ],
+  "security": [
+    {
+      "runtimeManagementBasic": []
+    }
+  ],
+  "paths": {
+    "/health/live": {
+      "parameters": [
+        {"$ref": "#/components/parameters/RequestId"}
+      ],
+      "get": {
+        "tags": ["Health"],
+        "summary": "Check service liveness",
+        "operationId": "getLiveness",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Service is live.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/health"}
+              }
+            }
+          },
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      }
+    },
+    "/health/ready": {
+      "parameters": [
+        {"$ref": "#/components/parameters/RequestId"}
+      ],
+      "get": {
+        "tags": ["Health"],
+        "summary": "Check service readiness",
+        "operationId": "getReadiness",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Service is ready.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/health"}
+              }
+            }
+          },
+          "500": {"$ref": "#/components/responses/InternalError"},
+          "503": {"$ref": "#/components/responses/NotReady"}
+        }
+      }
+    },
+    "/internal/v1/catalog": {
+      "parameters": [
+        {"$ref": "#/components/parameters/RequestId"}
+      ],
+      "get": {
+        "tags": ["Catalog"],
+        "summary": "Read the Runtime component catalog",
+        "operationId": "getCatalog",
+        "responses": {
+          "200": {
+            "description": "Runtime catalog.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "../schemas/runtime_catalog.draft.schema.json"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "500": {"$ref": "#/components/responses/InternalError"},
+          "503": {"$ref": "#/components/responses/NotReady"}
+        }
+      }
+    },
+    "/internal/v1/systems": {
+      "parameters": [
+        {"$ref": "#/components/parameters/RequestId"}
+      ],
+      "get": {
+        "tags": ["Systems"],
+        "summary": "List Systems loaded on this Runtime",
+        "operationId": "listSystems",
+        "responses": {
+          "200": {
+            "description": "Systems on this Runtime.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/system_list"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "500": {"$ref": "#/components/responses/InternalError"},
+          "503": {"$ref": "#/components/responses/NotReady"}
+        }
+      }
+    },
+    "/internal/v1/systems/{system_id}/config:validate": {
+      "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
+        {"$ref": "#/components/parameters/SystemId"}
+      ],
+      "post": {
+        "tags": ["Systems"],
+        "summary": "Validate a System Config and preview index impact",
+        "operationId": "validateConfig",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/validate_request"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Validation completed, including a blocked index impact when applicable.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/validation"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/InvalidJSON"},
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "409": {"$ref": "#/components/responses/Conflict"},
+          "413": {"$ref": "#/components/responses/BodyTooLarge"},
+          "415": {"$ref": "#/components/responses/UnsupportedMediaType"},
+          "422": {"$ref": "#/components/responses/ValidationFailed"},
+          "500": {"$ref": "#/components/responses/InternalError"},
+          "503": {"$ref": "#/components/responses/NotReady"},
+          "504": {"$ref": "#/components/responses/DeadlineExceeded"}
+        }
+      }
+    },
+    "/internal/v1/systems/{system_id}": {
+      "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
+        {"$ref": "#/components/parameters/SystemId"}
+      ],
+      "get": {
+        "tags": ["Systems"],
+        "summary": "Read System state and managed index binding",
+        "operationId": "getSystem",
+        "description": "Without headers, observe the loaded local Runtime. Send all three expected binding headers to inspect a specific physical index, including when no Config is loaded.",
+        "parameters": [
+          {"$ref": "#/components/parameters/ObservedConfigRevision"},
+          {"$ref": "#/components/parameters/ConditionalIndexGeneration"},
+          {"$ref": "#/components/parameters/ExpectedIndexFingerprint"}
+        ],
+        "responses": {
+          "200": {
+            "description": "Loaded System or a verified existing index binding.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/system_status"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "409": {"$ref": "#/components/responses/Conflict"},
+          "422": {"$ref": "#/components/responses/ValidationFailed"},
+          "500": {"$ref": "#/components/responses/InternalError"},
+          "503": {"$ref": "#/components/responses/NotReady"}
+        }
+      },
+      "put": {
+        "tags": ["Systems"],
+        "summary": "Apply a validated System Config",
+        "operationId": "applyConfig",
+        "parameters": [
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/apply_request"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Config applied.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/system_status"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/InvalidJSON"},
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "409": {"$ref": "#/components/responses/Conflict"},
+          "413": {"$ref": "#/components/responses/BodyTooLarge"},
+          "415": {"$ref": "#/components/responses/UnsupportedMediaType"},
+          "422": {"$ref": "#/components/responses/ValidationFailed"},
+          "500": {"$ref": "#/components/responses/InternalError"},
+          "503": {"$ref": "#/components/responses/NotReady"},
+          "504": {"$ref": "#/components/responses/DeadlineExceeded"}
+        }
+      },
+      "delete": {
+        "tags": ["Systems"],
+        "summary": "Unload the System and remove its managed index",
+        "operationId": "deleteSystem",
+        "parameters": [
+          {"$ref": "#/components/parameters/IdempotencyKey"},
+          {"$ref": "#/components/parameters/ExpectedConfigRevision"},
+          {"$ref": "#/components/parameters/ConditionalIndexGeneration"},
+          {"$ref": "#/components/parameters/ExpectedIndexFingerprint"}
+        ],
+        "responses": {
+          "204": {
+            "description": "System unloaded and managed index removed if applicable."
+          },
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "409": {"$ref": "#/components/responses/Conflict"},
+          "422": {"$ref": "#/components/responses/ValidationFailed"},
+          "500": {"$ref": "#/components/responses/InternalError"},
+          "503": {"$ref": "#/components/responses/NotReady"},
+          "504": {"$ref": "#/components/responses/DeadlineExceeded"}
+        }
+      }
+    },
+    "/internal/v1/systems/{system_id}:detach": {
+      "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
+        {"$ref": "#/components/parameters/SystemId"}
+      ],
+      "post": {
+        "tags": ["Systems"],
+        "summary": "Unload a Runtime pipeline and retain the shared index",
+        "operationId": "detachSystem",
+        "parameters": [
+          {"$ref": "#/components/parameters/IdempotencyKey"},
+          {"$ref": "#/components/parameters/ExpectedConfigRevision"},
+          {"$ref": "#/components/parameters/ExpectedIndexGeneration"},
+          {"$ref": "#/components/parameters/RequiredIndexFingerprint"},
+          {"$ref": "#/components/parameters/Pipeline"}
+        ],
+        "responses": {
+          "204": {
+            "description": "Requested pipeline or pipelines unloaded."
+          },
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "409": {"$ref": "#/components/responses/Conflict"},
+          "422": {"$ref": "#/components/responses/ValidationFailed"},
+          "500": {"$ref": "#/components/responses/InternalError"},
+          "503": {"$ref": "#/components/responses/NotReady"},
+          "504": {"$ref": "#/components/responses/DeadlineExceeded"}
+        }
+      }
+    },
+    "/internal/systems/{system_id}/v1/ingestions": {
+      "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
+        {"$ref": "#/components/parameters/SystemId"}
+      ],
+      "post": {
+        "tags": ["Ingestion"],
+        "summary": "Accept a batch of documents for ingestion",
+        "operationId": "submitIngestion",
+        "security": [{"systemIngestionBasic": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "../schemas/ingestion_request.schema.json"}
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Batch accepted.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/ingestion_accepted"}
+              }
+            },
+            "headers": {
+              "Location": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                },
+                "description": "Run status URL on the receiving Runtime."
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/InvalidJSON"},
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "409": {"$ref": "#/components/responses/IngestionConflict"},
+          "413": {"$ref": "#/components/responses/BodyTooLarge"},
+          "415": {"$ref": "#/components/responses/UnsupportedMediaType"},
+          "422": {"$ref": "#/components/responses/ValidationFailed"},
+          "429": {"$ref": "#/components/responses/RateLimited"},
+          "500": {"$ref": "#/components/responses/InternalError"},
+          "503": {"$ref": "#/components/responses/NotReady"},
+          "504": {"$ref": "#/components/responses/DeadlineExceeded"}
+        }
+      }
+    },
+    "/internal/systems/{system_id}/v1/ingestions/{run_id}": {
+      "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
+        {"$ref": "#/components/parameters/SystemId"},
+        {"$ref": "#/components/parameters/RunId"}
+      ],
+      "get": {
+        "tags": ["Ingestion"],
+        "summary": "Read ingestion Run status",
+        "operationId": "getIngestionRun",
+        "security": [{"systemIngestionBasic": []}],
+        "responses": {
+          "200": {
+            "description": "Run status, including unknown for expired or unavailable history.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/ingestion_run_status"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "409": {"$ref": "#/components/responses/Conflict"},
+          "422": {"$ref": "#/components/responses/ValidationFailed"},
+          "500": {"$ref": "#/components/responses/InternalError"},
+          "503": {"$ref": "#/components/responses/NotReady"}
+        }
+      }
+    },
+    "/internal/systems/{system_id}/v1/ingestions/{run_id}/cancel": {
+      "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
+        {"$ref": "#/components/parameters/SystemId"},
+        {"$ref": "#/components/parameters/RunId"}
+      ],
+      "post": {
+        "tags": ["Ingestion"],
+        "summary": "Cancel selected documents in an ingestion Run",
+        "operationId": "cancelIngestionDocuments",
+        "security": [{"systemIngestionBasic": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "../schemas/ingestion_cancel_request.schema.json"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Result for each requested document.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/ingestion_cancel_result"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/InvalidJSON"},
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "409": {"$ref": "#/components/responses/Conflict"},
+          "413": {"$ref": "#/components/responses/BodyTooLarge"},
+          "415": {"$ref": "#/components/responses/UnsupportedMediaType"},
+          "422": {"$ref": "#/components/responses/ValidationFailed"},
+          "500": {"$ref": "#/components/responses/InternalError"},
+          "503": {"$ref": "#/components/responses/NotReady"}
+        }
+      }
+    },
+    "/internal/systems/{system_id}/v1/documents/{document_id}/ingestion-status": {
+      "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
+        {"$ref": "#/components/parameters/SystemId"},
+        {"$ref": "#/components/parameters/DocumentId"}
+      ],
+      "get": {
+        "tags": ["Ingestion"],
+        "summary": "Read the most recent ingestion status for a document",
+        "operationId": "getDocumentIngestionStatus",
+        "security": [{"systemIngestionBasic": []}],
+        "responses": {
+          "200": {
+            "description": "Document work status, including unknown for unavailable history.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/document_ingestion_status"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "409": {"$ref": "#/components/responses/Conflict"},
+          "422": {"$ref": "#/components/responses/ValidationFailed"},
+          "500": {"$ref": "#/components/responses/InternalError"},
+          "503": {"$ref": "#/components/responses/NotReady"}
+        }
+      }
+    },
+    "/internal/systems/{system_id}/v1/documents/{document_id}/exists": {
+      "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
+        {"$ref": "#/components/parameters/SystemId"},
+        {"$ref": "#/components/parameters/DocumentId"}
+      ],
+      "get": {
+        "tags": ["Documents"],
+        "summary": "Check whether the current index contains a document",
+        "operationId": "documentExists",
+        "security": [{"systemIngestionBasic": []}],
+        "responses": {
+          "200": {
+            "description": "Document existence.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/document_exists"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "409": {"$ref": "#/components/responses/Conflict"},
+          "422": {"$ref": "#/components/responses/ValidationFailed"},
+          "500": {"$ref": "#/components/responses/InternalError"},
+          "502": {"$ref": "#/components/responses/UpstreamError"},
+          "503": {"$ref": "#/components/responses/NotReady"},
+          "504": {"$ref": "#/components/responses/DeadlineExceeded"}
+        }
+      }
+    },
+    "/internal/systems/{system_id}/v1/documents": {
+      "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
+        {"$ref": "#/components/parameters/SystemId"}
+      ],
+      "get": {
+        "tags": ["Documents"],
+        "summary": "List documents and observed source revisions",
+        "operationId": "listDocuments",
+        "security": [{"systemIngestionBasic": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/Limit"},
+          {"$ref": "#/components/parameters/Cursor"}
+        ],
+        "responses": {
+          "200": {
+            "description": "Document summary page.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/document_list"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "409": {"$ref": "#/components/responses/Conflict"},
+          "422": {"$ref": "#/components/responses/ValidationFailed"},
+          "500": {"$ref": "#/components/responses/InternalError"},
+          "502": {"$ref": "#/components/responses/UpstreamError"},
+          "503": {"$ref": "#/components/responses/NotReady"},
+          "504": {"$ref": "#/components/responses/DeadlineExceeded"}
+        }
+      }
+    },
+    "/internal/systems/{system_id}/v1/documents/{document_id}:retire": {
+      "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
+        {"$ref": "#/components/parameters/SystemId"},
+        {"$ref": "#/components/parameters/DocumentId"}
+      ],
+      "post": {
+        "tags": ["Documents"],
+        "summary": "Remove a document from the current System index",
+        "operationId": "retireDocument",
+        "security": [{"systemIngestionBasic": []}],
+        "responses": {
+          "200": {
+            "description": "Retirement result.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/document_retire"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "409": {"$ref": "#/components/responses/Conflict"},
+          "422": {"$ref": "#/components/responses/ValidationFailed"},
+          "500": {"$ref": "#/components/responses/InternalError"},
+          "501": {"$ref": "#/components/responses/OperationUnsupported"},
+          "502": {"$ref": "#/components/responses/UpstreamError"},
+          "503": {"$ref": "#/components/responses/NotReady"},
+          "504": {"$ref": "#/components/responses/DeadlineExceeded"}
+        }
+      }
+    },
+    "/internal/systems/{system_id}/v1/queries": {
+      "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
+        {"$ref": "#/components/parameters/SystemId"}
+      ],
+      "post": {
+        "tags": ["Inference"],
+        "summary": "Execute a query against a System",
+        "operationId": "querySystem",
+        "security": [{"systemInferenceBasic": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "../schemas/inference_request.schema.json"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Complete query result and execution snapshot.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/inference_response"}
+              }
+            },
+            "headers": {
+              "X-Config-Revision": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "Matches config_revision in the response body."
+              },
+              "X-Index-Generation": {
+                "required": false,
+                "schema": {"$ref": "../schemas/runtime_identity.schema.json#/$defs/uuid_v4"},
+                "description": "Matches index_generation in the body. Omitted when the body value is null."
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/InvalidJSON"},
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "409": {"$ref": "#/components/responses/Conflict"},
+          "413": {"$ref": "#/components/responses/BodyTooLarge"},
+          "415": {"$ref": "#/components/responses/UnsupportedMediaType"},
+          "422": {"$ref": "#/components/responses/ValidationFailed"},
+          "429": {"$ref": "#/components/responses/RateLimited"},
+          "500": {"$ref": "#/components/responses/InternalError"},
+          "502": {"$ref": "#/components/responses/UpstreamError"},
+          "503": {"$ref": "#/components/responses/NotReady"},
+          "504": {"$ref": "#/components/responses/DeadlineExceeded"}
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "runtimeManagementBasic": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "DEV Runtime service credentials provisioned to the Builder Backend."
+      },
+      "systemIngestionBasic": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "Ingestion credentials of the System in the request path."
+      },
+      "systemInferenceBasic": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "Inference credentials of the System in the request path."
+      }
+    },
+    "parameters": {
+      "SystemId": {
+        "name": "system_id",
+        "in": "path",
+        "required": true,
+        "schema": {"$ref": "../schemas/runtime_identity.schema.json#/$defs/uuid_v4"}
+      },
+      "DocumentId": {
+        "name": "document_id",
+        "in": "path",
+        "required": true,
+        "schema": {"$ref": "../schemas/document.schema.json#/$defs/document_id"}
+      },
+      "RunId": {
+        "name": "run_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "Pipeline": {
+        "name": "pipeline",
+        "in": "query",
+        "required": false,
+        "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/pipeline"}
+      },
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "required": false,
+        "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/document_list_query/properties/limit"}
+      },
+      "Cursor": {
+        "name": "cursor",
+        "in": "query",
+        "required": false,
+        "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/document_list_query/properties/cursor"}
+      },
+      "RequestId": {
+        "name": "X-Request-Id",
+        "in": "header",
+        "required": false,
+        "description": "Tracing ID. Builder sends a UUIDv4 per user action or background call. Runtime echoes the effective value in the response header and in error.request_id.",
+        "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/request_id"}
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "ExpectedConfigRevision": {
+        "name": "X-Expected-Config-Revision",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "ObservedConfigRevision": {
+        "name": "X-Expected-Config-Revision",
+        "in": "header",
+        "required": false,
+        "schema": {"type": "string", "minLength": 1}
+      },
+      "RequiredIndexFingerprint": {
+        "name": "X-Expected-Index-Fingerprint",
+        "in": "header",
+        "required": true,
+        "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/index_fingerprint"}
+      },
+      "ExpectedIndexFingerprint": {
+        "name": "X-Expected-Index-Fingerprint",
+        "in": "header",
+        "required": false,
+        "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/index_fingerprint"},
+        "description": "Required with X-Expected-Index-Generation for managed index operations."
+      },
+      "ExpectedIndexGeneration": {
+        "name": "X-Expected-Index-Generation",
+        "in": "header",
+        "required": true,
+        "schema": {"$ref": "../schemas/runtime_identity.schema.json#/$defs/uuid_v4"}
+      },
+      "ConditionalIndexGeneration": {
+        "name": "X-Expected-Index-Generation",
+        "in": "header",
+        "required": false,
+        "schema": {"$ref": "../schemas/runtime_identity.schema.json#/$defs/uuid_v4"},
+        "description": "Required for managed index deletion and explicit index inspection."
+      }
+    },
+    "responses": {
+      "InvalidJSON": {
+        "description": "Invalid JSON request body.",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/error_response"}
+          }
+        }
+      },
+      "Unauthenticated": {
+        "description": "Runtime credentials are missing or invalid.",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/error_response"}
+          }
+        },
+        "headers": {
+          "WWW-Authenticate": {
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "Basic realm=\"retrieval-runtime\""
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Access to this Runtime or System is denied.",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/error_response"}
+          }
+        }
+      },
+      "NotFound": {
+        "description": "The scoped System or ingestion Run was not found. See the error code.",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/error_response"}
+          }
+        }
+      },
+      "Conflict": {
+        "description": "Operation conflicts with the current Runtime, System or document state. See the error code.",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/error_response"}
+          }
+        }
+      },
+      "BodyTooLarge": {
+        "description": "Request body exceeds the configured limit.",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/error_response"}
+          }
+        }
+      },
+      "UnsupportedMediaType": {
+        "description": "The request body must use application/json.",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/error_response"}
+          }
+        }
+      },
+      "ValidationFailed": {
+        "description": "Request, Config, or cursor validation failed. See the error code and optional JSON Pointer.",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/error_response"}
+          }
+        }
+      },
+      "RateLimited": {
+        "description": "The Runtime rate limit was reached.",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/error_response"}
+          }
+        },
+        "headers": {
+          "Retry-After": {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Seconds until retry, when available."
+          }
+        }
+      },
+      "InternalError": {
+        "description": "An internal Runtime error occurred.",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/error_response"}
+          }
+        }
+      },
+      "OperationUnsupported": {
+        "description": "The selected operation is unsupported.",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/error_response"}
+          }
+        }
+      },
+      "UpstreamError": {
+        "description": "A required upstream service failed.",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/error_response"}
+          }
+        }
+      },
+      "NotReady": {
+        "description": "The Runtime, index or pipeline is unavailable, full, or not ready. See the error code.",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/error_response"}
+          }
+        }
+      },
+      "DeadlineExceeded": {
+        "description": "The request deadline was exceeded.",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/error_response"}
+          }
+        }
+      },
+      "IngestionConflict": {
+        "description": "Ingestion conflicts with the loaded pipeline or active documents. DOCUMENT_BUSY includes all local document conflicts.",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/ingestion_conflict_response"}
+          }
+        }
+      }
+    }
+  }
+}

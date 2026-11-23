@@ -14,6 +14,7 @@ User 在 Builder 設定、測試及匯出 Retrieval System。System 由 Retrieva
 | [08 開發計畫與決策](docs/08_plan_and_decisions.md) | 最新決策、里程碑、未決事項與驗收 |
 | [09 W1 Builder 開發契約索引](docs/09_w1_builder_runtime_contract.md) | Builder 所需規格、DEV OpenAPI、可執行 Mock 與情境測試 |
 
+- [Runtime 實作骨架](code/rag_engine/README.md)：Engine、Components 與 Runtime API 的可執行程式碼，技術選型見 [tech_stack](code/rag_engine/docs/tech_stack.md)，交接狀態見 [roadmap](code/rag_engine/docs/roadmap.md)。
 - [Todo Enhance](docs/todo_enhance.md) 記錄跨 Pod Ingestion 文件鎖的後續設計與驗收。
 - 接外部服務依序看 [03 Remote API](docs/03_engine_and_components.md#remote-api)、[05 設定](docs/05_system_config.md)及[契約範例](examples/user_remote_api/README.md)。
 - [01_ui_prototype.html](01_ui_prototype.html) 可離線操作。W1 流程涵蓋 Elasticsearch Config、索引發布、批次匯入、查詢測試、Runtime 管理預覽與 FTEST／ENT 部署 Config 匯出。

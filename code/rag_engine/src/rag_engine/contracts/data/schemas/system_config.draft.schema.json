@@ -1,0 +1,440 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rag-builder.example/schemas/system_config.draft.schema.json",
+  "title": "Published Retrieval System Config (draft)",
+  "description": "Structural draft for a published configuration snapshot. A compiler validates method-specific parameters, effective pipeline coverage, and cross-node contracts.",
+  "type": "object",
+  "properties": {
+    "system_id": {"$ref": "runtime_identity.schema.json#/$defs/uuid_v4"},
+    "config_revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "config": {
+      "$ref": "#/$defs/config"
+    }
+  },
+  "required": [
+    "system_id",
+    "config_revision",
+    "config"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "config": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "0.2-draft"
+        },
+        "pipelines": {
+          "type": "object",
+          "properties": {
+            "ingestion": {
+              "$ref": "#/$defs/ingestion_pipeline"
+            },
+            "inference": {
+              "$ref": "#/$defs/inference_pipeline"
+            }
+          },
+          "required": [
+            "ingestion",
+            "inference"
+          ],
+          "additionalProperties": false
+        },
+        "secret": {
+          "$ref": "#/$defs/system_secret"
+        },
+        "variable": {
+          "description": "Non-sensitive System values that may differ by environment. Exported keys have null values and are resolved at startup.",
+          "$ref": "#/$defs/system_value_map"
+        }
+      },
+      "required": [
+        "contract_version",
+        "pipelines"
+      ],
+      "additionalProperties": false
+    },
+    "ingestion_pipeline": {
+      "type": "object",
+      "properties": {
+        "import": {
+          "$ref": "#/$defs/builtin_node",
+          "properties": {
+            "parameters": {
+              "properties": {
+                "structdata": {
+                  "$ref": "https://rag-builder.example/schemas/data_meta.schema.json"
+                }
+              },
+              "required": [
+                "structdata"
+              ]
+            }
+          }
+        },
+        "parsing": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/builtin_node"
+            },
+            {
+              "$ref": "#/$defs/remote_ingestion_node"
+            }
+          ]
+        },
+        "chunking": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/builtin_node"
+            },
+            {
+              "$ref": "#/$defs/remote_ingestion_node"
+            }
+          ]
+        },
+        "embedding": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/builtin_node"
+            },
+            {
+              "$ref": "#/$defs/remote_ingestion_node"
+            }
+          ]
+        },
+        "indexing": {
+          "$ref": "#/$defs/builtin_node",
+          "if": {"properties": {"component_id": {"const": "elasticsearch"}}, "required": ["component_id"]},
+          "then": {"properties": {"parameters": {"$ref": "elasticsearch_connection.schema.json"}}},
+          "properties": {
+            "parameters": {
+              "properties": {
+                "structdata_overrides": {
+                  "$ref": "https://rag-builder.example/schemas/data_meta.schema.json#/$defs/overrides"
+                }
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "import",
+        "indexing"
+      ],
+      "additionalProperties": false
+    },
+    "inference_pipeline": {
+      "type": "object",
+      "properties": {
+        "inference_input": {
+          "$ref": "#/$defs/builtin_node"
+        },
+        "query_transformation": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/builtin_node"
+            },
+            {
+              "$ref": "#/$defs/remote_inference_node"
+            }
+          ]
+        },
+        "retrieval": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/builtin_node"
+            },
+            {
+              "$ref": "#/$defs/remote_inference_node"
+            }
+          ]
+        },
+        "rerank": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/builtin_node"
+            },
+            {
+              "$ref": "#/$defs/remote_inference_node"
+            }
+          ]
+        },
+        "fixed_filters": {
+          "$ref": "https://rag-builder.example/schemas/query_context.schema.json#/$defs/filters"
+        },
+        "mcp": {
+          "$ref": "#/$defs/inference_mcp"
+        }
+      },
+      "required": [
+        "inference_input"
+      ],
+      "additionalProperties": false
+    },
+    "builtin_node": {
+      "type": "object",
+      "properties": {
+        "component_id": {
+          "type": "string",
+          "minLength": 1,
+          "not": {
+            "const": "remote_api"
+          }
+        },
+        "component_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parameters": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "component_id",
+        "component_version",
+        "parameters"
+      ],
+      "additionalProperties": false
+    },
+    "remote_ingestion_node": {
+      "type": "object",
+      "properties": {
+        "component_id": {
+          "const": "remote_api"
+        },
+        "component_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contract_version": {"$ref": "https://rag-builder.example/schemas/remote_api.schema.json#/$defs/contract_version"},
+        "through": {"$ref": "https://rag-builder.example/schemas/remote_api.schema.json#/$defs/ingestion_module"},
+        "connection": {
+          "$ref": "#/$defs/remote_connection"
+        },
+        "revision": {
+          "$ref": "#/$defs/remote_revision"
+        },
+        "parameters": {
+          "type": "object"
+        },
+        "runtime_only_parameters": {
+          "description": "Top-level business parameter keys declared by the service owner to have no effect on indexed output.",
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "uniqueItems": true
+        },
+        "output": {
+          "$ref": "#/$defs/remote_ingestion_output"
+        },
+        "auth": {
+          "$ref": "#/$defs/remote_auth"
+        }
+      },
+      "required": [
+        "component_id",
+        "component_version",
+        "contract_version",
+        "through",
+        "connection",
+        "revision",
+        "parameters",
+        "output"
+      ],
+      "additionalProperties": false
+    },
+    "remote_inference_node": {
+      "type": "object",
+      "properties": {
+        "component_id": {
+          "const": "remote_api"
+        },
+        "component_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contract_version": {"$ref": "https://rag-builder.example/schemas/remote_api.schema.json#/$defs/contract_version"},
+        "through": {"$ref": "https://rag-builder.example/schemas/remote_api.schema.json#/$defs/inference_module"},
+        "connection": {
+          "$ref": "#/$defs/remote_connection"
+        },
+        "revision": {
+          "$ref": "#/$defs/remote_revision"
+        },
+        "parameters": {
+          "type": "object"
+        },
+        "auth": {
+          "$ref": "#/$defs/remote_auth"
+        }
+      },
+      "required": [
+        "component_id",
+        "component_version",
+        "contract_version",
+        "through",
+        "connection",
+        "parameters"
+      ],
+      "additionalProperties": false
+    },
+    "remote_connection": {
+      "description": "Endpoint settings for one Remote node. The URL resolves only from config.variable to an absolute http or https URL. Header values are literals or whole-value System Variable references. Connection settings are environment bindings and do not enter the index fingerprint.",
+      "type": "object",
+      "properties": {
+        "url": {
+          "$ref": "#/$defs/parameter_expression"
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600,
+          "default": 30
+        },
+        "headers": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9-]*$",
+            "not": {"pattern": "^(?:[Aa][Uu][Tt][Hh][Oo][Rr][Ii][Zz][Aa][Tt][Ii][Oo][Nn]|[Cc][Oo][Nn][Tt][Ee][Nn][Tt]-[Tt][Yy][Pp][Ee]|[Cc][Oo][Nn][Tt][Ee][Nn][Tt]-[Ll][Ee][Nn][Gg][Tt][Hh]|[Hh][Oo][Ss][Tt]|[Xx]-[Rr][Ee][Qq][Uu][Ee][Ss][Tt]-[Ii][Dd])$"}
+          },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "additionalProperties": false
+    },
+    "remote_revision": {
+      "description": "Service implementation revision declared by the service owner. A change marks Remote Ingestion output as changed and enters the index fingerprint as implementation_revision.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "not": {"pattern": "\\{\\{"}
+    },
+    "inference_mcp": {
+      "description": "MCP query tool exposed for this System's Inference pipeline. Omitted fields use the defaults.",
+      "type": "object",
+      "properties": {
+        "tool_name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]{1,64}$",
+          "default": "search"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "text_field": {
+          "description": "Effective structdata string field shown in the text rendering of each result.",
+          "type": "string",
+          "minLength": 1,
+          "default": "text"
+        }
+      },
+      "additionalProperties": false
+    },
+    "remote_ingestion_output": {
+      "type": "object",
+      "properties": {
+        "structdata": {
+          "$ref": "https://rag-builder.example/schemas/data_meta.schema.json"
+        },
+        "vectors": {
+          "type": "object",
+          "propertyNames": {
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "source_field": {
+                "type": "string",
+                "minLength": 1
+              },
+              "embedding_profile_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "dimensions": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "source_field",
+              "embedding_profile_id",
+              "dimensions"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [],
+      "additionalProperties": false,
+      "minProperties": 1
+    },
+    "system_secret": {
+      "description": "Sensitive System values. The four named properties are reserved for inbound HTTP Basic authentication by pipeline. DEV supplies test strings; export uses null for environment injection.",
+      "$ref": "#/$defs/system_value_map",
+      "properties": {
+        "INGESTION_API_USERNAME": {"$ref": "#/$defs/basic_username"},
+        "INGESTION_API_PASSWORD": {"$ref": "#/$defs/basic_password"},
+        "INFERENCE_API_USERNAME": {"$ref": "#/$defs/basic_username"},
+        "INFERENCE_API_PASSWORD": {"$ref": "#/$defs/basic_password"}
+      },
+      "dependentRequired": {
+        "INGESTION_API_USERNAME": ["INGESTION_API_PASSWORD"],
+        "INGESTION_API_PASSWORD": ["INGESTION_API_USERNAME"],
+        "INFERENCE_API_USERNAME": ["INFERENCE_API_PASSWORD"],
+        "INFERENCE_API_PASSWORD": ["INFERENCE_API_USERNAME"]
+      }
+    },
+    "basic_username": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "not": {"type": "string", "pattern": "[:\\u0000-\\u001f\\u007f]"}
+    },
+    "basic_password": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "not": {"type": "string", "pattern": "[\\u0000-\\u001f\\u007f]"}
+    },
+    "system_value_map": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "additionalProperties": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "parameter_expression": {
+      "description": "Whole-value reference. Authentication fields resolve the key from the active System Secret. A Remote connection URL resolves it from the active System Variable.",
+      "type": "string",
+      "pattern": "^\\{\\{[A-Za-z_][A-Za-z0-9_]*\\}\\}$"
+    },
+    "remote_auth": {
+      "description": "Bearer authentication for the Remote HTTP request.",
+      "type": "object",
+      "properties": {
+        "bearer_token": {
+          "$ref": "#/$defs/parameter_expression"
+        }
+      },
+      "required": [
+        "bearer_token"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

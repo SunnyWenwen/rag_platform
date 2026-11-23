@@ -1,0 +1,86 @@
+[project]
+name = "rag-engine"
+version = "0.1.0"
+description = "Retrieval Engine, Components and Runtime API for the RAG System Factory"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "jsonschema[format-nongpl]>=4.22",
+    "referencing>=0.35",
+    "langgraph>=1.0,<2",
+    "httpx>=0.27",
+    "elasticsearch[async]>=8.19,<9",
+    "tokenizers>=0.20",
+    "rfc8785>=0.1.4",
+    "pyyaml>=6.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "import-linter>=2.0",
+    "mcp>=1.10",
+    "types-PyYAML",
+]
+
+[project.scripts]
+rag-runtime = "rag_engine.runtime.__main__:main"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rag_engine"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "es: needs a real Elasticsearch at RAG_TEST_ES_URL",
+    "embedding: needs a real OpenAI-compatible embedding service at RAG_TEST_EMBEDDING_URL",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "ASYNC", "SIM", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003", "ASYNC109"]  # timeouts are explicit contract parameters
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ASYNC110", "SIM117"]
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "src"
+packages = ["rag_engine"]
+strict_optional = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.importlinter]
+root_package = "rag_engine"
+
+[[tool.importlinter.contracts]]
+name = "Layers: runtime -> engine -> components -> adapters -> core -> contracts"
+type = "layers"
+layers = [
+    "rag_engine.runtime",
+    "rag_engine.engine",
+    "rag_engine.components",
+    "rag_engine.adapters",
+    "rag_engine.core",
+    "rag_engine.contracts",
+]

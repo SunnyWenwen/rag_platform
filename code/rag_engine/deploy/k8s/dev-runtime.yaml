@@ -1,0 +1,115 @@
+# DEV Runtime: one Runtime, one Pod (StatefulSet replicas: 1), Istio strict mTLS.
+# Replace namespace, image, hosts and Secret names with the company values.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dev-runtime-resources
+  namespace: rag-platform
+data:
+  resources.yaml: |
+    text_analysis: zh_ik
+    profiles:
+      bge-m3:
+        label: BGE-M3 (1024)
+        dimensions: 1024
+        model_id: BAAI/bge-m3
+        model_revision: "REPLACE_WITH_MODEL_COMMIT"
+        endpoint: http://bge-m3-embedding/v1
+        request_model: BAAI/bge-m3
+        max_input_tokens: 8192
+        batch_size: 32
+        timeout_seconds: 30
+        tokenizer_profile_id: bge-m3
+        index_options:
+          type: int8_hnsw
+    tokenizer_profiles:
+      bge-m3:
+        label: BGE-M3 tokenizer
+        kind: huggingface
+        path: /opt/models/bge-m3/tokenizer.json
+        revision: "bge-m3@REPLACE_WITH_MODEL_COMMIT"
+    models: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dev-runtime
+  namespace: rag-platform
+  labels:
+    app.kubernetes.io/name: dev-runtime
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: dev-runtime
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: dev-runtime
+  namespace: rag-platform
+spec:
+  replicas: 1  # Pod-local Ingestion state: never scale this above 1.
+  serviceName: dev-runtime
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dev-runtime
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: dev-runtime
+        app.kubernetes.io/part-of: rag-platform
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: runtime
+          image: registry.example/rag-runtime:0.1.0
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: RAG_MODE
+              value: dev
+            - name: RAG_ENV
+              value: builder
+            - name: RAG_RUNTIME_REF
+              value: dev-runtime
+            - name: RAG_RESOURCES_FILE
+              value: /etc/rag/resources.yaml
+            - name: RAG_INDEX_BACKEND
+              value: elasticsearch
+            - name: RAG_EMBEDDING_BACKEND
+              value: service
+            - name: RAG_ES_URL
+              value: https://pled-test-es.example:9200
+            - name: RAG_PLED_ES_URL_TEMPLATE
+              value: https://es{es_number}.pled.example:9200
+            - name: RAG_ES_USERNAME
+              valueFrom: {secretKeyRef: {name: dev-runtime-es, key: username}}
+            - name: RAG_ES_PASSWORD
+              valueFrom: {secretKeyRef: {name: dev-runtime-es, key: password}}
+            - name: RAG_MANAGEMENT_USERNAME
+              valueFrom: {secretKeyRef: {name: dev-runtime-management, key: username}}
+            - name: RAG_MANAGEMENT_PASSWORD
+              valueFrom: {secretKeyRef: {name: dev-runtime-management, key: password}}
+          volumeMounts:
+            - name: resources
+              mountPath: /etc/rag
+              readOnly: true
+          readinessProbe:
+            httpGet: {path: /health/ready, port: http}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /health/live, port: http}
+            periodSeconds: 10
+            failureThreshold: 6
+          resources:
+            requests: {cpu: "1", memory: 2Gi}
+            limits: {memory: 4Gi}
+      volumes:
+        - name: resources
+          configMap:
+            name: dev-runtime-resources

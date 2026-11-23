@@ -1,0 +1,605 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rag-builder.example/schemas/runtime_http.schema.json",
+  "title": "Retrieval Runtime HTTP objects",
+  "description": "Select an endpoint object by its definition. Existing request and query DTOs have their own schemas.",
+  "$defs": {
+    "pipeline": {"type": "string", "enum": ["ingestion", "inference"]},
+    "request_id": {"description": "Tracing ID echoed in X-Request-Id. Runtime generates a UUIDv4 when the caller omits it or sends an invalid value.", "type": "string", "pattern": "^[A-Za-z0-9._-]{1,128}$"},
+    "inference_response": {
+      "type": "object",
+      "properties": {
+        "contexts": {
+          "description": "Exactly one final Context. Its query equals ori_query and its only ResultSet is keyed final.",
+          "$ref": "query_context.schema.json",
+          "maxItems": 1,
+          "items": {
+            "properties": {
+              "result_sets": {
+                "minItems": 1,
+                "maxItems": 1,
+                "items": {"properties": {"key": {"const": "final"}}}
+              }
+            }
+          }
+        },
+        "query_variants": {
+          "description": "Executed query texts in execution order.",
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "minItems": 1
+        },
+        "config_revision": {"type": "string", "minLength": 1},
+        "index_generation": {"anyOf": [{"$ref": "runtime_identity.schema.json#/$defs/uuid_v4"}, {"type": "null"}]}
+      },
+      "required": ["contexts", "query_variants", "config_revision", "index_generation"],
+      "additionalProperties": true
+    },
+    "apply_operation": {"type": "string", "enum": ["initialize", "reload", "update", "recover_index"]},
+    "document_status": {"type": "string", "enum": ["queued", "running", "cancelling", "completed", "cancelled", "failed", "unknown"]},
+    "run_status": {"anyOf": [{"$ref": "#/$defs/document_status"}, {"const": "partial"}]},
+    "index_impact_action": {"type": "string", "enum": ["create", "reuse", "rebuild_required", "recover", "blocked", "none"]},
+    "index_fingerprint": {"$ref": "index_fingerprint.v1.schema.json#/$defs/mapping_meta/properties/index_fingerprint"},
+    "recovery_context": {
+      "type": "object",
+      "properties": {
+        "config_revision": {"type": "string", "minLength": 1},
+        "index_generation": {"$ref": "runtime_identity.schema.json#/$defs/uuid_v4"}
+      },
+      "required": ["config_revision", "index_generation"],
+      "additionalProperties": false
+    },
+    "config_request": {
+      "type": "object",
+      "properties": {
+        "runtime_ref": {"type": "string", "minLength": 1},
+        "catalog_revision": {"type": "string", "minLength": 1},
+        "draft_revision": {"type": "string", "minLength": 1},
+        "expected_active_revision": {"type": ["string", "null"], "minLength": 1},
+        "expected_index_generation": {"anyOf": [{"$ref": "runtime_identity.schema.json#/$defs/uuid_v4"}, {"type": "null"}]},
+        "expected_index_fingerprint": {"anyOf": [{"$ref": "#/$defs/index_fingerprint"}, {"type": "null"}]},
+        "pipeline": {"$ref": "#/$defs/pipeline"},
+        "config": {"$ref": "https://rag-builder.example/schemas/system_config.draft.schema.json#/$defs/config"},
+        "operation": {"$ref": "#/$defs/apply_operation"},
+        "recovery_from": {"$ref": "#/$defs/recovery_context"}
+      },
+      "required": ["runtime_ref", "catalog_revision", "draft_revision", "config", "expected_active_revision", "expected_index_generation", "expected_index_fingerprint"],
+      "allOf": [
+        {
+          "if": {"properties": {"operation": {"const": "recover_index"}}, "required": ["operation"]},
+          "then": {"required": ["recovery_from"]},
+          "else": {"not": {"required": ["recovery_from"]}}
+        },
+        {
+          "if": {"properties": {"expected_index_generation": {"type": "null"}}},
+          "then": {"properties": {"expected_index_fingerprint": {"type": "null"}}},
+          "else": {"properties": {
+            "expected_index_fingerprint": {"$ref": "#/$defs/index_fingerprint"},
+            "expected_active_revision": {"type": "string"}
+          }}
+        }
+      ]
+    },
+    "validate_request": {"$ref": "#/$defs/config_request", "unevaluatedProperties": false},
+    "apply_request": {
+      "allOf": [
+        {"$ref": "#/$defs/config_request"},
+        {
+          "type": "object",
+          "properties": {
+            "context_revision": {"type": "string", "minLength": 1},
+            "target_index_generation": {
+              "description": "Builder-provided new physical index generation required when preflight returns create, rebuild_required or recover.",
+              "$ref": "runtime_identity.schema.json#/$defs/uuid_v4"
+            },
+            "config_revision": {"type": "string", "minLength": 1},
+            "allow_rebuild": {"type": "boolean", "default": false}
+          },
+          "required": ["context_revision", "config_revision"]
+        },
+        {"required": ["operation"]},
+        {
+          "if": {"properties": {"operation": {"const": "update"}}, "required": ["operation"]},
+          "then": {},
+          "else": {"not": {"required": ["allow_rebuild"]}}
+        },
+        {
+          "if": {"properties": {"operation": {"enum": ["initialize", "update", "recover_index"]}}},
+          "else": {"not": {"required": ["target_index_generation"]}}
+        },
+        {
+          "if": {"properties": {"operation": {"const": "recover_index"}}},
+          "then": {"required": ["target_index_generation"]}
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "validation": {
+      "type": "object",
+      "properties": {
+        "runtime_ref": {"type": "string", "minLength": 1},
+        "catalog_revision": {"type": "string", "minLength": 1},
+        "draft_revision": {"type": "string", "minLength": 1},
+        "pipeline": {"$ref": "#/$defs/pipeline"},
+        "context_revision": {"type": "string", "minLength": 1},
+        "active_config_revision": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+        "loaded": {"type": "boolean"},
+        "index_impact": {"$ref": "#/$defs/index_impact"}
+      },
+      "required": [
+        "runtime_ref",
+        "catalog_revision",
+        "draft_revision",
+        "context_revision",
+        "active_config_revision",
+        "loaded",
+        "index_impact"
+      ],
+      "additionalProperties": false,
+      "if": {"properties": {"loaded": {"const": true}}, "required": ["loaded"]},
+      "then": {"properties": {"active_config_revision": {"type": "string", "minLength": 1}}}
+    },
+    "index_impact": {
+      "type": "object",
+      "properties": {
+        "action": {"$ref": "#/$defs/index_impact_action"},
+        "code": {"type": "string", "minLength": 1},
+        "message": {"type": "string"},
+        "index_fingerprint": {"$ref": "#/$defs/index_fingerprint"}
+      },
+      "required": ["action", "code", "message"],
+      "if": {"properties": {"action": {"enum": ["create", "reuse", "rebuild_required", "recover"]}}},
+      "then": {"required": ["index_fingerprint"]},
+      "else": {"not": {"required": ["index_fingerprint"]}},
+      "additionalProperties": false
+    },
+    "pipeline_status": {
+      "type": "object",
+      "properties": {
+        "loaded": {"type": "boolean"},
+        "ready": {"type": "boolean"},
+        "config_revision": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+        "index_generation": {"anyOf": [{"$ref": "runtime_identity.schema.json#/$defs/uuid_v4"}, {"type": "null"}]}
+      },
+      "required": ["loaded", "ready", "config_revision", "index_generation"],
+      "additionalProperties": false,
+      "if": {"properties": {"loaded": {"const": false}}, "required": ["loaded"]},
+      "then": {
+        "properties": {
+          "ready": {"const": false},
+          "config_revision": {"type": "null"},
+          "index_generation": {"type": "null"}
+        }
+      },
+      "else": {"properties": {"config_revision": {"type": "string", "minLength": 1}}}
+    },
+    "system_status": {
+      "type": "object",
+      "properties": {
+        "system_id": {"$ref": "runtime_identity.schema.json#/$defs/uuid_v4"},
+        "active_config_revision": {"type": "string", "minLength": 1},
+        "loaded": {"type": "boolean"},
+        "busy": {"type": "boolean"},
+        "index_ready": {"anyOf": [{"type": "boolean"}, {"type": "null"}]},
+        "index_generation": {"anyOf": [{"$ref": "runtime_identity.schema.json#/$defs/uuid_v4"}, {"type": "null"}]},
+        "created_by_operation_id": {"type": "string", "minLength": 1},
+        "can_ingest": {"type": "boolean"},
+        "can_query": {"type": "boolean"},
+        "pipelines": {
+          "type": "object",
+          "properties": {
+            "ingestion": {"$ref": "#/$defs/pipeline_status"},
+            "inference": {"$ref": "#/$defs/pipeline_status"}
+          },
+          "required": ["ingestion", "inference"],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "system_id",
+        "active_config_revision",
+        "loaded",
+        "busy",
+        "index_ready",
+        "index_generation",
+        "can_ingest",
+        "can_query",
+        "pipelines"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"index_ready": {"const": true}}, "required": ["index_ready"]},
+          "then": {"properties": {"index_generation": {"$ref": "runtime_identity.schema.json#/$defs/uuid_v4"}}}
+        },
+        {
+          "if": {"properties": {"loaded": {"const": false}}, "required": ["loaded"]},
+          "then": {
+            "properties": {
+              "index_generation": {"$ref": "runtime_identity.schema.json#/$defs/uuid_v4"},
+              "index_ready": {"type": "boolean"},
+              "can_ingest": {"const": false},
+              "can_query": {"const": false}
+            }
+          }
+        }
+      ]
+    },
+    "system_list": {
+      "type": "object",
+      "properties": {"systems": {"type": "array", "items": {"$ref": "#/$defs/system_status"}}},
+      "required": ["systems"],
+      "additionalProperties": false
+    },
+    "error": {
+      "type": "object",
+      "properties": {
+        "code": {"type": "string", "minLength": 1},
+        "message": {"type": "string", "minLength": 1},
+        "module": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+        "path": {"type": "string", "pattern": "^/"},
+        "run_id": {"type": "string", "minLength": 1},
+        "request_id": {"$ref": "#/$defs/request_id"}
+      },
+      "required": ["code", "message", "module"],
+      "additionalProperties": false
+    },
+    "error_response": {
+      "type": "object",
+      "properties": {"error": {"$ref": "#/$defs/error"}},
+      "required": ["error"],
+      "additionalProperties": false
+    },
+    "document_conflict": {
+      "type": "object",
+      "properties": {
+        "document_id": {"$ref": "https://rag-builder.example/schemas/document.schema.json#/$defs/document_id"},
+        "status": {"anyOf": [{"$ref": "#/$defs/document_status"}, {"type": "null"}]},
+        "run_id": {"type": "string", "minLength": 1}
+      },
+      "required": ["document_id", "status"],
+      "additionalProperties": false,
+      "if": {"properties": {"status": {"const": null}}, "required": ["status"]},
+      "then": {"not": {"required": ["run_id"]}}
+    },
+    "document_busy_error_response": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "object",
+          "properties": {
+            "code": {"const": "DOCUMENT_BUSY"},
+            "message": {"type": "string", "minLength": 1},
+            "module": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+            "path": {"type": "string", "pattern": "^/"},
+            "run_id": {"type": "string", "minLength": 1},
+            "request_id": {"$ref": "#/$defs/request_id"},
+            "conflicts": {"type": "array", "items": {"$ref": "#/$defs/document_conflict"}, "minItems": 1}
+          },
+          "required": ["code", "message", "module", "path", "conflicts"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["error"],
+      "additionalProperties": false
+    },
+    "ingestion_conflict_response": {
+      "oneOf": [
+        {"$ref": "#/$defs/document_busy_error_response"},
+        {
+          "allOf": [
+            {"$ref": "#/$defs/error_response"},
+            {
+              "not": {
+                "properties": {
+                  "error": {
+                    "properties": {
+                      "code": {"$ref": "#/$defs/document_busy_error_response/properties/error/properties/code"}
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "ingestion_accepted": {
+      "type": "object",
+      "properties": {
+        "run_id": {"type": "string", "minLength": 1},
+        "status": {"const": "queued"},
+        "config_revision": {"type": "string", "minLength": 1},
+        "documents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {"document_id": {"$ref": "https://rag-builder.example/schemas/document.schema.json#/$defs/document_id"}, "status": {"const": "queued"}},
+            "required": ["document_id", "status"],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        }
+      },
+      "required": ["run_id", "status", "config_revision", "documents"],
+      "additionalProperties": false
+    },
+    "run_document_fields": {
+      "type": "object",
+      "properties": {
+        "document_id": {"$ref": "https://rag-builder.example/schemas/document.schema.json#/$defs/document_id"},
+        "status": {"$ref": "#/$defs/document_status"},
+        "module": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+        "updated_at": {"anyOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]},
+        "error": {"anyOf": [{"$ref": "#/$defs/error"}, {"type": "null"}]}
+      },
+      "required": ["document_id", "status", "module", "updated_at", "error"],
+      "if": {"properties": {"status": {"const": "failed"}}, "required": ["status"]},
+      "then": {"properties": {"error": {"$ref": "#/$defs/error"}}}
+    },
+    "run_document": {"$ref": "#/$defs/run_document_fields", "unevaluatedProperties": false},
+    "document_ingestion_status": {
+      "allOf": [
+        {"$ref": "#/$defs/run_document_fields"},
+        {
+          "type": "object",
+          "properties": {"run_id": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]}},
+          "required": ["run_id"]
+        },
+        {
+          "if": {"properties": {"run_id": {"const": null}}, "required": ["run_id"]},
+          "then": {
+            "properties": {
+              "status": {"const": "unknown"},
+              "module": {"type": "null"},
+              "updated_at": {"type": "null"},
+              "error": {"type": "null"}
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "run_counts": {
+      "type": "object",
+      "properties": {
+        "total": {"type": "integer", "minimum": 0},
+        "queued": {"type": "integer", "minimum": 0},
+        "running": {"type": "integer", "minimum": 0},
+        "cancelling": {"type": "integer", "minimum": 0},
+        "completed": {"type": "integer", "minimum": 0},
+        "cancelled": {"type": "integer", "minimum": 0},
+        "failed": {"type": "integer", "minimum": 0},
+        "unknown": {"type": "integer", "minimum": 0}
+      },
+      "required": ["total", "queued", "running", "cancelling", "completed", "cancelled", "failed", "unknown"],
+      "additionalProperties": false
+    },
+    "ingestion_run_status": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {"run_id": {"type": "string", "minLength": 1}, "status": {"const": "unknown"}},
+          "required": ["run_id", "status"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "run_id": {"type": "string", "minLength": 1},
+            "status": {"$ref": "#/$defs/run_status"},
+            "config_revision": {"type": "string", "minLength": 1},
+            "counts": {"$ref": "#/$defs/run_counts"},
+            "documents": {"type": "array", "items": {"$ref": "#/$defs/run_document"}, "minItems": 1}
+          },
+          "required": ["run_id", "status", "config_revision", "counts", "documents"],
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {"properties": {"status": {"const": "queued"}}, "required": ["status"]},
+              "then": {
+                "properties": {
+                  "documents": {
+                    "items": {
+                      "properties": {"status": {"type": "string", "enum": ["queued"]}},
+                      "required": ["status"]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {"properties": {"status": {"const": "running"}}, "required": ["status"]},
+              "then": {
+                "properties": {
+                  "documents": {
+                    "contains": {
+                      "properties": {"status": {"type": "string", "enum": ["queued", "running", "cancelling"]}},
+                      "required": ["status"]
+                    },
+                    "not": {
+                      "items": {
+                        "properties": {"status": {"type": "string", "enum": ["queued"]}},
+                        "required": ["status"]
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {"properties": {"status": {"const": "unknown"}}, "required": ["status"]},
+              "then": {
+                "properties": {
+                  "documents": {
+                    "contains": {
+                      "properties": {"status": {"type": "string", "enum": ["unknown"]}},
+                      "required": ["status"]
+                    },
+                    "not": {
+                      "contains": {
+                        "properties": {"status": {"type": "string", "enum": ["queued", "running", "cancelling"]}},
+                        "required": ["status"]
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {"properties": {"status": {"const": "completed"}}, "required": ["status"]},
+              "then": {
+                "properties": {
+                  "documents": {
+                    "items": {
+                      "properties": {"status": {"type": "string", "enum": ["completed"]}},
+                      "required": ["status"]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {"properties": {"status": {"const": "cancelled"}}, "required": ["status"]},
+              "then": {
+                "properties": {
+                  "documents": {
+                    "items": {
+                      "properties": {"status": {"type": "string", "enum": ["cancelled"]}},
+                      "required": ["status"]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {"properties": {"status": {"const": "partial"}}, "required": ["status"]},
+              "then": {
+                "properties": {
+                  "documents": {
+                    "items": {
+                      "properties": {"status": {"type": "string", "enum": ["completed", "cancelled", "failed"]}},
+                      "required": ["status"]
+                    },
+                    "allOf": [
+                      {
+                        "contains": {
+                          "properties": {"status": {"type": "string", "enum": ["completed"]}},
+                          "required": ["status"]
+                        }
+                      },
+                      {
+                        "contains": {
+                          "properties": {"status": {"type": "string", "enum": ["cancelled", "failed"]}},
+                          "required": ["status"]
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {"properties": {"status": {"const": "failed"}}, "required": ["status"]},
+              "then": {
+                "properties": {
+                  "documents": {
+                    "items": {
+                      "properties": {"status": {"type": "string", "enum": ["failed", "cancelled"]}},
+                      "required": ["status"]
+                    },
+                    "contains": {
+                      "properties": {"status": {"type": "string", "enum": ["failed"]}},
+                      "required": ["status"]
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "cancel_document_result": {
+      "type": "object",
+      "properties": {
+        "document_id": {"$ref": "https://rag-builder.example/schemas/document.schema.json#/$defs/document_id"},
+        "result": {"type": "string"},
+        "status": {"anyOf": [{"$ref": "#/$defs/document_status"}, {"type": "null"}]}
+      },
+      "required": ["document_id", "result", "status"],
+      "additionalProperties": false,
+      "oneOf": [
+        {"properties": {"result": {"const": "cancelled"}, "status": {"const": "cancelled"}}},
+        {"properties": {"result": {"const": "cancelling"}, "status": {"const": "cancelling"}}},
+        {
+          "properties": {
+            "result": {"const": "already_finished"},
+            "status": {"type": "string", "enum": ["completed", "failed"]}
+          }
+        },
+        {"properties": {"result": {"const": "not_cancellable"}, "status": {"const": "unknown"}}},
+        {"properties": {"result": {"const": "not_found"}, "status": {"type": "null"}}}
+      ]
+    },
+    "ingestion_cancel_result": {
+      "type": "object",
+      "properties": {
+        "run_id": {"type": "string", "minLength": 1},
+        "documents": {"type": "array", "items": {"$ref": "#/$defs/cancel_document_result"}, "minItems": 1}
+      },
+      "required": ["run_id", "documents"],
+      "additionalProperties": false
+    },
+    "document_exists": {
+      "type": "object",
+      "properties": {"document_id": {"$ref": "https://rag-builder.example/schemas/document.schema.json#/$defs/document_id"}, "exists": {"type": "boolean"}},
+      "required": ["document_id", "exists"],
+      "additionalProperties": false
+    },
+    "document_list_query": {
+      "type": "object",
+      "properties": {
+        "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "default": 100},
+        "cursor": {"type": "string", "minLength": 1}
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "document_list": {
+      "type": "object",
+      "properties": {
+        "documents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "document_id": {"$ref": "https://rag-builder.example/schemas/document.schema.json#/$defs/document_id"},
+              "source_revisions": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}
+            },
+            "required": ["document_id", "source_revisions"],
+            "additionalProperties": false
+          }
+        },
+        "next_cursor": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]}
+      },
+      "required": ["documents", "next_cursor"],
+      "additionalProperties": false
+    },
+    "document_retire": {
+      "type": "object",
+      "properties": {
+        "document_id": {"$ref": "https://rag-builder.example/schemas/document.schema.json#/$defs/document_id"},
+        "result": {"type": "string", "enum": ["deleted", "not_found"]}
+      },
+      "required": ["document_id", "result"],
+      "additionalProperties": false
+    },
+    "health": {
+      "type": "object",
+      "properties": {"status": {"const": "ok"}},
+      "required": ["status"],
+      "additionalProperties": false
+    }
+  }
+}

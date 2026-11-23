@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rag-builder.example/schemas/query_context.schema.json",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "properties": {
+      "ori_query": {
+        "type": "string",
+        "minLength": 1
+      },
+      "query": {
+        "type": "string",
+        "minLength": 1
+      },
+      "filters": {
+        "$ref": "#/$defs/filters"
+      },
+      "result_sets": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "data": {
+                    "$ref": "https://rag-builder.example/schemas/document.schema.json#/$defs/candidate"
+                  },
+                  "score": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "data"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "key",
+            "items"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "metadata": {
+        "type": "object"
+      }
+    },
+    "required": [
+      "ori_query",
+      "query",
+      "filters",
+      "result_sets",
+      "metadata"
+    ],
+    "additionalProperties": false
+  },
+  "$defs": {
+    "filter": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/filter_condition"
+        },
+        {
+          "$ref": "#/$defs/any_filter"
+        }
+      ]
+    },
+    "filters": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/filter"
+      }
+    },
+    "filter_condition": {
+      "type": "object",
+      "properties": {
+        "field": {
+          "type": "string",
+          "pattern": "^structdata\\..+$"
+        },
+        "operator": {
+          "enum": [
+            "eq",
+            "in",
+            "gt",
+            "gte",
+            "lt",
+            "lte"
+          ]
+        },
+        "value": {}
+      },
+      "required": [
+        "field",
+        "operator",
+        "value"
+      ],
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "operator": {
+            "const": "in"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "value": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "value": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        }
+      }
+    },
+    "any_filter": {
+      "type": "object",
+      "properties": {
+        "any": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/filter_condition"
+          }
+        }
+      },
+      "required": [
+        "any"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

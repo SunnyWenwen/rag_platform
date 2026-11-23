@@ -1,0 +1,314 @@
+{
+  "projection": {
+    "version": 1,
+    "ingestion": [
+      {
+        "kind": "builtin",
+        "module": "import",
+        "component_id": "platform",
+        "component_version": "1.0.0",
+        "parameters": {
+          "source": "structdata"
+        },
+        "output_structdata": {
+          "body": {
+            "type": "string",
+            "required": true,
+            "searchable": false,
+            "filterable": false
+          },
+          "title": {
+            "type": "string",
+            "required": true,
+            "searchable": false,
+            "filterable": true
+          },
+          "price": {
+            "type": "number",
+            "required": false,
+            "searchable": false,
+            "filterable": false
+          },
+          "tags": {
+            "type": "string_array",
+            "required": false,
+            "searchable": false,
+            "filterable": true
+          }
+        }
+      },
+      {
+        "kind": "builtin",
+        "module": "parsing",
+        "component_id": "passthrough",
+        "component_version": "1.0.0",
+        "parameters": {},
+        "output_structdata": {
+          "body": {
+            "type": "string",
+            "required": true,
+            "searchable": false,
+            "filterable": false
+          },
+          "title": {
+            "type": "string",
+            "required": true,
+            "searchable": false,
+            "filterable": true
+          },
+          "price": {
+            "type": "number",
+            "required": false,
+            "searchable": false,
+            "filterable": false
+          },
+          "tags": {
+            "type": "string_array",
+            "required": false,
+            "searchable": false,
+            "filterable": true
+          }
+        }
+      },
+      {
+        "kind": "builtin",
+        "module": "chunking",
+        "component_id": "recursive",
+        "component_version": "1.0.0",
+        "parameters": {
+          "split_field": "body",
+          "output_field": "text",
+          "copy_fields": [
+            {
+              "source_field": "price",
+              "output_field": "price"
+            },
+            {
+              "source_field": "tags",
+              "output_field": "tags"
+            },
+            {
+              "source_field": "title",
+              "output_field": "title"
+            }
+          ],
+          "max_tokens": 500,
+          "overlap_tokens": 50,
+          "tokenizer_revision": "fixture@1",
+          "separators": [
+            "\n\n",
+            "\n",
+            " ",
+            ""
+          ],
+          "keep_separator": false,
+          "preserve_original": false,
+          "include_original_chunk": false
+        },
+        "output_structdata": {
+          "text": {
+            "type": "string",
+            "required": true,
+            "searchable": false,
+            "filterable": false
+          },
+          "title": {
+            "type": "string",
+            "required": true,
+            "searchable": false,
+            "filterable": true
+          },
+          "price": {
+            "type": "number",
+            "required": false,
+            "searchable": false,
+            "filterable": false
+          },
+          "tags": {
+            "type": "string_array",
+            "required": false,
+            "searchable": false,
+            "filterable": true
+          }
+        }
+      },
+      {
+        "kind": "builtin",
+        "module": "embedding",
+        "component_id": "dense",
+        "component_version": "1.0.0",
+        "parameters": {
+          "compose_text": false
+        },
+        "output_structdata": {
+          "text": {
+            "type": "string",
+            "required": true,
+            "searchable": false,
+            "filterable": false
+          },
+          "title": {
+            "type": "string",
+            "required": true,
+            "searchable": false,
+            "filterable": true
+          },
+          "price": {
+            "type": "number",
+            "required": false,
+            "searchable": false,
+            "filterable": false
+          },
+          "tags": {
+            "type": "string_array",
+            "required": false,
+            "searchable": false,
+            "filterable": true
+          }
+        }
+      }
+    ],
+    "index": {
+      "component_id": "elasticsearch",
+      "component_version": "1.0.0",
+      "structdata": {
+        "text": {
+          "type": "string",
+          "required": true,
+          "searchable": true,
+          "filterable": false
+        },
+        "title": {
+          "type": "string",
+          "required": true,
+          "searchable": false,
+          "filterable": true
+        },
+        "price": {
+          "type": "number",
+          "required": false,
+          "searchable": false,
+          "filterable": true
+        },
+        "tags": {
+          "type": "string_array",
+          "required": false,
+          "searchable": false,
+          "filterable": true
+        }
+      },
+      "vector_bindings": {
+        "text": {
+          "source_field": "text",
+          "embedding_profile_id": "text-v1",
+          "dimensions": 3
+        }
+      },
+      "embedding_spaces": {
+        "text": {
+          "model_id": "fixture-model",
+          "model_revision": "1"
+        }
+      },
+      "mapping": {
+        "dynamic": "strict",
+        "dynamic_templates": [],
+        "runtime": {},
+        "_source": {
+          "enabled": true
+        },
+        "properties": {
+          "document_id": {
+            "type": "keyword"
+          },
+          "data_id": {
+            "type": "keyword"
+          },
+          "source_revision": {
+            "type": "keyword"
+          },
+          "write_id": {
+            "type": "keyword"
+          },
+          "structdata": {
+            "properties": {
+              "title": {
+                "type": "keyword"
+              },
+              "price": {
+                "type": "double"
+              },
+              "tags": {
+                "type": "keyword"
+              },
+              "text": {
+                "type": "text",
+                "analyzer": "standard"
+              }
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "enabled": false
+          },
+          "vectors": {
+            "properties": {
+              "text": {
+                "type": "object",
+                "properties": {
+                  "values": {
+                    "type": "dense_vector",
+                    "dims": 3,
+                    "index": true,
+                    "similarity": "cosine"
+                  },
+                  "embedding_profile_id": {
+                    "type": "keyword",
+                    "index": false
+                  },
+                  "source_field": {
+                    "type": "keyword",
+                    "index": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "settings": {
+        "analysis": {},
+        "similarity": {}
+      }
+    }
+  },
+  "index_name": "rag-builder-7b38858b-6f26-4647-9dfb-84044000413a-40925e4c-56ba-4092-a019-69391d558b01",
+  "index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
+  "mapping_meta": {
+    "env": "builder",
+    "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
+    "index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061",
+    "index_fingerprint_version": 1,
+    "created_by_operation_id": "initialize-001"
+  },
+  "ownership_cases": [
+    {"name": "verified_binding", "expected_code": null},
+    {"name": "wrong_environment", "meta_changes": {"env": "ftest"}, "expected_code": "INDEX_OWNERSHIP_UNVERIFIED"},
+    {
+      "name": "wrong_system",
+      "meta_changes": {"system_id": "f44de426-675d-4e91-a001-17509b68a025"},
+      "expected_code": "INDEX_OWNERSHIP_UNVERIFIED"
+    },
+    {
+      "name": "wrong_fingerprint",
+      "meta_changes": {"index_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000"},
+      "expected_code": "INDEX_OWNERSHIP_UNVERIFIED"
+    },
+    {"name": "missing_rule_version", "omit_meta": ["index_fingerprint_version"], "expected_code": "INDEX_OWNERSHIP_UNVERIFIED"},
+    {
+      "name": "wrong_physical_index",
+      "index_name": "rag-builder-7b38858b-6f26-4647-9dfb-84044000413a-f65ce489-2a7e-421c-8bef-3d03464fc202",
+      "expected_code": "INDEX_OWNERSHIP_UNVERIFIED"
+    }
+  ]
+}

@@ -6,6 +6,8 @@
 
 [W1 開發基準與待決邊界](08_plan_and_decisions.md#w1-contract-readiness)
 
+Runtime 端的實作骨架在 [code/rag_engine](../code/rag_engine/README.md)，使用本 repo 同一份 Schema 與 OpenAPI。
+
 <a id="builder-runtime-quickstart"></a>
 ## 本機串接
 

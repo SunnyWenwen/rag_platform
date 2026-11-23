@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rag-builder.example/schemas/data_meta.schema.json",
+  "title": "Data Meta Schema for Document.structdata",
+  "$ref": "#/$defs/structdata",
+  "$defs": {
+    "field_type": {
+      "enum": [
+        "string",
+        "string_array",
+        "integer",
+        "number",
+        "boolean",
+        "date",
+        "datetime"
+      ]
+    },
+    "field": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/field_type"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "searchable": {
+          "type": "boolean",
+          "default": false
+        },
+        "filterable": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": [
+        "type",
+        "required"
+      ],
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "type": {
+            "not": {
+              "const": "string"
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "searchable": {
+            "const": false
+          }
+        }
+      }
+    },
+    "structdata": {
+      "type": "object",
+      "propertyNames": {
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/field"
+      }
+    },
+    "overrides": {
+      "type": "object",
+      "propertyNames": {
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "searchable": {
+            "type": "boolean"
+          },
+          "filterable": {
+            "type": "boolean"
+          }
+        },
+        "required": [],
+        "additionalProperties": false,
+        "minProperties": 1
+      }
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "datetime": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"
+    }
+  }
+}

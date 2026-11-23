@@ -1,0 +1,34 @@
+# 給開發 Agent 的說明
+
+這個目錄是 Retrieval Runtime（rag_engine）。規格在 rag_platform 的 `docs/`：放在 rag_platform 的 `code/rag_engine/` 時就是 `../../docs/`；搬到公司內部 repo 後指向對應的 rag_platform。本目錄的 `docs/` 只記錄實作。開始前依序讀：
+
+1. `docs/tech_stack.md`：技術選型與理由，不要換掉已定的框架。
+2. `docs/architecture.md`：分層、模組責任與不可破壞的規則。
+3. `docs/roadmap.md`：目前狀態、下一步與已知缺口。
+
+## 工作規則
+
+- 每次修改後執行 `make check`（ruff、mypy、import-linter、pytest），全部通過才算完成。新行為要有測試。
+- HTTP 回應形狀以 `src/rag_engine/contracts/data/schemas/runtime_http.schema.json` 為準；測試用 `validate_http(...)` 驗證每個回應。
+- `src/rag_engine/contracts/data/` 不可手改。規格變更時先改 rag_platform，再執行 `make sync-contracts`（在 rag_platform 內預設取 `../..`，其他位置加 `PLATFORM=<rag_platform 路徑>`）。
+- Runtime 一個 Pod 只能跑一個程序。不要加 gunicorn、多 worker 或跨程序共享狀態。
+- `runtime/ingestion.py` 中修改占用、Queue、Run 狀態的程式碼不能有 `await`。
+- 會影響索引內容的設定一定要進 `engine/compiler.py` 的指紋投影；純查詢參數不能進。
+- 錯誤一律用 `ApiError`（runtime）或 `EngineError` 子類（engine 以下），代碼要在 rag_platform 06 的錯誤表中。
+- Log 不得含 Secret 值、`Authorization` 或文件原文全文。
+
+## 常用指令
+
+```bash
+make install        # uv sync
+make check          # 全部檢查
+make run            # 本機示範：記憶體索引＋hash 向量＋測試資源，帳密 mock/mock
+make test-es        # 需要 RAG_TEST_ES_URL，對真實 ES 驗證
+```
+
+## 新增一個內建 Component
+
+1. 在 `components/` 寫純函式實作與單元測試。
+2. 在 `engine/compiler.py` 加參數驗證、欄位推導與指紋投影；在 `engine/pipelines.py` 接到 LangGraph 節點。
+3. 在 `engine/catalog.py` 的 `IMPLEMENTED` 加入 `(module, component_id, version)`，Descriptor 必須已存在於 rag_platform 的 Catalog。
+4. 補一個走 HTTP 的流程測試。
