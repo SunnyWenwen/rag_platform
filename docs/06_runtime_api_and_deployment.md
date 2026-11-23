@@ -21,6 +21,7 @@
 - [Runtime API 的待決範圍與驗收](08_plan_and_decisions.md#runtime-api-decisions)
 - [執行模式、覆寫與認證](#src-21-8-api-d0506-的具體情境)
 - [文件資料查詢與直接刪除](#src-21-9-文件資料查詢與直接刪除)
+- [設定來源與保存位置](#runtime-config-sources)
 - [Runtime 設定：範圍與管理方式](#src-22-1-範圍與管理方式)
 - [Runtime 設定：已確認的初始預設](#src-22-2-已確認的初始預設)
 - [Runtime 設定：容量、失敗與保存行為](#src-22-3-容量失敗與保存行為)
@@ -164,7 +165,7 @@ Builder Backend 啟動、Runtime 恢復連線後，以及每 60 秒（可由 Bui
 - **恢復發起。** 在 DEV，Builder 維持 `desired` 的已發布版本。Runtime 未載入或 `index_ready: false` 時，Builder 可在同步期間以預檢查核原因，並依發布紀錄區分首次部署與遺失。已確認索引遺失時，Runtime 暫停受影響 System 的查詢與匯入。Builder 顯示新索引會從空的開始、須重新匯入，等使用者確認後才提交 `recover_index` 和原已發布的 Config。同步與補載流程只查核與回報遺失，已確認發起的操作可依原操作鍵查核及重送。
 - **恢復查核。** 帶入 `recovery_from` 的已發布版本及最後確認的索引世代。Runtime 先確認[共用控制索引](#es-runtime-control-index)可用。若索引可用但該 System 的控制紀錄缺失，可信 Builder 的部署記錄可補已發布身分，Runtime 仍須在取得管理權後確認實體目標不存在、沒有競爭綁定且沒有尚待查明的舊操作。若不能安全查證，維持待查。任何找到的索引都須先核對歸屬與綁定；ES 連線失敗或權限不足也維持待查。`recover_index` 只建立缺失的檢索索引。
 - **失敗與交接。** 新版驗證失敗時舊版繼續服務。刪除後新建失敗時，保留最後提交的版本供對照並回報不可用；待查核中的 ES 寫入先用操作 ID、預定索引及最後已確認步驟確認結果，再按原操作接手。新建成功但版本尚未提交時，先查證新索引，再完成提交。共用索引由一個管理操作建立新世代，完成後由 Builder 向仍預期上線的其他目標下發 `reload`。各目標核對並載入新世代後才恢復受理。恢復成功後初次匯入仍依 Builder 的查詢開放規則。
-- **啟動來源。** 共用 DEV 由 [Builder 主動下發已發布的 Config](#builder-managed-dev-runtimes)，目標 Runtime 接到指令後載入指定流程。獨立部署由 Pod 讀取匯出的 Config 和環境部署設定的 `pipeline`，詳見[獨立部署](#src-07-92-驗證與部署)。
+- System Config 依[部署模式與設定來源](#runtime-config-sources)載入。
 
 Runtime 從有效 Config 推導會影響索引內容、向量語意及搜尋能力的設定，將結果正規化後計算 SHA-256。輸入包括生效的解析／切分設定、文件 Embedding Profile（含模型版本與維度）及推導出的索引 mapping 和搜尋設定。正規化消除 JSON 物件鍵順序的影響，保留具語意的順序。純 Inference 參數如 `top_n` 不改變指紋。精確欄位與序列化見[索引指紋 v1](#index-fingerprint-v1-proposal)。
 
@@ -541,8 +542,9 @@ Runtime 登記取消後，取消與狀態查詢皆直接顯示 `cancelled`。若
 #### 終態紀錄清理
 
 - 每個 Run 從最後一份文件完成本機結案起最多保留三天（259,200 秒）。已回報 `cancelled` 但仍在收尾的文件，完成收尾後才算結案。
-- 每個 Pod 預設每小時清理已到期的 Run，並回收逐文件紀錄及本機查詢對照。狀態查詢及取消只檢查目標紀錄是否到期，到期即視為查無。提交 Ingestion 只檢查本批文件的活躍占用與容量。
-- 每個 Pod 最多保留 10,000 份已結案的文件工作紀錄。Run 結案時若超過上限，從最早結案的 Run 開始整組回收。活躍工作由 Queue 容量、執行 Deadline、結案及取消管理。三天清理只處理歷史紀錄。
+- Runtime 初始化記憶體工作紀錄後，每個程序啟動一個背景 Task。依 [Runtime 清理間隔](#src-22-2-已確認的初始預設)等待後執行，清理已到期的 Run、逐文件紀錄及本機查詢對照。前一輪完成後才開始下一輪。Runtime 關閉時停止並等待 Task 結束。
+- 查詢及取消只檢查目標紀錄是否到期，到期即視為查無。提交 Ingestion 只檢查本批文件的活躍占用與容量。
+- 每個 Pod 最多保留 10,000 份已結案的文件工作紀錄。Run 結案時若超過上限，立即從最早結案的 Run 開始整組回收，直到回到上限內。容量回收與背景清理使用同一套本機紀錄同步機制。活躍工作由 Queue 容量、執行 Deadline、結案及取消管理。三天清理只處理歷史紀錄。
 - 到期、程序重啟或切換 Pod 後查無紀錄時，GET Run 及文件工作狀態回既有的 `200` ＋ `unknown`，取消回 `404 INGESTION_RUN_NOT_FOUND`。呼叫方可查實際文件是否存在，或決定是否重新提交完整文件。Runtime 不續跑或補結算舊工作。
 
 <a id="es-runtime-control-index"></a>
@@ -805,6 +807,17 @@ Document 管理是索引／儲存管理能力，不新增 Pipeline Module。平�
 
 平台只對受管理資料提供文件查詢、清單及刪除。能力不可用時明確回報，查詢就緒與文件管理能力分別驗證。
 
+<a id="runtime-config-sources"></a>
+## 設定來源與保存位置
+
+| 設定 | 來源與保存位置 | Runtime 如何載入 |
+|---|---|---|
+| DEV 的 System Config | Builder 保存各 System 的發布快照及部署紀錄。部署紀錄按環境、Runtime 目標及 System 保存預期版本和流程。 | Runtime 啟動可有零組 System Config。Builder 經管理 API 下發後，Runtime 在記憶體按 `system_id` 保存已載入的版本、快照與索引綁定。重啟後由 Builder 補載。 |
+| 獨立部署的 System Config | 部署方隨 Bundle 提供一份指定版本的 System Config 快照，部署設定另存。 | Runtime 啟動讀取該快照，以環境的 `pipeline` 選擇啟用流程；重啟時重新讀取。此模式關閉管理 HTTP。 |
+| Runtime 程序設定 | Runtime 提供程序預設值，部署管理者提供環境覆寫，例如 Queue、Deadline 和清理間隔。 | 程序啟動時載入有效設定，供同一 Pod 內各 System 共用。這些值保存在部署設定及 Runtime 程序記憶體，與 System Config Revision 分開。 |
+
+兩種部署模式的 System Config 使用同一份 [System Config Schema](../schemas/system_config.draft.schema.json)，以 `system_id` 及 `config_revision` 辨識。來源依部署模式判定；`SystemStatus` 回報版本及流程載入狀態。[Builder 部署紀錄](drafts/builder_system_deployment_mongodb.md) · [獨立啟動](#src-07-93-獨立啟動)
+
 <a id="src-22-1-範圍與管理方式"></a>
 ## Runtime 設定：範圍與管理方式
 
@@ -837,6 +850,7 @@ Document 管理是索引／儲存管理能力，不新增 Pipeline Module。平�
 | inference.timeout_seconds | 同步 Query Deadline／秒 | 60 | 單次 Query | 包含所選 Query Transformation／Retrieval／Fusion／Rerank 的整體執行；上游逾時與失敗不可偽裝成功 |
 | status.retention_seconds | 已結案 Run 的紀錄保留時間／秒 | 259,200（3 天） | 受理 Pod 記憶體 | 見 [終態紀錄清理](#ingestion-status-retention) |
 | status.max_terminal_documents | 可回收終態文件紀錄上限／份 | 10,000 | 整個 Runtime 程序 | 回收順序見 [終態紀錄清理](#ingestion-status-retention) |
+| status.cleanup_interval_seconds | 終態 Run 的背景清理間隔／秒 | 3,600（1 小時） | 整個 Runtime 程序 | 首版使用程序預設值。此路徑保留作部署覆寫的候選名稱。見 [終態紀錄清理](#ingestion-status-retention) |
 
 數值須為有效正值；份數、bytes、併發數及紀錄數為正整數。每 System 的 Queue／併發上限不得超過對應 Runtime 總上限。完整驗證錯誤、設定格式與套用接口留 Q-002／Q-017／Q-019，不把候選路徑當成已發布機器 Schema。
 
@@ -861,7 +875,7 @@ W1 的預設筆數、上限、排序與 Cursor 行為見 [資料生命週期 API
 
 之後新增／修改 Runtime 控制參數，需在本表記錄名稱、單位、預設、作用範圍與執行位置，並同步環境設定 Schema、驗證及部署說明；目前尚未交付該機器 Schema／實作。模型／HTTP Client 的逐次 timeout、重試及檔案暫存保存規則若另行定案，再納入對應表，不把它們假裝已由整體 Deadline 完整決定。
 
-實作驗收至少覆蓋：文件數／body／來源大小邊界、整批容量預留、每 System 與全域限制同時生效、Query 額滿拒絕、處理逾時、三天到期、超出上限時整組回收、清理不觸碰活躍占用、重啟後查無舊 Run，以及 Builder DEV／FTEST／ENT 使用相同控制。這是未來驗收要求，不是已通過的 Runtime 測試。
+實作驗收至少覆蓋：文件數／body／來源大小邊界、整批容量預留、每 System 與全域限制同時生效、Query 額滿拒絕、處理逾時、無新請求時背景 Task 仍會清理到期紀錄、查詢即時判定到期、Run 結案時立即執行容量回收、關閉 Runtime 時停止清理 Task、清理不觸碰活躍占用、重啟後查無舊 Run，以及 Builder DEV／FTEST／ENT 使用相同控制。這是未來驗收要求，不是已通過的 Runtime 測試。
 
 <a id="src-07-6-非同步工作與一致性"></a>
 ## 排程、同程序 Memory 與一致性限制

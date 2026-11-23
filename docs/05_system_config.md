@@ -8,6 +8,8 @@ Workspace 管理多個 System。System ID、Config Revision、source_revision、
 
 [System Config Schema 草案](../schemas/system_config.draft.schema.json)驗證發布快照。首版 DEV／FTEST／ENT 使用受管 Elasticsearch，部署設定提供環境的 ES 綁定。可參照 [ES 發布請求](../examples/system_config/README.md#runtime-http-examples)及[內建／Remote Parsing 的離線對照](../examples/system_config/README.md#local-search-config-examples)。
 
+DEV 由 Builder 下發 System Config，獨立部署則由 Runtime 啟動時讀取指定版本。Runtime 本身的預設值與環境覆寫另由部署管理。見 [設定來源與保存位置](06_runtime_api_and_deployment.md#runtime-config-sources)。
+
 同一份發布快照包含 Ingestion 與 Inference。`pipeline` 是生命週期請求或環境部署設定的選擇欄位，位於 `config` 之外。獨立啟用其中一條流程時，沿用同一 System 的發布版本及索引綁定。[流程部署契約](06_runtime_api_and_deployment.md#runtime-pipeline-deployment)
 
 每個有效節點以 `component_id` 選擇執行方式，並以 `component_version` 固定元件版本。內建元件使用該版本的 Descriptor 驗證參數。Remote API 共用平台保留的 `component_id: remote_api`，由 `service_ref` 選擇外部服務。Builder 設計可用同一個「執行方式」欄位選 Recursive、Fixed-size 或 Remote API。
