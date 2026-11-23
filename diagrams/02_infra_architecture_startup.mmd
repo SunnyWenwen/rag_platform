@@ -12,10 +12,10 @@ flowchart LR
 
   subgraph A["A · Retrieval Builder（DEV）"]
     direction TB
-    A2["A-2 · Backend · 讀取部署意圖，啟動、重連及每 60 秒查核"]
+    A2["A-2 · Backend · 隨版使用共用 Config Schema，啟動、重連及每 60 秒查核部署意圖"]
     A1["A-1 · Frontend · 依 Schema、Descriptor 與有效相依產生設定欄位及選項"]
     A4["A-4 · DEV Retrieval Runtime · 獨立程序初始化 API、Registry、Executor、記憶體 Queue，可零組 Config 啟動，回報各流程與索引世代"]
-    A4 -->|"提供 System Config Schema 與 Catalog"| A2
+    A4 -->|"提供 Catalog"| A2
     A2 -->|"提供設定契約與元件目錄"| A1
   end
 

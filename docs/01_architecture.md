@@ -159,14 +159,14 @@ User 在 Workspace 建立 System，選用模板或自行設定 Import、Ingestio
 
 ### 02 基礎架構的兩個階段
 
-**啟動與補載**。A-2 Backend 讀取已發布的 Config 及各流程的部署意圖。A-4 Pod 由 DEV Runtime 入口載入 B-2，初始化 API、Registry、Executor 及記憶體 Queue，可零組 Config 就緒。A-2 從目標 A-4 取得 System Config Schema 與 Catalog，再供 A-1 呈現設定。Builder 在啟動、Runtime 恢復連線及每 60 秒查核已載入版本與索引世代。預期上線的流程若缺少有效快照，且 ES 綁定相容，就補載已發布版本。索引確認遺失時，等使用者確認後再恢復。 [Runtime 啟動與補載](06_runtime_api_and_deployment.md#builder-managed-dev-runtimes)
+**啟動與補載**。A-2 Backend 讀取已發布的 Config 及各流程的部署意圖。A-4 Pod 由 DEV Runtime 入口載入 B-2，初始化 API、Registry、Executor 及記憶體 Queue，可零組 Config 就緒。A-2 將隨版交付的 System Config Schema 和來自目標 A-4 的 Catalog 提供給 A-1 呈現設定。Builder 在啟動、Runtime 恢復連線及每 60 秒查核已載入版本與索引世代。預期上線的流程若缺少有效快照，且 ES 綁定相容，就補載已發布版本。索引確認遺失時，等使用者確認後再恢復。 [Runtime 啟動與補載](06_runtime_api_and_deployment.md#builder-managed-dev-runtimes)
 
 **使用者操作後**，從發布 Config、啟用 DEV 測試 System，到匯出後部署目標 System，分工如下。
 
 | 圖面區塊 | 責任與交付物 |
 |---|---|
-| **A · Builder DEV** | **A-1 Frontend** 使用 A-2 提供的契約呈現設定與測試。**A-2 Backend** 從 **A-4 DEV Runtime** 取得 System Config Schema 與 Catalog，驗證設定並維護 **A-3 Config Revision 與部署意圖**，依 `runtime_ref` 及 `pipeline` 管理 Runtime。**A-5 測試 System** 的 Ingestion 與 Inference 可在同一 Runtime Pod 啟用或分開部署，使用 **A-6 共用 Elasticsearch** 的同一檢索索引。 |
-| **B · Retrieval Engine Framework** | **B-1 設定契約定義** 包含 System Config Schema 與 Component Descriptor，由目標 Runtime 提供對應版本給 Builder。**B-2 Engine Library** 依 Config 組裝 System 並執行 Pipeline，DEV Runtime 入口直接載入 B-2 啟動 A-4。**B-3 共用 Runtime Image** 封裝 Runtime API 與 B-2，供 C-3 部署。 |
+| **A · Builder DEV** | **A-1 Frontend** 使用 A-2 提供的契約呈現設定與測試。**A-2 Backend** 使用隨版交付的共用 System Config Schema，向 **A-4 DEV Runtime** 取得 Catalog，驗證設定並維護 **A-3 Config Revision 與部署意圖**，依 `runtime_ref` 及 `pipeline` 管理 Runtime。**A-5 測試 System** 的 Ingestion 與 Inference 可在同一 Runtime Pod 啟用或分開部署，使用 **A-6 共用 Elasticsearch** 的同一檢索索引。 |
+| **B · Retrieval Engine Framework** | **B-1 設定契約定義** 包含 System Config Schema 與 Component Descriptor。Schema 隨 Builder 與 Runtime 各自交付，Component Descriptor 由目標 Runtime 的 Catalog 提供。**B-2 Engine Library** 依 Config 組裝 System 並執行 Pipeline，DEV Runtime 入口直接載入 B-2 啟動 A-4。**B-3 共用 Runtime Image** 封裝 Runtime API 與 B-2，供 C-3 部署。 |
 | **C · FTEST／ENT 部署** | **C-1 部署 Bundle** 包含同版 Config、B-3 Image 引用與目標環境綁定。**C-2 使用單位部署**以環境設定的 `pipeline` 選擇 **C-3 獨立 Runtime** 啟用的流程。**C-4 目標 System** 的兩條流程分 Pod 時沿用同版 Config 及同一 ES 綁定。**C-5** 為部署環境供應的 ES、模型、Remote API、Secret 與觀測資源。 |
 
 DEV 的 System、部署目標和索引綁定由 Builder 保存。FTEST／ENT 由部署流程保存並提供 Config 與索引綁定，負責停流量、排空及切換。Runtime 以指定 ES 資料索引的名稱、`_meta` 與 mapping 查證。目標資料由部署方準備或重新匯入。[部署流程](06_runtime_api_and_deployment.md#standalone-index-deployment)

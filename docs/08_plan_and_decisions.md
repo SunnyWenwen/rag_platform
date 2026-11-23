@@ -327,7 +327,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - 首版採 HTTP Basic，驗證位置與帳密範圍見 [Runtime 認證](06_runtime_api_and_deployment.md#runtime-basic-authentication)。D-64 的可信 Backend 路由及 Istio 傳輸設定沿用。
 
 - 已確認：文件／檔案級 ACL 延後。第一版依 System 的執行範圍隔離資料，MCP API key 授權到 System 與工具。
-- 仍待：平台保留欄位名稱、Workspace 權限、Gateway 和認證實機接線驗收。
+- Builder Backend 是判斷使用者能否存取 Workspace／System 或執行管理操作的授權邊界。個別使用者的身分來源、角色與操作權限矩陣、Workspace 成員管理仍待定。另待平台保留欄位與 Gateway 的實機接線驗收。
 - 負責角色：平台／身分團隊＋Backend＋Engine。
 - 決策狀態：首版文件存取範圍已確認，其他授權與保留欄位細節另議。
 
@@ -450,8 +450,8 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - 已確認應用服務使用 HTTP，Pod 間由 Istio 強制 mTLS，對外由 Gateway 提供 HTTPS。部署與開發接線見 [Istio 傳輸與服務入口](06_runtime_api_and_deployment.md#istio-http-transport)。
 - Builder 入口、DEV 管理 API 與各 System 的 Ingestion／Inference 依 [HTTP Basic 分工](06_runtime_api_and_deployment.md#runtime-basic-authentication)。Runtime Health 免 Basic，System GET 採 DEV 管理帳密，System 業務流程使用 [固定 Config Secret 欄位](05_system_config.md#system-api-secret-fields)。
 - 管理請求逾時沿用同一 `Idempotency-Key` 查核或重送。已結束的操作結果只需覆蓋 Builder 的重送與查核窗口，初始候選為可配置的 1 小時。尚未結束或結果待查的操作保留至安全結算。結果過期時先查 System 狀態和原操作，查證後才能重新發起變更。正式期限與過期時的查核細節待定。
-- 已確認由 Builder 實作管理請求的有限重試與失敗回報。重試次數、等待時間和可重試條件待定。查不到結果時保留原操作供查核，詳見 [生命週期 API](06_runtime_api_and_deployment.md#system-lifecycle-api)。
-- 完整 [System Config Schema](../schemas/system_config.draft.schema.json) 已存在。由 Runtime 交付完整 Schema 的方式及其與 Catalog 的版本對應仍待定。詳見 [Config 驗證邊界](06_runtime_api_and_deployment.md#runtime-capability-contract)。
+- Builder 實作管理請求的有限重試與失敗回報，並自行選擇次數、等待時間和可重試條件。查不到結果時保留原操作供查核，詳見 [生命週期 API](06_runtime_api_and_deployment.md#system-lifecycle-api)。
+- 首版以同一份 [System Config Schema](../schemas/system_config.draft.schema.json) 及引用檔隨 Builder、Runtime 交付。Runtime 透過現有 Catalog 提供元件與資源，並使用 `config:validate` 做最終預檢。詳見 [Config 驗證邊界](06_runtime_api_and_deployment.md#runtime-capability-contract)。
 - 已確認：卸載某 System 在目標 Runtime 的 Ingestion 後，該目標暫停該 System 的歷史 Run 查詢。ES 保留規則沿用，首版透過已載入同一綁定的 Ingestion 查詢。
 - Builder → DEV Runtime 已提供 [OpenAPI、Mock 及 HTTP 情境測試](09_w1_builder_runtime_contract.md#builder-runtime-quickstart)。仍待正式環境部署接線、Builder 自有 CRUD／助手／檔案 manifest、資料保留、Trace 及版本相容政策。W1 DEV Runtime 的 HTTP、ES 與模型還需整合驗收。
 - 負責角色為 Backend、Runtime、Frontend 與身分團隊。以 W1 Mock 開發，真實串接按 M3／M5 驗收。
@@ -463,7 +463,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - 2026-11-20 確認：DEV 可在同一 Runtime 或受管 ES 的不同 Pod 分別啟用 Ingestion 與 Inference。Builder 以 `runtime_ref` 選 Runtime，透過同一組生命週期 API 的 `pipeline` 選流程。Ingestion 管理共用索引與生效版本，Inference 使用 `reload` 接回，兩條流程均回報自身載入／就緒狀態並可獨立卸載。見 [流程部署契約](06_runtime_api_and_deployment.md#runtime-pipeline-deployment)。
 - DEV 以穩定 `runtime_ref` 保存部署目標。寫入目標接手時，Builder 先確認舊程序及已送出的寫入已妥善處理。FTEST／ENT 的 `runtime_ref` 選填，寫入排空由部署流程負責。
 - 後加入的 DEV Runtime 由 Builder `reload` 指定版本與綁定。重建或刪除前由 Builder 協調各 Runtime 排空。逐流程 `detach` 保留索引。[排空規格](06_runtime_api_and_deployment.md#builder-query-drain)
-- Builder 使用既有 System GET 定期查核部署意圖、Config Revision 和索引世代。預設每 60 秒，可由 Builder 部署設定調整，Builder 啟動及 Runtime 恢復連線後也查核。預期上線但快照缺失或過期時預檢及 `reload`。暫時性錯誤的重試細節待定。
+- Builder 使用既有 System GET 定期查核部署意圖、Config Revision 和索引世代。預設每 60 秒，可由 Builder 部署設定調整，Builder 啟動及 Runtime 恢復連線後也查核。預期上線但快照缺失或過期時預檢及 `reload`，暫時性錯誤按 Q-019 處理。
 - 已確認允許切版期間暫停新查詢。Ingestion 提交共用版本後，Builder 逐目標補載 Inference；舊快照未就緒時回 `503 PIPELINE_NOT_READY`，核對新版與索引世代就緒後恢復。新版已提交但補載失敗時，Builder 顯示發布及各目標的補載結果，依 Q-019 處理有限重試。回復舊版的政策待定。僅變更 Inference 仍走共用版本發布。
 
 - D-56／D-64 已確認：Builder DEV／獨立 Runtime 共用 System Queue、併發、Inference Rate 及 Deadline。初始限制由部署管理者在 Runtime 環境設定 E 提供，正式載入格式與機器 Schema 待定。Runtime 控制總量，Builder 另管理 User／Workspace 配額。Worker 為排程單位。
@@ -473,7 +473,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - 建議：先有受限共享 Runtime 與明確隔離 Binding。首版以受管 ES 為準。
 - 替代：每 System 獨立 Runtime，增加部署／資源管理成本。
 - 負責角色：平台＋Backend／Runtime；阻擋 M5 多 System 服務。
-- 決策：Builder 主動管理並逐流程部署。DEV 由 Builder 保存權威索引綁定及管理操作計畫。仍待 Builder 保存介面、部署層接手證據與資源隔離策略的實作及實機驗收。
+- 決策：Builder 主動管理並逐流程部署。DEV 由 Builder 保存權威索引綁定及管理操作計畫。Runtime Image 升版的維護入口，以及部署層終止／隔離證據如何交給 Builder，仍待確認。Builder 保存介面與資源隔離策略待實作及實機驗收。
 
 <a id="q-021"></a>
 ### Q-021 Export、FTEST／ENT 與 Secret Vault
@@ -483,6 +483,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - 2026-10-28 D-41 確認：rag_engine 統一建置含 Engine／核可 Components／Runtime API 的完整 Image，rag_platform 建置 Builder Image；採用新版 Engine／Component 時仍需更新 Runtime，接口相容的 Builder 可維持原版。目標 Image 須包含 Config 所需 Component packages 並保存版本；Component 清單／鎖定格式與缺失錯誤仍待決，YAML 不會自動提供 Python 方法程式。建置／發布／部署範圍見 [Runtime API／部署](06_runtime_api_and_deployment.md#src-07-94-建置發布與部署的變更範圍)。
 
 - 已確認：DEV／FTEST／ENT 首版以 ES 為部署基準。跨環境沿用同版邏輯 Config，由部署設定提供連線與資源。Local Search 列為後續，Memory／MongoDB 模式仍適用 D-33。System Secret 使用字串 KV，匯出保留 Key，正式 Runtime 啟動時讀取同名環境變數。待定為 Image／Bundle 包裝、外部 Vault 供應、DEV 憑證保存期限、K8s 資源／Ingress／Probe 及 CD 流程。
+- [D-30](history/decisions/decision_history.md#d-30) 要求同一 Revision 跨環境沿用相同邏輯 Config。目前 Elasticsearch 連線 Schema 將 `service_source`、`es_number`、`account` 放在 Indexing 參數。若 DEV 選 `dev_test`、FTEST 選 `pled_es`，同一 Revision 的 Config 會因此改動。待定方案是把實際來源選擇及 PLED 連線資訊改由目標環境的部署設定提供，Indexing 持續保存 Elasticsearch 的邏輯設定。[現行 ES 連線規格](05_system_config.md#elasticsearch-service-source)
 - FTEST／ENT 由部署方管理版本、綁定、排空與切換。缺少資料索引時，建立授權、部署操作入口與如何查核前次部署紀錄待 M7 確認。獨立 Runtime 的管理 HTTP 停用。
 - 分 Pod 使用同一 Runtime Image 與 Config，環境部署設定選擇 `pipeline`。Export 的設定載體、Service／Probe 接線、角色所需 Secret 與資源的最小範圍，以及滾動切換順序待定。
 - 建議：版本鎖定 Runtime Image＋有效 Config＋環境覆寫；由目標環境提供 ES 及原始資料，獨立 Runtime 直接啟動。
@@ -730,7 +731,7 @@ Builder 可按 [W1 開發契約索引](09_w1_builder_runtime_contract.md) 實作
 | 要進入的開發範圍 | 還需要定清楚的契約 |
 |---|---|
 | DEV 正式接線與授權 | HTTP Client 可依 [OpenAPI](../openapi/runtime.dev.v1.json) 使用各路由指定的 Basic 帳密。仍需定 Builder 啟動設定的機器格式，並完成部署 Secret、Istio 及跨 Runtime 共用索引綁定的實機接線。見 [Q-019](#q-019) 和 [Q-020](#q-020)。 |
-| 管理操作復原 | Builder 使用既有 GET、`reload` 和每 60 秒的補載查核，並負責有限重試及失敗回報。管理操作結果保存期限、重試參數、過期查核及多目標發布部分成功時的回退策略仍待議。見 [Q-019](#q-019) 和 [Q-020](#q-020)。 |
+| 管理操作復原 | Builder 使用既有 GET、`reload` 和每 60 秒的補載查核，並自行配置有限重試及失敗回報。Runtime 管理操作結果的保存期限、過期查核及多目標發布部分成功時的回退策略仍待議。見 [Q-019](#q-019) 和 [Q-020](#q-020)。 |
 | 跨 Query 合併的發布與執行 | Query Transformation 位置與多 Query 必須啟用已確認。內建 Rewrite 的 [發布格式](05_system_config.md#inference-result-processing)可供 Builder 開發，Remote 節點設定及 M2 真實執行驗收見 [Q-014](#q-014)。 |
 | 模型服務發布與 PLED ES 接線 | 模型服務仍需確認環境綁定及 Profile。PLED ES 已定三個輸入與 Secret，實際 `es_number` 到服務的解析方式及登入流程由 PLED 整合驗收。見 [Q-003](#q-003)、[Q-021](#q-021) 與 [參數適用範圍](04_component_descriptor.md#component-parameter-scope)。 |
 | Variable 與 Secret | [System 設定](05_system_config.md#system-secret)已定義 DEV 測試值、部署注入與 Module 引用；實際 Builder／Runtime 串接依 [Q-021](#q-021)／[Q-028](#q-028) 驗收。 |

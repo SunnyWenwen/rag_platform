@@ -109,7 +109,7 @@ Builder 保存 System、草稿、發布歷史和預期部署狀態。每個 Runt
 - Builder 以 System 為單位序列化所有生命週期操作，發送前保存不可變的計畫、原操作 ID、前置條件與候選 Config。建立、重建及恢復時，Builder 先配發並保存新的 `target_index_generation`，把它連同預檢得到的目標指紋寫入操作紀錄，再以原 `Idempotency-Key` 發送 PUT。沿用索引時使用既有世代。重送必須沿用同一計畫。
 - Runtime 於程序內序列化本機操作與收件，核對本機快照及實體索引，使用 ES 的指定實體名稱與 create-only 語意執行。程序內可快取同一操作的結果。Builder 逾時或重啟後以同一操作紀錄查核舊、預定新世代及本機載入狀態，核對索引歸屬、指紋與 `_meta.created_by_operation_id`。查核指定世代時 GET 回報 `created_by_operation_id`（有標記時），就緒與載入欄位仍取本機狀態。Runtime 同程序仍在處理時先等結果；原程序失聯時先確認它無法再執行舊操作。兩個世代的狀態有歧義或 ES 無法查明時保留待確認紀錄。操作完成後才提交或清除 Builder 權威綁定。
 - 相同成功 PUT 重送時，可由指定目標及建立操作標記識別建立結果；相容更新或載入結果查核以本機快照為準，重啟後以 Builder 原計畫重新驗證及載入。若已刪除舊索引且預定新索引尚未建立，Builder 於確認原操作與排空證據後以原計畫重做剩餘建立。DELETE 重送僅作用於原綁定，Builder 可於確認原世代已不存在後結算。不得將另一個操作建立的同名索引當成本次操作結果。
-- DEV 管理 API 呼叫或補載反覆失敗時，由 Builder Backend 執行有限重試，達到上限後停止自動重送，保存並呈現操作、目標 `runtime_ref` 與最近一次錯誤。已確認未成功可回報失敗。結果仍無法確認時，顯示「操作結果待查」並保留原操作計畫及 `Idempotency-Key`。後續可繼續唯讀查核，其他自動補載流程不得繞過待確認的操作。重試次數、等待時間及可重試條件見 [Q-019](08_plan_and_decisions.md#q-019)。
+- DEV 管理 API 呼叫或補載反覆失敗時，由 Builder Backend 執行有限重試，達到上限後停止自動重送，保存並呈現操作、目標 `runtime_ref` 與最近一次錯誤。已確認未成功可回報失敗。結果仍無法確認時，顯示「操作結果待查」並保留原操作計畫及 `Idempotency-Key`。後續可繼續唯讀查核，其他自動補載流程不得繞過待確認的操作。重試次數、等待時間及可重試條件由 Builder 決定。
 - `busy` 表示管理變更目前會被阻擋，例如已有生命週期操作、本機仍有匯入工作，或其他 Ingestion Runtime 尚未完成[排空](#system-ingestion-drain)。是否可匯入或查詢分別讀 `can_ingest`、`can_query`。`index_generation` 隨建索引或重建變更，沿用索引時保持相同。未管理或目前沒有已確認的索引時為 `null`，未管理平台索引時 `index_ready` 也為 `null`。Runtime 可查空索引；Builder 依[初次匯入規則](07_builder_ui.md#builder-initial-ingestion-readiness)在新建／重建後等待預定資料成功匯入再開放查詢。
 
 <a id="runtime-pipeline-deployment"></a>
@@ -236,6 +236,8 @@ Builder DEV 由 Builder 對同一 System 序列化發布、reload、卸載與恢
 
 Builder 依穩定 `runtime_ref` 保存 DEV 目標。同一 Ingestion 目標只允許一個實例具備寫入能力。Builder 保存部署層查核的原目標、排空或隔離結果與查核時間，供重啟後續接。Pod 正常替換後由 Builder 核對部署狀態，再對同一目標重新載入原版本與索引世代。只有確認舊程序已停止或失去寫入能力，且舊世代的未結算操作已查證時，才能接手或永久移除失聯目標。部署層無法確認時保留待查狀態。FTEST／ENT 的寫入替換與排空交由 [部署流程](#standalone-index-deployment)。
 
+Runtime Image 維護涉及三項工作。Builder 在停流量期間暫停對受影響目標派送 DEV 測試及自動補載，Runtime 用現有 `detach` 停止收件並確認各流程排空，部署層負責更換 Pod。恢復前由 Builder 核對新 Runtime 並補載原先預期上線的流程。是否提供 Builder 維護操作入口，以及部署層如何回報舊程序終止、隔離和未結算寫入的查證結果，由 [Q-020](08_plan_and_decisions.md#q-020) 追蹤。Health 逾時只表示無法確認連線。強制刪除 Pod 也可能在舊程序仍運作時返回，兩者都不足以確認可接手。[Kubernetes Pod 刪除](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_delete/)
+
 <a id="builder-query-drain"></a>
 需要刪除索引時，Builder 暫停查詢和補載，再對所有載入該世代的 Inference 目標呼叫 `detach?pipeline=inference`，包括與管理操作在同一 Pod 的目標。各 Runtime 關閉本機新查詢入口，等已接受的工作結束才回 `204`。排空包含排隊、執行與下游未結算工作，採目標 Runtime 的完整 Query Deadline 上限，逾時回 `504 DEADLINE_EXCEEDED`。有目標失聯、逾時或無法確認下游工作已停止時，Builder 暫停操作並保留索引。Builder 收齊排空結果後發送 DELETE 或允許重建的 PUT。管理目標也須核對自己的本機查詢與寫入均已排空。Builder 對單一 `detach` 的 HTTP 逾時須涵蓋該目標的排空上限與傳輸時間；PUT／DELETE 依其 ES 操作期限獨立設定逾時並保留原操作供查核。
 
@@ -289,7 +291,7 @@ Builder Backend 透過 Runtime API 取得目錄並驗證草稿。共用的路由
 - **版本與目錄一致性**：目錄／Schema／驗證結果要能對回同一目標 Runtime 版本；Runtime 更新後，舊快取或過期驗證不得靜默套用。既有 System 保留所選版本，尚未安裝／不相容方法應明示，不自動取最新版。
 - **相容範圍**：既有 API、Config Schema 與 UI 控制項足以支援時，新增 Component 可只發布／部署 Runtime；需要新型表單或破壞性接口時，需更新 Builder 並完成契約相容測試。長期欄位演進政策由 Q-002／Q-019／Q-025 追蹤。
 
-完整 [System Config JSON Schema](../schemas/system_config.draft.schema.json) 已定義 `system_id`、`config_revision`、`config`、兩條 Pipeline 的節點結構及共同欄位。Catalog 提供目標 Runtime 已安裝元件的 Descriptor 與可選資源，供 Builder 渲染各元件參數。目標 Runtime 交付完整 Schema 的 HTTP 介面及版本對應方式待定。Builder 可使用 repo 的 Schema 開發，本機驗證與目標 Runtime 的最終 Config 預檢可依現有規格串接。
+Builder 和 Runtime 以 repo 的 [System Config JSON Schema](../schemas/system_config.draft.schema.json) 及其引用檔為同一份契約，隨各自版本交付。首版以檔案同步，完整 Schema 無 HTTP 下載介面。Catalog 繼續提供目標 Runtime 已安裝的 Component Descriptor 與可選資源。Builder 用共用 Schema 做本機結構驗證，發布前由目標 Runtime 執行最終 `config:validate`。
 
 直接 Python 使用 Engine／M4 助手時仍可在本機取得同一 Registry／Validator，不因此強制所有呼叫都走 HTTP。平台整合使用公開服務邊界，Runtime 的可信管理與能力接口不等於允許外部一般使用者更改 System 綁定。
 

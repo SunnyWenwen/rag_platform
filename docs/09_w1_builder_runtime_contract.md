@@ -2,6 +2,8 @@
 
 以下契約可供 Builder 實作表單、API Client 與 Mock。HTTP 物件及狀態代碼見 [Runtime HTTP Schema](../schemas/runtime_http.schema.json)，欄位與列舉的主責入口見 [schemas/](../schemas/README.md)。
 
+首版 Builder 與 Runtime 隨版交付同一份 System Config Schema 及其引用檔，見 [Config 驗證邊界](06_runtime_api_and_deployment.md#runtime-capability-contract)。
+
 [W1 開發基準與待決邊界](08_plan_and_decisions.md#w1-contract-readiness)
 
 <a id="builder-runtime-quickstart"></a>

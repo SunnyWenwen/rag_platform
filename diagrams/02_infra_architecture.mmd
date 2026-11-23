@@ -16,9 +16,9 @@ flowchart LR
   subgraph A["A · Retrieval Builder（DEV）"]
     direction TB
     A1["A-1 · Frontend UI · 依 Schema、Descriptor 與有效相依產生設定選項"]
-    A2["A-2 · Backend · 向 Runtime 取得設定契約，管理 Config Revision 與部署意圖"]
+    A2["A-2 · Backend · 隨版使用共用 Config Schema，管理 Config Revision 與部署意圖"]
     A3["A-3 · 已驗證的 System Config Revision"]
-    subgraph A4["A-4 · DEV Retrieval Runtime · 提供 Schema 與 Catalog，可零組 Config 啟動"]
+    subgraph A4["A-4 · DEV Retrieval Runtime · 提供 Catalog，可零組 Config 啟動"]
       direction TB
       A5["A-5 · 測試 Retrieval System · 兩條流程可同 Pod 或分 Pod，共用受管 ES 索引"]
     end
@@ -55,7 +55,7 @@ flowchart LR
     C4 --> C5
   end
 
-  A4 -->|"提供 System Config Schema 與 Catalog"| A2
+  A4 -->|"提供 Catalog"| A2
   B2 -.->|"由 DEV Runtime 入口直接啟動 A-4"| A4
   B3 -.->|"同版 Image 啟動 C-3"| C3
   A3 -->|"⑤ A-2 匯出同版 A-3 與目標部署設定"| C1

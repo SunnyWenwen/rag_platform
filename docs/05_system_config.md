@@ -155,6 +155,8 @@ Builder 建立 System 時預填 `ingestion`、`inference`，並為該 System 的
 
 設定位置為 `config.pipelines.ingestion.indexing.parameters`。可選來源、必填條件與值型別由 [Elasticsearch 連線 Schema](../schemas/elasticsearch_connection.schema.json) 定義。內建 Inference 沿用同一 System 的索引綁定。
 
+DEV 與其他環境使用不同 ES 來源時，連線欄位的拆分仍待定。見 [Q-021 的 D-30 相容性議題](08_plan_and_decisions.md#q-021)。
+
 | Builder 選項 | 屬性及執行行為 |
 |---|---|
 | Builder 測試用 ES | `service_source: dev_test`。Builder DEV 預設選項，Runtime 使用部署管理員預先綁定的 PLED 測試 ES。選取時表單只顯示服務來源。 |
