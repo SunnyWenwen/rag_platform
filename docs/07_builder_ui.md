@@ -321,7 +321,7 @@ Prototype 限制 ≤1 MB 且在瀏覽器讀取，不等於正式產品限制。�
 - 文件數與 Chunk 數各自標示。Ingestion 進度的呈現方式留待後續討論。
 - 部分失敗列出可對應 item 的錯誤，不用單一成功 Toast 遮蔽。
 - 重新打開視窗可用 `run_id` 查工作。遺失收件回應時，依已知 `document_id` 查詢最近一次 `run_id`，再核對該 Run 的文件。ES 的 Run 與逐文件紀錄在全部文件結案後預設保留 3 天。卸載 Ingestion 後可改用仍載入同一綁定的目標，或等原目標補載後查詢。[工作紀錄與重啟規則](06_runtime_api_and_deployment.md#ingestion-job-records)
-- 失敗或中斷的文件由呼叫方決定是否重新提交。ES Bulk 逾時顯示為文件失敗，可重新匯入。[批量取消](06_runtime_api_and_deployment.md#ingestion-cancel-api)依 `run_id` 送出選定的 `document_ids`，收到 `cancelled` 即顯示已取消。原寫入若成功，重新取得 Run 或文件狀態時改顯示 `completed`。若重匯收到 `409 DOCUMENT_BUSY`，依衝突回應顯示仍被占用的文件。
+- 失敗或中斷的文件由呼叫方決定是否重新提交。ES Bulk 逾時顯示為文件失敗，可重新匯入。[批量取消](06_runtime_api_and_deployment.md#ingestion-cancel-api)將選定的 `document_ids` 與 `run_id` 送往原提交的 Runtime 目標，收到 `cancelled` 即顯示已取消。原寫入若成功，重新取得 Run 或文件狀態時改顯示 `completed`。若重匯收到 `409 DOCUMENT_BUSY`，依衝突回應顯示受理 Pod 仍占用的文件。
 - 真實 Parser／Chunk 小量試跑是建議能力，Q-025 核定前不能用瀏覽器格式預覽冒充。
 
 <a id="src-06-6-inference-與診斷"></a>
@@ -562,7 +562,7 @@ ResultSet.key 對應 Config 路徑／群組，items 位置即名次。RRF 可用
 
 - [ ] API 說明呈現 202 僅代表接收，顯示 run_id 及可用的狀態查詢入口；精確 Batch 路徑／Envelope 待 21 核定。
 - [ ] 依 Run／文件狀態與錯誤契約顯示查詢結果及同一 Run 的批量取消結果。進度粒度與呈現延後討論。
-- [ ] 批量匯入收到 `409 DOCUMENT_BUSY` 時，顯示 `error.conflicts` 中所有被占用的文件及狀態，包括 `cancelled` 但仍待收尾的工作。呼叫方可在占用釋放後重新提交。[衝突回應規格](06_runtime_api_and_deployment.md#ingestion-document-busy)
+- [ ] 批量匯入收到 `409 DOCUMENT_BUSY` 時，顯示 `error.conflicts` 中受理 Pod 的全部衝突文件及狀態，包括 `cancelled` 但仍待收尾的工作。呼叫方可在占用釋放後重新提交。[衝突回應規格](06_runtime_api_and_deployment.md#ingestion-document-busy)
 - [ ] Runtime 重啟後顯示逐文件結算結果。舊 Worker 已確認停止且未進入清舊時，遺失 Bulk 結果的文件顯示 `failed`。清舊結果未確認時顯示 `unknown`。查無紀錄時結束該次 Run 輪詢。
 - [ ] Ingestion Queue 額滿、Inference Rate／併發／Timeout 有可理解提示；不在每次文件／Query 表單加入環境上限設定。
 - [ ] 區分文件工作狀態、索引是否可查與 Runtime Health；Local／Remote 的未知結果不冒充可安全重試。

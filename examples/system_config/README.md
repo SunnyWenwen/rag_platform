@@ -68,9 +68,10 @@ python3 examples/user_remote_api/validate.py
 | `unload_existing_index_without_config`，GET 回 `loaded: false` 與既有索引世代，Builder 直接發起 DELETE | [System 生命週期](../../docs/06_runtime_api_and_deployment.md#system-lifecycle-api) |
 | `detach_shared_index_runtime`，本機工作忙碌時拒絕卸載；卸載成功後保留共用索引世代，原操作可重送 | [卸載單一 Runtime](../../docs/06_runtime_api_and_deployment.md#runtime-system-detach) |
 | `recover_index_loaded`、`recover_index_unloaded`、`recover_index_es_unknown`，涵蓋索引遺失的兩種載入狀態、使用者確認後的 PUT、重送、過期卸載及 ES 待查 | [索引恢復](../../docs/06_runtime_api_and_deployment.md#system-index-lifecycle) · [Builder 部署紀錄](../../docs/drafts/builder_system_deployment_mongodb.md) |
-| `ingestion_status_and_errors`，涵蓋無效請求、整批拒絕時回傳全部占用衝突、Run 部分失敗及紀錄過期 | [資料生命週期](../../docs/06_runtime_api_and_deployment.md#data-lifecycle-api) · [文件占用衝突](../../docs/06_runtime_api_and_deployment.md#ingestion-document-busy) |
+| `ingestion_status_and_errors`，涵蓋無效請求、同一 Pod 整批拒絕時回傳全部本機占用衝突、Run 部分失敗及紀錄過期 | [資料生命週期](../../docs/06_runtime_api_and_deployment.md#data-lifecycle-api) · [文件占用衝突](../../docs/06_runtime_api_and_deployment.md#ingestion-document-busy) |
 | `ingestion_bulk_timeout_and_retry`，由文件狀態查回 `run_id`，Bulk 逾時結案後以同一文件建立新 Run，並可查原失敗結果 | [ES 寫入查核](../../docs/06_runtime_api_and_deployment.md#es-write-control-record) |
-| `cancel_ingestion_documents`，涵蓋立即回報取消、同文件仍占用時的重匯衝突、原寫入成功後改為完成、取消重送與未找到 Run | [批量取消文件](../../docs/06_runtime_api_and_deployment.md#ingestion-cancel-api) |
+| `cancel_ingestion_documents`，涵蓋立即回報取消、原受理 Pod 內同文件仍占用時的重匯衝突、原寫入成功後改為完成、取消重送與未找到 Run | [批量取消文件](../../docs/06_runtime_api_and_deployment.md#ingestion-cancel-api) |
+| `cancel_ingestion_wrong_runtime`，查得到 Run，但目前的 Pod 無法取消其他 Pod 的活躍工作 | [批量取消文件](../../docs/06_runtime_api_and_deployment.md#ingestion-cancel-api) |
 | `query_empty_and_errors`，涵蓋無命中、無效 Filter、索引未就緒及上游失敗 | [Inference API](../../docs/06_runtime_api_and_deployment.md#inference-api) |
 | `document_pagination`，涵蓋沿用 `next_cursor`、最後一頁及無效 Cursor | [文件摘要清單](../../docs/06_runtime_api_and_deployment.md#src-21-93-文件摘要清單d-65-已確認核心) |
 

@@ -2575,7 +2575,7 @@
           "body": {
             "error": {
               "code": "DOCUMENT_BUSY",
-              "message": "部分文件仍被占用，整批匯入未受理。",
+              "message": "此 Runtime Pod 仍占用部分文件，整批匯入未受理。",
               "module": null,
               "path": "/documents/0/document_id",
               "run_id": "ing-001",
@@ -2815,7 +2815,7 @@
           "body": {
             "error": {
               "code": "DOCUMENT_BUSY",
-              "message": "原匯入仍占用此文件。",
+              "message": "此 Runtime Pod 的原匯入仍占用該文件。",
               "module": null,
               "path": "/documents/0/document_id",
               "run_id": "ing-cancel",
@@ -2865,6 +2865,26 @@
         "response": {
           "status": 422,
           "body": {"error": {"code": "REQUEST_VALIDATION_FAILED", "message": "document_ids 至少須包含一個文件 ID。", "module": null, "path": "/document_ids"}}
+        }
+      }
+    ],
+    "cancel_ingestion_wrong_runtime": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/internal/systems/es-example/v1/ingestions/ing-cancel/cancel",
+          "body": {"document_ids": ["guide-running"]}
+        },
+        "response": {
+          "status": 503,
+          "body": {
+            "error": {
+              "code": "SYSTEM_STATE_UNKNOWN",
+              "message": "請向原受理的 Runtime 取消此 Run。",
+              "module": null,
+              "run_id": "ing-cancel"
+            }
+          }
         }
       }
     ],
