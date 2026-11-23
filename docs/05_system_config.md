@@ -117,13 +117,15 @@ Builder 在支援引用的欄位統一填 `{{KEYNAME}}`。引用名稱採 `[A-Za
 
 | 欄位用途 | 設定範例 | 取值規則 |
 |---|---|---|
-| 一般執行參數 | `top_k: "{{TOP_K}}"` | 依序取本 Pipeline 經驗證的 Request `parameters.TOP_K`（含宣告的預設值）、`config.variable.TOP_K`，再沿用既有的 `config.secret.TOP_K` 引用。 |
+| 一般執行參數 | `top_k: "{{TOP_K}}"` | 先取當前 Pipeline 已驗證的 Request 參數（含宣告預設值），再取 `config.variable.TOP_K`。 |
 | 認證值 | `auth.bearer_token: "{{PARSER_API_TOKEN}}"`、PLED 的 `password: "{{PLED_ES_PASSWORD}}"` | 從同一 System 的 `config.secret` 取得。 |
-| 啟用時即須確定的值 | `max_tokens: "{{CHUNK_MAX_TOKENS}}"` | 在 System 啟用時取同名 Variable，既有的 Secret 引用仍可解析。用解析後的值驗證並編譯。 |
+| 影響索引的設定 | `max_tokens: 500` | 固定於 Config Revision。發布時遇到 `{{KEY}}` 回 `422 CONFIG_VALIDATION_FAILED` 並定位欄位。 |
 
 一般欄位用 Key 是否存在判斷缺值。`0`、`false`、`""` 都是已提供的值，依欄位型別和限制驗證。型別錯誤回報驗證失敗。Config 驗證時先確認來源已宣告，執行時仍無值則回報該 Key 與欄位位置。
 
-一般參數支援整個欄位取值和一次解析。Request 值保留原型別。System 值原為文字，字串欄位原樣保留，目標明確為數字、整數、布林、陣列或物件時先以 JSON 解析再驗證。Remote 業務參數使用未指定型別的 System 值時保留字串。Import 的 `structdata`、Indexing 的 `structdata_overrides` 及 Remote 的 `output` 依原有 Schema 直接宣告。Query Rewrite 的 `prompt` 和 Embedding 文字組合依各自的模板規則。見 [Engine 模組說明](03_engine_and_components.md#src-04-51-query-transformation)。
+一般參數支援整個欄位取值及一次解析。Request 值保留原型別，Variable 按目標型別解析。內建 Ingestion 的入庫設定、Import 的 `structdata`、Indexing 的索引設定與覆寫，以及 Remote 的 `output` 使用固定值。Import 宣告的 Request 參數可供執行期欄位取用。Embedding 可沿用 `{{structdata.title}}` 等資料欄位模板，Rewrite 保留 `{{query}}`、`{{count}}` 內建模板變數。
+
+Remote Ingestion 預設將業務參數視為會影響索引。服務提供者確認某個頂層參數只供執行期使用時，在該節點的 `runtime_only_parameters` 列出參數名稱，例如只用於記錄的 `trace_label`。這些參數可引用 Request 或 Variable，並排除於索引指紋。其餘業務參數須固定於 Revision。會改變資料範圍、解析或向量結果的語言、租戶或策略皆按輸出影響判定。Remote Inference 的業務參數沿用一般取值規則。
 
 <a id="system-secret"></a>
 ## System Variable 與 Secret
@@ -132,7 +134,7 @@ Builder 在 **其他設定** 提供獨立的 Variable 和 Secret Key／Value 表
 
 DEV 驗證與啟用使用 Builder 針對同一 System 填寫的值。Variable 的 DEV 值可隨草稿保存，Secret 的 DEV 值由受保護的測試設定提供。匯出保留 `config.variable` 與 `config.secret` 的 Key，值一律設為 `null`。正式 Runtime 啟動時以這些 Key 讀取同名環境變數。缺少值、未宣告的引用、型別或語法錯誤均應阻擋啟用並回報欄位位置。
 
-Remote 認證欄位只接受 Secret 的 Key。例如 `auth.bearer_token: "{{PARSER_API_TOKEN}}"` 由 Adapter 取值放到 `Authorization` Header。業務 Request、Document、Queue、公開驗證結果與 Log 均不承載 Secret 明文。其他欄位的 Secret 引用限制列入 [Todo Enhance](todo_enhance.md#secret-reference-scope)。部署方式與成對範例見 [Runtime 啟動與環境注入](06_runtime_api_and_deployment.md#system-secret-deployment)。
+Secret 只供明確列出的認證欄位使用，例如 Remote `auth.bearer_token` 與 PLED `password`。發布時檢查一般參數、巢狀 Remote 參數與 Prompt，若引用 Secret 即回 `422 CONFIG_VALIDATION_FAILED` 並定位欄位。一般參數解析只取 Request 或 Variable。Runtime 在寫 Log、Trace 或回傳診斷前先排除認證欄位與 Header，輸出路徑再將識別到的 Secret 值遮罩為 `***`。部署注入見 [Runtime 啟動與環境注入](06_runtime_api_and_deployment.md#system-secret-deployment)。
 
 <a id="elasticsearch-service-source"></a>
 ## Elasticsearch 服務來源

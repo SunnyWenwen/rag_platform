@@ -28,7 +28,7 @@ Remote Ingestion 的 `output` 在 Config 中是 Schema 宣告，在 HTTP Respons
 
 區段只執行一次，涵蓋模組由首節點管理，編譯拒絕重疊。Indexing 與 Inference Input 由平台執行。只替換 Embedding 時，輸出保留原 Document 並附上向量。外部 Retrieval 自行執行搜尋及授權，平台無須等 Ingestion／IndexBinding 就緒。當區段涵蓋 Retrieval，Engine 以共用 I/O 傳入已驗證、合併後的 QueryContext.filters，並驗證回傳候選。過濾、排序及截斷由外部服務決定。未被替換的後段使用驗證過的候選。Inference 區段內的融合、分組和截斷由 Remote 負責，Engine 驗證平台規則與區段不重疊。Remote Retrieval 若留下可識別的 Query／ResultSet，區段外可顯式接平台跨 Query 處理或內建 Rerank。整段 Query Transformation → Rerank 由 Remote 執行時，Runtime 驗證回應及候選契約，按回傳順序交付。平台保留內建擴充的能力，由平台團隊維護方法及相容契約。
 
-業務參數引用 `{{name}}` 優先取本次已驗證的 Request 參數，缺值時依 [共用引用語法](05_system_config.md#parameter-references)取同名 Variable 或既有 Secret。Remote 認證可填 `auth.bearer_token: "{{KEY}}"`。Adapter 在呼叫時取用 System 啟動時載入的 Secret，並組出 `Authorization: Bearer …`。內建 Component 也可使用同一份 System 級 [Secret](05_system_config.md#system-secret)。
+業務參數引用 `{{name}}` 優先取已驗證的 Request 值，再取同名 Variable。Remote Ingestion 的引用限 [僅執行期參數](05_system_config.md#parameter-references)。Remote 認證欄位 `auth.bearer_token: "{{KEY}}"` 從 System Secret 取值並組出 `Authorization` Header。
 
 ## Ingestion 模組
 

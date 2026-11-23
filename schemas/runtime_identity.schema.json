@@ -23,7 +23,12 @@
     "standalone_deployment_env": {
       "allOf": [
         {"$ref": "#/$defs/deployment_env"},
-        {"properties": {"env": {"not": {"const": "builder"}}}}
+        {
+          "properties": {
+            "env": {"not": {"const": "builder"}},
+            "index_generation": {"$ref": "#/$defs/uuid_v4"}
+          }
+        }
       ]
     }
   }

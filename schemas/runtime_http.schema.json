@@ -19,6 +19,7 @@
     "document_status": {"type": "string", "enum": ["queued", "running", "completed", "cancelled", "failed", "unknown"]},
     "run_status": {"anyOf": [{"$ref": "#/$defs/document_status"}, {"const": "partial"}]},
     "index_impact_action": {"type": "string", "enum": ["create", "reuse", "rebuild_required", "recover", "blocked", "none"]},
+    "index_fingerprint": {"$ref": "index_fingerprint.v1.schema.json#/$defs/mapping_meta/properties/index_fingerprint"},
     "recovery_context": {
       "type": "object",
       "properties": {
@@ -34,15 +35,30 @@
         "runtime_ref": {"type": "string", "minLength": 1},
         "catalog_revision": {"type": "string", "minLength": 1},
         "draft_revision": {"type": "string", "minLength": 1},
+        "expected_active_revision": {"type": ["string", "null"], "minLength": 1},
+        "expected_index_generation": {"anyOf": [{"$ref": "runtime_identity.schema.json#/$defs/uuid_v4"}, {"type": "null"}]},
+        "expected_index_fingerprint": {"anyOf": [{"$ref": "#/$defs/index_fingerprint"}, {"type": "null"}]},
         "pipeline": {"$ref": "#/$defs/pipeline"},
         "config": {"$ref": "https://rag-builder.example/schemas/system_config.draft.schema.json#/$defs/config"},
         "operation": {"$ref": "#/$defs/apply_operation"},
         "recovery_from": {"$ref": "#/$defs/recovery_context"}
       },
-      "required": ["runtime_ref", "catalog_revision", "draft_revision", "config"],
-      "if": {"properties": {"operation": {"const": "recover_index"}}, "required": ["operation"]},
-      "then": {"required": ["recovery_from"]},
-      "else": {"not": {"required": ["recovery_from"]}}
+      "required": ["runtime_ref", "catalog_revision", "draft_revision", "config", "expected_active_revision", "expected_index_generation", "expected_index_fingerprint"],
+      "allOf": [
+        {
+          "if": {"properties": {"operation": {"const": "recover_index"}}, "required": ["operation"]},
+          "then": {"required": ["recovery_from"]},
+          "else": {"not": {"required": ["recovery_from"]}}
+        },
+        {
+          "if": {"properties": {"expected_index_generation": {"type": "null"}}},
+          "then": {"properties": {"expected_index_fingerprint": {"type": "null"}}},
+          "else": {"properties": {
+            "expected_index_fingerprint": {"$ref": "#/$defs/index_fingerprint"},
+            "expected_active_revision": {"type": "string"}
+          }}
+        }
+      ]
     },
     "validate_request": {"$ref": "#/$defs/config_request", "unevaluatedProperties": false},
     "apply_request": {
@@ -52,17 +68,28 @@
           "type": "object",
           "properties": {
             "context_revision": {"type": "string", "minLength": 1},
-            "expected_active_revision": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+            "target_index_generation": {
+              "description": "Builder-provided new physical index generation required when preflight returns create, rebuild_required or recover.",
+              "$ref": "runtime_identity.schema.json#/$defs/uuid_v4"
+            },
             "config_revision": {"type": "string", "minLength": 1},
             "allow_rebuild": {"type": "boolean", "default": false}
           },
-          "required": ["context_revision", "expected_active_revision", "config_revision"]
+          "required": ["context_revision", "config_revision"]
         },
         {"required": ["operation"]},
         {
           "if": {"properties": {"operation": {"const": "update"}}, "required": ["operation"]},
           "then": {},
           "else": {"not": {"required": ["allow_rebuild"]}}
+        },
+        {
+          "if": {"properties": {"operation": {"enum": ["initialize", "update", "recover_index"]}}},
+          "else": {"not": {"required": ["target_index_generation"]}}
+        },
+        {
+          "if": {"properties": {"operation": {"const": "recover_index"}}},
+          "then": {"required": ["target_index_generation"]}
         }
       ],
       "unevaluatedProperties": false
@@ -97,9 +124,13 @@
       "properties": {
         "action": {"$ref": "#/$defs/index_impact_action"},
         "code": {"type": "string", "minLength": 1},
-        "message": {"type": "string"}
+        "message": {"type": "string"},
+        "index_fingerprint": {"$ref": "#/$defs/index_fingerprint"}
       },
       "required": ["action", "code", "message"],
+      "if": {"properties": {"action": {"enum": ["create", "reuse", "rebuild_required", "recover"]}}},
+      "then": {"required": ["index_fingerprint"]},
+      "else": {"not": {"required": ["index_fingerprint"]}},
       "additionalProperties": false
     },
     "pipeline_status": {
@@ -131,6 +162,7 @@
         "busy": {"type": "boolean"},
         "index_ready": {"anyOf": [{"type": "boolean"}, {"type": "null"}]},
         "index_generation": {"anyOf": [{"$ref": "runtime_identity.schema.json#/$defs/uuid_v4"}, {"type": "null"}]},
+        "created_by_operation_id": {"type": "string", "minLength": 1},
         "can_ingest": {"type": "boolean"},
         "can_query": {"type": "boolean"},
         "pipelines": {

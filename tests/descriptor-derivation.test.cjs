@@ -98,7 +98,7 @@ assert.notEqual(migrated.deployment.loaded.inference.index_generation,migrated.i
 console.log('PASS: Prototype generates UUIDs and preserves readiness when loading older mock state');
 
 const settings = JSON.parse(vm.runInContext(`
-  const dev = {secret:{TOKEN:'fixture-secret'},variable:{CHUNK_MAX_TOKENS:'720'}};
+  const dev = {secret:{TOKEN:'fixture-secret'},variable:{trace_label:'dev-parser'}};
   let savedSettings;
   localStorage.setItem = (_,data) => { savedSettings = JSON.parse(data).systems[0].draft; };
   model.systems = [{draft:dev}];
@@ -110,10 +110,10 @@ const settings = JSON.parse(vm.runInContext(`
     exported:deploymentConfig(dev)
   });
 `,runtime));
-assert.match(settings.variableTable,/type="text".*data-setting-value="CHUNK_MAX_TOKENS"/);
+assert.match(settings.variableTable,/type="text".*data-setting-value="trace_label"/);
 assert.match(settings.secretTable,/type="password".*data-setting-value="TOKEN"/);
-assert.deepEqual(settings.saved,{secret:{TOKEN:null},variable:{CHUNK_MAX_TOKENS:'720'}});
-assert.deepEqual(settings.exported,{secret:{TOKEN:null},variable:{CHUNK_MAX_TOKENS:null}});
+assert.deepEqual(settings.saved,{secret:{TOKEN:null},variable:{trace_label:'dev-parser'}});
+assert.deepEqual(settings.exported,{secret:{TOKEN:null},variable:{trace_label:null}});
 console.log('PASS: Prototype renders, saves and exports Variable separately from Secret');
 
 async function verifyDocumentIdentity() {

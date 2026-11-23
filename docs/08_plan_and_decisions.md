@@ -88,7 +88,7 @@
 ## 2026-11-16 已確認的 Ingestion Queue 與 ES 寫入規則
 
 - ES 持久化工作紀錄的前版方向已由 [Pod 內工作紀錄決策](#pod-local-ingestion-decision)取代。
-- 2026-11-20 確認[共用控制索引](06_runtime_api_and_deployment.md#es-runtime-control-index)使用 `rag-<env>-runtime-control-v1`。Runtime 載入使用受管 ES 的 System Config 時先確認控制索引；每個叢集與環境在首次初始化時安全地建立一次。已運作環境查無控制索引時暫停受影響的協調操作，等待查核或恢復。
+- 首版 System 生命週期由 [Builder 的 System 紀錄及部署流程](06_runtime_api_and_deployment.md#system-lifecycle-records) 管理。ES 保存檢索資料及其歸屬、相容性與建立操作標記。
 - 2026-11-20 確認 ES Bulk 等待逾時以 `failed` 結案並允許重新匯入，按 `write_id` 清理舊批次。見 [ES 寫入與清理](06_runtime_api_and_deployment.md#es-write-control-record)。
 
 <a id="system-index-recovery-decision"></a>
@@ -96,7 +96,7 @@
 
 - 共用 DEV Runtime 的管理操作使用既有 PUT／DELETE。首次或正式卸載後用 `initialize`；接回相容索引用 `reload`；套用新版用 `update`。重新載入及相容更新沿用索引世代，首次建立及重建則分配新世代。
 - DEV 已發布部署的索引確認遺失時先回報異常，待使用者確認後才由 Builder 發起 `recover_index`。適用於 Config 已載入或未載入。保持原 Config Revision，建立新空索引世代，由 Builder 重新匯入。首次部署與遺失恢復依 Builder 發布紀錄及 Runtime 可確認的綁定區分。
-- Builder 持久化部署意圖、待確認操作與最近觀測。Runtime 在記憶體持有 Config 快照；ES 控制紀錄協調版本／索引綁定、System 層級的排空及管理操作交接。DEV 由 Builder 在 Runtime 重啟後管理補載。FTEST／ENT 獨立部署直接讀匯出 Config 及 Revision 啟動。
+- DEV 由 Builder 保存生效版本、索引綁定、目標及待確認操作並管理重啟後補載。FTEST／ENT 由部署流程保存並提供 Config Revision 及索引綁定。
 - [生命週期與 HTTP 契約](06_runtime_api_and_deployment.md#system-lifecycle-api)定義預檢、更新和卸載前置條件及操作重送。Config 未載入但既有受管索引可確認時，Builder 可直接發起 DELETE，由 Runtime 關閉入口、排空並清除索引。獨立部署的索引建立策略及操作入口由 [Q-021](#q-021) 追蹤。仍須驗證 ES 無法查證與管理操作中斷情境。
 
 <a id="pod-local-ingestion-decision"></a>
@@ -458,8 +458,8 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 
 - Builder DEV 共用 Runtime，外部 API 由服務提供者維運，資源隔離與配額另行驗證。
 - 2026-11-20 確認：DEV 可在同一 Runtime 或受管 ES 的不同 Pod 分別啟用 Ingestion 與 Inference。Builder 以 `runtime_ref` 選 Runtime，透過同一組生命週期 API 的 `pipeline` 選流程。Ingestion 管理共用索引與生效版本，Inference 使用 `reload` 接回，兩條流程均回報自身載入／就緒狀態並可獨立卸載。見 [流程部署契約](06_runtime_api_and_deployment.md#runtime-pipeline-deployment)。
-- DEV 平台管理員在部署時指定固定 `runtime_ref`，供 Builder 核對目標並追蹤發布狀態。FTEST／ENT 獨立部署可省略該值。System 生命週期紀錄以每次程序啟動產生的 `runtime_instance_id` 辨識執行程序。見 [部署模式](06_runtime_api_and_deployment.md#src-21-81-builder-共用模式與獨立部署模式d-61d-62)與 [ES 控制索引](06_runtime_api_and_deployment.md#es-runtime-control-index)。
-- 後加入的 DEV Runtime 由 Builder 對預期流程下發已發布 Config 並執行 `reload`，跨 Runtime 的既有綁定授權與查核待定。清除受管索引使用 System DELETE；共用索引時 Runtime 關閉所有關聯 Runtime 的新請求入口並排空工作。逐流程 [detach](06_runtime_api_and_deployment.md#runtime-system-detach) 保留共用索引。
+- DEV 以穩定 `runtime_ref` 保存部署目標。寫入目標接手時，Builder 先確認舊程序及已送出的寫入已妥善處理。FTEST／ENT 的 `runtime_ref` 選填，寫入排空由部署流程負責。
+- 後加入的 DEV Runtime 由 Builder `reload` 指定版本與綁定。重建或刪除前由 Builder 協調各 Runtime 排空。逐流程 `detach` 保留索引。[排空規格](06_runtime_api_and_deployment.md#builder-query-drain)
 - Builder 使用既有 System GET 定期查核部署意圖、Config Revision 和索引世代。預設每 60 秒，可由 Builder 部署設定調整，Builder 啟動及 Runtime 恢復連線後也查核。預期上線但快照缺失或過期時預檢及 `reload`。暫時性錯誤的重試細節待定。
 - 已確認允許切版期間暫停新查詢。Ingestion 提交共用版本後，Builder 逐目標補載 Inference；舊快照未就緒時回 `503 PIPELINE_NOT_READY`，核對新版與索引世代就緒後恢復。新版已提交但補載失敗時，Builder 顯示發布及各目標的補載結果。自動重試與回復舊版的政策待定。僅變更 Inference 仍走共用版本發布。
 
@@ -470,7 +470,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - 建議：先有受限共享 Runtime 與明確隔離 Binding。首版以受管 ES 為準。
 - 替代：每 System 獨立 Runtime，增加部署／資源管理成本。
 - 負責角色：平台＋Backend／Runtime；阻擋 M5 多 System 服務。
-- 決策：Builder 主動管理並逐流程部署。[ES 控制索引的命名及初始化行為](06_runtime_api_and_deployment.md#es-runtime-control-index)已確認。仍待部署紀錄保存介面、控制索引 mapping 的實作、跨 Runtime 綁定授權及資源策略。
+- 決策：Builder 主動管理並逐流程部署。DEV 由 Builder 保存權威索引綁定及管理操作計畫。仍待 Builder 保存介面、部署層接手證據與資源隔離策略的實作及實機驗收。
 
 <a id="q-021"></a>
 ### Q-021 Export、FTEST／ENT 與 Secret Vault
@@ -480,7 +480,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - 2026-10-28 D-41 確認：rag_engine 統一建置含 Engine／核可 Components／Runtime API 的完整 Image，rag_platform 建置 Builder Image；採用新版 Engine／Component 時仍需更新 Runtime，接口相容的 Builder 可維持原版。目標 Image 須包含 Config 所需 Component packages 並保存版本；Component 清單／鎖定格式與缺失錯誤仍待決，YAML 不會自動提供 Python 方法程式。建置／發布／部署範圍見 [Runtime API／部署](06_runtime_api_and_deployment.md#src-07-94-建置發布與部署的變更範圍)。
 
 - 已確認：DEV／FTEST／ENT 首版以 ES 為部署基準。跨環境沿用同版邏輯 Config，由部署設定提供連線與資源。Local Search 列為後續，Memory／MongoDB 模式仍適用 D-33。System Secret 使用字串 KV，匯出保留 Key，正式 Runtime 啟動時讀取同名環境變數。待定為 Image／Bundle 包裝、外部 Vault 供應、DEV 憑證保存期限、K8s 資源／Ingress／Probe 及 CD 流程。
-- 獨立部署缺少受管 ES 索引時，待決是否由部署者明確指定建立，或由部署流程依查得的綁定狀態建立。需定義如何區分首次部署、既有索引遺失及 ES 狀態無法判定，以及控制紀錄也遺失時如何查核前次綁定。部署側操作入口一併於 M7 討論，維持獨立部署停用管理 HTTP 的契約。
+- FTEST／ENT 由部署方管理版本、綁定、排空與切換。缺少資料索引時，建立授權、部署操作入口與如何查核前次部署紀錄待 M7 確認。獨立 Runtime 的管理 HTTP 停用。
 - 分 Pod 使用同一 Runtime Image 與 Config，環境部署設定選擇 `pipeline`。Export 的設定載體、Service／Probe 接線、角色所需 Secret 與資源的最小範圍，以及滾動切換順序待定。
 - 建議：版本鎖定 Runtime Image＋有效 Config＋環境覆寫；由目標環境提供 ES 及原始資料，獨立 Runtime 直接啟動。
 - 替代：使用單位既有 Helm／GitOps 形式；仍需相同可驗證交付內容。

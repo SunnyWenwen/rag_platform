@@ -146,6 +146,12 @@
         "tags": ["Systems"],
         "summary": "Read System state and managed index binding",
         "operationId": "getSystem",
+        "description": "Without headers, observe the loaded local Runtime. Send all three expected binding headers to inspect a specific physical index, including when no Config is loaded.",
+        "parameters": [
+          {"$ref": "#/components/parameters/ObservedConfigRevision"},
+          {"$ref": "#/components/parameters/ConditionalIndexGeneration"},
+          {"$ref": "#/components/parameters/ExpectedIndexFingerprint"}
+        ],
         "responses": {
           "200": {
             "description": "Loaded System or a verified existing index binding.",
@@ -158,6 +164,7 @@
           "401": {"$ref": "#/components/responses/Unauthenticated"},
           "403": {"$ref": "#/components/responses/Forbidden"},
           "404": {"$ref": "#/components/responses/NotFound"},
+          "409": {"$ref": "#/components/responses/Conflict"},
           "422": {"$ref": "#/components/responses/ValidationFailed"},
           "500": {"$ref": "#/components/responses/InternalError"},
           "503": {"$ref": "#/components/responses/NotReady"}
@@ -206,7 +213,8 @@
         "parameters": [
           {"$ref": "#/components/parameters/IdempotencyKey"},
           {"$ref": "#/components/parameters/ExpectedConfigRevision"},
-          {"$ref": "#/components/parameters/ConditionalIndexGeneration"}
+          {"$ref": "#/components/parameters/ConditionalIndexGeneration"},
+          {"$ref": "#/components/parameters/ExpectedIndexFingerprint"}
         ],
         "responses": {
           "204": {
@@ -235,6 +243,7 @@
           {"$ref": "#/components/parameters/IdempotencyKey"},
           {"$ref": "#/components/parameters/ExpectedConfigRevision"},
           {"$ref": "#/components/parameters/ExpectedIndexGeneration"},
+          {"$ref": "#/components/parameters/RequiredIndexFingerprint"},
           {"$ref": "#/components/parameters/Pipeline"}
         ],
         "responses": {
@@ -613,6 +622,25 @@
           "minLength": 1
         }
       },
+      "ObservedConfigRevision": {
+        "name": "X-Expected-Config-Revision",
+        "in": "header",
+        "required": false,
+        "schema": {"type": "string", "minLength": 1}
+      },
+      "RequiredIndexFingerprint": {
+        "name": "X-Expected-Index-Fingerprint",
+        "in": "header",
+        "required": true,
+        "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/index_fingerprint"}
+      },
+      "ExpectedIndexFingerprint": {
+        "name": "X-Expected-Index-Fingerprint",
+        "in": "header",
+        "required": false,
+        "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/index_fingerprint"},
+        "description": "Required with X-Expected-Index-Generation for managed index operations."
+      },
       "ExpectedIndexGeneration": {
         "name": "X-Expected-Index-Generation",
         "in": "header",
@@ -624,7 +652,7 @@
         "in": "header",
         "required": false,
         "schema": {"$ref": "../schemas/runtime_identity.schema.json#/$defs/uuid_v4"},
-        "description": "Required when deleting a System with a managed index."
+        "description": "Required for managed index deletion and explicit index inspection."
       }
     },
     "responses": {

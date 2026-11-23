@@ -20,9 +20,9 @@
 <a id="system-secret-examples"></a>
 ## Variable／Secret 的 DEV 與部署對照
 
-- [DEV 完整 Config](local_memory.remote_parsing.json) 用 Secret 供應 `PARSER_API_TOKEN`，Variable 則提供 `CHUNK_MAX_TOKENS` 和 `language`。Remote Parser 用 `{{PARSER_API_TOKEN}}` 取得認證值，內建 Chunking 用 `{{CHUNK_MAX_TOKENS}}` 並解析為整數。Remote 的 `{{language}}` 優先使用 [Ingestion Request](../user_remote_api/ingestion.request.json) 傳入的 `zh-TW`，省略時使用 System 值 `en-US`。
+- [DEV Config](local_memory.remote_parsing.json) 用 Secret 提供 `PARSER_API_TOKEN`，Variable 提供僅供記錄的 `trace_label`。送入已宣告的同名 Request 參數可覆寫該次值。Parser 語言及 Chunking 的 `max_tokens: 500` 固定於同一 Revision。
 - [部署匯出 Config](local_memory.remote_parsing.export.json) 保留相同 Key 與 Module 表達式，`config.variable` 與 `config.secret` 的值都以 `null` 表示由目標環境供應。
-- [Deployment 的 env 片段](deployment.secret-env.example.yaml) 映射同名環境變數。憑證使用已建立的 Kubernetes Secret，切分上限和語言使用 ConfigMap。例如 FTEST 可將 ConfigMap 的 `chunk-max-tokens` 設為 `720`，DEV 仍使用 `500`。對應規格見 [System Config](../../docs/05_system_config.md#system-secret)及 [Runtime 啟動](../../docs/06_runtime_api_and_deployment.md#system-secret-deployment)。
+- [Deployment env 片段](deployment.secret-env.example.yaml) 以 Secret 提供 Parser Token，ConfigMap 提供 `trace_label`。詳見 [Variable 與 Secret](../../docs/05_system_config.md#system-secret)。
 
 <a id="pled-elasticsearch-example"></a>
 ## Elasticsearch 服務來源範例
@@ -74,7 +74,7 @@ python3 examples/user_remote_api/validate.py
 | `happy_path`，從取得 Catalog、驗證及發布設定，到省略來源版本的匯入、查詢、文件管理及卸載 | [Catalog API](../../docs/06_runtime_api_and_deployment.md#w1-catalog) · [Config Validation API](../../docs/06_runtime_api_and_deployment.md#config-validation-api) · [System 生命週期](../../docs/06_runtime_api_and_deployment.md#system-lifecycle-api) · [資料生命週期](../../docs/06_runtime_api_and_deployment.md#data-lifecycle-api) |
 | `pipeline_deployment`、`pipeline_revision_mismatch`，涵蓋同一 DEV Runtime 逐流程部署、停用時的業務 API、Inference 不能建索引、局部卸載及共用版本尚未載入 | [按流程部署](../../docs/06_runtime_api_and_deployment.md#runtime-pipeline-deployment) |
 | `reuse_and_rebuild`、`blocked_or_stale_publish`，涵蓋索引沿用／重建、欄位錯誤及版本衝突 | [System 生命週期](../../docs/06_runtime_api_and_deployment.md#system-lifecycle-api) · [索引重建](../../docs/06_runtime_api_and_deployment.md#system-index-lifecycle) · [錯誤格式](../../docs/06_runtime_api_and_deployment.md#runtime-http-errors) |
-| `reload_existing_index`，Runtime 未載入時接回相容索引並保留版本與世代 | [索引生命週期](../../docs/06_runtime_api_and_deployment.md#system-index-lifecycle) |
+| `reload_existing_index`、`restart_ingestion_and_update`，未載入時查核指定綁定，同一寫入目標重啟後補載，再沿用原索引更新 | [寫入目標交接](../../docs/06_runtime_api_and_deployment.md#system-ingestion-drain) |
 | `unload_existing_index_without_config`，GET 回 `loaded: false` 與既有索引世代，Builder 直接發起 DELETE | [System 生命週期](../../docs/06_runtime_api_and_deployment.md#system-lifecycle-api) |
 | `unload_index_ownership_unverified`，實體索引 metadata 的環境與綁定不符，DELETE 回 `409 INDEX_OWNERSHIP_UNVERIFIED` | [索引歸屬規格](../../docs/06_runtime_api_and_deployment.md#runtime-index-ownership) |
 | `detach_shared_index_runtime`，本機工作忙碌時拒絕卸載；卸載成功後保留共用索引世代，原操作可重送 | [卸載單一 Runtime](../../docs/06_runtime_api_and_deployment.md#runtime-system-detach) |

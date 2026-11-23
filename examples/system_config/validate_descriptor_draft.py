@@ -517,6 +517,55 @@ def field_specs(values):
     return {name: Field(**value) for name, value in values.items()}
 
 
+SYSTEM_REFERENCE = re.compile(r"\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}")
+
+
+def parameter_references(value, path):
+    if isinstance(value, dict):
+        for name, item in value.items():
+            yield from parameter_references(item, f"{path}/{name.replace('~', '~0').replace('/', '~1')}")
+    elif isinstance(value, list):
+        for position, item in enumerate(value):
+            yield from parameter_references(item, f"{path}/{position}")
+    elif isinstance(value, str):
+        for match in SYSTEM_REFERENCE.finditer(value):
+            yield match[1], path
+
+
+def remote_index_parameters(node):
+    runtime_only = set(node.get("runtime_only_parameters", []))
+    return {key: value for key, value in node["parameters"].items() if key not in runtime_only}
+
+
+def validate_references(config, lane, module, node):
+    path = f"/config/pipelines/{lane}/{module}/parameters"
+    values = node["parameters"]
+    es = module == "indexing" and node["component_id"] == "elasticsearch"
+    credential_fields = {"password"} if es else set()
+    ordinary = {name: value for name, value in values.items() if name not in credential_fields}
+    for key, location in parameter_references(ordinary, path):
+        if (module, location.rsplit("/", 1)[-1], key) in {
+            ("query_transformation", "prompt", "query"), ("query_transformation", "prompt", "count")
+        }:
+            continue
+        if key in config.get("secret", {}):
+            fail(f"Secret reference outside authentication:{location}")
+    if lane != "ingestion":
+        return
+    if node["component_id"] == "remote_api":
+        for name in node.get("runtime_only_parameters", []):
+            if name not in values:
+                fail(f"unknown runtime-only parameter:{path}/{name}")
+        fixed = remote_index_parameters(node)
+    else:
+        fixed = {name: value for name, value in ordinary.items() if name != "request_parameters"}
+    for _, location in parameter_references(fixed, path):
+        fail(f"index-affecting parameter must be literal:{location}")
+    if "output" in node:
+        for _, location in parameter_references(node["output"], path.removesuffix("/parameters") + "/output"):
+            fail(f"index-affecting parameter must be literal:{location}")
+
+
 def bind_system_parameters(snapshot, environment=None, *, request_parameters=None):
     """Exercise startup and request binding for the published fixtures."""
     Draft202012Validator(SYSTEM_CONFIG_SCHEMA, registry=SCHEMA_REGISTRY).validate(snapshot)
@@ -539,7 +588,6 @@ def bind_system_parameters(snapshot, environment=None, *, request_parameters=Non
 
     secrets = load_values("secret", "System Secret")
     variables = load_values("variable", "System Variable")
-    system_values = {**secrets, **variables}
 
     def resolve(value, shape, path, specs, request_values, *, auth=False):
         if isinstance(value, dict):
@@ -556,7 +604,7 @@ def bind_system_parameters(snapshot, environment=None, *, request_parameters=Non
         key = value[2:-2]
         if not auth and request_values is not None and key in request_values:
             return request_values[key]
-        values = secrets if auth else system_values
+        values = secrets if auth else variables
         if key not in values:
             if auth:
                 fail(f"undeclared System Secret {key}:{path}")
@@ -564,7 +612,7 @@ def bind_system_parameters(snapshot, environment=None, *, request_parameters=Non
                 return value  # Request-only references are bound when the fixture is invoked.
             if key in specs:
                 fail(f"missing parameter {key}:{path}")
-            fail(f"undeclared System Variable or Secret {key}:{path}")
+            fail(f"undeclared System Variable {key}:{path}")
         label, resolved = values[key]
         if shape.get("type") in ("integer", "number", "boolean", "array", "object"):
             try:
@@ -600,6 +648,7 @@ def bind_system_parameters(snapshot, environment=None, *, request_parameters=Non
             descriptor = REGISTRY.get(key, {})
             path = f"/config/pipelines/{lane}/{module}"
             shape = descriptor.get("parameters_schema", {})
+            validate_references(config, lane, module, node_config)
             template_fields = {"query_transformation": {"prompt"}, "embedding": {"composition_template"}}.get(module, set())
             if module == "indexing" and node_config["component_id"] == "elasticsearch":
                 settings = node_config["parameters"]
@@ -611,6 +660,8 @@ def bind_system_parameters(snapshot, environment=None, *, request_parameters=Non
                     if not resolve(settings["password"], {}, field, {}, {}, auth=True):
                         fail(f"missing PLED password:{field}")
                 template_fields = {"password", "es_number", "account"}
+            if lane == "ingestion" and node_config["component_id"] != "remote_api":
+                continue
             node_config["parameters"] = {
                 name: value if name in template_fields else resolve(
                     value, shape.get("properties", {}).get(name, {}), f"{path}/parameters/{name}", specs, request_values
@@ -796,24 +847,28 @@ def _():
     assert exported["config"]["secret"] == dict.fromkeys(dev_secrets)
     assert exported["config"]["variable"] == dict.fromkeys(dev["config"]["variable"])
     assert exported["config"]["pipelines"] == dev["config"]["pipelines"]
-    environment = {"PARSER_API_TOKEN": "fixture-deploy-token", "CHUNK_MAX_TOKENS": "500", "language": "en-US"}
+    environment = {"PARSER_API_TOKEN": "fixture-deploy-token", "trace_label": "ftest-parser"}
     assert compile_local_example(dev) == compile_local_example(exported, environment)
     dev_ingestion = bind_system_parameters(dev)["ingestion"]
     deployed_ingestion = bind_system_parameters(exported, environment)["ingestion"]
     assert dev_ingestion["parsing"]["auth"] == {"bearer_token": dev_secrets["PARSER_API_TOKEN"]}
     assert deployed_ingestion["parsing"]["auth"] == {"bearer_token": environment["PARSER_API_TOKEN"]}
     assert deployed_ingestion["chunking"]["parameters"]["max_tokens"] == 500
-    other_env = {**environment, "CHUNK_MAX_TOKENS": "720"}
-    assert bind_system_parameters(exported, other_env)["ingestion"]["chunking"]["parameters"]["max_tokens"] == 720
+    assert deployed_ingestion["parsing"]["parameters"]["trace_label"] == "ftest-parser"
+    assert dev_ingestion["parsing"]["parameters"]["trace_label"] == "dev-parser"
+    assert remote_index_parameters(dev_ingestion["parsing"]) == remote_index_parameters(deployed_ingestion["parsing"])
+    assert remote_index_parameters(dev_ingestion["parsing"]) == {"language": "zh-TW"}
 
-    rejects(lambda: compile_local_example(exported, {"CHUNK_MAX_TOKENS": "500", "language": "en-US"}),
+    rejects(lambda: compile_local_example(exported, {"trace_label": "ftest-parser"}),
             "missing System Secret:/config/secret/PARSER_API_TOKEN")
-    rejects(lambda: compile_local_example(exported, {"PARSER_API_TOKEN": "fixture-deploy-token", "language": "en-US"}),
-            "missing System Variable:/config/variable/CHUNK_MAX_TOKENS")
+    rejects(lambda: compile_local_example(exported, {"PARSER_API_TOKEN": "fixture-deploy-token"}),
+            "missing System Variable:/config/variable/trace_label")
     rejects(lambda: compile_local_example(dev, environment),
             "export contains a DEV value:/config/secret/PARSER_API_TOKEN")
-    rejects(lambda: compile_local_example(exported, {**environment, "CHUNK_MAX_TOKENS": "invalid"}),
-            "invalid System Variable value:/config/pipelines/ingestion/chunking/parameters/max_tokens")
+    invalid = deepcopy(dev)
+    invalid["config"]["pipelines"]["ingestion"]["chunking"]["parameters"]["max_tokens"] = "{{trace_label}}"
+    rejects(lambda: compile_local_example(invalid),
+            "index-affecting parameter must be literal:/config/pipelines/ingestion/chunking/parameters/max_tokens")
     duplicate = deepcopy(dev)
     duplicate["config"]["variable"]["PARSER_API_TOKEN"] = "fixture-duplicate"
     rejects(lambda: compile_local_example(duplicate), "duplicate System setting:/config/variable/PARSER_API_TOKEN")
@@ -826,38 +881,38 @@ def _():
     rejects(lambda: compile_local_example(literal), "ValidationError")
 
 
-@case("Unified parameter references prefer the validated request and protect Remote authentication")
+@case("Request and Variable bind only runtime-only Remote values and Secrets stay in authentication")
 def _():
     snapshot = local_snapshot("remote_parsing")
     ingestion = snapshot["config"]["pipelines"]["ingestion"]
     specs = ingestion["import"]["parameters"]["request_parameters"]
-    body = json.loads((HERE.parent / "user_remote_api/ingestion.request.json").read_text())
+    remote = ingestion["parsing"]
 
     def parser(request):
         return bind_system_parameters(snapshot, request_parameters={"ingestion": request})["ingestion"]["parsing"]
 
-    default_language = snapshot["config"]["variable"]["language"]
-    assert parser({})["parameters"]["language"] == default_language
-    assert default_language != body["parameters"]["language"]
-    assert parser(body["parameters"])["parameters"] == body["parameters"]
-    assert parser({"language": ""})["parameters"]["language"] == ""
-    rejects(lambda: parser({"language": None}), "invalid request parameter type:/parameters/language")
-    rejects(lambda: parser({"language": 42}), "invalid request parameter type:/parameters/language")
-
-    specs[0]["default_value"] = '"ja-JP"'
-    assert parser({})["parameters"]["language"] == "ja-JP"
+    assert parser({})["parameters"] == {"language": "zh-TW", "trace_label": "dev-parser"}
+    assert parser({"trace_label": "request"})["parameters"]["trace_label"] == "request"
+    assert parser({"trace_label": ""})["parameters"]["trace_label"] == ""
+    rejects(lambda: parser({"trace_label": None}), "invalid request parameter type:/parameters/trace_label")
+    specs[0]["default_value"] = '"request-default"'
+    assert parser({})["parameters"]["trace_label"] == "request-default"
     specs.append({"name": "PARSER_API_TOKEN", "type": "string", "required": False})
-    assert parser({"PARSER_API_TOKEN": "fixture-caller-value"})["auth"] == {
-        "bearer_token": snapshot["config"]["secret"]["PARSER_API_TOKEN"]
-    }
-    del snapshot["config"]["secret"]["PARSER_API_TOKEN"]
-    snapshot["config"]["variable"]["PARSER_API_TOKEN"] = "fixture-variable-token"
-    rejects(lambda: parser({"PARSER_API_TOKEN": "fixture-caller-value"}),
-            "undeclared System Secret PARSER_API_TOKEN:/config/pipelines/ingestion/parsing/auth/bearer_token")
-    snapshot["config"]["secret"]["language"] = snapshot["config"]["variable"].pop("language")
-    snapshot["config"]["secret"]["PARSER_API_TOKEN"] = snapshot["config"]["variable"].pop("PARSER_API_TOKEN")
-    specs[0].pop("default_value")
-    assert parser({})["parameters"]["language"] == default_language
+    assert parser({"PARSER_API_TOKEN": "request-token"})["auth"] == {"bearer_token": "fixture-dev-token"}
+
+    remote["parameters"]["trace_label"] = {"nested": "{{PARSER_API_TOKEN}}"}
+    rejects(lambda: parser({"PARSER_API_TOKEN": "request-token"}),
+            "Secret reference outside authentication:/config/pipelines/ingestion/parsing/parameters/trace_label/nested")
+    remote["parameters"]["trace_label"] = "{{trace_label}}"
+    remote["parameters"]["language"] = "{{trace_label}}"
+    rejects(lambda: parser({}),
+            "index-affecting parameter must be literal:/config/pipelines/ingestion/parsing/parameters/language")
+    remote["parameters"]["language"] = "zh-TW"
+    rewrite = node("rewrite", llm_ref="default-llm", count=1, include_original=False,
+                   prompt="Rewrite {{query}} using {{PARSER_API_TOKEN}}.")
+    snapshot["config"]["pipelines"]["inference"]["query_transformation"] = rewrite
+    rejects(lambda: compile_local_example(snapshot),
+            "Secret reference outside authentication:/config/pipelines/inference/query_transformation/parameters/prompt")
 
 
 @case("published Local Search examples compile to the same index and candidate contracts")

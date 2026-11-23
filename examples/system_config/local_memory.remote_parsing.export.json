@@ -34,7 +34,7 @@
             },
             "request_parameters": [
               {
-                "name": "language",
+                "name": "trace_label",
                 "type": "string",
                 "required": false
               }
@@ -48,8 +48,10 @@
           "through": "parsing",
           "service_ref": "document-normalizer",
           "parameters": {
-            "language": "{{language}}"
+            "language": "zh-TW",
+            "trace_label": "{{trace_label}}"
           },
+          "runtime_only_parameters": ["trace_label"],
           "output": {
             "structdata": {
               "body": {
@@ -99,7 +101,7 @@
                 "output_field": "tags"
               }
             ],
-            "max_tokens": "{{CHUNK_MAX_TOKENS}}",
+            "max_tokens": 500,
             "overlap_tokens": 50,
             "tokenizer_profile_id": "fixture"
           }
@@ -173,8 +175,7 @@
       "PARSER_API_TOKEN": null
     },
     "variable": {
-      "CHUNK_MAX_TOKENS": null,
-      "language": null
+      "trace_label": null
     }
   }
 }

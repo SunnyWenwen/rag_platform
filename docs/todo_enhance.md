@@ -3,7 +3,7 @@
 <a id="secret-reference-scope"></a>
 ## Secret 引用欄位限制
 
-**狀態：後續增強。** Variable 與 Secret 已分成兩張 KV 表。後續在 Schema／Descriptor 明確標記可引用 Secret 的欄位，由 Builder 提示並由 Runtime 在驗證、啟用及發布時檢查。盤點既有一般參數使用 Secret 的設定，將其中的一般環境值移至 Variable。Remote 認證欄位沿用既有的 Secret 取值規則。[System 設定](05_system_config.md#system-secret)
+**狀態：首版執行欄位限制。** 允許範圍見 [System Secret](05_system_config.md#system-secret)。後續評估於 Descriptor 統一標記認證欄位，供 Renderer 提示、元件註冊檢查及診斷遮罩共用。
 
 ## 跨 Pod Ingestion 文件鎖
 

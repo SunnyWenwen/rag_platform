@@ -99,6 +99,8 @@ def verify_deployment_env():
     deployment = json.loads((HERE / "deployment.env.example.json").read_text())
     independent = identity_validator("standalone_deployment_env")
     independent.validate(deployment)
+    identity_validator("uuid_v4").validate(deployment["index_generation"])
+    assert not independent.is_valid({**deployment, "index_generation": "index-1"})
     independent.validate({"env": "ent"})
     independent.validate({"env": "ftest-team-a"})
     identity_validator("deployment_env").validate({"env": "builder"})
@@ -166,6 +168,9 @@ def verify(scenarios):
         "config": initial_config,
     })
     verify_index_fingerprint(fields, vectors, system_id, initial["index_generation"])
+    metadata = json.loads((HERE / "index_fingerprint.v1.example.json").read_text())["mapping_meta"]
+    assert metadata["created_by_operation_id"] == initialize["request"]["headers"]["Idempotency-Key"]
+    assert metadata["created_by_operation_id"] == initial["created_by_operation_id"]
     verify_deployment_env()
     uuid_check = identity_validator("uuid_v4")
     assert not uuid_check.is_valid("es-example")
@@ -207,6 +212,12 @@ def verify(scenarios):
                         assert system["loaded"]
                 elif path.startswith(SYSTEM_PATH):
                     assert_system_status(body, path[len(SYSTEM_PATH):])
+                    observation = request.get("headers", {})
+                    if not body["loaded"]:
+                        assert body["index_generation"] == observation["X-Expected-Index-Generation"]
+                    if observation:
+                        assert observation["X-Expected-Config-Revision"] == body["active_config_revision"]
+                        validate_http("index_fingerprint", observation["X-Expected-Index-Fingerprint"])
             if system_route and (method in ("PUT", "DELETE") or is_detach):
                 headers = request["headers"]
                 key = headers["Idempotency-Key"]
@@ -219,6 +230,7 @@ def verify(scenarios):
                     assert sent is None
                     assert headers["X-Expected-Config-Revision"]
                     uuid_check.validate(headers["X-Expected-Index-Generation"])
+                    validate_http("index_fingerprint", headers["X-Expected-Index-Fingerprint"])
                     query = parse_qs(url.query, keep_blank_values=True)
                     if is_detach and query:
                         assert set(query) == {"pipeline"}
@@ -263,7 +275,12 @@ def verify(scenarios):
                         assert pipeline_scope == draft.get("pipeline")
                         assert pipeline_scope != "inference" or operation == "reload"
                         assert sent.get("recovery_from") == draft.get("recovery_from")
-                        assert sent["expected_active_revision"] == preview["active_config_revision"]
+                        assert all(sent[key] == draft[key] for key in (
+                            "expected_active_revision", "expected_index_generation", "expected_index_fingerprint"
+                        ))
+                        assert preview["active_config_revision"] == sent["expected_active_revision"] or (
+                            operation == "recover_index" and not preview["loaded"]
+                        )
                         action = preview["index_impact"]["action"]
                         assert bool(sent.get("allow_rebuild")) == (action == "rebuild_required")
                         revision = sent["config_revision"]
@@ -279,6 +296,12 @@ def verify(scenarios):
                             assert body["index_generation"] != sent["recovery_from"]["index_generation"]
                         assert_system_status(body, system_id)
                         assert body["active_config_revision"] == revision
+                        if action in {"create", "recover", "rebuild_required"}:
+                            assert body["index_generation"] == sent["target_index_generation"]
+                            assert body["created_by_operation_id"] == headers["Idempotency-Key"]
+                        elif action == "reuse":
+                            assert "target_index_generation" not in sent
+                            assert body["index_generation"] == sent["expected_index_generation"]
                         if not pipeline_scope:
                             assert body["loaded"]
                         elif operation in ("initialize", "reload"):
@@ -394,8 +417,21 @@ def verify(scenarios):
                if item["request"]["method"] == "PUT" and item["response"]["status"] == 200]
     assert put["index_generation"] == updates[0]["index_generation"] != updates[1]["index_generation"]
     assert updates[1] == updates[2]
+    for steps, method in ((happy, "DELETE"), (scenarios["reuse_and_rebuild"], "PUT")):
+        drain_index = next(i for i, step in enumerate(steps)
+                           if step["request"]["path"].endswith(":detach?pipeline=inference"))
+        mutation = steps[drain_index + 1]
+        assert steps[drain_index]["response"]["status"] == 204
+        assert mutation["request"]["method"] == method
+        assert mutation["response"]["status"] == (204 if method == "DELETE" else 200)
     reload_status = scenarios["reload_existing_index"][-1]["response"]["body"]
     assert reload_status == put
+    restart = scenarios["restart_ingestion_and_update"]
+    assert not restart[0]["response"]["body"]["loaded"]
+    assert restart[1]["request"]["body"]["runtime_ref"] == restart[2]["request"]["body"]["runtime_ref"]
+    assert restart[2]["response"]["body"]["can_ingest"]
+    assert restart[-1]["response"]["body"]["active_config_revision"] == "revision-2"
+    assert restart[-1]["response"]["body"]["index_generation"] == restart[0]["response"]["body"]["index_generation"]
     reload_unloaded = scenarios["reload_existing_index"][0]["response"]
     assert reload_unloaded["status"] == 200 and not reload_unloaded["body"]["loaded"]
     assert reload_unloaded["body"]["index_generation"] == reload_status["index_generation"]

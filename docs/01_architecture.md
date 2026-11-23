@@ -167,7 +167,7 @@ User 在 Workspace 建立 System，選用模板或自行設定 Import、Ingestio
 | **B · Retrieval Engine Framework** | **B-1 設定契約定義** 包含 System Config Schema 與 Component Descriptor，由目標 Runtime 提供對應版本給 Builder。**B-2 Engine Library** 依 Config 組裝 System 並執行 Pipeline，DEV Runtime 入口直接載入 B-2 啟動 A-4。**B-3 共用 Runtime Image** 封裝 Runtime API 與 B-2，供 C-3 部署。 |
 | **C · FTEST／ENT 部署** | **C-1 部署 Bundle** 包含同版 Config、B-3 Image 引用與目標環境綁定。**C-2 使用單位部署**以環境設定的 `pipeline` 選擇 **C-3 獨立 Runtime** 啟用的流程。**C-4 目標 System** 的兩條流程分 Pod 時沿用同版 Config 及同一 ES 綁定。**C-5** 為部署環境供應的 ES、模型、Remote API、Secret 與觀測資源。 |
 
-DEV 與目標環境各自綁定服務及索引。對使用 Elasticsearch 的 System，Runtime 使用檢索資料索引及環境共用的 System 生命週期控制索引。匯出交付同版邏輯 Config 和部署所需引用，目標資料由部署方準備或重新匯入。[部署 Bundle 與資料準備](06_runtime_api_and_deployment.md#src-07-91-bundle-目標)
+DEV 的 System、部署目標和索引綁定由 Builder 保存。FTEST／ENT 由部署流程保存並提供 Config 與索引綁定，負責停流量、排空及切換。Runtime 以指定 ES 資料索引的名稱、`_meta` 與 mapping 查證。目標資料由部署方準備或重新匯入。[部署流程](06_runtime_api_and_deployment.md#standalone-index-deployment)
 
 | 使用者步驟 | 圖面對應 |
 |---|---|

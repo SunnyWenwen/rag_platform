@@ -60,7 +60,7 @@
         "contract_version": {"$ref": "remote_api.schema.json#/$defs/contract_version"},
         "implementation_revision": {"$ref": "#/$defs/nonempty"},
         "parameters": {
-          "description": "Output-affecting parameters resolved from the remote contract. Runtime request values are excluded.",
+          "description": "Literal output-affecting parameters. Declared runtime-only parameters and authentication are excluded.",
           "type": "object"
         },
         "output_structdata": {"$ref": "#/$defs/effective_structdata"}
@@ -128,7 +128,8 @@
         "env": {"$ref": "runtime_identity.schema.json#/$defs/env"},
         "system_id": {"$ref": "runtime_identity.schema.json#/$defs/uuid_v4"},
         "index_fingerprint": {"type": "string", "minLength": 64, "maxLength": 64, "pattern": "^[0-9a-f]{64}$"},
-        "index_fingerprint_version": {"const": 1}
+        "index_fingerprint_version": {"const": 1},
+        "created_by_operation_id": {"type": "string", "minLength": 1}
       },
       "required": ["env", "system_id", "index_fingerprint", "index_fingerprint_version"],
       "additionalProperties": false

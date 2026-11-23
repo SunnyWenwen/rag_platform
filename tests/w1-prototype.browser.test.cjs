@@ -54,19 +54,24 @@ async function main() {
     await button('＋ Create Retrieval System').click();
     await page.getByRole('dialog',{name:'Create Retrieval System'}).waitFor();
     await page.getByLabel('Retrieval System 名稱').fill('W1 驗收');
+    const uuidV4 = new RegExp(JSON.parse(fs.readFileSync(
+      path.join(__dirname,'../schemas/runtime_identity.schema.json'),'utf8'
+    )).$defs.uuid_v4.pattern);
+    const createdSystemId = await page.evaluate(() => current().id);
+    assert.match(createdSystemId,uuidV4);
     assert.equal(await page.getByRole('navigation',{name:'設定區域'}).locator('.module-line').count(),2);
 
     await module('其他設定').click();
     const variableSettings = page.getByRole('region',{name:'Variable'});
     const secretSettings = page.getByRole('region',{name:'Secret'});
     await variableSettings.getByRole('button',{name:'新增 Variable'}).click();
-    await variableSettings.getByLabel('Variable Key').fill('CHUNK_MAX_TOKENS');
+    await variableSettings.getByLabel('Variable Key').fill('trace_label');
     await variableSettings.getByLabel('Variable Key').press('Tab');
-    await variableSettings.getByLabel('CHUNK_MAX_TOKENS DEV 測試值').fill('720');
+    await variableSettings.getByLabel('trace_label DEV 測試值').fill('dev-parser');
     await secretSettings.getByRole('button',{name:'新增 Secret'}).click();
     assert.equal(await secretSettings.getByLabel('SECRET_1 DEV 測試值').getAttribute('type'),'password');
-    assert.equal(await variableSettings.getByLabel('CHUNK_MAX_TOKENS DEV 測試值').inputValue(),'720');
-    assert.deepEqual(await page.evaluate(() => draft.variable),{CHUNK_MAX_TOKENS:'720'});
+    assert.equal(await variableSettings.getByLabel('trace_label DEV 測試值').inputValue(),'dev-parser');
+    assert.deepEqual(await page.evaluate(() => draft.variable),{trace_label:'dev-parser'});
     await secretSettings.getByRole('button',{name:'移除'}).click();
     await variableSettings.getByRole('button',{name:'移除'}).click();
     assert.equal(await variableSettings.getByLabel('Variable Key').count(),0);
@@ -133,13 +138,38 @@ async function main() {
     await page.getByLabel('Ingestion Request').fill('{"documents":[]}');
     await button('預檢資料').click();
     assert.match(await page.getByRole('alert').innerText(),/至少一份文件/);
+    const uploadCSV = async content => {
+      await page.getByLabel('上傳 CSV 或 JSON').setInputFiles({
+        name:'keys.csv',mimeType:'text/csv',buffer:Buffer.from(content)
+      });
+      const firstHeader = content.split(',')[0];
+      await page.waitForFunction(header => csv?.headers[0] === header,firstHeader);
+    };
+    const compositeKey = page.getByLabel('組合主鍵（選至少兩欄）');
+    await uploadCSV('site,record,body,title,price\nTW,001,內容,標題,350\n');
+    await button('預檢資料').click();
+    await page.getByRole('alert').filter({hasText:'請映射必填欄位 document_id'}).waitFor();
+    await compositeKey.selectOption(['site']);
+    await button('預檢資料').click();
+    await page.getByRole('alert').filter({hasText:'組合主鍵至少需要兩個欄位'}).waitFor();
+    await compositeKey.selectOption(['site','record']);
+    await button('預檢資料').click();
+    await page.locator('#batch-summary').waitFor();
+    const firstCsvId = await page.evaluate(() => batchPreview.documents[0].document_id);
+    assert.match(firstCsvId,/^csv:[0-9a-f]{64}$/);
+    await uploadCSV('record,site,body,title,price\n001,TW,內容,標題,350\n');
+    await compositeKey.selectOption(['record','site']);
+    await button('預檢資料').click();
+    await page.locator('#batch-summary').waitFor();
+    assert.equal(await page.evaluate(() => batchPreview.documents[0].document_id),firstCsvId);
     await page.getByLabel('上傳 CSV 或 JSON').setInputFiles({
       name:'manual.csv',mimeType:'text/csv',
       buffer:Buffer.from('\uFEFFdocument_id,body,title,price,tags\r\nmanual-a,"定期清潔散熱孔。\n注意電源。",設備保養,350,"[""設備""]"\r\n')
     });
     await page.getByText('CSV 欄位映射 · 1 列',{exact:true}).waitFor();
     await button('預檢資料').click();
-    assert.match(await page.locator('.info[role=status]').innerText(),/1 份文件/);
+    await page.locator('#batch-summary').waitFor();
+    assert.match(await page.locator('#batch-summary').innerText(),/1 份文件/);
     await button('開始匯入').click();
     const run = page.getByRole('region',{name:'匯入結果'});
     await run.getByText('已完成',{exact:true}).first().waitFor();
@@ -218,7 +248,7 @@ async function main() {
       Parsing:['passthrough','remote_api'],
       Chunking:['recursive','fixed_size','header_aware','remote_api'],
       Embedding:['dense','remote_api'],
-      Indexing:['elasticsearch','local'],
+      Indexing:['elasticsearch'],
       'Inference Input':['platform'],
       'Query Transformation':['none','rewrite','remote_api'],
       Retrieval:['builtin','remote_api'],
@@ -398,14 +428,15 @@ async function main() {
     await button('驗證並發布').click();
     assert.match(await impact.innerText(),/沿用索引/);
     await button('返回').click();
+    page.once('dialog',confirmation => confirmation.accept());
     await closeSystem();
+    await dialog.waitFor({state:'hidden'});
     await openCardAction('Runtime');
     await page.getByLabel('Runtime 拓撲').selectOption('split');
     assert.match(await dialog.innerText(),/dev-ingestion/);
     assert.match(await dialog.innerText(),/dev-inference/);
     const identity = await page.evaluate(() => ({system:current().id,generation:indexGeneration(current())}));
-    const uuidV4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-    assert.match(identity.system,uuidV4);
+    assert.equal(identity.system,createdSystemId);
     assert.match(identity.generation,uuidV4);
     assert.match(await dialog.innerText(),new RegExp(`rag-builder-${identity.system}-${identity.generation}`));
     await button('卸載 Inference').click();

@@ -22,7 +22,7 @@ flowchart LR
       direction TB
       A5["A-5 · 測試 Retrieval System · 兩條流程可同 Pod 或分 Pod，共用受管 ES 索引"]
     end
-    A6["A-6 · DEV 外部依賴 · Elasticsearch（資料／控制索引）、模型與 Remote API"]
+    A6["A-6 · DEV 外部依賴 · Elasticsearch（檢索資料索引）、模型與 Remote API"]
     A1 -->|"① 選擇 Config 設定並提交驗證"| A2
     A1 -->|"② 上傳資料／③ 提問／④ 啟動評估"| A2
     A2 -->|"① 驗證並保存"| A3
@@ -49,7 +49,7 @@ flowchart LR
       direction TB
       C4["C-4 · 目標環境的 Retrieval System · 分 Pod 時共用同版 Config 與 ES 綁定"]
     end
-    C5["C-5 · 目標環境依賴 · Elasticsearch（資料／控制索引）、模型、Remote API、Secret Vault、觀測"]
+    C5["C-5 · 目標環境依賴 · Elasticsearch（檢索資料索引）、模型、Remote API、Secret Vault、觀測"]
     C1 --> C2
     C2 -->|"⑥ Deploy · 啟動 C-3 並載入 A-3"| C4
     C4 --> C5

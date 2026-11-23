@@ -96,10 +96,10 @@ text{font-family:'Noto Sans CJK TC','Noto Sans CJK SC',sans-serif;text-rendering
 <text x="1330" y="772" fill="#4b5e75" font-size="19" font-weight="500" text-anchor="start">分 Pod 時共用同版 Config 與同一 ES 綁定</text>
 <rect x="87" y="945" width="509" height="73" rx="13" fill="#ffffff" stroke="#bad0e7" stroke-width="1.4"/>
 <text x="109" y="974" fill="#172a45" font-size="20" font-weight="720" text-anchor="start">A-6　DEV 外部依賴</text>
-<text x="109" y="1001" fill="#4b5e75" font-size="19" font-weight="500" text-anchor="start">Elasticsearch（資料／控制索引）、模型與 Remote API</text>
+<text x="109" y="1001" fill="#4b5e75" font-size="19" font-weight="500" text-anchor="start">Elasticsearch（檢索資料索引）、模型與 Remote API</text>
 <rect x="1284" y="945" width="509" height="76" rx="13" fill="#ffffff" stroke="#afccbd" stroke-width="1.4"/>
 <text x="1306" y="970" fill="#172a45" font-size="20" font-weight="720" text-anchor="start">C-5　目標環境依賴</text>
-<text x="1306" y="991" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">ES（資料／控制索引）、模型與 Remote API</text>
+<text x="1306" y="991" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">ES（檢索資料索引）、模型與 Remote API</text>
 <text x="1306" y="1010" fill="#4b5e75" font-size="18" font-weight="500" text-anchor="start">Secret Vault 與觀測服務</text>
 <text x="956" y="380" fill="#6e5ea3" font-size="17" font-weight="650" text-anchor="start">契約定義</text>
 <text x="381" y="498" fill="#94275e" font-size="22" font-weight="700">① 驗證並保存</text>

@@ -78,7 +78,7 @@
         "additionalProperties": false,
         "required": [
           "operation_id", "kind", "target_config_revision", "expected_active_revision",
-          "expected_index_generation", "apply_context", "allow_rebuild", "started_at"
+          "expected_index_generation", "expected_index_fingerprint", "target_index_generation", "target_index_fingerprint", "apply_context", "allow_rebuild", "started_at"
         ],
         "properties": {
           "operation_id": {"bsonType": "string", "minLength": 1},
@@ -87,6 +87,9 @@
           "target_config_revision": {"bsonType": ["string", "null"], "minLength": 1},
           "expected_active_revision": {"bsonType": ["string", "null"], "minLength": 1},
           "expected_index_generation": {"bsonType": ["string", "null"], "minLength": 36, "maxLength": 36, "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+          "expected_index_fingerprint": {"bsonType": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+          "target_index_generation": {"bsonType": ["string", "null"], "minLength": 36, "maxLength": 36, "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+          "target_index_fingerprint": {"bsonType": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
           "apply_context": {
             "bsonType": ["object", "null"],
             "additionalProperties": false,
@@ -186,6 +189,7 @@
             "properties": {
               "system_id": {"bsonType": "string", "minLength": 36, "maxLength": 36, "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
               "active_config_revision": {"bsonType": "string", "minLength": 1},
+              "created_by_operation_id": {"bsonType": "string", "minLength": 1},
               "loaded": {"bsonType": "bool"},
               "busy": {"bsonType": "bool"},
               "index_ready": {"bsonType": ["bool", "null"]},

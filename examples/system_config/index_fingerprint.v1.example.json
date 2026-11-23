@@ -284,7 +284,8 @@
     "env": "builder",
     "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
     "index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27",
-    "index_fingerprint_version": 1
+    "index_fingerprint_version": 1,
+    "created_by_operation_id": "initialize-001"
   },
   "ownership_cases": [
     {"name": "verified_binding", "expected_code": null},

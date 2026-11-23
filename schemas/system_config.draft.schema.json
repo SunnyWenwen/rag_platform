@@ -215,6 +215,12 @@
         "parameters": {
           "type": "object"
         },
+        "runtime_only_parameters": {
+          "description": "Top-level business parameter keys declared by the service owner to have no effect on indexed output.",
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "uniqueItems": true
+        },
         "output": {
           "$ref": "#/$defs/remote_ingestion_output"
         },
