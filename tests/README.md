@@ -12,6 +12,17 @@ python3 examples/user_remote_api/validate.py
 
 三支腳本分別驗證 System Config／Descriptor／Catalog、Runtime HTTP 範例及其跨步驟關聯，以及共用 Document 與 Remote API。DEV Runtime 的實際 HTTP、部署與搜尋由整合測試驗收。
 
+<a id="dev-runtime-http-contract-test"></a>
+## DEV Runtime HTTP 情境契約
+
+```sh
+python3 examples/system_config/test_runtime_http_contract.py
+```
+
+使用與離線驗證相同的 Python 套件。測試自行開啟本機暫用 TCP Port，每組情境前重設 Mock。它以 HTTP 傳送 [共用情境](../examples/system_config/runtime_http.examples.json) 的請求，依打包後的 [OpenAPI](../openapi/runtime.dev.v1.json) 檢查路由、參數、認證挑戰、HTTP 狀態、Header 和 body，再以收到的回應檢查 Context、Run、索引世代、重送和狀態轉移。面向 Builder 的 Mock 啟動與重設見 [使用方式](../examples/system_config/README.md#mock-runtime)。
+
+Mock 測試涵蓋 Builder 所依賴的 HTTP 契約。正式 Runtime 的部署、真實資料狀態、Elasticsearch 和外部服務仍由 DEV 環境驗收。
+
 ## 共用 Descriptor 推導測資
 
 以下兩個入口讀取[同一份測資](../examples/system_config/descriptor_derivation.fixture.json)，核對有效 Schema、動態選項和失效選值的錯誤。Node.js 腳本直接執行 Prototype 的推導函式，使用 Node.js 18 以上。Python 腳本執行 Engine 側的離線參考編譯器。正式服務的驗收要求見 [Descriptor 手冊](../docs/04_component_descriptor.md#descriptor-derivation-conformance)。

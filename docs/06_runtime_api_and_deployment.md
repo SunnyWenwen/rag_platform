@@ -35,7 +35,7 @@
 - [Observability、認證與權限](#src-07-10-observability認證與權限)
 
 
-更新日期為 2026-11-23。本手冊說明 Builder Backend／Runtime 整合、HTTP 行為、Queue、環境控制與 Export。HTTP 物件形狀及代碼見 [Runtime HTTP Schema](../schemas/runtime_http.schema.json)。業務資料結構見 [共用資料契約](02_data_contracts.md)，可執行的 Mock 測資見 [HTTP JSON 範例](../examples/system_config/README.md#runtime-http-examples)。
+更新日期為 2026-11-23。本手冊說明 Builder Backend／Runtime 整合、HTTP 行為、Queue、環境控制與 Export。HTTP 物件形狀及代碼見 [Runtime HTTP Schema](../schemas/runtime_http.schema.json)。業務資料結構見 [共用資料契約](02_data_contracts.md)。Builder Backend 的 DEV 管理、業務與 Health 介面另提供 [OpenAPI](../openapi/runtime.dev.v1.json)；本機 Mock 及驗收見 [W1 串接步驟](09_w1_builder_runtime_contract.md#builder-runtime-quickstart)。
 
 <a id="runtime-http-common"></a>
 ## HTTP 共通規格

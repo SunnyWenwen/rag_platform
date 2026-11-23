@@ -1,6 +1,6 @@
 # 現行共用 Schema
 
-此目錄定義機器可讀契約的欄位、固定選項及狀態代碼。文件說明執行語意，範例和驗證工具引用對應 Schema。
+此目錄定義機器可讀契約的欄位、固定選項及狀態代碼。文件說明執行語意，範例和驗證工具引用對應 Schema。[Builder → DEV Runtime OpenAPI](../openapi/runtime.dev.v1.json) 定義 HTTP 操作並引用本目錄的物件 Schema。
 
 | Schema | 用途與欄位說明 |
 |---|---|

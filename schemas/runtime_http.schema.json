@@ -229,6 +229,27 @@
       "required": ["error"],
       "additionalProperties": false
     },
+    "ingestion_conflict_response": {
+      "oneOf": [
+        {"$ref": "#/$defs/document_busy_error_response"},
+        {
+          "allOf": [
+            {"$ref": "#/$defs/error_response"},
+            {
+              "not": {
+                "properties": {
+                  "error": {
+                    "properties": {
+                      "code": {"$ref": "#/$defs/document_busy_error_response/properties/error/properties/code"}
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
     "ingestion_accepted": {
       "type": "object",
       "properties": {

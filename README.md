@@ -12,7 +12,7 @@ User 在 Builder 設定、測試及匯出 Retrieval System。System 由 Retrieva
 | [06 Runtime API 與部署](docs/06_runtime_api_and_deployment.md) | HTTP 行為、System 與資料生命週期、部署與認證 |
 | [07 Builder UI](docs/07_builder_ui.md) | 表單、模板選用與測試操作 |
 | [08 開發計畫與決策](docs/08_plan_and_decisions.md) | 最新決策、里程碑、未決事項與驗收 |
-| [09 W1 Builder 開發契約索引](docs/09_w1_builder_runtime_contract.md) | Builder 所需規格與 Mock 範例入口 |
+| [09 W1 Builder 開發契約索引](docs/09_w1_builder_runtime_contract.md) | Builder 所需規格、DEV OpenAPI、可執行 Mock 與情境測試 |
 
 - [Todo Enhance](docs/todo_enhance.md) 記錄跨 Pod Ingestion 文件鎖的後續設計與驗收。
 - 接外部服務依序看 [03 Remote API](docs/03_engine_and_components.md#remote-api)、[05 設定](docs/05_system_config.md)及[契約範例](examples/user_remote_api/README.md)。

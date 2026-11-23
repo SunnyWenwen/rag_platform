@@ -450,7 +450,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - DEV 管理 API 與 Ingestion／Inference 是否使用不同帳密、業務帳密是否綁定個別 System，待認證機制討論。需一起確定認證檢查的位置與部署時如何注入帳密。
 - 管理請求逾時沿用同一 `Idempotency-Key` 查核或重送。已結束的操作結果只需覆蓋 Builder 的重送與查核窗口，初始候選為可配置的 1 小時。尚未結束或結果待查的操作保留至安全結算。結果過期時先查 System 狀態和原操作，查證後才能重新發起變更。正式期限與過期時的查核細節待定。
 - 已確認：卸載某 System 在目標 Runtime 的 Ingestion 後，該目標暫停該 System 的歷史 Run 查詢。ES 保留規則沿用，首版透過已載入同一綁定的 Ingestion 查詢。
-- 仍待正式環境部署接線、OpenAPI 整理、Builder 自有 CRUD／助手／檔案 manifest、資料保留、Trace 及版本相容政策。W1 DEV Runtime 的 HTTP、ES 與模型還需整合驗收。
+- Builder → DEV Runtime 已提供 [OpenAPI、Mock 及 HTTP 情境測試](09_w1_builder_runtime_contract.md#builder-runtime-quickstart)。仍待正式環境部署接線、Builder 自有 CRUD／助手／檔案 manifest、資料保留、Trace 及版本相容政策。W1 DEV Runtime 的 HTTP、ES 與模型還需整合驗收。
 - 負責角色為 Backend、Runtime、Frontend 與身分團隊。以 W1 Mock 開發，真實串接按 M3／M5 驗收。
 
 <a id="q-020"></a>
@@ -722,7 +722,7 @@ Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract�
 <a id="w1-contract-readiness"></a>
 ### W1 開發基準與待決邊界
 
-Builder 可按 [W1 開發契約索引](09_w1_builder_runtime_contract.md) 實作表單、API Client 與 Mock。端到端 Mock 使用已註冊的 Catalog 資源、內建 Elasticsearch Pipeline 與單 Query，並涵蓋流程分開部署、切版、取消與逾時重匯。真實 HTTP、ES 和模型由 DEV 串接驗收。
+Builder 可按 [W1 開發契約索引](09_w1_builder_runtime_contract.md) 實作表單、API Client 與 Mock。本機 Mock 透過 HTTP 重播 Catalog、Config 預檢與發布、匯入與查詢，以及分開部署、切版、取消和逾時重匯。正式 Runtime、ES 和模型由 DEV 串接驗收。
 
 | 要進入的開發範圍 | 還需要定清楚的契約 |
 |---|---|

@@ -4,6 +4,20 @@
 
 [W1 開發基準與待決邊界](08_plan_and_decisions.md#w1-contract-readiness)
 
+<a id="builder-runtime-quickstart"></a>
+## 本機串接
+
+1. Builder Backend 實作用於 DEV 的 API Client，操作與認證以 [Builder → DEV Runtime OpenAPI](../openapi/runtime.dev.v1.json) 為準。若工具需要單檔，先在 repo 根目錄產生可離線匯入的 OpenAPI。
+   ```sh
+   python3 examples/system_config/build_runtime_openapi.py runtime.dev.v1.openapi.json
+   ```
+2. 在另一個終端啟動 [Mock Runtime](../examples/system_config/README.md#mock-runtime)。Builder Backend 的 Base URL 設為 `http://127.0.0.1:8000`，本機 Basic 帳密為 `mock:mock`。
+   ```sh
+   python3 examples/system_config/mock_runtime.py --scenario happy_path
+   ```
+   以 [`happy_path`](../examples/system_config/runtime_http.examples.json) 的 System Config 及資料串通 Catalog → 預檢與發布 → 匯入及 Run 輪詢 → 查詢。取得 `202` 後沿用同一目標的 `Location`。要試切版、匯入失敗或查詢錯誤時，切換到對應情境。
+3. 執行 [HTTP 情境契約測試](../tests/README.md#dev-runtime-http-contract-test)。測試會自行啟動 Mock，依序重播每組情境，檢查 HTTP 回應、OpenAPI Schema 和各步驟的狀態關聯。DEV 上線後，Builder 使用相同操作及生效快照規則，切換目標 URL 與部署憑證進行真實串接驗收。
+
 | 契約 | 規格與範例 |
 |---|---|
 | System Config／Component Descriptor | [System Config 規格](05_system_config.md) · [Config Schema](../schemas/system_config.draft.schema.json) · [ES Config 發布請求範例](../examples/system_config/README.md#runtime-http-examples) · [Descriptor 欄位說明](04_component_descriptor.md#descriptor-fields) · [Descriptor Schema](../schemas/component_descriptor.draft.schema.json) · [各模組 Descriptor JSON](../examples/system_config/builder_form.descriptors.json) · [Component 清冊與 Remote 入口](04_component_descriptor.md#prototype-component-inventory) · [表單 Renderer](07_builder_ui.md#descriptor-form-rendering) |

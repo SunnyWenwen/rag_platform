@@ -80,4 +80,31 @@ python3 examples/user_remote_api/validate.py
 | `query_empty_and_errors`，涵蓋無命中、無效 Filter、索引未就緒及上游失敗 | [Inference API](../../docs/06_runtime_api_and_deployment.md#inference-api) |
 | `document_pagination`，涵蓋沿用 `next_cursor`、最後一頁及無效 Cursor | [文件摘要清單](../../docs/06_runtime_api_and_deployment.md#src-21-93-文件摘要清單d-65-已確認核心) |
 
-以 `validate_runtime_http_examples.py` 檢查測資 Schema 與跨步驟關聯。實際 HTTP、Elasticsearch 與模型由 DEV 環境串接驗收。
+以 `validate_runtime_http_examples.py` 可離線檢查測資 Schema 與跨步驟關聯。以 [HTTP 情境契約測試](../../tests/README.md#dev-runtime-http-contract-test)可透過 TCP 逐步重播，核對收到的回應。正式 Runtime、Elasticsearch 與模型由 DEV 環境串接驗收。
+
+<a id="mock-runtime"></a>
+### 啟動 Mock Runtime
+
+在 repo 根目錄執行，Mock 僅使用 Python 3.10 以上的標準函式庫。
+
+```sh
+python3 examples/system_config/mock_runtime.py --list
+python3 examples/system_config/mock_runtime.py --scenario happy_path --port 8000
+```
+
+從 Builder Backend 連線 `http://127.0.0.1:8000`，本機測試帳號密碼皆為 `mock`。例如讀取固定的 Catalog：
+
+```sh
+curl -u mock:mock http://127.0.0.1:8000/internal/v1/catalog
+```
+
+- 依[情境測資](runtime_http.examples.json)順序呼叫，Body 的 JSON 值與情境一致，版本與操作 Header 也使用情境值。可在啟動時用 `--system-id` 指定 Builder 的 UUIDv4，Mock 會一併替換請求路徑、回應及相關資料中的測資 System ID。
+- Health 與 Catalog 可額外查詢。Run 和文件狀態查詢在沒有下一筆符合的重播步驟時，沿用最近一次已回傳的狀態。
+- `MOCK_STEP_MISMATCH` 指出下一個預期的操作。重設或切換情境時，Mock 清空該程序的重播進度和輪詢結果。
+
+```sh
+curl -i -u mock:mock -H 'Content-Type: application/json' \
+  -d '{"scenario":"query_empty_and_errors"}' http://127.0.0.1:8000/__mock/reset
+```
+
+`/__mock/reset` 僅供本機重播。Mock 的回應由測資決定，適合聯調 API Client 和流程。自訂 Config 編譯、索引、資料工作與真實服務行為由 DEV Runtime 驗收。完整開發入口見 [W1 串接步驟](../../docs/09_w1_builder_runtime_contract.md#builder-runtime-quickstart)。
