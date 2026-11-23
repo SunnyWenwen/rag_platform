@@ -12,7 +12,7 @@ DEV 由 Builder 下發 System Config，獨立部署則由 Runtime 啟動時讀�
 
 同一份發布快照包含 Ingestion 與 Inference。`pipeline` 是生命週期請求或環境部署設定的選擇欄位，位於 `config` 之外。獨立啟用其中一條流程時，沿用同一 System 的發布版本及索引綁定。[流程部署契約](06_runtime_api_and_deployment.md#runtime-pipeline-deployment)
 
-每個有效節點以 `component_id` 選擇執行方式，並以 `component_version` 固定元件版本。內建元件使用該版本的 Descriptor 驗證參數。Remote API 共用平台保留的 `component_id: remote_api`，由 `service_ref` 選擇外部服務。Builder 設計可用同一個「執行方式」欄位選 Recursive、Fixed-size 或 Remote API。
+每個有效節點以 `component_id` 選擇執行方式，並以 `component_version` 固定元件版本。內建元件使用該版本的 Descriptor 驗證參數。Remote API 共用平台保留的 `component_id: remote_api`，服務網址、認證及服務版本直接設定在該節點，見 [Remote 節點設定](#remote-node-settings)。Builder 設計可用同一個「執行方式」欄位選 Recursive、Fixed-size 或 Remote API。
 
 <a id="config-fields"></a>
 ### Config 快照與節點欄位
@@ -24,12 +24,56 @@ DEV 由 Builder 下發 System Config，獨立部署則由 Runtime 啟動時讀�
 | `config` | 有效邏輯設定。Runtime 驗證與套用請求直接帶這個內層物件。 |
 | `config.contract_version` | 此 Config 的格式版本，現行為 `0.2-draft`。 |
 | `config.secret` | 選填的 System 級敏感值 KV。見 [Variable 與 Secret](#system-secret)。 |
-| `config.variable` | 選填的 System 級一般環境參數 KV，例如切分長度或語言。見 [Variable 與 Secret](#system-secret)。 |
+| `config.variable` | 選填的 System 級一般環境參數 KV，例如租戶 ID、區域代碼或 Remote 服務網址。見 [Variable 與 Secret](#system-secret)。 |
 | `config.pipelines` | 包含 `ingestion`、`inference`。每個有效模組對應一個節點。 |
+| `config.pipelines.inference.mcp` | 選填的 [MCP 查詢工具](06_runtime_api_and_deployment.md#inference-mcp)設定：`tool_name`（預設 `search`）、`description` 及文字呈現使用的 `text_field`（預設 `text`，須為有效 `structdata` 字串欄位）。不參與索引指紋。 |
 | 節點的 `component_id`、`component_version`、`parameters` | 分別選方法、固定版本、保存該方法的設定。個別參數由所選 Descriptor 的 `parameters_schema` 定義。 |
-| Remote 節點的 `contract_version`、`through`、`service_ref`、`auth`、`output` | `contract_version` 固定此節點使用的 [Remote HTTP 版本](03_engine_and_components.md#remote-api)，與 `component_version` 各自保存。 `through` 含括區段最後一個模組，首節點由 Pipeline 上的 key 指定。 `service_ref` 引用環境的外部服務綁定。選填的 `auth.bearer_token` 使用 `{{KEY}}`。Ingestion Remote 另須以 `output` 宣告適用的 `structdata` 或 `vectors`，Inference 依 System 的有效候選 Schema 驗證。 |
+| Remote 節點的 `contract_version`、`through`、`connection`、`auth`、`revision`、`runtime_only_parameters`、`output` | `contract_version` 固定此節點使用的 [Remote HTTP 版本](03_engine_and_components.md#remote-api)，與 `component_version` 各自保存。`through` 含括區段最後一個模組，首節點由 Pipeline 上的 key 指定。`connection` 保存服務網址的 Variable 引用、逾時與自訂 Header。選填的 `auth.bearer_token` 使用 Secret 的 `{{KEY}}`。Ingestion Remote 必填 `revision`，並以 `output` 宣告適用的 `structdata` 或 `vectors`；Inference 依 System 的有效候選 Schema 驗證。欄位規則見 [Remote 節點設定](#remote-node-settings)。 |
 
 新增 Remote 節點時，Builder 填入目前可用的契約版本。發布及匯出沿用已保存的版本。發布時依固定的 Pipeline 順序核對節點。Remote 區段涵蓋的後續節點在有效設定中省略，由首節點涵蓋。JSON Schema 驗證結構，編譯器檢查覆蓋是否完整且無重疊、元件版本、欄位相依及引用。見 [Runtime 驗證契約](06_runtime_api_and_deployment.md#config-validation-api)。
+
+<a id="remote-node-settings"></a>
+### Remote 節點設定
+
+使用者在 Pipeline 節點把執行方式切成 Remote API 後，直接在同一個節點設定外部服務。每個 Remote 節點各自保存連線，多個節點呼叫同一服務時分別設定。以下是涵蓋 Parsing 的 Ingestion 節點。
+
+```json
+"parsing": {
+  "component_id": "remote_api",
+  "component_version": "1.0.0",
+  "contract_version": "1",
+  "through": "parsing",
+  "connection": {
+    "url": "{{REMOTE_PARSING_URL}}",
+    "timeout_seconds": 30,
+    "headers": {"X-Tenant": "{{REMOTE_PARSING_HEADER_X_TENANT}}"}
+  },
+  "auth": {"bearer_token": "{{REMOTE_PARSING_TOKEN}}"},
+  "revision": "2026.11.1",
+  "parameters": {"language": "zh-TW", "trace_label": "{{trace_label}}"},
+  "runtime_only_parameters": ["trace_label"],
+  "output": {"structdata": {"body": {"type": "string", "required": true}}}
+}
+```
+
+| 欄位 | Builder 畫面 | 規則 |
+|---|---|---|
+| `through` | 基本：替換範圍 | 依 [可替換範圍](03_engine_and_components.md#remote-api)選擇連續區段。 |
+| `connection.url` | 基本：服務網址 | Builder 依節點自動建立 Variable `REMOTE_<MODULE>_URL`，使用者在節點上輸入 DEV 值。Config 一律保存完整 `{{KEY}}` 引用，不保存網址字面值。啟動解析後須是絕對 `http` 或 `https` URL。 |
+| `auth.bearer_token` | 基本：認證方式「無」或「Bearer Token」 | 選 Bearer Token 時，Builder 自動建立 Secret `REMOTE_<MODULE>_TOKEN`，畫面以遮罩輸入 DEV 值。只能引用 Secret。 |
+| `revision` | 基本：服務版本 | Ingestion 必填，Inference 選填。固定字串，不能使用 `{{KEY}}`。服務處理邏輯改變時由使用者更新，Ingestion 的新值會觸發索引重建。畫面提示「處理邏輯改變時請更新，會觸發索引重建」。 |
+| `parameters` | 基本：業務參數表 | 由服務方定義的業務參數。取值規則見 [共用引用語法](#parameter-references)。 |
+| `runtime_only_parameters` | 基本：業務參數表的「僅執行期使用」勾選 | 只用於 Remote Ingestion，列出不影響索引輸出的頂層參數名稱。 |
+| `output` | 基本：輸出宣告 | 只用於 Remote Ingestion。涵蓋 Parsing／Chunking 時宣告 `structdata`，涵蓋 Embedding 時另列向量表。 |
+| `connection.timeout_seconds` | 進階：逾時秒數 | 正整數，預設 30。不得超過該流程的執行期限：Ingestion 單文件 600 秒，Query 60 秒。 |
+| `connection.headers` | 進階：自訂 Header | 值為字面字串，或勾選「依環境不同」後由 Builder 建立 Variable `REMOTE_<MODULE>_HEADER_<NAME>` 並保存引用。不可引用 Secret，也不可覆寫 `Authorization`、`Content-Type`、`Content-Length`、`Host`、`X-Request-Id`。名稱比對不分大小寫。 |
+| `contract_version` | 進階：契約版本（唯讀） | 新增節點時填入目前支援的版本。進階區另提供契約預覽與回應驗證。 |
+
+`<MODULE>` 為節點的模組鍵轉大寫，`<NAME>` 為 Header 名稱轉大寫並把 `-` 換成 `_`，例如 `REMOTE_PARSING_HEADER_X_TENANT`。這些 Key 顯示在 [其他設定](#system-secret) 的 Variable／Secret 表，標示「由 Remote 節點管理」。使用者可在表中修改值，但不能改名或刪除。移除 Remote 節點或關閉對應設定時，Builder 一併移除這些 Key。自動 Key 與既有 Key 衝突時，Builder 加上未占用的數字後綴。
+
+Remote Ingestion 的 [索引指紋](06_runtime_api_and_deployment.md#index-fingerprint-v1-proposal)包含 `through`、`contract_version`、`revision`（投影為 `implementation_revision`）、排除僅執行期參數後的 `parameters` 及 `output`。`connection` 與 `auth` 屬環境綁定，不參與指紋。換網址、Header、逾時或 Token 時，Runtime 重新連線，不重建索引。
+
+匯出時 `connection.url` 與 Variable 型 Header 的 Key 保留在 `config.variable`，Token 保留在 `config.secret`，值都設為 `null`，部署方分別以 ConfigMap 與 Kubernetes Secret 供值。匯出畫面列出這些 Key。Embedding、LLM 與 Rerank 等模型服務是否改由平台統一提供另行討論，不影響 Remote 節點的欄位。
 
 <a id="config-enums"></a>
 ### 固定選項的儲存值
@@ -48,8 +92,8 @@ DEV 由 Builder 下發 System Config，獨立部署則由 Runtime 啟動時讀�
 | Inference Input | 查詢執行參數、型別、必填性與預設值。平台初始化 QueryContext[] |
 | Query Transformation | `none` 沿用原始問題；`rewrite` 以 `llm_ref`、`prompt`、`count`、`include_original` 設定單筆或多筆改寫；也可用 Remote |
 | Retrieval／Rerank | 內建方法／模型、查詢參數引用、融合與截斷，也可選 Remote 替換。固定 Filter 由 Inference Pipeline 共用 |
-| 其他設定 → Secret | 管理同一 System 各 Module 可引用的 KV；輸入 DEV 測試值。 |
-| Remote API | 首節點與連續範圍、服務引用、parameters JSON、Ingestion 輸出欄位及向量宣告 |
+| 其他設定 → Variable／Secret | 管理同一 System 各 Module 可引用的 KV；輸入 DEV 測試值。Remote 節點自動建立的 Key 也列在此處。 |
+| Remote API | 在選用 Remote 的節點設定替換範圍、服務網址、認證、服務版本、業務參數、Ingestion 輸出欄位及向量宣告。見 [Remote 節點設定](#remote-node-settings)。 |
 
 有效資料欄位由 Import 與後續有效方法推導，外部 Retrieval 沿用這份 System 候選 Schema。W1 開發依 [Schema 與範例](../examples/system_config/README.md)。後續版本凍結和遷移依 [Q-002](08_plan_and_decisions.md#q-002)，部署 Bundle 依 [Q-021](08_plan_and_decisions.md#q-021)。Prototype 匯出用於示意。
 
@@ -118,23 +162,24 @@ Builder 在支援引用的欄位統一填 `{{KEYNAME}}`。引用名稱採 `[A-Za
 | 欄位用途 | 設定範例 | 取值規則 |
 |---|---|---|
 | 一般執行參數 | `top_k: "{{TOP_K}}"` | 先取當前 Pipeline 已驗證的 Request 參數（含宣告預設值），再取 `config.variable.TOP_K`。 |
-| 認證與連線值 | `auth.bearer_token: "{{PARSER_API_TOKEN}}"`、PLED ES 的 `es_number`、`account`、`password` | 引用從同一 System 的 `config.secret` 取得。PLED 匯出採下方的連線規則。 |
+| 認證與連線值 | `auth.bearer_token: "{{REMOTE_PARSING_TOKEN}}"`、PLED ES 的 `es_number`、`account`、`password` | 引用從同一 System 的 `config.secret` 取得。PLED 匯出採下方的連線規則。 |
+| Remote 連線 | `connection.url: "{{REMOTE_PARSING_URL}}"`、Variable 型 Header | 只從 `config.variable` 取值，不讀 Request 參數。 |
 | 影響索引的設定 | `max_tokens: 500` | 固定於 Config Revision。發布時遇到 `{{KEY}}` 回 `422 CONFIG_VALIDATION_FAILED` 並定位欄位。 |
 
 一般欄位用 Key 是否存在判斷缺值。`0`、`false`、`""` 都是已提供的值，依欄位型別和限制驗證。型別錯誤回報驗證失敗。Config 驗證時先確認來源已宣告，執行時仍無值則回報該 Key 與欄位位置。
 
-一般參數支援整個欄位取值及一次解析。Request 值保留原型別，Variable 按目標型別解析。內建 Ingestion 的入庫設定、Import 的 `structdata`、Indexing 的索引設定與覆寫，以及 Remote 的 `output` 使用固定值。Import 宣告的 Request 參數可供執行期欄位取用。Embedding 可沿用 `{{structdata.title}}` 等資料欄位模板，Rewrite 保留 `{{query}}`、`{{count}}` 內建模板變數。
+一般參數支援整個欄位取值及一次解析。Request 值保留原型別，Variable 按目標型別解析。內建 Ingestion 的入庫設定、Import 的 `structdata`、Indexing 的索引設定與覆寫，以及 Remote 的 `revision`、`output` 使用固定值。Import 宣告的 Request 參數可供執行期欄位取用。Embedding 可沿用 `{{structdata.title}}` 等資料欄位模板，Rewrite 保留 `{{query}}`、`{{count}}` 內建模板變數。
 
 Remote Ingestion 預設將業務參數視為會影響索引。服務提供者確認某個頂層參數只供執行期使用時，在該節點的 `runtime_only_parameters` 列出參數名稱，例如只用於記錄的 `trace_label`。這些參數可引用 Request 或 Variable，並排除於索引指紋。其餘業務參數須固定於 Revision。會改變資料範圍、解析或向量結果的語言、租戶或策略皆按輸出影響判定。Remote Inference 的業務參數沿用一般取值規則。
 
 <a id="system-secret"></a>
 ## System Variable 與 Secret
 
-Builder 在 **其他設定** 提供獨立的 Variable 和 Secret Key／Value 表。Variable 用於跨環境不同的一般參數，Secret 用於憑證等敏感值。兩者的 Value 皆以字串填寫。Key 遵守共用引用的名稱格式，且在同一 System 的兩張表間必須唯一，因為部署時都讀取同名環境變數。
+Builder 在 **其他設定** 提供獨立的 Variable 和 Secret Key／Value 表。Variable 用於跨環境不同的一般參數，例如租戶 ID、區域代碼或 Remote 服務網址；Secret 用於憑證等敏感值。兩者的 Value 皆以字串填寫。Key 遵守共用引用的名稱格式，且在同一 System 的兩張表間必須唯一，因為部署時都讀取同名環境變數。[Remote 節點](#remote-node-settings)自動建立的 Key 也列在兩張表中，由節點管理。
 
 DEV 驗證與啟用使用 Builder 針對同一 System 填寫的值。Variable 的 DEV 值可隨草稿保存，Secret 的 DEV 值由受保護的測試設定提供。匯出保留 `config.variable` 與 `config.secret` 的 Key，值一律設為 `null`。正式 Runtime 啟動時以這些 Key 讀取同名環境變數。缺少值、未宣告的引用、型別或語法錯誤均應阻擋啟用並回報欄位位置。
 
-Secret 只供明確列出的認證欄位使用，例如 Remote `auth.bearer_token` 與 PLED ES 的 [連線欄位](#elasticsearch-service-source)。發布時檢查一般參數、巢狀 Remote 參數與 Prompt，若引用 Secret 即回 `422 CONFIG_VALIDATION_FAILED` 並定位欄位。一般參數解析只取 Request 或 Variable。Runtime 在寫 Log、Trace 或回傳診斷前先排除認證欄位與 Header，輸出路徑再將識別到的 Secret 值遮罩為 `***`。部署注入見 [Runtime 啟動與環境注入](06_runtime_api_and_deployment.md#system-secret-deployment)。
+Secret 只供明確列出的認證欄位使用，例如 Remote `auth.bearer_token` 與 PLED ES 的 [連線欄位](#elasticsearch-service-source)。發布時檢查一般參數、巢狀 Remote 參數、Remote 網址與 Header 及 Prompt，若在認證欄位以外引用 Secret 即回 `422 CONFIG_VALIDATION_FAILED` 並定位欄位。一般參數解析只取 Request 或 Variable。Runtime 在寫 Log、Trace 或回傳診斷前先排除認證欄位與 Header，輸出路徑再將識別到的 Secret 值遮罩為 `***`。部署注入見 [Runtime 啟動與環境注入](06_runtime_api_and_deployment.md#system-secret-deployment)。
 
 <a id="system-api-secret-fields"></a>
 ### System API 認證欄位

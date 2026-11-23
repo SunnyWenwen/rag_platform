@@ -46,7 +46,14 @@
           "contract_version": "1",
           "component_version": "1.0.0",
           "through": "parsing",
-          "service_ref": "document-normalizer",
+          "connection": {
+            "url": "{{REMOTE_PARSING_URL}}",
+            "timeout_seconds": 30,
+            "headers": {
+              "X-Tenant": "{{REMOTE_PARSING_HEADER_X_TENANT}}"
+            }
+          },
+          "revision": "2026.11.1",
           "parameters": {
             "language": "zh-TW",
             "trace_label": "{{trace_label}}"
@@ -78,7 +85,7 @@
             }
           },
           "auth": {
-            "bearer_token": "{{PARSER_API_TOKEN}}"
+            "bearer_token": "{{REMOTE_PARSING_TOKEN}}"
           }
         },
         "chunking": {
@@ -172,9 +179,11 @@
       }
     },
     "secret": {
-      "PARSER_API_TOKEN": null
+      "REMOTE_PARSING_TOKEN": null
     },
     "variable": {
+      "REMOTE_PARSING_URL": null,
+      "REMOTE_PARSING_HEADER_X_TENANT": null,
       "trace_label": null
     }
   }

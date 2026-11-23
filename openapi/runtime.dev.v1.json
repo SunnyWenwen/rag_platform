@@ -3,12 +3,12 @@
   "info": {
     "title": "Builder to DEV Retrieval Runtime",
     "version": "1.0.0",
-    "description": "W1 HTTP contract for trusted Builder Backends. In Kubernetes, use the DEV Runtime ClusterIP Service over Istio strict mTLS."
+    "description": "W1 HTTP contract for the DEV Runtime. Builder Backends use the ClusterIP Service over Istio strict mTLS; other callers with valid credentials use the Gateway HTTPS host. Inference also exposes an MCP endpoint at /internal/systems/{system_id}/mcp, specified in docs/06_runtime_api_and_deployment.md."
   },
   "servers": [
     {
       "url": "http://dev-runtime",
-      "description": "Example in-cluster DEV Runtime Service in the Builder namespace. Requires Istio strict mTLS and Builder workload authorization."
+      "description": "Example in-cluster DEV Runtime Service in the Builder namespace. Requires Istio strict mTLS. Routes authenticate with HTTP Basic."
     },
     {
       "url": "http://127.0.0.1:8000",
@@ -22,6 +22,9 @@
   ],
   "paths": {
     "/health/live": {
+      "parameters": [
+        {"$ref": "#/components/parameters/RequestId"}
+      ],
       "get": {
         "tags": ["Health"],
         "summary": "Check service liveness",
@@ -41,6 +44,9 @@
       }
     },
     "/health/ready": {
+      "parameters": [
+        {"$ref": "#/components/parameters/RequestId"}
+      ],
       "get": {
         "tags": ["Health"],
         "summary": "Check service readiness",
@@ -61,6 +67,9 @@
       }
     },
     "/internal/v1/catalog": {
+      "parameters": [
+        {"$ref": "#/components/parameters/RequestId"}
+      ],
       "get": {
         "tags": ["Catalog"],
         "summary": "Read the Runtime component catalog",
@@ -82,6 +91,9 @@
       }
     },
     "/internal/v1/systems": {
+      "parameters": [
+        {"$ref": "#/components/parameters/RequestId"}
+      ],
       "get": {
         "tags": ["Systems"],
         "summary": "List Systems loaded on this Runtime",
@@ -104,6 +116,7 @@
     },
     "/internal/v1/systems/{system_id}/config:validate": {
       "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
         {"$ref": "#/components/parameters/SystemId"}
       ],
       "post": {
@@ -142,6 +155,7 @@
     },
     "/internal/v1/systems/{system_id}": {
       "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
         {"$ref": "#/components/parameters/SystemId"}
       ],
       "get": {
@@ -235,6 +249,7 @@
     },
     "/internal/v1/systems/{system_id}:detach": {
       "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
         {"$ref": "#/components/parameters/SystemId"}
       ],
       "post": {
@@ -265,6 +280,7 @@
     },
     "/internal/systems/{system_id}/v1/ingestions": {
       "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
         {"$ref": "#/components/parameters/SystemId"}
       ],
       "post": {
@@ -316,6 +332,7 @@
     },
     "/internal/systems/{system_id}/v1/ingestions/{run_id}": {
       "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
         {"$ref": "#/components/parameters/SystemId"},
         {"$ref": "#/components/parameters/RunId"}
       ],
@@ -345,6 +362,7 @@
     },
     "/internal/systems/{system_id}/v1/ingestions/{run_id}/cancel": {
       "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
         {"$ref": "#/components/parameters/SystemId"},
         {"$ref": "#/components/parameters/RunId"}
       ],
@@ -385,6 +403,7 @@
     },
     "/internal/systems/{system_id}/v1/documents/{document_id}/ingestion-status": {
       "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
         {"$ref": "#/components/parameters/SystemId"},
         {"$ref": "#/components/parameters/DocumentId"}
       ],
@@ -414,6 +433,7 @@
     },
     "/internal/systems/{system_id}/v1/documents/{document_id}/exists": {
       "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
         {"$ref": "#/components/parameters/SystemId"},
         {"$ref": "#/components/parameters/DocumentId"}
       ],
@@ -445,6 +465,7 @@
     },
     "/internal/systems/{system_id}/v1/documents": {
       "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
         {"$ref": "#/components/parameters/SystemId"}
       ],
       "get": {
@@ -479,6 +500,7 @@
     },
     "/internal/systems/{system_id}/v1/documents/{document_id}:retire": {
       "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
         {"$ref": "#/components/parameters/SystemId"},
         {"$ref": "#/components/parameters/DocumentId"}
       ],
@@ -511,6 +533,7 @@
     },
     "/internal/systems/{system_id}/v1/queries": {
       "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
         {"$ref": "#/components/parameters/SystemId"}
       ],
       "post": {
@@ -624,6 +647,13 @@
         "in": "query",
         "required": false,
         "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/document_list_query/properties/cursor"}
+      },
+      "RequestId": {
+        "name": "X-Request-Id",
+        "in": "header",
+        "required": false,
+        "description": "Tracing ID. Builder sends a UUIDv4 per user action or background call. Runtime echoes the effective value in the response header and in error.request_id.",
+        "schema": {"$ref": "../schemas/runtime_http.schema.json#/$defs/request_id"}
       },
       "IdempotencyKey": {
         "name": "Idempotency-Key",

@@ -1,12 +1,12 @@
 # Builder System 部署狀態與 MongoDB Collection 草案
 
-Builder 保存 System、所有 Config Revision 及各目標 Runtime 的部署意圖，並[主動管理 DEV Runtime](../06_runtime_api_and_deployment.md#builder-managed-dev-runtimes)的發布與重啟後補載。DEV 首版每個 Runtime 以一個 Pod 執行，在記憶體中持有已載入的 Config、執行物件與本地 Queue。Builder 保存 System 層級的權威綁定與操作計畫。Runtime 以 ES 資料索引查核實體狀態。Ingestion Run 留在受理 Pod 的記憶體。獨立部署由匯出的 Config 啟動。
+Builder 保存 System、所有 Config Revision 及各目標 Runtime 的部署意圖，並[主動管理 DEV Runtime](../06_runtime_api_and_deployment.md#builder-managed-dev-runtimes)的發布與重啟後補載。v1 DEV 只部署一個 Runtime，以一個 Pod 執行，在記憶體中持有已載入的 Config、執行物件與本地 Queue。Builder 保存 System 層級的權威綁定與操作計畫。Runtime 以 ES 資料索引查核實體狀態。Ingestion Run 留在受理 Pod 的記憶體。獨立部署由匯出的 Config 啟動。
 
 ## Collection 欄位
 
 Collection 名稱為 `builder_system_deployments`。每個 `(environment, runtime_ref, system_id)` 一筆，唯一鍵由三欄組成。Builder 管理的 Runtime 使用固定環境識別 `builder`，`runtime_ref` 取自部署目標。環境與 System ID 格式見 [Runtime 識別規格](../06_runtime_api_and_deployment.md#runtime-index-ownership)。同一目標的 Runtime 重啟或更換 Pod 時沿用 `runtime_ref`。完整 Config 依 `system_id` 與 `config_revision` 從 Builder 的 Config Revision 紀錄讀取。單純儲存或驗證草稿不建立部署紀錄。
 
-Builder 在同一筆目標紀錄中追蹤兩條流程的部署意圖。分 Pod 時各 Runtime 各有一筆，使用同一份完整 Config 與受管 ES 索引。各目標共用同一筆 Builder System 綁定。逐流程部署見 [Runtime 契約](../06_runtime_api_and_deployment.md#runtime-pipeline-deployment)。
+Builder 在同一筆目標紀錄中追蹤兩條流程的部署意圖。v1 每個 System 只有一筆。後續[多 Runtime](../todo_enhance.md#dev-multi-runtime)分 Pod 時各 Runtime 各有一筆，使用同一份完整 Config 與受管 ES 索引。各目標共用同一筆 Builder System 綁定。逐流程部署見 [Runtime 契約](../06_runtime_api_and_deployment.md#runtime-pipeline-deployment)。
 
 | 欄位 | BSON 型別 | 定義 |
 |---|---|---|
@@ -35,7 +35,7 @@ db.builder_system_deployments.createIndex(
 
 Builder 以 `(environment, system_id)` 建立唯一索引，於 `builder_system_lifecycle` 保存已提交的 `active_config_revision`、`index_generation` 和 `index_fingerprint`。操作對象及原請求計畫保存在 `pending_operation`，由 `state_version` 條件更新取得同一 System 的操作權。非受管索引的世代與指紋為 `null`。目標 Runtime 的觀測結果不能直接覆蓋本紀錄。見 [System 紀錄 validator](../../schemas/mongodb/builder_system_lifecycle.validator.json)。
 
-全域操作進行中的 `detach` 屬暫停服務。Builder 在 `pending_operation.drained_targets` 記錄收到 `detach` 成功回應的 `runtime_ref`、`pipeline`、方式及時間，並保留原部署意圖，以便成功後載回。Builder 重啟先讀全域計畫與目標進度再繼續。目標失聯時保存 `unreachable` 並暫停操作，等部署方恢復目標後再完成查核。操作持有期間暫停自動補載。Pod 故障隔離及寫入接手由[部署方處理](../06_runtime_api_and_deployment.md#system-ingestion-drain)。
+全域操作進行中的 `detach` 屬暫停服務。v1 只有一個 Runtime，`drained_targets` 通常為空陣列，欄位保留給[多 Runtime](../todo_enhance.md#dev-multi-runtime)。Builder 在 `pending_operation.drained_targets` 記錄收到 `detach` 成功回應的 `runtime_ref`、`pipeline`、方式及時間，並保留原部署意圖，以便成功後載回。Builder 重啟先讀全域計畫與目標進度再繼續。目標失聯時保存 `unreachable` 並暫停操作，等部署方恢復目標後再完成查核。操作持有期間暫停自動補載。Pod 故障隔離及寫入接手由[部署方處理](../06_runtime_api_and_deployment.md#system-ingestion-drain)。
 
 ## 發布與同步
 

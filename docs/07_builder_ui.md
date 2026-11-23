@@ -59,7 +59,7 @@ UIB-021 保留給 D-55 索引綁定；後加入且重號的 Descriptor 驅動規
 | Inference | 問題、本次 filters | 檢索清單、分數／來源、可展開診斷 |
 | Evaluation | 選 Dataset／指標、啟動 | 工作狀態、報告、與版本對應 |
 | Export | 補齊 FTEST／ENT 目標服務 | 待設定草稿／已填妥但未驗證的匯出檔 |
-| 查看 API | 查看目前 System／Runtime 的呼叫方法 | 端點、輸入／回應範例；不啟動工作 |
+| 查看 API | 查看目前 System／Runtime 的呼叫方法 | HTTP 與 MCP 端點、帳密、輸入／回應範例；不啟動工作 |
 
 基本引導為 Build → Ingest → Inference → Evaluation → Export；Edit 可回到 Ingest 或 Inference。使用者可重複測試，不把引導步驟做成不必要的強制鎖。
 
@@ -98,7 +98,7 @@ Create／Edit 可選用全域模板，設定 Import 入口欄位及參數，再�
 | Embedding | 組合文字欄位置頂並附可展開範例。服務來源與 Embedding Profile 同在模型設定區。向量映射預設一筆，可按「＋ 新增」加入其他映射。 | 維度／Encoding／Normalization、Batch、輸入限制 |
 | Indexing | 後端、全文／過濾欄位用途、逐欄勾選向量索引；全部內容自動保存的摘要 | 後端特有參數、進階 Mapping（支援後才顯示）；不要求再勾選保存內容 |
 | Query Transformation | None／Rewrite／Remote API；Rewrite 選共用 LLM 並設定改寫數量 | Prompt、include_original；可能產生多 Query 時設定跨 Query 合併 |
-| Inference Input | 有效輸入／輸出規格預設收合 | 固定 Filter、Request 參數 |
+| Inference Input | 有效輸入／輸出規格預設收合 | 固定 Filter、Request 參數、MCP 工具名稱、說明與主文欄位（`config.pipelines.inference.mcp`） |
 | Retrieval／Fusion Plan | 向量欄位和全文欄位皆可多選，其下依序顯示每路 Top K、多路時的 RRF／Sum Score、Group by 合併欄位、Top N。查詢 Profile 隨各向量欄位的索引綁定。 | 依融合策略顯示專屬參數。跨 Query 規則由 Query Transformation 設定。 |
 | Rerank | None／服務、單一評分內容欄位、Rerank Top N（原型預設 3）、實際提問來源 | 當步分組、逐 Query 問題選擇、附加內容欄位、Timeout／服務輸入限制 |
 
@@ -122,7 +122,7 @@ Import 可選已整理欄位或待解析來源。選待解析來源時，入口�
 <a id="src-06-322-已註冊-developer-serviceremote-pipelined-51已有原型模擬真實整合待做"></a>
 ### User Remote API 與選用模板
 
-User 在節點切換到 Remote API，設定 Endpoint、認證、參數及替換範圍。新增時填入支援的 Remote 契約版本，儲存及匯出一併保留。涵蓋的節點顯示管理來源，原內建設定留在草稿。Builder 顯示包含 `contract_version`、`segment` 的請求，及包裝 `output` 的有效成功 Response Schema，並提供本機回應驗證。服務方依 [Remote v1 OpenAPI](../examples/user_remote_api/openapi.json) 實作。涵蓋 Embedding 時宣告向量輸出；內建向量 Retrieval 按 Profile 設定 Query Encoder。
+User 在節點切換到 Remote API 後，直接在同一節點設定替換範圍、服務網址、認證、服務版本、業務參數及輸出宣告。逾時、自訂 Header、契約版本與契約預覽放在收合的進階區。欄位、自動建立的 Variable／Secret Key 與驗證規則見 [Remote 節點設定](05_system_config.md#remote-node-settings)。新增時填入支援的 Remote 契約版本，儲存及匯出一併保留。涵蓋的節點顯示管理來源，原內建設定留在草稿。Builder 顯示包含 `contract_version`、`segment` 的請求，及包裝 `output` 的有效成功 Response Schema，並提供本機回應驗證。服務方依 [Remote v1 OpenAPI](../examples/user_remote_api/openapi.json) 實作。涵蓋 Embedding 時宣告向量輸出；內建向量 Retrieval 按 Profile 設定 Query Encoder。
 
 Admin 在 Builder 以外維護版本化全域模板。Builder 顯示可選版本，套用時複製至目前草稿。User 可調整設定及環境綁定。模板目錄為唯讀，系統儲存沿用既有驗證。
 
@@ -133,11 +133,11 @@ Admin 在 Builder 以外維護版本化全域模板。Builder 顯示可選版本
 
 **由 Builder 直接實作固定的 System 設定畫面。** 兩張 KV 表各自讀寫 `config.variable` 與 `config.secret`，以 [System Config Schema](../schemas/system_config.draft.schema.json) 驗證資料形狀。Ingestion／Inference 的 Component 參數由 [表單 Renderer](#descriptor-form-rendering) 依 `parameters_schema` 產生。
 
-使用者可在兩張表各自新增、編輯與移除 KV，Key 在兩張表間不得重複。Variable 使用一般文字輸入，DEV 值可隨草稿保存。Secret 使用遮罩輸入，Prototype 只在本頁記憶體留存試跑值。下載部署設定時兩張表都保留 Key 並將值設為 `null`。取值順序見 [共用引用語法](05_system_config.md#parameter-references)。Secret 另有一個固定的 [System API 認證區](05_system_config.md#system-api-secret-fields)，帳密值可改，保留 Key 由 Builder 管理。
+使用者可在兩張表各自新增、編輯與移除 KV，Key 在兩張表間不得重複。Variable 使用一般文字輸入，DEV 值可隨草稿保存。Secret 使用遮罩輸入，Prototype 只在本頁記憶體留存試跑值。Remote 節點自動建立的網址、Header 與 Token Key 也列在表中並標示「由 Remote 節點管理」，可改值但不能改名或刪除。下載部署設定時兩張表都保留 Key 並將值設為 `null`。取值順序見 [共用引用語法](05_system_config.md#parameter-references)。Secret 另有一個固定的 [System API 認證區](05_system_config.md#system-api-secret-fields)，帳密值可改，保留 Key 由 Builder 管理。
 
 ### 條件欄位與相依驗證
 
-- 自行提供模型／DB 或 Remote API 時填必要連線，認證欄位使用 `{{KEY}}`。平台測試資源使用部署綁定。
+- 自行提供模型／DB 時填必要連線，認證欄位使用 `{{KEY}}`。Remote API 的網址與 Token 在節點輸入，Builder 自動保存為 Variable／Secret 引用。平台測試資源使用部署綁定。
 - Query Transformation 只選 llm_ref；共用服務只管理一次。
 - None 的 Top-N／Prompt 等欄位可保留草稿但停用，不參與有效 Config 驗證／匯出。
 - 上游刪除欄位或模型引用失效時，保留草稿選擇、標示原因並阻擋發布。
@@ -250,7 +250,7 @@ Query Transformation 的「執行方式」可選 None、Rewrite 或 Remote API�
 <a id="src-06-35-檢索結果呈現取代舊答案輸出設定"></a>
 ### 檢索結果呈現（取代舊答案輸出設定）
 
-Inference 顯示 QueryContext[] 中的目前 ResultSets／ResultItems、依序名次、選填分數及 Chunk 內容。metadata／filters 隨 context 保留；診斷與計畫在資料外顯示，來源只顯示 Component 實際提供的內容。跨 Query 未合併時分組呈現，不捏造單一答案／生成引用。不提供 Generation Module、答案模板、Context Budget 或答案 JSON Schema 編輯器；Prototype 遷移見 UIB-015。
+Inference 顯示回應中最終 Context 的 `final` ResultSet、依序名次、選填分數及 Chunk 內容，並列出 `query_variants` 中實際搜尋的 Query。metadata／filters 隨 context 保留；診斷與計畫在資料外顯示，來源只顯示 Component 實際提供的內容。逐 Query 清單待診斷介面提供，不捏造單一答案／生成引用。不提供 Generation Module、答案模板、Context Budget 或答案 JSON Schema 編輯器；Prototype 遷移見 UIB-015。
 
 <a id="src-06-4-從-csv-開始"></a>
 ## 從 CSV 開始
@@ -322,7 +322,7 @@ Prototype 限制 ≤1 MB 且在瀏覽器讀取，不等於正式產品限制。�
 <a id="src-06-5-ingestion-畫面"></a>
 ## Ingestion 畫面
 
-在原型的 System 卡片打開 **Runtime**，可切換同 Pod／分 Pod 的部署示意，逐流程查看載入版本、索引世代與就緒狀態。可模擬補載及索引遺失後的同版本恢復。匯入畫面可選取文件取消、模擬 Bulk 逾時，再以原文件 ID 查回最近的 Run。畫面上的動作使用本機模擬資料。
+在原型的 System 卡片打開 **Runtime**，可切換同 Pod／分 Pod 的部署示意（v1 DEV 只部署一個 Runtime，分 Pod 為[後續規劃](todo_enhance.md#dev-multi-runtime)），逐流程查看載入版本、索引世代與就緒狀態。可模擬補載及索引遺失後的同版本恢復。匯入畫面可選取文件取消、模擬 Bulk 逾時，再以原文件 ID 查回最近的 Run。畫面上的動作使用本機模擬資料。
 
 上傳／JSON → 批次 Request 預覽與檢查 → 明確啟動 → 顯示 run_id／狀態 → 結果。長工作由 Runtime API／部署手冊 管理，不依靠前端視窗存活。
 
@@ -330,7 +330,7 @@ Prototype 限制 ≤1 MB 且在瀏覽器讀取，不等於正式產品限制。�
 - 文件數與 Chunk 數各自標示。Ingestion 進度的呈現方式留待後續討論。
 - 部分失敗列出可對應 item 的錯誤，不用單一成功 Toast 遮蔽。
 - 重新打開視窗時，向原受理 Runtime 查詢 `run_id`。遺失收件回應時，向同一目標依已知 `document_id` 查最近一次 `run_id`，再核對文件清單。紀錄存於受理 Pod 的記憶體；程序重啟後查無原 Run。[工作紀錄與重啟規則](06_runtime_api_and_deployment.md#ingestion-job-records)
-- 失敗或中斷的文件由呼叫方決定是否重新提交。ES Bulk 逾時顯示為文件失敗，可重新匯入。[批量取消](06_runtime_api_and_deployment.md#ingestion-cancel-api)將選定的 `document_ids` 與 `run_id` 送往原提交的 Runtime 目標，收到 `cancelled` 即顯示已取消。原寫入若成功，重新取得 Run 或文件狀態時改顯示 `completed`。若重匯收到 `409 DOCUMENT_BUSY`，依衝突回應顯示受理 Pod 仍占用的文件。
+- 失敗或中斷的文件由呼叫方決定是否重新提交。ES Bulk 逾時顯示為文件失敗，可重新匯入。[批量取消](06_runtime_api_and_deployment.md#ingestion-cancel-api)將選定的 `document_ids` 與 `run_id` 送往原提交的 Runtime 目標，收到 `cancelled` 即顯示已取消。收到 `cancelling` 時顯示「取消中」，表示原寫入正在結算，之後重新取得 Run 或文件狀態會改為 `completed`（原寫入成功）或 `cancelled`。若重匯收到 `409 DOCUMENT_BUSY`，依衝突回應顯示受理 Pod 仍占用的文件。
 - 真實 Parser／Chunk 小量試跑是建議能力，Q-025 核定前不能用瀏覽器格式預覽冒充。
 
 <a id="src-06-6-inference-與診斷"></a>
@@ -347,9 +347,9 @@ Builder 對新建立、清空後重新建置或同版本恢復索引的資料集
 |---|---|
 | 基本 | 檢索內容、分數／排名／來源、索引未就緒／服務錯誤 |
 | 進階 | 原始與衍生 Query、各路候選、融合結果、Rerank 前後、實際 Context、耗時／用量 |
-| 版本 | 讀取 Inference body 的 `config_revision`、`index_generation`，並可由對應 Header 追查實際版本。純外部 Retrieval 的索引世代為 `null` 時顯示無平台索引。Trace 使用的 `request_id` 依 Q-019 後續契約。 |
+| 版本 | 讀取 Inference body 的 `config_revision`、`index_generation`，並可由對應 Header 追查實際版本。純外部 Retrieval 的索引世代為 `null` 時顯示無平台索引。Builder 為每次操作產生 UUIDv4 的 `X-Request-Id`，追查時使用回應 Header 的值，見 [請求追蹤](06_runtime_api_and_deployment.md#runtime-request-id)。 |
 
-Trace 保存與敏感內容政策見 Q-016，診斷顯示範圍見 Q-025。Filter 表單分別顯示固定條件與本次附加條件，日期時間預設顯示 Asia/Taipei。Inference 執行失敗時顯示 Runtime 的錯誤，成功但無候選時顯示無命中。Ingest／Inference 的「查看 API 端點」呈現 Base URL、認證、JSON、cURL、回應及錯誤。Ingest 另示範 `run_id` 輪詢。檔案上傳由 Builder 轉為 Runtime Ingestion JSON，見 [Runtime 上傳邊界](06_runtime_api_and_deployment.md#src-07-54-builder-上傳與自行部署)。查看說明不會觸發工作。
+Trace 保存與敏感內容政策見 Q-016，診斷顯示範圍見 Q-025。Filter 表單分別顯示固定條件與本次附加條件，日期時間預設顯示 Asia/Taipei。Inference 執行失敗時顯示 Runtime 的錯誤，成功但無候選時顯示無命中。Ingest／Inference 的「查看 API 端點」呈現 Base URL、認證、JSON、cURL、回應及錯誤。Ingest 另示範 `run_id` 輪詢。Inference 另顯示 [MCP 端點](06_runtime_api_and_deployment.md#inference-mcp)的 URL、工具名稱，以及沿用的 Inference 帳密。DEV 的說明須提醒：直接呼叫 DEV Runtime 匯入的資料不在 Builder 保存的原始資料內，重建、恢復或 CSV 整批替換時不會重新匯入，這些 Run 也不會出現在 Builder 的匯入紀錄。見 [DEV Runtime 的直接存取](06_runtime_api_and_deployment.md#dev-runtime-direct-access)。檔案上傳由 Builder 轉為 Runtime Ingestion JSON，見 [Runtime 上傳邊界](06_runtime_api_and_deployment.md#src-07-54-builder-上傳與自行部署)。查看說明不會觸發工作。
 
 <a id="src-06-7-evaluation-與-edit-config"></a>
 ## Evaluation 與 Edit Config
@@ -383,7 +383,7 @@ Runtime 回報已發布部署的索引確認遺失時，Builder 顯示受影響�
 - 沿用選定 System 的同版 Config，逐項填入部署環境的 LLM、Embedding、Rerank 與 ES 綁定；同 llm_ref 不重複填連線。改 URL／Secret 不覆寫邏輯 Config。
 - 使用 DEV 綁定者可下載待設定草稿；必要資訊已填妥者標示「已填妥，尚未驗證」。
 - 只允許合法環境覆寫；更改 Embedding Model 提示返回 Edit Config 並重建。
-- 匯出保留 `config.variable` 及 `config.secret` 的 Key，值設為 `null`。部署設定以同名環境變數分別提供 ConfigMap 與 Secret。Remote API 另匯出目標環境的連線設定。
+- 匯出保留 `config.variable` 及 `config.secret` 的 Key，值設為 `null`。部署設定以同名環境變數分別提供 ConfigMap 與 Secret。Remote 節點的網址、Variable 型 Header 與 Token 以 Key 匯出，畫面列出部署方需供值的 Key。
 - 已發布的 System 可選 FTEST／ENT 檢視部署用 Config。匯出將 `dev_test` 轉為 `pled_es`，沿用 System ID、Config Revision 及索引設定，三個 PLED 連線欄位由部署環境提供。畫面列出實際所需的 Secret Key。[ES 匯出規則](05_system_config.md#elasticsearch-service-source)
 - 不含實際 Secret、Image 本體、Chunk／vectors 或測試原文；提醒需在目標環境準備資料／Ingestion。
 - FTEST／ENT 檔名、環境值與完整 Bundle 待 Q-021；正式文案稱 Config／部署設定。原型舊的 RAGBlueprint／blueprint.json 僅是待遷移標籤，不是另立的產品物件；單份示意 YAML 不代表正式交付完成。
@@ -465,7 +465,7 @@ API 回傳最終有效清單。D-52：Chunk.metadata._rag.source_refs 為選填�
 - Import 欄位及 CSV 映射、各階段有效 Document Schema、批次 Ingestion Request 與逐文件驗證。
 - Fixed-size／Recursive／Header-aware 的配置、Tokenizer 連動及 metadata 繼承。原型曾示範多任務切分，正式設定只選一個切分欄位。
 - 全部 Chunk 內容預設保存；全文、向量、Filter 能力分開，失效欄位保留並報錯。
-- 推論 JSON 檢視顯示完整成功物件，`contexts` 內保留 QueryContext[]／filters／metadata。跨 Query 合併可設定並保存草稿，執行依 Engine 整合驗收。
+- 推論 JSON 檢視顯示完整成功物件，`contexts` 只有一份最終 Context，保留 filters／metadata，`query_variants` 列出實際搜尋的 Query。跨 Query 合併可設定並保存草稿，執行依 Engine 整合驗收。
 - 選填 _rag；Embedding 欄位模板；複製原文欄位與額外原文 Chunk 的獨立設定。
 - 內建與 User Remote API 模式、連續範圍鎖定、契約驗證及 Admin 全域模板選用。
 - Secret 設定可編輯 Ingestion／Inference 各自的固定帳密。Runtime 畫面說明 Builder 使用者授權、Runtime 管理與流程認證的分工，Health 免 Basic。
@@ -517,14 +517,14 @@ ResultSet.key 對應 Config 路徑／群組，items 位置即名次。RRF 可用
 | UIB-017 | KISS 選填追溯／metadata 提示 | 原型完成；不捏造 _rag；真實 Component 自行支援 |
 | UIB-018 | Embedding 前欄位模板 | 字串替換／驗證／Picker／預覽／有效匯出完成；模型 Token 上限仍待真實 Tokenizer |
 | UIB-019 | 額外原文 Chunk | 控制、獨立 copy、每 Unit/task 去重示例及變更影響完成；真實切分待 Engine |
-| UIB-020 | 簡化推論 Contract | 成功物件含版本及 `contexts`，Context 保留 filters／metadata |
+| UIB-020 | 簡化推論 Contract | 成功物件含版本、`query_variants` 及只有一份最終 Context 的 `contexts`，Context 保留 filters／metadata |
 | UIB-024 | Descriptor 驅動 I/O 資料規格與逐層相依 | v0.13 完成本機互動示範，正式 Engine／Registry／API 待整合，見文末 |
 
 <a id="uib-010-component-selection"></a>
 <a id="src-10-4-component-與-remote-的原型範圍"></a>
 ## Prototype／Backlog：Remote API
 
-原型涵蓋 [支援的連續範圍](03_engine_and_components.md#remote-api)、單一 Document、輸出向量宣告、有效 I/O 與參數引用。外部 Retrieval 使用 System 有效候選 Schema，測試可略過平台 Ingestion。Endpoint 與憑證解析顯示為配置預覽；真實 HTTP、認證、資料和索引仍由 Runtime 整合驗收。
+原型涵蓋 [支援的連續範圍](03_engine_and_components.md#remote-api)、單一 Document、輸出向量宣告、有效 I/O 與參數引用。外部 Retrieval 使用 System 有效候選 Schema，測試可略過平台 Ingestion。服務網址、Header 與憑證以 Variable／Secret 引用顯示；真實 HTTP、認證、資料和索引仍由 Runtime 整合驗收。
 ## Prototype／Backlog：選填追溯與文件提示
 
 內建預覽預設沒有 _rag，不以缺少 source_refs／fingerprint／ordinal 阻擋儲存或執行。Component 未提供來源就不捏造。Chunk.metadata._rag 保留為選填擴充；ResultItem 不另帶分數血緣，流程診斷交 Logs。
@@ -576,7 +576,7 @@ ResultSet.key 對應 Config 路徑／群組，items 位置即名次。RRF 可用
 
 - [ ] API 說明呈現 202 僅代表接收，顯示 run_id 及可用的狀態查詢入口；精確 Batch 路徑／Envelope 待 21 核定。
 - [ ] 依 Run／文件狀態與錯誤契約顯示查詢結果及同一 Run 的批量取消結果。進度粒度與呈現延後討論。
-- [ ] 批量匯入收到 `409 DOCUMENT_BUSY` 時，顯示 `error.conflicts` 中受理 Pod 的全部衝突文件及狀態，包括 `cancelled` 但仍待收尾的工作。呼叫方可在占用釋放後重新提交。[衝突回應規格](06_runtime_api_and_deployment.md#ingestion-document-busy)
+- [ ] 批量匯入收到 `409 DOCUMENT_BUSY` 時，顯示 `error.conflicts` 中受理 Pod 的全部衝突文件及狀態，包括仍在結算的 `cancelling` 工作。呼叫方可在占用釋放後重新提交。[衝突回應規格](06_runtime_api_and_deployment.md#ingestion-document-busy)
 - [ ] Runtime 重啟或紀錄到期後，顯示查無紀錄並結束該次 Run 輪詢。區分查無紀錄與有 Run 但結果待查的 `unknown`。
 - [ ] Ingestion Queue 額滿、Inference Rate／併發／Timeout 有可理解提示；不在每次文件／Query 表單加入環境上限設定。
 - [ ] 區分文件工作狀態、索引是否可查與 Runtime Health；Local／Remote 的未知結果不冒充可安全重試。

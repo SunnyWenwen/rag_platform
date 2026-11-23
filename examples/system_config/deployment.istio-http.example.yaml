@@ -52,21 +52,6 @@ spec:
   mtls:
     mode: STRICT
 ---
-apiVersion: security.istio.io/v1
-kind: AuthorizationPolicy
-metadata:
-  name: dev-runtime-from-builder
-  namespace: rag-platform
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: dev-runtime
-  action: ALLOW
-  rules:
-    - from:
-        - source:
-            principals: ["cluster.local/ns/rag-platform/sa/builder-backend"]
----
 apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
@@ -85,6 +70,21 @@ spec:
 apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
+  name: dev-runtime-entry
+  namespace: rag-platform
+spec:
+  hosts: ["dev-runtime.example.com"]
+  gateways: ["istio-system/platform-https"]
+  http:
+    - route:
+        - destination:
+            host: dev-runtime
+            port:
+              number: 80
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
   name: system-entry
   namespace: rag-platform
 spec:
@@ -94,6 +94,8 @@ spec:
     - match:
         - uri:
             prefix: /v1/
+        - uri:
+            exact: /mcp
         - uri:
             exact: /health/live
         - uri:

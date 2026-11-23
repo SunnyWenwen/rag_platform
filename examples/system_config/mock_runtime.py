@@ -6,9 +6,10 @@ from hmac import compare_digest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
+import re
 from threading import Lock
 from urllib.parse import parse_qsl, urlsplit
-from uuid import UUID
+from uuid import UUID, uuid4
 
 HERE = Path(__file__).resolve().parent
 SCENARIO_FILE = HERE / "runtime_http.examples.json"
@@ -18,6 +19,7 @@ MOCK_CREDENTIALS = {
     "systemInferenceBasic": "inference:mock-inference",
 }
 CHALLENGE = 'Basic realm="retrieval-runtime"'
+REQUEST_ID = re.compile(r"[A-Za-z0-9._-]{1,128}")
 NO_BODY = object()
 HEALTH_PATHS = {"/health/live", "/health/ready"}
 PROBE_PATHS = HEALTH_PATHS | {"/internal/v1/catalog"}
@@ -182,6 +184,9 @@ class MockHandler(BaseHTTPRequestHandler):
         self.send_response(response["status"])
         if self.close_connection:
             self.send_header("Connection", "close")
+        # Echo a valid caller tracing ID, otherwise assign one as the Runtime does.
+        request_id = self.headers.get("X-Request-Id", "")
+        self.send_header("X-Request-Id", request_id if REQUEST_ID.fullmatch(request_id) else str(uuid4()))
         for name, value in response.get("headers", {}).items():
             self.send_header(name, value)
         if response["status"] != 204:

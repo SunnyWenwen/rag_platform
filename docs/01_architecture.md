@@ -54,16 +54,16 @@ Builder 管理設定與測試，Library 執行模組，Framework 交付設定契
 
 | 環境 | Config 與 API service 的對應 | API service 啟動時 | Config 更新 |
 |---|---|---|---|
-| Builder DEV | Builder Backend 與 Runtime 各為獨立程序。一個 Runtime 可承載多個 System，同一 System 的兩條流程可在同一 Runtime 個別啟用。 | DEV Runtime 載入 Engine Library、Registry 與共用 LangGraph，可先以零組 Config 啟動。 | Builder 以 `runtime_ref` 選 Runtime，指定 `pipeline` 發布或補載。[管理流程](06_runtime_api_and_deployment.md#builder-managed-dev-runtimes) |
+| Builder DEV | Builder Backend 與 Runtime 各為獨立程序。v1 部署一個 Runtime，承載多個 System 的兩條流程。 | DEV Runtime 載入 Engine Library、Registry 與共用 LangGraph，可先以零組 Config 啟動。 | Builder 以一次操作發布或補載兩條流程，API 保留 `runtime_ref` 與 `pipeline` 供後續多 Runtime 使用。[管理流程](06_runtime_api_and_deployment.md#builder-managed-dev-runtimes) |
 | FTEST／ENT | 共用 Runtime Image 與同一份 System Config 快照。受管 ES 模式可分別部署 Ingestion 與 Inference Pod。 | Runtime 啟動時依部署設定載入選定流程，管理 HTTP 關閉。 | 透過重新部署採用新 Config，啟動時檢查既有索引的歸屬與相容性。 |
 
 Builder Backend 下發／註冊 Config 與目標 Runtime 的對應，Runtime 依可信 System 識別取得已驗證 Config 快照，由共用 Flow／Executor 執行；各 Module 解析所選 Component 並傳入該次 Config／Context，Library 不直接讀 Builder DB。服務啟動不綁單份 Config，不代表 Engine／已安裝 Component 版本可任意熱替換；新增 Local 程式仍按原 Image／版本交付流程。
 
 少數共用服務可以依 Namespace／資源池等方式分組，但分組單位、數量與管理機制待決；不將 Namespace 與 Workspace／System 當成同一概念，也不新增 User 必填分組設定。Config 解析結果、Component 實例與資源可按需求快取；精確預載、LRU／回收與配額依 Q-020。共用 Flow 不要求共用所有 Component 實例，保存多份 Config 也不等於同時初始化所有模型／索引。每次請求／已接收文件固定使用同一 Config 快照，不在執行到各步時重新讀取最新版；D-63：該 System 有 queued／running Ingestion 時可保存草稿，暫不啟用新版；既有工作結束後才允許套用。其他 System 不受影響，不新增 Query 讀寫鎖；舊 Query 資源回收與 Remote 結果不明的判定仍待細化。
 
-Ingestion 與 Inference 各自受理業務 API，可由同一 Runtime 啟用，也可分 Pod 使用同一受管 ES 索引。DEV／FTEST／ENT 首版預設使用 ES。Local Search 的 Memory／MongoDB 交付列為後續。外部 API、模型、ES 連線及 Secret 由部署提供。[流程部署契約](06_runtime_api_and_deployment.md#runtime-pipeline-deployment)
+Ingestion 與 Inference 各自受理業務 API，Inference 另提供 [MCP 查詢工具](06_runtime_api_and_deployment.md#inference-mcp)。兩條流程可由同一 Runtime 啟用，FTEST／ENT 也可分 Pod 使用同一受管 ES 索引。DEV／FTEST／ENT 首版預設使用 ES。Local Search 的 Memory／MongoDB 交付列為後續。外部 API、模型、ES 連線及 Secret 由部署提供。[流程部署契約](06_runtime_api_and_deployment.md#runtime-pipeline-deployment)
 
-Builder 與 Runtime 的入口、Pod 流量和 Service 接線見 [Istio 傳輸與服務入口](06_runtime_api_and_deployment.md#istio-http-transport)。DEV Runtime 管理 API 只辨識 Builder 服務身分，Workspace／System 使用者授權由 Builder Backend 處理。
+Builder 與 Runtime 的入口、Pod 流量和 Service 接線見 [Istio 傳輸與服務入口](06_runtime_api_and_deployment.md#istio-http-transport)。DEV Runtime 不限制呼叫來源，持有對應帳密即可連線；管理帳密只交給 Builder。Workspace／System 使用者授權由 Builder Backend 處理。
 
 **範圍：Retrieval-only，不提供 Generation。** Inference 回傳排序後的檢索結果、分數與來源／追溯資訊，由呼叫端決定如何消費。單筆／多筆 Query Rewrite 與 AI 設定助手仍可使用 LLM；取消 Generation 不等於移除所有 LLM。
 

@@ -7,6 +7,7 @@ import json
 import re
 from threading import Thread
 from urllib.parse import parse_qs, unquote, urlsplit
+from uuid import UUID
 
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
@@ -20,7 +21,7 @@ from validate_runtime_http_examples import FORMATS, verify
 API_ID = "urn:retrieval-builder:dev-http-contract"
 METHODS = {"get", "post", "put", "delete"}
 MEDIA = "application/json"
-TRANSPORT_HEADERS = {"server", "date", "connection", "content-length", "content-type"}
+TRANSPORT_HEADERS = {"server", "date", "connection", "content-length", "content-type", "x-request-id"}
 
 
 def pointer(*parts):
@@ -196,6 +197,12 @@ def assert_controls(client, scenarios, api):
         challenge = send(client, "GET", system_path, credential_scheme=scheme)
         assert challenge["status"] == 401
         api.assert_exchange({"method": "GET", "path": system_path}, challenge)
+
+    traced = send(client, "GET", "/health/live", headers={"X-Request-Id": "builder-action.0001"}, authenticated=False)
+    assert headers_lower(traced["headers"])["x-request-id"] == "builder-action.0001"
+    for invalid_id in ("has space", "x" * 129):
+        generated = send(client, "GET", "/health/live", headers={"X-Request-Id": invalid_id}, authenticated=False)
+        assert UUID(headers_lower(generated["headers"])["x-request-id"]).version == 4
 
     reset(client, "happy_path")
     invalid = send(client, "POST", "/__mock/reset", {"scenario": "does-not-exist"})

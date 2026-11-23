@@ -5,6 +5,7 @@
 
 **狀態：首版執行欄位限制。** 允許範圍見 [System Secret](05_system_config.md#system-secret)。後續評估於 Descriptor 統一標記認證欄位，供 Renderer 提示、元件註冊檢查及診斷遮罩共用。
 
+<a id="cross-pod-ingestion-lock"></a>
 ## 跨 Pod Ingestion 文件鎖
 
 **狀態：後續增強。** 現行 Runtime 以 [Pod 內記憶體](06_runtime_api_and_deployment.md#pod-local-ingestion-control)管控同文件的 Ingestion 與 Retire。當同一 System 需要由多個 Ingestion Pod 同時寫入同一個 ES 索引，且無法以流量分配避免文件重疊，再評估啟用跨 Pod 協調。
@@ -123,3 +124,63 @@ Runtime 收到 `SIGTERM` 後依序處理。
 ### 驗收案例
 
 首次部署可由初始化指令建立索引並啟動 Runtime。指定錯誤索引世代時，Runtime 維持未就緒並保留當前索引。對相同目標重複執行初始化時，既有索引、mapping 與 `_meta` 皆保留。
+
+<a id="dev-multi-runtime"></a>
+## DEV 多 Runtime 與分開部署
+
+**狀態：後續增強。** v1 DEV 只部署一個 Runtime，承載所有 System 的 Ingestion 與 Inference。Builder 以一次操作套用兩條流程。`runtime_ref`、`pipeline` 及逐流程的管理 API 保留，見 [按流程部署 System](06_runtime_api_and_deployment.md#runtime-pipeline-deployment)。
+
+### 期望行為
+
+- Builder 依 `(environment, runtime_ref)` 路由多個 DEV Runtime，按 `(environment, runtime_ref, system_id)` 保存部署紀錄，逐流程追蹤意圖與結果。
+- 同一 System 可把 Ingestion 與 Inference 分到不同 Runtime，共用同一受管 ES 索引。Ingestion Runtime 執行 `initialize`、`update`、`recover_index`，Inference Runtime 以 `reload` 接回。
+- 後加入的 Runtime 由 Builder 以 `reload` 接回既有索引，並核對跨 Runtime 的綁定授權。
+- 重建或刪除索引前，Builder 逐目標以 `detach` 排空 Ingestion 與 Inference，並在 [部署紀錄](drafts/builder_system_deployment_mongodb.md#system-層級權威紀錄)的 `drained_targets` 保存進度。目標失聯時暫停操作並保留進度。
+- 切版時逐目標驗證、補載，未對齊的 Inference 目標維持停流量。
+
+### 設計待評估
+
+- 多個 Ingestion Runtime 寫入同一索引時的文件競爭，與[跨 Pod Ingestion 文件鎖](#cross-pod-ingestion-lock)一起評估。
+- 目標數量增加後的排空逾時、補載重試及管理畫面呈現。
+
+### 驗收案例
+
+兩個 DEV Runtime 分別承載 Ingestion 與 Inference，完成首次建立、切版、逐流程卸載、索引重建及後加入 Runtime 的接回。任一目標失聯時操作暫停並保留索引，恢復後可完成。
+
+<a id="mcp-oauth"></a>
+## MCP 的 OAuth 授權
+
+**狀態：後續增強。** v1 的 [MCP 查詢工具](06_runtime_api_and_deployment.md#inference-mcp)沿用該 System 的 Inference Basic 帳密。部分 MCP Client 只支援 OAuth，或需要以個別使用者身分授權。
+
+### 期望行為
+
+- Runtime 依 MCP 授權規格作為 OAuth Resource Server，驗證 Access Token 的簽發者、受眾與 System 範圍。
+- 授權伺服器、Client 註冊方式與 Token 範圍由平台身分團隊決定。Basic 帳密在過渡期可並存。
+
+### 設計待評估
+
+- 使用的授權伺服器、範圍命名，以及 Token 與 Builder 使用者權限的對應。
+- 是否需要文件級權限，與 [Q-006](08_plan_and_decisions.md#q-006)的 ACL 規劃一起評估。
+
+### 驗收案例
+
+持有有效 Token 的 MCP Client 可列出並呼叫該 System 的工具。Token 過期、範圍不符或用於其他 System 時遭拒。
+
+<a id="ingestion-idempotency-key"></a>
+## Ingestion 的 Idempotency-Key
+
+**狀態：後續增強。** v1 的 `POST /ingestions` 不支援 `Idempotency-Key`。重送是同一文件的完整替換，`409 DOCUMENT_BUSY` 也可證明前一次已受理，最壞情況是同一文件多處理一次。遺失回應時的查核方式見 [202 收件回應](06_runtime_api_and_deployment.md#src-21-33-202-回應核心欄位d-64-已確認)。
+
+### 期望行為
+
+- 呼叫端以同一 `Idempotency-Key` 重送相同請求時，受理 Pod 回原 `run_id` 與收件回應，不再建立新 Run。
+- 同一 Key 搭配不同內容時回 `409 IDEMPOTENCY_CONFLICT`。
+
+### 設計待評估
+
+- Key 的保留期限與容量，以及 Pod 重啟或換 Pod 後無法辨識舊 Key 的行為。
+- 大型批次比對內容的成本，例如只保存請求摘要。
+
+### 驗收案例
+
+遺失 `202` 後以同一 Key 重送，取得相同 `run_id`，文件只處理一次。不同內容使用同一 Key 時遭拒。

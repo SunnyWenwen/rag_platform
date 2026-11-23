@@ -69,6 +69,8 @@ FILTER_SHAPE = Draft202012Validator({"$ref": QUERY_CONTEXT["$id"] + "#/$defs/fil
 BUILTIN_SCHEMA = SYSTEM_CONFIG_SCHEMA["$defs"]["builtin_node"]
 REMOTE_ADAPTER_VERSIONS = {"1.0.0"}
 PARAMETER_EXPRESSION = re.compile(SYSTEM_CONFIG_SCHEMA["$defs"]["parameter_expression"]["pattern"])
+# Remote calls must finish within the per-document Ingestion and per-request Query deadlines.
+REMOTE_TIMEOUT_LIMITS = {"ingestion": 600, "inference": 60}
 
 
 @dataclass(frozen=True)
@@ -551,6 +553,11 @@ def validate_references(config, lane, module, node):
             continue
         if key in SYSTEM_API_SECRET_KEYS or key in config.get("secret", {}):
             fail(f"Secret reference outside authentication:{location}")
+    if node["component_id"] == "remote_api":
+        connection_path = path.removesuffix("/parameters") + "/connection/headers"
+        for key, location in parameter_references(node["connection"].get("headers", {}), connection_path):
+            if key in SYSTEM_API_SECRET_KEYS or key in config.get("secret", {}):
+                fail(f"Secret reference outside authentication:{location}")
     if lane != "ingestion":
         return
     if node["component_id"] == "remote_api":
@@ -682,7 +689,34 @@ def bind_system_parameters(snapshot, environment=None, *, request_parameters=Non
                 node_config["auth"] = resolve(node_config["auth"], {}, f"{path}/auth", {}, {}, auth=True)
                 if not node_config["auth"]["bearer_token"]:
                     fail(f"missing bearer token:{path}/auth/bearer_token")
+            if node_config["component_id"] == "remote_api":
+                node_config["connection"] = bind_remote_connection(
+                    node_config["connection"], f"{path}/connection", lane,
+                    lambda value, location: resolve(value, {}, location, {}, {}),
+                    secrets.keys())
     return pipelines
+
+
+def bind_remote_connection(connection, path, lane, resolve_variable, secret_keys):
+    """Resolve one Remote node's endpoint from System Variables at startup."""
+    url = connection["url"]
+    if url[2:-2] in secret_keys:
+        fail(f"Secret reference outside authentication:{path}/url")
+    resolved_url = resolve_variable(url, f"{path}/url")
+    scheme, _, rest = resolved_url.partition("://")
+    if scheme.lower() not in ("http", "https") or not rest or rest[0] in "/?#" or any(c.isspace() for c in resolved_url):
+        fail(f"invalid Remote URL:{path}/url")
+    timeout = connection.get("timeout_seconds", 30)
+    if timeout > REMOTE_TIMEOUT_LIMITS[lane]:
+        fail(f"Remote timeout exceeds the {lane} deadline:{path}/timeout_seconds")
+    headers = {}
+    for name, value in connection.get("headers", {}).items():
+        if PARAMETER_EXPRESSION.fullmatch(value):
+            value = resolve_variable(value, f"{path}/headers/{name}")
+        elif SYSTEM_REFERENCE.search(value):
+            fail(f"invalid parameter expression:{path}/headers/{name}")
+        headers[name] = value
+    return {"url": resolved_url, "timeout_seconds": timeout, "headers": headers}
 
 
 def compile_local_example(snapshot, environment=None, *, catalog=None, observe_options=None, observe_output=None):
@@ -735,6 +769,9 @@ def compile_local_example(snapshot, environment=None, *, catalog=None, observe_o
 
     inference = pipelines["inference"]
     validate_filters(inference.get("fixed_filters", []), index["filters"], "/inference/fixed_filters")
+    text_field = inference.get("mcp", {}).get("text_field")
+    if text_field is not None and getattr(index["fields"].get(text_field), "type", None) != "string":
+        fail("MCP text field must be an effective string field:/config/pipelines/inference/mcp/text_field")
     for module, config in effective_nodes("inference", inference):
         if config["component_id"] == "remote_api":
             fail("example compiler only supports builtin Inference")
@@ -857,31 +894,42 @@ def _():
     assert exported["config"]["secret"] == dict.fromkeys(dev_secrets)
     assert exported["config"]["variable"] == dict.fromkeys(dev["config"]["variable"])
     assert exported["config"]["pipelines"] == dev["config"]["pipelines"]
-    environment = {"PARSER_API_TOKEN": "fixture-deploy-token", "trace_label": "ftest-parser"}
+    environment = {
+        "REMOTE_PARSING_TOKEN": "fixture-deploy-token", "trace_label": "ftest-parser",
+        "REMOTE_PARSING_URL": "https://parser.ftest.example/v1/normalize",
+        "REMOTE_PARSING_HEADER_X_TENANT": "tenant-ftest",
+    }
     assert compile_local_example(dev) == compile_local_example(exported, environment)
     dev_ingestion = bind_system_parameters(dev)["ingestion"]
     deployed_ingestion = bind_system_parameters(exported, environment)["ingestion"]
-    assert dev_ingestion["parsing"]["auth"] == {"bearer_token": dev_secrets["PARSER_API_TOKEN"]}
-    assert deployed_ingestion["parsing"]["auth"] == {"bearer_token": environment["PARSER_API_TOKEN"]}
+    assert dev_ingestion["parsing"]["auth"] == {"bearer_token": dev_secrets["REMOTE_PARSING_TOKEN"]}
+    assert deployed_ingestion["parsing"]["auth"] == {"bearer_token": environment["REMOTE_PARSING_TOKEN"]}
     assert deployed_ingestion["chunking"]["parameters"]["max_tokens"] == 500
     assert deployed_ingestion["parsing"]["parameters"]["trace_label"] == "ftest-parser"
     assert dev_ingestion["parsing"]["parameters"]["trace_label"] == "dev-parser"
     assert remote_index_parameters(dev_ingestion["parsing"]) == remote_index_parameters(deployed_ingestion["parsing"])
     assert remote_index_parameters(dev_ingestion["parsing"]) == {"language": "zh-TW"}
 
-    rejects(lambda: compile_local_example(exported, {"trace_label": "ftest-parser"}),
-            "missing System Secret:/config/secret/PARSER_API_TOKEN")
-    rejects(lambda: compile_local_example(exported, {"PARSER_API_TOKEN": "fixture-deploy-token"}),
+    assert deployed_ingestion["parsing"]["connection"] == {
+        "url": "https://parser.ftest.example/v1/normalize", "timeout_seconds": 30,
+        "headers": {"X-Tenant": "tenant-ftest"},
+    }
+    assert dev_ingestion["parsing"]["connection"]["url"] == "https://parser.dev.example/v1/normalize"
+    without_secret = {key: value for key, value in environment.items() if key != "REMOTE_PARSING_TOKEN"}
+    rejects(lambda: compile_local_example(exported, without_secret),
+            "missing System Secret:/config/secret/REMOTE_PARSING_TOKEN")
+    without_label = {key: value for key, value in environment.items() if key != "trace_label"}
+    rejects(lambda: compile_local_example(exported, without_label),
             "missing System Variable:/config/variable/trace_label")
     rejects(lambda: compile_local_example(dev, environment),
-            "export contains a DEV value:/config/secret/PARSER_API_TOKEN")
+            "export contains a DEV value:/config/secret/REMOTE_PARSING_TOKEN")
     invalid = deepcopy(dev)
     invalid["config"]["pipelines"]["ingestion"]["chunking"]["parameters"]["max_tokens"] = "{{trace_label}}"
     rejects(lambda: compile_local_example(invalid),
             "index-affecting parameter must be literal:/config/pipelines/ingestion/chunking/parameters/max_tokens")
     duplicate = deepcopy(dev)
-    duplicate["config"]["variable"]["PARSER_API_TOKEN"] = "fixture-duplicate"
-    rejects(lambda: compile_local_example(duplicate), "duplicate System setting:/config/variable/PARSER_API_TOKEN")
+    duplicate["config"]["variable"]["REMOTE_PARSING_TOKEN"] = "fixture-duplicate"
+    rejects(lambda: compile_local_example(duplicate), "duplicate System setting:/config/variable/REMOTE_PARSING_TOKEN")
     undeclared = deepcopy(dev)
     undeclared["config"]["pipelines"]["ingestion"]["parsing"]["auth"]["bearer_token"] = "{{UNDECLARED}}"
     rejects(lambda: compile_local_example(undeclared),
@@ -935,11 +983,11 @@ def _():
     rejects(lambda: parser({"trace_label": None}), "invalid request parameter type:/parameters/trace_label")
     specs[0]["default_value"] = '"request-default"'
     assert parser({})["parameters"]["trace_label"] == "request-default"
-    specs.append({"name": "PARSER_API_TOKEN", "type": "string", "required": False})
-    assert parser({"PARSER_API_TOKEN": "request-token"})["auth"] == {"bearer_token": "fixture-dev-token"}
+    specs.append({"name": "REMOTE_PARSING_TOKEN", "type": "string", "required": False})
+    assert parser({"REMOTE_PARSING_TOKEN": "request-token"})["auth"] == {"bearer_token": "fixture-dev-token"}
 
-    remote["parameters"]["trace_label"] = {"nested": "{{PARSER_API_TOKEN}}"}
-    rejects(lambda: parser({"PARSER_API_TOKEN": "request-token"}),
+    remote["parameters"]["trace_label"] = {"nested": "{{REMOTE_PARSING_TOKEN}}"}
+    rejects(lambda: parser({"REMOTE_PARSING_TOKEN": "request-token"}),
             "Secret reference outside authentication:/config/pipelines/ingestion/parsing/parameters/trace_label/nested")
     remote["parameters"]["trace_label"] = "{{trace_label}}"
     remote["parameters"]["language"] = "{{trace_label}}"
@@ -947,10 +995,90 @@ def _():
             "index-affecting parameter must be literal:/config/pipelines/ingestion/parsing/parameters/language")
     remote["parameters"]["language"] = "zh-TW"
     rewrite = node("rewrite", llm_ref="default-llm", count=1, include_original=False,
-                   prompt="Rewrite {{query}} using {{PARSER_API_TOKEN}}.")
+                   prompt="Rewrite {{query}} using {{REMOTE_PARSING_TOKEN}}.")
     snapshot["config"]["pipelines"]["inference"]["query_transformation"] = rewrite
     rejects(lambda: compile_local_example(snapshot),
             "Secret reference outside authentication:/config/pipelines/inference/query_transformation/parameters/prompt")
+
+
+@case("Remote connections resolve from Variables and revisions stay fixed")
+def _():
+    snapshot = local_snapshot("remote_parsing")
+    base = "/config/pipelines/ingestion/parsing"
+
+    def with_parser(change, config_change=None):
+        sample = deepcopy(snapshot)
+        change(sample["config"]["pipelines"]["ingestion"]["parsing"])
+        if config_change:
+            config_change(sample["config"])
+        return lambda: compile_local_example(sample)
+
+    def set_url(value):
+        return lambda node: node["connection"].update(url=value)
+
+    rejects(with_parser(set_url("https://parser.dev.example/v1/normalize")), "ValidationError")
+    rejects(with_parser(set_url("{{REMOTE_PARSING_TOKEN}}")),
+            f"Secret reference outside authentication:{base}/connection/url")
+    rejects(with_parser(set_url("{{REMOTE_PARSER_URL}}")),
+            f"undeclared System Variable REMOTE_PARSER_URL:{base}/connection/url")
+    for bad_url in ("ftp://parser.dev.example/v1", "parser.dev.example/v1", "https:///v1"):
+        rejects(with_parser(lambda node: None,
+                            lambda config, value=bad_url: config["variable"].update(REMOTE_PARSING_URL=value)),
+                f"invalid Remote URL:{base}/connection/url")
+    for reserved in ("Authorization", "content-type", "X-REQUEST-ID", "Host", "Content-Length"):
+        rejects(with_parser(lambda node, name=reserved: node["connection"]["headers"].update({name: "x"})),
+                "ValidationError")
+    rejects(with_parser(lambda node: node["connection"]["headers"].update({"X-Tenant": "{{REMOTE_PARSING_TOKEN}}"})),
+            f"Secret reference outside authentication:{base}/connection/headers/X-Tenant")
+    rejects(with_parser(lambda node: node["connection"]["headers"].update({"X-Tenant": "tenant-{{REGION}}"})),
+            f"invalid parameter expression:{base}/connection/headers/X-Tenant")
+    rejects(with_parser(lambda node: node["connection"].update(timeout_seconds=601)), "ValidationError")
+    rejects(with_parser(lambda node: node["connection"].update(timeout_seconds=0)), "ValidationError")
+    rejects(with_parser(lambda node: node.pop("revision")), "ValidationError")
+    rejects(with_parser(lambda node: node.update(revision="{{REMOTE_REVISION}}")), "ValidationError")
+
+    literal_header = deepcopy(snapshot)
+    literal_header["config"]["pipelines"]["ingestion"]["parsing"]["connection"]["headers"]["X-Client"] = "rag-runtime"
+    bound = bind_system_parameters(literal_header)["ingestion"]["parsing"]["connection"]
+    assert bound["headers"] == {"X-Tenant": "tenant-dev", "X-Client": "rag-runtime"}
+
+    moved = deepcopy(snapshot)
+    moved["config"]["variable"]["REMOTE_PARSING_URL"] = "http://parser.internal:8080/v2/normalize"
+    moved["config"]["pipelines"]["ingestion"]["parsing"]["connection"]["timeout_seconds"] = 120
+    assert compile_local_example(moved) == compile_local_example(snapshot)
+    revised = bind_system_parameters(moved)["ingestion"]["parsing"]
+    assert revised["revision"] == "2026.11.1" and remote_index_parameters(revised) == {"language": "zh-TW"}
+
+    inference = deepcopy(snapshot)
+    inference["config"]["variable"]["REMOTE_RETRIEVAL_URL"] = "https://search.dev.example/v1/retrieve"
+    pipeline = inference["config"]["pipelines"]["inference"]
+    pipeline["retrieval"] = {
+        "component_id": "remote_api", "component_version": "1.0.0", "contract_version": "1",
+        "through": "rerank", "connection": {"url": "{{REMOTE_RETRIEVAL_URL}}", "timeout_seconds": 60},
+        "parameters": {},
+    }
+    del pipeline["rerank"]
+    assert bind_system_parameters(inference)["inference"]["retrieval"]["connection"]["timeout_seconds"] == 60
+    pipeline["retrieval"]["connection"]["timeout_seconds"] = 61
+    rejects(lambda: bind_system_parameters(inference),
+            "Remote timeout exceeds the inference deadline:/config/pipelines/inference/retrieval/connection/timeout_seconds")
+
+
+@case("Inference MCP tool settings stay query-only and point at a string field")
+def _():
+    snapshot = local_snapshot("builtin")
+    before = compile_local_example(snapshot)
+    inference = snapshot["config"]["pipelines"]["inference"]
+    inference["mcp"] = {"tool_name": "search_manuals", "description": "查詢設備保養手冊。", "text_field": "text"}
+    assert compile_local_example(snapshot) == before
+    for bad in ({"tool_name": "search manuals"}, {"tool_name": ""}, {"description": ""}, {"run_ingestion": True}):
+        sample = deepcopy(snapshot)
+        sample["config"]["pipelines"]["inference"]["mcp"] = bad
+        rejects(lambda: compile_local_example(sample), "ValidationError")
+    for field in ("price", "unknown"):
+        inference["mcp"]["text_field"] = field
+        rejects(lambda: compile_local_example(snapshot),
+                "MCP text field must be an effective string field:/config/pipelines/inference/mcp/text_field")
 
 
 @case("published Local Search examples compile to the same index and candidate contracts")
@@ -1092,7 +1220,7 @@ def _():
         "contract_version": "1",
         "component_version": "1.0.0",
         "through": "rerank",
-        "service_ref": "external-search",
+        "connection": {"url": "{{REMOTE_RETRIEVAL_URL}}"},
         "parameters": {},
     }
     del inference["rerank"]

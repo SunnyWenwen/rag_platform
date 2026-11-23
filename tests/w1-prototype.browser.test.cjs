@@ -355,7 +355,9 @@ async function main() {
     assert.match(await page.getByLabel('切分來源').innerText(),/contenttext/);
     await module('Parsing').click();
     await picker.selectOption('remote_api');
-    await page.getByLabel('API Endpoint').fill('https://example.invalid/parser');
+    await page.getByLabel('服務網址（{{KEYNAME}}，讀取 System Variable）').fill('{{REMOTE_PARSING_URL}}');
+    await page.getByLabel('服務版本（處理邏輯改變時更新，會觸發索引重建）').fill('2026.11.1');
+    assert.equal(await page.getByLabel('逾時秒數').inputValue(),'30');
     await page.getByLabel('替換範圍').selectOption('embedding');
     await module('Embedding').click();
     assert.equal(await picker.count(),0);

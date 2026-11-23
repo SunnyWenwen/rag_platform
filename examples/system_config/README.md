@@ -11,7 +11,7 @@
 - [System Config Schema 草案](../../schemas/system_config.draft.schema.json)驗證發布快照 `{system_id, config_revision, config}`。`config` 包含 `contract_version` 與固定 Module 骨架的 `pipelines`。
 - [內建版本](local_memory.builtin.json)及 [Remote Parsing 版本](local_memory.remote_parsing.json)使用同一個 System。Remote 版本替換 Parsing，同時示範 Import 的 Request 參數、System Variable 與 Secret。兩版推導出相同的候選欄位、向量與索引能力。兩份範例均讓 Chunking 產生 `text`、保留選填的 `price` 和 `tags`，並在 Indexing 啟用 `text.searchable` 與 `price.filterable`。固定 Filter 是 `price gte 300`，可和 [Request 的動態 any 群組](../user_remote_api/inference.request.json) 合併。兩份範例都以 `vector_fields: ["text"]` 選擇一條向量路徑，由索引綁定取得查詢 Profile，路徑上限由 `per_route_k` 設定。
 
-節點以 `component_id` 選執行方式，以 `component_version` 固定版本。內建節點用對應 Descriptor 驗證 `parameters`。使用 `component_id: remote_api` 的節點放在替換區段的第一個 Module，以 `through` 指定最後一個 Module，已涵蓋的後續節點從有效設定省略。Remote Parsing 宣告輸出 `structdata`，Request 依上游 Import 設定推導。Remote 服務以 `service_ref` 引用，Endpoint 由環境綁定解析。Bearer 認證使用節點的 `auth.bearer_token` 和 System Secret。
+節點以 `component_id` 選執行方式，以 `component_version` 固定版本。內建節點用對應 Descriptor 驗證 `parameters`。使用 `component_id: remote_api` 的節點放在替換區段的第一個 Module，以 `through` 指定最後一個 Module，已涵蓋的後續節點從有效設定省略。Remote Parsing 宣告輸出 `structdata`，Request 依上游 Import 設定推導。Remote 節點的 `connection.url` 引用 System Variable，`revision` 固定服務版本並參與索引指紋。Bearer 認證使用節點的 `auth.bearer_token` 和 System Secret。欄位見 [Remote 節點設定](../../docs/05_system_config.md#remote-node-settings)。
 
 離線驗證同時檢查 JSON 形狀及跨節點規則。這兩份 Config 使用現行契約版本 `0.2-draft`，涵蓋 Local Search、固定測試 Profile 與內建 Inference。Local Search 部署與驗收列為後續。
 
@@ -20,9 +20,9 @@
 <a id="system-secret-examples"></a>
 ## Variable／Secret 的 DEV 與部署對照
 
-- [DEV Config](local_memory.remote_parsing.json) 用 Secret 提供 `PARSER_API_TOKEN`，Variable 提供僅供記錄的 `trace_label`。送入已宣告的同名 Request 參數可覆寫該次值。Parser 語言及 Chunking 的 `max_tokens: 500` 固定於同一 Revision。
+- [DEV Config](local_memory.remote_parsing.json) 用 Secret 提供 `REMOTE_PARSING_TOKEN`，Variable 提供 Remote 網址 `REMOTE_PARSING_URL`、Header `REMOTE_PARSING_HEADER_X_TENANT` 及僅供記錄的 `trace_label`。送入已宣告的同名 Request 參數可覆寫該次值。Parser 語言及 Chunking 的 `max_tokens: 500` 固定於同一 Revision。
 - [部署匯出 Config](local_memory.remote_parsing.export.json) 保留相同 Key 與 Module 表達式，`config.variable` 與 `config.secret` 的值都以 `null` 表示由目標環境供應。
-- [Deployment env 片段](deployment.secret-env.example.yaml) 以 Secret 提供 Parser Token，ConfigMap 提供 `trace_label`。詳見 [Variable 與 Secret](../../docs/05_system_config.md#system-secret)。
+- [Deployment env 片段](deployment.secret-env.example.yaml) 以 Secret 提供 Parser Token，ConfigMap 提供 Remote 網址、Header 與 `trace_label`。詳見 [Variable 與 Secret](../../docs/05_system_config.md#system-secret)。
 
 [System API 帳密注入範例](deployment.system-api-secret-env.example.yaml)對應匯出 Config 的四個保留 Secret Key。分 Pod 部署時各自使用對應的帳密。DEV 管理帳密由 Builder 和 DEV Runtime 各自的部署 Secret 配對供應，System 帳密則依 [System 設定](../../docs/05_system_config.md#system-api-secret-fields)供應。
 
@@ -44,11 +44,11 @@
 <a id="istio-http-deployment-example"></a>
 ## Istio HTTP 部署範例
 
-[Istio 與 Service 範例](deployment.istio-http.example.yaml)使用同一 Namespace 展示 Builder、DEV Runtime 與同時啟用兩條流程的獨立 System。每個 Pod 的應用程式監聽 `8080` 上的 HTTP。以公司實際的 Namespace、Gateway、Host、Port、trust domain 及 Builder Backend ServiceAccount 取代範例值。Gateway 的兩個主機均使用 HTTPS listener 及其對應憑證。
+[Istio 與 Service 範例](deployment.istio-http.example.yaml)使用同一 Namespace 展示 Builder、DEV Runtime 與同時啟用兩條流程的獨立 System。每個 Pod 的應用程式監聽 `8080` 上的 HTTP。以公司實際的 Namespace、Gateway、Host、Port 及 trust domain 取代範例值。Gateway 的三個主機均使用 HTTPS listener 及其對應憑證。
 
-- 在各 Workload 的 Pod template 設定 `app.kubernetes.io/part-of: rag-platform`，並設定與各自 Service selector 相符的 `app.kubernetes.io/name`。Builder Backend Pod 使用 `serviceAccountName: builder-backend`。確認 Gateway 與應用 Workload 都已納入 mesh。承載 Ingestion 的 DEV Runtime 可用單副本 StatefulSet，失聯時的替換由部署方依[接手規格](../../docs/06_runtime_api_and_deployment.md#system-ingestion-drain)處理。
-- Builder 的 DEV Runtime URL 取同 Namespace 的 Service，例如 `http://dev-runtime`。FTEST／ENT 各自配置 System 主機。Ingestion 和 Inference 分 Pod 時，配置兩個 HTTP Service，讓 System 的 `/v1/queries` 路由至 Inference，`/v1/ingestions` 與 `/v1/documents` 路由至 Ingestion，Health 隨各入口的 Service 接線。
-- 在目標叢集驗收時，確認 Gateway 的 HTTPS 可以完成認證並呼叫對應服務，且外部入口無法抵達 DEV Runtime 的 `/internal`。用 Builder 身分及有效 Basic 帳密呼叫 DEV Catalog 應成功。改用其他 Workload 身分或繞開 mesh 嘗試同一請求時應遭拒，並確認已接通的 Pod 間鏈路實際使用 mTLS。
+- 在各 Workload 的 Pod template 設定 `app.kubernetes.io/part-of: rag-platform`，並設定與各自 Service selector 相符的 `app.kubernetes.io/name`。確認 Gateway 與應用 Workload 都已納入 mesh。v1 DEV 只部署一個 Runtime，使用 `replicas: 1` 的 StatefulSet，失聯時的替換由部署方依[接手規格](../../docs/06_runtime_api_and_deployment.md#system-ingestion-drain)處理。
+- Builder 的 DEV Runtime URL 取同 Namespace 的 Service，例如 `http://dev-runtime`。其他呼叫端經 Gateway 的 DEV Runtime 主機連線。FTEST／ENT 各自配置 System 主機。Ingestion 和 Inference 分 Pod 時，配置兩個 HTTP Service，讓 System 的 `/v1/queries` 與 `/mcp` 路由至 Inference，`/v1/ingestions` 與 `/v1/documents` 路由至 Ingestion，Health 隨各入口的 Service 接線。
+- 在目標叢集驗收時，確認 Gateway 的 HTTPS 可以完成認證並呼叫對應服務。經 DEV Runtime 主機以有效 Basic 帳密呼叫 Catalog、System 業務 API 與 MCP 應成功，帳密錯誤或缺少時回 `401`。繞開 mesh 的明文連線應遭拒，並確認已接通的 Pod 間鏈路實際使用 mTLS。
 - Runtime 的 HTTP liveness／readiness 探針使用 `/health/live`、`/health/ready`，免 Basic。Istio sidecar 部署應保留 HTTP 探針重寫，讓 kubelet 可在 STRICT mTLS 下透過 sidecar agent 探測應用程式。[Istio 探針接線](https://istio.io/latest/docs/ops/configuration/mesh/app-health-check/)
 
 [主責部署規格](../../docs/06_runtime_api_and_deployment.md#istio-http-transport) · [Istio PeerAuthentication](https://istio.io/latest/docs/reference/config/security/peer_authentication/) · [Istio HTTPS Gateway](https://istio.io/latest/docs/tasks/traffic-management/ingress/secure-ingress/)
@@ -97,7 +97,7 @@ python3 examples/user_remote_api/validate.py
 | `recover_index_loaded`、`recover_index_unloaded`、`recover_index_es_unknown`，涵蓋索引遺失的兩種載入狀態、使用者確認後的 PUT、重送、過期卸載及 ES 待查 | [索引恢復](../../docs/06_runtime_api_and_deployment.md#system-index-lifecycle) · [Builder 部署紀錄](../../docs/drafts/builder_system_deployment_mongodb.md) |
 | `ingestion_status_and_errors`，涵蓋無效請求、同一 Pod 整批拒絕時回傳全部本機占用衝突、Run 部分失敗及紀錄過期 | [資料生命週期](../../docs/06_runtime_api_and_deployment.md#data-lifecycle-api) · [文件占用衝突](../../docs/06_runtime_api_and_deployment.md#ingestion-document-busy) |
 | `ingestion_bulk_timeout_and_retry`，由文件狀態查回 `run_id`，Bulk 逾時結案後以同一文件建立新 Run，並可查原失敗結果 | [ES 寫入查核](../../docs/06_runtime_api_and_deployment.md#es-write-control-record) |
-| `cancel_ingestion_documents`，涵蓋立即回報取消、原受理 Pod 內同文件仍占用時的重匯衝突、原寫入成功後改為完成、取消重送與未找到 Run | [批量取消文件](../../docs/06_runtime_api_and_deployment.md#ingestion-cancel-api) |
+| `cancel_ingestion_documents`，涵蓋立即回報取消、已取得寫入權的文件回報 `cancelling`、原受理 Pod 內同文件仍占用時的重匯衝突、原寫入成功後改為完成、取消重送與未找到 Run | [批量取消文件](../../docs/06_runtime_api_and_deployment.md#ingestion-cancel-api) |
 | `ingestion_history_unavailable`，其他 Pod 或程序重啟後查無原 Run，GET 回 `unknown`，取消回 `404` | [批量取消文件](../../docs/06_runtime_api_and_deployment.md#ingestion-cancel-api) |
 | `external_retrieval_query`，查詢未使用平台索引，回傳 `index_generation: null` | [Inference API](../../docs/06_runtime_api_and_deployment.md#inference-api) |
 | `query_empty_and_errors`，涵蓋無命中、無效 Filter、索引未就緒及上游失敗 | [Inference API](../../docs/06_runtime_api_and_deployment.md#inference-api) |

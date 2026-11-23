@@ -58,9 +58,9 @@
         "through": {"$ref": "remote_api.schema.json#/$defs/ingestion_module"},
         "adapter_version": {"$ref": "#/$defs/nonempty"},
         "contract_version": {"$ref": "remote_api.schema.json#/$defs/contract_version"},
-        "implementation_revision": {"$ref": "#/$defs/nonempty"},
+        "implementation_revision": {"description": "The Remote node's declared revision.", "$ref": "#/$defs/nonempty"},
         "parameters": {
-          "description": "Literal output-affecting parameters. Declared runtime-only parameters and authentication are excluded.",
+          "description": "Literal output-affecting parameters. Declared runtime-only parameters, connection settings and authentication are excluded.",
           "type": "object"
         },
         "output_structdata": {"$ref": "#/$defs/effective_structdata"}

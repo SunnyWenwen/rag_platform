@@ -1,6 +1,6 @@
 # User Remote API v1 範例
 
-使用 [OpenAPI](openapi.json) 實作共用 POST 封裝，使用 Builder 產生的有效 Schema 驗證該 System 的 `input` 與 `output`。OpenAPI 的路徑為示意，Runtime 呼叫 Config 中的完整 Endpoint。保留 OpenAPI 與 [共用 Remote Schema](../../schemas/remote_api.schema.json) 的相對目錄以解析引用。
+使用 [OpenAPI](openapi.json) 實作共用 POST 封裝，使用 Builder 產生的有效 Schema 驗證該 System 的 `input` 與 `output`。OpenAPI 的路徑為示意，Runtime 呼叫 Remote 節點 `connection.url` 解析出的完整網址。保留 OpenAPI 與 [共用 Remote Schema](../../schemas/remote_api.schema.json) 的相對目錄以解析引用。
 
 | HTTP | 搭配範例 |
 |---|---|
@@ -8,7 +8,7 @@
 | 200 Response | JSON `output` 內放驗證後的區段資料。見 [Ingestion](remote_ingestion.response.json)／[Retrieval](remote_retrieval.response.json)。 |
 | 415 Response | [錯誤封裝](remote_error.response.json)帶可診斷的錯誤識別及布林重試提示。 |
 
-[批次 Ingestion](ingestion.request.json) 提交兩份文件，`source_revision` 分別為 `null` 與 `""`，Runtime 在 Parser 前拆成兩個工作。[第一筆 Remote Request](remote_ingestion.request.json) 傳單份 Document 與業務參數。Runtime 依 Remote 節點的 `auth.bearer_token: "{{PARSER_API_TOKEN}}"` 取得 System Secret 並組成認證 Header。[Parsing → Embedding Response](remote_ingestion.response.json) 保留 `source_revision: null` 並帶具名向量，符合[區段輸出契約](remote_ingestion.response.schema.json)。
+[批次 Ingestion](ingestion.request.json) 提交兩份文件，`source_revision` 分別為 `null` 與 `""`，Runtime 在 Parser 前拆成兩個工作。[第一筆 Remote Request](remote_ingestion.request.json) 傳單份 Document 與業務參數。Runtime 依 Remote 節點的 `auth.bearer_token: "{{REMOTE_PARSING_TOKEN}}"` 取得 System Secret 並組成認證 Header。[Parsing → Embedding Response](remote_ingestion.response.json) 保留 `source_revision: null` 並帶具名向量，符合[區段輸出契約](remote_ingestion.response.schema.json)。
 
 [Inference Request](inference.request.json) 的動態 any 群組與 [System Config](../system_config/local_memory.builtin.json) 所示的固定價格條件合併，形成 [Remote Retrieval Request](remote_retrieval.request.json)。外部搜尋[回傳候選](remote_retrieval.response.json)，驗證 [QueryContext[]](../../schemas/query_context.schema.json) 與[由 Ingestion 推導的有效候選 Document](effective_document.schema.json)。此例候選必須有 title、text，可附帶 price、tags 及巢狀 metadata。Remote 收到 QueryContext.filters，並自行決定過濾、排序及截斷。
 

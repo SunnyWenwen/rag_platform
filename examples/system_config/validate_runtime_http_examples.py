@@ -356,8 +356,9 @@ def verify(scenarios):
                     assert body["index_generation"] == response["headers"].get("X-Index-Generation")
                     if body["index_generation"] is None:
                         assert "X-Index-Generation" not in response["headers"]
+                    assert body["query_variants"] == [sent["query"]]
                     for context in body["contexts"]:
-                        assert context["ori_query"] == sent["query"]
+                        assert context["ori_query"] == context["query"] == sent["query"]
                         assert context["filters"] == (
                             initial_config["pipelines"]["inference"].get("fixed_filters", [])
                             + sent.get("filters", [])
@@ -375,6 +376,14 @@ def verify(scenarios):
     )
     assert not response_check.is_valid(query_response["contexts"])
     assert not response_check.is_valid({k: v for k, v in query_response.items() if k != "index_generation"})
+    assert not response_check.is_valid({k: v for k, v in query_response.items() if k != "query_variants"})
+    assert not response_check.is_valid({**query_response, "query_variants": []})
+    assert not response_check.is_valid({**query_response, "contexts": query_response["contexts"] * 2})
+    final_context = query_response["contexts"][0]
+    final_set = final_context["result_sets"][0]
+    for result_sets in ([], [final_set, final_set], [{**final_set, "key": "retrieval"}]):
+        assert not response_check.is_valid({**query_response, "contexts": [{**final_context, "result_sets": result_sets}]})
+    validate_http("inference_response", {**query_response, "query_variants": ["散熱孔怎麼清潔？", "如何清理散熱孔"]})
     validate_http("inference_response", {**query_response, "index_generation": None, "warnings": []})
 
     document_check = schema("document.schema.json")
@@ -511,16 +520,17 @@ def verify(scenarios):
     final_documents = {item["document_id"]: item for item in after_write["response"]["body"]["documents"]}
     assert before_documents.keys() == after_documents.keys()
     assert before_documents["guide-unselected"] == after_documents["guide-unselected"]
-    cancelled_ids = {"guide-queued", "guide-prewrite", "guide-running"}
+    # guide-running already holds the write permission, so it settles through cancelling.
+    expected_results = {"guide-queued": "cancelled", "guide-prewrite": "cancelled", "guide-running": "cancelling"}
     for item in cancel["response"]["body"]["documents"]:
         document_id = item["document_id"]
         if item["result"] == "not_found":
             assert document_id not in after_documents
             continue
         assert item["status"] == after_documents[document_id]["status"]
-        if document_id in cancelled_ids:
+        if document_id in expected_results:
             assert before_documents[document_id]["status"] in {"queued", "running"}
-            assert item["result"] == "cancelled"
+            assert item["result"] == item["status"] == expected_results[document_id]
         else:
             assert before_documents[document_id] == after_documents[document_id]
     assert cancelled_document["response"]["body"] == {
@@ -528,9 +538,18 @@ def verify(scenarios):
     }
     assert busy_after_cancel["response"]["status"] == 409
     assert busy_after_cancel["response"]["body"]["error"]["conflicts"] == [
-        {"document_id": "guide-running", "status": "cancelled", "run_id": "ing-cancel"}
+        {"document_id": "guide-running", "status": "cancelling", "run_id": "ing-cancel"}
     ]
-    assert after_documents.pop("guide-running")["status"] == "cancelled"
+    assert after_cancel["response"]["body"]["status"] == "running"
+    run_check = Draft202012Validator(
+        {"$ref": f'{HTTP_SCHEMA["$id"]}#/$defs/ingestion_run_status'}, registry=REGISTRY
+    )
+    settling = {**after_cancel["response"]["body"], "documents": [
+        item for item in after_cancel["response"]["body"]["documents"] if item["status"] != "queued"
+    ]}
+    for status in ("partial", "failed", "unknown", "cancelled"):
+        assert not run_check.is_valid({**settling, "status": status}), status
+    assert after_documents.pop("guide-running")["status"] == "cancelling"
     assert final_documents.pop("guide-running")["status"] == "completed"
     assert after_documents == final_documents
 

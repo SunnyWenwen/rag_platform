@@ -7,12 +7,12 @@ Engine 以 LangGraph 執行共用的 Ingestion／Inference 流程，各 System �
 <a id="remote-api"></a>
 ## User 接入 Remote API
 
-User 提供已部署的 HTTP 服務並在 System 設定完整 Endpoint、認證、連續範圍及參數。Builder 依上游產生 Request Schema，依宣告與共用契約產生 Response Schema。Runtime 以 POST 呼叫設定的完整 Endpoint。共用封裝由 [Remote API Schema](../schemas/remote_api.schema.json) 定義，服務開發者可直接使用 [OpenAPI](../examples/user_remote_api/openapi.json) 和 [驗證範例](../examples/user_remote_api/README.md)。
+User 提供已部署的 HTTP 服務，在選用 Remote 的節點設定服務網址、認證、服務版本、連續範圍及參數，欄位見 [Remote 節點設定](05_system_config.md#remote-node-settings)。Builder 依上游產生 Request Schema，依宣告與共用契約產生 Response Schema。Runtime 啟動時從 System Variable 解析 `connection.url`，以 POST 呼叫該網址，套用節點的逾時及自訂 Header。共用封裝由 [Remote API Schema](../schemas/remote_api.schema.json) 定義，服務開發者可直接使用 [OpenAPI](../examples/user_remote_api/openapi.json) 和 [驗證範例](../examples/user_remote_api/README.md)。
 
 | 邊界 | 執行規則 |
 |---|---|
 | 請求 | Runtime 依 Remote 節點填入 `contract_version`，並以 `segment.module`、`segment.through` 標示實際區段。單一模組時兩值相同。`input` 與 `parameters` 分別承載區段資料及該節點解析後的參數。 |
-| 追蹤 | Runtime 為每次邏輯 Remote 呼叫產生 `X-Request-Id`，同一呼叫重試時沿用。Runtime 記錄它和上游執行的關聯。`X-Request-Id` 用於追蹤，重試安全性仍取決於操作本身的冪等性。 |
+| 追蹤 | Runtime 為每次邏輯 Remote 呼叫產生 `X-Request-Id`，同一呼叫重試時沿用。Runtime 記錄它和入站請求的 [`request_id`](06_runtime_api_and_deployment.md#runtime-request-id)、`run_id` 的對照。`X-Request-Id` 用於追蹤，重試安全性仍取決於操作本身的冪等性。 |
 | 成功 | 服務以 2xx 回傳 `{"output": ...}`，Runtime 依有效 System 及區段驗證內容，包括型別、資料識別、向量維度／Profile 與 Inference 語意。 |
 | 失敗 | 服務以 4xx 或 5xx 回傳 `error` 物件，其中 `code` 為穩定識別、`message` 為可診斷摘要、`retryable` 為布林值。Runtime 記錄區段、Request ID、狀態及錯誤摘要，遮罩憑證。 |
 | 相容 | 同版本可增加外層選填欄位，雙方忽略不認識的外層欄位。`input`／`output` 執行有效 Schema 驗證，`metadata` 保留自由格式。破壞性變更使用新契約版本，既有節點沿用所固定版本。升版過渡期允許現行版與前一版並存。 |
@@ -26,9 +26,9 @@ User 提供已部署的 HTTP 服務並在 System 設定完整 Endpoint、認證�
 
 Remote Ingestion 的 `output` 在 Config 中是 Schema 宣告，在 HTTP Response 中是實際 Document 陣列。涵蓋 Parsing 或 Chunking 時，Config 宣告 `output.structdata`。涵蓋 Embedding 時宣告 `output.vectors`，每個向量列出 `source_field`（有效必填字串欄名）、`embedding_profile_id` 及 `dimensions`。同時涵蓋兩類時需要兩份宣告。見 [System Config 欄位](05_system_config.md#config-fields) 與 [Remote API 範例](../examples/user_remote_api/README.md)。
 
-區段只執行一次，涵蓋模組由首節點管理，編譯拒絕重疊。Indexing 與 Inference Input 由平台執行。只替換 Embedding 時，輸出保留原 Document 並附上向量。外部 Retrieval 自行執行搜尋及授權，平台無須等 Ingestion／IndexBinding 就緒。當區段涵蓋 Retrieval，Engine 以共用 I/O 傳入已驗證、合併後的 QueryContext.filters，並驗證回傳候選。過濾、排序及截斷由外部服務決定。未被替換的後段使用驗證過的候選。Inference 區段內的融合、分組和截斷由 Remote 負責，Engine 驗證平台規則與區段不重疊。Remote Retrieval 若留下可識別的 Query／ResultSet，區段外可顯式接平台跨 Query 處理或內建 Rerank。整段 Query Transformation → Rerank 由 Remote 執行時，Runtime 驗證回應及候選契約，按回傳順序交付。平台保留內建擴充的能力，由平台團隊維護方法及相容契約。
+區段只執行一次，涵蓋模組由首節點管理，編譯拒絕重疊。Indexing 與 Inference Input 由平台執行。只替換 Embedding 時，輸出保留原 Document 並附上向量。外部 Retrieval 自行執行搜尋及授權，平台無須等 Ingestion／IndexBinding 就緒。當區段涵蓋 Retrieval，Engine 以共用 I/O 傳入已驗證、合併後的 QueryContext.filters，並驗證回傳候選。過濾、排序及截斷由外部服務決定。未被替換的後段使用驗證過的候選。Inference 區段內的融合、分組和截斷由 Remote 負責，Engine 驗證平台規則與區段不重疊。Remote Retrieval 若留下可識別的 Query／ResultSet，區段外可顯式接平台跨 Query 處理或內建 Rerank。Remote 區段涵蓋到 Inference 最後一個模組時，須回傳恰好一份 Context 及其中一份 ResultSet，否則為契約錯誤。整段 Query Transformation → Rerank 由 Remote 執行時，Runtime 驗證回應及候選契約，按回傳順序交付。平台保留內建擴充的能力，由平台團隊維護方法及相容契約。
 
-業務參數引用 `{{name}}` 優先取已驗證的 Request 值，再取同名 Variable。Remote Ingestion 的引用限 [僅執行期參數](05_system_config.md#parameter-references)。Remote 認證欄位 `auth.bearer_token: "{{KEY}}"` 從 System Secret 取值並組出 `Authorization` Header。
+業務參數引用 `{{name}}` 優先取已驗證的 Request 值，再取同名 Variable。Remote Ingestion 的引用限 [僅執行期參數](05_system_config.md#parameter-references)。Remote 認證欄位 `auth.bearer_token: "{{KEY}}"` 從 System Secret 取值並組出 `Authorization` Header。服務網址和 Variable 型 Header 只讀 System Variable。Remote Ingestion 的 `revision` 參與索引指紋，服務處理邏輯改變時由使用者更新。
 
 ## Ingestion 模組
 
@@ -239,7 +239,15 @@ Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root ar
 <a id="src-04-54-最終檢索輸出"></a>
 ### 最終檢索輸出
 
-Inference 在完成配置的 Fusion／Rerank／Top N 後，交付 QueryContext[]，Runtime HTTP 將它放入 `contexts`；各 ResultItem 包含 Document 與選填 score，名次由 items 順序表示，無歷史 lineage。平台在多 Query 情境依[選定時點的合併規則](#cross-query-merge)交付一份合併清單。成功回應及版本欄位見 [Inference API](06_runtime_api_and_deployment.md#inference-api)。
+Inference 在完成配置的 Fusion／Rerank／Top N 後，把 QueryContext[] 收斂成一份最終 Context。流程中可有多份 Context，例如兩筆改寫加原始問題共三份；多 Query 時依[選定時點的合併規則](#cross-query-merge)合併。各 ResultItem 包含 Document 與選填 score，名次由 items 順序表示，無歷史 lineage。
+
+| 最終 Context 欄位 | 交付規則 |
+|---|---|
+| `ori_query`、`query` | 兩者都是原始問題。實際搜尋的 Query 文字由回應的 `query_variants` 依序列出。 |
+| `filters`、`metadata` | 沿用 Inference Input 初始化的值。 |
+| `result_sets` | 恰好一份，`key` 為 `final`，items 為最終排名。 |
+
+Runtime HTTP 將最終 Context 放入只含一筆的 `contexts`，保留陣列形狀供日後擴充。逐 Query 清單不放在回應中，後續由診斷介面提供。成功回應及版本欄位見 [Inference API](06_runtime_api_and_deployment.md#inference-api)。
 
 首版若任何必要節點、任一 Query 的搜尋路徑或 Remote 區段最終失敗，整次 Inference 回傳可定位的錯誤。Fusion 使用完整且有效的路徑結果；單路無命中可正常參與融合。全部流程成功但無命中時回空候選。首版的失敗結果與驗收案例見 [Runtime Inference](06_runtime_api_and_deployment.md#src-21-5-inference)。
 

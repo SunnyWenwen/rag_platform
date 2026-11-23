@@ -5,18 +5,38 @@
   "description": "Select an endpoint object by its definition. Existing request and query DTOs have their own schemas.",
   "$defs": {
     "pipeline": {"type": "string", "enum": ["ingestion", "inference"]},
+    "request_id": {"description": "Tracing ID echoed in X-Request-Id. Runtime generates a UUIDv4 when the caller omits it or sends an invalid value.", "type": "string", "pattern": "^[A-Za-z0-9._-]{1,128}$"},
     "inference_response": {
       "type": "object",
       "properties": {
-        "contexts": {"$ref": "query_context.schema.json"},
+        "contexts": {
+          "description": "Exactly one final Context. Its query equals ori_query and its only ResultSet is keyed final.",
+          "$ref": "query_context.schema.json",
+          "maxItems": 1,
+          "items": {
+            "properties": {
+              "result_sets": {
+                "minItems": 1,
+                "maxItems": 1,
+                "items": {"properties": {"key": {"const": "final"}}}
+              }
+            }
+          }
+        },
+        "query_variants": {
+          "description": "Executed query texts in execution order.",
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "minItems": 1
+        },
         "config_revision": {"type": "string", "minLength": 1},
         "index_generation": {"anyOf": [{"$ref": "runtime_identity.schema.json#/$defs/uuid_v4"}, {"type": "null"}]}
       },
-      "required": ["contexts", "config_revision", "index_generation"],
+      "required": ["contexts", "query_variants", "config_revision", "index_generation"],
       "additionalProperties": true
     },
     "apply_operation": {"type": "string", "enum": ["initialize", "reload", "update", "recover_index"]},
-    "document_status": {"type": "string", "enum": ["queued", "running", "completed", "cancelled", "failed", "unknown"]},
+    "document_status": {"type": "string", "enum": ["queued", "running", "cancelling", "completed", "cancelled", "failed", "unknown"]},
     "run_status": {"anyOf": [{"$ref": "#/$defs/document_status"}, {"const": "partial"}]},
     "index_impact_action": {"type": "string", "enum": ["create", "reuse", "rebuild_required", "recover", "blocked", "none"]},
     "index_fingerprint": {"$ref": "index_fingerprint.v1.schema.json#/$defs/mapping_meta/properties/index_fingerprint"},
@@ -218,7 +238,8 @@
         "message": {"type": "string", "minLength": 1},
         "module": {"anyOf": [{"type": "string"}, {"type": "null"}]},
         "path": {"type": "string", "pattern": "^/"},
-        "run_id": {"type": "string", "minLength": 1}
+        "run_id": {"type": "string", "minLength": 1},
+        "request_id": {"$ref": "#/$defs/request_id"}
       },
       "required": ["code", "message", "module"],
       "additionalProperties": false
@@ -252,6 +273,7 @@
             "module": {"anyOf": [{"type": "string"}, {"type": "null"}]},
             "path": {"type": "string", "pattern": "^/"},
             "run_id": {"type": "string", "minLength": 1},
+            "request_id": {"$ref": "#/$defs/request_id"},
             "conflicts": {"type": "array", "items": {"$ref": "#/$defs/document_conflict"}, "minItems": 1}
           },
           "required": ["code", "message", "module", "path", "conflicts"],
@@ -344,12 +366,13 @@
         "total": {"type": "integer", "minimum": 0},
         "queued": {"type": "integer", "minimum": 0},
         "running": {"type": "integer", "minimum": 0},
+        "cancelling": {"type": "integer", "minimum": 0},
         "completed": {"type": "integer", "minimum": 0},
         "cancelled": {"type": "integer", "minimum": 0},
         "failed": {"type": "integer", "minimum": 0},
         "unknown": {"type": "integer", "minimum": 0}
       },
-      "required": ["total", "queued", "running", "completed", "cancelled", "failed", "unknown"],
+      "required": ["total", "queued", "running", "cancelling", "completed", "cancelled", "failed", "unknown"],
       "additionalProperties": false
     },
     "ingestion_run_status": {
@@ -391,7 +414,7 @@
                 "properties": {
                   "documents": {
                     "contains": {
-                      "properties": {"status": {"type": "string", "enum": ["queued", "running"]}},
+                      "properties": {"status": {"type": "string", "enum": ["queued", "running", "cancelling"]}},
                       "required": ["status"]
                     },
                     "not": {
@@ -415,7 +438,7 @@
                     },
                     "not": {
                       "contains": {
-                        "properties": {"status": {"type": "string", "enum": ["queued", "running"]}},
+                        "properties": {"status": {"type": "string", "enum": ["queued", "running", "cancelling"]}},
                         "required": ["status"]
                       }
                     }
@@ -508,6 +531,7 @@
       "additionalProperties": false,
       "oneOf": [
         {"properties": {"result": {"const": "cancelled"}, "status": {"const": "cancelled"}}},
+        {"properties": {"result": {"const": "cancelling"}, "status": {"const": "cancelling"}}},
         {
           "properties": {
             "result": {"const": "already_finished"},

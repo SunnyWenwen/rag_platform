@@ -85,12 +85,12 @@ Chunking 逐 Unit 處理同一個選定欄位，可另外保留該欄位的原�
 <a id="inference-contract"></a>
 ## QueryContext／ResultSet／ResultItem
 
-[QueryContext[]](../schemas/query_context.schema.json) 是 Query Transformation、Retrieval、Rerank 的共用 I/O，也是 [Inference HTTP 成功回應](06_runtime_api_and_deployment.md#inference-api) 的 `contexts` 欄位。每份 Context 有 `ori_query`、`query`、`filters`、`result_sets`、`metadata`。每個 ResultSet 以 `key` 表示搜尋路徑或群組，`items` 的順序代表排名。`ResultItem.data` 必填，值為候選 `Document`，`score` 選填。無命中時回空候選。
+[QueryContext[]](../schemas/query_context.schema.json) 是 Query Transformation、Retrieval、Rerank 的共用 I/O，也是 [Inference HTTP 成功回應](06_runtime_api_and_deployment.md#inference-api) 的 `contexts` 欄位。流程中可有多份 Context；HTTP 回應只交付收斂後的一份最終 Context，其唯一 ResultSet 的 `key` 為 `final`，見 [最終檢索輸出](03_engine_and_components.md#src-04-54-最終檢索輸出)。每份 Context 有 `ori_query`、`query`、`filters`、`result_sets`、`metadata`。每個 ResultSet 以 `key` 表示搜尋路徑或群組，`items` 的順序代表排名。`ResultItem.data` 必填，值為候選 `Document`，`score` 選填。無命中時回空候選。
 
 | 欄位 | 建立與使用方式 |
 |---|---|
 | `ori_query` | Inference Input 帶入原始 `query`。改寫後的 Context 都保留它。 |
-| `query` | 此 Context 使用的實際查詢文字。未改寫時等於 `ori_query`。 |
+| `query` | 此 Context 使用的實際查詢文字。未改寫時等於 `ori_query`。最終 Context 一律等於 `ori_query`，實際搜尋的文字由回應的 `query_variants` 列出。 |
 | `filters` | 已驗證並合併的固定與動態 Filter，沒有條件時為 `[]`。 |
 | `result_sets` | Inference Input 初始化為 `[]`，Retrieval 填入有序候選清單。內建 Retrieval 無命中仍保留一個 ResultSet，其 `items` 為 `[]`。 |
 | `metadata` | 沿用 Request 的 Query metadata，省略時為 `{}`。Document 自身的 metadata 仍放在候選裡。 |

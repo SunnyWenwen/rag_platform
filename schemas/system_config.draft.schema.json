@@ -164,6 +164,9 @@
         },
         "fixed_filters": {
           "$ref": "https://rag-builder.example/schemas/query_context.schema.json#/$defs/filters"
+        },
+        "mcp": {
+          "$ref": "#/$defs/inference_mcp"
         }
       },
       "required": [
@@ -208,9 +211,11 @@
         },
         "contract_version": {"$ref": "https://rag-builder.example/schemas/remote_api.schema.json#/$defs/contract_version"},
         "through": {"$ref": "https://rag-builder.example/schemas/remote_api.schema.json#/$defs/ingestion_module"},
-        "service_ref": {
-          "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        "connection": {
+          "$ref": "#/$defs/remote_connection"
+        },
+        "revision": {
+          "$ref": "#/$defs/remote_revision"
         },
         "parameters": {
           "type": "object"
@@ -233,7 +238,8 @@
         "component_version",
         "contract_version",
         "through",
-        "service_ref",
+        "connection",
+        "revision",
         "parameters",
         "output"
       ],
@@ -251,9 +257,11 @@
         },
         "contract_version": {"$ref": "https://rag-builder.example/schemas/remote_api.schema.json#/$defs/contract_version"},
         "through": {"$ref": "https://rag-builder.example/schemas/remote_api.schema.json#/$defs/inference_module"},
-        "service_ref": {
-          "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        "connection": {
+          "$ref": "#/$defs/remote_connection"
+        },
+        "revision": {
+          "$ref": "#/$defs/remote_revision"
         },
         "parameters": {
           "type": "object"
@@ -267,9 +275,69 @@
         "component_version",
         "contract_version",
         "through",
-        "service_ref",
+        "connection",
         "parameters"
       ],
+      "additionalProperties": false
+    },
+    "remote_connection": {
+      "description": "Endpoint settings for one Remote node. The URL resolves only from config.variable to an absolute http or https URL. Header values are literals or whole-value System Variable references. Connection settings are environment bindings and do not enter the index fingerprint.",
+      "type": "object",
+      "properties": {
+        "url": {
+          "$ref": "#/$defs/parameter_expression"
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600,
+          "default": 30
+        },
+        "headers": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9-]*$",
+            "not": {"pattern": "^(?:[Aa][Uu][Tt][Hh][Oo][Rr][Ii][Zz][Aa][Tt][Ii][Oo][Nn]|[Cc][Oo][Nn][Tt][Ee][Nn][Tt]-[Tt][Yy][Pp][Ee]|[Cc][Oo][Nn][Tt][Ee][Nn][Tt]-[Ll][Ee][Nn][Gg][Tt][Hh]|[Hh][Oo][Ss][Tt]|[Xx]-[Rr][Ee][Qq][Uu][Ee][Ss][Tt]-[Ii][Dd])$"}
+          },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "additionalProperties": false
+    },
+    "remote_revision": {
+      "description": "Service implementation revision declared by the service owner. A change marks Remote Ingestion output as changed and enters the index fingerprint as implementation_revision.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "not": {"pattern": "\\{\\{"}
+    },
+    "inference_mcp": {
+      "description": "MCP query tool exposed for this System's Inference pipeline. Omitted fields use the defaults.",
+      "type": "object",
+      "properties": {
+        "tool_name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]{1,64}$",
+          "default": "search"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "text_field": {
+          "description": "Effective structdata string field shown in the text rendering of each result.",
+          "type": "string",
+          "minLength": 1,
+          "default": "text"
+        }
+      },
       "additionalProperties": false
     },
     "remote_ingestion_output": {
@@ -351,7 +419,7 @@
       }
     },
     "parameter_expression": {
-      "description": "Whole-value reference. Authentication resolves the key exclusively from the active System Secret.",
+      "description": "Whole-value reference. Authentication fields resolve the key from the active System Secret. A Remote connection URL resolves it from the active System Variable.",
       "type": "string",
       "pattern": "^\\{\\{[A-Za-z_][A-Za-z0-9_]*\\}\\}$"
     },

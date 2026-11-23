@@ -19,7 +19,7 @@
 | [runtime_catalog](runtime_catalog.draft.schema.json) | [W1 Runtime 的 Descriptor 與環境資源清單](../docs/06_runtime_api_and_deployment.md#w1-catalog) |
 | [component_descriptor](component_descriptor.draft.schema.json) | [內建 Component 的識別、參數、推導與 UI 規則](../docs/04_component_descriptor.md#descriptor-fields) |
 | [config_enums](config_enums.schema.json) | [內建 Component 固定選項的儲存代碼](../docs/05_system_config.md#config-enums) |
-| [system_config](system_config.draft.schema.json) | [有效 Config 快照、Variable／Secret 與 Pipeline 節點](../docs/05_system_config.md#config-fields) |
+| [system_config](system_config.draft.schema.json) | [有效 Config 快照、Variable／Secret、Pipeline 節點](../docs/05_system_config.md#config-fields)及 [Remote 節點連線](../docs/05_system_config.md#remote-node-settings) |
 | [MongoDB Builder System 生命週期](mongodb/builder_system_lifecycle.validator.json) | [權威索引綁定及 System 層級操作計畫](../docs/drafts/builder_system_deployment_mongodb.md#system-層級權威紀錄) |
 | [MongoDB Builder 部署紀錄 validator](mongodb/builder_system_deployment.validator.json) | [部署意圖與逐流程狀態、待確認操作和觀測紀錄](../docs/drafts/builder_system_deployment_mongodb.md#collection-欄位) |
 

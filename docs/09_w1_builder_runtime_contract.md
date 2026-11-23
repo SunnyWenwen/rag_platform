@@ -18,7 +18,7 @@
    python3 examples/system_config/mock_runtime.py --scenario happy_path
    ```
    以 [`happy_path`](../examples/system_config/runtime_http.examples.json) 的 System Config 及資料串通 Catalog → 預檢與發布 → 匯入及 Run 輪詢 → 查詢。取得 `202` 後沿用同一目標的 `Location`。要試切版、匯入失敗或查詢錯誤時，切換到對應情境。
-3. 執行 [HTTP 情境契約測試](../tests/README.md#dev-runtime-http-contract-test)。測試會自行啟動 Mock，依序重播每組情境，檢查 HTTP 回應、OpenAPI Schema 和各步驟的狀態關聯。DEV 接線使用 `http://dev-runtime` 這類 Service URL、部署提供的管理帳密、各 System 的流程帳密與 Builder ServiceAccount，依 [Istio 傳輸規格](06_runtime_api_and_deployment.md#istio-http-transport)驗收。
+3. 執行 [HTTP 情境契約測試](../tests/README.md#dev-runtime-http-contract-test)。測試會自行啟動 Mock，依序重播每組情境，檢查 HTTP 回應、OpenAPI Schema 和各步驟的狀態關聯。DEV 接線使用 `http://dev-runtime` 這類 Service URL、部署提供的管理帳密及各 System 的流程帳密，依 [Istio 傳輸規格](06_runtime_api_and_deployment.md#istio-http-transport)驗收。每個請求帶 Builder 產生的 [`X-Request-Id`](06_runtime_api_and_deployment.md#runtime-request-id)。
 
 | 契約 | 規格與範例 |
 |---|---|
@@ -30,8 +30,8 @@
 | Descriptor 推導驗收 | [Builder 與 Engine 的共用規格](04_component_descriptor.md#descriptor-derivation-conformance) · [共用測資](../examples/system_config/descriptor_derivation.fixture.json) |
 | System 與索引識別 | [UUID、部署環境與 ES 歸屬](06_runtime_api_and_deployment.md#runtime-index-ownership) · [建立與拒絕案例](../examples/system_config/index_fingerprint.v1.example.json) |
 | Elasticsearch 來源 | [連線欄位與 Secret 規格](05_system_config.md#elasticsearch-service-source) · [PLED ES 設定與部署範例](../examples/system_config/README.md#pled-elasticsearch-example) |
-| Inference API | [查詢 Request／Response](06_runtime_api_and_deployment.md#inference-api) · [成功回應 Schema](../schemas/runtime_http.schema.json#/$defs/inference_response) |
+| Inference API | [查詢 Request／Response](06_runtime_api_and_deployment.md#inference-api) · [成功回應 Schema](../schemas/runtime_http.schema.json#/$defs/inference_response) · [MCP 查詢工具](06_runtime_api_and_deployment.md#inference-mcp) |
 | 文件／切片識別與評估 | [Document ID、Data ID](02_data_contracts.md#document-identities) · [CSV 與檔案主鍵](07_builder_ui.md#builder-source-document-id) · [文件層級排名](03_engine_and_components.md#document-level-evaluation) |
-| User Remote API | [v1 契約](03_engine_and_components.md#remote-api) · [OpenAPI](../examples/user_remote_api/openapi.json) · [JSON 範例與驗證](../examples/user_remote_api/README.md) |
+| User Remote API | [Remote 節點設定](05_system_config.md#remote-node-settings) · [v1 契約](03_engine_and_components.md#remote-api) · [OpenAPI](../examples/user_remote_api/openapi.json) · [JSON 範例與驗證](../examples/user_remote_api/README.md) |
 
 [其他設定 → Variable 與 Secret](07_builder_ui.md#system-settings-rendering) · [Variable／Secret 設定與匯出範例](../examples/system_config/README.md#system-secret-examples) · [共用 HTTP 與認證](06_runtime_api_and_deployment.md#runtime-http-common) · [錯誤格式與狀態碼](06_runtime_api_and_deployment.md#runtime-http-errors) · [整套 HTTP Mock JSON](../examples/system_config/runtime_http.examples.json)
