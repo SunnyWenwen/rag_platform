@@ -1,6 +1,6 @@
 """Offline acceptance of the Descriptor draft and selected System Config relationships."""
 from copy import deepcopy
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from math import isfinite
 from pathlib import Path
 import json
@@ -243,12 +243,12 @@ def selected_values(values, pointer):
     return current
 
 
-def parameters(module, config, context):
+def parameters(module, config, context, *, registry=REGISTRY, observe_options=None):
     Draft202012Validator(BUILTIN_SCHEMA).validate(config)
     key = module, config["component_id"], config["component_version"]
-    if key not in REGISTRY:
+    if key not in registry:
         fail("unknown component version")
-    desc = REGISTRY[key]
+    desc = registry[key]
     values = config["parameters"]
     if module == "embedding" and any(key in values for key in ("source_field", "vector_name")):
         values = values.copy()
@@ -263,6 +263,12 @@ def parameters(module, config, context):
     Draft202012Validator(desc["parameters_schema"], registry=SCHEMA_REGISTRY).validate(values)
     if module == "embedding":
         context = {**context, "input.structdata": composition_fields(desc, values, context.get("input.structdata", {}))}
+    if observe_options:
+        available = {}
+        for path, spec in desc.get("option_sources", {}).items():
+            enum = schema_at(desc["parameters_schema"], path).get("enum")
+            available[path] = [name for name in options(spec, context) if enum is None or name in enum]
+        observe_options(module, desc["io"], available)
     for key, spec in desc.get("option_sources", {}).items():
         selected = selected_values(values, key)
         if selected and any(value not in options(spec, context) for value in selected):
@@ -296,7 +302,7 @@ def composition_fields(desc, values, fields):
     return result
 
 
-def data_effects(desc, values, fields, vectors):
+def data_effects(desc, values, fields, vectors, *, profiles=PROFILES):
     result = {} if desc["module"] == "chunking" else composition_fields(desc, values, fields)
     vector_result = vectors.copy()
     for rule in desc.get("data_rules", ()):
@@ -310,7 +316,7 @@ def data_effects(desc, values, fields, vectors):
                 if target in vector_result:
                     fail("duplicate vector")
                 profile = values[rule["profile"][1:]]
-                vector_result[target] = Vector(row[rule["source"][1:]], profile, PROFILES[profile])
+                vector_result[target] = Vector(row[rule["source"][1:]], profile, profiles[profile])
             else:
                 if target in result:
                     fail("duplicate field")
@@ -319,8 +325,8 @@ def data_effects(desc, values, fields, vectors):
     return result, vector_result
 
 
-def context(fields, vectors):
-    return {**RESOURCES, "input.structdata": fields, "input.vectors": vectors}
+def context(fields, vectors, *, resources=RESOURCES):
+    return {**resources, "input.structdata": fields, "input.vectors": vectors}
 
 
 def candidate_context(fields):
@@ -331,8 +337,8 @@ def candidate_context(fields):
     }
 
 
-def compile_index(fields, vectors, config):
-    _, params = parameters("indexing", config, context(fields, vectors))
+def compile_index(fields, vectors, config, *, resources=RESOURCES, read_parameters=parameters):
+    _, params = read_parameters("indexing", config, context(fields, vectors, resources=resources))
     effective = fields.copy()
     for name, override in params.get("structdata_overrides", {}).items():
         path = f"/ingestion/indexing/parameters/structdata_overrides/{name}"
@@ -374,8 +380,8 @@ def validate_filters(filters, filter_fields, path):
                 fail("invalid filter value:" + location + "/value")
 
 
-def compile_retrieval(index_plan, config):
-    _, params = parameters("retrieval", config, {
+def compile_retrieval(index_plan, config, *, read_parameters=parameters):
+    _, params = read_parameters("retrieval", config, {
         **candidate_context(index_plan["fields"]), "index_plan.fulltext": index_plan["fulltext"],
         "index_plan.vectors": index_plan["vectors"],
     })
@@ -586,8 +592,17 @@ def bind_system_parameters(snapshot, environment=None, *, request_parameters=Non
     return pipelines
 
 
-def compile_local_example(snapshot, environment=None):
+def compile_local_example(snapshot, environment=None, *, catalog=None, observe_options=None, observe_output=None):
     """Exercise the Local Search examples using the offline descriptor registry."""
+    resources, registry = RESOURCES, REGISTRY
+    if catalog is not None:
+        resources = catalog["resources"]
+        registry = {(d["module"], d["component_id"], d["component_version"]): d for d in catalog["descriptors"]}
+    profiles = {name: profile["dimensions"] for name, profile in resources["profiles"].items()}
+
+    def read_parameters(module, config, scope):
+        return parameters(module, config, scope, registry=registry, observe_options=observe_options)
+
     pipelines = bind_system_parameters(snapshot, environment)
     fields, vectors = {}, {}
     for module, config in effective_nodes("ingestion", pipelines["ingestion"]):
@@ -603,9 +618,9 @@ def compile_local_example(snapshot, environment=None):
                 }
             fields, vectors = remote_effects(module, config["through"], declarations, fields)
         elif module == "indexing":
-            index = compile_index(fields, vectors, config)
+            index = compile_index(fields, vectors, config, resources=resources, read_parameters=read_parameters)
         else:
-            desc, values = parameters(module, config, context(fields, vectors))
+            desc, values = read_parameters(module, config, context(fields, vectors, resources=resources))
             if module == "import":
                 fields = field_specs(values["structdata"])
             else:
@@ -618,7 +633,12 @@ def compile_local_example(snapshot, environment=None):
                         if "contenttext" in fields:
                             fail("duplicate field")
                         fields = {**fields, "contenttext": Field("string")}
-                fields, vectors = data_effects(desc, values, fields, vectors)
+                fields, vectors = data_effects(desc, values, fields, vectors, profiles=profiles)
+        if observe_output:
+            if module == "indexing":
+                observe_output(module, index["fields"], index["vectors"])
+            else:
+                observe_output(module, fields, vectors)
 
     inference = pipelines["inference"]
     validate_filters(inference.get("fixed_filters", []), index["filters"], "/inference/fixed_filters")
@@ -626,14 +646,68 @@ def compile_local_example(snapshot, environment=None):
         if config["component_id"] == "remote_api":
             fail("example compiler only supports builtin Inference")
         if module == "retrieval":
-            compile_retrieval(index, config)
+            compile_retrieval(index, config, read_parameters=read_parameters)
         else:
-            parameters(module, config, {**RESOURCES, **candidate_context(index["fields"])})
+            read_parameters(module, config, {**resources, **candidate_context(index["fields"])})
+        if observe_output:
+            observe_output(module, index["fields"], vectors)
     return index["fields"], vectors, index
 
 
 def local_snapshot(mode):
     return json.loads((HERE / f"local_memory.{mode}.json").read_text())
+
+
+@case("shared descriptor derivation fixture matches effective schemas, options and errors")
+def _():
+    shared = json.loads((HERE / "descriptor_derivation.fixture.json").read_text())
+    catalog = json.loads((HERE / shared["catalog_file"]).read_text())
+    Draft202012Validator(CATALOG_SCHEMA, registry=SCHEMA_REGISTRY).validate(catalog)
+    expected = {
+        name: {**node, "effective_schema": shared["effective_schemas"][node["effective_schema"]]}
+        for name, node in shared["nodes"].items()
+    }
+
+    for scenario in shared["cases"]:
+        draft = deepcopy(shared["draft"])
+        for pipeline, overrides in scenario.get("parameter_overrides", {}).items():
+            for module, values in overrides.items():
+                draft["pipelines"][pipeline][module]["parameters"].update(values)
+        snapshot = {"system_id": "descriptor-fixture", "config_revision": "fixture-1", "config": draft}
+        nodes = {}
+        errors = []
+
+        def observe_options(module, io, choices):
+            nodes[module] = {"io": io, "options": choices}
+
+        def observe_output(module, fields, vectors):
+            nodes[module]["effective_schema"] = {
+                "structdata": {name: asdict(field) for name, field in fields.items()},
+                "vectors": {
+                    name: {"source_field": vector.source, "embedding_profile_id": vector.profile,
+                           "dimensions": vector.dimensions}
+                    for name, vector in vectors.items()
+                },
+            }
+
+        try:
+            compile_local_example(snapshot, catalog=catalog, observe_options=observe_options,
+                                  observe_output=observe_output)
+        except ConfigError as error:
+            prefix = "invalid selection:"
+            if not str(error).startswith(prefix):
+                raise
+            module = next(reversed(nodes))
+            pipeline = next(name for name, stages in draft["pipelines"].items() if module in stages)
+            parameter = str(error).removeprefix(prefix).removesuffix("/*")
+            errors.append({"code": "CONFIG_VALIDATION_FAILED", "module": module,
+                           "path": f"/config/pipelines/{pipeline}/{module}/parameters{parameter}"})
+        assert errors == scenario["errors"], (scenario["name"], errors)
+        if not errors:
+            assert nodes == expected, (scenario["name"], nodes)
+        else:
+            for module, node in nodes.items():
+                assert node == {key: expected[module][key] for key in node}, (scenario["name"], module, node)
 
 
 @case("one Rewrite component supports single and multiple generated queries")

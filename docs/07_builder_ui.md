@@ -169,6 +169,8 @@ Admin 在 Builder 以外維護版本化全域模板。Builder 顯示可選版本
 <a id="descriptor-form-rendering"></a>
 ### Descriptor 與表單控制項
 
+遇到未支援的 `data_rules` 或本機推導與 Engine 結果有差異時，依 [共用推導驗收](04_component_descriptor.md#descriptor-derivation-conformance)處理草稿與提示。
+
 Builder 以選定方法的 `parameters_schema.properties` 產生參數欄位，並把編輯值寫回同一個 `parameters` 物件。欄位先依 `const`、專用控制項、動態選項、固定 `enum`、一般型別決定呈現。專用控制項可以使用動態候選，例如向量清單的候選來自 `/vector_fields/*`。支援範圍如下。
 
 | Descriptor 宣告 | UI 控制項與保存格式 | 驗收 |

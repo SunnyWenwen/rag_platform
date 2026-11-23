@@ -65,6 +65,19 @@ Builder 在草稿變更時推導有效 I/O 供欄位選項和預覽。W1 內建 
 
 其他實例見 [Recursive Chunking Descriptor](../examples/system_config/recursive.descriptor.json) 與 [Runtime Catalog 回應](../examples/system_config/runtime_catalog.response.json)。
 
+<a id="descriptor-derivation-conformance"></a>
+### Builder 與 Engine 的共用推導驗收
+
+Builder 和 Engine 各自執行 Schema 推導，使用同一份 [共用測資](../examples/system_config/descriptor_derivation.fixture.json) 驗收。輸入是同一版 Catalog 與草稿。每個節點核對 I/O 類型、有效輸出中的 `structdata` 型別、必填性和搜尋旗標、向量來源／Profile／維度，以及按 `option_sources` 路徑列出的候選值。Indexing 核對有效欄位用途與選定的索引向量，Inference 節點核對 `QueryContext[]` 的候選資料形狀。
+
+- 依穩定值比對候選清單，忽略畫面標籤與顯示順序。錯誤核對 `code`、`module` 和相對於 Config 驗證 Request 的 JSON Pointer `path`。陣列選值失效時，共用測資以該參數的路徑比對，介面可以額外定位到個別項目。
+- 有效草稿須核對全部節點。失效選值案例核對已可推導的節點、可確認的選項和阻擋發布的錯誤。若上游無法推導，受影響的下游標為待確認。合法來源確定無候選時，回空清單。
+- Builder 與 Engine 交付前都須用各自的實作通過同一份測資。此 repo 的離線驗證分別執行 Builder Prototype 與 Engine 側的參考編譯器。正式 Builder 與 Engine 的驗收沿用同一測資。[驗收指令](../tests/README.md#共用-descriptor-推導測資)
+
+Builder 的本機推導用於即時編輯。兩邊結果有差異時，**以目標 Runtime 的 Engine 驗證結果為準**。Builder 保留草稿、顯示 Engine 回傳的錯誤與定位，並依該版本的驗證結果決定是否可發布。[Config Validation API](06_runtime_api_and_deployment.md#config-validation-api)
+
+Builder 讀到目前版本不支援的 `data_rules[].op` 時，顯示「此元件需要新版 Builder。請更新 Builder 或聯絡管理員確認。」指出受影響的 Component 和規則，保留草稿與選值，將依賴該規則的有效 Schema 和候選標為待確認。Builder 可將完整草稿送目標 Runtime 驗證，由 Engine 判定能否發布。
+
 <a id="descriptor-constraints"></a>
 ## `constraints` 參數關聯驗證
 

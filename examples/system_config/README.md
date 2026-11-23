@@ -33,6 +33,7 @@
 - [Meta-schema 草案](../../schemas/component_descriptor.draft.schema.json)驗證 Descriptor 的外層及目前測試的宣告語法。
 - [Recursive Descriptor](recursive.descriptor.json)示範切分欄位、由上游 Schema 推導的選項、欄位複製及 overlap 約束。
 - [Rewrite Descriptor](rewrite.descriptor.json)用同一個 Component 驗證單筆及多筆改寫、共用 LLM 引用與原始問題選項。
+- [共用推導測資](descriptor_derivation.fixture.json)包含草稿、Catalog 引用、九個節點的有效 Schema 與可選值、成功及選到失效向量兩種案例。資料比較規則與執行方式見 [Descriptor 驗收規格](../../docs/04_component_descriptor.md#descriptor-derivation-conformance)及 [驗收入口](../../tests/README.md#共用-descriptor-推導測資)。
 - Python 驗證涵蓋代表性內建鏈、欄位移除後的覆寫失效、IndexBinding、固定與動態 Filter 型別、日期時間、外部候選及 Remote 區段。其他內建方法驗共用外層。IndexBinding 驗證使用符合現行 Schema 的 fixture，檢查全文／向量能力。
 - Remote API fixture 涵蓋批次請求、向量輸出與外部檢索候選。實際 Parser、Tokenizer、模型、索引、權限、服務可用性與跨環境部署仍需整合驗收。
 

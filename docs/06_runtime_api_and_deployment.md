@@ -304,7 +304,9 @@ Builder 依來源及 Descriptor 宣告的型別、必填條件和固定 `enum` �
 <a id="config-validation-api"></a>
 ### Config Validation API
 
-Builder 編輯時依 Descriptor 與推導出的有效 I/O 先查必填、型別、範圍及欄位相依。通過本地檢查後可呼叫 `POST /internal/v1/systems/{system_id}/config:validate`。這是帶完整 Config 的唯讀預檢，檢查設定能否在目標 Runtime 執行及索引影響。可驗證尚未載入的 System。GET 用於查目前狀態，這裡以提交的 Config 試算效果。
+Builder 編輯時依 Descriptor 與推導出的有效 I/O 檢查必填、型別、範圍及欄位相依。發布前呼叫 `POST /internal/v1/systems/{system_id}/config:validate`。這是帶完整 Config 的唯讀預檢，檢查設定能否在目標 Runtime 執行及索引影響。可驗證尚未載入的 System。GET 用於查目前狀態，這裡以提交的 Config 試算效果。
+
+本機推導與 Engine 驗證結果不一致，以及 Builder 遇到未支援規則時的行為，見 [共用推導驗收](04_component_descriptor.md#descriptor-derivation-conformance)。
 
 請求與回應見 [Runtime HTTP Schema](../schemas/runtime_http.schema.json) 的 `validate_request`、`validation` 與 `index_impact`。
 

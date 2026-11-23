@@ -1,0 +1,170 @@
+{
+  "catalog_file": "runtime_catalog.response.json",
+  "draft": {
+    "contract_version": "0.2-draft",
+    "pipelines": {
+      "ingestion": {
+        "import": {
+          "component_id": "platform",
+          "component_version": "1.0.0",
+          "parameters": {
+            "structdata": {
+              "body": {"type": "string", "required": true},
+              "title": {"type": "string", "required": true},
+              "price": {"type": "number", "required": false},
+              "summary": {"type": "string", "required": false}
+            }
+          }
+        },
+        "parsing": {"component_id": "passthrough", "component_version": "1.0.0", "parameters": {}},
+        "chunking": {
+          "component_id": "recursive",
+          "component_version": "1.0.0",
+          "parameters": {
+            "split_field": "body",
+            "output_field": "text",
+            "copy_fields": [
+              {"source_field": "title", "output_field": "title"},
+              {"source_field": "price", "output_field": "price"},
+              {"source_field": "summary", "output_field": "summary"}
+            ],
+            "max_tokens": 500,
+            "overlap_tokens": 50,
+            "tokenizer_profile_id": "fixture"
+          }
+        },
+        "embedding": {
+          "component_id": "dense",
+          "component_version": "1.0.0",
+          "parameters": {"profile": "text-v1", "mappings": [{"source_field": "text", "vector_name": "text"}]}
+        },
+        "indexing": {
+          "component_id": "elasticsearch",
+          "component_version": "1.0.0",
+          "parameters": {
+            "service_ref": "dev-search",
+            "vector_name": "text",
+            "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
+          }
+        }
+      },
+      "inference": {
+        "inference_input": {"component_id": "platform", "component_version": "1.0.0", "parameters": {}},
+        "query_transformation": {"component_id": "none", "component_version": "1.0.0", "parameters": {}},
+        "retrieval": {
+          "component_id": "builtin",
+          "component_version": "1.0.0",
+          "parameters": {"per_route_k": 10, "vector_fields": ["text"]}
+        },
+        "rerank": {"component_id": "none", "component_version": "1.0.0", "parameters": {}}
+      }
+    }
+  },
+  "effective_schemas": {
+    "source_document": {
+      "structdata": {
+        "body": {"type": "string", "required": true, "searchable": false, "filterable": false},
+        "title": {"type": "string", "required": true, "searchable": false, "filterable": false},
+        "price": {"type": "number", "required": false, "searchable": false, "filterable": false},
+        "summary": {"type": "string", "required": false, "searchable": false, "filterable": false}
+      },
+      "vectors": {}
+    },
+    "chunk": {
+      "structdata": {
+        "text": {"type": "string", "required": true, "searchable": false, "filterable": false},
+        "title": {"type": "string", "required": true, "searchable": false, "filterable": false},
+        "price": {"type": "number", "required": false, "searchable": false, "filterable": false},
+        "summary": {"type": "string", "required": false, "searchable": false, "filterable": false}
+      },
+      "vectors": {}
+    },
+    "embedded_chunk": {
+      "structdata": {
+        "text": {"type": "string", "required": true, "searchable": false, "filterable": false},
+        "title": {"type": "string", "required": true, "searchable": false, "filterable": false},
+        "price": {"type": "number", "required": false, "searchable": false, "filterable": false},
+        "summary": {"type": "string", "required": false, "searchable": false, "filterable": false}
+      },
+      "vectors": {"text": {"source_field": "text", "embedding_profile_id": "text-v1", "dimensions": 3}}
+    },
+    "indexed_document": {
+      "structdata": {
+        "text": {"type": "string", "required": true, "searchable": true, "filterable": false},
+        "title": {"type": "string", "required": true, "searchable": false, "filterable": false},
+        "price": {"type": "number", "required": false, "searchable": false, "filterable": true},
+        "summary": {"type": "string", "required": false, "searchable": false, "filterable": false}
+      },
+      "vectors": {"text": {"source_field": "text", "embedding_profile_id": "text-v1", "dimensions": 3}}
+    }
+  },
+  "nodes": {
+    "import": {
+      "io": {"input": "IngestionRequest", "output": "Document"},
+      "effective_schema": "source_document",
+      "options": {}
+    },
+    "parsing": {
+      "io": {"input": "Document", "output": "Document[]"},
+      "effective_schema": "source_document",
+      "options": {}
+    },
+    "chunking": {
+      "io": {"input": "Document[]", "output": "Document[]"},
+      "effective_schema": "chunk",
+      "options": {
+        "/split_field": ["body", "title"],
+        "/tokenizer_profile_id": ["fixture"],
+        "/copy_fields/*/source_field": ["body", "price", "summary", "title"]
+      }
+    },
+    "embedding": {
+      "io": {"input": "Document[]", "output": "Document[]"},
+      "effective_schema": "embedded_chunk",
+      "options": {"/profile": ["text-v1"], "/mappings/*/source_field": ["text", "title"]}
+    },
+    "indexing": {
+      "io": {"input": "Document[]", "output": "IndexBinding"},
+      "effective_schema": "indexed_document",
+      "options": {"/service_ref": ["dev-search"], "/vector_name": ["text"], "/vector_fields/*": ["text"]}
+    },
+    "inference_input": {
+      "io": {"input": "InferenceRequest", "output": "QueryContext[]"},
+      "effective_schema": "indexed_document",
+      "options": {}
+    },
+    "query_transformation": {
+      "io": {"input": "QueryContext[]", "output": "QueryContext[]"},
+      "effective_schema": "indexed_document",
+      "options": {}
+    },
+    "retrieval": {
+      "io": {"input": "QueryContext[]", "output": "QueryContext[]"},
+      "effective_schema": "indexed_document",
+      "options": {
+        "/vector_fields/*": ["text"],
+        "/fulltext_fields/*": ["structdata.text"],
+        "/group_by/*": ["document_id", "structdata.summary", "structdata.text", "structdata.title"]
+      }
+    },
+    "rerank": {
+      "io": {"input": "QueryContext[]", "output": "QueryContext[]"},
+      "effective_schema": "indexed_document",
+      "options": {}
+    }
+  },
+  "cases": [
+    {"name": "valid_pipeline", "errors": []},
+    {
+      "name": "stale_vector_selection",
+      "parameter_overrides": {"inference": {"retrieval": {"vector_fields": ["missing_vector"]}}},
+      "errors": [
+        {
+          "code": "CONFIG_VALIDATION_FAILED",
+          "module": "retrieval",
+          "path": "/config/pipelines/inference/retrieval/parameters/vector_fields"
+        }
+      ]
+    }
+  ]
+}
