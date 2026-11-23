@@ -30,13 +30,31 @@ def validate_http(name, value):
     ).validate(value)
 
 
-def verify_index_fingerprint(fields, vectors):
+def identity_validator(name):
+    uri = SCHEMAS["runtime_identity.schema.json"]["$id"]
+    return Draft202012Validator({"$ref": f"{uri}#/$defs/{name}"}, registry=REGISTRY)
+
+
+def verify_index_fingerprint(fields, vectors, system_id, index_generation):
     expected = json.loads((HERE / "index_fingerprint.v1.example.json").read_text())
     projection, meta = expected["projection"], expected["mapping_meta"]
     definition = SCHEMAS["index_fingerprint.v1.schema.json"]
     projection_check = schema("index_fingerprint.v1.schema.json")
     projection_check.validate(projection)
-    Draft202012Validator({"$ref": definition["$id"] + "#/$defs/mapping_meta"}, registry=REGISTRY).validate(meta)
+    meta_check = Draft202012Validator({"$ref": definition["$id"] + "#/$defs/mapping_meta"}, registry=REGISTRY)
+    meta_check.validate(meta)
+    assert meta["system_id"] == system_id
+    assert meta["env"] == "builder"
+    assert expected["index_generation"] == index_generation
+    assert expected["index_name"] == f"rag-builder-{system_id}-{index_generation}"
+    for case in expected["ownership_cases"]:
+        observed = {**meta, **case.get("meta_changes", {})}
+        for name in case.get("omit_meta", []):
+            del observed[name]
+        actual_name = case.get("index_name", expected["index_name"])
+        verified = actual_name == expected["index_name"] and meta_check.is_valid(observed) and observed == meta
+        code = None if verified else "INDEX_OWNERSHIP_UNVERIFIED"
+        assert code == case["expected_code"], case["name"]
 
     def simple_jcs_fixture(value):
         # The fixture uses ASCII keys and safe integers, so sorted compact
@@ -59,6 +77,19 @@ def verify_index_fingerprint(fields, vectors):
         for name, vector in vectors.items()
     }
     assert not projection_check.is_valid({**projection, "source_revision": "v1"})
+    assert not projection_check.is_valid({**projection, "env": "builder"})
+
+
+def verify_deployment_env():
+    deployment = json.loads((HERE / "deployment.env.example.json").read_text())
+    independent = identity_validator("standalone_deployment_env")
+    independent.validate(deployment)
+    independent.validate({"env": "ent"})
+    independent.validate({"env": "ftest-team-a"})
+    identity_validator("deployment_env").validate({"env": "builder"})
+    for invalid in ("builder", "FTEST", "ftest\n", "../ent", "ftest--a", "a" * 33):
+        assert not independent.is_valid({"env": invalid}), invalid
+    assert not independent.is_valid({})
 
 
 def assert_error_response(body, request_body, *, ingestion_conflicts=False):
@@ -111,10 +142,19 @@ def verify(scenarios):
     published = {(item["module"], item["component_id"], item["component_version"]) for item in catalog["descriptors"]}
     assert len(published) == len(catalog["descriptors"])
     happy = scenarios["happy_path"]
-    initial_config = next(item["request"]["body"]["config"] for item in happy if item["request"]["method"] == "PUT")
-    fields, vectors, index = compile_local_example({"system_id": "es-example", "config_revision": "revision-1",
-                                                    "config": initial_config})
-    verify_index_fingerprint(fields, vectors)
+    initialize = next(item for item in happy if item["request"]["method"] == "PUT")
+    initial_config = initialize["request"]["body"]["config"]
+    initial = initialize["response"]["body"]
+    system_id = initial["system_id"]
+    fields, vectors, index = compile_local_example({
+        "system_id": system_id, "config_revision": initial["active_config_revision"],
+        "config": initial_config,
+    })
+    verify_index_fingerprint(fields, vectors, system_id, initial["index_generation"])
+    verify_deployment_env()
+    uuid_check = identity_validator("uuid_v4")
+    assert not uuid_check.is_valid("es-example")
+    assert not uuid_check.is_valid(system_id.upper())
 
     for steps in scenarios.values():
         previews = {}
@@ -127,6 +167,10 @@ def verify(scenarios):
             status, body = response["status"], response.get("body")
             system_route = path.startswith(SYSTEM_PATH)
             is_detach = system_route and method == "POST" and path.endswith(":detach")
+            if system_route:
+                uuid_check.validate(path[len(SYSTEM_PATH):].split("/", 1)[0].removesuffix(":detach"))
+            if path.startswith("/internal/systems/"):
+                uuid_check.validate(path.split("/")[3])
 
             if status >= 400:
                 ingestion_conflicts = (
@@ -158,7 +202,8 @@ def verify(scenarios):
                 requests_by_operation[identity] = request
                 if method == "DELETE" or is_detach:
                     assert sent is None
-                    assert headers["X-Expected-Config-Revision"] and headers["X-Expected-Index-Generation"]
+                    assert headers["X-Expected-Config-Revision"]
+                    uuid_check.validate(headers["X-Expected-Index-Generation"])
                     query = parse_qs(url.query, keep_blank_values=True)
                     if is_detach and query:
                         assert set(query) == {"pipeline"}
@@ -332,6 +377,11 @@ def verify(scenarios):
     assert unload_headers["X-Expected-Index-Generation"] == reload_unloaded["body"]["index_generation"]
     assert unload["response"]["status"] == 204
     assert after_unload["response"]["status"] == 404
+    unverified, = scenarios["unload_index_ownership_unverified"]
+    assert unverified["request"]["path"] == unload["request"]["path"]
+    assert unverified["request"]["headers"]["X-Expected-Index-Generation"] == unload_headers["X-Expected-Index-Generation"]
+    assert unverified["response"]["status"] == 409
+    assert unverified["response"]["body"]["error"]["code"] == "INDEX_OWNERSHIP_UNVERIFIED"
 
     before_detach, busy_detach, detach, detach_retry, after_detach = scenarios["detach_shared_index_runtime"]
     before_status = before_detach["response"]["body"]

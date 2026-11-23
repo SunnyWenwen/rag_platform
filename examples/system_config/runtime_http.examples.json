@@ -20,7 +20,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-example/config:validate",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-4",
@@ -113,7 +113,7 @@
       {
         "request": {
           "method": "PUT",
-          "path": "/internal/v1/systems/es-example",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a",
           "headers": {"Idempotency-Key": "initialize-001"},
           "body": {
             "runtime_ref": "dev-runtime",
@@ -197,37 +197,37 @@
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-example",
+            "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
             "active_config_revision": "revision-1",
             "loaded": true,
             "busy": false,
             "index_ready": true,
-            "index_generation": "index-1",
+            "index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
             "can_ingest": true,
             "can_query": true,
             "pipelines": {
-              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-1"},
-              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-1"}
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"}
             }
           }
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/v1/systems/es-example"},
+        "request": {"method": "GET", "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a"},
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-example",
+            "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
             "active_config_revision": "revision-1",
             "loaded": true,
             "busy": false,
             "index_ready": true,
-            "index_generation": "index-1",
+            "index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
             "can_ingest": true,
             "can_query": true,
             "pipelines": {
-              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-1"},
-              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-1"}
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"}
             }
           }
         }
@@ -239,17 +239,17 @@
           "body": {
             "systems": [
               {
-                "system_id": "es-example",
+                "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
                 "active_config_revision": "revision-1",
                 "loaded": true,
                 "busy": false,
                 "index_ready": true,
-                "index_generation": "index-1",
+                "index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
                 "can_ingest": true,
                 "can_query": true,
                 "pipelines": {
-                  "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-1"},
-                  "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-1"}
+                  "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"},
+                  "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"}
                 }
               }
             ]
@@ -259,7 +259,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-example/v1/ingestions",
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions",
           "body": {
             "documents": [
               {
@@ -277,11 +277,11 @@
             "config_revision": "revision-1",
             "documents": [{"document_id": "guide-1", "status": "queued"}]
           },
-          "headers": {"Location": "/internal/systems/es-example/v1/ingestions/ing-001"}
+          "headers": {"Location": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions/ing-001"}
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/ingestions/ing-001"},
+        "request": {"method": "GET", "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions/ing-001"},
         "response": {
           "status": 200,
           "body": {
@@ -302,7 +302,7 @@
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/ingestions/ing-001"},
+        "request": {"method": "GET", "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions/ing-001"},
         "response": {
           "status": 200,
           "body": {
@@ -325,7 +325,7 @@
       {
         "request": {
           "method": "GET",
-          "path": "/internal/systems/es-example/v1/documents/guide-1/ingestion-status"
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/documents/guide-1/ingestion-status"
         },
         "response": {
           "status": 200,
@@ -342,7 +342,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-example/v1/queries",
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/queries",
           "body": {
             "query": "散熱孔怎麼清潔？",
             "filters": [{"field": "structdata.price", "operator": "lt", "value": 500}]
@@ -376,38 +376,38 @@
               "metadata": {}
             }
           ],
-          "headers": {"X-Config-Revision": "revision-1", "X-Index-Generation": "index-1"}
+          "headers": {"X-Config-Revision": "revision-1", "X-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01"}
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/documents/guide-1/exists"},
+        "request": {"method": "GET", "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/documents/guide-1/exists"},
         "response": {"status": 200, "body": {"document_id": "guide-1", "exists": true}}
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/documents?limit=1"},
+        "request": {"method": "GET", "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/documents?limit=1"},
         "response": {
           "status": 200,
           "body": {"documents": [{"document_id": "guide-1", "source_revisions": []}], "next_cursor": null}
         }
       },
       {
-        "request": {"method": "POST", "path": "/internal/systems/es-example/v1/documents/guide-1:retire"},
+        "request": {"method": "POST", "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/documents/guide-1:retire"},
         "response": {"status": 200, "body": {"document_id": "guide-1", "result": "deleted"}}
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/documents/guide-1/exists"},
+        "request": {"method": "GET", "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/documents/guide-1/exists"},
         "response": {"status": 200, "body": {"document_id": "guide-1", "exists": false}}
       },
       {
-        "request": {"method": "POST", "path": "/internal/systems/es-example/v1/documents/guide-1:retire"},
+        "request": {"method": "POST", "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/documents/guide-1:retire"},
         "response": {"status": 200, "body": {"document_id": "guide-1", "result": "not_found"}}
       },
       {
-        "request": {"method": "DELETE", "path": "/internal/v1/systems/es-example", "headers": {"Idempotency-Key": "unload-001", "X-Expected-Config-Revision": "revision-1", "X-Expected-Index-Generation": "index-1"}},
+        "request": {"method": "DELETE", "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a", "headers": {"Idempotency-Key": "unload-001", "X-Expected-Config-Revision": "revision-1", "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01"}},
         "response": {"status": 204}
       },
       {
-        "request": {"method": "GET", "path": "/internal/v1/systems/es-example"},
+        "request": {"method": "GET", "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a"},
         "response": {
           "status": 404,
           "body": {"error": {"code": "SYSTEM_NOT_FOUND", "message": "查無載入狀態或既有索引綁定。", "module": null}}
@@ -418,7 +418,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-example/config:validate",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-4",
@@ -577,7 +577,7 @@
       {
         "request": {
           "method": "PUT",
-          "path": "/internal/v1/systems/es-example",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a",
           "headers": {
             "Idempotency-Key": "split-initialize"
           },
@@ -724,12 +724,12 @@
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-example",
+            "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
             "active_config_revision": "revision-1",
             "loaded": true,
             "busy": false,
             "index_ready": true,
-            "index_generation": "index-1",
+            "index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
             "can_ingest": true,
             "can_query": false,
             "pipelines": {
@@ -737,7 +737,7 @@
                 "loaded": true,
                 "ready": true,
                 "config_revision": "revision-1",
-                "index_generation": "index-1"
+                "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"
               },
               "inference": {
                 "loaded": false,
@@ -752,7 +752,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-example/v1/queries",
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/queries",
           "body": {
             "query": "散熱孔怎麼清潔？",
             "filters": [
@@ -778,7 +778,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-example/config:validate",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-4",
@@ -937,7 +937,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-example/config:validate",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-4",
@@ -1096,7 +1096,7 @@
       {
         "request": {
           "method": "PUT",
-          "path": "/internal/v1/systems/es-example",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a",
           "headers": {
             "Idempotency-Key": "split-reload"
           },
@@ -1243,12 +1243,12 @@
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-example",
+            "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
             "active_config_revision": "revision-1",
             "loaded": true,
             "busy": false,
             "index_ready": true,
-            "index_generation": "index-1",
+            "index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
             "can_ingest": true,
             "can_query": true,
             "pipelines": {
@@ -1256,13 +1256,13 @@
                 "loaded": true,
                 "ready": true,
                 "config_revision": "revision-1",
-                "index_generation": "index-1"
+                "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"
               },
               "inference": {
                 "loaded": true,
                 "ready": true,
                 "config_revision": "revision-1",
-                "index_generation": "index-1"
+                "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"
               }
             }
           }
@@ -1271,11 +1271,11 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-example:detach?pipeline=ingestion",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a:detach?pipeline=ingestion",
           "headers": {
             "Idempotency-Key": "split-detach-ingestion",
             "X-Expected-Config-Revision": "revision-1",
-            "X-Expected-Index-Generation": "index-1"
+            "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01"
           }
         },
         "response": {
@@ -1285,17 +1285,17 @@
       {
         "request": {
           "method": "GET",
-          "path": "/internal/v1/systems/es-example"
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a"
         },
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-example",
+            "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
             "active_config_revision": "revision-1",
             "loaded": true,
             "busy": false,
             "index_ready": true,
-            "index_generation": "index-1",
+            "index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
             "can_ingest": false,
             "can_query": true,
             "pipelines": {
@@ -1309,7 +1309,7 @@
                 "loaded": true,
                 "ready": true,
                 "config_revision": "revision-1",
-                "index_generation": "index-1"
+                "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"
               }
             }
           }
@@ -1318,7 +1318,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-example/v1/ingestions",
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions",
           "body": {
             "documents": [
               {
@@ -1346,7 +1346,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-example/v1/queries",
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/queries",
           "body": {
             "query": "散熱孔怎麼清潔？",
             "filters": [
@@ -1400,7 +1400,7 @@
           ],
           "headers": {
             "X-Config-Revision": "revision-1",
-            "X-Index-Generation": "index-1"
+            "X-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01"
           }
         }
       }
@@ -1409,17 +1409,17 @@
       {
         "request": {
           "method": "GET",
-          "path": "/internal/v1/systems/es-example"
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a"
         },
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-example",
+            "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
             "active_config_revision": "revision-2",
             "loaded": true,
             "busy": false,
             "index_ready": true,
-            "index_generation": "index-1",
+            "index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
             "can_ingest": true,
             "can_query": false,
             "pipelines": {
@@ -1427,13 +1427,13 @@
                 "loaded": true,
                 "ready": true,
                 "config_revision": "revision-2",
-                "index_generation": "index-1"
+                "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"
               },
               "inference": {
                 "loaded": true,
                 "ready": false,
                 "config_revision": "revision-1",
-                "index_generation": "index-1"
+                "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"
               }
             }
           }
@@ -1442,7 +1442,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-example/v1/queries",
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/queries",
           "body": {
             "query": "散熱孔怎麼清潔？",
             "filters": [
@@ -1470,7 +1470,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-example/config:validate",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-4",
@@ -1563,7 +1563,7 @@
       {
         "request": {
           "method": "PUT",
-          "path": "/internal/v1/systems/es-example",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a",
           "headers": {"Idempotency-Key": "update-002"},
           "body": {
             "runtime_ref": "dev-runtime",
@@ -1647,17 +1647,17 @@
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-example",
+            "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
             "active_config_revision": "revision-2",
             "loaded": true,
             "busy": false,
             "index_ready": true,
-            "index_generation": "index-1",
+            "index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
             "can_ingest": true,
             "can_query": true,
             "pipelines": {
-              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-2", "index_generation": "index-1"},
-              "inference": {"loaded": true, "ready": true, "config_revision": "revision-2", "index_generation": "index-1"}
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-2", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-2", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"}
             }
           }
         }
@@ -1665,7 +1665,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-example/config:validate",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-4",
@@ -1762,7 +1762,7 @@
       {
         "request": {
           "method": "PUT",
-          "path": "/internal/v1/systems/es-example",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a",
           "headers": {"Idempotency-Key": "update-003-preview"},
           "body": {
             "runtime_ref": "dev-runtime",
@@ -1853,7 +1853,7 @@
       {
         "request": {
           "method": "PUT",
-          "path": "/internal/v1/systems/es-example",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a",
           "headers": {"Idempotency-Key": "update-003"},
           "body": {
             "runtime_ref": "dev-runtime",
@@ -1938,17 +1938,17 @@
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-example",
+            "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
             "active_config_revision": "revision-3",
             "loaded": true,
             "busy": false,
             "index_ready": true,
-            "index_generation": "index-2",
+            "index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202",
             "can_ingest": true,
             "can_query": true,
             "pipelines": {
-              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-3", "index_generation": "index-2"},
-              "inference": {"loaded": true, "ready": true, "config_revision": "revision-3", "index_generation": "index-2"}
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-3", "index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-3", "index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202"}
             }
           }
         }
@@ -1956,7 +1956,7 @@
       {
         "request": {
           "method": "PUT",
-          "path": "/internal/v1/systems/es-example",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a",
           "headers": {"Idempotency-Key": "update-003"},
           "body": {
             "runtime_ref": "dev-runtime",
@@ -2041,17 +2041,17 @@
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-example",
+            "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
             "active_config_revision": "revision-3",
             "loaded": true,
             "busy": false,
             "index_ready": true,
-            "index_generation": "index-2",
+            "index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202",
             "can_ingest": true,
             "can_query": true,
             "pipelines": {
-              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-3", "index_generation": "index-2"},
-              "inference": {"loaded": true, "ready": true, "config_revision": "revision-3", "index_generation": "index-2"}
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-3", "index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-3", "index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202"}
             }
           }
         }
@@ -2061,7 +2061,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-example/config:validate",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-4",
@@ -2153,7 +2153,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-example/config:validate",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-4",
@@ -2246,7 +2246,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-example/config:validate",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-1",
@@ -2331,7 +2331,7 @@
       {
         "request": {
           "method": "PUT",
-          "path": "/internal/v1/systems/es-example",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a",
           "headers": {"Idempotency-Key": "initialize-stale"},
           "body": {
             "runtime_ref": "dev-runtime",
@@ -2420,7 +2420,7 @@
       {
         "request": {
           "method": "PUT",
-          "path": "/internal/v1/systems/es-example",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a",
           "headers": {"Idempotency-Key": "update-stale"},
           "body": {
             "runtime_ref": "dev-runtime",
@@ -2507,18 +2507,18 @@
         }
       },
       {
-        "request": {"method": "DELETE", "path": "/internal/v1/systems/es-example", "headers": {"Idempotency-Key": "unload-busy", "X-Expected-Config-Revision": "revision-1", "X-Expected-Index-Generation": "index-1"}},
+        "request": {"method": "DELETE", "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a", "headers": {"Idempotency-Key": "unload-busy", "X-Expected-Config-Revision": "revision-1", "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01"}},
         "response": {
           "status": 409,
           "body": {"error": {"code": "SYSTEM_BUSY", "message": "System 有執行中的匯入。", "module": null}}
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/v1/systems/es-example"},
+        "request": {"method": "GET", "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a"},
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-example",
+            "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
             "active_config_revision": "revision-1",
             "loaded": true,
             "busy": false,
@@ -2527,8 +2527,8 @@
             "can_ingest": false,
             "can_query": false,
             "pipelines": {
-              "ingestion": {"loaded": true, "ready": false, "config_revision": "revision-1", "index_generation": "index-1"},
-              "inference": {"loaded": true, "ready": false, "config_revision": "revision-1", "index_generation": "index-1"}
+              "ingestion": {"loaded": true, "ready": false, "config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"},
+              "inference": {"loaded": true, "ready": false, "config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"}
             }
           }
         }
@@ -2538,7 +2538,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-example/v1/ingestions",
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions",
           "body": {"documents": [{"structdata": {"title": "設備保養"}}]}
         },
         "response": {
@@ -2556,7 +2556,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-example/v1/ingestions",
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions",
           "body": {
             "documents": [
               {
@@ -2589,7 +2589,7 @@
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/ingestions/ing-001"},
+        "request": {"method": "GET", "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions/ing-001"},
         "response": {
           "status": 200,
           "body": {
@@ -2617,13 +2617,13 @@
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/ingestions/ing-expired"},
+        "request": {"method": "GET", "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions/ing-expired"},
         "response": {"status": 200, "body": {"run_id": "ing-expired", "status": "unknown"}}
       },
       {
         "request": {
           "method": "GET",
-          "path": "/internal/systems/es-example/v1/documents/guide-1/ingestion-status"
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/documents/guide-1/ingestion-status"
         },
         "response": {
           "status": 200,
@@ -2642,17 +2642,17 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-example/v1/ingestions",
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions",
           "body": {"documents": [{"document_id": "guide-timeout", "structdata": {"body": "關閉電源。", "title": "安全操作"}}]}
         },
         "response": {
           "status": 202,
-          "headers": {"Location": "/internal/systems/es-example/v1/ingestions/ing-timeout"},
+          "headers": {"Location": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions/ing-timeout"},
           "body": {"run_id": "ing-timeout", "status": "queued", "config_revision": "revision-1", "documents": [{"document_id": "guide-timeout", "status": "queued"}]}
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/documents/guide-timeout/ingestion-status"},
+        "request": {"method": "GET", "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/documents/guide-timeout/ingestion-status"},
         "response": {
           "status": 200,
           "body": {
@@ -2668,17 +2668,17 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-example/v1/ingestions",
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions",
           "body": {"documents": [{"document_id": "guide-timeout", "structdata": {"body": "關閉電源。", "title": "安全操作"}}]}
         },
         "response": {
           "status": 202,
-          "headers": {"Location": "/internal/systems/es-example/v1/ingestions/ing-retry"},
+          "headers": {"Location": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions/ing-retry"},
           "body": {"run_id": "ing-retry", "status": "queued", "config_revision": "revision-1", "documents": [{"document_id": "guide-timeout", "status": "queued"}]}
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/ingestions/ing-retry"},
+        "request": {"method": "GET", "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions/ing-retry"},
         "response": {
           "status": 200,
           "body": {
@@ -2691,7 +2691,7 @@
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/ingestions/ing-timeout"},
+        "request": {"method": "GET", "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions/ing-timeout"},
         "response": {
           "status": 200,
           "body": {
@@ -2712,7 +2712,7 @@
     ],
     "cancel_ingestion_documents": [
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/ingestions/ing-cancel"},
+        "request": {"method": "GET", "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions/ing-cancel"},
         "response": {
           "status": 200,
           "body": {
@@ -2735,7 +2735,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-example/v1/ingestions/ing-cancel/cancel",
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions/ing-cancel/cancel",
           "body": {"document_ids": ["guide-queued", "guide-completed", "guide-running", "guide-prewrite", "guide-failed", "guide-unknown", "guide-other-run"]}
         },
         "response": {
@@ -2757,7 +2757,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-example/v1/ingestions/ing-cancel/cancel",
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions/ing-cancel/cancel",
           "body": {"document_ids": ["guide-queued", "guide-completed", "guide-running", "guide-prewrite", "guide-failed", "guide-unknown", "guide-other-run"]}
         },
         "response": {
@@ -2777,7 +2777,7 @@
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/ingestions/ing-cancel"},
+        "request": {"method": "GET", "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions/ing-cancel"},
         "response": {
           "status": 200,
           "body": {
@@ -2798,7 +2798,7 @@
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/documents/guide-running/ingestion-status"},
+        "request": {"method": "GET", "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/documents/guide-running/ingestion-status"},
         "response": {
           "status": 200,
           "body": {"run_id": "ing-cancel", "document_id": "guide-running", "status": "cancelled", "module": "indexing", "updated_at": "2026-11-20T10:10:05+08:00", "error": null}
@@ -2807,7 +2807,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-example/v1/ingestions",
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions",
           "body": {"documents": [{"document_id": "guide-running", "structdata": {"body": "關閉電源。", "title": "安全操作"}}]}
         },
         "response": {
@@ -2825,7 +2825,7 @@
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/ingestions/ing-cancel"},
+        "request": {"method": "GET", "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions/ing-cancel"},
         "response": {
           "status": 200,
           "body": {
@@ -2848,7 +2848,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-example/v1/ingestions/ing-expired/cancel",
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions/ing-expired/cancel",
           "body": {"document_ids": ["guide-queued"]}
         },
         "response": {
@@ -2859,7 +2859,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-example/v1/ingestions/ing-cancel/cancel",
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions/ing-cancel/cancel",
           "body": {"document_ids": []}
         },
         "response": {
@@ -2870,13 +2870,13 @@
     ],
     "ingestion_history_unavailable": [
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/ingestions/ing-cancel"},
+        "request": {"method": "GET", "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions/ing-cancel"},
         "response": {"status": 200, "body": {"run_id": "ing-cancel", "status": "unknown"}}
       },
       {
         "request": {
           "method": "GET",
-          "path": "/internal/systems/es-example/v1/documents/guide-running/ingestion-status"
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/documents/guide-running/ingestion-status"
         },
         "response": {
           "status": 200,
@@ -2893,7 +2893,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-example/v1/ingestions/ing-cancel/cancel",
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/ingestions/ing-cancel/cancel",
           "body": {"document_ids": ["guide-running"]}
         },
         "response": {
@@ -2906,7 +2906,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-example/v1/queries",
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/queries",
           "body": {
             "query": "散熱孔怎麼清潔？",
             "filters": [{"field": "structdata.price", "operator": "lt", "value": 500}]
@@ -2926,13 +2926,13 @@
               "metadata": {}
             }
           ],
-          "headers": {"X-Config-Revision": "revision-1", "X-Index-Generation": "index-1"}
+          "headers": {"X-Config-Revision": "revision-1", "X-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01"}
         }
       },
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-example/v1/queries",
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/queries",
           "body": {
             "query": "散熱孔怎麼清潔？",
             "filters": [{"field": "structdata.price", "operator": "lt", "value": "500"}]
@@ -2953,7 +2953,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-example/v1/queries",
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/queries",
           "body": {
             "query": "散熱孔怎麼清潔？",
             "filters": [{"field": "structdata.price", "operator": "lt", "value": 500}]
@@ -2967,7 +2967,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/systems/es-example/v1/queries",
+          "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/queries",
           "body": {
             "query": "散熱孔怎麼清潔？",
             "filters": [{"field": "structdata.price", "operator": "lt", "value": 500}]
@@ -2981,7 +2981,7 @@
     ],
     "document_pagination": [
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/documents?limit=1"},
+        "request": {"method": "GET", "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/documents?limit=1"},
         "response": {
           "status": 200,
           "body": {
@@ -2991,7 +2991,7 @@
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/documents?limit=1&cursor=page-token-1"},
+        "request": {"method": "GET", "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/documents?limit=1&cursor=page-token-1"},
         "response": {
           "status": 200,
           "body": {
@@ -3001,7 +3001,7 @@
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/documents?limit=1&cursor=invalid"},
+        "request": {"method": "GET", "path": "/internal/systems/7b38858b-6f26-4647-9dfb-84044000413a/v1/documents?limit=1&cursor=invalid"},
         "response": {
           "status": 422,
           "body": {"error": {"code": "INVALID_CURSOR", "message": "無效的分頁游標。", "module": null}}
@@ -3012,17 +3012,17 @@
       {
         "request": {
           "method": "GET",
-          "path": "/internal/v1/systems/es-example"
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a"
         },
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-example",
+            "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
             "active_config_revision": "revision-1",
             "loaded": false,
             "busy": false,
             "index_ready": true,
-            "index_generation": "index-1",
+            "index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
             "can_ingest": false,
             "can_query": false,
             "pipelines": {
@@ -3035,7 +3035,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-example/config:validate",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-4",
@@ -3125,7 +3125,7 @@
       {
         "request": {
           "method": "PUT",
-          "path": "/internal/v1/systems/es-example",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a",
           "headers": {"Idempotency-Key": "reload-001"},
           "body": {
             "runtime_ref": "dev-runtime",
@@ -3206,17 +3206,17 @@
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-example",
+            "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
             "active_config_revision": "revision-1",
             "loaded": true,
             "busy": false,
             "index_ready": true,
-            "index_generation": "index-1",
+            "index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
             "can_ingest": true,
             "can_query": true,
             "pipelines": {
-              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-1"},
-              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-1"}
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"}
             }
           }
         }
@@ -3226,22 +3226,22 @@
       {
         "request": {
           "method": "GET",
-          "path": "/internal/v1/systems/es-example"
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a"
         },
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-example",
+            "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
             "active_config_revision": "revision-1",
             "loaded": true,
             "busy": false,
             "index_ready": true,
-            "index_generation": "index-1",
+            "index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
             "can_ingest": true,
             "can_query": true,
             "pipelines": {
-              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-1"},
-              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-1"}
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"}
             }
           }
         }
@@ -3249,11 +3249,11 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-example:detach",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a:detach",
           "headers": {
             "Idempotency-Key": "detach-b-busy",
             "X-Expected-Config-Revision": "revision-1",
-            "X-Expected-Index-Generation": "index-1"
+            "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01"
           }
         },
         "response": {
@@ -3270,11 +3270,11 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-example:detach",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a:detach",
           "headers": {
             "Idempotency-Key": "detach-b",
             "X-Expected-Config-Revision": "revision-1",
-            "X-Expected-Index-Generation": "index-1"
+            "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01"
           }
         },
         "response": {
@@ -3284,11 +3284,11 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-example:detach",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a:detach",
           "headers": {
             "Idempotency-Key": "detach-b",
             "X-Expected-Config-Revision": "revision-1",
-            "X-Expected-Index-Generation": "index-1"
+            "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01"
           }
         },
         "response": {
@@ -3298,17 +3298,17 @@
       {
         "request": {
           "method": "GET",
-          "path": "/internal/v1/systems/es-example"
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a"
         },
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-example",
+            "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
             "active_config_revision": "revision-1",
             "loaded": false,
             "busy": false,
             "index_ready": true,
-            "index_generation": "index-1",
+            "index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
             "can_ingest": false,
             "can_query": false,
             "pipelines": {
@@ -3319,21 +3319,40 @@
         }
       }
     ],
+    "unload_index_ownership_unverified": [
+      {
+        "request": {
+          "method": "DELETE",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a",
+          "headers": {
+            "Idempotency-Key": "unload-unverified",
+            "X-Expected-Config-Revision": "revision-1",
+            "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01"
+          }
+        },
+        "response": {
+          "status": 409,
+          "body": {
+            "error": {"code": "INDEX_OWNERSHIP_UNVERIFIED", "message": "索引 metadata 的環境與目前綁定不符。", "module": "indexing"}
+          }
+        }
+      }
+    ],
     "unload_existing_index_without_config": [
       {
         "request": {
           "method": "GET",
-          "path": "/internal/v1/systems/es-example"
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a"
         },
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-example",
+            "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
             "active_config_revision": "revision-1",
             "loaded": false,
             "busy": false,
             "index_ready": true,
-            "index_generation": "index-1",
+            "index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
             "can_ingest": false,
             "can_query": false,
             "pipelines": {
@@ -3346,11 +3365,11 @@
       {
         "request": {
           "method": "DELETE",
-          "path": "/internal/v1/systems/es-example",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a",
           "headers": {
             "Idempotency-Key": "unload-without-config",
             "X-Expected-Config-Revision": "revision-1",
-            "X-Expected-Index-Generation": "index-1"
+            "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01"
           }
         },
         "response": {
@@ -3360,7 +3379,7 @@
       {
         "request": {
           "method": "GET",
-          "path": "/internal/v1/systems/es-example"
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a"
         },
         "response": {
           "status": 404,
@@ -3376,11 +3395,11 @@
     ],
     "recover_index_loaded": [
       {
-        "request": {"method": "GET", "path": "/internal/v1/systems/es-example"},
+        "request": {"method": "GET", "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a"},
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-example",
+            "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
             "active_config_revision": "revision-1",
             "loaded": true,
             "busy": false,
@@ -3389,8 +3408,8 @@
             "can_ingest": false,
             "can_query": false,
             "pipelines": {
-              "ingestion": {"loaded": true, "ready": false, "config_revision": "revision-1", "index_generation": "index-1"},
-              "inference": {"loaded": true, "ready": false, "config_revision": "revision-1", "index_generation": "index-1"}
+              "ingestion": {"loaded": true, "ready": false, "config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"},
+              "inference": {"loaded": true, "ready": false, "config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"}
             }
           }
         }
@@ -3398,7 +3417,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-example/config:validate",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-4",
@@ -3470,7 +3489,7 @@
                 }
               }
             },
-            "recovery_from": {"config_revision": "revision-1", "index_generation": "index-1"}
+            "recovery_from": {"config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"}
           }
         },
         "response": {
@@ -3489,7 +3508,7 @@
       {
         "request": {
           "method": "PUT",
-          "path": "/internal/v1/systems/es-example",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a",
           "headers": {"Idempotency-Key": "recover-loaded"},
           "body": {
             "runtime_ref": "dev-runtime",
@@ -3562,7 +3581,7 @@
                 }
               }
             },
-            "recovery_from": {"config_revision": "revision-1", "index_generation": "index-1"},
+            "recovery_from": {"config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"},
             "context_revision": "context-recover-loaded",
             "expected_active_revision": "revision-1",
             "config_revision": "revision-1"
@@ -3571,17 +3590,17 @@
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-example",
+            "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
             "active_config_revision": "revision-1",
             "loaded": true,
             "busy": false,
             "index_ready": true,
-            "index_generation": "index-2",
+            "index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202",
             "can_ingest": true,
             "can_query": true,
             "pipelines": {
-              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-2"},
-              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-2"}
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202"}
             }
           }
         }
@@ -3589,11 +3608,11 @@
       {
         "request": {
           "method": "DELETE",
-          "path": "/internal/v1/systems/es-example",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a",
           "headers": {
             "Idempotency-Key": "stale-unload",
             "X-Expected-Config-Revision": "revision-1",
-            "X-Expected-Index-Generation": "index-1"
+            "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01"
           }
         },
         "response": {
@@ -3602,21 +3621,21 @@
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/v1/systems/es-example"},
+        "request": {"method": "GET", "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a"},
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-example",
+            "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
             "active_config_revision": "revision-1",
             "loaded": true,
             "busy": false,
             "index_ready": true,
-            "index_generation": "index-2",
+            "index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202",
             "can_ingest": true,
             "can_query": true,
             "pipelines": {
-              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-2"},
-              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-2"}
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202"}
             }
           }
         }
@@ -3624,7 +3643,7 @@
     ],
     "recover_index_unloaded": [
       {
-        "request": {"method": "GET", "path": "/internal/v1/systems/es-example"},
+        "request": {"method": "GET", "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a"},
         "response": {
           "status": 404,
           "body": {"error": {"code": "SYSTEM_NOT_FOUND", "message": "查無載入狀態或既有索引綁定。", "module": null}}
@@ -3633,7 +3652,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-example/config:validate",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-4",
@@ -3705,7 +3724,7 @@
                 }
               }
             },
-            "recovery_from": {"config_revision": "revision-1", "index_generation": "index-1"}
+            "recovery_from": {"config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"}
           }
         },
         "response": {
@@ -3724,7 +3743,7 @@
       {
         "request": {
           "method": "PUT",
-          "path": "/internal/v1/systems/es-example",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a",
           "headers": {"Idempotency-Key": "recover-unloaded"},
           "body": {
             "runtime_ref": "dev-runtime",
@@ -3797,7 +3816,7 @@
                 }
               }
             },
-            "recovery_from": {"config_revision": "revision-1", "index_generation": "index-1"},
+            "recovery_from": {"config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"},
             "context_revision": "context-recover-unloaded",
             "expected_active_revision": null,
             "config_revision": "revision-1"
@@ -3806,17 +3825,17 @@
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-example",
+            "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
             "active_config_revision": "revision-1",
             "loaded": true,
             "busy": false,
             "index_ready": true,
-            "index_generation": "index-2",
+            "index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202",
             "can_ingest": true,
             "can_query": true,
             "pipelines": {
-              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-2"},
-              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-2"}
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202"}
             }
           }
         }
@@ -3824,7 +3843,7 @@
       {
         "request": {
           "method": "PUT",
-          "path": "/internal/v1/systems/es-example",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a",
           "headers": {"Idempotency-Key": "recover-unloaded"},
           "body": {
             "runtime_ref": "dev-runtime",
@@ -3897,7 +3916,7 @@
                 }
               }
             },
-            "recovery_from": {"config_revision": "revision-1", "index_generation": "index-1"},
+            "recovery_from": {"config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"},
             "context_revision": "context-recover-unloaded",
             "expected_active_revision": null,
             "config_revision": "revision-1"
@@ -3906,17 +3925,17 @@
         "response": {
           "status": 200,
           "body": {
-            "system_id": "es-example",
+            "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
             "active_config_revision": "revision-1",
             "loaded": true,
             "busy": false,
             "index_ready": true,
-            "index_generation": "index-2",
+            "index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202",
             "can_ingest": true,
             "can_query": true,
             "pipelines": {
-              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-2"},
-              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "index-2"}
+              "ingestion": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202"},
+              "inference": {"loaded": true, "ready": true, "config_revision": "revision-1", "index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202"}
             }
           }
         }
@@ -3926,7 +3945,7 @@
       {
         "request": {
           "method": "POST",
-          "path": "/internal/v1/systems/es-example/config:validate",
+          "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
             "catalog_revision": "catalog-4",
@@ -3998,7 +4017,7 @@
                 }
               }
             },
-            "recovery_from": {"config_revision": "revision-1", "index_generation": "index-1"}
+            "recovery_from": {"config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"}
           }
         },
         "response": {

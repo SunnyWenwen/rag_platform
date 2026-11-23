@@ -75,7 +75,7 @@
 
 ## 2026-11-13 已確認：索引相容性指紋
 
-- 由有效 Config 推導影響索引內容、向量與搜尋能力的設定，正規化後計算 SHA-256。ES `mappings._meta` 保存 System 歸屬、指紋及指紋規則版本。完整 Config 由 Builder 保存。見 [索引生命週期](06_runtime_api_and_deployment.md#system-index-lifecycle)。
+- 由有效 Config 推導影響索引內容、向量與搜尋能力的設定，正規化後計算 SHA-256。ES `mappings._meta` 保存部署環境、System 歸屬、指紋及指紋規則版本。完整 Config 由 Builder 保存。見 [索引生命週期](06_runtime_api_and_deployment.md#system-index-lifecycle)。
 
 ## 2026-11-16 已確認：Data Meta Schema 與 Filter
 
@@ -410,7 +410,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 
 - 已確認：同一 System 的同版邏輯 Config 跨環境相同，部署設定分開；文件 source_revision 與 index_generation 概念分開。不清楚的是保存／生效時點、Hash、草稿衝突、CSV mapping 歸屬、環境部署識別／資料版本及快照切換。
 - 2026-10-28 補充：需定 Component／package／Engine 解析版本保存位置、如何納入可重現執行與相容判定、更新 Component 後的重測／重建與回復政策；新版發布不自動升級既有 System，僅看版本號不能判定索引相容。
-- 已確認：Runtime 從會影響索引的有效設定推導並正規化後計算 SHA-256，與實際 mapping／Profile 一併驗證。ES 將 System 歸屬、指紋及指紋規則版本存入 `mappings._meta`。[指紋 v1](06_runtime_api_and_deployment.md#index-fingerprint-v1-proposal) 定義投影、序列化及 metadata Schema。無指紋索引的遷移、依賴版本解析及後續規則升版仍須整合確認。
+- 已確認：Runtime 從會影響索引的有效設定推導並正規化後計算 SHA-256，與實際 mapping／Profile 一併驗證。ES 將部署環境、System 歸屬、指紋及指紋規則版本存入 `mappings._meta`。[指紋 v1](06_runtime_api_and_deployment.md#index-fingerprint-v1-proposal) 定義投影、序列化及 metadata Schema。無指紋索引的遷移、依賴版本解析及後續規則升版仍須整合確認。
 - 建議：分開保存版本與執行綁定；Hash 只納有效配置並保留有語意順序，使用樂觀版本檢查。
 - 替代：單一 active revision，改配置後阻擋到準備完成；仍須避免 lost update。
 - 負責角色：Engine＋Backend＋Frontend；阻擋 M0 Hash 凍結及 M5 版本操作。

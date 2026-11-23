@@ -10,9 +10,9 @@
     "oneOf": [{"required": ["desired"]}, {"required": ["desired_pipelines"]}],
     "properties": {
       "_id": {"bsonType": "objectId"},
-      "environment": {"bsonType": "string", "minLength": 1},
+      "environment": {"bsonType": "string", "minLength": 1, "maxLength": 32, "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*(?![\\s\\S])"},
       "runtime_ref": {"bsonType": "string", "minLength": 1},
-      "system_id": {"bsonType": "string", "minLength": 1},
+      "system_id": {"bsonType": "string", "minLength": 36, "maxLength": 36, "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
       "schema_version": {"bsonType": "int", "enum": [1]},
       "state_version": {"bsonType": "long", "minimum": 0},
       "desired_pipelines": {
@@ -86,7 +86,7 @@
           "pipeline": {"enum": ["ingestion", "inference"]},
           "target_config_revision": {"bsonType": ["string", "null"], "minLength": 1},
           "expected_active_revision": {"bsonType": ["string", "null"], "minLength": 1},
-          "expected_index_generation": {"bsonType": ["string", "null"], "minLength": 1},
+          "expected_index_generation": {"bsonType": ["string", "null"], "minLength": 36, "maxLength": 36, "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
           "apply_context": {
             "bsonType": ["object", "null"],
             "additionalProperties": false,
@@ -139,7 +139,7 @@
               "kind": {"enum": ["recover_index"]},
               "pipeline": {"enum": ["ingestion"]},
               "target_config_revision": {"bsonType": "string"},
-              "expected_index_generation": {"bsonType": "string"},
+              "expected_index_generation": {"bsonType": "string", "minLength": 36, "maxLength": 36, "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
               "apply_context": {"bsonType": "object"},
               "allow_rebuild": {"enum": [false]}
             }
@@ -150,7 +150,7 @@
               "kind": {"enum": ["detach"]},
               "target_config_revision": {"bsonType": "null"},
               "expected_active_revision": {"bsonType": "string"},
-              "expected_index_generation": {"bsonType": "string"},
+              "expected_index_generation": {"bsonType": "string", "minLength": 36, "maxLength": 36, "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
               "apply_context": {"bsonType": "null"},
               "allow_rebuild": {"enum": [false]}
             }
@@ -184,12 +184,12 @@
               "can_ingest", "can_query"
             ],
             "properties": {
-              "system_id": {"bsonType": "string", "minLength": 1},
+              "system_id": {"bsonType": "string", "minLength": 36, "maxLength": 36, "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
               "active_config_revision": {"bsonType": "string", "minLength": 1},
               "loaded": {"bsonType": "bool"},
               "busy": {"bsonType": "bool"},
               "index_ready": {"bsonType": ["bool", "null"]},
-              "index_generation": {"bsonType": ["string", "null"], "minLength": 1},
+              "index_generation": {"bsonType": ["string", "null"], "minLength": 36, "maxLength": 36, "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
               "can_ingest": {"bsonType": "bool"},
               "can_query": {"bsonType": "bool"},
               "pipelines": {
@@ -205,7 +205,7 @@
                       "loaded": {"bsonType": "bool"},
                       "ready": {"bsonType": "bool"},
                       "config_revision": {"bsonType": ["string", "null"], "minLength": 1},
-                      "index_generation": {"bsonType": ["string", "null"], "minLength": 1}
+                      "index_generation": {"bsonType": ["string", "null"], "minLength": 36, "maxLength": 36, "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"}
                     }
                   },
                   "inference": {
@@ -216,7 +216,7 @@
                       "loaded": {"bsonType": "bool"},
                       "ready": {"bsonType": "bool"},
                       "config_revision": {"bsonType": ["string", "null"], "minLength": 1},
-                      "index_generation": {"bsonType": ["string", "null"], "minLength": 1}
+                      "index_generation": {"bsonType": ["string", "null"], "minLength": 36, "maxLength": 36, "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"}
                     }
                   }
                 }
@@ -241,7 +241,7 @@
                 "properties": {
                   "loaded": {"enum": [false]},
                   "index_ready": {"bsonType": "bool"},
-                  "index_generation": {"bsonType": "string"},
+                  "index_generation": {"bsonType": "string", "minLength": 36, "maxLength": 36, "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
                   "can_ingest": {"enum": [false]},
                   "can_query": {"enum": [false]}
                 }
@@ -258,7 +258,7 @@
           {"bsonType": "null"}
         ]
       },
-      "last_confirmed_index_generation": {"bsonType": ["string", "null"], "minLength": 1},
+      "last_confirmed_index_generation": {"bsonType": ["string", "null"], "minLength": 36, "maxLength": 36, "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
       "created_at": {"bsonType": "date"},
       "updated_at": {"bsonType": "date"}
     }

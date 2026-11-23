@@ -13,7 +13,7 @@
       "type": "object",
       "properties": {
         "config_revision": {"type": "string", "minLength": 1},
-        "index_generation": {"type": "string", "minLength": 1}
+        "index_generation": {"$ref": "runtime_identity.schema.json#/$defs/uuid_v4"}
       },
       "required": ["config_revision", "index_generation"],
       "additionalProperties": false
@@ -98,7 +98,7 @@
         "loaded": {"type": "boolean"},
         "ready": {"type": "boolean"},
         "config_revision": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
-        "index_generation": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]}
+        "index_generation": {"anyOf": [{"$ref": "runtime_identity.schema.json#/$defs/uuid_v4"}, {"type": "null"}]}
       },
       "required": ["loaded", "ready", "config_revision", "index_generation"],
       "additionalProperties": false,
@@ -115,12 +115,12 @@
     "system_status": {
       "type": "object",
       "properties": {
-        "system_id": {"type": "string", "minLength": 1},
+        "system_id": {"$ref": "runtime_identity.schema.json#/$defs/uuid_v4"},
         "active_config_revision": {"type": "string", "minLength": 1},
         "loaded": {"type": "boolean"},
         "busy": {"type": "boolean"},
         "index_ready": {"anyOf": [{"type": "boolean"}, {"type": "null"}]},
-        "index_generation": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+        "index_generation": {"anyOf": [{"$ref": "runtime_identity.schema.json#/$defs/uuid_v4"}, {"type": "null"}]},
         "can_ingest": {"type": "boolean"},
         "can_query": {"type": "boolean"},
         "pipelines": {
@@ -148,13 +148,13 @@
       "allOf": [
         {
           "if": {"properties": {"index_ready": {"const": true}}, "required": ["index_ready"]},
-          "then": {"properties": {"index_generation": {"type": "string", "minLength": 1}}}
+          "then": {"properties": {"index_generation": {"$ref": "runtime_identity.schema.json#/$defs/uuid_v4"}}}
         },
         {
           "if": {"properties": {"loaded": {"const": false}}, "required": ["loaded"]},
           "then": {
             "properties": {
-              "index_generation": {"type": "string", "minLength": 1},
+              "index_generation": {"$ref": "runtime_identity.schema.json#/$defs/uuid_v4"},
               "index_ready": {"type": "boolean"},
               "can_ingest": {"const": false},
               "can_query": {"const": false}

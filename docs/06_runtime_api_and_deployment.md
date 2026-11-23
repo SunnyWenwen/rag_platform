@@ -10,6 +10,7 @@
 - [Runtime Component 目錄與 Config 驗證邊界](#src-07-58-runtime-component-目錄與-config-驗證邊界)
 - [範圍與已確認基準](#src-21-1-範圍與已確認基準)
 - [資料生命週期、Inference 與 Health API](#data-lifecycle-api)
+- [部署環境與 ES 索引歸屬](#runtime-index-ownership)
 - [Ingestion 的提交與接收](#src-21-3-ingestion-的提交與接收)
 - [Pod 內文件占用與派工](#pod-local-ingestion-control)
 - [批量取消 Ingestion 文件](#ingestion-cancel-api)
@@ -41,7 +42,7 @@
 
 - **DEV 管理 API** 使用 `/internal/v1`。**DEV 業務 API** 使用 `/internal/systems/{system_id}/v1`。獨立部署的業務 API 前綴為 `/v1`。兩種部署的服務層 Health 路徑均為 `/health/live`、`/health/ready`。
 - 沿用 D-60。Runtime 端全部路由使用 HTTPS 與部署提供的 HTTP Basic 帳密，DEV 內部路由只允許可信 Builder Backend 存取。未通過驗證回 `401` 並帶 `WWW-Authenticate: Basic realm="retrieval-runtime"`。
-- 有 body 的請求及回應用 `application/json`。HTTP 契約中的 ID／Revision／Cursor 均為非空、不透明的字串，Client 將每個路徑參數編碼為單一路徑片段。欄位名稱後的 `?` 表示選填，允許空值的必填欄位須明確傳 `null`。
+- 有 body 的請求及回應用 `application/json`。HTTP 契約中的 ID／Revision／Cursor 均為非空、不透明的字串。System ID 與索引世代使用 [UUID 格式](#runtime-index-ownership)。Client 將每個路徑參數編碼為單一路徑片段。欄位名稱後的 `?` 表示選填，允許空值的必填欄位須明確傳 `null`。
 
 <a id="src-07-3-平台管理資料與儲存"></a>
 ## 平台管理資料與儲存
@@ -116,7 +117,7 @@ Inference 指定 `initialize`、`update` 或 `recover_index` 時，預檢回 `in
 
 刪除前，Builder 顯示會清除受管索引及其中資料，並保留 System 和發布歷史。Builder 從單一 System GET 取得預期版本與索引世代，向負責管理索引的 Ingestion Runtime 發出一次 DELETE。DELETE 以整個 System 為範圍。若多個 Runtime 共用該索引，Builder 在待確認期間暫停其相關目標與流程的補載及索引恢復，確認刪除後更新受影響的部署狀態。
 
-Runtime 收到 DELETE 後取得管理權，核對索引歸屬、版本與世代。版本不吻合回 `409 REVISION_CONFLICT`，世代不吻合回 `409 INDEX_CONFLICT`。Runtime 依[匯入排空條件](#system-ingestion-drain)確認其他寫入目標已退出，並關閉該索引的新請求入口。排空既有查詢後清除受管索引與生效綁定，受理 DELETE 的 Runtime 清除本機載入狀態。索引綁定可確認時，`loaded: false` 同樣可執行 DELETE。確認清除後回 `204`。排空等待採 Runtime 的 Query Deadline；超過時回 `504 DEADLINE_EXCEEDED`。已送出的索引操作需先查核原操作結果。
+Runtime 收到 DELETE 後取得管理權，核對索引歸屬、版本與世代。版本不吻合回 `409 REVISION_CONFLICT`，世代不吻合回 `409 INDEX_CONFLICT`。Runtime 依[匯入排空條件](#system-ingestion-drain)確認其他寫入目標已退出，並關閉該索引的新請求入口。排空既有查詢後清除受管索引與生效綁定，受理 DELETE 的 Runtime 清除本機載入狀態。索引綁定可確認時，`loaded: false` 同樣可執行 DELETE。刪除前依[索引歸屬驗證](#runtime-index-ownership)核對已生效綁定的指紋。確認清除後回 `204`。排空等待採 Runtime 的 Query Deadline；超過時回 `504 DEADLINE_EXCEEDED`。已送出的索引操作需先查核原操作結果。
 
 管理操作僅供可信 Builder Backend。業務 HTTP／MCP 使用相同的 Runtime 狀態與執行入口。MCP 的業務 API key 只授權相應 System 與工具。
 
@@ -157,7 +158,7 @@ Builder Backend 啟動、Runtime 恢復連線後，以及每 60 秒（可由 Bui
 |---|---|---|
 | A `initialize` | 首次部署或已明確卸載，確認目標索引不存在，預期生效版本為 `null`。 | 建立空索引與新世代並載入 Config。 |
 | B `reload` | 目標 Runtime 的指定流程尚未載入與目前生效版本及索引世代相符的快照。送入既有生效版本及其已發布 Config；核對索引歸屬、綁定、指紋與實際 mapping。 | 載入該流程並接回目前的索引世代。 |
-| C `update` | System 已有生效版本與可使用的受管索引；送入預期舊版和新發布版本。 | 相容時沿用索引，已開始的查詢固定舊版到結束。指紋或 mapping 不相容時須先確認重建，排空後先刪再建，完成後才啟用新版。 |
+| C `update` | System 已有生效版本與可使用的受管索引；送入預期舊版和新發布版本。 | 相容時沿用索引，已開始的查詢固定舊版到結束。候選版需要重建時，先驗證舊索引仍符合原綁定。明確確認後排空、刪除舊實體索引、以新世代建立索引，完成後才啟用新版。 |
 | D DELETE | 可確認索引歸屬及綁定，版本和世代符合 DELETE 前置值。Config 可處於已載入或未載入。 | 關閉入口、排空、清除受管索引與載入狀態，回到可初始化。 |
 | `detach` | 預期版與世代符合目標 Runtime 的受管 ES 綁定。 | 關閉選定流程的本機入口、排空並卸載，保留受管索引。 |
 | `recover_index` | Builder 仍要求已發布版本上線，Runtime 確認舊索引已遺失，且使用者已確認重建。可用於 Config 已載入或尚未載入。 | 以原 Config 建立同一 Revision 的新空索引與新世代，由目標 Runtime 載入或更新索引綁定，再由 Builder 重新匯入。 |
@@ -169,7 +170,17 @@ Builder Backend 啟動、Runtime 恢復連線後，以及每 60 秒（可由 Bui
 
 Runtime 從有效 Config 推導會影響索引內容、向量語意及搜尋能力的設定，將結果正規化後計算 SHA-256。輸入包括生效的解析／切分設定、文件 Embedding Profile（含模型版本與維度）及推導出的索引 mapping 和搜尋設定。正規化消除 JSON 物件鍵順序的影響，保留具語意的順序。純 Inference 參數如 `top_n` 不改變指紋。精確欄位與序列化見[索引指紋 v1](#index-fingerprint-v1-proposal)。
 
-Elasticsearch 在 `mappings._meta` 記錄 `system_id`、`index_fingerprint` 與指紋規則版本。Runtime 比對歸屬、指紋及實際 mapping，判定是否可接回或沿用索引。完整 Config 由 Builder 按 `config_revision` 保存。參考 [Elasticsearch mapping `_meta`](https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/mapping-meta-field)。
+<a id="runtime-index-ownership"></a>
+#### 部署環境與 ES 索引歸屬
+
+- Builder Backend 建立 System 時產生小寫標準 UUIDv4 作為 `system_id`，在建立時以唯一鍵防止重複。更名、發布新 Config、匯出及部署到不同環境皆沿用同一值。格式見 [Runtime 識別 Schema](../schemas/runtime_identity.schema.json)。
+- Runtime 啟動時從部署設定載入 `env`。Builder 管理的 Runtime 固定用 `builder`。獨立部署匯出可預填所選的 `ftest` 或 `ent`，部署方可在環境設定修改，並在啟動時驗證。獨立部署使用的名稱須與 `builder` 分開。共享 ES 叢集上的獨立部署若應有各自資料，須使用不同的 `env`。切換 `env` 時只查新環境的綁定，不接回或搬動原環境資料。[部署設定範例](../examples/system_config/deployment.env.example.json)
+- 在選定 ES 叢集的環境控制索引中，以 `(env, system_id)` 定位目前生效的綁定。受管 ES 資料索引名為 `rag-<env>-<system_id>-<index_generation>`。Runtime 每次建立實體索引都產生新的小寫 UUIDv4 世代，含重建、恢復及刪除後重建。重送同一次管理操作沿用已登記的目標及世代；相容更新沿用原世代。讀寫與刪除以綁定的完整實體索引名定位。
+- 接回、沿用或刪除前，核對實體索引名與綁定世代，並比對 `mappings._meta` 的 `env`、`system_id`、`index_fingerprint_version` 及 `index_fingerprint`。接回核對已發布版本的預期指紋；刪除核對生效綁定記錄的指紋。欄位缺失、不符或世代對應的實體名稱不符時，預檢回 `index_impact.action: blocked`、`code: INDEX_OWNERSHIP_UNVERIFIED`，執行管理操作回 `409 INDEX_OWNERSHIP_UNVERIFIED`。保留相關索引、metadata 及既有綁定。ES 無法讀取時按既有待查規則處理。[ES mapping metadata](https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/mapping-meta-field)
+- 發布時先對現存索引核對原生效綁定。原綁定核對成功後，若新 Config 的預期指紋與原版不同，才回 `rebuild_required`，並要求明確確認後使用新世代。原索引本身的指紋與原綁定不符時，`allow_rebuild` 無法解除歸屬拒絕。完整 Config 以 `(system_id, config_revision)` 追蹤。
+- 建立索引時以 Create Index API 一次提交 mapping 與 `_meta`。重建在刪除舊索引前先登記下一代名稱，並確認新名未被占用。建立時遇到同名資源，只有同一筆已登記操作重送且能核對先前建立結果時才接續，其他情況回 `409 INDEX_OWNERSHIP_UNVERIFIED`。部署須停用受管資料索引的隱式建立。索引重建與刪除只操作已查核的完整實體索引名。[Create Index API](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-indices-create) · [ES 自動建索引設定](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/index-management-settings)
+
+既有索引若使用舊命名或缺少 `_meta.env`，進入歸屬查核，保留原索引供確認或遷移。
 
 Local Memory 使用同一套相容判定與 `system_id` 隔離；程序重啟後記憶體索引遺失，需重新匯入。外部 Retrieval 查詢自有資料時，依其服務就緒狀態與候選契約執行；上述索引建立、重建與卸載的刪除範圍只涵蓋平台管理的資料。
 
@@ -188,11 +199,11 @@ Runtime 的 Config 編譯器輸出 [指紋投影 Schema](../schemas/index_finger
 | `index.vector_bindings`、`embedding_spaces` | 兩個物件都以已選入索引的向量名稱為鍵，鍵集合必須一致。前者沿用 IndexBinding 的來源欄位、Profile ID 與維度，後者記錄實際模型 ID 與穩定版本。沒有索引向量時皆為 `{}`。 |
 | `index.mapping`、`settings` | 解析後的 ES 欄位、動態規則、runtime fields、`_source` 及會影響相容性的原生 `analysis`、`similarity`。預設值由目標後端能力與設定解析；無宣告的 `dynamic_templates` 用 `[]`，無定義的 `runtime`、`analysis`、`similarity` 用 `{}`。原生 ES 物件由 ES 驗證。後端若有會改變索引語意而 v1 投影未涵蓋的設定，回報相容性未確認。 |
 
-純 Inference 的 Rewrite、融合、Rerank、固定 Filter、`top_n`、運作限額、端點、憑證與單文件的 `source_revision` 都不參與指紋。以 System Secret 提供的切分長度等入庫設定，按解析後的有效參數判定索引相容性。遷移 ES 叢集或索引名稱時，Runtime 依環境綁定重新查找實體目標並核對歸屬。
+純 Inference 的 Rewrite、融合、Rerank、固定 Filter、`top_n`、運作限額、端點、憑證與單文件的 `source_revision` 都不參與指紋。`env`、`system_id` 和 `index_generation` 各自用於識別與定位，也排除在指紋投影外。以 System Secret 提供的切分長度等入庫設定，按解析後的有效參數判定索引相容性。遷移 ES 叢集或索引名稱時，Runtime 依環境綁定重新查找實體目標並核對歸屬。
 
 1. 編譯器先解析預設值、舊欄位名稱及依賴版本，檢查階段順序與覆蓋範圍、向量鍵集合及 mapping 維度。無順序語意的陣列按穩定鍵排序，例如 `copy_fields` 按唯一的 `output_field`；切分分隔符、分析器 pipeline 及 `dynamic_templates` 保留順序。
-2. 對整份投影執行 [RFC 8785 JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785.html)，以 canonical UTF-8 bytes 計算 SHA-256。將小寫十六進位摘要、`index_fingerprint_version` 和 `system_id` 寫入 ES `mappings._meta`。完整 [JSON 範例](../examples/system_config/index_fingerprint.v1.example.json) 可離線核對。
-3. 只有歸屬、指紋版本、指紋、實際 mapping 及必要 settings 均符合才能沿用。可確認歸屬與不相容時走明確發布的重建流程。未知規則版本、缺少可信的依賴版本、無法確認歸屬或讀取 mapping 時保留現有索引並回報需要查核。
+2. 對整份投影執行 [RFC 8785 JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785.html)，以 canonical UTF-8 bytes 計算 SHA-256。將小寫十六進位摘要連同 `index_fingerprint_version`、`env` 和 `system_id` 寫入 ES `mappings._meta`。完整 [JSON 範例](../examples/system_config/index_fingerprint.v1.example.json) 可離線核對。
+3. 只有歸屬、指紋版本、指紋、實際 mapping 及必要 settings 均符合才能沿用。候選版有相容性變更時，依[索引歸屬驗證](#runtime-index-ownership)確認舊索引後走重建流程。未知規則版本、缺少可信的依賴版本、無法確認歸屬或讀取 mapping 時保留現有索引並回報需要查核。
 
 Runtime 驗收要驗物件換序、等效預設值及只改 Inference 參數不改指紋，切分長度、同維度換模型或搜尋能力變更會改指紋，以及實際 mapping 偏離或缺少指紋版本時不得當作相容。已存在且缺少指紋的索引如何遷移，以及未來規則升版，由 [Q-015](08_plan_and_decisions.md#q-015) 追蹤。
 
@@ -554,7 +565,7 @@ Runtime 登記取消後，取消與狀態查詢皆直接顯示 `cancelled`。若
 
 對使用 Elasticsearch 的 System，在同一部署環境、同一 ES 叢集共用一個控制索引。每個 System 的檢索資料索引按原有生命週期管理。控制紀錄依 System 與索引綁定隔離。多個 Runtime 共用同一 System 的受管索引時，共用該索引綁定的控制紀錄。控制索引保存 System 級的版本、索引世代、管理操作及生命週期協調資訊。
 
-首版控制索引名稱為 `rag-<env>-runtime-control-v1`，如 `rag-dev-runtime-control-v1` 或 `rag-ftest-runtime-control-v1`。`<env>` 使用部署環境的小寫識別，`v1` 是控制紀錄格式版本。各 Runtime 以同一環境識別存取同一叢集時使用相同名稱。
+首版控制索引名稱為 `rag-<env>-runtime-control-v1`，如 `rag-builder-runtime-control-v1` 或 `rag-ftest-runtime-control-v1`。`<env>` 使用部署環境的小寫識別，`v1` 是控制紀錄格式版本。各 Runtime 以同一環境識別存取同一叢集時使用相同名稱。
 
 每個 Runtime 在載入使用受管 ES 的 System Config 時，先檢查該環境的控制索引是否存在，並驗證格式版本與必要的 mapping，確認就緒後才開放依賴控制紀錄的操作。
 
@@ -613,7 +624,7 @@ HTTP 錯誤物件見 [Runtime HTTP Schema](../schemas/runtime_http.schema.json) 
 | `404` | `SYSTEM_NOT_FOUND`。管理 System GET 用於回報無載入且無可確認的既有受管索引綁定；業務 API 依該路由的 System 作用範圍判定。取消時查無或已到期的 Run 回 `INGESTION_RUN_NOT_FOUND`。 |
 | `409` | `STALE_CATALOG` 時重新取 Catalog。`STALE_CONTEXT` 時重驗 Config。`REVISION_CONFLICT` 時用 GET 確認生效版本。`REBUILD_CONFIRMATION_REQUIRED` 時顯示影響與重建確認。 |
 | `409` | `SYSTEM_STATE_CONFLICT` 時用 System GET 確認當前狀態，再預檢合適的操作。`IDEMPOTENCY_CONFLICT` 時核對已保存的原請求及操作鍵。 |
-| `409` | `SYSTEM_BUSY`／`DOCUMENT_BUSY` → 等工作或管理操作收尾，若文件關聯 Run 已知則附 `error.run_id`。批量匯入遇到 `DOCUMENT_BUSY` 時附 `error.conflicts`。`INDEX_CONFLICT` 時顯示索引歸屬或相容性問題。`PIPELINE_NOT_ENABLED` 表示業務流程未載入，`PIPELINE_OPERATION_UNSUPPORTED` 表示管理操作不適用於所選流程。 |
+| `409` | `SYSTEM_BUSY`／`DOCUMENT_BUSY` → 等工作或管理操作收尾，若文件關聯 Run 已知則附 `error.run_id`。批量匯入遇到 `DOCUMENT_BUSY` 時附 `error.conflicts`。`INDEX_OWNERSHIP_UNVERIFIED` 時顯示歸屬核對失敗並保留資料。`INDEX_CONFLICT` 時顯示管理請求中的預期索引世代已變更，或回報其他相容性問題。`PIPELINE_NOT_ENABLED` 表示業務流程未載入，`PIPELINE_OPERATION_UNSUPPORTED` 表示管理操作不適用於所選流程。 |
 | `413`／`422` | `BODY_TOO_LARGE`／`REQUEST_VALIDATION_FAILED`、`CONFIG_VALIDATION_FAILED`、`INVALID_CURSOR`。修正大小、欄位或分頁請求。 |
 | `429` | `RATE_LIMITED` → 按 `Retry-After` 等候（整數秒，有可用時間時回傳）。 |
 | `500` | `INTERNAL_ERROR`。 |
@@ -716,7 +727,7 @@ Builder 的使用者登入方式之後再討論；不因 Runtime Basic 決策而
 <a id="src-21-85-可信-system-路由與-s1-的意思d-64"></a>
 ### 可信 System 路由
 
-S1 是 system_id 示意：由 Builder Backend 建立並維護的穩定 Retrieval System 識別碼，在同一 Builder 管理範圍內唯一。它不是可變顯示名稱、Workspace 名稱、Config Revision、document_id 或索引集合名；System 改名或換 Config Revision 不因此換 system_id。實際 ID 格式／生成方式尚未凍結。
+S1 是 system_id 示意：由 Builder Backend 建立並維護的穩定 Retrieval System 識別碼，在同一 Builder 管理範圍內唯一。System 改名、更新 Config 或跨環境匯出時仍沿用該 ID。格式及產生方式見 [Runtime 識別規格](#runtime-index-ownership)。
 
 | 呼叫方向 | 規劃路由示例 | System／Config 選擇 |
 |---|---|---|
@@ -953,7 +964,7 @@ Runtime Image 可自 M3 開始建置；M7 才驗收完整 FTEST／ENT 獨立交�
 目標 Bundle 包含：
 
 - Runtime Image 版本／Digest、Module 版本、Config Revision／Hash。
-- 選定 System／Revision 的相同邏輯 Config，及另存的目標環境部署設定；不能把 URL／Secret 差異當成不同處理邏輯。
+- 選定 System／Revision 的相同邏輯 Config 及另存的目標環境部署設定。匯出沿用原 `system_id`，依匯出目標在部署設定預填 `env`。[部署環境規格](#runtime-index-ownership)
 - ConfigMap／Deployment／Service 等 K8s 設定。部署 Config 的 `secret` 保留 Key 與 `null`，Deployment 指定同名環境變數的注入。
 - FTEST／ENT 的環境檔案、啟動與 API 說明、資料準備步驟。
 - 若有評估報告，清楚綁定測試環境／資料版本，不能宣稱目標環境已驗證。
@@ -991,7 +1002,7 @@ Remote API 在部署設定解析 Endpoint。需要 Bearer 認證時，節點的 
 <a id="src-07-93-獨立啟動"></a>
 ### 獨立啟動
 
-Runtime 啟動時讀取同一份 System Config 快照及環境部署設定。環境設定的 `pipeline` 選用 `ingestion` 或 `inference`，省略時載入兩條。Runtime 解析環境綁定，準備選定流程的 Component 及資源，再查核索引和開放該流程的業務 API。Inference 接回相容的既有索引；受管索引初始化及恢復由 Ingestion 端依部署策略執行。分 Pod 時兩端須使用同一 `system_id`、Config Revision 及受管索引綁定。Live／Ready 與 IndexReady 分開；空索引可查時回成功空候選。環境設定的載體與匯出接線由 [Q-021](08_plan_and_decisions.md#q-021) 追蹤。
+Runtime 啟動時讀取同一份 System Config 快照及環境部署設定。環境設定的 `pipeline` 選用 `ingestion` 或 `inference`，省略時載入兩條。Runtime 解析環境綁定，準備選定流程的 Component 及資源，再查核索引和開放該流程的業務 API。Inference 接回相容的既有索引；受管索引初始化及恢復由 Ingestion 端依部署策略執行。分 Pod 時兩端須使用同一 `env`、`system_id`、Config Revision 及受管索引綁定。Live／Ready 與 IndexReady 分開；空索引可查時回成功空候選。環境設定的載體與匯出接線由 [Q-021](08_plan_and_decisions.md#q-021) 追蹤。
 
 <a id="release-deployment-boundaries"></a>
 

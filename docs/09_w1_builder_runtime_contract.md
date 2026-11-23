@@ -11,6 +11,7 @@
 | 資料生命週期 API | [Ingestion、Run、文件狀態、存在、清單與 Retire](06_runtime_api_and_deployment.md#data-lifecycle-api) · [Pod 內文件占用](06_runtime_api_and_deployment.md#pod-local-ingestion-control) · [工作紀錄保留與清理](06_runtime_api_and_deployment.md#ingestion-status-retention) · [按 Run 批量取消文件](06_runtime_api_and_deployment.md#ingestion-cancel-api) |
 | Catalog／Config Validation API | [Catalog](06_runtime_api_and_deployment.md#w1-catalog) · [Catalog 回應範例](../examples/system_config/runtime_catalog.response.json) · [Config Validation](06_runtime_api_and_deployment.md#config-validation-api) |
 | Descriptor 推導驗收 | [Builder 與 Engine 的共用規格](04_component_descriptor.md#descriptor-derivation-conformance) · [共用測資](../examples/system_config/descriptor_derivation.fixture.json) |
+| System 與索引識別 | [UUID、部署環境與 ES 歸屬](06_runtime_api_and_deployment.md#runtime-index-ownership) · [建立與拒絕案例](../examples/system_config/index_fingerprint.v1.example.json) |
 | Inference API | [查詢 Request／Response](06_runtime_api_and_deployment.md#inference-api) |
 
 [其他設定 → Secret 的 UI 實作](07_builder_ui.md#system-settings-rendering) · [System Secret 設定與匯出範例](../examples/system_config/README.md#system-secret-examples) · [共用 HTTP 與認證](06_runtime_api_and_deployment.md#runtime-http-common) · [錯誤格式與狀態碼](06_runtime_api_and_deployment.md#runtime-http-errors) · [整套 HTTP Mock JSON](../examples/system_config/runtime_http.examples.json)

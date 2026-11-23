@@ -5,10 +5,7 @@
   "description": "Structural draft for a published configuration snapshot. A compiler validates method-specific parameters, effective pipeline coverage, and cross-node contracts.",
   "type": "object",
   "properties": {
-    "system_id": {
-      "type": "string",
-      "minLength": 1
-    },
+    "system_id": {"$ref": "runtime_identity.schema.json#/$defs/uuid_v4"},
     "config_revision": {
       "type": "string",
       "minLength": 1

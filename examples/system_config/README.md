@@ -26,7 +26,9 @@
 
 ## Elasticsearch 索引指紋
 
-[索引指紋 v1 範例](index_fingerprint.v1.example.json)示範有效索引設定投影及 ES `mappings._meta` 的 Runtime 欄位。含假設已解析的 Tokenizer 及模型版本。HTTP 範例驗證器會核對兩份 Schema 形狀與範例的 SHA-256。見[索引指紋 v1 規格](../../docs/06_runtime_api_and_deployment.md#index-fingerprint-v1-proposal)。
+[索引指紋 v1 範例](index_fingerprint.v1.example.json)示範有效索引設定投影、ES `mappings._meta`、實體索引名稱及歸屬拒絕案例。HTTP 範例驗證器核對 Schema、SHA-256 和名稱，並驗證環境、System ID、指紋或索引名稱不符的案例。[索引歸屬規格](../../docs/06_runtime_api_and_deployment.md#runtime-index-ownership)
+
+[匯出部署設定片段](deployment.env.example.json)示範 FTEST 的 `env`，可在部署前修改。DEV 由 Builder 管理的 Runtime 使用 `builder`。匯出的 System Config 沿用原 `system_id`。
 
 ## Component Descriptor 驗證
 
@@ -67,6 +69,7 @@ python3 examples/user_remote_api/validate.py
 | `reuse_and_rebuild`、`blocked_or_stale_publish`，涵蓋索引沿用／重建、欄位錯誤及版本衝突 | [System 生命週期](../../docs/06_runtime_api_and_deployment.md#system-lifecycle-api) · [索引重建](../../docs/06_runtime_api_and_deployment.md#system-index-lifecycle) · [錯誤格式](../../docs/06_runtime_api_and_deployment.md#runtime-http-errors) |
 | `reload_existing_index`，Runtime 未載入時接回相容索引並保留版本與世代 | [索引生命週期](../../docs/06_runtime_api_and_deployment.md#system-index-lifecycle) |
 | `unload_existing_index_without_config`，GET 回 `loaded: false` 與既有索引世代，Builder 直接發起 DELETE | [System 生命週期](../../docs/06_runtime_api_and_deployment.md#system-lifecycle-api) |
+| `unload_index_ownership_unverified`，實體索引 metadata 的環境與綁定不符，DELETE 回 `409 INDEX_OWNERSHIP_UNVERIFIED` | [索引歸屬規格](../../docs/06_runtime_api_and_deployment.md#runtime-index-ownership) |
 | `detach_shared_index_runtime`，本機工作忙碌時拒絕卸載；卸載成功後保留共用索引世代，原操作可重送 | [卸載單一 Runtime](../../docs/06_runtime_api_and_deployment.md#runtime-system-detach) |
 | `recover_index_loaded`、`recover_index_unloaded`、`recover_index_es_unknown`，涵蓋索引遺失的兩種載入狀態、使用者確認後的 PUT、重送、過期卸載及 ES 待查 | [索引恢復](../../docs/06_runtime_api_and_deployment.md#system-index-lifecycle) · [Builder 部署紀錄](../../docs/drafts/builder_system_deployment_mongodb.md) |
 | `ingestion_status_and_errors`，涵蓋無效請求、同一 Pod 整批拒絕時回傳全部本機占用衝突、Run 部分失敗及紀錄過期 | [資料生命週期](../../docs/06_runtime_api_and_deployment.md#data-lifecycle-api) · [文件占用衝突](../../docs/06_runtime_api_and_deployment.md#ingestion-document-busy) |

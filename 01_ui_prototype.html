@@ -328,6 +328,12 @@ function configuredExtension(key,values) {
   return Array.isArray(value) ? value.length > 0 : value !== '' && value != null && value !== false;
 }
 const storageKey = 'retrieval-builder-w1';
+const sampleSystemIds = {
+  'customer-support':'145dbd19-4f6d-469c-a133-fe0122817984',
+  'product-faq':'a42efc86-224f-4137-9c17-0ed29925dadd',
+  'service-handbook':'62e48245-60a7-4d96-94c9-ddef5be76d00',
+  'engineering-knowledge':'f762550a-728f-4c79-8974-e777f708886a'
+};
 const stored = load();
 let model = stored || {systems:[]};
 let workspace = 0, id = null, screen = 'config', selected = 'import';
@@ -342,7 +348,21 @@ let toastTimer;
 let polling = false;
 
 function load() {
-  try { return JSON.parse(localStorage.getItem(storageKey)); }
+  try {
+    const saved = JSON.parse(localStorage.getItem(storageKey));
+    for (const system of saved?.systems ?? []) {
+      if (Object.hasOwn(sampleSystemIds,system.id)) system.id = sampleSystemIds[system.id];
+      if (!system.active || system.indexGeneration) continue;
+      const previous = 'index-' + (system.indexEpoch ?? 1);
+      system.indexGeneration = uuid();
+      for (const snapshot of Object.values(system.deployment?.loaded ?? {})) {
+        if (!snapshot?.index_generation) continue;
+        snapshot.index_generation = snapshot.index_generation === previous ? system.indexGeneration : uuid();
+      }
+      delete system.indexEpoch;
+    }
+    return saved;
+  }
   catch { return null; }
 }
 
@@ -491,7 +511,8 @@ function render() {
 }
 
 const activeRevision = system => system.active ? 'revision-' + system.revision : null;
-const indexGeneration = system => system.active ? 'index-' + (system.indexEpoch ?? 1) : null;
+const indexGeneration = system => system.active ? system.indexGeneration : null;
+const managedIndexName = system => system.active ? `rag-builder-${system.id}-${indexGeneration(system)}` : null;
 const runtimePipelines = ['ingestion','inference'];
 const pipelineNames = {ingestion:'Ingestion',inference:'Inference'};
 const snapshot = system => ({config_revision:activeRevision(system),index_generation:indexGeneration(system)});
@@ -554,6 +575,7 @@ function runtimePage(system) {
     <div class="bar"><h3>DEV Runtime</h3>${badge('Elasticsearch')}</div>
     <dl class="runtime-facts"><div><dt>生效版 Config</dt><dd>${activeRevision(system) ?? '未發布'}</dd></div>
       <div><dt>索引世代</dt><dd>${indexGeneration(system) ?? '—'}</dd></div>
+      <div><dt>實體索引</dt><dd>${escapeHTML(managedIndexName(system) ?? '—')}</dd></div>
       <div><dt>索引狀態</dt><dd>${system.indexReady ? '已就緒' : system.active ? '遺失' : '未建立'}</dd></div></dl>
     <label class="field">Runtime 拓撲<select class="control" id="runtime-layout" ${busy ? 'disabled' : ''}>
       ${option('shared','一個 Runtime Pod · 啟用兩條流程',target.layout === 'shared')}
@@ -1353,7 +1375,7 @@ function applyPublish(system) {
   const target = deployment(system);
   saveDraft(system);
   if (checked.action !== 'reuse') {
-    system.indexEpoch = (system.indexEpoch ?? (system.active ? 1 : 0)) + 1;
+    system.indexGeneration = uuid();
     system.initialized = false;
     system.documents = [];
     delete system.initialDocuments;
@@ -1915,7 +1937,7 @@ document.addEventListener('click',event => {
       persist(); render(); return;
     case 'recover-index': {
       if (!system.active || system.indexReady || !confirm('以原 Config Revision 建立新的空索引。恢復後須重新匯入資料。繼續？')) return;
-      system.indexEpoch = (system.indexEpoch ?? 1) + 1;
+      system.indexGeneration = uuid();
       system.indexReady = true;
       const target = deployment(system);
       if (target.desired.ingestion) target.loaded.ingestion = snapshot(system);
@@ -2184,16 +2206,17 @@ if (!stored) {
     ['Engineering Knowledge',1,'engineering-knowledge',false]
   ];
   for (const [name,group,systemId,ready] of samples) {
-    const system = makeSystem(name,group,systemId);
+    const system = makeSystem(name,group,sampleSystemIds[systemId]);
     system.active = clone(fixture.config);
     system.revision = 1;
+    system.indexGeneration = uuid();
     system.indexReady = true;
     system.initialized = ready;
     system.documents = ready ? clone(fixture.ingestion.documents) : [];
     model.systems.push(system);
   }
-  persist();
 }
+persist();
 for (const system of model.systems) {
   if (runtimePipelines.some(pipeline => deployment(system).desired[pipeline] && !pipelineReady(system,pipeline))) {
     scheduleRuntimeReconcile(system);

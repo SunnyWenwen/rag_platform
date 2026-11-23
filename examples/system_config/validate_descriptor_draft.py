@@ -50,12 +50,13 @@ BUILDER_FORM_DESCRIPTORS = json.loads((HERE / "builder_form.descriptors.json").r
 CATALOG_SCHEMA = json.loads((REPO / "schemas/runtime_catalog.draft.schema.json").read_text())
 RUNTIME_CATALOG = json.loads((HERE / "runtime_catalog.response.json").read_text())
 SYSTEM_CONFIG_SCHEMA = json.loads((REPO / "schemas/system_config.draft.schema.json").read_text())
+RUNTIME_IDENTITY = json.loads((REPO / "schemas/runtime_identity.schema.json").read_text())
 DATA_META = json.loads((REPO / "schemas/data_meta.schema.json").read_text())
 QUERY_CONTEXT = json.loads((REPO / "schemas/query_context.schema.json").read_text())
 CONFIG_ENUMS = json.loads((REPO / "schemas/config_enums.schema.json").read_text())
 SCHEMA_REGISTRY = Registry().with_resources(
     (schema["$id"], Resource.from_contents(schema))
-    for schema in (DATA_META, QUERY_CONTEXT, DESCRIPTOR_SCHEMA, CONFIG_ENUMS)
+    for schema in (DATA_META, QUERY_CONTEXT, DESCRIPTOR_SCHEMA, CONFIG_ENUMS, RUNTIME_IDENTITY)
 )
 DATE_FORMATS = {
     kind: Draft202012Validator(DATA_META["$defs"][kind], format_checker=FormatChecker())
@@ -673,7 +674,7 @@ def _():
         for pipeline, overrides in scenario.get("parameter_overrides", {}).items():
             for module, values in overrides.items():
                 draft["pipelines"][pipeline][module]["parameters"].update(values)
-        snapshot = {"system_id": "descriptor-fixture", "config_revision": "fixture-1", "config": draft}
+        snapshot = {"system_id": "7b38858b-6f26-4647-9dfb-84044000413a", "config_revision": "fixture-1", "config": draft}
         nodes = {}
         errors = []
 
@@ -758,6 +759,8 @@ def _():
 def _():
     dev = local_snapshot("remote_parsing")
     exported = local_snapshot("remote_parsing.export")
+    assert exported["system_id"] == dev["system_id"]
+    assert exported["config_revision"] == dev["config_revision"]
     dev_secrets = dev["config"]["secret"]
     assert exported["config"]["secret"] == dict.fromkeys(dev_secrets)
     assert exported["config"]["pipelines"] == dev["config"]["pipelines"]

@@ -278,9 +278,32 @@
       }
     }
   },
+  "index_name": "rag-builder-7b38858b-6f26-4647-9dfb-84044000413a-40925e4c-56ba-4092-a019-69391d558b01",
+  "index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
   "mapping_meta": {
-    "system_id": "es-example",
+    "env": "builder",
+    "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
     "index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27",
     "index_fingerprint_version": 1
-  }
+  },
+  "ownership_cases": [
+    {"name": "verified_binding", "expected_code": null},
+    {"name": "wrong_environment", "meta_changes": {"env": "ftest"}, "expected_code": "INDEX_OWNERSHIP_UNVERIFIED"},
+    {
+      "name": "wrong_system",
+      "meta_changes": {"system_id": "f44de426-675d-4e91-a001-17509b68a025"},
+      "expected_code": "INDEX_OWNERSHIP_UNVERIFIED"
+    },
+    {
+      "name": "wrong_fingerprint",
+      "meta_changes": {"index_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000"},
+      "expected_code": "INDEX_OWNERSHIP_UNVERIFIED"
+    },
+    {"name": "missing_rule_version", "omit_meta": ["index_fingerprint_version"], "expected_code": "INDEX_OWNERSHIP_UNVERIFIED"},
+    {
+      "name": "wrong_physical_index",
+      "index_name": "rag-builder-7b38858b-6f26-4647-9dfb-84044000413a-f65ce489-2a7e-421c-8bef-3d03464fc202",
+      "expected_code": "INDEX_OWNERSHIP_UNVERIFIED"
+    }
+  ]
 }

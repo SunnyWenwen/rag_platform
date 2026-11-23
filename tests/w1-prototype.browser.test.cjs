@@ -373,7 +373,11 @@ async function main() {
     await page.getByLabel('Runtime 拓撲').selectOption('split');
     assert.match(await dialog.innerText(),/dev-ingestion/);
     assert.match(await dialog.innerText(),/dev-inference/);
-    assert.match(await dialog.innerText(),/index-2/);
+    const identity = await page.evaluate(() => ({system:current().id,generation:indexGeneration(current())}));
+    const uuidV4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+    assert.match(identity.system,uuidV4);
+    assert.match(identity.generation,uuidV4);
+    assert.match(await dialog.innerText(),new RegExp(`rag-builder-${identity.system}-${identity.generation}`));
     await button('卸載 Inference').click();
     await button('執行 Builder 同步').click();
     assert.match(await dialog.innerText(),/PIPELINE_NOT_ENABLED/);

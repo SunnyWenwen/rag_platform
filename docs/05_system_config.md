@@ -19,7 +19,7 @@ DEV 由 Builder 下發 System Config，獨立部署則由 Runtime 啟動時讀�
 
 | 路徑 | 責任與語意 |
 |---|---|
-| `system_id` | 快照所屬的 System。HTTP 驗證和套用時由路徑提供。 |
+| `system_id` | Builder 建立時配發的穩定 UUID，匯出及跨環境部署沿用。HTTP 驗證和套用時由路徑提供。[部署環境與索引歸屬](06_runtime_api_and_deployment.md#runtime-index-ownership) |
 | `config_revision` | Builder 指派的發布版本。新版本在套用請求傳入，草稿驗證使用自己的 `draft_revision`。 |
 | `config` | 有效邏輯設定。Runtime 驗證與套用請求直接帶這個內層物件。 |
 | `config.contract_version` | 此 Config 的格式版本，現行為 `0.2-draft`。 |

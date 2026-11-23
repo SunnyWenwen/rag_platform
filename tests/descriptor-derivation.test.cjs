@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const {webcrypto} = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
@@ -14,6 +15,8 @@ const [,script] = html.match(/<script>\s*([\s\S]*?)<\/script>/);
 const boot = script.indexOf('\nif (!stored) {');
 assert.ok(boot > 0,'Prototype startup boundary');
 const runtime = vm.createContext({
+  crypto:webcrypto,
+  structuredClone,
   document:{getElementById:id => jsonScripts[id] ?? {addEventListener() {}},addEventListener() {}},
   localStorage:{getItem:() => null},
   window:{addEventListener() {}}
@@ -74,3 +77,21 @@ function verifyDescriptorDerivation(runtime) {
 
 verifyDescriptorDerivation(runtime);
 console.log('PASS: Prototype effective schemas, options and errors match the shared Descriptor fixture');
+
+const identity = JSON.parse(fs.readFileSync(path.join(repo,'schemas/runtime_identity.schema.json'),'utf8'));
+const uuidV4 = new RegExp(identity.$defs.uuid_v4.pattern);
+const {system, migrated, indexName} = vm.runInContext(`
+  localStorage.getItem = () => JSON.stringify({systems:[{
+    id:'product-faq', active:{}, indexEpoch:2,
+    deployment:{loaded:{ingestion:{index_generation:'index-2'},inference:{index_generation:'index-1'}}}
+  }]});
+  const migrated = load().systems[0];
+  ({system:makeSystem('New system',0), migrated, indexName:managedIndexName(migrated)});
+`,runtime);
+assert.match(system.id,uuidV4);
+assert.match(migrated.id,uuidV4);
+assert.match(migrated.indexGeneration,uuidV4);
+assert.equal(indexName,`rag-builder-${migrated.id}-${migrated.indexGeneration}`);
+assert.equal(migrated.deployment.loaded.ingestion.index_generation,migrated.indexGeneration);
+assert.notEqual(migrated.deployment.loaded.inference.index_generation,migrated.indexGeneration);
+console.log('PASS: Prototype generates UUIDs and preserves readiness when loading older mock state');

@@ -4,7 +4,7 @@ Builder 保存 System、所有 Config Revision 及各目標 Runtime 的部署意
 
 ## Collection 欄位
 
-Collection 名稱為 `builder_system_deployments`。每個 `(environment, runtime_ref, system_id)` 一筆，唯一鍵由三欄組成。環境與 Runtime 識別取自 Builder 選定的部署目標。同一目標的 Runtime 重啟或更換 Pod 時沿用 `runtime_ref`。完整 Config 依 `system_id` 與 `config_revision` 從 Builder 的 Config Revision 紀錄讀取。單純儲存或驗證草稿不建立部署紀錄。
+Collection 名稱為 `builder_system_deployments`。每個 `(environment, runtime_ref, system_id)` 一筆，唯一鍵由三欄組成。Builder 管理的 Runtime 使用固定環境識別 `builder`，`runtime_ref` 取自部署目標。環境與 System ID 格式見 [Runtime 識別規格](../06_runtime_api_and_deployment.md#runtime-index-ownership)。同一目標的 Runtime 重啟或更換 Pod 時沿用 `runtime_ref`。完整 Config 依 `system_id` 與 `config_revision` 從 Builder 的 Config Revision 紀錄讀取。單純儲存或驗證草稿不建立部署紀錄。
 
 Builder 在同一筆目標紀錄中追蹤兩條流程的部署意圖。分 Pod 時各 Runtime 各有一筆，使用同一份完整 Config 與受管 ES 索引。Runtime 依 System 與索引綁定共用 [ES 生命週期控制紀錄](../06_runtime_api_and_deployment.md#es-runtime-control-index)。逐流程部署見 [Runtime 契約](../06_runtime_api_and_deployment.md#runtime-pipeline-deployment)。
 
@@ -48,9 +48,9 @@ db.builder_system_deployments.createIndex(
 ```json
 {
   "_id": {"$oid": "655e70100000000000000001"},
-  "environment": "dev",
+  "environment": "builder",
   "runtime_ref": "dev-runtime",
-  "system_id": "crm-search",
+  "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
   "schema_version": 1,
   "state_version": {"$numberLong": "7"},
   "desired_pipelines": {
@@ -62,21 +62,21 @@ db.builder_system_deployments.createIndex(
     "state": "loaded",
     "observed_at": {"$date": "2026-11-19T02:05:00Z"},
     "system_status": {
-      "system_id": "crm-search",
+      "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
       "active_config_revision": "rev-003",
       "loaded": true,
       "busy": false,
       "index_ready": true,
-      "index_generation": "g0001",
+      "index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
       "can_ingest": true,
       "can_query": false,
       "pipelines": {
-        "ingestion": {"loaded": true, "ready": true, "config_revision": "rev-003", "index_generation": "g0001"},
+        "ingestion": {"loaded": true, "ready": true, "config_revision": "rev-003", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"},
         "inference": {"loaded": false, "ready": false, "config_revision": null, "index_generation": null}
       }
     }
   },
-  "last_confirmed_index_generation": "g0001",
+  "last_confirmed_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
   "created_at": {"$date": "2026-11-19T01:55:00Z"},
   "updated_at": {"$date": "2026-11-19T02:05:00Z"}
 }
