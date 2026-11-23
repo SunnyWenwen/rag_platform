@@ -653,6 +653,7 @@ function runtimePage(system) {
       ${system.active && !system.indexReady ? makeButton('恢復索引','recover-index','primary')
         : `<button class="btn" data-action="lose-index" ${!system.indexReady || busy ? 'disabled' : ''}>模擬索引遺失</button>`}</div>
     <details><summary>部署與同步規則</summary><p>同一 System 共用完整 Config 與 ES 綁定。Builder 按 Runtime ref 發送管理操作，以 pipeline 指定流程。每 60 秒查核已載入版本，啟動或恢復連線時也查核。逐流程卸載保留索引。System DELETE 清除受管索引，Builder 保留 System 資料及發布歷史。</p>
+      <p>Runtime 無法連線時，Builder 保留部署意圖。部署方處理 Pod 故障及寫入接手，恢復服務後由 Builder 查核並補載預期上線的流程。</p>
       <pre>GET /internal/v1/systems/${escapeHTML(encodeURIComponent(system.id))}
 POST /internal/v1/systems/${escapeHTML(encodeURIComponent(system.id))}/config:validate
 PUT /internal/v1/systems/${escapeHTML(encodeURIComponent(system.id))} · operation + pipeline
@@ -660,12 +661,12 @@ POST /internal/v1/systems/${escapeHTML(encodeURIComponent(system.id))}:detach?pi
 DELETE /internal/v1/systems/${escapeHTML(encodeURIComponent(system.id))}</pre></details>
     <details><summary>API 認證與傳輸</summary>
       <p>Builder 透過叢集內的 <code>http://dev-runtime</code> 連線，Pod 間由 Istio mTLS 加密。對外入口由 Gateway 提供 HTTPS。</p>
-      <div class="table-wrap"><table><thead><tr><th>入口</th><th>Basic 認證</th></tr></thead><tbody>
-      <tr><td>使用者進入 Builder</td><td>Builder 入口帳密</td></tr>
+      <div class="table-wrap"><table><thead><tr><th>入口</th><th>驗證與授權</th></tr></thead><tbody>
+      <tr><td>使用者進入 Builder</td><td>Builder 驗證使用者身分與 Workspace／System 權限</td></tr>
       <tr><td><code>/health/live</code><br><code>/health/ready</code></td><td>免帳密</td></tr>
       <tr><td>Catalog、System GET、驗證、發布與卸載</td><td>Builder 的 Runtime 管理帳密</td></tr>
       <tr><td>Ingestion、文件操作與 Inference</td><td>各 System、各流程的帳密</td></tr>
-      </tbody></table></div><p>Builder Backend 負責使用者的 Workspace／System 授權。</p></details>
+      </tbody></table></div></details>
     </section></div>`;
 }
 const analysisPanel = (title, value) => `<details><summary>${title}</summary><pre>${escapeHTML(json(value))}</pre></details>`;

@@ -32,8 +32,8 @@
 ## Elasticsearch 服務來源範例
 
 - [Runtime HTTP 情境](runtime_http.examples.json) 使用 Builder DEV 預設的 `service_source: dev_test`，由部署管理員配置測試 ES 綁定。
-- [PLED ES 匯出](elasticsearch.pled.export.json) 示範 DEV 的 `dev_test` 匯出成 `pled_es`。匯出的 `es_number`、`account`、`password` 都使用 Secret 引用。部署填入的 ES 編號是字串，保留如 `000123` 的前導零。
-- [PLED Secret 注入](deployment.pled-secret-env.example.yaml) 提供三個環境變數，搭配 [System API 帳密注入](deployment.system-api-secret-env.example.yaml) 供應業務入口的帳密。實際 Env 名稱須和匯出 Config 一致。真實 PLED 實例解析、登入和索引權限待整合驗收。
+- [PLED ES 匯出](elasticsearch.pled.export.json) 示範 DEV 的 `dev_test` 匯出成 `pled_es`，並沿用原 `config_revision`。匯出的 `es_number`、`account`、`password` 都使用 Secret 引用。部署填入的 ES 編號是字串，保留如 `000123` 的前導零。
+- [PLED Secret 注入](deployment.pled-secret-env.example.yaml) 從同一個 Kubernetes Secret 的三個 Key 供應環境變數，搭配 [System API 帳密注入](deployment.system-api-secret-env.example.yaml) 供應業務入口的帳密。實際 Env 名稱須和匯出 Config 一致。真實 PLED 實例解析、登入和索引權限待整合驗收。
 
 ## Elasticsearch 索引指紋
 
@@ -46,7 +46,7 @@
 
 [Istio 與 Service 範例](deployment.istio-http.example.yaml)使用同一 Namespace 展示 Builder、DEV Runtime 與同時啟用兩條流程的獨立 System。每個 Pod 的應用程式監聽 `8080` 上的 HTTP。以公司實際的 Namespace、Gateway、Host、Port、trust domain 及 Builder Backend ServiceAccount 取代範例值。Gateway 的兩個主機均使用 HTTPS listener 及其對應憑證。
 
-- 在每個 Deployment 的 Pod template 設定 `app.kubernetes.io/part-of: rag-platform`，並設定與各自 Service selector 相符的 `app.kubernetes.io/name`。Builder Backend Pod 使用 `serviceAccountName: builder-backend`。確認 Gateway 與應用 Workload 都已納入 mesh。
+- 在各 Workload 的 Pod template 設定 `app.kubernetes.io/part-of: rag-platform`，並設定與各自 Service selector 相符的 `app.kubernetes.io/name`。Builder Backend Pod 使用 `serviceAccountName: builder-backend`。確認 Gateway 與應用 Workload 都已納入 mesh。承載 Ingestion 的 DEV Runtime 可用單副本 StatefulSet，失聯時的替換由部署方依[接手規格](../../docs/06_runtime_api_and_deployment.md#system-ingestion-drain)處理。
 - Builder 的 DEV Runtime URL 取同 Namespace 的 Service，例如 `http://dev-runtime`。FTEST／ENT 各自配置 System 主機。Ingestion 和 Inference 分 Pod 時，配置兩個 HTTP Service，讓 System 的 `/v1/queries` 路由至 Inference，`/v1/ingestions` 與 `/v1/documents` 路由至 Ingestion，Health 隨各入口的 Service 接線。
 - 在目標叢集驗收時，確認 Gateway 的 HTTPS 可以完成認證並呼叫對應服務，且外部入口無法抵達 DEV Runtime 的 `/internal`。用 Builder 身分及有效 Basic 帳密呼叫 DEV Catalog 應成功。改用其他 Workload 身分或繞開 mesh 嘗試同一請求時應遭拒，並確認已接通的 Pod 間鏈路實際使用 mTLS。
 - Runtime 的 HTTP liveness／readiness 探針使用 `/health/live`、`/health/ready`，免 Basic。Istio sidecar 部署應保留 HTTP 探針重寫，讓 kubelet 可在 STRICT mTLS 下透過 sidecar agent 探測應用程式。[Istio 探針接線](https://istio.io/latest/docs/ops/configuration/mesh/app-health-check/)

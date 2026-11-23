@@ -35,7 +35,7 @@ db.builder_system_deployments.createIndex(
 
 Builder 以 `(environment, system_id)` 建立唯一索引，於 `builder_system_lifecycle` 保存已提交的 `active_config_revision`、`index_generation` 和 `index_fingerprint`。操作對象及原請求計畫保存在 `pending_operation`，由 `state_version` 條件更新取得同一 System 的操作權。非受管索引的世代與指紋為 `null`。目標 Runtime 的觀測結果不能直接覆蓋本紀錄。見 [System 紀錄 validator](../../schemas/mongodb/builder_system_lifecycle.validator.json)。
 
-全域操作進行中的 `detach` 屬暫停服務，Builder 在 pending operation 的 drained_targets 保存 runtime_ref、pipeline、查核方法與時間，並保留原部署意圖，以便成功後載回。Builder 重啟先讀全域計畫與目標進度再繼續。對失聯的寫入目標，確認部署層的停止或隔離與未結算操作後才清除或接手，且操作持有期間禁止自動補載。
+全域操作進行中的 `detach` 屬暫停服務。Builder 在 `pending_operation.drained_targets` 記錄收到 `detach` 成功回應的 `runtime_ref`、`pipeline`、方式及時間，並保留原部署意圖，以便成功後載回。Builder 重啟先讀全域計畫與目標進度再繼續。目標失聯時保存 `unreachable` 並暫停操作，等部署方恢復目標後再完成查核。操作持有期間暫停自動補載。Pod 故障隔離及寫入接手由[部署方處理](../06_runtime_api_and_deployment.md#system-ingestion-drain)。
 
 ## 發布與同步
 

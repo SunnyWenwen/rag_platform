@@ -367,8 +367,7 @@
                 },
                 "method": {
                   "enum": [
-                    "detach",
-                    "deployment_verified"
+                    "detach"
                   ]
                 }
               }

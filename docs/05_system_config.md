@@ -164,7 +164,7 @@ DEV 選 PLED 時，Builder 接受 ES 編號及帳號的字串值，密碼由 [Sy
 
 匯出 FTEST／ENT 時，Builder 依發布快照產生部署用 System Config。DEV 的 `dev_test` 自動改成 `pled_es`，已選 `pled_es` 的來源值維持相同。三個 PLED 欄位在匯出檔都使用 Secret 引用，對應的 `config.secret` 值設成 `null`。預設 Key 由 [連線 Schema](../schemas/elasticsearch_connection.schema.json) 提供。原欄位已有有效 Secret 引用時可沿用其 Key，新增 Key 衝突時使用未占用的後綴。Kubernetes Env 名稱須與實際匯出 Key 對應，部署者為三個值各自填寫目標環境的 Secret。
 
-匯出保留原 `system_id`、`config_revision`、Pipeline 邏輯與索引 mapping／欄位設定。ES 來源和三個連線欄位屬 D-30 的環境綁定，在部署用 Config 序列化。Runtime 啟動時解析 Secret，依編號與帳密連線，並核對目標索引綁定。連線欄位禁止由業務請求覆寫。見 [PLED Config 與部署範例](../examples/system_config/README.md#pled-elasticsearch-example)。
+匯出保留原 `system_id`、`config_revision`、Pipeline 邏輯與索引 mapping／欄位設定。ES 來源和三個連線欄位屬 D-30 的環境綁定，在部署用 Config 序列化。Runtime 啟動時解析 Secret，依編號與帳密連線，並核對目標索引綁定。連線欄位禁止由業務請求覆寫。跨環境的 Config Hash 範圍見 [Q-015](08_plan_and_decisions.md#q-015)，接線方式見 [PLED Config 與部署範例](../examples/system_config/README.md#pled-elasticsearch-example)。
 
 ## Admin 全域模板
 

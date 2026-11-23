@@ -107,8 +107,8 @@ Builder 保存 System、草稿、發布歷史和預期部署狀態。每個 Runt
 - 系統層級的生效版本、受管索引世代與指紋以 Builder 的 System 紀錄為準。GET 無綁定 Header 時觀察目標 Runtime 的本機載入狀態，重啟後尚未載入回 `404 SYSTEM_NOT_FOUND`。要查核實體索引時，Builder 一併提供 `X-Expected-Config-Revision`、`X-Expected-Index-Generation`、`X-Expected-Index-Fingerprint`。Runtime 以指定世代衍生完整名稱並核對 `_meta`。查核成功可回 `200`＋`loaded: false`；指定世代不存在且無載入時回 `404`。若本機仍載入該綁定而索引已確認遺失，回 `200`＋`index_ready: false`、`index_generation: null`。綁定不符或查核結果不明依既有衝突／待查代碼回覆。GET 清單列出本機已載入的 System。
 - 預檢與 PUT 皆由 Builder 帶入 `expected_active_revision`、`expected_index_generation`、`expected_index_fingerprint`。首次部署使用 `null`；外部 Retrieval 無平台索引時世代及指紋皆為 `null`。相容索引的預檢回傳候選指紋。預檢要求以目前紀錄指定實體綁定，Runtime 回報觀測結果供 Builder 判斷。生效版本以 Builder 保存的紀錄條件更新。
 - Builder 以 System 為單位序列化所有生命週期操作，發送前保存不可變的計畫、原操作 ID、前置條件與候選 Config。建立、重建及恢復時，Builder 先配發並保存新的 `target_index_generation`，把它連同預檢得到的目標指紋寫入操作紀錄，再以原 `Idempotency-Key` 發送 PUT。沿用索引時使用既有世代。重送必須沿用同一計畫。
-- Runtime 於程序內序列化本機操作與收件，核對本機快照及實體索引，使用 ES 的指定實體名稱與 create-only 語意執行。程序內可快取同一操作的結果。Builder 逾時或重啟後以同一操作紀錄查核舊、預定新世代及本機載入狀態，核對索引歸屬、指紋與 `_meta.created_by_operation_id`。查核指定世代時 GET 回報 `created_by_operation_id`（有標記時），就緒與載入欄位仍取本機狀態。Runtime 同程序仍在處理時先等結果；原程序失聯時先確認它無法再執行舊操作。兩個世代的狀態有歧義或 ES 無法查明時保留待確認紀錄。操作完成後才提交或清除 Builder 權威綁定。
-- 相同成功 PUT 重送時，可由指定目標及建立操作標記識別建立結果；相容更新或載入結果查核以本機快照為準，重啟後以 Builder 原計畫重新驗證及載入。若已刪除舊索引且預定新索引尚未建立，Builder 於確認原操作與排空證據後以原計畫重做剩餘建立。DELETE 重送僅作用於原綁定，Builder 可於確認原世代已不存在後結算。不得將另一個操作建立的同名索引當成本次操作結果。
+- Runtime 於程序內序列化本機操作與收件，核對本機快照及實體索引，使用 ES 的指定實體名稱與 create-only 語意執行。程序內可快取同一操作的結果。Builder 逾時或重啟後以同一操作紀錄查核舊、預定新世代及本機載入狀態，核對索引歸屬、指紋與 `_meta.created_by_operation_id`。查核指定世代時 GET 回報 `created_by_operation_id`（有標記時），就緒與載入欄位仍取本機狀態。Runtime 同程序仍在處理時先等結果。原目標失聯時，Builder 保存原操作並等待部署方安全恢復服務，再依原計畫查核。兩個世代的狀態有歧義或 ES 無法查明時保留待確認紀錄。操作完成後才提交或清除 Builder 權威綁定。
+- 相同成功 PUT 重送時，可由指定目標及建立操作標記識別建立結果；相容更新或載入結果查核以本機快照為準，重啟後以 Builder 原計畫重新驗證及載入。若已刪除舊索引且預定新索引尚未建立，Builder 核對原操作結果，依本節的排空規則取得確認後，以原計畫重做剩餘建立。DELETE 重送僅作用於原綁定，Builder 可於確認原世代已不存在後結算。不得將另一個操作建立的同名索引當成本次操作結果。
 - DEV 管理 API 呼叫或補載反覆失敗時，由 Builder Backend 執行有限重試，達到上限後停止自動重送，保存並呈現操作、目標 `runtime_ref` 與最近一次錯誤。已確認未成功可回報失敗。結果仍無法確認時，顯示「操作結果待查」並保留原操作計畫及 `Idempotency-Key`。後續可繼續唯讀查核，其他自動補載流程不得繞過待確認的操作。重試次數、等待時間及可重試條件由 Builder 決定。
 - `busy` 表示管理變更目前會被阻擋，例如已有生命週期操作、本機仍有匯入工作，或其他 Ingestion Runtime 尚未完成[排空](#system-ingestion-drain)。是否可匯入或查詢分別讀 `can_ingest`、`can_query`。`index_generation` 隨建索引或重建變更，沿用索引時保持相同。未管理或目前沒有已確認的索引時為 `null`，未管理平台索引時 `index_ready` 也為 `null`。Runtime 可查空索引；Builder 依[初次匯入規則](07_builder_ui.md#builder-initial-ingestion-readiness)在新建／重建後等待預定資料成功匯入再開放查詢。
 
@@ -158,7 +158,7 @@ DEV 平台管理員在部署時指定 `runtime_ref`。同一環境內，每個�
 |---|---|
 | 同一 Runtime 承載兩條流程 | 兩條流程使用同一個 `runtime_ref`。Builder 分別指定 `pipeline`，管理頁面顯示各自的載入與就緒狀態。 |
 | 分開部署 | 每個 Runtime 使用自己的 `runtime_ref` 和管理入口。Builder 依 `(environment, runtime_ref)` 路由，按 `(environment, runtime_ref, system_id)` 保存部署紀錄，並逐流程追蹤意圖與發布結果。 |
-| DEV Runtime 重啟或 Pod 更換 | 沿用原 `runtime_ref`。Builder 查核每一條預期上線的流程，既有索引可接回時，向尚未載入的目標下發指定 `pipeline` 的 `reload`。Runtime 核對版本與索引世代後載入，再受理該流程的新請求。 |
+| DEV Runtime 重啟或 Pod 更換 | 沿用原 `runtime_ref`。目標失聯時 Builder 顯示「Runtime 無法連線」並保留部署意圖。部署方恢復服務後，Builder 查核每一條預期上線的流程。既有索引可接回時，對尚未載入的流程下發指定 `pipeline` 的 `reload`。Runtime 核對版本與索引世代後載入，再受理新請求。 |
 
 Builder Backend 啟動、Runtime 恢復連線後，以及每 60 秒（可由 Builder 部署設定調整），依部署紀錄呼叫單一 System GET，比對 `desired_pipelines`、各流程的 `loaded`／`ready`、本機 Config Revision 與索引世代。對預期上線但未載入有效快照的流程，使用已發布 Config 預檢並執行 `reload`；已卸載的流程維持原意圖。Runtime 或索引狀態待查時保留部署意圖及最後確認狀態，按[索引恢復規則](#system-index-lifecycle)處理。補載以目前狀態差異為觸發條件，沿用現有管理 API。
 
@@ -232,13 +232,13 @@ User 設定已部署的外部服務。Runtime 在執行時依有效環境綁定�
 ### 更新／卸載的併發與失敗
 
 <a id="system-ingestion-drain"></a>
-Builder DEV 由 Builder 對同一 System 序列化發布、reload、卸載與恢復，並暫停該 System 的自動補載。Builder 先停止對其他 Ingestion 目標送件，逐一以 `detach?pipeline=ingestion` 取得 `204`，或向部署層確認對方已停止且已送出的寫入可安全結算。執行管理操作的 Runtime 同步關閉本機 Ingestion／Retire 入口並檢查本機工作；有工作或未結算寫入時回 `409 SYSTEM_BUSY`，查核失敗時回 `503 SYSTEM_STATE_UNKNOWN`。
+Builder DEV 由 Builder 對同一 System 序列化發布、reload、卸載與恢復，並暫停該 System 的自動補載。Builder 先停止對其他 Ingestion 目標送件，逐一以 `detach?pipeline=ingestion` 取得 `204`。目標失聯時，Builder 暫停該操作並保留進度，等部署方恢復該目標後再查核並完成排空。執行管理操作的 Runtime 同步關閉本機 Ingestion／Retire 入口並檢查本機工作；有工作或未結算寫入時回 `409 SYSTEM_BUSY`，查核失敗時回 `503 SYSTEM_STATE_UNKNOWN`。
 
-Builder 依穩定 `runtime_ref` 保存 DEV 目標。同一 Ingestion 目標只允許一個實例具備寫入能力。Builder 保存部署層查核的原目標、排空或隔離結果與查核時間，供重啟後續接。Pod 正常替換後由 Builder 核對部署狀態，再對同一目標重新載入原版本與索引世代。只有確認舊程序已停止或失去寫入能力，且舊世代的未結算操作已查證時，才能接手或永久移除失聯目標。部署層無法確認時保留待查狀態。FTEST／ENT 的寫入替換與排空交由 [部署流程](#standalone-index-deployment)。
+**Runtime Image 維護。** Builder 在停流量期間暫停對受影響目標派送 DEV 測試及自動補載，透過既有 `detach` 讓 Runtime 停止收件並確認各流程排空。部署方更換 Pod。服務恢復後，Builder 核對同一 `runtime_ref` 的各流程狀態，依原部署意圖補載。是否提供 Builder 維護操作入口由 [Q-020](08_plan_and_decisions.md#q-020) 追蹤。
 
-Runtime Image 維護涉及三項工作。Builder 在停流量期間暫停對受影響目標派送 DEV 測試及自動補載，Runtime 用現有 `detach` 停止收件並確認各流程排空，部署層負責更換 Pod。恢復前由 Builder 核對新 Runtime 並補載原先預期上線的流程。是否提供 Builder 維護操作入口，以及部署層如何回報舊程序終止、隔離和未結算寫入的查證結果，由 [Q-020](08_plan_and_decisions.md#q-020) 追蹤。Health 逾時只表示無法確認連線。強制刪除 Pod 也可能在舊程序仍運作時返回，兩者都不足以確認可接手。[Kubernetes Pod 刪除](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_delete/)
+**異常替換。** 部署方對每個 Ingestion 目標維持單一具寫入能力的實例。舊 Pod 失聯時，部署方在替代 Runtime 開放給 Builder 前，確認舊程序已停止或已隔離其 ES 寫入能力，並查核已送出但尚未確認的 ES 寫入與管理操作。永久撤除失聯目標也由部署方完成相同查核，再調整 Builder 的目標設定。Builder 依[既有連線查核及補載行為](#builder-managed-dev-runtimes)處理。FTEST／ENT 由各環境的[部署流程](#standalone-index-deployment)負責。
 
-例如 A Pod 的節點掉線，而 B Pod 以原 `runtime_ref` 啟動。若 A 曾向同一 ES 索引送出寫入，且無法查明 A 是否已停寫或該筆請求是否結算，Builder 顯示接手待查，暫不恢復 Ingestion。正常取得排空結果並換 Pod 時，Builder 依既有補載流程恢復。
+**DEV 部署選項。** 承載 Ingestion 的 Runtime 可使用 `replicas: 1` 的 StatefulSet。正常情況下 controller 維持同一 Pod 身分最多一個實例，強制刪除可能讓舊程序與替代 Pod 同時執行。Deployment 的 `Recreate` 僅於升版時保證先終止舊 Pod。節點失聯時，部署方可維持停機直到安全恢復服務。[Kubernetes StatefulSet 強制刪除](https://kubernetes.io/docs/tasks/run-application/force-delete-stateful-set-pod/) · [Deployment Recreate](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#recreate-deployment)
 
 <a id="builder-query-drain"></a>
 需要刪除索引時，Builder 暫停查詢和補載，再對所有載入該世代的 Inference 目標呼叫 `detach?pipeline=inference`，包括與管理操作在同一 Pod 的目標。各 Runtime 關閉本機新查詢入口，等已接受的工作結束才回 `204`。排空包含排隊、執行與下游未結算工作，採目標 Runtime 的完整 Query Deadline 上限，逾時回 `504 DEADLINE_EXCEEDED`。有目標失聯、逾時或無法確認下游工作已停止時，Builder 暫停操作並保留索引。Builder 收齊排空結果後發送 DELETE 或允許重建的 PUT。管理目標也須核對自己的本機查詢與寫入均已排空。Builder 對單一 `detach` 的 HTTP 逾時須涵蓋該目標的排空上限與傳輸時間；PUT／DELETE 依其 ES 操作期限獨立設定逾時並保留原操作供查核。
@@ -382,7 +382,7 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 - D-58：一支 POST /v1/ingestions 接收批次物件，documents 為非空 Document[]；Parser 每次仍接收單份物件，不另開 :batch。
 - D-58：新增文件存在性與全部 document_id 清單的查詢能力，資料來源為該 System 的實際儲存／索引，與 Runtime 工作狀態分開；清單需對 Chunk 的 document_id 去重。
 - D-60：讀寫各自進行，不因 Ingestion／retire 寫入而阻擋 Query，不加共享查詢讀寫鎖／全索引快照；同文件的忙碌拒絕以受理 Pod 為範圍。
-- Builder 與 Runtime 的 HTTP Basic 驗證位置、憑證來源和路由範圍見 [HTTP Basic 認證](#runtime-basic-authentication)。
+- Builder 的使用者授權及 Runtime 的 HTTP Basic 憑證與路由範圍見 [驗證與授權](#runtime-basic-authentication)。
 - D-61～D-63：多個 System 共用 Runtime 與 LangGraph，各請求固定 Config 快照。切版、索引及資源交接見 [System 管理](#src-07-4-systemrevision-與-engine-生命週期)。服務池分組與快取回收策略依 Q-020。
 
 - D-64：確認接收／文件與 Run 狀態核心欄位及錯誤格式；Pod 存續期間的覆寫失敗可從本機工作紀錄查詢，實際索引狀態依文件覆寫規格查核。初始限制見 Runtime API／部署手冊。可信內部 System 路由見 [HTTP 共通規格](#runtime-http-common)。
@@ -725,17 +725,17 @@ D-60：使用者確認不採「寫入時禁止查詢」的共享讀寫鎖，讀�
 
 <a id="src-21-84-已確認暫採單一-basic-帳號builder-登入延後"></a>
 <a id="runtime-basic-authentication"></a>
-### HTTP Basic 認證
+### Builder 與 Runtime 的驗證及授權
 
-| 呼叫入口 | 驗證位置與適用的帳密 |
+| 呼叫入口 | 驗證位置與授權範圍 |
 |---|---|
-| 使用者 → Builder UI／API | Builder Backend 驗證該 Builder 部署的入口帳密。 |
+| 使用者 → Builder UI／API | Builder Backend 驗證使用者身分，並依 Workspace／System 及操作授權。身分來源、角色及權限矩陣見 [Q-006](08_plan_and_decisions.md#q-006)。 |
 | 呼叫端 → Runtime `/health/live`、`/health/ready` | 免 HTTP Basic。連線仍依部署的 Istio 政策。 |
 | Builder Backend → DEV Runtime `/internal/v1` 管理 API | Builder 是 DEV Runtime 的單一管理身分。Builder 啟動設定依 `runtime_ref` 指向部署 Secret 供應的管理帳密，Runtime 驗證相同帳密。Catalog、Config 預檢、System GET 及生命週期操作都用這組帳密。個別使用者的授權在 Builder 處理。 |
 | Builder Backend → DEV System 測試 API | Backend 依請求的 System 和流程選取測試帳密。Runtime 從該 System 已載入的設定，對 Ingestion／文件路由驗證 Ingestion 帳密、對 Query 驗證 Inference 帳密。 |
 | 呼叫端 → 獨立 System 業務 API | 遵守相同流程分工。Runtime 啟動時由目標環境的 Secret 供應帳密。 |
 
-每組帳密只授權對應入口、System 或流程。Browser 的 Builder 入口帳密由 Builder 消費，Backend 依生效版本選取業務帳密並另組送往 Runtime 的 `Authorization`。DEV Runtime 依 [Istio 規格](#istio-http-transport) 先限制呼叫來源，應用程式再驗證路由所要求的 Basic 憑證。System 欄位、DEV 預設與部署注入見 [System API 認證欄位](05_system_config.md#system-api-secret-fields)。Log、Trace 與診斷應遮蔽 `Authorization` 和 Secret 值。Kubernetes 內部 Probe 接線由部署設計處理。[RFC 7617](https://www.rfc-editor.org/rfc/rfc7617.html)
+Runtime 的每組 Basic 帳密只適用於對應入口、System 或流程。Builder Backend 依授權結果選定目標，再使用對應的 Runtime 管理帳密，或依生效版本使用 System 流程帳密，組成送往 Runtime 的 `Authorization`。DEV Runtime 依 [Istio 規格](#istio-http-transport) 先限制呼叫來源，應用程式再驗證路由所要求的 Basic 憑證。System 欄位、DEV 預設與部署注入見 [System API 認證欄位](05_system_config.md#system-api-secret-fields)。Log、Trace 與診斷應遮蔽 `Authorization` 和 Secret 值。Kubernetes 內部 Probe 接線由部署設計處理。[RFC 7617](https://www.rfc-editor.org/rfc/rfc7617.html)
 
 <a id="src-21-85-可信-system-路由與-s1-的意思d-64"></a>
 ### 可信 System 路由
@@ -744,7 +744,7 @@ S1 是 system_id 示意：由 Builder Backend 建立並維護的穩定 Retrieval
 
 | 呼叫方向 | 規劃路由示例 | System／Config 選擇 |
 |---|---|---|
-| Builder UI → Backend | POST /api/systems/S1/queries | Backend 驗證 Builder 入口帳密並選定目標 System |
+| Builder UI → Backend | POST /api/systems/S1/queries | Backend 驗證使用者身分及對 S1 的查詢權限，再選定目標 System。 |
 | Backend → 共用 Runtime | POST /internal/systems/S1/v1/queries | 只供可信 Backend 存取，驗證 S1 的 Inference 帳密，固定已載入快照後執行 |
 | 呼叫端 → FTEST／ENT | POST /v1/queries | 單 System Runtime 已載入配置，業務請求不需再帶 S1 |
 
@@ -1042,7 +1042,7 @@ Runtime 更新若重啟 Memory 模式，依既有規則需要重新 Ingestion；
 
 request／run／trace 必須可跨 Backend／Runtime／模組關聯。輸出結構化錯誤、耗時、輸入輸出數及可取得用量；模型與 Judge 也記版本。OTel／Langfuse 為候選，非每個 Runtime 必備外部依賴，具體方案 Q-016／Q-027。
 
-Builder 入口驗證依 [HTTP Basic 認證](#runtime-basic-authentication)，文件／檔案級 ACL 依 Q-006。可信 Backend 與 Runtime 負責 System 存取範圍。MCP 固定 API key 對應可操作的 System 與工具，Runtime 依授權列出工具並在呼叫時驗證。獨立 Runtime 採部署端認證。模型與 DB 的連線憑證由各服務綁定提供。
+Builder 使用者驗證與 Workspace／System 授權依[驗證與授權](#runtime-basic-authentication)，文件／檔案級 ACL 依 Q-006。可信 Backend 與 Runtime 負責 System 存取範圍。MCP 固定 API key 對應可操作的 System 與工具，Runtime 依授權列出工具並在呼叫時驗證。獨立 Runtime 採部署端認證。模型與 DB 的連線憑證由各服務綁定提供。
 
 <a id="src-18-5-執行實例儲存與資料共用"></a>
 ## 外部 Retrieval 就緒與資料責任

@@ -373,6 +373,8 @@ Comparison、門檻與 Release Gate 為 Q-018；UI 不自行認定所有測試�
 | Inference 配置 | 不需重匯；需重新測試／評估 |
 | 顯示名稱／未啟用草稿 | 不更換實體 collection，不誤判需重建 |
 
+DEV Runtime 連線失敗時，Builder 顯示「Runtime 無法連線」並保留部署意圖。部署方恢復服務後，Builder 查核並補載預期上線的流程。見 [DEV Runtime 同步](06_runtime_api_and_deployment.md#builder-managed-dev-runtimes)。
+
 Runtime 回報已發布部署的索引確認遺失時，Builder 顯示受影響的 System 暫停查詢與匯入，並提示新索引為空、須重新匯入。使用者確認後，Builder 才以原 Config Revision 發起 [recover_index](06_runtime_api_and_deployment.md#system-index-lifecycle)。Runtime 建立新世代後，Builder 依初次匯入規則重新開放查詢。Runtime 的新舊 Revision／Index 發布策略見 Q-010／Q-015。原始資料與重匯入的管理流程由 Builder 後續規劃，見 [Q-016](08_plan_and_decisions.md#q-016)。UI 依 Runtime 狀態呈現正式可查詢狀態。
 
 <a id="src-06-8-export-與部署說明"></a>
@@ -466,7 +468,7 @@ API 回傳最終有效清單。D-52：Chunk.metadata._rag.source_refs 為選填�
 - 推論 JSON 檢視顯示完整成功物件，`contexts` 內保留 QueryContext[]／filters／metadata。跨 Query 合併可設定並保存草稿，執行依 Engine 整合驗收。
 - 選填 _rag；Embedding 欄位模板；複製原文欄位與額外原文 Chunk 的獨立設定。
 - 內建與 User Remote API 模式、連續範圍鎖定、契約驗證及 Admin 全域模板選用。
-- Secret 設定可編輯 Ingestion／Inference 各自的固定帳密。Runtime 與業務畫面顯示管理／流程認證分工，Health 免 Basic。
+- Secret 設定可編輯 Ingestion／Inference 各自的固定帳密。Runtime 畫面說明 Builder 使用者授權、Runtime 管理與流程認證的分工，Health 免 Basic。
 - Ingest 可把原始檔案轉為 Base64 請求預覽。Prototype 的本機匯入模擬執行結構化 JSON／CSV，檔案解析由 Runtime 整合。
 - Export 可選 FTEST／ENT 並下載已發布 Revision 的部署用 Config JSON。完整 Kubernetes Bundle 待正式整合。
 
