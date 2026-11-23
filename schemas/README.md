@@ -1,5 +1,7 @@
 # 現行共用 Schema
 
+此目錄定義機器可讀契約的欄位、固定選項及狀態代碼。文件說明執行語意，範例和驗證工具引用對應 Schema。
+
 | Schema | 用途與欄位說明 |
 |---|---|
 | [data_meta](data_meta.schema.json) | [structdata 欄位型別、必填性、搜尋旗標與 Indexing 覆寫](../docs/02_data_contracts.md#data-meta-schema) |
@@ -10,8 +12,10 @@
 | [query_context](query_context.schema.json) | [QueryContext[] 與 ResultItem.data 候選 Document](../docs/02_data_contracts.md#inference-contract) |
 | [index_binding](index_binding.schema.json) | [平台管理索引的格式、位置及能力](../docs/02_data_contracts.md#indexbinding) |
 | [index_fingerprint.v1](index_fingerprint.v1.schema.json) | [ES 索引相容性指紋投影與 mapping metadata](../docs/06_runtime_api_and_deployment.md#index-fingerprint-v1-proposal) |
+| [runtime_http](runtime_http.schema.json) | [管理與業務 API 的 HTTP 物件、分頁參數及狀態代碼](../docs/06_runtime_api_and_deployment.md#runtime-http-common) |
 | [runtime_catalog](runtime_catalog.draft.schema.json) | [W1 Runtime 的 Descriptor 與環境資源清單](../docs/06_runtime_api_and_deployment.md#w1-catalog) |
 | [component_descriptor](component_descriptor.draft.schema.json) | [內建 Component 的識別、參數、推導與 UI 規則](../docs/04_component_descriptor.md#descriptor-fields) |
+| [config_enums](config_enums.schema.json) | [內建 Component 固定選項的儲存代碼](../docs/05_system_config.md#config-enums) |
 | [system_config](system_config.draft.schema.json) | [有效 Config 快照、System Secret 與 Pipeline 節點](../docs/05_system_config.md#config-fields) |
 | [MongoDB Builder 部署紀錄 validator](mongodb/builder_system_deployment.validator.json) | [部署意圖與逐流程狀態、待確認操作和觀測紀錄](../docs/drafts/builder_system_deployment_mongodb.md#collection-欄位) |
 

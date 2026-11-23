@@ -123,57 +123,12 @@ FAISS 的維度／metric 不足以證明向量空間相容。cosine／inner prod
 **驗收**：同一 `component_id` 可用 `count=1` 或 `count>1`。`include_original` 由平台套用，模型只需產生改寫字串。`none` 直接使用原始問題。
 
 <a id="src-04-511-討論提案rewrite-的結構化輸出與共用-llm-邊界"></a>
-### 討論提案：Rewrite 的結構化輸出與共用 LLM 邊界
-
-**狀態：2026-10-16 提案，待使用者確認及 Q-003／Q-017／Q-023 核定；不是已實作或已凍結的公共 Contract。** 建議 UI 加單模組試跑，見 Builder UI／Backlog手冊／UI Backlog手冊；輸出形狀與數量由平台提供，Prompt 主要描述如何改寫，不讓使用者每次重寫機器可讀契約。
-
-Rewrite 的模型回應草案為 `{queries: [...]}`，由 `count` 決定所需筆數。原始問題及 include_original 由平台處理，與模型要求生成的數量分開。ori_query、filters、metadata 由 Runtime 保留／複製，LLM 只生成 query 文字，不負責授權或結果物件。
-
-以下 Python／Pydantic 例子只示範按 n 產生 Schema 及驗證形狀／型別／數量，不會呼叫 LLM；可將匯出的 JSON Schema 交給支援的 Provider。正式類別名稱與 Adapter 格式仍待決：
-
-```python
-from pydantic import ConfigDict, Field, StrictStr, create_model
-
-def rewrite_result_schema(n: int):
-    if n < 1:
-        raise ValueError("n must be positive")
-    return create_model(
-        f"RewriteResult{n}",
-        __config__=ConfigDict(extra="forbid"),
-        queries=(list[StrictStr], Field(..., min_length=n, max_length=n)),
-    )
-
-Result = rewrite_result_schema(3)
-schema = Result.model_json_schema()  # queries: minItems=3, maxItems=3
-result = Result.model_validate({"queries": [
-    "設備的建議清潔週期為何？",
-    "多久應清潔一次設備？",
-    "設備清潔保養的頻率是什麼？",
-]})
-```
-
-建議的處理責任：
-
-1. **模組定義輸出 Schema**：固定 key、型別與要求筆數；使用者改 Prompt 不改這個契約。
-2. **共用 LLM Adapter 選擇能力**：優先使用 Provider 原生 Structured Output；支援工具呼叫者可用指定的結構化回傳工具；僅有文字／JSON mode 時解析後嚴格驗證，不宣稱同等約束。OpenAI-compatible URL 不代表服務／模型支援相同功能，須實測 Profile／能力；不支援時明確報錯或用已核定策略，不靜默換模式。
-3. **Engine 做語意驗證**：解析、額外 key、實際筆數、去除首尾空白後非空、重複及原始問題政策。上例沒有自動完成非空／重複檢查；正規化後仍須符合目標筆數。是否允許與原始問題相同、等價重複與最終 Query 去重規則仍由 Q-003／Q-023 核定，不用補複製 Query 或任意截掉多餘結果來假裝符合數量。
-4. **失敗政策**：格式錯誤可在核定次數、時間及成本上限內重試或修正。拒答、回應截斷、Timeout 分開處理，若最終失敗則回可定位的模組錯誤。
-
-這套邊界可共用，但每個用途的輸出 Schema 不同：
-
-| 用途 | 建議模型輸出 | 後端驗證 |
-|---|---|---|
-| Rewrite | queries 的 count 筆字串清單 | 數量、非空、重複、原始問題保存 |
-| AI 設定助手 | Config 草稿、建議／Diff、缺項 | Schema、Registry、欄位相依與草稿基準 |
-
-服務連線與模型引用集中管理，Schema 由每次模組呼叫傳入，不在同一 LLM 服務上固定一種輸出格式。使用 LangChain 時可採其 Model structured-output 介面，不需要為單次 Rewrite 引入完整 Agent。
-
-官方依據（查核 2026-10-16）：[JSON Schema 的陣列長度限制](https://json-schema.org/understanding-json-schema/reference/array#length)；[OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs) 說明 Schema 約束與 JSON mode 的區別、支援子集及拒答／不完整回應；[LangChain Models](https://docs.langchain.com/oss/python/langchain/models)／[Structured output](https://docs.langchain.com/oss/python/langchain/structured-output) 說明 Provider／Tool 策略與驗證。來源提供技術依據，不直接核定本專案的 Provider、類別、重試數或 fallback 預設。
+[Rewrite 的模型回應與共用 LLM 提案](08_plan_and_decisions.md#rewrite-output-proposal)
 
 <a id="src-04-512-討論提案合併-rewrite-與-multi-query-設定"></a>
 ### Rewrite Component 的設定範例
 
-`count=1` 表示單筆改寫，`count>1` 表示多筆改寫。多筆 Prompt 可以要求不同搜尋角度。當設定可能產生多個 Query，Builder 顯示跨 Query 融合設定。模型若實際產生多個有效 Query，Engine 在所選的 Retrieval 或 Rerank 完成後處理。
+`count=1` 表示單筆改寫，`count>1` 表示多筆改寫。多筆 Prompt 可以要求不同搜尋角度。當設定可能產生多個 Query，Builder 顯示跨 Query 合併設定。模型若實際產生多個有效 Query，Engine 在所選的 Retrieval 或 Rerank 完成後處理。
 
 ```yaml
 query_transformation:
@@ -200,11 +155,11 @@ query_transformation:
 3. 每個 Query 對每個選定的全文或向量欄位建立一條路徑。向量路徑透過 `IndexBinding.vector_bindings[欄位].embedding_profile_id` 使用原索引指定的 Query Encoder。不同向量欄位可沿用各自的 Profile。
 4. 每個 Query 的每條內建搜尋路徑先套用完整 Filter，再依 `per_route_k` 取候選，保留路徑、排名、分數及其方向。
 5. 同一 Query 若有多條搜尋路徑，須選 RRF 或 Sum Score，以 `data_id` 對齊所有路徑的候選並融合成一份清單。只有一路時，直接使用該路結果。若 Adapter 將融合交給後端，須驗證行為符合選定策略與每路上限。
-6. 若設定 `group_by`，先取得所需候選欄位，依當前排名分組，再執行選填的 Retrieval `top_n`。內建 Retrieval 對每個 Query 交付一份 ResultSet。
+6. 若設定 `group_by`，先取得所需候選欄位，依[分組代表規則](#group-by-representative)選出每組代表，再執行選填的 Retrieval `top_n`。內建 Retrieval 對每個 Query 交付一份 ResultSet。
 7. 在 Rerank／檢索結果消費端使用候選前，批次取回所需 structdata／metadata，保留各路排序與身分；vectors 可省為 {}，下游無須知道 MongoDB 或 FAISS。
 8. 跨 Query 規則若選在 Retrieval 後，等 Retrieval 的融合、分組與 Top N 完成，再處理不同 Query 的清單。
 
-已確認同 Query 的多路融合屬於 Retrieval。跨 Query 融合由 Query Transformation 的設定入口選擇在 Retrieval 或 Rerank 的末尾執行。先逐 Query Sum Score、再跨 Query RRF 是可表達情境。
+RRF 與 Sum Score 用於同一 Query 的多路召回。Query Transformation 設定[跨 Query 合併](#cross-query-merge)的執行時點。
 
 Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root array），沒有 InferenceState 外框。QueryContext 固定 ori_query、query，並提供預設空值的 filters、result_sets、metadata。ResultSet 只有 key／items；ResultItem 使用 data 與選填 score。只傳目前有效資料，處理後替換；歷史與診斷寫 Logs。items 順序就是排名，RRF 使用陣列位置。數值 score 經 Adapter 統一為越大越好，Sum Score 仍需驗證完整分數及可比性。 不限制合法流程只能選 Plan A／B。
 
@@ -226,13 +181,23 @@ Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root ar
 |---|---|
 | Retrieval | 每 Query／每路取 `per_route_k` → 多路時以選定的 RRF／Sum Score 合成一份 → 可選 `group_by` → 可選 Retrieval `top_n` |
 | Rerank | 每份清單模型評分並重排 → 可選 `group_by` → Rerank Top N |
-| 跨 Query | 等所選步驟完成 → 跨 Query 融合 → 可選 `group_by` → 可選跨 Query Top N |
+| 跨 Query | 等所選步驟完成 → 依 `data_id` 取最高分候選並排序 → 可選 `cross_query_group_by` → 可選跨 Query Top N |
 
-跨 Query 融合以同一原始問題為範圍。平台收到兩個以上有效 Query 時，必須合併各 Query 在指定步驟完成後的清單。只有一個有效 Query 時略過融合。若接入 Remote Retrieval 且平台負責融合，服務須提供可辨識的 Query／ResultSet 分組。若 `cross_query_at` 選 `"Rerank 後"` 且 Rerank 為 None，融合使用到達該時點的清單及排名。
+<a id="cross-query-merge"></a>
+#### 跨 Query 合併
 
-### 分組代表
+同一原始問題產生兩個以上有效 Query 時，平台合併各 Query 在指定步驟完成後的清單。只有一個有效 Query 時略過。選 Retrieval 後就比較 Retrieval 交付的分數，選 Rerank 後就比較 Rerank 交付的分數。若 Rerank 停用，使用傳到該步驟的既有分數。
 
-`group_by` 在當前每份有序清單中選一個或多個候選 Document 欄位。可選 `document_id` 或 `structdata` 中宣告為 `string` 的欄位。多選時以所有欄位值的組合為分組鍵，每組保留排名最高的一筆。候選只要有任一選定欄位缺值，就獨立保留。文件去重選 `document_id`。若 Retrieval 以母 Chunk ID 分組，保留的是代表子 Chunk，仍帶自己的 `data_id`。之後可在跨 Query 融合後以 `document_id` 再分組，最後取最終 Top N。
+依 `data_id` 去重，每個 Chunk 保留分數最高的原候選及其分數，合成一份按分數降冪的清單。同分時依有效 Query 順序及候選在原清單內的順序決定。若設定跨 Query 分組，接著按選定欄位取各組代表，最後才套用跨 Query Top N。
+
+例如 Q1 回傳 A（0.82）、B（0.75），Q2 回傳 A（0.91）、C（0.78）。合併後排序為 A（0.91）、C（0.78）、B（0.75）。若 A 與 B 屬於同一 `document_id`，再按該欄位分組後會留下 A 和 C。
+
+跨 Query 合併的候選須帶有限且可比較的分數。接入 Remote Retrieval 且由平台合併時，服務須提供可辨識的 Query／ResultSet 分組。合併在 Rerank 前執行時，分數由 Retrieval 提供。合併在啟用的 Rerank 後執行時，以 Rerank 結果為準。缺少必要分數或 Adapter 無法提供可比分數時，依 [Inference 失敗契約](06_runtime_api_and_deployment.md#inference-api)回報。
+
+<a id="group-by-representative"></a>
+#### 分組代表
+
+`group_by` 在當前每份有序清單中選一個或多個候選 Document 欄位。可選 `document_id` 或 `structdata` 中宣告為 `string` 的欄位。多選時以所有欄位值的組合作為分組鍵，每組保留當前分數最高的候選。同分時保留原排名較前者。有分數的候選優先於無分數的候選，整組均無分數時沿用該清單排名。候選只要有任一選定欄位缺值，就獨立保留。文件去重選 `document_id`。若 Retrieval 以母 Chunk ID 分組，保留的是代表子 Chunk，仍帶自己的 `data_id`。之後可在跨 Query 去重後以 `document_id` 再分組，最後取最終 Top N。
 
 設定位置及候選欄位來源見 [System Config](05_system_config.md#inference-result-processing) 與 [Descriptor](04_component_descriptor.md#group-by-option-source)。
 
@@ -251,7 +216,7 @@ Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root ar
 
 這是平台契約，不是所有模型服務的通用標準。POST 路徑為選定 Base URL 下的 /rerank；其他格式需 Adapter。
 
-**處理**：從選定 ResultSet 的 Document.structdata 取評分內容，保留候選 index 對照；驗證 index 唯一且在範圍內、score 有限，映回相同 Chunk，覆寫目前 score，再排序、套用當步可選的 `group_by`，最後取 Rerank Top N。舊分數不放在業務物件，候選文件與識別沿用輸入。None 略過當步評分、分組與 Top N，跨 Query 規則仍可選在 Rerank 後執行；零筆時直接沿用空清單。跨 Query 融合若已於 Retrieval 後完成，Rerank 用原始問題；若在 Rerank 後才融合，Rerank 可使用各清單對應的當前 Query。服務端 top_n 與平台保留數的邊界如下。
+**處理**：從選定 ResultSet 的 Document.structdata 取評分內容，保留候選 index 對照；驗證 index 唯一且在範圍內、score 有限，映回相同 Chunk，覆寫目前 score，再排序、套用當步可選的 `group_by`，最後取 Rerank Top N。舊分數不放在業務物件，候選文件與識別沿用輸入。None 略過當步評分、分組與 Top N，跨 Query 規則仍可選在 Rerank 後執行；零筆時直接沿用空清單。跨 Query 合併若已於 Retrieval 後完成，Rerank 用原始問題。若在 Rerank 後才合併，Rerank 可使用各清單對應的當前 Query。服務端 top_n 與平台保留數的邊界如下。
 
 **驗收**：不生成新 data_id；重新 rank；保留原 Retrieval Trace。串接 Timeout／錯誤時不假裝 Rerank=None。
 
@@ -262,7 +227,7 @@ Inference 的業務 Input／Output 統一為 `list[QueryContext]`（JSON root ar
 <a id="src-04-54-最終檢索輸出"></a>
 ### 最終檢索輸出
 
-Inference 在完成配置的 Fusion／Rerank／Top N 後，直接回傳 QueryContext[]；各 ResultItem 包含 Document 與選填 score，名次由 items 順序表示，無歷史 lineage。跨 Query 合併停用時保留分組結果，不任意再融合一次。API 包裝見 [Runtime API／部署](06_runtime_api_and_deployment.md#src-07-3-平台管理資料與儲存)，最終結果選擇與版本政策仍由 Q-014／Q-019 核定。
+Inference 在完成配置的 Fusion／Rerank／Top N 後，直接回傳 QueryContext[]；各 ResultItem 包含 Document 與選填 score，名次由 items 順序表示，無歷史 lineage。平台在多 Query 情境依[選定時點的合併規則](#cross-query-merge)交付一份合併清單。API 包裝見 [Runtime API／部署](06_runtime_api_and_deployment.md#src-07-3-平台管理資料與儲存)，最終結果選擇與版本政策仍由 Q-014／Q-019 核定。
 
 首版若任何必要節點、任一 Query 的搜尋路徑或 Remote 區段最終失敗，整次 Inference 回傳可定位的錯誤。Fusion 使用完整且有效的路徑結果；單路無命中可正常參與融合。全部流程成功但無命中時回空候選。首版的失敗結果與驗收案例見 [Runtime Inference](06_runtime_api_and_deployment.md#src-21-5-inference)。
 

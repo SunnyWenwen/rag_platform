@@ -19,7 +19,7 @@ async function main() {
     const errors = [];
     page.on('pageerror',error => errors.push(error.message));
     const button = name => page.getByRole('button',{name,exact:true});
-    const module = name => page.getByRole('navigation',{name:'模組'}).getByRole('button',{name,exact:true});
+    const module = name => page.getByRole('navigation',{name:'設定區域'}).getByRole('button',{name,exact:true});
     const impact = page.locator('#publish-impact');
     const dialog = page.locator('#system-dialog');
     const card = page.locator('.card').filter({has:page.getByRole('heading',{name:'W1 驗收',exact:true})});
@@ -54,7 +54,7 @@ async function main() {
     await button('＋ Create Retrieval System').click();
     await page.getByRole('dialog',{name:'Create Retrieval System'}).waitFor();
     await page.getByLabel('Retrieval System 名稱').fill('W1 驗收');
-    assert.equal(await page.getByRole('navigation',{name:'模組'}).locator('.module-line').count(),2);
+    assert.equal(await page.getByRole('navigation',{name:'設定區域'}).locator('.module-line').count(),2);
 
     const template = page.getByLabel('模組設定模板');
     const loadTemplate = button('載入模組設定');
@@ -103,7 +103,7 @@ async function main() {
     assert.match(await page.getByRole('alert').innerText(),/已失效/);
     assert.equal(await page.locator('#publish').evaluate(el => el.open),false);
 
-    await page.getByRole('navigation',{name:'模組'}).getByRole('button',{name:/^Chunking/}).click();
+    await page.getByRole('navigation',{name:'設定區域'}).getByRole('button',{name:/^Chunking/}).click();
     await page.getByLabel('輸出欄位',{exact:true}).fill('text');
     await button('保存草稿').click();
     await button('驗證並發布').click();
@@ -278,11 +278,16 @@ async function main() {
     await picker.selectOption('passthrough');
 
     await module('Embedding').click();
-    assert.equal(await page.getByLabel('服務來源').inputValue(),'DEV test use');
+    assert.equal(await page.getByLabel('服務來源').inputValue(),'dev_test');
     assert.match(await page.getByText('向量空間的識別。',{exact:false}).innerText(),/Query Encoder/);
     assert.deepEqual(await dialog.locator('fieldset legend').allTextContents(),['組合文字欄位','Embedding 模型設定']);
     const model = dialog.getByRole('group',{name:'Embedding 模型設定'});
-    assert.equal(await model.getByLabel('服務來源').inputValue(),'DEV test use');
+    const embeddingSource = model.getByLabel('服務來源');
+    assert.equal(await embeddingSource.inputValue(),'dev_test');
+    await embeddingSource.selectOption({label:'Embedding API'});
+    assert.equal(await embeddingSource.inputValue(),'embedding_api');
+    assert.equal(await model.getByLabel('Embedding 服務引用').count(),1);
+    await embeddingSource.selectOption('dev_test');
     assert.equal(await model.getByLabel('Embedding Profile').inputValue(),'text-v1');
     await page.getByText('查看組合範例',{exact:true}).click();
     assert.match(await dialog.locator('fieldset pre').innerText(),/維護指南/);
@@ -297,7 +302,7 @@ async function main() {
     await mappings.getByLabel('向量映射 2：來源欄位').selectOption('embedding_text');
     await mappings.getByLabel('向量映射 2：向量欄位').fill('combined');
     await module('Indexing').click();
-    assert.equal(await page.getByLabel('服務來源').inputValue(),'DEV test use');
+    assert.equal(await page.getByLabel('服務來源').inputValue(),'dev_test');
     assert.equal(await page.getByLabel('text 建立向量索引').isChecked(),true);
     assert.equal(await page.getByLabel('combined 建立向量索引').isChecked(),false);
     await page.getByLabel('combined 建立向量索引').check();
@@ -310,7 +315,8 @@ async function main() {
     assert.deepEqual(await vectorFields.getByLabel('向量欄位',{exact:true}).evaluateAll(
       fields => fields.map(field => field.value)
     ),['text','combined']);
-    await page.getByLabel('同 Query 多路融合').selectOption('RRF');
+    await page.getByLabel('同 Query 多路融合').selectOption({label:'RRF'});
+    assert.equal(await page.getByLabel('同 Query 多路融合').inputValue(),'rrf');
     await vectorFields.locator('tbody tr').nth(1).getByRole('button',{name:'移除此項'}).click();
     await module('Indexing').click();
     await page.getByLabel('combined 建立向量索引').uncheck();
@@ -320,7 +326,7 @@ async function main() {
     await page.getByLabel('啟用組合文字').uncheck();
     await module('Rerank').click();
     await picker.selectOption('model_api');
-    assert.equal(await page.getByLabel('服務來源').inputValue(),'DEV test use');
+    assert.equal(await page.getByLabel('服務來源').inputValue(),'dev_test');
     await picker.selectOption('none');
 
     await module('Indexing').click();
@@ -331,10 +337,13 @@ async function main() {
     await picker.selectOption('rewrite');
     assert.equal(await page.getByLabel('共用 LLM 引用').inputValue(),'default-llm');
     assert.equal(await page.getByRole('option',{name:'DEV LLM'}).count(),1);
-    assert.equal(await page.getByLabel('跨 Query 融合策略').count(),0);
+    assert.equal(await page.getByLabel('跨 Query 合併時點').count(),0);
     await page.getByLabel('Rewrite Prompt').fill('Rewrite {{query}}');
     await page.getByLabel('同時檢索原始問題').check();
-    assert.equal(await page.getByLabel('跨 Query 融合策略').count(),1);
+    assert.equal(await page.getByLabel('跨 Query 合併時點').inputValue(),'after_retrieval');
+    assert.equal(await page.getByLabel('跨 Query 融合策略').count(),0);
+    await dialog.locator('#advanced summary').click();
+    await page.getByLabel('跨 Query 合併時點').selectOption({label:'Rerank 後'});
     await button('保存草稿').click();
     await button('驗證並發布').click();
     assert.match(await page.getByRole('alert').innerText(),/W1 模擬範圍未涵蓋.*可先保存草稿/);
@@ -347,6 +356,8 @@ async function main() {
     await module('Query Transformation').click();
     assert.equal(await picker.inputValue(),'rewrite');
     assert.equal(await page.getByLabel('Rewrite Prompt').inputValue(),'Rewrite {{query}}');
+    assert.equal(await page.getByLabel('跨 Query 合併時點').inputValue(),'after_rerank');
+    assert.equal(await page.getByLabel('跨 Query 融合策略').count(),0);
     await picker.selectOption('none');
     await module('Indexing').click();
     await picker.selectOption('elasticsearch');

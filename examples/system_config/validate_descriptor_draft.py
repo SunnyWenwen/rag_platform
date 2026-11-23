@@ -52,8 +52,10 @@ RUNTIME_CATALOG = json.loads((HERE / "runtime_catalog.response.json").read_text(
 SYSTEM_CONFIG_SCHEMA = json.loads((REPO / "schemas/system_config.draft.schema.json").read_text())
 DATA_META = json.loads((REPO / "schemas/data_meta.schema.json").read_text())
 QUERY_CONTEXT = json.loads((REPO / "schemas/query_context.schema.json").read_text())
+CONFIG_ENUMS = json.loads((REPO / "schemas/config_enums.schema.json").read_text())
 SCHEMA_REGISTRY = Registry().with_resources(
-    (schema["$id"], Resource.from_contents(schema)) for schema in (DATA_META, QUERY_CONTEXT, DESCRIPTOR_SCHEMA)
+    (schema["$id"], Resource.from_contents(schema))
+    for schema in (DATA_META, QUERY_CONTEXT, DESCRIPTOR_SCHEMA, CONFIG_ENUMS)
 )
 DATE_FORMATS = {
     kind: Draft202012Validator(DATA_META["$defs"][kind], format_checker=FormatChecker())
@@ -113,6 +115,10 @@ def schema_at(root, pointer):
         if child is None:
             fail("unknown parameter path:" + pointer)
         node = child
+    ref = node.get("$ref", "")
+    if ref.startswith(CONFIG_ENUMS["$id"] + "#/$defs/"):
+        return {**SCHEMA_REGISTRY.resolver().lookup(ref).contents,
+                **{key: value for key, value in node.items() if key != "$ref"}}
     return node
 
 
@@ -167,6 +173,8 @@ def validate_descriptor(value):
                     condition["equals"], shape.get("type", "null")
                 ):
                     fail("visibility equality requires a matching type")
+                if "equals" in condition and "enum" in shape and condition["equals"] not in shape["enum"]:
+                    fail("visibility equality requires a valid option")
     for rule in value.get("data_rules", ()):
         if rule["op"] == "compose":
             if (schema_at(root, rule["enabled"]).get("type") != "boolean"
@@ -645,16 +653,19 @@ def _():
     _, multiple = parameters("query_transformation", config, context)
     assert multiple["count"] + int(multiple["include_original"]) == 3
     config["parameters"].update(
-        cross_query_at="Rerank 後", cross_query_method="RRF",
+        cross_query_at="after_rerank",
         cross_query_group_by=["document_id"], cross_query_top_n=5,
     )
+    compile_local_example(snapshot)
+    config["parameters"].update(cross_query_at="after_retrieval")
     compile_local_example(snapshot)
 
     bad = deepcopy(config)
     bad["component_id"] = "multi_query"
     rejects(lambda: parameters("query_transformation", bad, context), "unknown component version")
     for key, value in (("count", 0), ("count", "2"), ("prompt", "  "), ("include_original", 1),
-                       ("cross_query_at", "after_rerank"), ("cross_query_method", "off"),
+                       ("cross_query_at", "Rerank 後"), ("cross_query_method", "rrf"),
+                       ("cross_query_method", "sum_score"),
                        ("cross_query_top_n", 0)):
         bad = deepcopy(config)
         bad["parameters"][key] = value
@@ -758,7 +769,7 @@ def _():
     retrieval = snapshot["config"]["pipelines"]["inference"]["retrieval"]["parameters"]
     retrieval["group_by"] = ["document_id", "structdata.title"]
     retrieval["fulltext_fields"] = ["structdata.text"]
-    retrieval["fusion"] = "RRF"
+    retrieval["fusion"] = "rrf"
     compile_local_example(snapshot)
     retrieval["group_by"] = ["structdata.tags"]
     rejects(lambda: compile_local_example(snapshot), "invalid selection:/group_by/*")
@@ -963,7 +974,7 @@ def _():
         structdata_overrides={"text": {"searchable": True}},
     ))
     config = node("builtin", vector_fields=["text", "title"], fulltext_fields=["structdata.text"],
-                  per_route_k=10, fusion="RRF", group_by=["document_id"], top_n=3)
+                  per_route_k=10, fusion="rrf", group_by=["document_id"], top_n=3)
     assert compile_retrieval(index, config) == {"text": "text-v1", "title": "other-space-v1"}
     del config["parameters"]["fusion"]
     rejects(lambda: compile_retrieval(index, config), "fusion required for multiple routes")
@@ -1120,11 +1131,14 @@ def _():
         validate_descriptor(desc)
         assert desc == REGISTRY[desc["module"], desc["component_id"], desc["component_version"]]
     assert PROFILES["text-v1"] == 3
+    assert runtime["schemas"]["config_enums"] == CONFIG_ENUMS
     for name, schema in runtime["schemas"].items():
         assert schema == json.loads((REPO / f"schemas/{name}.schema.json").read_text())
+    assert json.loads((HERE / "rewrite.descriptor.json").read_text()) == REWRITE
     for module, component in (("embedding","dense"), ("indexing","elasticsearch"),
                               ("indexing","local"), ("rerank","model_api")):
-        assert form_descriptor(module, component)["parameters_schema"]["properties"]["service_source"]["default"] == "DEV test use"
+        shape = schema_at(form_descriptor(module, component)["parameters_schema"], "/service_source")
+        assert shape["default"] == "dev_test"
 
 
 @case("Builder controls must target a compatible declared parameter")
@@ -1152,6 +1166,8 @@ def _():
     rejects(lambda: validate_descriptor(bad), "unknown parameter path:/unknown")
     bad["ui_hints"]["visible_when"]["/fusion"] = {"all": [{"path": "/per_route_k", "equals": "2"}]}
     rejects(lambda: validate_descriptor(bad), "visibility equality requires a matching type")
+    bad["ui_hints"]["visible_when"]["/fusion"] = {"all": [{"path": "/fusion", "equals": "RRF"}]}
+    rejects(lambda: validate_descriptor(bad), "visibility equality requires a valid option")
 
 
 @case("catalog resources cover registered option sources and invalid references fail at publish")

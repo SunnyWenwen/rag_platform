@@ -89,7 +89,7 @@ Chunking 逐 Unit 處理同一個選定欄位，可另外保留該欄位的原�
 
 - Query Transformation 可產生多個 Context，保留原始問題、條件與 Query metadata。
 - 內建 Retrieval 對每個 Query 交付一份 ResultSet，多路搜尋先融合再交付，無命中時 items 為空。ResultSet key 在同一 Context 內唯一，同一清單的 data_id 唯一。
-- Rerank 對輸入候選評分、重排與裁切，保留候選識別與 Document。融合以 `data_id` 對齊候選；`group_by` 使用候選 Document 的選定欄位保留目前排名最高的代表。組合多節點的 Remote API 依區段邊界驗證。
+- Rerank 對輸入候選評分、重排與裁切，保留候選識別與 Document。跨 Query 去重、`group_by` 與選用分數的語意見 [Engine 結果處理](03_engine_and_components.md#result-processing)。組合多節點的 Remote API 依區段邊界驗證。
 - `QueryContext.filters` 沿用 [Filter 形狀與語意](#filter-semantics)。Engine 依候選欄位與搜尋能力驗證，欄位、運算子或值失效時回報錯誤。
 - 成功回應代表當次所需的查詢與搜尋路徑均完成。路徑失敗時回傳整次 Inference 錯誤，詳見 [Runtime Inference](06_runtime_api_and_deployment.md#src-21-5-inference)。
 

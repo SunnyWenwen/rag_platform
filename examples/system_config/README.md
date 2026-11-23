@@ -48,7 +48,7 @@ python3 examples/user_remote_api/validate.py
 
 ## Builder 表單 Descriptor
 
-[builder_form.descriptors.json](builder_form.descriptors.json) 涵蓋 Prototype 的 20 個內建 Component。單檔 Prototype 的 `builder-form-descriptors` JSON 區塊內嵌相同描述。更新表單 Descriptor 或內嵌的共用資料 Schema 時同步更新 HTML。離線驗證檢查清冊、控制項型別、可見性及內嵌內容。完整清冊見 [Component Descriptor 手冊](../../docs/04_component_descriptor.md#prototype-component-inventory)。
+[builder_form.descriptors.json](builder_form.descriptors.json) 涵蓋 Prototype 的 20 個內建 Component。固定選項引用 [Config 列舉 Schema](../../schemas/config_enums.schema.json)。單檔 Prototype 內嵌 Descriptor 及引用的 Schema 資源，離線驗證檢查清冊、控制項型別、可見性及內嵌內容。完整清冊見 [Component Descriptor 手冊](../../docs/04_component_descriptor.md#prototype-component-inventory)。
 
 ## Runtime Catalog
 

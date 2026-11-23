@@ -1,6 +1,6 @@
 {
   "runtime_ref": "dev-runtime",
-  "catalog_revision": "catalog-2",
+  "catalog_revision": "catalog-4",
   "descriptors": [
     {
       "descriptor_version": "0.2-draft",
@@ -14,12 +14,7 @@
             "$ref": "https://rag-builder.example/schemas/data_meta.schema.json"
           },
           "source": {
-            "type": "string",
-            "enum": [
-              "structdata",
-              "content"
-            ],
-            "default": "structdata",
+            "$ref": "https://rag-builder.example/schemas/config_enums.schema.json#/$defs/import_source",
             "title": "入口資料形式"
           },
           "request_parameters": {
@@ -33,15 +28,7 @@
                   "title": "參數名稱"
                 },
                 "type": {
-                  "type": "string",
-                  "enum": [
-                    "string",
-                    "integer",
-                    "number",
-                    "boolean",
-                    "array",
-                    "object"
-                  ],
+                  "$ref": "https://rag-builder.example/schemas/config_enums.schema.json#/$defs/request_parameter_type",
                   "title": "型別"
                 },
                 "required": {
@@ -271,12 +258,7 @@
             "description": "向量空間的識別。Profile 定義模型與版本、向量維度及文件／查詢的編碼設定。Retrieval 需使用相容的 Query Encoder。"
           },
           "service_source": {
-            "type": "string",
-            "enum": [
-              "DEV test use",
-              "Embedding API"
-            ],
-            "default": "DEV test use",
+            "$ref": "https://rag-builder.example/schemas/config_enums.schema.json#/$defs/embedding_service_source",
             "title": "服務來源"
           },
           "embedding_service_ref": {
@@ -450,7 +432,7 @@
             "all": [
               {
                 "path": "/service_source",
-                "equals": "Embedding API"
+                "equals": "embedding_api"
               }
             ]
           },
@@ -458,7 +440,7 @@
             "all": [
               {
                 "path": "/service_source",
-                "equals": "Embedding API"
+                "equals": "embedding_api"
               }
             ]
           },
@@ -466,7 +448,7 @@
             "all": [
               {
                 "path": "/service_source",
-                "equals": "Embedding API"
+                "equals": "embedding_api"
               }
             ]
           },
@@ -510,12 +492,7 @@
             "$ref": "https://rag-builder.example/schemas/data_meta.schema.json#/$defs/overrides"
           },
           "service_source": {
-            "type": "string",
-            "enum": [
-              "DEV test use",
-              "自行提供 Elasticsearch"
-            ],
-            "default": "DEV test use",
+            "$ref": "https://rag-builder.example/schemas/config_enums.schema.json#/$defs/elasticsearch_service_source",
             "title": "服務來源"
           },
           "elasticsearch_service_ref": {
@@ -583,7 +560,7 @@
             "all": [
               {
                 "path": "/service_source",
-                "equals": "DEV test use"
+                "equals": "dev_test"
               }
             ]
           },
@@ -591,7 +568,7 @@
             "all": [
               {
                 "path": "/service_source",
-                "equals": "自行提供 Elasticsearch"
+                "equals": "custom_elasticsearch"
               }
             ]
           },
@@ -618,15 +595,7 @@
                   "title": "參數名稱"
                 },
                 "type": {
-                  "type": "string",
-                  "enum": [
-                    "string",
-                    "integer",
-                    "number",
-                    "boolean",
-                    "array",
-                    "object"
-                  ],
+                  "$ref": "https://rag-builder.example/schemas/config_enums.schema.json#/$defs/request_parameter_type",
                   "title": "型別"
                 },
                 "required": {
@@ -723,11 +692,7 @@
             "title": "每路 Top K"
           },
           "fusion": {
-            "type": "string",
-            "enum": [
-              "RRF",
-              "Sum Score"
-            ],
+            "$ref": "https://rag-builder.example/schemas/config_enums.schema.json#/$defs/fusion_method",
             "title": "同 Query 多路融合"
           },
           "group_by": {
@@ -828,7 +793,7 @@
               },
               {
                 "path": "/fusion",
-                "equals": "RRF"
+                "equals": "rrf"
               }
             ]
           }

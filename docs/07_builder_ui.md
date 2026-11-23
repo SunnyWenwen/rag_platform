@@ -85,7 +85,7 @@ Create／Edit 可選用全域模板，設定 Import 入口欄位及參數，再�
 - Rewrite 提供一份可編輯 Prompt、改寫數量與原始問題開關，並提供變數插入、驗證及預覽。
 - Rerank 可查看固定平台 Request／Response 範例及 index／score 對應說明；不宣稱是所有模型的統一標準。
 - collection 由 Workspace＋System 名稱／穩定 ID 自動帶入且唯讀；改顯示名稱不換既有實體。
-- 內建 Retrieval 依全文／向量欄位推導搜尋模式。Retrieval 設定同 Query 多路融合，Query Transformation 設定跨 Query 融合的時點。見[結果處理控制項](#src-09-3-現行-ui-規劃)。
+- 內建 Retrieval 依全文／向量欄位推導搜尋模式。Retrieval 設定同 Query 多路融合，Query Transformation 設定跨 Query 合併的時點。見[結果處理控制項](#src-09-3-現行-ui-規劃)。
 
 下表其餘分組仍為建議，待 Q-025；其中 Parsing 與上述已確認方向不可退回待定。
 
@@ -97,7 +97,7 @@ Create／Edit 可選用全域模板，設定 Import 入口欄位及參數，再�
 | Chunking（欄位簡化已確認） | 切分方式／必要參數，直接用 text；不顯示切分／複製欄位選單，metadata 全繼承 | 單一切分來源、輸出名稱、可選複製欄位及完整原文保留。依方法顯示 Token、分隔符／標題層級設定。見 UIB-013。 |
 | Embedding | 組合文字欄位置頂並附可展開範例。服務來源與 Embedding Profile 同在模型設定區。向量映射預設一筆，可按「＋ 新增」加入其他映射。 | 維度／Encoding／Normalization、Batch、輸入限制 |
 | Indexing | 後端、全文／過濾欄位用途、逐欄勾選向量索引；全部內容自動保存的摘要 | 後端特有參數、進階 Mapping（支援後才顯示）；不要求再勾選保存內容 |
-| Query Transformation | None／Rewrite／Remote API；Rewrite 選共用 LLM 並設定改寫數量 | Prompt、include_original；可能產生多 Query 時設定跨 Query 融合 |
+| Query Transformation | None／Rewrite／Remote API；Rewrite 選共用 LLM 並設定改寫數量 | Prompt、include_original；可能產生多 Query 時設定跨 Query 合併 |
 | Inference Input | 有效輸入／輸出規格預設收合 | 固定 Filter、Request 參數 |
 | Retrieval／Fusion Plan | 向量欄位和全文欄位皆可多選，其下依序顯示每路 Top K、多路時的 RRF／Sum Score、Group by 合併欄位、Top N。查詢 Profile 隨各向量欄位的索引綁定。 | 依融合策略顯示專屬參數。跨 Query 規則由 Query Transformation 設定。 |
 | Rerank | None／服務、單一評分內容欄位、Rerank Top N（原型預設 3）、實際提問來源 | 當步分組、逐 Query 問題選擇、附加內容欄位、Timeout／服務輸入限制 |
@@ -175,7 +175,7 @@ Builder 以選定方法的 `parameters_schema.properties` 產生參數欄位，�
 |---|---|---|
 | `const` | 唯讀值，Config 保存原始 JSON 型別 | 可看見值且無法修改。新建套用固定值。 |
 | `option_sources` 指向字串欄位 | 動態下拉。Builder 從 Catalog 資源或草稿有效 I/O 解析候選，並依宣告的 `enum` 篩選 | 例如每列的來源讀取 `/copy_fields/*/source_field` 宣告。保留失效值並顯示原因。 |
-| 固定 `enum` | 固定下拉，寫回原始 JSON 值 | 不發出選項查詢。數值與布林選項保存為數值與布林。 |
+| 固定 `enum` | 解析 [Config 列舉 Schema](../schemas/config_enums.schema.json) 的引用後顯示下拉選項 | 顯示 Builder 標籤，寫回 Schema 的代碼或原始 JSON 值。 |
 | `string` | 單行文字輸入，長文可宣告 `textarea` | 依 Schema 檢查長度及格式。 |
 | `boolean` | 勾選框 | 勾選和取消分別保存 `true` 與 `false`。 |
 | `integer` | 數字輸入，`step=1` | 整數含 0 可保存，檢查 `minimum`／`maximum`。 |
@@ -235,13 +235,7 @@ Import 的 `platform` Descriptor 例如以下宣告。Renderer 依序顯示入�
 W1 Builder 從 [Catalog](06_runtime_api_and_deployment.md#w1-catalog) 取得 Descriptor 與環境資源，並從草稿推導上游欄位與能力旗標、向量來源及各模組有效 I/O。Prototype 使用同形狀的內嵌 Catalog。全數 Module 與 Component 見[表單清冊](04_component_descriptor.md#prototype-component-inventory)。
 
 <a id="src-06-331-討論提案query-rewrite-單模組測試"></a>
-### 討論提案：Query Rewrite 單模組測試
-
-**待使用者確認，尚未改 UI。** 建議在 Query Transformation 放「測試 Rewrite」：輸入一個問題，用當前草稿的 Prompt／LLM／count 執行該模組，不要求先建立／保存 System 或 Ingestion，也不執行 Retrieval／Rerank／檢索結果消費端。
-
-測試前驗證本模組與引用服務的必要設定，不以其他無關模組未填完阻擋。顯示實際生成的 Prompt、要求筆數、解析後 Query 清單、原始問題是否另外加入及格式／筆數／非空／重複驗證；原始回應可收合，耗時／Token 用量僅顯示實際可取得數據。None 不呼叫 LLM。
-
-測試使用與正式執行相同的 Engine 模組、Adapter、Schema 與驗證；LLM 輸出策略提案見 [Engine／Component](03_engine_and_components.md#remote-api)。未接真實服務則明示模擬。修改 Prompt／LLM／count／保留原始問題或測試輸入後，舊結果標示過期；過期非同步回應不覆蓋新測試。試跑結果不自動套用／保存 Config，也不新增「必須先測試才能儲存」的 Gate。
+[Rewrite 單模組試跑提案](08_plan_and_decisions.md#rewrite-test-proposal)
 
 <a id="src-06-332-討論提案以數量統一-query-rewrite"></a>
 ### 單一 Rewrite Component
@@ -401,13 +395,13 @@ UI Mock、Schema 驗證、HTTP integration、實際端對端驗收分開記錄�
 
 | UI 位置 | 控制項 |
 |---|---|
-| Query Transformation | 在可能產生多 Query 時顯示跨 Query 融合。包含 `count>1` 或保留原始問題的 Rewrite，以及由平台負責融合的 Remote Query Transformation。選 Retrieval 或 Rerank 的最後一步，再選融合方法、分組欄位及可選 Top N。 |
+| Query Transformation | 在 Rewrite 可能產生多 Query 時顯示合併時點、選填分組欄位及 Top N。每個 Chunk 固定保留所選步驟的最高分候選。 |
 | Retrieval | 內建搜尋有多路時必選 RRF 或 Sum Score，所有路徑融合成每 Query 一份清單。另可設定分組和 Retrieval Top N。 |
 | Rerank | 設定模型、內容欄位、提問來源，以及評分後每份清單的分組和 Rerank Top N。 |
 
-跨 Query 融合預設在 Retrieval 完成後。內建 Retrieval 的流程預覽會顯示搜尋路徑與選定策略，結果只呈現每個 Query 的一份清單。RRF／Sum Score 的進階參數待逐 Component 定義。
+跨 Query 合併的預設時點由 [Config 列舉 Schema](../schemas/config_enums.schema.json) 提供。內建 Retrieval 的流程預覽會顯示搜尋路徑與同 Query 多路召回的融合策略。
 
-每個分組控制項都可選一個或多個有效候選欄位。第一次開啟時預選 `document_id`，欄位選單可改選有效候選 Schema 中的單值欄位。多欄一起構成分組鍵，操作順序見 [Engine 結果處理](03_engine_and_components.md#result-processing)。
+每個分組控制項都可選一個或多個有效候選欄位。第一次開啟時預選 `document_id`，欄位選單可改選有效候選 Schema 中的單值欄位。多欄一起構成分組鍵，每組保留最高分候選，操作順序見 [Engine 結果處理](03_engine_and_components.md#result-processing)。
 
 <a id="src-09-32-四個固定-top-n-位置"></a>
 ### 四個固定截斷位置
@@ -417,7 +411,7 @@ UI Mock、Schema 驗證、HTTP integration、實際端對端驗收分開記錄�
 | Retrieval `per_route_k` | 每個 Query 在每條路徑的搜尋上限，套用於同 Query 融合前 |
 | Retrieval Top N | 每份清單完成同 Query 融合和分組後 |
 | Rerank Top N | 每份清單完成模型評分、重排和分組後 |
-| 跨 Query Top N | 在所選步驟完成後，對已跨 Query 融合及分組的每份輸出清單截斷 |
+| 跨 Query Top N | 在所選步驟完成後，對跨 Query 去重及可選分組後的清單截斷 |
 
 預覽標出每個時點的清單數與上限。Rerank 選 None 時停用評分、當步分組與 Top N，跨 Query 可在 Rerank 後使用當前清單。完整 Remote Inference 由外部服務負責結果處理，Builder 顯示區段契約與回應驗證。
 
@@ -445,11 +439,11 @@ API 回傳最終有效清單。D-52：Chunk.metadata._rag.source_refs 為選填�
 | 案例 | Retrieval 輸出 | 有效處理順序 |
 |---|---|---|
 | 單 Query＋ES Hybrid | 一份已融合清單 | 每路取 `per_route_k` → 選定策略融合 → Retrieval 分組／Top N → Rerank |
-| 多 Query＋ES Hybrid | 每 Query 一份清單 | Retrieval Top N → 跨 Query RRF／Top N → 用原始問題 Rerank |
-| 多 Query＋Local 多路 | 每 Query 一份已融合清單 | 同 Query 融合 → Retrieval 分組／Top N → 跨 Query 融合／Top N → Rerank |
-| 先逐 Query 評分 | 每 Query 有可辨識的候選清單 | Retrieval 按母 Chunk 分組／Top N → 逐 Query Rerank／Top N → 跨 Query RRF → 按文件分組 → 最終 Top N |
+| 多 Query＋ES Hybrid | 每 Query 一份清單 | 同 Query 多路融合 → Retrieval Top N → 跨 Query 取最高分／Top N → 用原始問題 Rerank |
+| 多 Query＋Local 多路 | 每 Query 一份已融合清單 | 同 Query 融合 → Retrieval 分組／Top N → 跨 Query 取最高分／Top N → Rerank |
+| 先逐 Query 評分 | 每 Query 有可辨識的候選清單 | Retrieval 按母 Chunk 分組／Top N → 逐 Query Rerank／Top N → 跨 Query 取最高分 → 按文件分組取最高分 → 最終 Top N |
 
-最後一例若要保留每個 Query 的 Rerank 順序，將跨 Query 時點選在 Rerank 後。
+最後一例選 Rerank 後合併，讓每個 Query 先用自己的候選清單重排。
 
 <a id="src-10-1-已完成的原型能力"></a>
 ## Prototype／Backlog：已完成的原型能力
@@ -459,7 +453,7 @@ API 回傳最終有效清單。D-52：Chunk.metadata._rag.source_refs 為選填�
 - Import 欄位及 CSV 映射、各階段有效 Document Schema、批次 Ingestion Request 與逐文件驗證。
 - Fixed-size／Recursive／Header-aware 的配置、Tokenizer 連動及 metadata 繼承。原型曾示範多任務切分，正式設定只選一個切分欄位。
 - 全部 Chunk 內容預設保存；全文、向量、Filter 能力分開，失效欄位保留並報錯。
-- 推論 QueryContext[]／filters／metadata、兩層融合與四處 Top N；可以回多份分組清單。
+- 推論使用 QueryContext[]／filters／metadata。跨 Query 合併可設定並保存草稿，執行依 Engine 整合驗收。
 - 選填 _rag；Embedding 欄位模板；複製原文欄位與額外原文 Chunk 的獨立設定。
 - 內建與 User Remote API 模式、連續範圍鎖定、契約驗證及 Admin 全域模板選用。
 - AI 助手依本機規則產生 Diff，套用前驗證／過期草稿檢查；沒有 LLM 呼叫。
@@ -475,9 +469,9 @@ API 回傳最終有效清單。D-52：Chunk.metadata._rag.source_refs 為選填�
 | Retrieval 每路 Top K | 每 Query／每路的候選上限 |
 | Retrieval Top N | 每 Query 完成多路融合與 Group by 後的上限 |
 | Rerank Top N | 每份清單完成評分、重排與 Group by 後的上限 |
-| 跨 Query Top N | 選定於 Retrieval 或 Rerank 後執行，套用在跨 Query 融合與 Group by 之後 |
+| 跨 Query Top N | 選定於 Retrieval 或 Rerank 後執行，套用在跨 Query 去重與 Group By 之後 |
 
-ResultSet.key 對應 Config 路徑／群組，items 位置即名次。RRF 可用無 score 的有序結果，Sum Score 需完整且可比分數。W1 模擬用瀏覽器資料驗證單向量路徑的 Filter、每路 Top K、Group by 與 Top N。多路搜尋及融合可保存草稿，實際執行由 Engine 驗證。
+ResultSet.key 對應 Config 路徑／群組，items 位置即名次。RRF 可用無 score 的有序結果，Sum Score 需完整且可比分數。W1 模擬用瀏覽器資料驗證單向量路徑的 Filter、每路 Top K、Group by 與 Top N。多路召回、融合及跨 Query 合併可保存草稿，實際執行留待 Engine 整合驗收。
 
 原始 Draft 保留停用參數；effectiveConfig 排除它們。Create／Edit／AI 套用／匯出使用同一驗證入口。取消不改已存 System；純 Inference 改動只使舊示意結果失效，Ingestion 模組有效改動提示重跑 Ingestion。
 

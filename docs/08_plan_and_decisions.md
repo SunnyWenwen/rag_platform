@@ -32,7 +32,7 @@
 ## 2026-11-12 已確認：Inference 結果處理
 
 - 同 Query 多路融合與當步 `group_by` 歸 Retrieval。每條路先取 `per_route_k`，有多路時須選 RRF 或 Sum Score，每 Query 交付一份清單。策略各自開放的參數待逐 Component 定義。Rerank 在模型重新排序後做自己的分組，各步在分組後取各自的 Top N。
-- 跨 Query 控制放在 Query Transformation。能產生多個 Query 時開放設定，使用者選 Retrieval 或 Rerank 完成後執行，再選融合方法、可選 `group_by` 及跨 Query Top N。
+- 跨 Query 控制放在 Query Transformation。能產生多個 Query 時開放設定，使用者選 Retrieval 或 Rerank 完成後執行，可選分組及跨 Query Top N。最高分規則見 [Q-014](#q-014)。
 - `group_by` 可多選。開啟時預選 `document_id`，多欄用組合鍵，每組保留當時排名最高的候選。任一欄缺值時獨立保留。見[設定規格](05_system_config.md#inference-result-processing)。
 - Remote 區段負責其內部的結果處理。整段 Query Transformation → Rerank 交由 Remote 時，平台驗證結果後按 Remote 排名交付。
 
@@ -126,17 +126,17 @@
 | [架構與責任](01_architecture.md) | 名詞、產品邊界、A～E 大盤、角色、環境模式與圖面 |
 | [資料契約](02_data_contracts.md) | 共用 DTO／語意、Parser 相容、IndexBinding、Python 連續範例 |
 | [Engine／Component](03_engine_and_components.md) | 執行、方法、SDK、開發／發布、Local／Remote 教學 |
-| [Descriptor](04_component_descriptor.md) | B 的細化／動態選項／表單、候選 Schema、DS-01～DS-13 |
-| [System Config](05_system_config.md) | D 的版本、有效設定、變更影響與 SC-01～SC-10 |
+| [Descriptor](04_component_descriptor.md) | 參數細化、動態選項與 Descriptor 表單 |
+| [System Config](05_system_config.md) | Config 版本、有效設定與變更影響 |
 | [Runtime API／部署](06_runtime_api_and_deployment.md) | 管理／業務／Health API、Queue／狀態、控制預設、環境與 Export |
-| [Builder UI／Backlog](07_builder_ui.md) | 目標互動、v0.12 現況、UIB 待辦；修改 UI 時才實作 |
+| [Builder UI](07_builder_ui.md) | 表單、模板及測試操作，附 Prototype 實作狀態 |
 | 本文件 | 已確認基線、M0～M7、Q-001～Q-028、驗收與狀態 |
 
-完整 DS／SC／API-D 選項表各留在主責手冊，本文件只索引，不重複保存另一份決策建議。資料 schemas/、程式範例與 Profile 均維持既有來源，不因文件搬移而更改業務格式。
+[schemas/](../schemas/README.md) 是機器可讀契約的定義位置。主責手冊依契約解釋目前的執行行為，範例與驗證工具引用該定義。決策編號、待議選項與驗收集中在本手冊，歷史原文保存在 [history/](history/README.md)。
 
 ## 3. 已確認方向與保留基線
 
-現行結論集中如下；D-ID 用來追查來源，不要求閱讀歷次討論才能實作。完整原始決策表、當時提案及逐輪變更見 [歷史決策紀錄](history/decisions/decision_history.md)。公共 Contract 的精確形狀以主責文件／Schema 為準。
+現行結論集中如下；D-ID 用來追查來源，不要求閱讀歷次討論才能實作。完整原始決策表、當時提案及逐輪變更見 [歷史決策紀錄](history/decisions/decision_history.md)。公共契約的精確形狀以 [schemas/](../schemas/README.md) 為準。
 
 | 主題 | 現行結論 | 來源／主責 |
 |---|---|---|
@@ -149,7 +149,7 @@
 | 保存／搜尋 | 保存完整 Chunk；全文／向量／Filter 能力分開。首版以 ES 交付及驗收；Local Search 的 Memory／MongoDB 列為後續 | D-09／10／33／39；04、資料契約手冊、19 |
 | 索引交接 | 平台管理索引以單組 IndexBinding 銜接；外部 Retrieval 使用 System 候選 Schema | D-55、2026-11-11；02 |
 | 推論資料 | QueryContext[]；ResultSet=key/items，ResultItem=data/選填 score | D-54、2026-11-11；02 |
-| 結果處理 | 內建 Retrieval 每路取 `per_route_k`，多路以 RRF／Sum Score 融成每 Query 一份；跨 Query 在 Retrieval／Rerank 完成後 | 2026-11-12；[Engine](03_engine_and_components.md#result-processing)、[Builder](07_builder_ui.md#src-09-3-現行-ui-規劃) |
+| 結果處理 | 內建 Retrieval 每路取 `per_route_k`，多路以 RRF／Sum Score 融成每 Query 一份；跨 Query 在所選步驟後依 `data_id` 取最高分，分組亦取各組最高分 | 2026-11-23；[Engine](03_engine_and_components.md#result-processing)、[Builder](07_builder_ui.md#src-09-3-現行-ui-規劃) |
 | 共用模型 | System 共用 LLM 名稱清單，Rewrite 以 llm_ref 引用；模型語意與環境連線分開 | D-13／Schema 細化手冊／30；資料契約手冊、System Config手冊 |
 | I/O 宣告與細化 | 平台維護內建描述。Remote Request 由上游推導，Ingestion 輸出由 User 宣告 | D-67、2026-11-11；04 |
 | 內建方法 | rag_platform 管 Builder，rag_engine 管 Engine／Runtime 與平台內建方法 | 01、03 |
@@ -283,11 +283,15 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 
 現行邊界見 [Document](02_data_contracts.md) 與 [JSON Schema](../schemas/README.md)。Python Runtime 型別封裝與正式 Config 語法仍待核定。原型與離線測試用於契約驗證，真實 Parser、Tokenizer、模型與 DB 另做整合驗收。
 
+#### 設定列舉的穩定代碼
+
+已確認首版開發前統一採用穩定代碼。因尚無需要載入的已儲存或匯出 Config，範例與測試直接採用首版代碼。欄位及合法值以 [Config 列舉 Schema](../schemas/config_enums.schema.json) 為準。
+
 <a id="q-003"></a>
 ### Q-003 模型服務與 Adapter 契約
 
 - 不清楚：首組模型、Profile／版本辨識、Tokenizer 取得、Chat 角色／輸出格式、多 Query 解析、Rerank 服務限制。
-- 模型契約草案：Rewrite 採固定 queries 結構，依 count 驗證筆數、Provider Structured Output／Tool／文字解析能力分級、模組 Schema 與共用 LLM Adapter 分工；格式與語意都由後端重驗。細節見 [Engine／Component 開發](03_engine_and_components.md#src-04-511-討論提案rewrite-的結構化輸出與共用-llm-邊界)，不因寫入提案就凍結 Provider 或重試／fallback 預設。
+- 模型契約草案：Rewrite 採固定 queries 結構，依 count 驗證筆數、Provider Structured Output／Tool／文字解析能力分級、模組 Schema 與共用 LLM Adapter 分工；格式與語意都由後端重驗。細節見 [Engine／Component 開發](#rewrite-output-proposal)，不因寫入提案就凍結 Provider 或重試／fallback 預設。
 - Rewrite 的 count=1／N、Schema 輸出約束提案保留（[Engine／Component 開發](03_engine_and_components.md#src-04-51-query-transformation)）；Generation 及其答案格式提案由 D-50 撤銷。
 - 既有方向：Embedding API、System Rewrite／助手共用 LLM 的 OpenAI-compatible API、平台約定 Rerank API；原型格式基線為 embeddings／Chat Completions／04 的 rerank。原型基線不等於所有 Provider 相容性都已核定。
 - 建議：先選一組可實測的 Adapter／服務及 Profile，各有 Fake 與真實契約測試；不同格式顯式 Adapter。
@@ -394,8 +398,8 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 ### Q-014 融合計畫、合併時點與分組細節
 
 - 已確認：內建 Retrieval 先依 `per_route_k` 限制每 Query／每路，多路時須以所選 RRF 或 Sum Score 融合，每 Query 交付一份。跨 Query 可選 Retrieval 或 Rerank 完成後，並可再分組及截斷。
-- 已確認：融合以 `data_id` 對齊。分組可選多個候選 Document 單值欄位，每組留目前排名最高的候選。開啟時預選 `document_id`。Rerank=None 時仍可執行後置跨 Query 規則。
-- 2026-11-18 確認：跨 Query 融合設定保存在 Query Transformation，平台處理兩個以上有效 Query 時必須融合。內建 Rewrite 沿用現有 Descriptor 的 `cross_query_*` 欄位與預設值。見 [發布格式](05_system_config.md#inference-result-processing)。
+- 已確認：分組可選多個候選 Document 單值欄位，開啟時預選 `document_id`。Rerank=None 時仍可執行後置跨 Query 規則。
+- 2026-11-23 確認：RRF 與 Sum Score 只用於單一 Query 的多路召回。跨 Query 依 `data_id` 保留最高分，Group By 保留各組最高分。Query Transformation 設定合併時點與選填分組、Top N。見 [Engine 執行規則](03_engine_and_components.md#result-processing)及 [發布格式](05_system_config.md#inference-result-processing)。
 - 待實作與驗收：RRF／Sum Score 的專屬參數、可驗算的融合分數與同分順序、ES Adapter，以及 Remote Query Transformation 將多 Query 交給平台處理時的節點設定。真實資料與服務的整合驗收留在 M2。Local Search Adapter 列為後續。
 
 <a id="q-015"></a>
@@ -551,10 +555,121 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 | 登錄 | 數量／狀態 | 主責 |
 |---|---|---|
 | Q-001～Q-028 | 每項保留已確認方向與 OPEN 細節 | 本手冊 |
-| DS-01～DS-13 | 平台內部描述候選，舊 DS 表見歷史 | [Descriptor 決策表](04_component_descriptor.md) |
-| SC-01～SC-10 | D 的具體表示；Import 和有效設定推導 Document，舊 SC 候選見歷史 | [System Config 決策表](05_system_config.md) |
-| API-D01～API-D07 | 已確認核心／待完成協定逐列保留 | [Runtime API 狀態表](06_runtime_api_and_deployment.md#src-21-72-決策狀態與剩餘討論) |
+| DS-01～DS-13 | 平台內部描述候選，舊 DS 表見歷史 | [歷史決策紀錄](history/decisions/decision_history.md) |
+| SC-01～SC-10 | D 的具體表示；Import 和有效設定推導 Document，舊 SC 候選見歷史 | [歷史決策紀錄](history/decisions/decision_history.md) |
+| API-D01～API-D07 | 已確認核心／待完成協定逐列保留 | [Runtime API 決策](#runtime-api-decisions) |
 | UIB | 所有 40 個未勾選工作項保留；021 索引、022 工作、023 文件管理、024 Descriptor | [UI Backlog](07_builder_ui.md#ui-backlog-pending) |
+
+<a id="runtime-api-decisions"></a>
+<a id="src-21-7-非必備端點與本輪待討論"></a>
+### Runtime API 的待決範圍與驗收
+
+<a id="src-21-71-首期不納入後續能力"></a>
+#### 後續能力與待議範圍
+
+| 能力 | 狀態 | 後續界線 |
+|---|---|---|
+| Ingestion 進度管控 | 延後討論 | Active Run 清單及人工觸發寫入查核。首版提供[批量取消](06_runtime_api_and_deployment.md#ingestion-cancel-api)。 |
+| 整份文件／Chunk 內容查詢 | 先延後 | document_id 清單與存在查詢已納入；不因此提供內容、向量或任意 DB 查詢 |
+| 索引詳細狀態／容量資訊 | 可作後續管理診斷 | index-ready／恢復／統計來源，不用 Health／最後 Run 反推 |
+| Rewrite／Rerank 單步測試、async Inference／streaming | 目前不納入 | 有明確需求再定義，不重新引入 Generation |
+
+Retire 已確認為直接刪除，不做 soft delete／restore API；再次使用同 document_id 需重新 Ingestion。D-64 已確認同步結果／忙碌拒絕／重複刪除的不同結果；Remote／儲存清理與未知結果等後端細節見 [Runtime API相關章節](06_runtime_api_and_deployment.md#src-21-9-文件資料查詢與直接刪除)／API-D03。
+
+<a id="src-21-72-決策狀態與剩餘討論"></a>
+#### API-D01～API-D07
+
+| ID | 已確認 | 仍待確認／建議 | 關聯 |
+|---|---|---|---|
+| API-D01 | 單一 POST、批次物件的非空 documents、單筆也置於 documents；整批預檢通過才 202；逐文件結果 | Rate／Queue 與特殊來源的實際測試 | Q-019／Q-009 |
+| API-D02 | 提供 Run／文件查詢。Run 可為 `partial`，查無紀錄回 200＋`unknown`。ES 保存收件及逐文件結果，Run 在全部文件結案後預設保留 3 天 | 重啟結算與輪詢整合驗收 | Q-019／Q-017 |
+| API-D03 | Retire 同步回 200＋`document_id` 和 `result`，同文件仍有有效占用或未收尾的寫入殘留時回 409 | 後端完整刪除能力、部分刪除／未知結果與重試清理協定仍待核定 | Q-008／Q-017／Q-028 |
+| API-D04 | D-64 確認 22 的初始預設與管理方式：E 的 Runtime 環境設定，由 Admin／部署管理者提供；Query 額滿直接拒絕 | 候選參數路徑、正式機器 Schema／載入方式、排程／計數算法與實際容量驗證；不新增單次請求覆寫 | Q-017／Q-020／Q-027 |
+| API-D05 | 固定 Config 快照，按 System 判斷忙碌。Builder DEV 以定期查核補載，索引確認遺失時走人工確認的恢復流程。ES Bulk 逾時結案後可重匯 | ES 晚到寫入及殘留清理的整合驗收、獨立部署的索引建立方式 | Q-008～010／Q-015／Q-017／Q-019／Q-021／Q-028 |
+| API-D06 | Builder 登入延後；Runtime API 暫用一組 HTTP Basic 帳密操作全部 API；首期不做角色／逐 API 授權 | D-64 已選 相關章節 的受保護內部 System 路由；HTTPS／Secret 注入／網路保護與檢查位置待細化；對外 Health 同一帳密，Probe 接法為部署細節 | Q-006／Q-019／Q-020 |
+| API-D07 | 查 document_id 是否存在；D-65 文件清單回 documents[]＋next_cursor，每筆 document_id／source_revisions[]，讀取實際 Chunk 而非工作表 | Remote 讀取操作與實際分頁一致性驗收 | Q-019／Q-028 |
+
+HTTP 範例見 [Runtime HTTP 測資](../examples/system_config/README.md#runtime-http-examples)。實作待辦依上表的 Q-ID 追蹤。
+
+實作驗收涵蓋單筆／Batch 接收、文件忙碌衝突、Queue 滿、逐文件 partial、兩種狀態查詢、重啟後的逐筆結算、同 ID 完整替換、Query 無命中／不就緒／限流、Inference 路徑或 Rerank 失敗，以及已授權 System 隔離。
+
+<a id="rewrite-output-proposal"></a>
+<a id="src-04-511-討論提案rewrite-的結構化輸出與共用-llm-邊界"></a>
+### 討論提案：Rewrite 的結構化輸出與共用 LLM 邊界
+
+**狀態：2026-10-16 提案，待使用者確認及 Q-003／Q-017／Q-023 核定；不是已實作或已凍結的公共 Contract。** 建議 UI 加單模組試跑，見 Builder UI／Backlog手冊／UI Backlog手冊；輸出形狀與數量由平台提供，Prompt 主要描述如何改寫，不讓使用者每次重寫機器可讀契約。
+
+Rewrite 的模型回應草案為 `{queries: [...]}`，由 `count` 決定所需筆數。原始問題及 include_original 由平台處理，與模型要求生成的數量分開。ori_query、filters、metadata 由 Runtime 保留／複製，LLM 只生成 query 文字，不負責授權或結果物件。
+
+以下 Python／Pydantic 例子只示範按 n 產生 Schema 及驗證形狀／型別／數量，不會呼叫 LLM；可將匯出的 JSON Schema 交給支援的 Provider。正式類別名稱與 Adapter 格式仍待決：
+
+```python
+from pydantic import ConfigDict, Field, StrictStr, create_model
+
+def rewrite_result_schema(n: int):
+    if n < 1:
+        raise ValueError("n must be positive")
+    return create_model(
+        f"RewriteResult{n}",
+        __config__=ConfigDict(extra="forbid"),
+        queries=(list[StrictStr], Field(..., min_length=n, max_length=n)),
+    )
+
+Result = rewrite_result_schema(3)
+schema = Result.model_json_schema()  # queries: minItems=3, maxItems=3
+result = Result.model_validate({"queries": [
+    "設備的建議清潔週期為何？",
+    "多久應清潔一次設備？",
+    "設備清潔保養的頻率是什麼？",
+]})
+```
+
+建議的處理責任：
+
+1. **模組定義輸出 Schema**：固定 key、型別與要求筆數；使用者改 Prompt 不改這個契約。
+2. **共用 LLM Adapter 選擇能力**：優先使用 Provider 原生 Structured Output；支援工具呼叫者可用指定的結構化回傳工具；僅有文字／JSON mode 時解析後嚴格驗證，不宣稱同等約束。OpenAI-compatible URL 不代表服務／模型支援相同功能，須實測 Profile／能力；不支援時明確報錯或用已核定策略，不靜默換模式。
+3. **Engine 做語意驗證**：解析、額外 key、實際筆數、去除首尾空白後非空、重複及原始問題政策。上例沒有自動完成非空／重複檢查；正規化後仍須符合目標筆數。是否允許與原始問題相同、等價重複與最終 Query 去重規則仍由 Q-003／Q-023 核定，不用補複製 Query 或任意截掉多餘結果來假裝符合數量。
+4. **失敗政策**：格式錯誤可在核定次數、時間及成本上限內重試或修正。拒答、回應截斷、Timeout 分開處理，若最終失敗則回可定位的模組錯誤。
+
+這套邊界可共用，但每個用途的輸出 Schema 不同：
+
+| 用途 | 建議模型輸出 | 後端驗證 |
+|---|---|---|
+| Rewrite | queries 的 count 筆字串清單 | 數量、非空、重複、原始問題保存 |
+| AI 設定助手 | Config 草稿、建議／Diff、缺項 | Schema、Registry、欄位相依與草稿基準 |
+
+服務連線與模型引用集中管理，Schema 由每次模組呼叫傳入，不在同一 LLM 服務上固定一種輸出格式。使用 LangChain 時可採其 Model structured-output 介面，不需要為單次 Rewrite 引入完整 Agent。
+
+官方依據（查核 2026-10-16）：[JSON Schema 的陣列長度限制](https://json-schema.org/understanding-json-schema/reference/array#length)；[OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs) 說明 Schema 約束與 JSON mode 的區別、支援子集及拒答／不完整回應；[LangChain Models](https://docs.langchain.com/oss/python/langchain/models)／[Structured output](https://docs.langchain.com/oss/python/langchain/structured-output) 說明 Provider／Tool 策略與驗證。來源提供技術依據，不直接核定本專案的 Provider、類別、重試數或 fallback 預設。
+
+<a id="rewrite-test-proposal"></a>
+<a id="src-06-331-討論提案query-rewrite-單模組測試"></a>
+### 討論提案：Query Rewrite 單模組測試
+
+**待使用者確認，尚未改 UI。** 建議在 Query Transformation 放「測試 Rewrite」：輸入一個問題，用當前草稿的 Prompt／LLM／count 執行該模組，不要求先建立／保存 System 或 Ingestion，也不執行 Retrieval／Rerank／檢索結果消費端。
+
+測試前驗證本模組與引用服務的必要設定，不以其他無關模組未填完阻擋。顯示實際生成的 Prompt、要求筆數、解析後 Query 清單、原始問題是否另外加入及格式／筆數／非空／重複驗證；原始回應可收合，耗時／Token 用量僅顯示實際可取得數據。None 不呼叫 LLM。
+
+測試使用與正式執行相同的 Engine 模組、Adapter、Schema 與驗證；LLM 輸出策略提案見 [Engine／Component](03_engine_and_components.md#remote-api)。未接真實服務則明示模擬。修改 Prompt／LLM／count／保留原始問題或測試輸入後，舊結果標示過期；過期非同步回應不覆蓋新測試。試跑結果不自動套用／保存 Config，也不新增「必須先測試才能儲存」的 Gate。
+
+## 歷史名稱與遷移對照
+
+使用者確認將原先表示「Module 下的可替換實作」的 Method 統一稱為 **Component（元件）**。平台團隊依 Module 契約維護內建 Component。Implementation 可作「具體實作」的敘述，不另增一個架構層級。Node 若用於圖面／配置引用，表示具體位置或實例，不與 component_id 混用。
+
+| 舊稱／草案 | 新稱／草案 | 調整範圍 |
+|---|---|---|
+| Method／Method package | Component／Component package | 文件中的擴充單位與交付套件 |
+| method_id | component_id | Registry、Descriptor、Config 目標識別與錯誤定位；範例 ID 值維持不變 |
+| BaseMethod／ChunkingMethod | BaseComponent／ChunkingComponent | SDK 類別示意，尚未存在正式 SDK |
+| methods/、rag_methods、rag-methods | components/、rag_components、rag-components | rag_engine 內的建議目錄、import package、distribution 名稱；不新增 repo |
+| rag_engine.methods | rag_engine.components | 候選 entry point group；精確載入協定仍待核定 |
+| method-ui-0.1-draft、目錄 methods、target.kind=method | component-ui-0.1-draft、目錄 components、target.kind=component | 尚未實作的設定描述協定同步改名 |
+
+`module_type`、`implementation_version`、`config_type`、`node_ref` 可在舊草案中查到。現行 Component 識別與版本見 [Descriptor 頂層欄位](04_component_descriptor.md#descriptor-fields)。W1 HTTP 錯誤定位使用 `module` 和 `path`。 [Runtime 錯誤格式](06_runtime_api_and_deployment.md#runtime-http-errors)
+
+Python 的 method／`@classmethod`／abstract method、HTTP method，以及融合 Config 中表示演算法的 `method` 保留原義。Prototype 仍使用部分 `method` 選擇欄位，屬明確標示的待遷移草案；不是新 Component Registry 的 component_id。正式 Config 遷移由 Q-002／Q-015 處理，需按格式版本明確映射與檢查衝突，不能全域替換所有 method 或宣稱 Runtime 已接受舊別名。
+
+Engine手冊／Engine／Descriptor 手冊 檔名同步使用 components／component，所有文件內引用更新；歷史敘述中的擴充單位採現行術語，原決策日期與功能狀態保留。L1 的 MMD／SVG／PNG 同步改標籤並保持既有版面與連線；Prototype 的實際介面及內部欄位留待 UIB-010 遷移。
 
 ## 7. 優先討論順序
 
@@ -613,7 +728,7 @@ Builder 可按 [W1 開發契約索引](09_w1_builder_runtime_contract.md) 實作
 |---|---|
 | DEV 正式接線與授權 | 管理路由與業務路由的帳密是否拆分、業務憑證的 System 作用範圍、跨 Runtime 共用索引綁定的授權及驗證位置。HTTP Client 可先沿用現行 Basic Auth 與可信 System 路由。見 [Q-019](#q-019) 和 [Q-020](#q-020)。 |
 | 管理操作復原 | 既有 GET、`reload` 和每 60 秒的補載查核已定。管理操作結果保存期限、逾期查核後的重送，以及多目標發布部分成功時的自動重試與回退策略仍待議。建議的 1 小時期限仍是候選。見 [Q-019](#q-019) 和 [Q-020](#q-020)。 |
-| 跨 Query 融合的發布與執行 | Query Transformation 位置與多 Query 必須啟用已確認。內建 Rewrite 的 [發布格式](05_system_config.md#inference-result-processing)可供 Builder 開發，演算法參數、Remote 節點設定及 M2 真實執行驗收見 [Q-014](#q-014)。 |
+| 跨 Query 合併的發布與執行 | Query Transformation 位置與多 Query 必須啟用已確認。內建 Rewrite 的 [發布格式](05_system_config.md#inference-result-processing)可供 Builder 開發，Remote 節點設定及 M2 真實執行驗收見 [Q-014](#q-014)。 |
 | 自行提供模型／索引服務的發布 | 定義每種服務引用對應哪個環境綁定，自訂模型和維度如何對上 Profile。見 [Q-003](#q-003)、[Q-021](#q-021) 與 [參數適用範圍](04_component_descriptor.md#component-parameter-scope)。 |
 | System Secret | [System Secret](05_system_config.md#system-secret) 已定義 DEV 測試值、部署注入與 Module 引用；實際 Builder／Runtime 串接依 [Q-021](#q-021)／[Q-028](#q-028) 驗收。 |
 | 真實 Ingestion 的識別與追溯 | W1 Mock 可帶明確 `document_id` 並模擬候選的 `data_id`。來源版本可省略或原樣保留字串及 `null`。切分 ID 的穩定性與更新語意依 [Q-007](#q-007) 核定。 |

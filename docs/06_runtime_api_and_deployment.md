@@ -17,8 +17,8 @@
 - [Ingestion Queue、工作紀錄與重啟](#ingestion-job-records)
 - [Inference API](#inference-api)
 - [HTTP 錯誤格式與狀態碼](#runtime-http-errors)
-- [非必備端點與本輪待討論](#src-21-7-非必備端點與本輪待討論)
-- [API-D05／06 的具體情境](#src-21-8-api-d0506-的具體情境)
+- [Runtime API 的待決範圍與驗收](08_plan_and_decisions.md#runtime-api-decisions)
+- [執行模式、覆寫與認證](#src-21-8-api-d0506-的具體情境)
 - [文件資料查詢與直接刪除](#src-21-9-文件資料查詢與直接刪除)
 - [Runtime 設定：範圍與管理方式](#src-22-1-範圍與管理方式)
 - [Runtime 設定：已確認的初始預設](#src-22-2-已確認的初始預設)
@@ -32,7 +32,7 @@
 - [Observability、認證與權限](#src-07-10-observability認證與權限)
 
 
-更新日期為 2026-11-20。本手冊定義 Builder Backend／Runtime 整合、HTTP、Queue、狀態、環境控制與 Export。業務資料結構見 [共用資料契約](02_data_contracts.md)，可執行的 Mock 測資見 [HTTP JSON 範例](../examples/system_config/README.md#runtime-http-examples)。
+更新日期為 2026-11-20。本手冊說明 Builder Backend／Runtime 整合、HTTP 行為、Queue、環境控制與 Export。HTTP 物件形狀及代碼見 [Runtime HTTP Schema](../schemas/runtime_http.schema.json)。業務資料結構見 [共用資料契約](02_data_contracts.md)，可執行的 Mock 測資見 [HTTP JSON 範例](../examples/system_config/README.md#runtime-http-examples)。
 
 <a id="runtime-http-common"></a>
 ## HTTP 共通規格
@@ -83,11 +83,7 @@ Builder 保存 System、草稿、發布歷史和預期部署狀態。每個 Runt
 | `POST /internal/v1/systems/{system_id}:detach` | 選填 `?pipeline=ingestion` 或 `?pipeline=inference`。空 Body ＋ `Idempotency-Key`、`X-Expected-Config-Revision`、`X-Expected-Index-Generation` | `204`，已卸載指定流程，保留受管 ES 索引。 |
 | `DELETE /internal/v1/systems/{system_id}` | 空 Body ＋ `Idempotency-Key`、`X-Expected-Config-Revision`；受管索引另帶 `X-Expected-Index-Generation` | `204`，確認已卸載且受管索引已清除。相同操作可重送。 |
 
-| 物件 | 欄位 |
-|---|---|
-| `ApplyRequest` | [指定操作的 ValidateRequest](#config-validation-api) 全部欄位，另含 `context_revision: string`、`expected_active_revision: string \| null`、`config_revision: string`。只有 `update` 可帶 `allow_rebuild?: boolean`，預設 `false`。 |
-| `SystemStatus` | `system_id: string`、`active_config_revision: string`、`loaded: boolean`、`busy: boolean`、`index_ready: boolean \| null`、`index_generation: string \| null`、`can_ingest: boolean`、`can_query: boolean`、`pipelines: {ingestion: PipelineStatus, inference: PipelineStatus}`。 |
-| `PipelineStatus` | `loaded: boolean`、`ready: boolean`、`config_revision: string \| null`、`index_generation: string \| null`。後兩項回報目標 Runtime 的本機快照。未載入時均為 `null`，未管理平台索引時 `index_generation` 為 `null`。 |
+物件定義見 [Runtime HTTP Schema](../schemas/runtime_http.schema.json) 的 `apply_request`、`system_status` 與 `pipeline_status`。
 
 - System GET 的 `loaded` 表示目標 Runtime 至少載入一條流程，`can_ingest`、`can_query` 分別對應兩條流程的 `ready`。頂層 `active_config_revision`、`index_generation` 是 System 共用的生效版本及索引世代。頂層與本機快照不符的流程回 `loaded: true`、`ready: false`。兩條流程都未載入但可確認受管索引綁定時，回 `200` 及 `loaded: false`。連線失敗或操作結果未明而無法判斷時回 `503 SYSTEM_STATE_UNKNOWN`。清單 GET 列出目標 Runtime 至少載入一條流程的 System。
 - `PUT` 將預檢的操作、`pipeline`、Config 和 `context_revision` 原樣送回。`expected_active_revision` 取自 `Validation.active_config_revision`；這是 Runtime 可確認的生效版本，即使各 Pod 的記憶體已清空，仍可由共用控制紀錄取得。首次部署、已卸載或無法從已存在紀錄確認生效版本時為 `null`；後者須依恢復規則查核，不能以此單獨判定可初始化。
@@ -305,10 +301,7 @@ Builder 依來源及 Descriptor 宣告的型別、必填條件和固定 `enum` �
 
 Builder 編輯時依 Descriptor 與推導出的有效 I/O 先查必填、型別、範圍及欄位相依。通過本地檢查後可呼叫 `POST /internal/v1/systems/{system_id}/config:validate`。這是帶完整 Config 的唯讀預檢，檢查設定能否在目標 Runtime 執行及索引影響。可驗證尚未載入的 System。GET 用於查目前狀態，這裡以提交的 Config 試算效果。
 
-| 物件 | 欄位 |
-|---|---|
-| `ValidateRequest` | `runtime_ref: string`、`catalog_revision: string`、`draft_revision: string`、`config: Config`、`pipeline?: "ingestion" \| "inference"`。發布預檢另帶 `operation: "initialize" \| "reload" \| "update" \| "recover_index"`。只有 `recover_index` 須帶 `recovery_from: {config_revision: string, index_generation: string}`，取自 Builder 已發布部署與最後確認的索引世代。 |
-| `Validation` | 回傳 `runtime_ref`、`catalog_revision`、`draft_revision` 及當次指定的 `pipeline`（如有），另含 `context_revision: string`、`active_config_revision: string \| null`、`loaded: boolean`、`index_impact: {action, code, message}`。 |
+請求與回應見 [Runtime HTTP Schema](../schemas/runtime_http.schema.json) 的 `validate_request`、`validation` 與 `index_impact`。
 
 `Config` 為 [System Config 快照](../schemas/system_config.draft.schema.json)內層的 `config`。Runtime 驗證完整 Config 結構及跨流程資料、索引契約，並檢查指定流程要使用的 Component 和資源。Inference 預檢可讀取 Ingestion 的欄位、Embedding Profile 與索引綁定資訊，執行時只載入所選流程的元件。Config 驗證失敗回 `422 CONFIG_VALIDATION_FAILED`，定位見 [HTTP 錯誤格式](#runtime-http-errors)。
 
@@ -370,18 +363,18 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 
 | Method／Path | 請求 | 成功回應 |
 |---|---|---|
-| `POST /ingestions` | [IngestionRequest](../schemas/ingestion_request.schema.json)，單筆也放 `documents[]`。 | `202` ＋ `{run_id, status:"queued", config_revision, documents:[{document_id,status:"queued"}]}`。整批預檢後一併接受。透過 `Location` 指向的 `/ingestions/{run_id}` 查工作結果，沿用同一 API 路由前綴。 |
-| `GET /ingestions/{run_id}` | 無 | `200` ＋ `{run_id,status,config_revision,counts,documents:RunDocument[]}`。查無紀錄或到期回 `{run_id,status:"unknown"}`。 |
-| `POST /ingestions/{run_id}/cancel` | [CancelIngestionRequest](../schemas/ingestion_cancel_request.schema.json)，指定 `document_ids`。 | `200` ＋ `{run_id,documents:[{document_id,result,status}]}`，逐筆回報結果。見[批量取消](#ingestion-cancel-api)。 |
-| `GET /documents/{document_id}/ingestion-status` | 無 | `200` ＋ `RunDocument` 加 `run_id: string \| null`。查無紀錄時 `status:"unknown"`，`run_id`、`module`、`updated_at`、`error` 為 `null`。 |
-| `GET /documents/{document_id}/exists` | 無 | `200` ＋ `{document_id,exists:boolean}`，讀實際文件資料。 |
-| `GET /documents?limit=…&cursor=…` | `limit` 預設 `100`，範圍 `1–1000`，選填 `cursor`。 | `200` ＋ `{documents:[{document_id,source_revisions:string[]}],next_cursor:string \| null}`。以 `document_id` 升冪分頁，Cursor 限同一 System，終頁回 `null`。僅彙整實際可見的非空版本字串，沒有就回 `[]`。資料寫入期間可變動。 |
-| `POST /documents/{document_id}:retire` | 無 | `200` ＋ `{document_id,result:"deleted" \| "not_found"}`，同步完成，文件忙碌回 `409`。 |
+| `POST /ingestions` | [IngestionRequest](../schemas/ingestion_request.schema.json)，單筆也放 `documents[]`。 | `202` ＋ `ingestion_accepted`。整批預檢後一併接受。透過 `Location` 指向的 `/ingestions/{run_id}` 查工作結果，沿用同一 API 路由前綴。 |
+| `GET /ingestions/{run_id}` | 無 | `200` ＋ `ingestion_run_status`，含查無或到期的簡式回應。 |
+| `POST /ingestions/{run_id}/cancel` | [CancelIngestionRequest](../schemas/ingestion_cancel_request.schema.json)，指定 `document_ids`。 | `200` ＋ `ingestion_cancel_result`，逐筆回報結果。見[批量取消](#ingestion-cancel-api)。 |
+| `GET /documents/{document_id}/ingestion-status` | 無 | `200` ＋ `document_ingestion_status`。 |
+| `GET /documents/{document_id}/exists` | 無 | `200` ＋ `document_exists`，讀實際文件資料。 |
+| `GET /documents?limit=…&cursor=…` | `document_list_query`。 | `200` ＋ `document_list`。以 `document_id` 升冪分頁，Cursor 限同一 System，終頁回 `null`。僅彙整實際可見的非空版本字串，沒有就回 `[]`。資料寫入期間可變動。 |
+| `POST /documents/{document_id}:retire` | 無 | `200` ＋ `document_retire`，同步完成，文件忙碌回 `409`。 |
 | [`POST /queries`](#inference-api) | [InferenceRequest](../schemas/inference_request.schema.json)。 | `200` ＋根層 [QueryContext[]](../schemas/query_context.schema.json)。 |
 
-提交範例、狀態欄位與儲存語意分別見 [Ingestion](#src-21-3-ingestion-的提交與接收)、[Ingestion Run 與文件狀態](#src-21-4-文件狀態與一次提交的狀態)與 [文件管理](#src-21-9-文件資料查詢與直接刪除)。錯誤見 [HTTP 格式與狀態碼](#runtime-http-errors)。
+回應物件及分頁參數的定義見 [Runtime HTTP Schema](../schemas/runtime_http.schema.json)。提交範例、狀態欄位與儲存語意分別見 [Ingestion](#src-21-3-ingestion-的提交與接收)、[Ingestion Run 與文件狀態](#src-21-4-文件狀態與一次提交的狀態)與 [文件管理](#src-21-9-文件資料查詢與直接刪除)。錯誤見 [HTTP 格式與狀態碼](#runtime-http-errors)。
 
-服務根路徑的 `GET /health/live`、`GET /health/ready` 皆無 Request body，成功回 `200` ＋ `{status:"ok"}`。Readiness 檢查服務初始化，服務未就緒回 `503 RUNTIME_NOT_READY`。Builder 查個別 System 的匯入與查詢能力時讀取 [SystemStatus](#system-lifecycle-api)。
+服務根路徑的 `GET /health/live`、`GET /health/ready` 皆無 Request body，成功回 `200` ＋ `health`。Readiness 檢查服務初始化，服務未就緒回 `503 RUNTIME_NOT_READY`。Builder 查個別 System 的匯入與查詢能力時讀取 [SystemStatus](#system-lifecycle-api)。
 
 <a id="src-21-3-ingestion-的提交與接收"></a>
 ## Ingestion 的提交與接收
@@ -389,7 +382,7 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 <a id="src-21-31-已確認單一端點單份也包-list"></a>
 ### 單一端點，批次物件
 
-`POST /v1/ingestions` 接收 `{documents: Document[], parameters?: object}`，documents 非空。整批預檢通過才 202，單份同樣置入 documents。Runtime 在 Parser 前拆成逐文件工作，每次傳入一筆 Document。有效 parameters 隨同一批每筆工作傳遞，Parser 後仍可按同一文件處理 Document[]。
+`POST /v1/ingestions` 接收 [IngestionRequest](../schemas/ingestion_request.schema.json)。整批預檢通過才 202，單份同樣置入 documents。Runtime 在 Parser 前拆成逐文件工作，每次傳入一筆 Document。有效 parameters 隨同一批每筆工作傳遞，Parser 後仍可按同一文件處理 Document[]。
 
 ```json
 {
@@ -404,7 +397,7 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 Runtime 驗證 Import 宣告的參數和每筆有效 Document Schema。接收後保留同一 Config 與參數快照。共用 [Request Schema](../schemas/ingestion_request.schema.json) 由 System 欄位再細化。此格式更新 D-58 的根層陣列，保留單一端點、預檢及逐文件工作語意。
 
 <a id="src-21-33-202-回應核心欄位d-64-已確認"></a>
-### 202 回應核心欄位（D-64 已確認）
+### 202 收件回應
 
 若 `202` 或 `run_id` 遺失，呼叫方可用 `GET /documents/{document_id}/ingestion-status` 取得提交文件最近一次已受理的 `run_id`，再用 `GET /ingestions/{run_id}` 核對整批文件。逐文件狀態只指向最近一次提交，後續有其他匯入時可能指向其他 Run。首版以這兩個查詢入口為準，Ingestion 的 `Idempotency-Key` 及 Run 清單留待 [Q-008](08_plan_and_decisions.md#q-008) 後續討論。
 
@@ -430,12 +423,12 @@ Location: /v1/ingestions/ing-001
 
 文件占用檢查涵蓋整批。只要有一份文件被占用，整批回 `409 DOCUMENT_BUSY`，並用 [`error.conflicts`](#ingestion-document-busy)列出當次受理檢查中所有被占用的文件。
 
-併發與 Queue 容量建議以文件工作計數，並另限制排隊資料量／總請求大小，避免一個巨大 Batch 算一個 queue slot。已確認每次最多 100 份文件、body 20 MiB、每 System 100／Runtime 500 份等待容量等初始值集中見 Runtime API／部署手冊；參數可調，接收容量預留及公平排程細節仍見 API-D04。Runtime 保留整批容量及文件忙碌標記後，ES 模式依[多 Pod 寫入 v1](#multi-pod-concurrency-proposal)先保存 Run 收件資料，再原子提交整批占用與 System 容量，最後放進受理 Pod 的記憶體 Queue 並回 202。收件過程中斷時依[重啟規則](#ingestion-job-records)查核及結算。
+併發與 Queue 容量建議以文件工作計數，並另限制排隊資料量／總請求大小，避免一個巨大 Batch 算一個 queue slot。已確認每次最多 100 份文件、body 20 MiB、每 System 100／Runtime 500 份等待容量等初始值集中見 Runtime API／部署手冊；參數可調，接收容量預留及公平排程細節見[容量與排程待決](08_plan_and_decisions.md#runtime-api-decisions)。Runtime 保留整批容量及文件忙碌標記後，ES 模式依[多 Pod 寫入 v1](#multi-pod-concurrency-proposal)先保存 Run 收件資料，再原子提交整批占用與 System 容量，最後放進受理 Pod 的記憶體 Queue 並回 202。收件過程中斷時依[重啟規則](#ingestion-job-records)查核及結算。
 
 <a id="ingestion-cancel-api"></a>
 ### 批量取消 Ingestion 文件
 
-`POST /ingestions/{run_id}/cancel` 接收 `{"document_ids":["manual-001","manual-002"]}`。陣列必填、非空，包含互異的非空字串。`run_id` 限於路由選定的 System。Runtime 只處理此 Run 及清單中指定的文件。合法請求回 `200`，`documents` 依請求順序逐筆回報，其他文件的結果不影響可取消文件的處理。
+`POST /ingestions/{run_id}/cancel` 接收 [CancelIngestionRequest](../schemas/ingestion_cancel_request.schema.json)。`run_id` 限於路由選定的 System。Runtime 只處理此 Run 及清單中指定的文件。合法請求回 `200`，`documents` 依請求順序逐筆回報，其他文件的結果不影響可取消文件的處理。
 
 | 文件狀態 | `result` | 回傳的 `status` |
 |---|---|---|
@@ -484,7 +477,7 @@ Runtime 登記取消後，取消與狀態查詢皆直接顯示 `cancelled`。若
 
 查詢應區分「查無紀錄」及「有紀錄但結果未確認」。後者保留已知的 `run_id`、Module 與原因，例如已進入清理階段但清理結果尚未確認。Bulk 回應逾時依 [ES 寫入查核](#es-write-control-record)結案為 `failed`。
 
-`RunDocument` 包含 `document_id: string`、`status`（見上表）、`module: string | null`、`updated_at: RFC 3339 字串 | null`、`error: Error | null`。`module` 可標示 Local Module 或 Remote operation 的最後可知邊界。`error` 沒有錯誤時為 `null`，有錯誤時直接放[內層 Error](#runtime-http-errors)。單一文件狀態另外帶 `run_id: string | null`。
+狀態物件見 [Runtime HTTP Schema](../schemas/runtime_http.schema.json) 的 `run_document` 與 `document_ingestion_status`。`module` 標示 Local Module 或 Remote operation 的最後可知邊界。
 
 ```json
 {
@@ -515,17 +508,7 @@ Runtime 登記取消後，取消與狀態查詢皆直接顯示 `cancelled`。若
 
 文件最新狀態索引以可信的 (System, document_id) 對應最近一次 run_id；每次合法重新提交建立新 run_id，先前 Run 的結果在保留期內仍能查，不被文件最新狀態覆寫。這不要求持久儲存完整執行歷史。
 
-D-57 的 Run 狀態由逐文件狀態彙總，按下表從上往下採第一個符合的條件。已接受的工作以 `GET` 查詢並回 `200`。
-
-| 逐文件狀態 | Run 狀態 |
-|---|---|
-| 全部仍在等待 | `queued` |
-| 尚有排隊或執行中的文件 | `running` |
-| 至少一筆狀態為 `unknown` | `unknown` |
-| 全部成功 | `completed` |
-| 全部已登記取消 | `cancelled` |
-| 成功和失敗或取消皆有 | `partial` |
-| 無成功，且至少一筆失敗 | `failed` |
+已接受的工作以 `GET` 查詢，回傳 `200`。Run 依逐文件狀態彙總，對應關係見 [Runtime HTTP Schema](../schemas/runtime_http.schema.json) 的 `ingestion_run_status`。
 
 `partial` 只用於 Run 彙總。單份文件完整處理及索引發布後才標為 `completed`。更新期間的資料可見性見 [Elasticsearch 文件覆寫](#elasticsearch-document-replacement)。
 
@@ -542,7 +525,7 @@ D-57 的 Run 狀態由逐文件狀態彙總，按下表從上往下採第一個�
 }
 ```
 
-`counts` 的 `total`、`queued`、`running`、`completed`、`cancelled`、`failed`、`unknown` 均為非負整數，以接收的 Document 為單位。查無或已到期的 Run 回 `{run_id, status: "unknown"}`。呼叫方可用原 `run_id` 重新查詢取消後的結果，Runtime 依最新文件狀態彙總 Run 狀態及各項計數。
+計數以接收的 Document 為單位。計數及查無紀錄時的回應形狀見 [Runtime HTTP Schema](../schemas/runtime_http.schema.json)。呼叫方可用原 `run_id` 重新查詢取消後的結果，Runtime 依最新文件狀態彙總 Run 狀態及各項計數。
 
 <a id="src-21-43-紀錄的保存與重啟"></a>
 <a id="ingestion-job-records"></a>
@@ -626,7 +609,7 @@ D-64：第一版同步查詢額滿直接拒絕，不加短等待 Queue，也不�
 ## HTTP 錯誤格式與狀態碼
 
 <a id="src-21-61-已確認的錯誤核心格式d-64"></a>
-HTTP 錯誤用 `{error: {code: string, message: string, module: string | null, path?: string, run_id?: string}}`。`module` 用 Config 的模組鍵，例如 `embedding`，無對應模組時為 `null`。`path` 用相對於當次 Request body 的 JSON Pointer，如 `/config/pipelines/ingestion/embedding/parameters/mappings/0/source_field`，無定位時省略。輸入驗證回第一個可定位的問題。`POST /ingestions` 的 `409 DOCUMENT_BUSY` 加上[整批文件衝突清單](#ingestion-document-busy)。Run／文件狀態的 `error` 直接放內層 `Error`。Builder 依 `code` 作分流，`message` 呈現細節。
+HTTP 錯誤物件見 [Runtime HTTP Schema](../schemas/runtime_http.schema.json) 的 `error_response` 與 `document_busy_error_response`。`module` 用 Config 的模組鍵，例如 `embedding`，無對應模組時為 `null`。`path` 用相對於當次 Request body 的 JSON Pointer，如 `/config/pipelines/ingestion/embedding/parameters/mappings/0/source_field`，無定位時省略。輸入驗證回第一個可定位的問題。`POST /ingestions` 的 `409 DOCUMENT_BUSY` 加上[整批文件衝突清單](#ingestion-document-busy)。Run／文件狀態的 `error` 直接放內層 `Error`。Builder 依 `code` 作分流，`message` 呈現細節。
 
 | HTTP | W1 `code` 與處理 |
 |---|---|
@@ -664,44 +647,15 @@ HTTP 語意參考 [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html#section
 `error.path` 指向第一筆衝突文件的 `document_id`，`error.run_id` 在能確認第一筆所屬 Run 時回傳。Builder 用 `error.conflicts` 顯示整批衝突；這次拒絕不入列任何文件，也不新增 Run。見[批量占用衝突範例](../examples/system_config/README.md#runtime-http-examples)。
 
 <a id="src-21-7-非必備端點與本輪待討論"></a>
-## 非必備端點與本輪待討論
-
 <a id="src-21-71-首期不納入後續能力"></a>
-### 後續能力與待議範圍
-
-| 能力 | 狀態 | 後續界線 |
-|---|---|---|
-| Ingestion 進度管控 | 延後討論 | Active Run 清單及人工觸發寫入查核。首版提供[批量取消](#ingestion-cancel-api)。 |
-| 整份文件／Chunk 內容查詢 | 先延後 | document_id 清單與存在查詢已納入；不因此提供內容、向量或任意 DB 查詢 |
-| 索引詳細狀態／容量資訊 | 可作後續管理診斷 | index-ready／恢復／統計來源，不用 Health／最後 Run 反推 |
-| Rewrite／Rerank 單步測試、async Inference／streaming | 目前不納入 | 有明確需求再定義，不重新引入 Generation |
-
-Retire 已確認為直接刪除，不做 soft delete／restore API；再次使用同 document_id 需重新 Ingestion。D-64 已確認同步結果／忙碌拒絕／重複刪除的不同結果；Remote／儲存清理與未知結果等後端細節見 [Runtime API相關章節](#src-21-9-文件資料查詢與直接刪除)／API-D03。
-
 <a id="src-21-72-決策狀態與剩餘討論"></a>
-### 決策狀態與剩餘討論
-
-| ID | 已確認 | 仍待確認／建議 | 關聯 |
-|---|---|---|---|
-| API-D01 | 單一 POST、批次物件的非空 documents、單筆也置於 documents；整批預檢通過才 202；逐文件結果 | Rate／Queue 與特殊來源的實際測試 | Q-019／Q-009 |
-| API-D02 | 提供 Run／文件查詢。Run 可為 `partial`，查無紀錄回 200＋`unknown`。ES 保存收件及逐文件結果，Run 在全部文件結案後預設保留 3 天 | 重啟結算與輪詢整合驗收 | Q-019／Q-017 |
-| API-D03 | Retire 同步回 200＋`document_id` 和 `result`，同文件仍有有效占用或未收尾的寫入殘留時回 409 | 後端完整刪除能力、部分刪除／未知結果與重試清理協定仍待核定 | Q-008／Q-017／Q-028 |
-| API-D04 | D-64 確認 22 的初始預設與管理方式：E 的 Runtime 環境設定，由 Admin／部署管理者提供；Query 額滿直接拒絕 | 候選參數路徑、正式機器 Schema／載入方式、排程／計數算法與實際容量驗證；不新增單次請求覆寫 | Q-017／Q-020／Q-027 |
-| API-D05 | 固定 Config 快照，按 System 判斷忙碌。Builder DEV 以定期查核補載，索引確認遺失時走人工確認的恢復流程。ES Bulk 逾時結案後可重匯 | ES 晚到寫入及殘留清理的整合驗收、獨立部署的索引建立方式 | Q-008～010／Q-015／Q-017／Q-019／Q-021／Q-028 |
-| API-D06 | Builder 登入延後；Runtime API 暫用一組 HTTP Basic 帳密操作全部 API；首期不做角色／逐 API 授權 | D-64 已選 相關章節 的受保護內部 System 路由；HTTPS／Secret 注入／網路保護與檢查位置待細化；對外 Health 同一帳密，Probe 接法為部署細節 | Q-006／Q-019／Q-020 |
-| API-D07 | 查 document_id 是否存在；D-65 文件清單回 documents[]＋next_cursor，每筆 document_id／source_revisions[]，讀取實際 Chunk 而非工作表 | Remote 讀取操作與實際分頁一致性驗收 | Q-019／Q-028 |
-
-HTTP 範例見 [Runtime HTTP 測資](../examples/system_config/README.md#runtime-http-examples)。實作待辦依上表的 Q-ID 追蹤。
-
-
-
-實作驗收涵蓋單筆／Batch 接收、文件忙碌衝突、Queue 滿、逐文件 partial、兩種狀態查詢、重啟後的逐筆結算、同 ID 完整替換、Query 無命中／不就緒／限流、Inference 路徑或 Rerank 失敗，以及已授權 System 隔離。
+[Runtime API 的待決範圍與驗收](08_plan_and_decisions.md#runtime-api-decisions)
 
 <a id="src-21-8-api-d0506-的具體情境"></a>
-## API-D05／06 的具體情境
+## 執行模式、覆寫與認證
 
 <a id="src-21-81-builder-共用模式與獨立部署模式d-61d-62"></a>
-### Builder 共用模式與獨立部署模式（D-61／D-62）
+### Builder 共用模式與獨立部署模式
 
 使用者的 service 指 **API server 應用程式／程序，不是 Pod 或 Kubernetes Service 路由資源**。
 
@@ -770,7 +724,7 @@ D-60：Runtime API 暫採 **HTTP Basic Auth（帳號／密碼）**，預設一�
 Builder 的使用者登入方式之後再討論；不因 Runtime Basic 決策而替 Builder 加上登入流程，也不新增 OAuth／SSO 服務。User Remote API／模型／DB 的憑證是各自服務連線，不預設沿用 Runtime 對外帳密。
 
 <a id="src-21-85-可信-system-路由與-s1-的意思d-64"></a>
-### 可信 System 路由與 S1 的意思（D-64）
+### 可信 System 路由
 
 S1 是 system_id 示意：由 Builder Backend 建立並維護的穩定 Retrieval System 識別碼，在同一 Builder 管理範圍內唯一。它不是可變顯示名稱、Workspace 名稱、Config Revision、document_id 或索引集合名；System 改名或換 Config Revision 不因此換 system_id。實際 ID 格式／生成方式尚未凍結。
 
@@ -814,7 +768,7 @@ GET /v1/documents/manual-001/exists
 不存在時回 200 並回 exists=false。後端無法連線、尚未初始化或不支援操作時，應回可辨識錯誤，不回 false 偽裝不存在。這支 API 不回原始內容／Chunk／向量，也不表示最近一次工作成功。
 
 <a id="src-21-93-文件摘要清單d-65-已確認核心"></a>
-### 文件摘要清單（D-65 已確認核心）
+### 文件摘要清單
 
 GET /v1/documents?limit=100&cursor=...
 
@@ -916,7 +870,7 @@ HTTP body、檔案及文件數限制各自生效。例如單個 Base64 檔案解
 <a id="src-22-4-文件摘要與分頁參數"></a>
 ## Runtime 設定：文件摘要與分頁參數
 
-W1 的預設筆數、上限、排序與 Cursor 行為見 [資料生命週期 API](#data-lifecycle-api)與[文件摘要清單](#src-21-93-文件摘要清單d-65-已確認核心)。Runtime 控制參數的正式名稱與載入方式見 API-D04。
+W1 的預設筆數、上限、排序與 Cursor 行為見 [資料生命週期 API](#data-lifecycle-api)與[文件摘要清單](#src-21-93-文件摘要清單d-65-已確認核心)。Runtime 控制參數的正式名稱與載入方式見[環境控制待決](08_plan_and_decisions.md#runtime-api-decisions)。
 
 <a id="src-22-5-文件維護與驗收待辦"></a>
 ## Runtime 設定：文件維護與驗收待辦
@@ -986,7 +940,7 @@ MongoDB 保存不等於跨 Pod 索引同步。重建失敗、DB 中斷、Profile
 <a id="src-07-8-evaluation-與-ai-助手服務"></a>
 ## Evaluation 與 AI 助手服務
 
-另有待確認的 Query Rewrite 單模組測試提案，見 [Builder UI／Backlog](07_builder_ui.md#src-06-331-討論提案query-rewrite-單模組測試)／UI Backlog手冊 UIB-007：若採用，Backend 以請求草稿呼叫相同 Engine 模組／LLM Adapter，測試不依賴已保存 System 或索引。認證、服務引用與逾時規則仍需核定；接口精確路徑／Envelope 留 Q-019，不新增已凍結的公開 Runtime API。M2 可先由 SDK 驗證模組，Builder 入口屬 M5；Mock 與真實呼叫分開驗收。
+另有待確認的 Query Rewrite 單模組測試提案，見 [Builder UI／Backlog](08_plan_and_decisions.md#rewrite-test-proposal)／UI Backlog手冊 UIB-007：若採用，Backend 以請求草稿呼叫相同 Engine 模組／LLM Adapter，測試不依賴已保存 System 或索引。認證、服務引用與逾時規則仍需核定；接口精確路徑／Envelope 留 Q-019，不新增已凍結的公開 Runtime API。M2 可先由 SDK 驗證模組，Builder 入口屬 M5；Mock 與真實呼叫分開驗收。
 
 Evaluation Runner 於 M6 交付完整驗收，綁定 Dataset／Config／Index／Engine／Judge 版本，逐題呼叫同一 Target，收集實際 ResultSets／排名／來源／錯誤後交 04 評分。重用相同 Retrieval-only Query API；不收集生成答案或做答案正確性評估。併發、快取、重試、成本與 Gate 見 Q-018／Q-027。
 

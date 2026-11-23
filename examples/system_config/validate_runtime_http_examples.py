@@ -2,7 +2,6 @@
 import json
 from dataclasses import asdict
 from hashlib import sha256
-from datetime import datetime
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
@@ -17,19 +16,18 @@ SCHEMAS = {path.name: json.loads(path.read_text()) for path in (HERE.parents[1] 
 REGISTRY = Registry().with_resources((schema["$id"], Resource.from_contents(schema)) for schema in SCHEMAS.values())
 SYSTEM_PATH = "/internal/v1/systems/"
 DRAFT_KEYS = ("runtime_ref", "catalog_revision", "draft_revision")
-APPLY_OPERATIONS = ("initialize", "reload", "update", "recover_index")
-PIPELINES = ("ingestion", "inference")
-DOCUMENT_STATES = ("queued", "running", "completed", "cancelled", "failed", "unknown")
-CANCEL_RESULT_STATES = {
-    "cancelled": {"cancelled"},
-    "already_finished": {"completed", "failed"},
-    "not_cancellable": {"unknown"},
-    "not_found": {None},
-}
-
+HTTP_SCHEMA = SCHEMAS["runtime_http.schema.json"]
+DOCUMENT_STATES = HTTP_SCHEMA["$defs"]["document_status"]["enum"]
 
 def schema(name):
     return Draft202012Validator(SCHEMAS[name], registry=REGISTRY)
+
+
+def validate_http(name, value):
+    definition = {"$ref": f'{HTTP_SCHEMA["$id"]}#/$defs/{name}'}
+    Draft202012Validator(
+        definition, registry=REGISTRY, format_checker=Draft202012Validator.FORMAT_CHECKER
+    ).validate(value)
 
 
 def verify_index_fingerprint(fields, vectors):
@@ -63,101 +61,42 @@ def verify_index_fingerprint(fields, vectors):
     assert not projection_check.is_valid({**projection, "source_revision": "v1"})
 
 
-def assert_error(body, request_body, *, ingestion_conflicts=False):
-    required_fields = {"code", "message", "module"}
-    if ingestion_conflicts:
-        required_fields.update({"path", "conflicts"})
-    assert required_fields <= body.keys() <= required_fields | {"path", "run_id"}
-    assert body["code"] and body["message"]
-    if "path" in body:
-        assert body["path"].startswith("/") and request_body is not None
+def assert_error_response(body, request_body, *, ingestion_conflicts=False):
+    validate_http("document_busy_error_response" if ingestion_conflicts else "error_response", body)
+    error = body["error"]
+    if "path" in error:
+        assert request_body is not None
     if ingestion_conflicts:
         schema("ingestion_request.schema.json").validate(request_body)
         document_ids = [document["document_id"] for document in request_body["documents"]]
-        conflicts = body["conflicts"]
-        assert isinstance(conflicts, list) and conflicts
-        for conflict in conflicts:
-            assert {"document_id", "status"} <= conflict.keys() <= {"document_id", "status", "run_id"}
-            assert conflict["status"] is None or conflict["status"] in DOCUMENT_STATES
-            if "run_id" in conflict:
-                assert conflict["status"] is not None
-                assert isinstance(conflict["run_id"], str) and conflict["run_id"]
+        conflicts = error["conflicts"]
         conflict_ids = [conflict["document_id"] for conflict in conflicts]
         conflict_id_set = set(conflict_ids)
         assert conflict_ids == [document_id for document_id in document_ids if document_id in conflict_id_set]
         first = conflicts[0]
-        assert body["path"] == f"/documents/{document_ids.index(first['document_id'])}/document_id"
-        assert body.get("run_id") == first.get("run_id")
-
-
-def assert_run_document(item):
-    assert set(item) == {"document_id", "status", "module", "updated_at", "error"}
-    assert isinstance(item["document_id"], str) and item["document_id"]
-    assert item["status"] in DOCUMENT_STATES
-    assert item["module"] is None or isinstance(item["module"], str)
-    if item["updated_at"] is not None:
-        assert datetime.fromisoformat(item["updated_at"]).utcoffset() is not None
-    if item["status"] == "failed":
-        assert item["error"] is not None
-    if item["error"] is not None:
-        assert_error(item["error"], None)
+        assert error["path"] == f"/documents/{document_ids.index(first['document_id'])}/document_id"
+        assert error.get("run_id") == first.get("run_id")
 
 
 def assert_run(body, run_id):
+    validate_http("ingestion_run_status", body)
     assert body["run_id"] == run_id
-    if set(body) == {"run_id", "status"}:
-        assert body["status"] == "unknown"
+    if "counts" not in body:
         return
-    assert set(body) == {"run_id", "status", "config_revision", "counts", "documents"}
-    assert isinstance(body["config_revision"], str) and body["config_revision"]
     counts = body["counts"]
-    assert set(counts) == {"total", *DOCUMENT_STATES}
-    assert all(type(count) is int and count >= 0 for count in counts.values())
     statuses = [item["status"] for item in body["documents"]]
     assert counts["total"] == len(statuses) == sum(counts[state] for state in DOCUMENT_STATES) > 0
     assert all(counts[state] == statuses.count(state) for state in DOCUMENT_STATES)
-    if counts["queued"] == counts["total"]:
-        expected = "queued"
-    elif counts["queued"] or counts["running"]:
-        expected = "running"
-    elif counts["unknown"]:
-        expected = "unknown"
-    elif counts["completed"] == counts["total"]:
-        expected = "completed"
-    elif counts["cancelled"] == counts["total"]:
-        expected = "cancelled"
-    elif counts["completed"]:
-        expected = "partial"
-    else:
-        expected = "failed"
-    assert body["status"] == expected
-    for item in body["documents"]:
-        assert_run_document(item)
 
 
 def assert_system_status(body, system_id):
-    assert set(body) == {"system_id", "active_config_revision", "index_ready", "index_generation",
-                         "loaded", "busy", "can_ingest", "can_query", "pipelines"}
-    assert body["system_id"] == system_id and body["active_config_revision"]
-    assert all(isinstance(body[key], bool) for key in ("loaded", "busy", "can_ingest", "can_query"))
-    assert body["index_ready"] is None or isinstance(body["index_ready"], bool)
-    if body["index_ready"]:
-        assert body["index_generation"]
-    if not body["loaded"]:
-        assert body["index_generation"] and body["index_ready"] is not None
-        assert not body["can_ingest"] and not body["can_query"]
+    validate_http("system_status", body)
+    assert body["system_id"] == system_id
     pipelines = body["pipelines"]
-    assert set(pipelines) == set(PIPELINES)
     assert body["loaded"] == any(status["loaded"] for status in pipelines.values())
     for pipeline, capability in (("ingestion", "can_ingest"), ("inference", "can_query")):
         status = pipelines[pipeline]
-        assert set(status) == {"loaded", "ready", "config_revision", "index_generation"}
-        assert type(status["loaded"]) is bool and type(status["ready"]) is bool
         assert status["ready"] == body[capability]
-        if status["loaded"]:
-            assert isinstance(status["config_revision"], str) and status["config_revision"]
-        else:
-            assert not status["ready"] and status["config_revision"] is None and status["index_generation"] is None
         if status["ready"]:
             assert body["index_ready"] is not False
             assert status["config_revision"] == body["active_config_revision"]
@@ -190,19 +129,20 @@ def verify(scenarios):
             is_detach = system_route and method == "POST" and path.endswith(":detach")
 
             if status >= 400:
-                assert set(body) == {"error"}
                 ingestion_conflicts = (
                     method == "POST" and path.endswith("/ingestions")
                     and status == 409 and body["error"]["code"] == "DOCUMENT_BUSY"
                 )
-                assert_error(body["error"], sent, ingestion_conflicts=ingestion_conflicts)
+                assert_error_response(body, sent, ingestion_conflicts=ingestion_conflicts)
             if status == 204:
                 assert "body" not in response and "body_file" not in response
             if "body_file" in response:
                 assert path == "/internal/v1/catalog" and response["body_file"] == "runtime_catalog.response.json"
             if method == "GET" and status == 200:
+                if path in ("/health/live", "/health/ready"):
+                    validate_http("health", body)
                 if path == SYSTEM_PATH.rstrip("/"):
-                    assert set(body) == {"systems"}
+                    validate_http("system_list", body)
                     for system in body["systems"]:
                         assert_system_status(system, system["system_id"])
                         assert system["loaded"]
@@ -223,26 +163,18 @@ def verify(scenarios):
                     if is_detach and query:
                         assert set(query) == {"pipeline"}
                         pipeline, = query["pipeline"]
-                        assert pipeline in PIPELINES
+                        validate_http("pipeline", pipeline)
                     if method == "DELETE":
                         assert not query
             if system_route and (method == "PUT" or path.endswith("/config:validate")):
                 system_id = path[len(SYSTEM_PATH):].removesuffix("/config:validate")
                 snapshot = {"system_id": system_id, "config_revision": sent.get("config_revision", "preview"),
                             "config": sent["config"]}
-                schema("system_config.draft.schema.json").validate(snapshot)
+                validate_http("apply_request" if method == "PUT" else "validate_request", sent)
                 operation = sent.get("operation")
                 pipeline_scope = sent.get("pipeline")
-                assert "pipeline" not in sent or pipeline_scope in PIPELINES
-                assert operation in APPLY_OPERATIONS or method == "POST" and operation is None
-                assert ("recovery_from" in sent) == (operation == "recover_index")
-                if operation == "recover_index":
-                    previous = sent["recovery_from"]
-                    assert set(previous) == {"config_revision", "index_generation"}
-                    assert all(isinstance(value, str) and value for value in previous.values())
-                    if method == "PUT":
-                        assert sent["config_revision"] == previous["config_revision"]
-                assert "allow_rebuild" not in sent or operation == "update" and method == "PUT"
+                if operation == "recover_index" and method == "PUT":
+                    assert sent["config_revision"] == sent["recovery_from"]["config_revision"]
                 if status == 422:
                     try:
                         compile_local_example(snapshot)
@@ -259,18 +191,9 @@ def verify(scenarios):
                                 assert (module, config["component_id"], config["component_version"]) in published
                     if method == "POST":
                         assert all(body[key] == sent[key] for key in DRAFT_KEYS)
-                        expected_fields = {*DRAFT_KEYS, "context_revision", "active_config_revision", "loaded",
-                                           "index_impact"}
-                        if pipeline_scope:
-                            expected_fields.add("pipeline")
-                            assert body["pipeline"] == pipeline_scope
-                        assert set(body) == expected_fields
-                        assert type(body["loaded"]) is bool
-                        if body["loaded"]:
-                            assert body["active_config_revision"]
+                        validate_http("validation", body)
+                        assert body.get("pipeline") == pipeline_scope
                         impact = body["index_impact"]
-                        assert set(impact) == {"action", "code", "message"}
-                        assert impact["action"] in {"create", "reuse", "rebuild_required", "recover", "blocked", "none"}
                         if pipeline_scope == "inference" and operation not in (None, "reload"):
                             assert impact["action"] == "blocked" and impact["code"] == "PIPELINE_OPERATION_UNSUPPORTED"
                         previews[body["context_revision"]] = (sent, body)
@@ -302,8 +225,7 @@ def verify(scenarios):
                             assert body["pipelines"][pipeline_scope]["loaded"]
             if path.endswith("/ingestions") and status == 202:
                 schema("ingestion_request.schema.json").validate(sent)
-                assert set(body) == {"run_id", "status", "config_revision", "documents"}
-                assert body["status"] == "queued"
+                validate_http("ingestion_accepted", body)
                 assert response["headers"]["Location"] == f"{path}/{body['run_id']}"
                 assert body["documents"] == [{"document_id": doc["document_id"], "status": "queued"}
                                              for doc in sent["documents"]]
@@ -315,34 +237,32 @@ def verify(scenarios):
                 else:
                     cancel_request.validate(sent)
                 if status == 200:
-                    assert set(body) == {"run_id", "documents"}
+                    validate_http("ingestion_cancel_result", body)
                     assert body["run_id"] == path.split("/")[-2]
                     assert [item["document_id"] for item in body["documents"]] == sent["document_ids"]
-                    for item in body["documents"]:
-                        assert set(item) == {"document_id", "result", "status"}
-                        assert item["status"] in CANCEL_RESULT_STATES[item["result"]]
                 if status == 404:
                     assert body["error"]["code"] == "INGESTION_RUN_NOT_FOUND"
             if "/ingestions/" in path and method == "GET" and status == 200:
                 assert_run(body, path.rsplit("/", 1)[1])
             if path.endswith("/ingestion-status") and status == 200:
-                document = {key: value for key, value in body.items() if key != "run_id"}
-                assert_run_document(document)
-                assert document["document_id"] == path.split("/")[-2]
-                if body["run_id"] is None:
-                    assert document["status"] == "unknown"
-                    assert all(document[key] is None for key in ("module", "updated_at", "error"))
+                validate_http("document_ingestion_status", body)
+                assert body["document_id"] == path.split("/")[-2]
+            if path.endswith("/exists") and status == 200:
+                validate_http("document_exists", body)
+                assert body["document_id"] == path.split("/")[-2]
+            if path.endswith(":retire") and status == 200:
+                validate_http("document_retire", body)
+                assert body["document_id"] == path.rsplit("/", 1)[1].removesuffix(":retire")
             if path.endswith("/documents") and status == 200:
-                assert set(body) == {"documents", "next_cursor"}
+                validate_http("document_list", body)
                 ids = [item["document_id"] for item in body["documents"]]
                 assert ids == sorted(set(ids))
-                assert len(ids) <= int(parse_qs(url.query).get("limit", ["100"])[0])
-                for item in body["documents"]:
-                    assert set(item) == {"document_id", "source_revisions"}
-                    revisions = item["source_revisions"]
-                    assert isinstance(revisions, list) and all(isinstance(revision, str) and revision for revision in revisions)
-                    assert len(revisions) == len(set(revisions))
-                assert body["next_cursor"] is None or isinstance(body["next_cursor"], str)
+                limit = HTTP_SCHEMA["$defs"]["document_list_query"]["properties"]["limit"]["default"]
+                query = {key: values[0] for key, values in parse_qs(url.query).items()}
+                if "limit" in query:
+                    query["limit"] = int(query["limit"])
+                validate_http("document_list_query", query)
+                assert len(ids) <= query.get("limit", limit)
             if path.endswith("/queries"):
                 schema("inference_request.schema.json").validate(sent)
                 if status == 200:

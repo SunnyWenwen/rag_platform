@@ -30,22 +30,8 @@
         "default": false
       },
       "cross_query_at": {
-        "type": "string",
-        "title": "跨 Query 融合時點",
-        "enum": [
-          "Retrieval 後",
-          "Rerank 後"
-        ],
-        "default": "Retrieval 後"
-      },
-      "cross_query_method": {
-        "type": "string",
-        "title": "跨 Query 融合策略",
-        "enum": [
-          "RRF",
-          "Sum Score"
-        ],
-        "default": "RRF"
+        "$ref": "https://rag-builder.example/schemas/config_enums.schema.json#/$defs/cross_query_at",
+        "title": "跨 Query 合併時點"
       },
       "cross_query_group_by": {
         "type": "array",
@@ -93,24 +79,11 @@
     },
     "advanced": [
       "/cross_query_at",
-      "/cross_query_method",
       "/cross_query_group_by",
       "/cross_query_top_n"
     ],
     "visible_when": {
       "/cross_query_at": {
-        "any": [
-          {
-            "path": "/count",
-            "minimum": 2
-          },
-          {
-            "path": "/include_original",
-            "equals": true
-          }
-        ]
-      },
-      "/cross_query_method": {
         "any": [
           {
             "path": "/count",

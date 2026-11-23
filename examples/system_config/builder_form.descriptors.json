@@ -11,12 +11,7 @@
           "$ref": "https://rag-builder.example/schemas/data_meta.schema.json"
         },
         "source": {
-          "type": "string",
-          "enum": [
-            "structdata",
-            "content"
-          ],
-          "default": "structdata",
+          "$ref": "https://rag-builder.example/schemas/config_enums.schema.json#/$defs/import_source",
           "title": "入口資料形式"
         },
         "request_parameters": {
@@ -30,15 +25,7 @@
                 "title": "參數名稱"
               },
               "type": {
-                "type": "string",
-                "enum": [
-                  "string",
-                  "integer",
-                  "number",
-                  "boolean",
-                  "array",
-                  "object"
-                ],
+                "$ref": "https://rag-builder.example/schemas/config_enums.schema.json#/$defs/request_parameter_type",
                 "title": "型別"
               },
               "required": {
@@ -785,12 +772,7 @@
           "description": "向量空間的識別。Profile 定義模型與版本、向量維度及文件／查詢的編碼設定。Retrieval 需使用相容的 Query Encoder。"
         },
         "service_source": {
-          "type": "string",
-          "enum": [
-            "DEV test use",
-            "Embedding API"
-          ],
-          "default": "DEV test use",
+          "$ref": "https://rag-builder.example/schemas/config_enums.schema.json#/$defs/embedding_service_source",
           "title": "服務來源"
         },
         "embedding_service_ref": {
@@ -964,7 +946,7 @@
           "all": [
             {
               "path": "/service_source",
-              "equals": "Embedding API"
+              "equals": "embedding_api"
             }
           ]
         },
@@ -972,7 +954,7 @@
           "all": [
             {
               "path": "/service_source",
-              "equals": "Embedding API"
+              "equals": "embedding_api"
             }
           ]
         },
@@ -980,7 +962,7 @@
           "all": [
             {
               "path": "/service_source",
-              "equals": "Embedding API"
+              "equals": "embedding_api"
             }
           ]
         },
@@ -1024,12 +1006,7 @@
           "$ref": "https://rag-builder.example/schemas/data_meta.schema.json#/$defs/overrides"
         },
         "service_source": {
-          "type": "string",
-          "enum": [
-            "DEV test use",
-            "自行提供 Elasticsearch"
-          ],
-          "default": "DEV test use",
+          "$ref": "https://rag-builder.example/schemas/config_enums.schema.json#/$defs/elasticsearch_service_source",
           "title": "服務來源"
         },
         "elasticsearch_service_ref": {
@@ -1097,7 +1074,7 @@
           "all": [
             {
               "path": "/service_source",
-              "equals": "DEV test use"
+              "equals": "dev_test"
             }
           ]
         },
@@ -1105,7 +1082,7 @@
           "all": [
             {
               "path": "/service_source",
-              "equals": "自行提供 Elasticsearch"
+              "equals": "custom_elasticsearch"
             }
           ]
         },
@@ -1130,12 +1107,7 @@
           "$ref": "https://rag-builder.example/schemas/data_meta.schema.json#/$defs/overrides"
         },
         "service_source": {
-          "type": "string",
-          "enum": [
-            "DEV test use",
-            "自行提供 MongoDB"
-          ],
-          "default": "DEV test use",
+          "$ref": "https://rag-builder.example/schemas/config_enums.schema.json#/$defs/mongodb_service_source",
           "title": "服務來源"
         },
         "vector_fields": {
@@ -1148,12 +1120,7 @@
           "title": "向量欄位"
         },
         "persistence": {
-          "type": "string",
-          "enum": [
-            "memory",
-            "mongodb"
-          ],
-          "default": "memory",
+          "$ref": "https://rag-builder.example/schemas/config_enums.schema.json#/$defs/local_persistence",
           "title": "持久化"
         },
         "mongo_service_ref": {
@@ -1233,7 +1200,7 @@
             },
             {
               "path": "/service_source",
-              "equals": "自行提供 MongoDB"
+              "equals": "custom_mongodb"
             }
           ]
         },
@@ -1245,7 +1212,7 @@
             },
             {
               "path": "/service_source",
-              "equals": "自行提供 MongoDB"
+              "equals": "custom_mongodb"
             }
           ]
         },
@@ -1257,7 +1224,7 @@
             },
             {
               "path": "/service_source",
-              "equals": "自行提供 MongoDB"
+              "equals": "custom_mongodb"
             }
           ]
         },
@@ -1284,15 +1251,7 @@
                 "title": "參數名稱"
               },
               "type": {
-                "type": "string",
-                "enum": [
-                  "string",
-                  "integer",
-                  "number",
-                  "boolean",
-                  "array",
-                  "object"
-                ],
+                "$ref": "https://rag-builder.example/schemas/config_enums.schema.json#/$defs/request_parameter_type",
                 "title": "型別"
               },
               "required": {
@@ -1387,22 +1346,8 @@
           "default": false
         },
         "cross_query_at": {
-          "type": "string",
-          "title": "跨 Query 融合時點",
-          "enum": [
-            "Retrieval 後",
-            "Rerank 後"
-          ],
-          "default": "Retrieval 後"
-        },
-        "cross_query_method": {
-          "type": "string",
-          "title": "跨 Query 融合策略",
-          "enum": [
-            "RRF",
-            "Sum Score"
-          ],
-          "default": "RRF"
+          "$ref": "https://rag-builder.example/schemas/config_enums.schema.json#/$defs/cross_query_at",
+          "title": "跨 Query 合併時點"
         },
         "cross_query_group_by": {
           "type": "array",
@@ -1450,24 +1395,11 @@
       },
       "advanced": [
         "/cross_query_at",
-        "/cross_query_method",
         "/cross_query_group_by",
         "/cross_query_top_n"
       ],
       "visible_when": {
         "/cross_query_at": {
-          "any": [
-            {
-              "path": "/count",
-              "minimum": 2
-            },
-            {
-              "path": "/include_original",
-              "equals": true
-            }
-          ]
-        },
-        "/cross_query_method": {
           "any": [
             {
               "path": "/count",
@@ -1540,11 +1472,7 @@
           "title": "每路 Top K"
         },
         "fusion": {
-          "type": "string",
-          "enum": [
-            "RRF",
-            "Sum Score"
-          ],
+          "$ref": "https://rag-builder.example/schemas/config_enums.schema.json#/$defs/fusion_method",
           "title": "同 Query 多路融合"
         },
         "group_by": {
@@ -1645,7 +1573,7 @@
             },
             {
               "path": "/fusion",
-              "equals": "RRF"
+              "equals": "rrf"
             }
           ]
         }
@@ -1684,12 +1612,7 @@
       "additionalProperties": false,
       "properties": {
         "service_source": {
-          "type": "string",
-          "enum": [
-            "DEV test use",
-            "Rerank API"
-          ],
-          "default": "DEV test use",
+          "$ref": "https://rag-builder.example/schemas/config_enums.schema.json#/$defs/rerank_service_source",
           "title": "服務來源"
         },
         "rerank_service_ref": {
@@ -1710,12 +1633,7 @@
           "title": "評分內容欄位"
         },
         "query_source": {
-          "type": "string",
-          "enum": [
-            "原始問題",
-            "當前 Query"
-          ],
-          "default": "原始問題",
+          "$ref": "https://rag-builder.example/schemas/config_enums.schema.json#/$defs/rerank_query_source",
           "title": "提問來源"
         },
         "top_n": {
@@ -1777,7 +1695,7 @@
           "all": [
             {
               "path": "/service_source",
-              "equals": "Rerank API"
+              "equals": "rerank_api"
             }
           ]
         }

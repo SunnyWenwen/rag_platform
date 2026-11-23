@@ -10,7 +10,7 @@
 - [元件關係與實作責任](#src-03-35-元件關係與實作責任)
 - [A～E 契約與角色責任總表](#src-20-3-最終詳細總表)
 - [使用流程與圖面解讀](#src-03-4-使用流程與執行入口)
-- [歷史名稱與遷移對照](#歷史名稱與遷移對照)
+- [歷史名稱與遷移對照](08_plan_and_decisions.md#歷史名稱與遷移對照)
 - [主責與一致性規則](#主責與一致性規則)
 
 
@@ -50,7 +50,7 @@ Builder 管理設定與測試，Library 執行模組，Framework 交付設定契
 <a id="runtime-deployment-modes"></a>
 
 <a id="src-03-311-builder-共用與-ftestent-獨立模式d-61d-62"></a>
-### Builder 共用與 FTEST／ENT 獨立模式（D-61／D-62）
+### Builder 共用與 FTEST／ENT 獨立模式
 
 | 環境 | Config 與 API service 的對應 | API service 啟動時 | Config 更新 |
 |---|---|---|---|
@@ -179,27 +179,9 @@ DEV 與目標環境各自綁定服務及索引。對使用 Elasticsearch 的 Sys
 | 6 Deploy | 使用單位透過 C-2 啟動 C-3，載入匯出版本及目標環境綁定。 |
 
 
-## 歷史名稱與遷移對照
-
-使用者確認將原先表示「Module 下的可替換實作」的 Method 統一稱為 **Component（元件）**。平台團隊依 Module 契約維護內建 Component。Implementation 可作「具體實作」的敘述，不另增一個架構層級。Node 若用於圖面／配置引用，表示具體位置或實例，不與 component_id 混用。
-
-| 舊稱／草案 | 新稱／草案 | 調整範圍 |
-|---|---|---|
-| Method／Method package | Component／Component package | 文件中的擴充單位與交付套件 |
-| method_id | component_id | Registry、Descriptor、Config 目標識別與錯誤定位；範例 ID 值維持不變 |
-| BaseMethod／ChunkingMethod | BaseComponent／ChunkingComponent | SDK 類別示意，尚未存在正式 SDK |
-| methods/、rag_methods、rag-methods | components/、rag_components、rag-components | rag_engine 內的建議目錄、import package、distribution 名稱；不新增 repo |
-| rag_engine.methods | rag_engine.components | 候選 entry point group；精確載入協定仍待核定 |
-| method-ui-0.1-draft、目錄 methods、target.kind=method | component-ui-0.1-draft、目錄 components、target.kind=component | 尚未實作的設定描述協定同步改名 |
-
-`module_type`、`implementation_version`、`config_type`、`node_ref` 可在舊草案中查到。現行 Component 識別與版本見 [Descriptor 頂層欄位](04_component_descriptor.md#descriptor-fields)。W1 HTTP 錯誤定位使用 `module` 和 `path`。 [Runtime 錯誤格式](06_runtime_api_and_deployment.md#runtime-http-errors)
-
-Python 的 method／`@classmethod`／abstract method、HTTP method，以及融合 Config 中表示演算法的 `method` 保留原義。Prototype 仍使用部分 `method` 選擇欄位，屬明確標示的待遷移草案；不是新 Component Registry 的 component_id。正式 Config 遷移由 Q-002／Q-015 處理，需按格式版本明確映射與檢查衝突，不能全域替換所有 method 或宣稱 Runtime 已接受舊別名。
-
-Engine手冊／Engine／Descriptor 手冊 檔名同步使用 components／component，所有文件內引用更新；歷史敘述中的擴充單位採現行術語，原決策日期與功能狀態保留。L1 的 MMD／SVG／PNG 同步改標籤並保持既有版面與連線；Prototype 的實際介面及內部欄位留待 UIB-010 遷移。
-
+<a id="歷史名稱與遷移對照"></a>
 ## 主責與一致性規則
 
-共用資料形狀由 schemas/ 與資料契約手冊維護；Module 演算法／SDK 由 Engine 手冊維護；B 的宣告與 DS 候選只在 Descriptor 手冊；D 的 SC 候選只在 System Config；HTTP 與環境限制只在 Runtime 手冊。UI 手冊保存互動與 Prototype 差異，計畫手冊保存已確認基線、Q 與里程碑。
+機器可驗證的資料形狀、固定選項與狀態代碼由 [schemas/](../schemas/README.md) 定義。主責手冊說明使用情境及執行行為，範例和測試引用契約。
 
-相同議題只有一個主責位置；其他手冊用連結。已確認、候選、已實作／僅模擬、歷史證據必須分開。文件整合不核定任何尚未決定的 DS／SC／Q，也不改變共用資料或產品功能。
+[開發計畫與決策](08_plan_and_decisions.md#決策與待辦的唯一登錄位置)保存決策編號、理由、待議選項及驗收。歷史原文見 [history/](history/README.md)。

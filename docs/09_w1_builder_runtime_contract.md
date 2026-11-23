@@ -1,6 +1,6 @@
 # W1 Builder 開發契約索引
 
-以下契約可供 Builder 實作表單、API Client 與 Mock。
+以下契約可供 Builder 實作表單、API Client 與 Mock。HTTP 物件及狀態代碼見 [Runtime HTTP Schema](../schemas/runtime_http.schema.json)，欄位與列舉的主責入口見 [schemas/](../schemas/README.md)。
 
 [W1 開發基準與待決邊界](08_plan_and_decisions.md#w1-contract-readiness)
 

@@ -28,6 +28,11 @@ Workspace 管理多個 System。System ID、Config Revision、source_revision、
 
 發布時依固定的 Pipeline 順序核對節點。Remote 區段涵蓋的後續節點在有效設定中省略，由首節點涵蓋。JSON Schema 驗證結構，編譯器檢查覆蓋是否完整且無重疊、元件版本、欄位相依及引用。見 [Runtime 驗證契約](06_runtime_api_and_deployment.md#config-validation-api)。
 
+<a id="config-enums"></a>
+### 固定選項的儲存值
+
+內建 Component 透過 `parameters_schema` 的 `$ref` 引用 [Config 列舉 Schema](../schemas/config_enums.schema.json)。Config 保存 Schema 定義的代碼，Builder 將代碼對應到畫面標籤。Runtime 依目標 Component Descriptor 驗證實際值。
+
 ## 設定位置
 
 | 模組 | 設定與推導 |
@@ -63,23 +68,22 @@ Workspace 管理多個 System。System ID、Config Revision、source_revision、
 <a id="inference-result-processing"></a>
 ## Inference 的結果處理
 
-Retrieval 與 Rerank 各自在 Component `parameters` 設定當步分組與 Top N。跨 Query 融合由 Query Transformation 配置。內建 `rewrite` 的發布欄位位於 `config.pipelines.inference.query_transformation.parameters`，沿用 [Rewrite Descriptor](../examples/system_config/rewrite.descriptor.json) 的欄位和值。
+Retrieval 與 Rerank 各自在 Component `parameters` 設定當步分組與 Top N。跨 Query 合併由 Query Transformation 配置。內建 `rewrite` 的發布欄位位於 `config.pipelines.inference.query_transformation.parameters`，沿用 [Rewrite Descriptor](../examples/system_config/rewrite.descriptor.json) 的欄位和值。
 
 | 設定 | 內容 |
 |---|---|
 | Retrieval 參數 | `fulltext_fields`、`vector_fields`、`per_route_k`、多路時必填的同 Query 融合策略、可選 `group_by` 和 `top_n` |
 | Rerank 參數 | 評分服務、內容欄位、提問來源、`group_by`、Rerank Top N |
-| 跨 Query 融合時點 | `cross_query_at` 可選 `"Retrieval 後"` 或 `"Rerank 後"`，預設 `"Retrieval 後"`。 |
-| 跨 Query 融合策略 | `cross_query_method` 可選 `"RRF"` 或 `"Sum Score"`，預設 `"RRF"`。 |
+| 跨 Query 合併時點 | `cross_query_at` 選擇在 Retrieval 完成時合併，或先逐 Query Rerank 再合併。合法值與預設見 [Config 列舉 Schema](../schemas/config_enums.schema.json)。 |
 | 跨 Query 分組與截斷 | 選填 `cross_query_group_by` 和 `cross_query_top_n`。 |
 
 內建 Retrieval 的全文與向量欄位皆可多選，每個向量欄位依 IndexBinding 的 `embedding_profile_id` 決定 Query Encoder。`per_route_k` 是每個 Query 在個別路徑的搜尋上限。多路時必選 RRF 或 Sum Score，交付時每個 Query 只有一份清單。Adapter 負責執行選定的策略。策略的專屬參數與預設值留待定義。全文和 Filter 選項依 [欄位總表及 Filter 契約](02_data_contracts.md#data-meta-schema) 推導。
 
-`group_by` 可選 `document_id` 或一個以上有效的 `structdata` 字串欄位，也可以組合使用。選多欄時以欄位值組合作為分組鍵；未設定分組時沿用排序後的清單。當步分組在排序後、當步 Top N 前執行。跨 Query 的融合、分組及 Top N 在該步驟的 Top N 之後執行。
+`group_by` 可選 `document_id` 或一個以上有效的 `structdata` 字串欄位，也可以組合使用。選多欄時以欄位值組合作為分組鍵；未設定分組時沿用排序後的清單。當步分組在排序後、當步 Top N 前執行。跨 Query 依 `data_id` 取最高分、可選分組及跨 Query Top N 的順序，見 [Engine 結果處理](03_engine_and_components.md#cross-query-merge)。
 
-Builder 依 `count + (include_original ? 1 : 0)` 決定是否顯示跨 Query 設定。Engine 依進入平台結果處理的有效 Query 數執行，達兩個即啟用融合，省略時點或策略時套用上表預設。單 Query 略過跨 Query 融合；表單切回多 Query 時可恢復草稿中的原設定。
+Builder 依 `count + (include_original ? 1 : 0)` 決定是否顯示跨 Query 設定。Engine 依進入平台結果處理的有效 Query 數執行，達兩個即合併。省略時點時使用 Schema 預設。單 Query 略過跨 Query 合併；表單切回多 Query 時可恢復草稿中的原設定。
 
-以下是 `config.pipelines.inference` 的 Query Transformation 節點片段。它產生兩個改寫 Query 並保留原始 Query，三份清單逐 Query Rerank 後再融合。
+以下是 `config.pipelines.inference` 的 Query Transformation 節點片段。它產生兩個改寫 Query 並保留原始 Query，三份清單逐 Query Rerank 後取最高分代表，再依文件分組並取前五筆。
 
 ```yaml
 query_transformation:
@@ -90,19 +94,18 @@ query_transformation:
     prompt: "為 {{query}} 產生 {{count}} 個查詢。"
     count: 2
     include_original: true
-    cross_query_at: "Rerank 後"
-    cross_query_method: "RRF"
+    cross_query_at: after_rerank
     cross_query_group_by: [document_id]
     cross_query_top_n: 5
 ```
 
-W1 HTTP 範例採單 Query，多 Query 執行與融合留在 M2 驗收。Remote 區段涵蓋結果處理時，由外部服務負責該區段的融合。Remote 只產生多 Query 並交由平台融合時，平台設定如何存於 Query Transformation 節點，需依 [Q-014](08_plan_and_decisions.md#q-014)／[Q-028](08_plan_and_decisions.md#q-028) 定義，Remote 的 `parameters` 仍承載外部服務自身的參數。
+W1 HTTP 範例採單 Query，多 Query 合併留在 M2 驗收。Remote 區段涵蓋結果處理時，由外部服務負責該區段的處理。Remote 只產生多 Query 並交由平台合併時，平台設定如何存於 Query Transformation 節點，需依 [Q-014](08_plan_and_decisions.md#q-014)／[Q-028](08_plan_and_decisions.md#q-028) 定義，Remote 的 `parameters` 仍承載外部服務自身的參數。
 
 ## 執行參數
 
 Import／Inference Input 各自宣告名稱、型別、必填與預設值。Import 的值放在整批 Ingestion Request 的 `parameters`，Inference 的值放在該次查詢的 `parameters`。執行參數留在呼叫環境，與 Document、metadata、索引內容分開。
 
-現行表單在 `import.parameters.request_parameters` 或 `inference_input.parameters.request_parameters` 宣告。每列包含 `name`、`type`（`string`、`integer`、`number`、`boolean`、`array`、`object`）、`required` 及選填的 `default_value`。`default_value` 存 JSON 文字，例如 `{"default_value":"\"zh-TW\""}`。Runtime 驗證已宣告的 Request 參數、套用宣告的預設值，並拒絕缺少必填項目或型別不符的請求。
+現行表單在 `import.parameters.request_parameters` 或 `inference_input.parameters.request_parameters` 宣告。每列包含 `name`、`type`、`required` 及選填的 `default_value`。可選型別見 [Config 列舉 Schema](../schemas/config_enums.schema.json) 的 `request_parameter_type`。`default_value` 存 JSON 文字，例如 `{"default_value":"\"zh-TW\""}`。Runtime 驗證已宣告的 Request 參數、套用宣告的預設值，並拒絕缺少必填項目或型別不符的請求。
 
 <a id="parameter-references"></a>
 ### 共用引用語法

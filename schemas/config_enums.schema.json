@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rag-builder.example/schemas/config_enums.schema.json",
+  "title": "Built-in Component config enums",
+  "$defs": {
+    "import_source": {
+      "type": "string",
+      "enum": ["structdata", "content"],
+      "default": "structdata"
+    },
+    "request_parameter_type": {
+      "type": "string",
+      "enum": ["string", "integer", "number", "boolean", "array", "object"]
+    },
+    "embedding_service_source": {
+      "type": "string",
+      "enum": ["dev_test", "embedding_api"],
+      "default": "dev_test"
+    },
+    "elasticsearch_service_source": {
+      "type": "string",
+      "enum": ["dev_test", "custom_elasticsearch"],
+      "default": "dev_test"
+    },
+    "mongodb_service_source": {
+      "type": "string",
+      "enum": ["dev_test", "custom_mongodb"],
+      "default": "dev_test"
+    },
+    "rerank_service_source": {
+      "type": "string",
+      "enum": ["dev_test", "rerank_api"],
+      "default": "dev_test"
+    },
+    "local_persistence": {
+      "type": "string",
+      "enum": ["memory", "mongodb"],
+      "default": "memory"
+    },
+    "cross_query_at": {
+      "type": "string",
+      "enum": ["after_retrieval", "after_rerank"],
+      "default": "after_retrieval"
+    },
+    "fusion_method": {
+      "type": "string",
+      "enum": ["rrf", "sum_score"]
+    },
+    "rerank_query_source": {
+      "type": "string",
+      "enum": ["original_query", "current_query"],
+      "default": "original_query"
+    }
+  }
+}

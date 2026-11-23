@@ -83,7 +83,7 @@ Builder 在草稿變更時推導有效 I/O 供欄位選項和預覽。W1 內建 
 | `ui_hints.controls` | 以相對於 `parameters` 的 JSON Pointer 宣告專用控制項。支援 `structdata_editor`、`structdata_overrides_editor`、`vector_checklist` 及 `textarea`。各 hint 的格式、預設、輸入資料及呈現見 [Builder Renderer 契約](07_builder_ui.md#ui-hints-contract)。 |
 | `ui_hints.fixed_filters` | Inference Input 以 `advanced` 將固定 Filter 放在預設收合的進階設定。值儲存於 `pipelines.inference.fixed_filters`。 |
 | `ui_hints.visible_when` | 依同一 Component 的其他草稿值判斷欄位可見性。例如啟用組合文字才顯示模板，選兩條搜尋路徑才顯示融合策略。 |
-| `parameters_schema.properties.*.default` | 提供預設值。Embedding、Elasticsearch、Local Search 的 MongoDB 和 Rerank 服務來源預設 `DEV test use`。 |
+| `parameters_schema.properties.*.default` | 提供預設值。固定選項依 [Config 列舉 Schema](../schemas/config_enums.schema.json) 解析，欄位可提供該 Component 專用預設值。 |
 
 例如 Import 的 `parameters_schema.properties.structdata.$ref` 指向 Data Meta Schema 以約束參數形狀，`ui_hints.controls["/structdata"] = "structdata_editor"` 指定欄位表。Indexing 的 `structdata_overrides_editor` 必須對應 Data Meta Schema 的 `#/$defs/overrides`。註冊時檢查控制項、參數路徑與形狀相容性。
 
