@@ -126,14 +126,14 @@ User 在節點切換到 Remote API，設定 Endpoint、認證、參數及替換�
 
 Admin 在 Builder 以外維護版本化全域模板。Builder 顯示可選版本，套用時複製至目前草稿。User 可調整設定及環境綁定。模板目錄為唯讀，系統儲存沿用既有驗證。
 
-原型在 Create／Edit 提供「維護知識庫」與「短文件 FAQ」兩組模組設定。選擇模板後按「載入模組設定」，將 Ingestion 與 Inference 設定複製到目前草稿，保留 System 名稱及 Secret。完成調整後，仍需驗證並發布才能啟用。
+原型在 Create／Edit 提供「維護知識庫」與「短文件 FAQ」兩組模組設定。選擇模板後按「載入模組設定」，將 Ingestion 與 Inference 設定複製到目前草稿，保留 System 名稱、Variable 和 Secret。完成調整後，仍需驗證並發布才能啟用。
 
 <a id="system-settings-rendering"></a>
-### 其他設定 → Secret
+### 其他設定 → Variable 與 Secret
 
-**由 Builder 直接實作固定的 System 設定畫面。** Secret 編輯器讀寫 System Config 的 `config.secret`，以 [System Config Schema](../schemas/system_config.draft.schema.json) 驗證資料形狀。Prototype 在選到「其他設定」時直接呼叫 `secretSettings(draft)`。Ingestion／Inference 中支援 Descriptor 的 Component 參數則由 [表單 Renderer](#descriptor-form-rendering) 依 `parameters_schema` 產生，寫回各節點的 `parameters`。
+**由 Builder 直接實作固定的 System 設定畫面。** 兩張 KV 表各自讀寫 `config.variable` 與 `config.secret`，以 [System Config Schema](../schemas/system_config.draft.schema.json) 驗證資料形狀。Ingestion／Inference 的 Component 參數由 [表單 Renderer](#descriptor-form-rendering) 依 `parameters_schema` 產生。
 
-此區與 Ingestion、Inference 同層。使用者可新增、編輯及刪除多組 Key／Value，Value 輸入採遮罩。各 Module 統一用 `{{KEYNAME}}`。一般參數優先取已驗證的同名 Request 參數，認證欄位只取同一 System 的 Secret。Builder 測試使用此處輸入的值，匯出預覽只顯示 Key 與環境注入設定。驗證訊息定位 Key、Module 或欄位，遮罩實際值。單檔 Prototype 的測試值保留於本頁記憶體，瀏覽器保存與下載只保留 Key。實際 DEV Runtime 串接仍待整合。見 [System Secret](05_system_config.md#system-secret)。
+使用者可在兩張表各自新增、編輯與移除 KV，Key 在兩張表間不得重複。Variable 使用一般文字輸入，DEV 值可隨草稿保存。Secret 使用遮罩輸入，Prototype 只在本頁記憶體留存試跑值。下載部署設定時兩張表都保留 Key 並將值設為 `null`。取值順序見 [共用引用語法](05_system_config.md#parameter-references)。
 
 ### 條件欄位與相依驗證
 
@@ -374,7 +374,7 @@ Runtime 回報已發布部署的索引確認遺失時，Builder 顯示受影響�
 - 沿用選定 System 的同版 Config，逐項填入部署環境的 LLM、Embedding、Rerank 與 ES 綁定；同 llm_ref 不重複填連線。改 URL／Secret 不覆寫邏輯 Config。
 - 使用 DEV 綁定者可下載待設定草稿；必要資訊已填妥者標示「已填妥，尚未驗證」。
 - 只允許合法環境覆寫；更改 Embedding Model 提示返回 Edit Config 並重建。
-- 匯出保留 `config.secret` 的 Key，值設為 `null`。部署設定提供同名環境變數及對應的 Secret／ConfigMap。Remote API 另匯出目標環境的連線設定。
+- 匯出保留 `config.variable` 及 `config.secret` 的 Key，值設為 `null`。部署設定以同名環境變數分別提供 ConfigMap 與 Secret。Remote API 另匯出目標環境的連線設定。
 - 不含實際 Secret、Image 本體、Chunk／vectors 或測試原文；提醒需在目標環境準備資料／Ingestion。
 - FTEST／ENT 檔名、環境值與完整 Bundle 待 Q-021；正式文案稱 Config／部署設定。原型舊的 RAGBlueprint／blueprint.json 僅是待遷移標籤，不是另立的產品物件；單份示意 YAML 不代表正式交付完成。
 
@@ -612,7 +612,7 @@ ResultSet.key 對應 Config 路徑／群組，items 位置即名次。RRF 可用
 
 - [ ] 依 [現行 System Config 與 Schema](05_system_config.md#config-fields)對齊 Prototype 匯出示意與 Runtime 編譯。
 - [ ] UI Draft 保留停用選擇。Engine 編譯有效參數及引用，驗證錯誤以 Module 與欄位定位。Config 正規化與 Hash 依 [Q-015](08_plan_and_decisions.md#q-015)。
-- [ ] 環境綁定提供 Runtime 限制、URL、Secret 值及 ES 實體目標。模型語意、演算法參數與 System Secret 的 Key 沿用 System Config。匯出行為見 [Export 與部署說明](#src-06-8-export-與部署說明)。
+- [ ] 環境綁定提供 Runtime 限制、URL、Variable／Secret 值及 ES 實體目標。模型語意、演算法參數及兩張設定表的 Key 沿用 System Config。匯出行為見 [Export 與部署說明](#src-06-8-export-與部署說明)。
 
 舊 D-66 格式及逐輪整理見 [System Config 歷史快照](history/superseded/system_config_d66/README.md)和 [UI 整理紀錄](history/changes/ui_backlog_notes.md)。
 

@@ -14,4 +14,4 @@
 | System 與索引識別 | [UUID、部署環境與 ES 歸屬](06_runtime_api_and_deployment.md#runtime-index-ownership) · [建立與拒絕案例](../examples/system_config/index_fingerprint.v1.example.json) |
 | Inference API | [查詢 Request／Response](06_runtime_api_and_deployment.md#inference-api) |
 
-[其他設定 → Secret 的 UI 實作](07_builder_ui.md#system-settings-rendering) · [System Secret 設定與匯出範例](../examples/system_config/README.md#system-secret-examples) · [共用 HTTP 與認證](06_runtime_api_and_deployment.md#runtime-http-common) · [錯誤格式與狀態碼](06_runtime_api_and_deployment.md#runtime-http-errors) · [整套 HTTP Mock JSON](../examples/system_config/runtime_http.examples.json)
+[其他設定 → Variable 與 Secret](07_builder_ui.md#system-settings-rendering) · [Variable／Secret 設定與匯出範例](../examples/system_config/README.md#system-secret-examples) · [共用 HTTP 與認證](06_runtime_api_and_deployment.md#runtime-http-common) · [錯誤格式與狀態碼](06_runtime_api_and_deployment.md#runtime-http-errors) · [整套 HTTP Mock JSON](../examples/system_config/runtime_http.examples.json)

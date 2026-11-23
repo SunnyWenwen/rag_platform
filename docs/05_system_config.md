@@ -23,7 +23,8 @@ DEV 由 Builder 下發 System Config，獨立部署則由 Runtime 啟動時讀�
 | `config_revision` | Builder 指派的發布版本。新版本在套用請求傳入，草稿驗證使用自己的 `draft_revision`。 |
 | `config` | 有效邏輯設定。Runtime 驗證與套用請求直接帶這個內層物件。 |
 | `config.contract_version` | 此 Config 的格式版本，現行為 `0.2-draft`。 |
-| `config.secret` | 選填的 System 級 KV。Builder 啟用測試時提供字串值，部署匯出保留 Key 並將值設為 `null`。見 [System Secret](#system-secret)。 |
+| `config.secret` | 選填的 System 級敏感值 KV。見 [Variable 與 Secret](#system-secret)。 |
+| `config.variable` | 選填的 System 級一般環境參數 KV，例如切分長度或語言。見 [Variable 與 Secret](#system-secret)。 |
 | `config.pipelines` | 包含 `ingestion`、`inference`。每個有效模組對應一個節點。 |
 | 節點的 `component_id`、`component_version`、`parameters` | 分別選方法、固定版本、保存該方法的設定。個別參數由所選 Descriptor 的 `parameters_schema` 定義。 |
 | Remote 節點的 `through`、`service_ref`、`auth`、`output` | `through` 含括區段最後一個模組，首節點由 Pipeline 上的 key 指定。 `service_ref` 引用環境的外部服務綁定。選填的 `auth.bearer_token` 使用 `{{KEY}}`。Ingestion Remote 另須以 `output` 宣告適用的 `structdata` 或 `vectors`，Inference 依 System 的有效候選 Schema 驗證。 |
@@ -116,22 +117,22 @@ Builder 在支援引用的欄位統一填 `{{KEYNAME}}`。引用名稱採 `[A-Za
 
 | 欄位用途 | 設定範例 | 取值規則 |
 |---|---|---|
-| 一般執行參數 | `top_k: "{{TOP_K}}"` | 使用本 Pipeline 經驗證的 Request `parameters.TOP_K`，含宣告的預設值。缺值時才用 `config.secret.TOP_K`。 |
+| 一般執行參數 | `top_k: "{{TOP_K}}"` | 依序取本 Pipeline 經驗證的 Request `parameters.TOP_K`（含宣告的預設值）、`config.variable.TOP_K`，再沿用既有的 `config.secret.TOP_K` 引用。 |
 | 認證值 | `auth.bearer_token: "{{PARSER_API_TOKEN}}"` | 只從 `config.secret.PARSER_API_TOKEN` 取得。Request 中的同名參數無法改變認證值。 |
-| 啟用時即須確定的值 | 用環境變數提供切分長度，例如 `max_tokens: "{{CHUNK_MAX_TOKENS}}"` | 在 System 啟用時使用 `config.secret` 的值驗證並編譯。 |
+| 啟用時即須確定的值 | `max_tokens: "{{CHUNK_MAX_TOKENS}}"` | 在 System 啟用時取同名 Variable，既有的 Secret 引用仍可解析。用解析後的值驗證並編譯。 |
 
 一般欄位用 Key 是否存在判斷缺值。`0`、`false`、`""` 都是已提供的值，依欄位型別和限制驗證。型別錯誤回報驗證失敗。Config 驗證時先確認來源已宣告，執行時仍無值則回報該 Key 與欄位位置。
 
 一般參數支援整個欄位取值和一次解析。Request 值保留原型別。System 值原為文字，字串欄位原樣保留，目標明確為數字、整數、布林、陣列或物件時先以 JSON 解析再驗證。Remote 業務參數使用未指定型別的 System 值時保留字串。Import 的 `structdata`、Indexing 的 `structdata_overrides` 及 Remote 的 `output` 依原有 Schema 直接宣告。Query Rewrite 的 `prompt` 和 Embedding 文字組合依各自的模板規則。見 [Engine 模組說明](03_engine_and_components.md#src-04-51-query-transformation)。
 
 <a id="system-secret"></a>
-## System Secret
+## System Variable 與 Secret
 
-Builder 在 **其他設定 → Secret** 提供 System 共用的 Key／Value 編輯區。Key 遵守共用引用的名稱格式，且在同一 System 內唯一。Value 是環境提供的文字，可用於憑證或一般環境設定。
+Builder 在 **其他設定** 提供獨立的 Variable 和 Secret Key／Value 表。Variable 用於跨環境不同的一般參數，Secret 用於憑證等敏感值。兩者的 Value 皆以字串填寫。Key 遵守共用引用的名稱格式，且在同一 System 的兩張表間必須唯一，因為部署時都讀取同名環境變數。
 
-DEV 驗證與啟用使用 Builder 在同一個 System 填寫的字串。實際值在受保護的測試設定保存，Builder 組出有效設定給 Runtime。匯出的 Config 在同一個 `config.secret` 保留全部 Key，值一律為 `null`。正式 Runtime 啟動時用這些 Key 讀取同名環境變數，缺少任一 Key 時在就緒前回報 Key 與設定路徑。未宣告的 Key、語法錯誤、啟用所需的值缺失或型別不符，應阻擋啟用並回報欄位位置。
+DEV 驗證與啟用使用 Builder 針對同一 System 填寫的值。Variable 的 DEV 值可隨草稿保存，Secret 的 DEV 值由受保護的測試設定提供。匯出保留 `config.variable` 與 `config.secret` 的 Key，值一律設為 `null`。正式 Runtime 啟動時以這些 Key 讀取同名環境變數。缺少值、未宣告的引用、型別或語法錯誤均應阻擋啟用並回報欄位位置。
 
-憑證值由 Module 的連線或認證欄位使用。例如 Remote 節點填 `auth.bearer_token: "{{PARSER_API_TOKEN}}"`，Adapter 把實際值放到 `Authorization` Header。業務 Request、Document、Queue、公開驗證結果與 Log 均不承載 Secret 明文。部署方式與成對範例見 [Runtime 啟動與 Secret 注入](06_runtime_api_and_deployment.md#system-secret-deployment)。
+Remote 認證欄位只接受 Secret 的 Key。例如 `auth.bearer_token: "{{PARSER_API_TOKEN}}"` 由 Adapter 取值放到 `Authorization` Header。業務 Request、Document、Queue、公開驗證結果與 Log 均不承載 Secret 明文。其他欄位的 Secret 引用限制列入 [Todo Enhance](todo_enhance.md#secret-reference-scope)。部署方式與成對範例見 [Runtime 啟動與環境注入](06_runtime_api_and_deployment.md#system-secret-deployment)。
 
 ## Admin 全域模板
 

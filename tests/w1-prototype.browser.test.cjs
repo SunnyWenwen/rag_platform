@@ -56,6 +56,21 @@ async function main() {
     await page.getByLabel('Retrieval System 名稱').fill('W1 驗收');
     assert.equal(await page.getByRole('navigation',{name:'設定區域'}).locator('.module-line').count(),2);
 
+    await module('其他設定').click();
+    const variableSettings = page.getByRole('region',{name:'Variable'});
+    const secretSettings = page.getByRole('region',{name:'Secret'});
+    await variableSettings.getByRole('button',{name:'新增 Variable'}).click();
+    await variableSettings.getByLabel('Variable Key').fill('CHUNK_MAX_TOKENS');
+    await variableSettings.getByLabel('Variable Key').press('Tab');
+    await variableSettings.getByLabel('CHUNK_MAX_TOKENS DEV 測試值').fill('720');
+    await secretSettings.getByRole('button',{name:'新增 Secret'}).click();
+    assert.equal(await secretSettings.getByLabel('SECRET_1 DEV 測試值').getAttribute('type'),'password');
+    assert.equal(await variableSettings.getByLabel('CHUNK_MAX_TOKENS DEV 測試值').inputValue(),'720');
+    assert.deepEqual(await page.evaluate(() => draft.variable),{CHUNK_MAX_TOKENS:'720'});
+    await secretSettings.getByRole('button',{name:'移除'}).click();
+    await variableSettings.getByRole('button',{name:'移除'}).click();
+    assert.equal(await variableSettings.getByLabel('Variable Key').count(),0);
+
     const template = page.getByLabel('模組設定模板');
     const loadTemplate = button('載入模組設定');
     assert.equal(await template.getByRole('option').count(),3);

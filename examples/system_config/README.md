@@ -9,7 +9,7 @@
 ## Local Search 離線契約範例
 
 - [System Config Schema 草案](../../schemas/system_config.draft.schema.json)驗證發布快照 `{system_id, config_revision, config}`。`config` 包含 `contract_version` 與固定 Module 骨架的 `pipelines`。
-- [內建版本](local_memory.builtin.json)及 [Remote Parsing 版本](local_memory.remote_parsing.json)使用同一個 System。Remote 版本替換 Parsing，同時示範 Import 的 Request 參數及 System Secret，包含 Chunking 上限引用。兩版推導出相同的候選欄位、向量與索引能力。兩份範例均讓 Chunking 產生 `text`、保留選填的 `price` 和 `tags`，並在 Indexing 啟用 `text.searchable` 與 `price.filterable`。固定 Filter 是 `price gte 300`，可和 [Request 的動態 any 群組](../user_remote_api/inference.request.json) 合併。兩份範例都以 `vector_fields: ["text"]` 選擇一條向量路徑，由索引綁定取得查詢 Profile，路徑上限由 `per_route_k` 設定。
+- [內建版本](local_memory.builtin.json)及 [Remote Parsing 版本](local_memory.remote_parsing.json)使用同一個 System。Remote 版本替換 Parsing，同時示範 Import 的 Request 參數、System Variable 與 Secret，包含 Chunking 上限引用。兩版推導出相同的候選欄位、向量與索引能力。兩份範例均讓 Chunking 產生 `text`、保留選填的 `price` 和 `tags`，並在 Indexing 啟用 `text.searchable` 與 `price.filterable`。固定 Filter 是 `price gte 300`，可和 [Request 的動態 any 群組](../user_remote_api/inference.request.json) 合併。兩份範例都以 `vector_fields: ["text"]` 選擇一條向量路徑，由索引綁定取得查詢 Profile，路徑上限由 `per_route_k` 設定。
 
 節點以 `component_id` 選執行方式，以 `component_version` 固定版本。內建節點用對應 Descriptor 驗證 `parameters`。使用 `component_id: remote_api` 的節點放在替換區段的第一個 Module，以 `through` 指定最後一個 Module，已涵蓋的後續節點從有效設定省略。Remote Parsing 宣告輸出 `structdata`，Request 依上游 Import 設定推導。Remote 服務以 `service_ref` 引用，Endpoint 由環境綁定解析。Bearer 認證使用節點的 `auth.bearer_token` 和 System Secret。
 
@@ -18,11 +18,11 @@
 [IndexBinding JSON](index_binding.example.json) 對應上述兩份 Config 的實際全文、過濾與向量計畫。欄位語意見 [IndexBinding 規格](../../docs/02_data_contracts.md#indexbinding)。
 
 <a id="system-secret-examples"></a>
-## System Secret 的 DEV／部署對照
+## Variable／Secret 的 DEV 與部署對照
 
-- [DEV 完整 Config](local_memory.remote_parsing.json) 用示意測試值供應 `PARSER_API_TOKEN`、`CHUNK_MAX_TOKENS` 和 `language`。Remote Parser 用 `{{PARSER_API_TOKEN}}` 取得認證值，內建 Chunking 用 `{{CHUNK_MAX_TOKENS}}` 並解析為整數。Remote 的 `{{language}}` 優先使用 [Ingestion Request](../user_remote_api/ingestion.request.json) 傳入的 `zh-TW`，省略時使用 System 值 `en-US`。
-- [部署匯出 Config](local_memory.remote_parsing.export.json) 保留相同 Key 與 Module 表達式，`config.secret` 的值以 `null` 表示由環境供應。
-- [Deployment 的 env 片段](deployment.secret-env.example.yaml) 映射同名環境變數。憑證使用已建立的 Kubernetes Secret，切分上限和語言使用 ConfigMap。對應規格見 [System Config](../../docs/05_system_config.md#system-secret)及 [Runtime 啟動](../../docs/06_runtime_api_and_deployment.md#system-secret-deployment)。
+- [DEV 完整 Config](local_memory.remote_parsing.json) 用 Secret 供應 `PARSER_API_TOKEN`，Variable 則提供 `CHUNK_MAX_TOKENS` 和 `language`。Remote Parser 用 `{{PARSER_API_TOKEN}}` 取得認證值，內建 Chunking 用 `{{CHUNK_MAX_TOKENS}}` 並解析為整數。Remote 的 `{{language}}` 優先使用 [Ingestion Request](../user_remote_api/ingestion.request.json) 傳入的 `zh-TW`，省略時使用 System 值 `en-US`。
+- [部署匯出 Config](local_memory.remote_parsing.export.json) 保留相同 Key 與 Module 表達式，`config.variable` 與 `config.secret` 的值都以 `null` 表示由目標環境供應。
+- [Deployment 的 env 片段](deployment.secret-env.example.yaml) 映射同名環境變數。憑證使用已建立的 Kubernetes Secret，切分上限和語言使用 ConfigMap。例如 FTEST 可將 ConfigMap 的 `chunk-max-tokens` 設為 `720`，DEV 仍使用 `500`。對應規格見 [System Config](../../docs/05_system_config.md#system-secret)及 [Runtime 啟動](../../docs/06_runtime_api_and_deployment.md#system-secret-deployment)。
 
 ## Elasticsearch 索引指紋
 

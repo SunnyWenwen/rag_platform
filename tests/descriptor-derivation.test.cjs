@@ -95,3 +95,22 @@ assert.equal(indexName,`rag-builder-${migrated.id}-${migrated.indexGeneration}`)
 assert.equal(migrated.deployment.loaded.ingestion.index_generation,migrated.indexGeneration);
 assert.notEqual(migrated.deployment.loaded.inference.index_generation,migrated.indexGeneration);
 console.log('PASS: Prototype generates UUIDs and preserves readiness when loading older mock state');
+
+const settings = JSON.parse(vm.runInContext(`
+  const dev = {secret:{TOKEN:'fixture-secret'},variable:{CHUNK_MAX_TOKENS:'720'}};
+  let savedSettings;
+  localStorage.setItem = (_,data) => { savedSettings = JSON.parse(data).systems[0].draft; };
+  model.systems = [{draft:dev}];
+  persist();
+  JSON.stringify({
+    variableTable:settingTable(dev,'variable'),
+    secretTable:settingTable(dev,'secret'),
+    saved:savedSettings,
+    exported:deploymentConfig(dev)
+  });
+`,runtime));
+assert.match(settings.variableTable,/type="text".*data-setting-value="CHUNK_MAX_TOKENS"/);
+assert.match(settings.secretTable,/type="password".*data-setting-value="TOKEN"/);
+assert.deepEqual(settings.saved,{secret:{TOKEN:null},variable:{CHUNK_MAX_TOKENS:'720'}});
+assert.deepEqual(settings.exported,{secret:{TOKEN:null},variable:{CHUNK_MAX_TOKENS:null}});
+console.log('PASS: Prototype renders, saves and exports Variable separately from Secret');

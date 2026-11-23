@@ -76,7 +76,7 @@ Builder 保存並管理可供重新匯入的原始資料（原始檔、CSV 或�
 <a id="system-lifecycle-api"></a>
 ### System 生命週期 API
 
-Builder 保存 System、草稿、發布歷史和預期部署狀態。每個 Runtime Pod 在記憶體中持有已載入的 `system_id`、Config 快照、索引綁定及本地工作狀態。Builder DEV 的 Runtime 獨立於 Builder Backend，啟動時可有零組 Config。Builder Backend 透過受保護的內部管理 API 下發設定。DEV 請求可在 `config.secret` 提供測試值，驗證與套用回應只回報 Secret Key／欄位路徑與狀態。單組 Config 獨立部署在啟動時直接呼叫同一套 Python 管理函數，並停用管理 API 路由。
+Builder 保存 System、草稿、發布歷史和預期部署狀態。每個 Runtime Pod 在記憶體中持有已載入的 `system_id`、Config 快照、索引綁定及本地工作狀態。Builder DEV 的 Runtime 獨立於 Builder Backend，啟動時可有零組 Config。Builder Backend 透過受保護的內部管理 API 下發設定。DEV 請求可在 `config.secret` 與 `config.variable` 提供測試值，驗證與套用回應只回報 Secret Key／欄位路徑與狀態。單組 Config 獨立部署在啟動時直接呼叫同一套 Python 管理函數，並停用管理 API 路由。
 
 | Method／Path | Request | 成功回應 |
 |---|---|---|
@@ -199,7 +199,7 @@ Runtime 的 Config 編譯器輸出 [指紋投影 Schema](../schemas/index_finger
 | `index.vector_bindings`、`embedding_spaces` | 兩個物件都以已選入索引的向量名稱為鍵，鍵集合必須一致。前者沿用 IndexBinding 的來源欄位、Profile ID 與維度，後者記錄實際模型 ID 與穩定版本。沒有索引向量時皆為 `{}`。 |
 | `index.mapping`、`settings` | 解析後的 ES 欄位、動態規則、runtime fields、`_source` 及會影響相容性的原生 `analysis`、`similarity`。預設值由目標後端能力與設定解析；無宣告的 `dynamic_templates` 用 `[]`，無定義的 `runtime`、`analysis`、`similarity` 用 `{}`。原生 ES 物件由 ES 驗證。後端若有會改變索引語意而 v1 投影未涵蓋的設定，回報相容性未確認。 |
 
-純 Inference 的 Rewrite、融合、Rerank、固定 Filter、`top_n`、運作限額、端點、憑證與單文件的 `source_revision` 都不參與指紋。`env`、`system_id` 和 `index_generation` 各自用於識別與定位，也排除在指紋投影外。以 System Secret 提供的切分長度等入庫設定，按解析後的有效參數判定索引相容性。遷移 ES 叢集或索引名稱時，Runtime 依環境綁定重新查找實體目標並核對歸屬。
+純 Inference 的 Rewrite、融合、Rerank、固定 Filter、`top_n`、運作限額、端點、憑證與單文件的 `source_revision` 都不參與指紋。`env`、`system_id` 和 `index_generation` 各自用於識別與定位，也排除在指紋投影外。以 System Variable 提供的切分長度等入庫設定，按解析後的有效參數判定索引相容性。遷移 ES 叢集或索引名稱時，Runtime 依環境綁定重新查找實體目標並核對歸屬。
 
 1. 編譯器先解析預設值、舊欄位名稱及依賴版本，檢查階段順序與覆蓋範圍、向量鍵集合及 mapping 維度。無順序語意的陣列按穩定鍵排序，例如 `copy_fields` 按唯一的 `output_field`；切分分隔符、分析器 pipeline 及 `dynamic_templates` 保留順序。
 2. 對整份投影執行 [RFC 8785 JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785.html)，以 canonical UTF-8 bytes 計算 SHA-256。將小寫十六進位摘要連同 `index_fingerprint_version`、`env` 和 `system_id` 寫入 ES `mappings._meta`。完整 [JSON 範例](../examples/system_config/index_fingerprint.v1.example.json) 可離線核對。
@@ -825,7 +825,7 @@ Document 管理是索引／儲存管理能力，不新增 Pipeline Module。平�
 
 | 設定 | 作用範圍 | 載入與保存 |
 |---|---|---|
-| System Config | 個別 System 的 Pipeline、Component 及 System Secret。以 `system_id` 和 `config_revision` 辨識，使用同一份 [System Config Schema](../schemas/system_config.draft.schema.json)。 | DEV 由 Builder 保存發布快照與部署紀錄，經管理 API 下發，重啟後由 Builder 補載。獨立部署由部署方隨 Bundle 提供快照，Runtime 每次啟動時讀取。兩個入口都把已載入的快照保存在 Runtime 記憶體。 |
+| System Config | 個別 System 的 Pipeline、Component、Variable 與 Secret。以 `system_id` 和 `config_revision` 辨識，使用同一份 [System Config Schema](../schemas/system_config.draft.schema.json)。 | DEV 由 Builder 保存發布快照與部署紀錄，經管理 API 下發，重啟後由 Builder 補載。獨立部署由部署方隨 Bundle 提供快照，Runtime 每次啟動時讀取。兩個入口都把已載入的快照保存在 Runtime 記憶體。 |
 | Runtime 程序設定 | 整個 Runtime 程序共用的 Queue 容量、Deadline、工作紀錄保留與清理間隔等。 | Runtime 啟動時先讀取部署設定，對省略的欄位套用 Runtime 預設值，再用有效設定初始化 Queue 及背景 Task。有效值在程序記憶體保存，與 System Config Revision 分開。 |
 
 [Builder 部署紀錄](drafts/builder_system_deployment_mongodb.md) · [獨立啟動](#src-07-93-獨立啟動) · [Runtime 程序預設](#src-22-2-已確認的初始預設)
@@ -965,7 +965,7 @@ Runtime Image 可自 M3 開始建置；M7 才驗收完整 FTEST／ENT 獨立交�
 
 - Runtime Image 版本／Digest、Module 版本、Config Revision／Hash。
 - 選定 System／Revision 的相同邏輯 Config 及另存的目標環境部署設定。匯出沿用原 `system_id`，依匯出目標在部署設定預填 `env`。[部署環境規格](#runtime-index-ownership)
-- ConfigMap／Deployment／Service 等 K8s 設定。部署 Config 的 `secret` 保留 Key 與 `null`，Deployment 指定同名環境變數的注入。
+- ConfigMap／Deployment／Service 等 K8s 設定。部署 Config 的 `variable` 與 `secret` 保留 Key 與 `null`，Deployment 指定同名環境變數的注入。
 - FTEST／ENT 的環境檔案、啟動與 API 說明、資料準備步驟。
 - 若有評估報告，清楚綁定測試環境／資料版本，不能宣稱目標環境已驗證。
 
@@ -982,9 +982,9 @@ Remote API 匯出目標環境的連線設定及 System Secret 引用表達式。
 Remote API 在部署設定解析 Endpoint。需要 Bearer 認證時，節點的 `auth.bearer_token` 填 `{{KEY}}`。Runtime 只使用該 System 啟動時載入的值來組出認證 Header。一般執行參數按 [Request 優先規則](05_system_config.md#parameter-references)解析。業務 Request、Document、Remote 業務參數、模板、索引及記錄只承載各自的業務資料或引用。
 
 <a id="system-secret-deployment"></a>
-### Runtime 啟動與 Secret 注入
+### Runtime 啟動與 Variable／Secret 注入
 
-同一 System 在 DEV 及正式環境使用相同的 `{{KEY}}`。DEV 由 Builder 提供測試值。正式 Deployment 使用 `env[].valueFrom.secretKeyRef` 注入憑證，可用 `configMapKeyRef` 注入一般環境設定。環境變數名稱與 `config.secret` 的 Key 完全相同，每個 Pod 各自在 Runtime 啟動時讀值。缺少 Key 時中止啟動，錯誤訊息列出缺少的 Key，遮罩解析出的值。Kubernetes 以環境變數注入 Secret 時，更新後需重新啟動容器才會取得新值。
+同一 System 在 DEV 及正式環境使用相同的 `{{KEY}}`。DEV 由 Builder 提供測試值。正式 Deployment 為 `config.secret` 使用 `env[].valueFrom.secretKeyRef`，為 `config.variable` 使用 `configMapKeyRef`。環境變數名稱與兩張表的 Key 完全相同，每個 Pod 各自在 Runtime 啟動時讀值。缺少 Key 時中止啟動，錯誤訊息列出缺少的 Key，遮罩解析出的值。Kubernetes 以環境變數注入 Secret 時，更新後需重新啟動容器才會取得新值。
 
 [DEV Config](../examples/system_config/local_memory.remote_parsing.json)、[匯出 Config](../examples/system_config/local_memory.remote_parsing.export.json)與[容器 env 片段](../examples/system_config/deployment.secret-env.example.yaml)示範同一份設定在兩個環境如何供值。
 

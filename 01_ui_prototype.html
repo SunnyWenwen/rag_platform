@@ -371,6 +371,12 @@ function withoutSecretValues(config) {
   return {...config,secret:Object.fromEntries(Object.keys(config.secret).map(key => [key,null]))};
 }
 
+function deploymentConfig(config) {
+  const exported = withoutSecretValues(config);
+  if (!config.variable) return exported;
+  return {...exported,variable:Object.fromEntries(Object.keys(config.variable).map(key => [key,null]))};
+}
+
 function persist() {
   const systems = model.systems.map(system => ({
     ...system,draft:withoutSecretValues(system.draft),active:withoutSecretValues(system.active)
@@ -948,17 +954,26 @@ function refreshContractPreviews() {
   }
 }
 
-function secretSettings(config) {
-  return `<div class="field"><h4>Secret</h4>
-    <p class="muted">各模組可用 <code>{{KEYNAME}}</code>。一般參數優先取 Request 值，認證欄位取 System Secret。測試值保存在本頁記憶體，下載只保留 Key。</p>
+const systemSettingLabels = {secret:'Secret',variable:'Variable'};
+const systemSettingKey = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const hasSystemSetting = (config,key) => Object.keys(systemSettingLabels)
+  .some(scope => Object.hasOwn(config[scope] ?? {},key));
+
+function settingTable(config,scope) {
+  const label = systemSettingLabels[scope];
+  const sensitive = scope === 'secret';
+  return `<section class="field" aria-label="${label}"><h4>${label}</h4>
+    <p class="muted">${sensitive ? '認證欄位使用 <code>{{KEYNAME}}</code> 取用 Secret。測試值保存在本頁記憶體。'
+      : '使用 <code>{{KEYNAME}}</code> 引用一般環境參數。DEV 值可隨草稿保存，部署時由目標環境提供。'}</p>
     <div class="table-wrap"><table><thead><tr><th>Key</th><th>DEV 測試值</th><th></th></tr></thead>
-    <tbody>${Object.entries(config.secret ?? {}).map(([key,value]) => `<tr>
-      <td><input class="control" data-secret-key="${escapeHTML(key)}" aria-label="Secret Key" value="${escapeHTML(key)}"></td>
-      <td><input class="control" type="password" autocomplete="off" data-secret-value="${escapeHTML(key)}" aria-label="${escapeHTML(key)} DEV 測試值" value="${escapeHTML(value)}"></td>
-      <td><button class="btn small" data-action="remove-secret" data-value="${escapeHTML(key)}">移除</button></td>
+    <tbody>${Object.entries(config[scope] ?? {}).map(([key,value]) => `<tr>
+      <td><input class="control" data-setting-scope="${scope}" data-setting-key="${escapeHTML(key)}" aria-label="${label} Key" value="${escapeHTML(key)}"></td>
+      <td><input class="control" type="${sensitive ? 'password' : 'text'}" data-setting-scope="${scope}" data-setting-value="${escapeHTML(key)}"
+        ${sensitive ? 'autocomplete="off"' : ''} aria-label="${escapeHTML(key)} DEV 測試值" value="${escapeHTML(value)}"></td>
+      <td><button class="btn small" data-action="remove-system-setting" data-setting-scope="${scope}" data-value="${escapeHTML(key)}">移除</button></td>
     </tr>`).join('')}</tbody></table></div>
-    <div>${makeButton('新增 Secret','add-secret','small')}</div>
-  </div>`;
+    <div><button class="btn small" data-action="add-system-setting" data-value="${scope}">新增 ${label}</button></div>
+  </section>`;
 }
 
 function settings(system) {
@@ -1006,9 +1021,9 @@ function settings(system) {
     </div>
     <div class="builder"><nav aria-label="設定區域">${nav}
     <section class="panel pipeline"><button class="module ${isOtherSettings ? 'selected' : ''}" data-action="module" data-value="other_settings"
-      aria-pressed="${isOtherSettings}"><strong>其他設定</strong><small>Secret</small></button></section></nav><section class="panel">
+      aria-label="其他設定" aria-pressed="${isOtherSettings}"><strong>其他設定</strong><small>Secret／Variable</small></button></section></nav><section class="panel">
     <div class="bar flow-title"><h3>${labels[selected]}</h3><span class="muted">草稿 ${system.draftRevision}${draftDirty ? ' · 未保存' : ''}</span></div>
-    ${isOtherSettings ? secretSettings(draft) : owner ? `<div class="info">由 <button class="quiet" data-action="module" data-value="${owner}">${labels[owner]} Remote API</button> 處理此模組。</div>` : `
+    ${isOtherSettings ? Object.keys(systemSettingLabels).map(scope => settingTable(draft,scope)).join('') : owner ? `<div class="info">由 <button class="quiet" data-action="module" data-value="${owner}">${labels[owner]} Remote API</button> 處理此模組。</div>` : `
       <label class="field">Component<select class="control" id="component-picker" aria-label="Component">
         ${compatible ? '' : '<option value="" selected disabled>請選擇適用的 Parser</option>'}
         ${componentChoices.map(choice => option(choice.component_id,componentNames[choice.component_id],choice.component_id === item.component_id)).join('')}
@@ -1317,8 +1332,13 @@ function checkPublish(system) {
   issues = Object.values(lanes).flat().filter(module => outsideW1Preview(module,draft)).map(module => ({
     module, message:'目前 Prototype 的 W1 模擬範圍未涵蓋此 Component 或設定。可先保存草稿。'
   }));
-  for (const [key,value] of Object.entries(draft.secret ?? {})) {
-    if (value === null) issues.push({module:'other_settings',message:'請補填 DEV 測試值：' + key});
+  for (const [scope,label] of Object.entries(systemSettingLabels)) {
+    for (const [key,value] of Object.entries(draft[scope] ?? {})) {
+      if (value === null) issues.push({module:'other_settings',message:`請補填 ${label} 的 DEV 測試值：${key}`});
+    }
+  }
+  for (const key of Object.keys(draft.variable ?? {})) {
+    if (Object.hasOwn(draft.secret ?? {},key)) issues.push({module:'other_settings',message:'Variable 與 Secret 的 Key 重複：' + key});
   }
   const effective = clone(draft);
   if (!issues.length) {
@@ -1838,7 +1858,7 @@ async function readUpload(file) {
 }
 
 function download(system) {
-  const file = new Blob([json({system_id:system.id,config_revision:activeRevision(system),config:withoutSecretValues(system.active)}) + '\n'],{type:'application/json'});
+  const file = new Blob([json({system_id:system.id,config_revision:activeRevision(system),config:deploymentConfig(system.active)}) + '\n'],{type:'application/json'});
   const url = URL.createObjectURL(file);
   const link = document.createElement('a');
   link.href = url;
@@ -1943,14 +1963,15 @@ document.addEventListener('click',event => {
       if (target.desired.ingestion) target.loaded.ingestion = snapshot(system);
       persist(); render(); scheduleRuntimeReconcile(system); return;
     }
-    case 'add-secret': {
-      const values = draft.secret ??= {};
+    case 'add-system-setting': {
+      const values = draft[value] ??= {};
+      const prefix = value.toUpperCase() + '_';
       let number = 1;
-      while (Object.hasOwn(values,'SECRET_' + number)) number++;
-      values['SECRET_' + number] = null;
+      while (hasSystemSetting(draft,prefix + number)) number++;
+      values[prefix + number] = null;
       break;
     }
-    case 'remove-secret': delete draft.secret[value]; break;
+    case 'remove-system-setting': delete draft[button.dataset.settingScope][value]; break;
     case 'add-field': {
       const fields = params(draft,selected)[button.dataset.editorParam] ??= {};
       let number = 1;
@@ -2050,8 +2071,8 @@ document.addEventListener('input',event => {
     draftName = input.value;
     markDirty();
   }
-  if (input.dataset.secretValue !== undefined) {
-    draft.secret[input.dataset.secretValue] = input.value;
+  if (input.dataset.settingValue !== undefined) {
+    draft[input.dataset.settingScope][input.dataset.settingValue] = input.value;
     markDirty();
   }
   if (input.dataset.param !== undefined) changeParameter(input);
@@ -2091,16 +2112,17 @@ document.addEventListener('change',event => {
     const button = $('page').querySelector('[data-action="cancel-run-documents"]');
     button.disabled = !$('page').querySelector('[data-run-document]:checked:not(:disabled)');
   }
-  if (input.dataset.secretKey !== undefined) {
-    const previous = input.dataset.secretKey;
+  if (input.dataset.settingKey !== undefined) {
+    const scope = input.dataset.settingScope;
+    const previous = input.dataset.settingKey;
     const next = input.value.trim();
     if (previous === next) return;
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(next) || Object.hasOwn(draft.secret,next)) {
+    if (!systemSettingKey.test(next) || hasSystemSetting(draft,next)) {
       input.value = previous;
-      notify('Secret Key 格式不符或已存在。');
+      notify('Key 格式不符，或已存在於 Secret／Variable。');
       return;
     }
-    draft.secret = Object.fromEntries(Object.entries(draft.secret).map(([key,value]) => [key === previous ? next : key,value]));
+    draft[scope] = Object.fromEntries(Object.entries(draft[scope]).map(([key,value]) => [key === previous ? next : key,value]));
     markDirty();
     render();
     return;

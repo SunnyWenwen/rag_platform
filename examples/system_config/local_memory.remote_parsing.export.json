@@ -169,7 +169,9 @@
       }
     },
     "secret": {
-      "PARSER_API_TOKEN": null,
+      "PARSER_API_TOKEN": null
+    },
+    "variable": {
       "CHUNK_MAX_TOKENS": null,
       "language": null
     }

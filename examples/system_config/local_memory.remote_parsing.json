@@ -169,7 +169,9 @@
       }
     },
     "secret": {
-      "PARSER_API_TOKEN": "fixture-dev-token",
+      "PARSER_API_TOKEN": "fixture-dev-token"
+    },
+    "variable": {
       "CHUNK_MAX_TOKENS": "500",
       "language": "en-US"
     }

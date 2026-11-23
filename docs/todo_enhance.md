@@ -1,5 +1,10 @@
 # Todo Enhance
 
+<a id="secret-reference-scope"></a>
+## Secret 引用欄位限制
+
+**狀態：後續增強。** Variable 與 Secret 已分成兩張 KV 表。後續在 Schema／Descriptor 明確標記可引用 Secret 的欄位，由 Builder 提示並由 Runtime 在驗證、啟用及發布時檢查。盤點既有一般參數使用 Secret 的設定，將其中的一般環境值移至 Variable。Remote 認證欄位沿用既有的 Secret 取值規則。[System 設定](05_system_config.md#system-secret)
+
 ## 跨 Pod Ingestion 文件鎖
 
 **狀態：後續增強。** 現行 Runtime 以 [Pod 內記憶體](06_runtime_api_and_deployment.md#pod-local-ingestion-control)管控同文件的 Ingestion 與 Retire。當同一 System 需要由多個 Ingestion Pod 同時寫入同一個 ES 索引，且無法以流量分配避免文件重疊，再評估啟用跨 Pod 協調。

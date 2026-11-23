@@ -517,40 +517,57 @@ def bind_system_parameters(snapshot, environment=None, *, request_parameters=Non
     """Exercise startup and request binding for the published fixtures."""
     Draft202012Validator(SYSTEM_CONFIG_SCHEMA, registry=SCHEMA_REGISTRY).validate(snapshot)
     config = snapshot["config"]
-    declared = config.get("secret", {})
-    values = declared if environment is None else environment
-    for key, configured in declared.items():
-        if environment is not None and configured is not None:
-            fail(f"export contains a DEV value:/config/secret/{key}")
-        if not isinstance(values.get(key), str):
-            fail(f"missing System Secret:/config/secret/{key}")
+    duplicates = config.get("secret", {}).keys() & config.get("variable", {}).keys()
+    if duplicates:
+        fail(f"duplicate System setting:/config/variable/{min(duplicates)}")
 
-    def resolve(value, shape, path, specs, request_values):
+    def load_values(scope, label):
+        values = {}
+        for key, configured in config.get(scope, {}).items():
+            path = f"/config/{scope}/{key}"
+            if environment is not None and configured is not None:
+                fail(f"export contains a DEV value:{path}")
+            value = configured if environment is None else environment.get(key)
+            if not isinstance(value, str):
+                fail(f"missing {label}:{path}")
+            values[key] = (label, value)
+        return values
+
+    secrets = load_values("secret", "System Secret")
+    variables = load_values("variable", "System Variable")
+    system_values = {**secrets, **variables}
+
+    def resolve(value, shape, path, specs, request_values, *, auth=False):
         if isinstance(value, dict):
-            return {key: resolve(item, shape.get("properties", {}).get(key, {}), f"{path}/{key}", specs, request_values)
+            return {key: resolve(item, shape.get("properties", {}).get(key, {}), f"{path}/{key}",
+                                 specs, request_values, auth=auth)
                     for key, item in value.items()}
         if isinstance(value, list):
-            return [resolve(item, shape.get("items", {}), f"{path}/{i}", specs, request_values)
+            return [resolve(item, shape.get("items", {}), f"{path}/{i}", specs, request_values, auth=auth)
                     for i, item in enumerate(value)]
         if not isinstance(value, str) or not (value.startswith("{{") and value.endswith("}}")):
             return value
         if not PARAMETER_EXPRESSION.fullmatch(value):
             fail(f"invalid parameter expression:{path}")
         key = value[2:-2]
-        if request_values is not None and key in request_values:
+        if not auth and request_values is not None and key in request_values:
             return request_values[key]
-        if key not in declared:
+        values = secrets if auth else system_values
+        if key not in values:
+            if auth:
+                fail(f"undeclared System Secret {key}:{path}")
             if key in specs and request_values is None:
                 return value  # Request-only references are bound when the fixture is invoked.
             if key in specs:
                 fail(f"missing parameter {key}:{path}")
-            fail(f"undeclared System Secret {key}:{path}")
+            fail(f"undeclared System Variable or Secret {key}:{path}")
+        label, resolved = values[key]
         if shape.get("type") in ("integer", "number", "boolean", "array", "object"):
             try:
-                return json.loads(values[key])
+                return json.loads(resolved)
             except ValueError:
-                raise ConfigError(f"invalid System Secret value:{path}") from None
-        return values[key]
+                raise ConfigError(f"invalid {label} value:{path}") from None
+        return resolved
 
     pipelines = deepcopy(config["pipelines"])
     for lane, nodes in pipelines.items():
@@ -587,7 +604,7 @@ def bind_system_parameters(snapshot, environment=None, *, request_parameters=Non
                 for name, value in node_config["parameters"].items()
             }
             if "auth" in node_config:
-                node_config["auth"] = resolve(node_config["auth"], {}, f"{path}/auth", {}, {})
+                node_config["auth"] = resolve(node_config["auth"], {}, f"{path}/auth", {}, {}, auth=True)
                 if not node_config["auth"]["bearer_token"]:
                     fail(f"missing bearer token:{path}/auth/bearer_token")
     return pipelines
@@ -755,7 +772,7 @@ def _():
     rejects(lambda: parameters("query_transformation", bad, context), "invalid selection:/llm_ref")
 
 
-@case("System Secrets resolve DEV values and deployment environment at startup")
+@case("System Secrets and Variables resolve DEV values and deployment environment at startup")
 def _():
     dev = local_snapshot("remote_parsing")
     exported = local_snapshot("remote_parsing.export")
@@ -763,6 +780,7 @@ def _():
     assert exported["config_revision"] == dev["config_revision"]
     dev_secrets = dev["config"]["secret"]
     assert exported["config"]["secret"] == dict.fromkeys(dev_secrets)
+    assert exported["config"]["variable"] == dict.fromkeys(dev["config"]["variable"])
     assert exported["config"]["pipelines"] == dev["config"]["pipelines"]
     environment = {"PARSER_API_TOKEN": "fixture-deploy-token", "CHUNK_MAX_TOKENS": "500", "language": "en-US"}
     assert compile_local_example(dev) == compile_local_example(exported, environment)
@@ -771,13 +789,20 @@ def _():
     assert dev_ingestion["parsing"]["auth"] == {"bearer_token": dev_secrets["PARSER_API_TOKEN"]}
     assert deployed_ingestion["parsing"]["auth"] == {"bearer_token": environment["PARSER_API_TOKEN"]}
     assert deployed_ingestion["chunking"]["parameters"]["max_tokens"] == 500
+    other_env = {**environment, "CHUNK_MAX_TOKENS": "720"}
+    assert bind_system_parameters(exported, other_env)["ingestion"]["chunking"]["parameters"]["max_tokens"] == 720
 
     rejects(lambda: compile_local_example(exported, {"CHUNK_MAX_TOKENS": "500", "language": "en-US"}),
             "missing System Secret:/config/secret/PARSER_API_TOKEN")
+    rejects(lambda: compile_local_example(exported, {"PARSER_API_TOKEN": "fixture-deploy-token", "language": "en-US"}),
+            "missing System Variable:/config/variable/CHUNK_MAX_TOKENS")
     rejects(lambda: compile_local_example(dev, environment),
             "export contains a DEV value:/config/secret/PARSER_API_TOKEN")
     rejects(lambda: compile_local_example(exported, {**environment, "CHUNK_MAX_TOKENS": "invalid"}),
-            "invalid System Secret value:/config/pipelines/ingestion/chunking/parameters/max_tokens")
+            "invalid System Variable value:/config/pipelines/ingestion/chunking/parameters/max_tokens")
+    duplicate = deepcopy(dev)
+    duplicate["config"]["variable"]["PARSER_API_TOKEN"] = "fixture-duplicate"
+    rejects(lambda: compile_local_example(duplicate), "duplicate System setting:/config/variable/PARSER_API_TOKEN")
     undeclared = deepcopy(dev)
     undeclared["config"]["pipelines"]["ingestion"]["parsing"]["auth"]["bearer_token"] = "{{UNDECLARED}}"
     rejects(lambda: compile_local_example(undeclared),
@@ -797,7 +822,7 @@ def _():
     def parser(request):
         return bind_system_parameters(snapshot, request_parameters={"ingestion": request})["ingestion"]["parsing"]
 
-    default_language = snapshot["config"]["secret"]["language"]
+    default_language = snapshot["config"]["variable"]["language"]
     assert parser({})["parameters"]["language"] == default_language
     assert default_language != body["parameters"]["language"]
     assert parser(body["parameters"])["parameters"] == body["parameters"]
@@ -812,8 +837,13 @@ def _():
         "bearer_token": snapshot["config"]["secret"]["PARSER_API_TOKEN"]
     }
     del snapshot["config"]["secret"]["PARSER_API_TOKEN"]
+    snapshot["config"]["variable"]["PARSER_API_TOKEN"] = "fixture-variable-token"
     rejects(lambda: parser({"PARSER_API_TOKEN": "fixture-caller-value"}),
             "undeclared System Secret PARSER_API_TOKEN:/config/pipelines/ingestion/parsing/auth/bearer_token")
+    snapshot["config"]["secret"]["language"] = snapshot["config"]["variable"].pop("language")
+    snapshot["config"]["secret"]["PARSER_API_TOKEN"] = snapshot["config"]["variable"].pop("PARSER_API_TOKEN")
+    specs[0].pop("default_value")
+    assert parser({})["parameters"]["language"] == default_language
 
 
 @case("published Local Search examples compile to the same index and candidate contracts")

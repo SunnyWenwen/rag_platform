@@ -45,6 +45,10 @@
         },
         "secret": {
           "$ref": "#/$defs/system_secret"
+        },
+        "variable": {
+          "description": "Non-sensitive System values that may differ by environment. Exported keys have null values and are resolved at startup.",
+          "$ref": "#/$defs/system_value_map"
         }
       },
       "required": [
@@ -309,7 +313,10 @@
       "minProperties": 1
     },
     "system_secret": {
-      "description": "System-scoped values. The DEV activation supplies strings. An exported Config retains the same keys with null values and resolves them from the environment at startup.",
+      "description": "Sensitive System values. DEV activation supplies strings. Exported keys have null values and are resolved at startup.",
+      "$ref": "#/$defs/system_value_map"
+    },
+    "system_value_map": {
       "type": "object",
       "propertyNames": {
         "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
