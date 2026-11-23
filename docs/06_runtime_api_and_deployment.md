@@ -162,6 +162,8 @@ DEV 平台管理員在部署時指定 `runtime_ref`。同一環境內，每個�
 
 Builder Backend 啟動、Runtime 恢復連線後，以及每 60 秒（可由 Builder 部署設定調整），依部署紀錄呼叫單一 System GET，比對 `desired_pipelines`、各流程的 `loaded`／`ready`、本機 Config Revision 與索引世代。對預期上線但未載入有效快照的流程，使用已發布 Config 預檢並執行 `reload`；已卸載的流程維持原意圖。Runtime 或索引狀態待查時保留部署意圖及最後確認狀態，按[索引恢復規則](#system-index-lifecycle)處理。補載以目前狀態差異為觸發條件，沿用現有管理 API。
 
+Pod 停止後的補載沿用上述規則。收到 SIGTERM 時的排空順序見[後續規劃：Runtime 優雅關閉](todo_enhance.md#runtime-graceful-shutdown)。
+
 每個目標的管理入口須能接受 Builder 下發 Config，System 的 Ingest／Query 依各流程就緒狀態開放。多個 Runtime 可共用同一受管 ES 索引，部署時遵循 [Pod 內文件占用與派工](#pod-local-ingestion-control)的寫入分流條件。
 
 **共用索引的 Runtime 加入與退出。** Builder 核對各 DEV 目標，向尚未載入已發布 Config 的 Runtime 發出 `reload`，包括後加入的 Runtime。Runtime 載入相同 Config 並接回既有索引。加入時的跨 Runtime 綁定授權及狀態查核依 [Q-020](08_plan_and_decisions.md#q-020)追蹤。單一 Runtime 停止承載 System 時使用 [detach](#runtime-system-detach)。整體刪除共用索引使用既有 DELETE。
@@ -234,7 +236,7 @@ User 設定已部署的外部服務。Runtime 在執行時依有效環境綁定�
 <a id="system-ingestion-drain"></a>
 Builder DEV 由 Builder 對同一 System 序列化發布、reload、卸載與恢復，並暫停該 System 的自動補載。Builder 先停止對其他 Ingestion 目標送件，逐一以 `detach?pipeline=ingestion` 取得 `204`。目標失聯時，Builder 暫停該操作並保留進度，等部署方恢復該目標後再查核並完成排空。執行管理操作的 Runtime 同步關閉本機 Ingestion／Retire 入口並檢查本機工作；有工作或未結算寫入時回 `409 SYSTEM_BUSY`，查核失敗時回 `503 SYSTEM_STATE_UNKNOWN`。
 
-**Runtime Image 維護。** Builder 在停流量期間暫停對受影響目標派送 DEV 測試及自動補載，透過既有 `detach` 讓 Runtime 停止收件並確認各流程排空。部署方更換 Pod。服務恢復後，Builder 核對同一 `runtime_ref` 的各流程狀態，依原部署意圖補載。是否提供 Builder 維護操作入口由 [Q-020](08_plan_and_decisions.md#q-020) 追蹤。
+**Runtime Image 維護。** 首版由部署方更換 Pod，Builder 在服務恢復後依[既有連線查核及補載行為](#builder-managed-dev-runtimes)處理。Builder 維護入口的停流量、逐流程 `detach` 排空與恢復流程見[後續規劃：Builder 的 Runtime 維護入口](todo_enhance.md#builder-runtime-maintenance)。
 
 **異常替換。** 部署方對每個 Ingestion 目標維持單一具寫入能力的實例。舊 Pod 失聯時，部署方在替代 Runtime 開放給 Builder 前，確認舊程序已停止或已隔離其 ES 寫入能力，並查核已送出但尚未確認的 ES 寫入與管理操作。永久撤除失聯目標也由部署方完成相同查核，再調整 Builder 的目標設定。Builder 依[既有連線查核及補載行為](#builder-managed-dev-runtimes)處理。FTEST／ENT 由各環境的[部署流程](#standalone-index-deployment)負責。
 
@@ -570,6 +572,8 @@ Runtime 登記取消後，取消與狀態查詢皆直接顯示 `cancelled`。若
 ### 工作紀錄、保留與重啟
 
 受理 Pod 在記憶體保存 Queue、占用、Run、逐文件狀態及當次寫入或刪除的清理資訊。這些工作資料不寫入 ES。程序終止時這些資料一併遺失，重啟從空狀態開始。已送到 ES 的資料操作仍可能生效。HTTP 連線中斷但程序繼續執行時，已入列的工作照常執行。
+
+程序收到 SIGTERM 時的首版行為與後續排空設計見[Runtime 優雅關閉](todo_enhance.md#runtime-graceful-shutdown)。
 
 <a id="ingestion-status-retention"></a>
 #### 終態紀錄清理

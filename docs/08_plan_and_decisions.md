@@ -327,9 +327,9 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - 首版 Runtime 的管理與業務 API 採 HTTP Basic，驗證位置與帳密範圍見 [Builder 與 Runtime 的驗證及授權](06_runtime_api_and_deployment.md#runtime-basic-authentication)。D-64 的可信 Backend 路由及 Istio 傳輸設定沿用。
 
 - 已確認：文件／檔案級 ACL 延後。第一版依 System 的執行範圍隔離資料，MCP API key 授權到 System 與工具。
-- Builder Backend 是判斷使用者能否存取 Workspace／System 或執行管理操作的授權邊界。DEV Runtime 的管理 API 只辨識 Builder 服務身分。個別使用者的身分來源、角色與操作權限矩陣、Workspace 成員管理仍待定。另待平台保留欄位與 Gateway 的實機接線驗收。
+- Builder Backend 是判斷使用者能否存取 Workspace／System 或執行管理操作的授權邊界。DEV Runtime 的管理 API 只辨識 Builder 服務身分。Builder 依既有的參照做法實作使用者身分、角色權限與 Workspace 成員管理，本規格不另行規劃。另待平台保留欄位與 Gateway 的實機接線驗收。
 - 負責角色：平台／身分團隊＋Backend＋Engine。
-- 決策狀態：首版文件存取範圍已確認，其他授權與保留欄位細節另議。
+- 決策狀態：首版文件存取範圍及 Builder 授權分工已確認，其他平台授權與保留欄位細節另議。
 
 <a id="q-007"></a>
 ### Q-007 文件／Chunk ID 與 source_revision
@@ -473,7 +473,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - 建議：先有受限共享 Runtime 與明確隔離 Binding。首版以受管 ES 為準。
 - 替代：每 System 獨立 Runtime，增加部署／資源管理成本。
 - 負責角色：平台＋Backend／Runtime；阻擋 M5 多 System 服務。
-- 決策：Builder 主動管理並逐流程部署。DEV 由 Builder 保存權威索引綁定及管理操作計畫。Runtime Image 升版是否提供 Builder 維護入口仍待確認。Builder 保存介面與資源隔離策略待實作及實機驗收。
+- 決策：Builder 主動管理並逐流程部署。DEV 由 Builder 保存權威索引綁定及管理操作計畫。首版由部署方更換 Runtime Pod，[Builder 的 Runtime 維護入口](todo_enhance.md#builder-runtime-maintenance)列為後續增強。Builder 保存介面與資源隔離策略待實作及實機驗收。
 
 <a id="q-021"></a>
 ### Q-021 Export、FTEST／ENT 與 Secret Vault
@@ -484,7 +484,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 
 - 已確認：DEV／FTEST／ENT 首版以 ES 為部署基準。跨環境沿用同版邏輯 Config，由部署設定提供連線與資源。Local Search 列為後續，Memory／MongoDB 模式仍適用 D-33。System Secret 使用字串 KV，匯出保留 Key，正式 Runtime 啟動時讀取同名環境變數。待定為 Image／Bundle 包裝、外部 Vault 供應、DEV 憑證保存期限、K8s 資源／Ingress／Probe 及 CD 流程。
 - [D-30](history/decisions/decision_history.md#d-30) 的同版一致適用於 System 邏輯設定。部署用 System Config 保留原 Revision，匯出時將 DEV 的 `dev_test` 自動轉成 `pled_es`，目標環境透過 Secret 提供 ES 編號、帳號與密碼。[Elasticsearch 匯出規格](05_system_config.md#elasticsearch-service-source)
-- FTEST／ENT 由部署方管理版本、綁定、排空與切換。缺少資料索引時，建立授權、部署操作入口與如何查核前次部署紀錄待 M7 確認。獨立 Runtime 的管理 HTTP 停用。
+- FTEST／ENT 由部署方管理版本、綁定、排空與切換。缺少資料索引時，建立授權、部署操作入口與如何查核前次部署紀錄待 M7 確認。見[FTEST／ENT 首次建立索引](todo_enhance.md#standalone-index-initialization)（建議方向，待 M7 確認）。獨立 Runtime 的管理 HTTP 停用。
 - 分 Pod 使用同一 Runtime Image 與 Config，環境部署設定選擇 `pipeline`。Export 的設定載體、Service／Probe 接線、角色所需 Secret 與資源的最小範圍，以及滾動切換順序待定。
 - 建議：版本鎖定 Runtime Image＋有效 Config＋環境覆寫；由目標環境提供 ES 及原始資料，獨立 Runtime 直接啟動。
 - 替代：使用單位既有 Helm／GitOps 形式；仍需相同可驗證交付內容。
@@ -495,7 +495,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 ### Q-022 內建方法交付與外部服務隔離
 
 - 內建方法由平台團隊隨 Runtime 版本維護。外部實作由 User 選擇及部署，接入時遵守 Remote API 契約。
-- 待核定：允許的出站目的地、資源隔離、授權與憑證範圍、租戶配額及相容版本驗收。
+- 待核定：[DEV Runtime 允許的出站目的地](todo_enhance.md#dev-runtime-egress-allowlist)、資源隔離、授權與憑證範圍、租戶配額及相容版本驗收。
 
 <a id="q-023"></a>
 ### Q-023 Inference 失敗、無命中與資源上限
