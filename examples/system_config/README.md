@@ -37,6 +37,17 @@
 
 [匯出部署設定片段](deployment.env.example.json)示範 FTEST 的 `env`，可在部署前修改。DEV 由 Builder 管理的 Runtime 使用 `builder`。匯出的 System Config 沿用原 `system_id`。
 
+<a id="istio-http-deployment-example"></a>
+## Istio HTTP 部署範例
+
+[Istio 與 Service 範例](deployment.istio-http.example.yaml)使用同一 Namespace 展示 Builder、DEV Runtime 與同時啟用兩條流程的獨立 System。每個 Pod 的應用程式監聽 `8080` 上的 HTTP。以公司實際的 Namespace、Gateway、Host、Port、trust domain 及 Builder Backend ServiceAccount 取代範例值。Gateway 的兩個主機均使用 HTTPS listener 及其對應憑證。
+
+- 在每個 Deployment 的 Pod template 設定 `app.kubernetes.io/part-of: rag-platform`，並設定與各自 Service selector 相符的 `app.kubernetes.io/name`。Builder Backend Pod 使用 `serviceAccountName: builder-backend`。確認 Gateway 與應用 Workload 都已納入 mesh。
+- Builder 的 DEV Runtime URL 取同 Namespace 的 Service，例如 `http://dev-runtime`。FTEST／ENT 各自配置 System 主機。Ingestion 和 Inference 分 Pod 時，配置兩個 HTTP Service，讓 System 的 `/v1/queries` 路由至 Inference，`/v1/ingestions` 與 `/v1/documents` 路由至 Ingestion，Health 隨各入口的 Service 接線。
+- 在目標叢集驗收時，確認 Gateway 的 HTTPS 可以完成認證並呼叫對應服務，且外部入口無法抵達 DEV Runtime 的 `/internal`。用 Builder 身分及有效 Basic 帳密呼叫 DEV Catalog 應成功。改用其他 Workload 身分或繞開 mesh 嘗試同一請求時應遭拒，並確認已接通的 Pod 間鏈路實際使用 mTLS。
+
+[主責部署規格](../../docs/06_runtime_api_and_deployment.md#istio-http-transport) · [Istio PeerAuthentication](https://istio.io/latest/docs/reference/config/security/peer_authentication/) · [Istio HTTPS Gateway](https://istio.io/latest/docs/tasks/traffic-management/ingress/secure-ingress/)
+
 ## Component Descriptor 驗證
 
 - [Meta-schema 草案](../../schemas/component_descriptor.draft.schema.json)驗證 Descriptor 的外層及目前測試的宣告語法。

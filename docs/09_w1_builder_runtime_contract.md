@@ -16,7 +16,7 @@
    python3 examples/system_config/mock_runtime.py --scenario happy_path
    ```
    以 [`happy_path`](../examples/system_config/runtime_http.examples.json) 的 System Config 及資料串通 Catalog → 預檢與發布 → 匯入及 Run 輪詢 → 查詢。取得 `202` 後沿用同一目標的 `Location`。要試切版、匯入失敗或查詢錯誤時，切換到對應情境。
-3. 執行 [HTTP 情境契約測試](../tests/README.md#dev-runtime-http-contract-test)。測試會自行啟動 Mock，依序重播每組情境，檢查 HTTP 回應、OpenAPI Schema 和各步驟的狀態關聯。DEV 上線後，Builder 使用相同操作及生效快照規則，切換目標 URL 與部署憑證進行真實串接驗收。
+3. 執行 [HTTP 情境契約測試](../tests/README.md#dev-runtime-http-contract-test)。測試會自行啟動 Mock，依序重播每組情境，檢查 HTTP 回應、OpenAPI Schema 和各步驟的狀態關聯。DEV 接線使用 `http://dev-runtime` 這類 Service URL、部署提供的 Basic 帳密與 Builder ServiceAccount，依 [Istio 傳輸規格](06_runtime_api_and_deployment.md#istio-http-transport)驗收。
 
 | 契約 | 規格與範例 |
 |---|---|

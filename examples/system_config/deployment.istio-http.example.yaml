@@ -1,0 +1,105 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: builder
+  namespace: rag-platform
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: builder
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dev-runtime
+  namespace: rag-platform
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: dev-runtime
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: system-runtime
+  namespace: rag-platform
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: system-runtime
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: rag-platform-strict
+  namespace: rag-platform
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: rag-platform
+  mtls:
+    mode: STRICT
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: dev-runtime-from-builder
+  namespace: rag-platform
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dev-runtime
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals: ["cluster.local/ns/rag-platform/sa/builder-backend"]
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: builder-entry
+  namespace: rag-platform
+spec:
+  hosts: ["builder.example.com"]
+  gateways: ["istio-system/platform-https"]
+  http:
+    - route:
+        - destination:
+            host: builder
+            port:
+              number: 80
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: system-entry
+  namespace: rag-platform
+spec:
+  hosts: ["system.example.com"]
+  gateways: ["istio-system/platform-https"]
+  http:
+    - match:
+        - uri:
+            prefix: /v1/
+        - uri:
+            exact: /health/live
+        - uri:
+            exact: /health/ready
+      route:
+        - destination:
+            host: system-runtime
+            port:
+              number: 80

@@ -3,12 +3,16 @@
   "info": {
     "title": "Builder to DEV Retrieval Runtime",
     "version": "1.0.0",
-    "description": "W1 HTTP contract for trusted Builder Backends. Configure the actual DEV Runtime HTTPS base URL in the client."
+    "description": "W1 HTTP contract for trusted Builder Backends. In Kubernetes, use the DEV Runtime ClusterIP Service over Istio strict mTLS."
   },
   "servers": [
     {
-      "url": "https://runtime.example",
-      "description": "Replace with the target DEV Runtime origin."
+      "url": "http://dev-runtime",
+      "description": "Example in-cluster DEV Runtime Service in the Builder namespace. Requires Istio strict mTLS and Builder workload authorization."
+    },
+    {
+      "url": "http://127.0.0.1:8000",
+      "description": "Local mock on loopback. Use mock credentials."
     }
   ],
   "security": [

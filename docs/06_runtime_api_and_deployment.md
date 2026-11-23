@@ -3,6 +3,7 @@
 ## 閱讀目錄
 
 - [HTTP 共通規格](#runtime-http-common)
+- [Istio 傳輸與服務入口](#istio-http-transport)
 - [平台管理資料與儲存](#src-07-3-平台管理資料與儲存)
 - [System／Revision 與 Engine 生命週期](#src-07-4-systemrevision-與-engine-生命週期)
 - [Builder Backend（Control Plane）](#src-07-51-builder-backendcontrol-plane)
@@ -41,8 +42,23 @@
 ## HTTP 共通規格
 
 - **DEV 管理 API** 使用 `/internal/v1`。**DEV 業務 API** 使用 `/internal/systems/{system_id}/v1`。獨立部署的業務 API 前綴為 `/v1`。兩種部署的服務層 Health 路徑均為 `/health/live`、`/health/ready`。
-- 沿用 D-60。Runtime 端全部路由使用 HTTPS 與部署提供的 HTTP Basic 帳密，DEV 內部路由只允許可信 Builder Backend 存取。未通過驗證回 `401` 並帶 `WWW-Authenticate: Basic realm="retrieval-runtime"`。
+- Runtime 在 HTTP 應用層驗證部署提供的 Basic 帳密。未通過驗證回 `401` 並帶 `WWW-Authenticate: Basic realm="retrieval-runtime"`。連線加密及 DEV 內部路由的存取限制依 [Istio 傳輸規格](#istio-http-transport)。
 - 有 body 的請求及回應用 `application/json`。HTTP 契約中的 ID／Revision／Cursor 均為非空、不透明的字串。System ID 與索引世代使用 [UUID 格式](#runtime-index-ownership)。Client 將每個路徑參數編碼為單一路徑片段。欄位名稱後的 `?` 表示選填，允許空值的必填欄位須明確傳 `null`。
+
+<a id="istio-http-transport"></a>
+## Istio 傳輸與服務入口
+
+Builder 和 Runtime 的應用程式都在 Pod 內監聽 HTTP，服務以 Kubernetes `ClusterIP` 交付。應用層負責各自 API 的認證，線路加密由 Istio 處理。以下規格適用於 Builder、DEV Runtime 及 FTEST／ENT 的 Ingestion 和 Inference Runtime。
+
+| 呼叫方向 | 呼叫端連線 | Istio 路由與存取 |
+|---|---|---|
+| 使用者 → Builder | `https://` 的 Builder 主機，UI 與 API 同源 | Gateway 終止 HTTPS，經 mTLS 轉至 Builder 的 HTTP Service。 |
+| Builder Backend → DEV Runtime | 同 Namespace 使用 `http://dev-runtime`，服務名稱依部署設定 | 直接使用內部 Service DNS，由 mesh 加密。DEV Runtime 的 Istio `AuthorizationPolicy` 只允許指定 Builder Backend ServiceAccount。 |
+| 外部系統 → FTEST／ENT 的獨立 Runtime | `https://` 的 System 主機 | Gateway 終止 HTTPS，經 mTLS 轉至已啟用流程的 HTTP Service，只路由其 `/v1` 業務 API 和受認證的 `/health/live`、`/health/ready`。分 Pod 時，依路徑將 Ingestion／Inference 請求送至各自的 Service。 |
+
+- 部署者確認兩端皆納入 mesh，Gateway 到應用 Pod 及 Builder 到 DEV Runtime 的流量都使用 mTLS。目標 Workload 的 `PeerAuthentication` 使用 `STRICT`，應用服務 Port 必須受該策略涵蓋。若 mesh 接線或政策未就緒，先修正部署再放行流量。
+- DEV Runtime 使用 `ClusterIP` 與 Builder 的 ServiceAccount 授權，Gateway 的外部路由不映射 DEV Runtime 或 `/internal` 管理入口。Builder 在啟動設定以 Runtime 的 Service DNS 和 `http://` 指定連線目標，Basic 帳密從部署 Secret 取得。
+- 本機 Mock 使用 `http://127.0.0.1:8000` 與測試帳密，只供 loopback。部署接線、Workload 身分與驗收方式見 [Istio HTTP 部署範例](../examples/system_config/README.md#istio-http-deployment-example)。
 
 <a id="src-07-3-平台管理資料與儲存"></a>
 ## 平台管理資料與儲存
@@ -709,7 +725,7 @@ D-60：Runtime API 暫採 **HTTP Basic Auth（帳號／密碼）**，預設一�
 
 第一版不增加多帳號、角色、逐 API 權限或使用者 ACL 管理；同一組帳密通過驗證即可執行該服務提供的全部 API。服務端仍須使用正確 System 路由，不能把任意外部 Header 當作載入／選擇未提供 System 的授權。
 
-採 HTTPS／TLS，帳密以部署環境 Secret 引用提供，不寫入 D／文件 metadata 或原始碼。具體驗證位置、Secret 包裝及內部 Probe 如何帶認證／探測仍待部署設計；不自行新增匿名對外 API 例外。標準依據：[RFC 7617](https://www.rfc-editor.org/rfc/rfc7617.html)。
+Basic 帳密以部署環境 Secret 引用提供，不寫入文件 metadata 或原始碼。網路傳輸使用 [Istio 規格](#istio-http-transport) 的 mTLS 與入口 HTTPS。內部 Probe 的實際接線依部署設計，對外 Health 遵守本節的 Basic 認證。[RFC 7617](https://www.rfc-editor.org/rfc/rfc7617.html)
 
 Builder 的使用者登入方式之後再討論；不因 Runtime Basic 決策而替 Builder 加上登入流程，也不新增 OAuth／SSO 服務。User Remote API／模型／DB 的憑證是各自服務連線，不預設沿用 Runtime 對外帳密。
 
@@ -726,7 +742,7 @@ S1 是 system_id 示意：由 Builder Backend 建立並維護的穩定 Retrieval
 
 業務 API 依同一內部前綴選 System，Request／Response 的業務語意不複製兩套；Health 仍是 service 級 /health/live／ready，不逐 System 複製。Builder 路由前綴為 /api/systems/{system_id}，共用 Runtime 為 /internal/systems/{system_id}/v1。Config 套用格式見 [System 生命週期 API](#system-lifecycle-api)。Builder 自有 CRUD 另定。
 
-路徑識別不能單獨充當授權；內部路由須受可信網路／Backend 存取與認證保護，不依任意外部 Header 載入配置。具體部署保護、Secret／Probe 接法仍待核定，Runtime 暫採單一 Basic 帳號的政策不變。工作狀態、文件管理與 Query 都遵守相同 System 作用範圍，不在業務 body 加入整份 Config／任意索引位置。Library 不讀 Builder DB。
+內部路由以 [Istio Workload 身分與 Basic 認證](#istio-http-transport)保護。可信 Backend 選定 System，Runtime 依該 ID 尋找已載入 Config。工作狀態、文件管理與 Query 都遵守相同 System 作用範圍，不在業務 body 加入整份 Config／任意索引位置。Library 不讀 Builder DB。
 
 <a id="src-21-9-文件資料查詢與直接刪除"></a>
 ## 文件資料查詢與直接刪除
@@ -954,7 +970,7 @@ Runtime Image 可自 M3 開始建置；M7 才驗收完整 FTEST／ENT 獨立交�
 
 - Runtime Image 版本／Digest、Module 版本、Config Revision／Hash。
 - 選定 System／Revision 的相同邏輯 Config 及另存的目標環境部署設定。匯出沿用原 `system_id`，依匯出目標在部署設定預填 `env`。[部署環境規格](#runtime-index-ownership)
-- ConfigMap／Deployment／Service 等 K8s 設定。部署 Config 的 `variable` 與 `secret` 保留 Key 與 `null`，Deployment 指定同名環境變數的注入。
+- ConfigMap／Deployment／HTTP `ClusterIP` Service 等 K8s 設定，以及 [Istio 傳輸與服務入口](#istio-http-transport)的接線說明。部署 Config 的 `variable` 與 `secret` 保留 Key 與 `null`，Deployment 指定同名環境變數的注入。
 - FTEST／ENT 的環境檔案、啟動與 API 說明、資料準備步驟。
 - 若有評估報告，清楚綁定測試環境／資料版本，不能宣稱目標環境已驗證。
 

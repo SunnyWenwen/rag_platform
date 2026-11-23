@@ -63,6 +63,8 @@ Builder Backend 下發／註冊 Config 與目標 Runtime 的對應，Runtime 依
 
 Ingestion 與 Inference 各自受理業務 API，可由同一 Runtime 啟用，也可分 Pod 使用同一受管 ES 索引。DEV／FTEST／ENT 首版預設使用 ES。Local Search 的 Memory／MongoDB 交付列為後續。外部 API、模型、ES 連線及 Secret 由部署提供。[流程部署契約](06_runtime_api_and_deployment.md#runtime-pipeline-deployment)
 
+Builder 與 Runtime 的入口、Pod 流量和 Service 接線見 [Istio 傳輸與服務入口](06_runtime_api_and_deployment.md#istio-http-transport)。
+
 **範圍：Retrieval-only，不提供 Generation。** Inference 回傳排序後的檢索結果、分數與來源／追溯資訊，由呼叫端決定如何消費。單筆／多筆 Query Rewrite 與 AI 設定助手仍可使用 LLM；取消 Generation 不等於移除所有 LLM。
 
 <a id="pipeline-terms"></a>
