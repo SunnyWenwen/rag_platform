@@ -133,7 +133,11 @@
       }
     },
     "secret": {
-      "PLED_ES_PASSWORD": null
+      "PLED_ES_PASSWORD": null,
+      "INGESTION_API_USERNAME": null,
+      "INGESTION_API_PASSWORD": null,
+      "INFERENCE_API_USERNAME": null,
+      "INFERENCE_API_PASSWORD": null
     }
   }
 }

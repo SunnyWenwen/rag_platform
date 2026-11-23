@@ -1,4 +1,5 @@
 """Verify the HTTP Mock fixtures without starting Runtime or any backing service."""
+from base64 import b64decode
 import json
 import sys
 from dataclasses import asdict
@@ -547,4 +548,10 @@ def verify(scenarios):
 
 
 if __name__ == "__main__":
+    file_request = json.loads((HERE / "file_ingestion.base64.request.json").read_text())
+    schema("ingestion_request.schema.json").validate(file_request)
+    content = file_request["documents"][0]["content"]
+    assert content["media_type"] == "text/plain"
+    assert b64decode(content["base64"], validate=True).decode("utf-8") == "定期清潔散熱孔。"
+    print("PASS: DEV file upload example carries the original bytes as Base64")
     verify(json.loads((HERE / "runtime_http.examples.json").read_text())["scenarios"])

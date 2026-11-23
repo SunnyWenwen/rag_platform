@@ -9,7 +9,7 @@
 ## Local Search 離線契約範例
 
 - [System Config Schema 草案](../../schemas/system_config.draft.schema.json)驗證發布快照 `{system_id, config_revision, config}`。`config` 包含 `contract_version` 與固定 Module 骨架的 `pipelines`。
-- [內建版本](local_memory.builtin.json)及 [Remote Parsing 版本](local_memory.remote_parsing.json)使用同一個 System。Remote 版本替換 Parsing，同時示範 Import 的 Request 參數、System Variable 與 Secret，包含 Chunking 上限引用。兩版推導出相同的候選欄位、向量與索引能力。兩份範例均讓 Chunking 產生 `text`、保留選填的 `price` 和 `tags`，並在 Indexing 啟用 `text.searchable` 與 `price.filterable`。固定 Filter 是 `price gte 300`，可和 [Request 的動態 any 群組](../user_remote_api/inference.request.json) 合併。兩份範例都以 `vector_fields: ["text"]` 選擇一條向量路徑，由索引綁定取得查詢 Profile，路徑上限由 `per_route_k` 設定。
+- [內建版本](local_memory.builtin.json)及 [Remote Parsing 版本](local_memory.remote_parsing.json)使用同一個 System。Remote 版本替換 Parsing，同時示範 Import 的 Request 參數、System Variable 與 Secret。兩版推導出相同的候選欄位、向量與索引能力。兩份範例均讓 Chunking 產生 `text`、保留選填的 `price` 和 `tags`，並在 Indexing 啟用 `text.searchable` 與 `price.filterable`。固定 Filter 是 `price gte 300`，可和 [Request 的動態 any 群組](../user_remote_api/inference.request.json) 合併。兩份範例都以 `vector_fields: ["text"]` 選擇一條向量路徑，由索引綁定取得查詢 Profile，路徑上限由 `per_route_k` 設定。
 
 節點以 `component_id` 選執行方式，以 `component_version` 固定版本。內建節點用對應 Descriptor 驗證 `parameters`。使用 `component_id: remote_api` 的節點放在替換區段的第一個 Module，以 `through` 指定最後一個 Module，已涵蓋的後續節點從有效設定省略。Remote Parsing 宣告輸出 `structdata`，Request 依上游 Import 設定推導。Remote 服務以 `service_ref` 引用，Endpoint 由環境綁定解析。Bearer 認證使用節點的 `auth.bearer_token` 和 System Secret。
 
@@ -24,12 +24,16 @@
 - [部署匯出 Config](local_memory.remote_parsing.export.json) 保留相同 Key 與 Module 表達式，`config.variable` 與 `config.secret` 的值都以 `null` 表示由目標環境供應。
 - [Deployment env 片段](deployment.secret-env.example.yaml) 以 Secret 提供 Parser Token，ConfigMap 提供 `trace_label`。詳見 [Variable 與 Secret](../../docs/05_system_config.md#system-secret)。
 
+[System API 帳密注入範例](deployment.system-api-secret-env.example.yaml)對應匯出 Config 的四個保留 Secret Key。分 Pod 部署時各自使用對應的帳密。DEV 管理帳密由 Builder 和 DEV Runtime 各自的部署 Secret 配對供應，System 帳密則依 [System 設定](../../docs/05_system_config.md#system-api-secret-fields)供應。
+
+[DEV 檔案匯入請求](file_ingestion.base64.request.json)示範把 `text/plain` 原始 bytes 編碼後，放在既有的 `documents[].content.base64`。使用可解析該 MIME 的 System 呼叫 Ingestion。
+
 <a id="pled-elasticsearch-example"></a>
 ## Elasticsearch 服務來源範例
 
 - [Runtime HTTP 情境](runtime_http.examples.json) 使用 Builder DEV 預設的 `service_source: dev_test`，由部署管理員配置測試 ES 綁定。
 - [PLED ES 匯出](elasticsearch.pled.export.json) 提供 `service_source: pled_es`、保留前導零的 `es_number`、`account` 與 `password` Secret 引用。範例的 System、ES 編號及帳號均為示意值。
-- [PLED Secret 注入](deployment.pled-secret-env.example.yaml) 將匯出中宣告的 Secret Key 對應到部署環境變數。真實 PLED 實例解析、登入和索引權限由 DEV Runtime 串接驗收。
+- [PLED Secret 注入](deployment.pled-secret-env.example.yaml) 提供 PLED 密碼的環境變數。搭配 [System API 帳密注入](deployment.system-api-secret-env.example.yaml) 供應業務入口的帳密。真實 PLED 實例解析、登入和索引權限由 DEV Runtime 串接驗收。
 
 ## Elasticsearch 索引指紋
 
@@ -110,7 +114,15 @@ python3 examples/system_config/mock_runtime.py --list
 python3 examples/system_config/mock_runtime.py --scenario happy_path --port 8000
 ```
 
-從 Builder Backend 連線 `http://127.0.0.1:8000`，本機測試帳號密碼皆為 `mock`。例如讀取固定的 Catalog：
+從 Builder Backend 連線 `http://127.0.0.1:8000`。本機固定帳密按 [OpenAPI](../../openapi/runtime.dev.v1.json) 的認證方案選用。
+
+| 入口 | 本機帳號／密碼 |
+|---|---|
+| 管理、Health 與 Mock 重設 | `mock:mock` |
+| System Ingestion 和文件操作 | `ingestion:mock-ingestion` |
+| System Inference | `inference:mock-inference` |
+
+例如讀取固定的 Catalog：
 
 ```sh
 curl -u mock:mock http://127.0.0.1:8000/internal/v1/catalog

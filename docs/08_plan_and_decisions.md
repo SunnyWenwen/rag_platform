@@ -39,7 +39,7 @@
 ## 2026-11-12 已確認：Chunking 來源與 Ingestion 後續議題
 
 - 正式 Chunking 設定只選一個切分來源欄位，每個解析 Unit 使用同一欄位。可另行複製其他欄位或保留該欄原文。
-- Builder 登入方式及 Ingestion 進度呈現延後討論。排隊或執行中的文件可依[批量取消契約](06_runtime_api_and_deployment.md#ingestion-cancel-api)操作。
+- Ingestion 進度呈現延後討論。排隊或執行中的文件可依[批量取消契約](06_runtime_api_and_deployment.md#ingestion-cancel-api)操作。
 
 ## 2026-11-13 已確認：單一 Rewrite Component
 
@@ -162,7 +162,7 @@
 | Ingestion 工作 | document_id 完整覆寫、逐文件結果；整批預檢才 202；文件無 partial，Run 可 partial；Queue 和狀態由受理 Pod 在記憶體保存，重啟後清空；支援按 Run 批量取消 `queued`／`running` 文件 | D-56～58；[Pod 內工作紀錄](#pod-local-ingestion-decision) · [批量取消](06_runtime_api_and_deployment.md#ingestion-cancel-api) |
 | 讀寫／失敗 | ES 先寫新再刪舊，以 `write_id` 定位清理範圍；查詢允許混合可見；Pod 內同文件有有效占用時拒絕重送，Bulk 逾時結案後可重匯 | D-59／60；[Elasticsearch 文件覆寫](06_runtime_api_and_deployment.md#elasticsearch-document-replacement)、Q-008～Q-010／Q-017 |
 | 文件管理 | exists、文件摘要與 retire 讀取／管理實際儲存；摘要為 documents[]／next_cursor、document_id／source_revisions[]；retire 同步 200＋deleted 或 not_found，忙碌 409 | D-58／64／65；21 |
-| API／認證 | 8 支業務＋2 支 Health；Runtime 暫採一組 Basic 帳密操作服務 API；Builder 登入延後；共用 Runtime 經可信內部 System 路由選 Config | D-60／64；[Runtime API 清單](06_runtime_api_and_deployment.md#data-lifecycle-api) |
+| API／認證 | 8 支業務＋2 支 Health；Basic 帳密依 Builder 入口、DEV 管理與 System 流程區分；共用 Runtime 經可信內部 System 路由選 Config | D-60／64；[Runtime API 清單](06_runtime_api_and_deployment.md#data-lifecycle-api) |
 | Runtime 控制 | 接收大小、Queue／併發、Rate／Deadline、終態狀態保存由 Admin／部署者在 E 設定；14 項初始值集中維護 | D-64；22 |
 | UI／工作方式 | 單一 Create／Edit、CSV 測試、進階收合與相依卡控；需求先更新文件，UI 只在使用者要求時修改，差異記入 Backlog | D-02／Runtime 控制手冊／26／38／42；UI手冊、UI Backlog手冊 |
 | 部署／開發順序 | M0～M7；M4 獨立 AI 助手、M5 Builder 整合、M6 Evaluation、M7 Export；FTEST／ENT 自行部署，Runtime 不依賴 Builder，Export 不搬資料／真實 Secret | D-18／19／37／41／51；03、Runtime／部署手冊、§4 |
@@ -324,10 +324,10 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 <a id="q-006"></a>
 ### Q-006 metadata 保留區、租戶與授權
 
-- D-60：Builder 登入方式延後；Runtime API 暫採一組 HTTP Basic 帳密操作該服務全部 API，首期不做多角色／逐 API 授權。D-64 已選可信 Backend 的內部 System 路由，傳輸部署依 [Istio 規格](06_runtime_api_and_deployment.md#istio-http-transport)。Secret 注入與 metadata 保留區的細節仍待確認。
+- 首版採 HTTP Basic，驗證位置與帳密範圍見 [Runtime 認證](06_runtime_api_and_deployment.md#runtime-basic-authentication)。D-64 的可信 Backend 路由及 Istio 傳輸設定沿用。
 
 - 已確認：文件／檔案級 ACL 延後。第一版依 System 的執行範圍隔離資料，MCP API key 授權到 System 與工具。
-- 仍待：平台保留欄位名稱、Workspace 權限、Builder 登入與 Gateway 接線、獨立 Runtime 認證設定。
+- 仍待：平台保留欄位名稱、Workspace 權限、Gateway 和認證實機接線驗收。
 - 負責角色：平台／身分團隊＋Backend＋Engine。
 - 決策狀態：首版文件存取範圍已確認，其他授權與保留欄位細節另議。
 
@@ -415,7 +415,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 <a id="q-016"></a>
 ### Q-016 平台儲存、原始資料與保留
 
-- 已確認：Builder 保存及管理原始檔與結構化來源資料，供受管理 System 索引重建後重新匯入。Runtime 負責索引與 Ingestion 執行。
+- 已確認：Builder 保存及管理原始檔與結構化來源資料，供受管理 System 索引重建後重新匯入。Runtime 負責索引與 Ingestion 執行。[DEV 首版以 Base64 傳送原始檔案](06_runtime_api_and_deployment.md#src-07-54-builder-上傳與自行部署)。
 - 仍待：Builder 的儲存後端、來源版本、權限、保留／刪除與重匯入流程。Config／Run／Dataset／Report 的管理資料庫、解析結果與 Trace 原文的保留政策，以及獨立 Runtime 儲存另議。
 - 建議：管理資料與搜尋 Chunk Store 分離；可用 Store interface 分環境替換；只保存明確必要資料。
 - 替代：統一平台 DB／Object Store；獨立 Runtime 的外部依賴與成本需交代。
@@ -448,7 +448,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - [Runtime API 規格](06_runtime_api_and_deployment.md)定義 W1 HTTP 契約。[Builder 開發契約索引](09_w1_builder_runtime_contract.md)提供所需規格、Schema 與 Mock 入口。
 - D-60 的 Basic Auth、D-64 的可信 System 路由與錯誤核心、D-65 的文件摘要格式沿用。D-42 的欄位選項由 Builder 依 Catalog 與草稿推導。2026-11-23 定案 [Query 成功物件](06_runtime_api_and_deployment.md#inference-api)，Context 陣列置於 `contexts`，所用快照以 body 及 Header 交付。
 - 已確認應用服務使用 HTTP，Pod 間由 Istio 強制 mTLS，對外由 Gateway 提供 HTTPS。部署與開發接線見 [Istio 傳輸與服務入口](06_runtime_api_and_deployment.md#istio-http-transport)。
-- DEV 管理 API 與 Ingestion／Inference 是否使用不同帳密、業務帳密是否綁定個別 System，待認證機制討論。需一起確定認證檢查的位置與部署時如何注入帳密。
+- Builder 入口、DEV 管理 API 與各 System 的 Ingestion／Inference 依 [HTTP Basic 分工](06_runtime_api_and_deployment.md#runtime-basic-authentication)。DEV 管理帳密從部署 Secret 載入，System 各流程使用 [固定 Secret 欄位](05_system_config.md#system-api-secret-fields)。
 - 管理請求逾時沿用同一 `Idempotency-Key` 查核或重送。已結束的操作結果只需覆蓋 Builder 的重送與查核窗口，初始候選為可配置的 1 小時。尚未結束或結果待查的操作保留至安全結算。結果過期時先查 System 狀態和原操作，查證後才能重新發起變更。正式期限與過期時的查核細節待定。
 - 已確認：卸載某 System 在目標 Runtime 的 Ingestion 後，該目標暫停該 System 的歷史 Run 查詢。ES 保留規則沿用，首版透過已載入同一綁定的 Ingestion 查詢。
 - Builder → DEV Runtime 已提供 [OpenAPI、Mock 及 HTTP 情境測試](09_w1_builder_runtime_contract.md#builder-runtime-quickstart)。仍待正式環境部署接線、Builder 自有 CRUD／助手／檔案 manifest、資料保留、Trace 及版本相容政策。W1 DEV Runtime 的 HTTP、ES 與模型還需整合驗收。
@@ -587,7 +587,7 @@ Retire 已確認為直接刪除，不做 soft delete／restore API；再次使�
 | API-D03 | Retire 同步回 200＋`document_id` 和 `result`，同文件在受理 Pod 有有效占用時回 409 | 後端完整刪除能力、部分刪除／未知結果與重試清理協定仍待核定 | Q-008／Q-017／Q-028 |
 | API-D04 | D-64 確認 22 的初始預設與管理方式：E 的 Runtime 環境設定，由 Admin／部署管理者提供；Query 額滿直接拒絕 | 候選參數路徑、正式機器 Schema／載入方式、排程／計數算法與實際容量驗證；不新增單次請求覆寫 | Q-017／Q-020／Q-027 |
 | API-D05 | 固定 Config 快照，按 System 判斷忙碌。Builder DEV 以定期查核補載，索引確認遺失時走人工確認的恢復流程。ES Bulk 逾時結案後可重匯 | ES 晚到寫入及殘留清理的整合驗收、獨立部署的索引建立方式 | Q-008～010／Q-015／Q-017／Q-019／Q-021／Q-028 |
-| API-D06 | Builder 登入延後；Runtime API 暫用一組 HTTP Basic 帳密操作全部 API；首期不做角色／逐 API 授權 | 對外入口及內部路由依 [Istio 規格](06_runtime_api_and_deployment.md#istio-http-transport)；認證的 Secret 注入與 Probe 由部署驗收 | Q-006／Q-019／Q-020 |
+| API-D06 | 依 [HTTP Basic 分工](06_runtime_api_and_deployment.md#runtime-basic-authentication)驗證 Builder 入口、管理操作及各 System 流程 | 對外入口及內部路由依 [Istio 規格](06_runtime_api_and_deployment.md#istio-http-transport)；認證的 Secret 注入與 Probe 由部署驗收 | Q-006／Q-019／Q-020 |
 | API-D07 | 查 document_id 是否存在；D-65 文件清單回 documents[]＋next_cursor，每筆 document_id／source_revisions[]，讀取實際 Chunk 而非工作表 | Remote 讀取操作與實際分頁一致性驗收 | Q-019／Q-028 |
 
 HTTP 範例見 [Runtime HTTP 測資](../examples/system_config/README.md#runtime-http-examples)。實作待辦依上表的 Q-ID 追蹤。
@@ -684,7 +684,7 @@ Engine手冊／Engine／Descriptor 手冊 檔名同步使用 components／compon
 | 4 | 資料更新／索引讀寫與恢復／Q-007～Q-015 | 來源版本傳遞、失敗清理與 Remote unknown、ES mapping、Filter／融合的可驗算規則 | backend 更新／清理與管理操作的具體約定；沿用完整覆寫、不續跑、無查詢讀寫鎖等已確認方向 |
 | 5 | 最小可執行技術與驗收基線／Q-001、Q-003、Q-004、Q-011、Q-026 | 具體框架／套件版本、可實測模型 API、Tokenizer／搜尋實作與測資；既有 M1 範圍不重新擴張 | Structured JSON／Recursive／Dense／Elasticsearch 的真實 ingest→query，以及成功、失敗與多 System 隔離驗收 |
 
-優先用第 1 項完整 Config 驗證第 2～3 項是否足夠串接，再依 M1／M2 所需的第 4～5 項收斂。Builder 管理 API／動態 UI、AI 助手與 Export／部署仍依既有 M4～M7 階段補齊；Builder 登入繼續延後。技術與驗收基線可平行準備，不要求等整張待決清單全部關閉才開始受限的 M1 開發。
+優先用第 1 項完整 Config 驗證第 2～3 項是否足夠串接，再依 M1／M2 所需的第 4～5 項收斂。Builder 管理 API／動態 UI、AI 助手與 Export／部署仍依既有 M4～M7 階段補齊。技術與驗收基線可平行準備，不要求等整張待決清單全部關閉才開始受限的 M1 開發。
 
 不需要一次解完所有問題。每次討論完成，更新相應 Q-ID、權威規格、範例與驗收。暫不做的選項標為後續，不能讓同一問題長期以多種互斥建議存在。
 
@@ -727,7 +727,7 @@ Builder 可按 [W1 開發契約索引](09_w1_builder_runtime_contract.md) 實作
 
 | 要進入的開發範圍 | 還需要定清楚的契約 |
 |---|---|
-| DEV 正式接線與授權 | 管理路由與業務路由的帳密是否拆分、業務憑證的 System 作用範圍、跨 Runtime 共用索引綁定的授權及驗證位置。HTTP Client 可先沿用現行 Basic Auth 與可信 System 路由。見 [Q-019](#q-019) 和 [Q-020](#q-020)。 |
+| DEV 正式接線與授權 | HTTP Client 可依 [OpenAPI](../openapi/runtime.dev.v1.json) 使用各路由指定的 Basic 帳密。仍需定 Builder 啟動設定的機器格式，並完成部署 Secret、Istio 及跨 Runtime 共用索引綁定的實機接線。見 [Q-019](#q-019) 和 [Q-020](#q-020)。 |
 | 管理操作復原 | 既有 GET、`reload` 和每 60 秒的補載查核已定。管理操作結果保存期限、逾期查核後的重送，以及多目標發布部分成功時的自動重試與回退策略仍待議。建議的 1 小時期限仍是候選。見 [Q-019](#q-019) 和 [Q-020](#q-020)。 |
 | 跨 Query 合併的發布與執行 | Query Transformation 位置與多 Query 必須啟用已確認。內建 Rewrite 的 [發布格式](05_system_config.md#inference-result-processing)可供 Builder 開發，Remote 節點設定及 M2 真實執行驗收見 [Q-014](#q-014)。 |
 | 模型服務發布與 PLED ES 接線 | 模型服務仍需確認環境綁定及 Profile。PLED ES 已定三個輸入與 Secret，實際 `es_number` 到服務的解析方式及登入流程由 PLED 整合驗收。見 [Q-003](#q-003)、[Q-021](#q-021) 與 [參數適用範圍](04_component_descriptor.md#component-parameter-scope)。 |

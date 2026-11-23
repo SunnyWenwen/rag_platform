@@ -136,6 +136,20 @@ DEV 驗證與啟用使用 Builder 針對同一 System 填寫的值。Variable �
 
 Secret 只供明確列出的認證欄位使用，例如 Remote `auth.bearer_token` 與 PLED `password`。發布時檢查一般參數、巢狀 Remote 參數與 Prompt，若引用 Secret 即回 `422 CONFIG_VALIDATION_FAILED` 並定位欄位。一般參數解析只取 Request 或 Variable。Runtime 在寫 Log、Trace 或回傳診斷前先排除認證欄位與 Header，輸出路徑再將識別到的 Secret 值遮罩為 `***`。部署注入見 [Runtime 啟動與環境注入](06_runtime_api_and_deployment.md#system-secret-deployment)。
 
+<a id="system-api-secret-fields"></a>
+### System API 認證欄位
+
+Builder 的 Secret 區固定顯示以下欄位。Key 和帳密格式以 [System Config Schema](../schemas/system_config.draft.schema.json#/$defs/system_secret) 為準。
+
+| 流程 | 帳號 Key | 密碼 Key |
+|---|---|---|
+| Ingestion | `INGESTION_API_USERNAME` | `INGESTION_API_PASSWORD` |
+| Inference | `INFERENCE_API_USERNAME` | `INFERENCE_API_PASSWORD` |
+
+Builder 建立 System 時預填 `ingestion`、`inference`，並為該 System 的兩條流程各產生可修改的獨立隨機 DEV 密碼。啟用流程時須有對應的一組有效帳密。這些 Key 由 Runtime 的 HTTP 認證層讀取，保留給入站 API，禁止以 Module 表達式引用，也不能作為 System Variable。
+
+匯出時兩組 Key 保留，值設成 `null`。由部署方自行在目標環境供應已啟用流程的帳密。分 Pod 時各 Runtime 只需注入自己流程的帳密。認證值屬部署綁定，輪替不影響索引指紋。[呼叫路由與驗證位置](06_runtime_api_and_deployment.md#runtime-basic-authentication)
+
 <a id="elasticsearch-service-source"></a>
 ## Elasticsearch 服務來源
 

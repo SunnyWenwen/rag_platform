@@ -12,9 +12,11 @@ from uuid import UUID
 
 HERE = Path(__file__).resolve().parent
 SCENARIO_FILE = HERE / "runtime_http.examples.json"
-MOCK_USER = "mock"
-MOCK_PASSWORD = "mock"
-AUTHORIZATION = "Basic " + b64encode(f"{MOCK_USER}:{MOCK_PASSWORD}".encode()).decode()
+MOCK_CREDENTIALS = {
+    "runtimeManagementBasic": "mock:mock",
+    "systemIngestionBasic": "ingestion:mock-ingestion",
+    "systemInferenceBasic": "inference:mock-inference",
+}
 CHALLENGE = 'Basic realm="retrieval-runtime"'
 NO_BODY = object()
 PROBE_PATHS = {"/health/live", "/health/ready", "/internal/v1/catalog"}
@@ -42,6 +44,15 @@ def fixture_body(message):
 def normalized_target(target):
     url = urlsplit(target)
     return url.path, tuple(sorted(parse_qsl(url.query, keep_blank_values=True)))
+
+
+def mock_auth_scheme(target):
+    path = urlsplit(target).path
+    if path.startswith("/internal/systems/"):
+        if path.endswith("/v1/queries"):
+            return "systemInferenceBasic"
+        return "systemIngestionBasic"
+    return "runtimeManagementBasic"
 
 
 def request_matches(expected, method, target, headers, body):
@@ -128,7 +139,9 @@ class MockHandler(BaseHTTPRequestHandler):
 
     def handle_request(self):
         authorization = self.headers.get("Authorization", "")
-        if not compare_digest(authorization.encode(), AUTHORIZATION.encode()):
+        credentials = MOCK_CREDENTIALS[mock_auth_scheme(self.path)]
+        expected = b"Basic " + b64encode(credentials.encode())
+        if not compare_digest(authorization.encode(), expected):
             self.close_connection = True
             response = ScenarioReplay.problem(
                 401, "UNAUTHENTICATED", "Mock Runtime credentials are missing or invalid.",

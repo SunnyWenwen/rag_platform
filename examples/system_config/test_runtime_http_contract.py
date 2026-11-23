@@ -13,7 +13,7 @@ from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
 
 from build_runtime_openapi import at_pointer, build_bundle
-from mock_runtime import create_server, fixture_body, load_scenarios
+from mock_runtime import MOCK_CREDENTIALS, create_server, fixture_body, load_scenarios, mock_auth_scheme
 from validate_runtime_http_examples import FORMATS, verify
 
 
@@ -21,7 +21,6 @@ API_ID = "urn:retrieval-builder:dev-http-contract"
 METHODS = {"get", "post", "put", "delete"}
 MEDIA = "application/json"
 TRANSPORT_HEADERS = {"server", "date", "connection", "content-length", "content-type"}
-AUTHORIZATION = "Basic " + b64encode(b"mock:mock").decode()
 
 
 def pointer(*parts):
@@ -75,8 +74,10 @@ class OpenAPIContract:
         path_pointer = pointer("paths", path)
         op_pointer = path_pointer + pointer(method)
         operation = item[method]
-        assert self.document["security"] == [{"runtimeBasic": []}]
-        assert self.document["components"]["securitySchemes"]["runtimeBasic"] == {"type": "http", "scheme": "basic"}
+        scheme = mock_auth_scheme(request["path"])
+        assert operation.get("security", self.document["security"]) == [{scheme: []}]
+        definition = self.document["components"]["securitySchemes"][scheme]
+        assert (definition["type"], definition["scheme"]) == ("http", "basic")
 
         inputs = {
             "path": {name: unquote(value, errors="strict") for name, value in match.groupdict().items()},
@@ -147,10 +148,11 @@ def headers_lower(headers):
     return {name.lower(): value for name, value in headers.items()}
 
 
-def send(client, method, path, body=None, headers=None, *, authenticated=True):
+def send(client, method, path, body=None, headers=None, *, authenticated=True, credential_scheme=None):
     outgoing = dict(headers or {})
     if authenticated:
-        outgoing["Authorization"] = AUTHORIZATION
+        credentials = MOCK_CREDENTIALS[credential_scheme or mock_auth_scheme(path)]
+        outgoing["Authorization"] = "Basic " + b64encode(credentials.encode()).decode()
     payload = None
     if body is not None:
         payload = json.dumps(body, ensure_ascii=False).encode()
@@ -187,6 +189,20 @@ def assert_controls(client, scenarios, api):
     assert mismatch["body"]["error"]["code"] == "MOCK_STEP_MISMATCH"
     first = scenarios["happy_path"][0]["request"]
     assert send(client, first["method"], first["path"])["status"] == 200
+
+    # Check that a credential for another route cannot access or advance the scenario.
+    for suffix, wrong_schemes in (
+        ("/internal/v1/catalog", ("systemIngestionBasic", "systemInferenceBasic")),
+        ("/v1/ingestions", ("runtimeManagementBasic", "systemInferenceBasic")),
+        ("/v1/queries", ("runtimeManagementBasic", "systemIngestionBasic")),
+    ):
+        target = next(step["request"] for step in scenarios["happy_path"] if step["request"]["path"].endswith(suffix))
+        for wrong_scheme in wrong_schemes:
+            response = send(client, target["method"], target["path"], fixture_body(target),
+                            credential_scheme=wrong_scheme)
+            assert response["status"] == 401, (target["path"], wrong_scheme)
+            assert response["body"]["error"]["code"] == "UNAUTHENTICATED"
+            api.assert_exchange(target, response)
 
 
 def run(scenarios, client, api):

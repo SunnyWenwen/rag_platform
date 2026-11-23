@@ -12,12 +12,12 @@
     },
     {
       "url": "http://127.0.0.1:8000",
-      "description": "Local mock on loopback. Use mock credentials."
+      "description": "Local mock on loopback. See the fixture credentials for management, Ingestion, and Inference."
     }
   ],
   "security": [
     {
-      "runtimeBasic": []
+      "runtimeManagementBasic": []
     }
   ],
   "paths": {
@@ -273,6 +273,7 @@
         "tags": ["Ingestion"],
         "summary": "Accept a batch of documents for ingestion",
         "operationId": "submitIngestion",
+        "security": [{"systemIngestionBasic": []}],
         "requestBody": {
           "required": true,
           "content": {
@@ -324,6 +325,7 @@
         "tags": ["Ingestion"],
         "summary": "Read ingestion Run status",
         "operationId": "getIngestionRun",
+        "security": [{"systemIngestionBasic": []}],
         "responses": {
           "200": {
             "description": "Run status, including unknown for expired or unavailable history.",
@@ -352,6 +354,7 @@
         "tags": ["Ingestion"],
         "summary": "Cancel selected documents in an ingestion Run",
         "operationId": "cancelIngestionDocuments",
+        "security": [{"systemIngestionBasic": []}],
         "requestBody": {
           "required": true,
           "content": {
@@ -391,6 +394,7 @@
         "tags": ["Ingestion"],
         "summary": "Read the most recent ingestion status for a document",
         "operationId": "getDocumentIngestionStatus",
+        "security": [{"systemIngestionBasic": []}],
         "responses": {
           "200": {
             "description": "Document work status, including unknown for unavailable history.",
@@ -419,6 +423,7 @@
         "tags": ["Documents"],
         "summary": "Check whether the current index contains a document",
         "operationId": "documentExists",
+        "security": [{"systemIngestionBasic": []}],
         "responses": {
           "200": {
             "description": "Document existence.",
@@ -448,6 +453,7 @@
         "tags": ["Documents"],
         "summary": "List documents and observed source revisions",
         "operationId": "listDocuments",
+        "security": [{"systemIngestionBasic": []}],
         "parameters": [
           {"$ref": "#/components/parameters/Limit"},
           {"$ref": "#/components/parameters/Cursor"}
@@ -482,6 +488,7 @@
         "tags": ["Documents"],
         "summary": "Remove a document from the current System index",
         "operationId": "retireDocument",
+        "security": [{"systemIngestionBasic": []}],
         "responses": {
           "200": {
             "description": "Retirement result.",
@@ -512,6 +519,7 @@
         "tags": ["Inference"],
         "summary": "Execute a query against a System",
         "operationId": "querySystem",
+        "security": [{"systemInferenceBasic": []}],
         "requestBody": {
           "required": true,
           "content": {
@@ -563,9 +571,20 @@
   },
   "components": {
     "securitySchemes": {
-      "runtimeBasic": {
+      "runtimeManagementBasic": {
         "type": "http",
-        "scheme": "basic"
+        "scheme": "basic",
+        "description": "DEV Runtime service credentials provisioned to the Builder Backend."
+      },
+      "systemIngestionBasic": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "Ingestion credentials of the System in the request path."
+      },
+      "systemInferenceBasic": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "Inference credentials of the System in the request path."
       }
     },
     "parameters": {

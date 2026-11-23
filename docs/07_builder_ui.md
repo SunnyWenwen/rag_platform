@@ -133,7 +133,7 @@ Admin 在 Builder 以外維護版本化全域模板。Builder 顯示可選版本
 
 **由 Builder 直接實作固定的 System 設定畫面。** 兩張 KV 表各自讀寫 `config.variable` 與 `config.secret`，以 [System Config Schema](../schemas/system_config.draft.schema.json) 驗證資料形狀。Ingestion／Inference 的 Component 參數由 [表單 Renderer](#descriptor-form-rendering) 依 `parameters_schema` 產生。
 
-使用者可在兩張表各自新增、編輯與移除 KV，Key 在兩張表間不得重複。Variable 使用一般文字輸入，DEV 值可隨草稿保存。Secret 使用遮罩輸入，Prototype 只在本頁記憶體留存試跑值。下載部署設定時兩張表都保留 Key 並將值設為 `null`。取值順序見 [共用引用語法](05_system_config.md#parameter-references)。
+使用者可在兩張表各自新增、編輯與移除 KV，Key 在兩張表間不得重複。Variable 使用一般文字輸入，DEV 值可隨草稿保存。Secret 使用遮罩輸入，Prototype 只在本頁記憶體留存試跑值。下載部署設定時兩張表都保留 Key 並將值設為 `null`。取值順序見 [共用引用語法](05_system_config.md#parameter-references)。Secret 另有一個固定的 [System API 認證區](05_system_config.md#system-api-secret-fields)，帳密值可改，保留 Key 由 Builder 管理。
 
 ### 條件欄位與相依驗證
 
@@ -591,7 +591,7 @@ ResultSet.key 對應 Config 路徑／群組，items 位置即名次。RRF 可用
 ### D-60：讀寫並行與暫定驗證方式補充
 
 - [ ] 初次資料依 [查詢入口規則](#builder-initial-ingestion-readiness)開放。後續一般 Ingestion／retire 與查詢併行；索引未就緒、限流或錯誤依 Runtime 回應呈現。
-- [ ] API 說明暫採單一 Basic 帳密操作全部 Runtime API，憑證不寫進業務 payload；不因此新增 Builder 登入或角色權限 UI。
+- [ ] Builder 入口、管理 API 與 System 各流程的帳密依 [HTTP Basic 認證](06_runtime_api_and_deployment.md#runtime-basic-authentication)。在 Secret 區呈現四個固定欄位，憑證只出現在認證 Header 或受保護的設定傳遞。
 - [ ] 更新期間 Query 可反映不同時點的資料，不在 UI 宣稱原子快照；同文件 queued／running 重複提交仍保留忙碌提示。
 
 

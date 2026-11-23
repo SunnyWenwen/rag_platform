@@ -313,8 +313,30 @@
       "minProperties": 1
     },
     "system_secret": {
-      "description": "Sensitive System values. DEV activation supplies strings. Exported keys have null values and are resolved at startup.",
-      "$ref": "#/$defs/system_value_map"
+      "description": "Sensitive System values. The four named properties are reserved for inbound HTTP Basic authentication by pipeline. DEV supplies test strings; export uses null for environment injection.",
+      "$ref": "#/$defs/system_value_map",
+      "properties": {
+        "INGESTION_API_USERNAME": {"$ref": "#/$defs/basic_username"},
+        "INGESTION_API_PASSWORD": {"$ref": "#/$defs/basic_password"},
+        "INFERENCE_API_USERNAME": {"$ref": "#/$defs/basic_username"},
+        "INFERENCE_API_PASSWORD": {"$ref": "#/$defs/basic_password"}
+      },
+      "dependentRequired": {
+        "INGESTION_API_USERNAME": ["INGESTION_API_PASSWORD"],
+        "INGESTION_API_PASSWORD": ["INGESTION_API_USERNAME"],
+        "INFERENCE_API_USERNAME": ["INFERENCE_API_PASSWORD"],
+        "INFERENCE_API_PASSWORD": ["INFERENCE_API_USERNAME"]
+      }
+    },
+    "basic_username": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "not": {"type": "string", "pattern": "[:\\u0000-\\u001f\\u007f]"}
+    },
+    "basic_password": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "not": {"type": "string", "pattern": "[\\u0000-\\u001f\\u007f]"}
     },
     "system_value_map": {
       "type": "object",

@@ -42,7 +42,7 @@
 ## HTTP 共通規格
 
 - **DEV 管理 API** 使用 `/internal/v1`。**DEV 業務 API** 使用 `/internal/systems/{system_id}/v1`。獨立部署的業務 API 前綴為 `/v1`。兩種部署的服務層 Health 路徑均為 `/health/live`、`/health/ready`。
-- Runtime 在 HTTP 應用層驗證部署提供的 Basic 帳密。未通過驗證回 `401` 並帶 `WWW-Authenticate: Basic realm="retrieval-runtime"`。連線加密及 DEV 內部路由的存取限制依 [Istio 傳輸規格](#istio-http-transport)。
+- Runtime 在 HTTP 應用層按路由驗證 [對應的 Basic 帳密](#runtime-basic-authentication)。未通過驗證回 `401` 並帶 `WWW-Authenticate: Basic realm="retrieval-runtime"`。連線加密及 DEV 內部路由的存取限制依 [Istio 傳輸規格](#istio-http-transport)。
 - 有 body 的請求及回應用 `application/json`。HTTP 契約中的 ID／Revision／Cursor 均為非空、不透明的字串。System ID 與索引世代使用 [UUID 格式](#runtime-index-ownership)。Client 將每個路徑參數編碼為單一路徑片段。欄位名稱後的 `?` 表示選填，允許空值的必填欄位須明確傳 `null`。
 
 <a id="istio-http-transport"></a>
@@ -57,7 +57,7 @@ Builder 和 Runtime 的應用程式都在 Pod 內監聽 HTTP，服務以 Kuberne
 | 外部系統 → FTEST／ENT 的獨立 Runtime | `https://` 的 System 主機 | Gateway 終止 HTTPS，經 mTLS 轉至已啟用流程的 HTTP Service，只路由其 `/v1` 業務 API 和受認證的 `/health/live`、`/health/ready`。分 Pod 時，依路徑將 Ingestion／Inference 請求送至各自的 Service。 |
 
 - 部署者確認兩端皆納入 mesh，Gateway 到應用 Pod 及 Builder 到 DEV Runtime 的流量都使用 mTLS。目標 Workload 的 `PeerAuthentication` 使用 `STRICT`，應用服務 Port 必須受該策略涵蓋。若 mesh 接線或政策未就緒，先修正部署再放行流量。
-- DEV Runtime 使用 `ClusterIP` 與 Builder 的 ServiceAccount 授權，Gateway 的外部路由不映射 DEV Runtime 或 `/internal` 管理入口。Builder 在啟動設定以 Runtime 的 Service DNS 和 `http://` 指定連線目標，Basic 帳密從部署 Secret 取得。
+- DEV Runtime 使用 `ClusterIP` 與 Builder 的 ServiceAccount 授權，Gateway 的外部路由不映射 DEV Runtime 或 `/internal` 管理入口。Builder 啟動設定以 Runtime 的 Service DNS 和 `http://` 指定連線目標，管理帳密讀取 Builder 的部署 Secret。
 - 本機 Mock 使用 `http://127.0.0.1:8000` 與測試帳密，只供 loopback。部署接線、Workload 身分與驗收方式見 [Istio HTTP 部署範例](../examples/system_config/README.md#istio-http-deployment-example)。
 
 <a id="src-07-3-平台管理資料與儲存"></a>
@@ -270,7 +270,7 @@ System 列表／讀取、Workspace／Dataset CRUD、AI suggestion／連線檢查
 <a id="src-07-54-builder-上傳與自行部署"></a>
 ## Builder 上傳與自行部署
 
-Engine 不提供 multipart 上傳端點。Builder 可接收檔案／CSV，轉成 content、Base64 或可存取 URI 再呼叫相同 JSON API；自行部署的呼叫端負責相同轉換。檔案傳輸轉換不等於語意 Parsing，原始檔案內容仍需 Engine 有相容 Parser。
+Builder DEV 首版接收原始檔案後，由 Backend 把原始 bytes 編成 Base64，放在 `documents[].content.base64`，並帶 `content.media_type` 呼叫既有 Ingestion JSON API。欄位見 [檔案匯入範例](../examples/system_config/file_ingestion.base64.request.json)。Builder 的 CSV 欄位映射仍轉成結構化 Document。Runtime 依 System 所選 Parser 解析原始內容；其他呼叫端仍可使用 Document 契約既有的 URI 欄位。
 
 Builder 管理的 System 重建索引後，由 Builder 使用保存的原始資料，以生效的新 Config 透過既有 Ingestion API 重新匯入。索引刪除與原始資料保留各由 Runtime 和 Builder 管理。Builder 的 [CSV 整批替換](07_builder_ui.md#builder-csv-replacement)由 Builder 協調清除資料和重新提交。獨立部署的資料由部署方提供，使用相同的 Ingestion API。
 
@@ -377,7 +377,7 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 - D-58：一支 POST /v1/ingestions 接收批次物件，documents 為非空 Document[]；Parser 每次仍接收單份物件，不另開 :batch。
 - D-58：新增文件存在性與全部 document_id 清單的查詢能力，資料來源為該 System 的實際儲存／索引，與 Runtime 工作狀態分開；清單需對 Chunk 的 document_id 去重。
 - D-60：讀寫各自進行，不因 Ingestion／retire 寫入而阻擋 Query，不加共享查詢讀寫鎖／全索引快照；同文件的忙碌拒絕以受理 Pod 為範圍。
-- D-60：Runtime API 暫採 HTTP Basic Auth，預設一組帳密可操作該 API service 提供的全部 API，首期不做逐角色／逐 API 權限；Builder 使用者登入另議。
+- Builder 與 Runtime 的 HTTP Basic 驗證位置、憑證來源和路由範圍見 [HTTP Basic 認證](#runtime-basic-authentication)。
 - D-61～D-63：多個 System 共用 Runtime 與 LangGraph，各請求固定 Config 快照。切版、索引及資源交接見 [System 管理](#src-07-4-systemrevision-與-engine-生命週期)。服務池分組與快取回收策略依 Q-020。
 
 - D-64：確認接收／文件與 Run 狀態核心欄位及錯誤格式；Pod 存續期間的覆寫失敗可從本機工作紀錄查詢，實際索引狀態依文件覆寫規格查核。初始限制見 Runtime API／部署手冊。可信內部 System 路由見 [HTTP 共通規格](#runtime-http-common)。
@@ -719,15 +719,17 @@ D-60：使用者確認不採「寫入時禁止查詢」的共享讀寫鎖，讀�
 索引尚未建立／資源未就緒、Rate limit 或真實後端失敗仍按原 API 回應；正在 Ingestion 這件事本身不作為封鎖 Query 的理由。
 
 <a id="src-21-84-已確認暫採單一-basic-帳號builder-登入延後"></a>
-### 已確認暫採單一 Basic 帳號；Builder 登入延後
+<a id="runtime-basic-authentication"></a>
+### HTTP Basic 認證
 
-D-60：Runtime API 暫採 **HTTP Basic Auth（帳號／密碼）**，預設一組帳密可操作該 API service 對外提供的所有 API，包括 Ingestion、取消匯入工作、Query、Run／文件狀態、文件存在／ID 清單、retire 與對外 Health。此處限定在該 service 提供的 System／資料範圍，不代表同組密碼跨全部環境／其他服務硬編碼共用。
+| 呼叫入口 | 驗證位置與適用的帳密 |
+|---|---|
+| 使用者 → Builder UI／API | Builder Backend 驗證該 Builder 部署的入口帳密。 |
+| Builder Backend → DEV Runtime 管理 API 及服務 Health | Builder 啟動設定依 `runtime_ref` 指向部署 Secret 供應的管理帳密。DEV Runtime 從自己的部署 Secret 注入對應值並驗證。 |
+| Builder Backend → DEV System 測試 API | Backend 依請求的 System 和流程選取測試帳密。Runtime 從該 System 已載入的設定，對 Ingestion／文件路由驗證 Ingestion 帳密、對 Query 驗證 Inference 帳密。 |
+| 呼叫端 → 獨立 System 業務 API | 遵守相同流程分工。Runtime 啟動時由目標環境的 Secret 供應帳密。若對外開放服務 Health，使用任一已啟用流程的帳密。 |
 
-第一版不增加多帳號、角色、逐 API 權限或使用者 ACL 管理；同一組帳密通過驗證即可執行該服務提供的全部 API。服務端仍須使用正確 System 路由，不能把任意外部 Header 當作載入／選擇未提供 System 的授權。
-
-Basic 帳密以部署環境 Secret 引用提供，不寫入文件 metadata 或原始碼。網路傳輸使用 [Istio 規格](#istio-http-transport) 的 mTLS 與入口 HTTPS。內部 Probe 的實際接線依部署設計，對外 Health 遵守本節的 Basic 認證。[RFC 7617](https://www.rfc-editor.org/rfc/rfc7617.html)
-
-Builder 的使用者登入方式之後再討論；不因 Runtime Basic 決策而替 Builder 加上登入流程，也不新增 OAuth／SSO 服務。User Remote API／模型／DB 的憑證是各自服務連線，不預設沿用 Runtime 對外帳密。
+每組帳密只授權對應入口、System 或流程。Browser 的 Builder 入口帳密由 Builder 消費，Backend 依生效版本選取業務帳密並另組送往 Runtime 的 `Authorization`。DEV Runtime 依 [Istio 規格](#istio-http-transport) 先限制呼叫來源，應用程式再驗證路由所要求的 Basic 憑證。System 欄位、DEV 預設與部署注入見 [System API 認證欄位](05_system_config.md#system-api-secret-fields)。Log、Trace 與診斷應遮蔽 `Authorization` 和 Secret 值。Kubernetes 內部 Probe 接線由部署設計處理。[RFC 7617](https://www.rfc-editor.org/rfc/rfc7617.html)
 
 <a id="src-21-85-可信-system-路由與-s1-的意思d-64"></a>
 ### 可信 System 路由
@@ -736,8 +738,8 @@ S1 是 system_id 示意：由 Builder Backend 建立並維護的穩定 Retrieval
 
 | 呼叫方向 | 規劃路由示例 | System／Config 選擇 |
 |---|---|---|
-| Builder UI → Backend | POST /api/systems/S1/queries | Backend 經可信管理關係選定目標 System；Builder 登入具體方案仍延後 |
-| Backend → 共用 Runtime | POST /internal/systems/S1/v1/queries | 只供可信 Backend 存取且驗證認證；Runtime 查已註冊 S1 的有效配置，固定快照後執行 |
+| Builder UI → Backend | POST /api/systems/S1/queries | Backend 驗證 Builder 入口帳密並選定目標 System |
+| Backend → 共用 Runtime | POST /internal/systems/S1/v1/queries | 只供可信 Backend 存取，驗證 S1 的 Inference 帳密，固定已載入快照後執行 |
 | 呼叫端 → FTEST／ENT | POST /v1/queries | 單 System Runtime 已載入配置，業務請求不需再帶 S1 |
 
 業務 API 依同一內部前綴選 System，Request／Response 的業務語意不複製兩套；Health 仍是 service 級 /health/live／ready，不逐 System 複製。Builder 路由前綴為 /api/systems/{system_id}，共用 Runtime 為 /internal/systems/{system_id}/v1。Config 套用格式見 [System 生命週期 API](#system-lifecycle-api)。Builder 自有 CRUD 另定。
@@ -989,7 +991,7 @@ Remote API 在部署設定解析 Endpoint。需要 Bearer 認證時，節點的 
 <a id="system-secret-deployment"></a>
 ### Runtime 啟動與 Variable／Secret 注入
 
-同一 System 在 DEV 及正式環境使用相同的 `{{KEY}}`。DEV 由 Builder 提供測試值。正式 Deployment 為 `config.secret` 使用 `env[].valueFrom.secretKeyRef`，為 `config.variable` 使用 `configMapKeyRef`。環境變數名稱與兩張表的 Key 完全相同，每個 Pod 各自在 Runtime 啟動時讀值。缺少 Key 時中止啟動，錯誤訊息列出缺少的 Key，遮罩解析出的值。Kubernetes 以環境變數注入 Secret 時，更新後需重新啟動容器才會取得新值。
+同一 System 在 DEV 及正式環境使用相同的 `{{KEY}}`。DEV 由 Builder 提供測試值。正式 Deployment 為 `config.secret` 使用 `env[].valueFrom.secretKeyRef`，為 `config.variable` 使用 `configMapKeyRef`。環境變數名稱與兩張表的 Key 完全相同，每個 Pod 各自在 Runtime 啟動時讀值。System API 的保留帳密依 [實際啟用流程](05_system_config.md#system-api-secret-fields)注入。啟動所需 Key 缺少時中止啟動，錯誤訊息列出缺少的 Key，遮罩解析出的值。Kubernetes 以環境變數注入 Secret 時，更新後需重新啟動容器才會取得新值。
 
 [DEV Config](../examples/system_config/local_memory.remote_parsing.json)、[匯出 Config](../examples/system_config/local_memory.remote_parsing.export.json)與[容器 env 片段](../examples/system_config/deployment.secret-env.example.yaml)示範同一份設定在兩個環境如何供值。
 
@@ -1034,7 +1036,7 @@ Runtime 更新若重啟 Memory 模式，依既有規則需要重新 Ingestion；
 
 request／run／trace 必須可跨 Backend／Runtime／模組關聯。輸出結構化錯誤、耗時、輸入輸出數及可取得用量；模型與 Judge 也記版本。OTel／Langfuse 為候選，非每個 Runtime 必備外部依賴，具體方案 Q-016／Q-027。
 
-Builder 使用者登入與文件／檔案級 ACL 延後討論，見 Q-006。可信 Backend 與 Runtime 負責 System 存取範圍。MCP 固定 API key 對應可操作的 System 與工具，Runtime 依授權列出工具並在呼叫時驗證。獨立 Runtime 採部署端認證。模型與 DB 的連線憑證由各服務綁定提供。
+Builder 入口驗證依 [HTTP Basic 認證](#runtime-basic-authentication)，文件／檔案級 ACL 依 Q-006。可信 Backend 與 Runtime 負責 System 存取範圍。MCP 固定 API key 對應可操作的 System 與工具，Runtime 依授權列出工具並在呼叫時驗證。獨立 Runtime 採部署端認證。模型與 DB 的連線憑證由各服務綁定提供。
 
 <a id="src-18-5-執行實例儲存與資料共用"></a>
 ## 外部 Retrieval 就緒與資料責任

@@ -50,6 +50,7 @@ BUILDER_FORM_DESCRIPTORS = json.loads((HERE / "builder_form.descriptors.json").r
 CATALOG_SCHEMA = json.loads((REPO / "schemas/runtime_catalog.draft.schema.json").read_text())
 RUNTIME_CATALOG = json.loads((HERE / "runtime_catalog.response.json").read_text())
 SYSTEM_CONFIG_SCHEMA = json.loads((REPO / "schemas/system_config.draft.schema.json").read_text())
+SYSTEM_API_SECRET_KEYS = SYSTEM_CONFIG_SCHEMA["$defs"]["system_secret"]["properties"].keys()
 REMOTE_API_SCHEMA = json.loads((REPO / "schemas/remote_api.schema.json").read_text())
 RUNTIME_IDENTITY = json.loads((REPO / "schemas/runtime_identity.schema.json").read_text())
 DATA_META = json.loads((REPO / "schemas/data_meta.schema.json").read_text())
@@ -548,7 +549,7 @@ def validate_references(config, lane, module, node):
             ("query_transformation", "prompt", "query"), ("query_transformation", "prompt", "count")
         }:
             continue
-        if key in config.get("secret", {}):
+        if key in SYSTEM_API_SECRET_KEYS or key in config.get("secret", {}):
             fail(f"Secret reference outside authentication:{location}")
     if lane != "ingestion":
         return
@@ -570,6 +571,9 @@ def bind_system_parameters(snapshot, environment=None, *, request_parameters=Non
     """Exercise startup and request binding for the published fixtures."""
     Draft202012Validator(SYSTEM_CONFIG_SCHEMA, registry=SCHEMA_REGISTRY).validate(snapshot)
     config = snapshot["config"]
+    reserved_variables = config.get("variable", {}).keys() & SYSTEM_API_SECRET_KEYS
+    if reserved_variables:
+        fail(f"reserved System API Secret key:/config/variable/{min(reserved_variables)}")
     duplicates = config.get("secret", {}).keys() & config.get("variable", {}).keys()
     if duplicates:
         fail(f"duplicate System setting:/config/variable/{min(duplicates)}")
@@ -602,6 +606,8 @@ def bind_system_parameters(snapshot, environment=None, *, request_parameters=Non
         if not PARAMETER_EXPRESSION.fullmatch(value):
             fail(f"invalid parameter expression:{path}")
         key = value[2:-2]
+        if key in SYSTEM_API_SECRET_KEYS:
+            fail(f"reserved System API Secret key:{path}")
         if not auth and request_values is not None and key in request_values:
             return request_values[key]
         values = secrets if auth else variables
@@ -879,6 +885,34 @@ def _():
     literal = deepcopy(dev)
     literal["config"]["pipelines"]["ingestion"]["parsing"]["auth"]["bearer_token"] = "fixture-inline-token"
     rejects(lambda: compile_local_example(literal), "ValidationError")
+
+
+@case("System API credentials are paired and reserved for inbound Basic authentication")
+def _():
+    snapshot = local_snapshot("remote_parsing")
+    config = snapshot["config"]
+    credentials = {
+        "INGESTION_API_USERNAME": "ingestion", "INGESTION_API_PASSWORD": "fixture-ingestion",
+        "INFERENCE_API_USERNAME": "inference", "INFERENCE_API_PASSWORD": "fixture-inference",
+    }
+    before = compile_local_example(snapshot)
+    config["secret"].update(credentials)
+    assert compile_local_example(snapshot) == before
+    exported = deepcopy(snapshot)
+    exported["config"]["secret"] = dict.fromkeys(config["secret"])
+    Draft202012Validator(SYSTEM_CONFIG_SCHEMA, registry=SCHEMA_REGISTRY).validate(exported)
+
+    incomplete = deepcopy(snapshot)
+    del incomplete["config"]["secret"]["INGESTION_API_PASSWORD"]
+    rejects(lambda: compile_local_example(incomplete), "ValidationError")
+    invalid = deepcopy(snapshot)
+    invalid["config"]["secret"]["INGESTION_API_USERNAME"] = "invalid:name"
+    rejects(lambda: compile_local_example(invalid), "ValidationError")
+
+    remote = config["pipelines"]["ingestion"]["parsing"]
+    remote["auth"]["bearer_token"] = "{{INFERENCE_API_PASSWORD}}"
+    rejects(lambda: compile_local_example(snapshot),
+            "reserved System API Secret key:/config/pipelines/ingestion/parsing/auth/bearer_token")
 
 
 @case("Request and Variable bind only runtime-only Remote values and Secrets stay in authentication")
@@ -1375,7 +1409,8 @@ def _():
     params = ingestion["indexing"]["parameters"]
     published = Draft202012Validator(SYSTEM_CONFIG_SCHEMA, registry=SCHEMA_REGISTRY)
     published.validate(sample)
-    environment = {"PLED_ES_PASSWORD": "fixture-only-password"}
+    api_credentials = {key: f"fixture-{key.lower()}" for key in SYSTEM_API_SECRET_KEYS}
+    environment = {**api_credentials, "PLED_ES_PASSWORD": "fixture-only-password"}
     ingestion["import"]["parameters"]["request_parameters"] = [
         {"name": "PLED_ES_PASSWORD", "type": "string", "required": False},
     ]
@@ -1386,13 +1421,13 @@ def _():
     assert params["es_number"] == "000123"
     _, _, index_plan = compile_local_example(sample, environment)
     assert set(index_plan).isdisjoint(ES_CONNECTION["then"]["required"])
-    rejects(lambda: compile_local_example(sample, {}), "missing System Secret:/config/secret/PLED_ES_PASSWORD")
-    rejects(lambda: compile_local_example(sample, {"PLED_ES_PASSWORD": ""}),
+    rejects(lambda: compile_local_example(sample, api_credentials), "missing System Secret:/config/secret/PLED_ES_PASSWORD")
+    rejects(lambda: compile_local_example(sample, {**api_credentials, "PLED_ES_PASSWORD": ""}),
             "missing PLED password:/config/pipelines/ingestion/indexing/parameters/password")
-    sample["config"]["variable"] = sample["config"].pop("secret")
+    sample["config"]["variable"] = {"PLED_ES_PASSWORD": sample["config"]["secret"].pop("PLED_ES_PASSWORD")}
     rejects(lambda: compile_local_example(sample, environment),
             "undeclared System Secret PLED_ES_PASSWORD:/config/pipelines/ingestion/indexing/parameters/password")
-    sample["config"]["secret"] = sample["config"].pop("variable")
+    sample["config"]["secret"].update(sample["config"].pop("variable"))
     for field in ES_CONNECTION["then"]["required"]:
         value = params.pop(field)
         rejects(lambda: published.validate(sample), "ValidationError")
