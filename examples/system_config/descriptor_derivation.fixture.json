@@ -42,7 +42,7 @@
           "component_id": "elasticsearch",
           "component_version": "1.0.0",
           "parameters": {
-            "service_ref": "dev-search",
+            "service_source": "dev_test",
             "vector_name": "text",
             "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
           }
@@ -126,7 +126,7 @@
     "indexing": {
       "io": {"input": "Document[]", "output": "IndexBinding"},
       "effective_schema": "indexed_document",
-      "options": {"/service_ref": ["dev-search"], "/vector_name": ["text"], "/vector_fields/*": ["text"]}
+      "options": {"/vector_name": ["text"], "/vector_fields/*": ["text"]}
     },
     "inference_input": {
       "io": {"input": "InferenceRequest", "output": "QueryContext[]"},

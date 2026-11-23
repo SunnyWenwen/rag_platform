@@ -199,7 +199,7 @@ Runtime 的 Config 編譯器輸出 [指紋投影 Schema](../schemas/index_finger
 | `index.vector_bindings`、`embedding_spaces` | 兩個物件都以已選入索引的向量名稱為鍵，鍵集合必須一致。前者沿用 IndexBinding 的來源欄位、Profile ID 與維度，後者記錄實際模型 ID 與穩定版本。沒有索引向量時皆為 `{}`。 |
 | `index.mapping`、`settings` | 解析後的 ES 欄位、動態規則、runtime fields、`_source` 及會影響相容性的原生 `analysis`、`similarity`。預設值由目標後端能力與設定解析；無宣告的 `dynamic_templates` 用 `[]`，無定義的 `runtime`、`analysis`、`similarity` 用 `{}`。原生 ES 物件由 ES 驗證。後端若有會改變索引語意而 v1 投影未涵蓋的設定，回報相容性未確認。 |
 
-純 Inference 的 Rewrite、融合、Rerank、固定 Filter、`top_n`、運作限額、端點、憑證與單文件的 `source_revision` 都不參與指紋。`env`、`system_id` 和 `index_generation` 各自用於識別與定位，也排除在指紋投影外。以 System Variable 提供的切分長度等入庫設定，按解析後的有效參數判定索引相容性。遷移 ES 叢集或索引名稱時，Runtime 依環境綁定重新查找實體目標並核對歸屬。
+純 Inference 的 Rewrite、融合、Rerank、固定 Filter、`top_n`、運作限額、端點、憑證與單文件的 `source_revision` 都不參與指紋。`env`、`system_id` 和 `index_generation` 各自用於識別與定位，也排除在指紋投影外。以 System Variable 提供的切分長度等入庫設定，按解析後的有效參數判定索引相容性。切換 ES 來源、`es_number` 或實體索引名稱時，Runtime 依環境綁定重新確認目標與索引歸屬。密碼輪替只需要重新連線並核對原索引綁定。
 
 1. 編譯器先解析預設值、舊欄位名稱及依賴版本，檢查階段順序與覆蓋範圍、向量鍵集合及 mapping 維度。無順序語意的陣列按穩定鍵排序，例如 `copy_fields` 按唯一的 `output_field`；切分分隔符、分析器 pipeline 及 `dynamic_templates` 保留順序。
 2. 對整份投影執行 [RFC 8785 JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785.html)，以 canonical UTF-8 bytes 計算 SHA-256。將小寫十六進位摘要連同 `index_fingerprint_version`、`env` 和 `system_id` 寫入 ES `mappings._meta`。完整 [JSON 範例](../examples/system_config/index_fingerprint.v1.example.json) 可離線核對。
@@ -297,7 +297,7 @@ Descriptor 的欄位推導規則見 [Component Descriptor](04_component_descript
 | `resources.profiles` | Embedding Profile ID、顯示名稱及向量維度。 |
 | `resources.tokenizer_profiles` | Chunking 可引用的 Tokenizer Profile ID 及顯示名稱。 |
 | `resources.models` | 可選的邏輯模型引用及顯示名稱。 |
-| `resources.elasticsearch_services` | 可選的 Elasticsearch 邏輯服務引用及顯示名稱。 |
+| `resources.elasticsearch_services` | 保留的 Catalog 資源集合，首版回空物件。Indexing 服務來源由 Descriptor 引用的 [ES 連線契約](05_system_config.md#elasticsearch-service-source) 決定。 |
 
 以 [Catalog Schema](../schemas/runtime_catalog.draft.schema.json) 驗證 [Catalog 回應範例](../examples/system_config/runtime_catalog.response.json)。四種資源集合皆可為空。Catalog 不帶實際認證憑證或連線測試結果。Runtime 變更 Descriptor 或可用資源清單時更新 `catalog_revision`。Builder 在同一次目標環境編輯中共用目錄。驗證或套用若發現 Runtime 識別或 Catalog 版本不符，回 `409 STALE_CATALOG`。Builder 重新取目錄並檢查既有選值。已選版本找不到時保留原值並提示修正。
 
@@ -305,7 +305,7 @@ Descriptor 的欄位推導規則見 [Component Descriptor](04_component_descript
 
 | Descriptor 指定的來源 | Builder 的解析依據 |
 |---|---|
-| `profiles`、`models`、`tokenizer_profiles`、`elasticsearch_services` | 同一份 Catalog 的對應 `resources` 子表。 |
+| `profiles`、`models`、`tokenizer_profiles` | 同一份 Catalog 的對應 `resources` 子表。 |
 | `input.structdata`、`input.vectors` | 目前草稿沿 Pipeline 推導的上游有效輸出。 |
 | `index_plan.fulltext`、`index_plan.vectors` | 草稿推導的 Indexing 欄位用途及選定的向量。 |
 | `candidate.structdata`、`candidate.document_fields` | 草稿推導的有效候選文件欄位。 |

@@ -24,6 +24,13 @@
 - [部署匯出 Config](local_memory.remote_parsing.export.json) 保留相同 Key 與 Module 表達式，`config.variable` 與 `config.secret` 的值都以 `null` 表示由目標環境供應。
 - [Deployment 的 env 片段](deployment.secret-env.example.yaml) 映射同名環境變數。憑證使用已建立的 Kubernetes Secret，切分上限和語言使用 ConfigMap。例如 FTEST 可將 ConfigMap 的 `chunk-max-tokens` 設為 `720`，DEV 仍使用 `500`。對應規格見 [System Config](../../docs/05_system_config.md#system-secret)及 [Runtime 啟動](../../docs/06_runtime_api_and_deployment.md#system-secret-deployment)。
 
+<a id="pled-elasticsearch-example"></a>
+## Elasticsearch 服務來源範例
+
+- [Runtime HTTP 情境](runtime_http.examples.json) 使用 Builder DEV 預設的 `service_source: dev_test`，由部署管理員配置測試 ES 綁定。
+- [PLED ES 匯出](elasticsearch.pled.export.json) 提供 `service_source: pled_es`、保留前導零的 `es_number`、`account` 與 `password` Secret 引用。範例的 System、ES 編號及帳號均為示意值。
+- [PLED Secret 注入](deployment.pled-secret-env.example.yaml) 將匯出中宣告的 Secret Key 對應到部署環境變數。真實 PLED 實例解析、登入和索引權限由 DEV Runtime 串接驗收。
+
 ## Elasticsearch 索引指紋
 
 [索引指紋 v1 範例](index_fingerprint.v1.example.json)示範有效索引設定投影、ES `mappings._meta`、實體索引名稱及歸屬拒絕案例。HTTP 範例驗證器核對 Schema、SHA-256 和名稱，並驗證環境、System ID、指紋或索引名稱不符的案例。[索引歸屬規格](../../docs/06_runtime_api_and_deployment.md#runtime-index-ownership)

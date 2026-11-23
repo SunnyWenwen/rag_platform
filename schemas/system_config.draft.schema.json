@@ -107,6 +107,8 @@
         },
         "indexing": {
           "$ref": "#/$defs/builtin_node",
+          "if": {"properties": {"component_id": {"const": "elasticsearch"}}, "required": ["component_id"]},
+          "then": {"properties": {"parameters": {"$ref": "elasticsearch_connection.schema.json"}}},
           "properties": {
             "parameters": {
               "properties": {

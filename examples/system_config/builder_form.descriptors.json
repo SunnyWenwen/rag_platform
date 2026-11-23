@@ -993,10 +993,6 @@
     "parameters_schema": {
       "type": "object",
       "properties": {
-        "service_ref": {
-          "type": "string",
-          "minLength": 1
-        },
         "vector_name": {
           "type": "string",
           "minLength": 1,
@@ -1009,11 +1005,6 @@
           "$ref": "https://rag-builder.example/schemas/config_enums.schema.json#/$defs/elasticsearch_service_source",
           "title": "服務來源"
         },
-        "elasticsearch_service_ref": {
-          "type": "string",
-          "minLength": 1,
-          "title": "外部 Elasticsearch 服務引用"
-        },
         "vector_fields": {
           "type": "array",
           "items": {
@@ -1022,10 +1013,22 @@
           },
           "uniqueItems": true,
           "title": "向量欄位"
+        },
+        "es_number": {
+          "$ref": "https://rag-builder.example/schemas/elasticsearch_connection.schema.json#/properties/es_number",
+          "title": "es_number"
+        },
+        "account": {
+          "$ref": "https://rag-builder.example/schemas/elasticsearch_connection.schema.json#/properties/account",
+          "title": "account"
+        },
+        "password": {
+          "$ref": "https://rag-builder.example/schemas/elasticsearch_connection.schema.json#/properties/password",
+          "title": "password"
         }
       },
       "required": [
-        "service_ref"
+        "service_source"
       ],
       "additionalProperties": false,
       "not": {
@@ -1033,16 +1036,18 @@
           "vector_name",
           "vector_fields"
         ]
-      }
+      },
+      "allOf": [
+        {
+          "$ref": "https://rag-builder.example/schemas/elasticsearch_connection.schema.json"
+        }
+      ]
     },
     "io": {
       "input": "Document[]",
       "output": "IndexBinding"
     },
     "option_sources": {
-      "/service_ref": {
-        "source": "elasticsearch_services"
-      },
       "/vector_name": {
         "source": "input.vectors"
       },
@@ -1060,29 +1065,39 @@
       },
       "order": [
         "/service_source",
-        "/service_ref",
-        "/elasticsearch_service_ref",
+        "/es_number",
+        "/account",
+        "/password",
         "/structdata_overrides",
         "/vector_fields"
       ],
       "controls": {
         "/vector_fields": "vector_checklist",
-        "/structdata_overrides": "structdata_overrides_editor"
+        "/structdata_overrides": "structdata_overrides_editor",
+        "/password": "secret_password"
       },
       "visible_when": {
-        "/service_ref": {
+        "/es_number": {
           "all": [
             {
               "path": "/service_source",
-              "equals": "dev_test"
+              "equals": "pled_es"
             }
           ]
         },
-        "/elasticsearch_service_ref": {
+        "/account": {
           "all": [
             {
               "path": "/service_source",
-              "equals": "custom_elasticsearch"
+              "equals": "pled_es"
+            }
+          ]
+        },
+        "/password": {
+          "all": [
+            {
+              "path": "/service_source",
+              "equals": "pled_es"
             }
           ]
         },

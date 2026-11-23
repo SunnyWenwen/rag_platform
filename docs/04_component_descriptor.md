@@ -93,7 +93,7 @@ Builder 讀到目前版本不支援的 `data_rules[].op` 時，顯示「此元�
 | `io.content_media_types` | 內建檔案 Parser 宣告接受的 MIME types。Import 的 `source: content` 開放這些 Parser，並對 Ingestion 的 `content.media_type` 套用所選 Parser 的限制。 |
 | `ui_hints.previews` | `effective_io` 預設收合。Import 的 `ingestion_request` 同樣預設收合，顯示入口 JSON Schema 和對應 Request 範例。 |
 | `ui_hints.order`／`groups`／`advanced` | 以 JSON Pointer 指定欄位順序、分組及進階區。分組可提供 `example`。Embedding 的組合文字分組置於表單上方，服務來源與 Profile 同屬模型設定分組，向量映射以可新增的單一清單呈現。 |
-| `ui_hints.controls` | 以相對於 `parameters` 的 JSON Pointer 宣告專用控制項。支援 `structdata_editor`、`structdata_overrides_editor`、`vector_checklist` 及 `textarea`。各 hint 的格式、預設、輸入資料及呈現見 [Builder Renderer 契約](07_builder_ui.md#ui-hints-contract)。 |
+| `ui_hints.controls` | 以相對於 `parameters` 的 JSON Pointer 宣告專用控制項。支援 `structdata_editor`、`structdata_overrides_editor`、`vector_checklist` 、`textarea` 及 `secret_password`。各 hint 的格式、預設、輸入資料及呈現見 [Builder Renderer 契約](07_builder_ui.md#ui-hints-contract)。 |
 | `ui_hints.fixed_filters` | Inference Input 以 `advanced` 將固定 Filter 放在預設收合的進階設定。值儲存於 `pipelines.inference.fixed_filters`。 |
 | `ui_hints.visible_when` | 依同一 Component 的其他草稿值判斷欄位可見性。例如啟用組合文字才顯示模板，選兩條搜尋路徑才顯示融合策略。 |
 | `parameters_schema.properties.*.default` | 提供預設值。固定選項依 [Config 列舉 Schema](../schemas/config_enums.schema.json) 解析，欄位可提供該 Component 專用預設值。 |
@@ -111,11 +111,11 @@ Dense Embedding 使用一份 `mappings[]` 清單，每筆有 `source_field` 和 
 |---|---|
 | Chunking 的 `tokenizer_profile_id` | 取自 Catalog 的 `resources.tokenizer_profiles`。切分方式及參數見 [Engine Chunking](03_engine_and_components.md#chunking)。 |
 | Embedding 的 `profile` | 取自 Catalog 的 `resources.profiles`，來源欄位與向量名稱寫在 `mappings[]`。W1 HTTP 範例以這份 Profile 的維度為準。 |
-| Elasticsearch 的 `service_ref` | W1 以 Catalog 的 `resources.elasticsearch_services` 解析此邏輯引用。主機及認證資料屬環境綁定。 |
+| Elasticsearch 的 `service_source` | Descriptor 引用 [連線 Schema](../schemas/elasticsearch_connection.schema.json)，由 `visible_when` 在 PLED ES 選項下顯示三個必填欄位。密碼用 `secret_password` 控制項保存為 System Secret 引用。見 [服務來源](05_system_config.md#elasticsearch-service-source)。 |
 | Local Search 的 `persistence` | `memory` 或 `mongodb`，隨有效 Config 跨環境沿用。MongoDB 的綁定及恢復見 [Q-012](08_plan_and_decisions.md#q-012) 與 [Q-021](08_plan_and_decisions.md#q-021)。 |
 | Rerank 的 `text_field`、`query_source` | `text_field` 存候選 `structdata` 的裸欄名，例如 `text`。`query_source` 選原始問題或當前 Query，評分邊界見 [Engine Rerank](03_engine_and_components.md#src-04-53-rerank)。 |
 
-Descriptor 另有 `service_source` 及自行提供服務的編輯欄位，例如 `embedding_service_ref`、`embedding_model`、`dimensions`、`elasticsearch_service_ref`、`mongo_service_ref`、`rerank_service_ref`。這些欄位可供表單開發。發布時如何映射至正式服務綁定，以及自訂 Embedding 設定如何與 `profile` 一致，依 [Q-003](08_plan_and_decisions.md#q-003)、[Q-021](08_plan_and_decisions.md#q-021) 確認。W1 的發布與匯入 Mock 採 Catalog 已註冊的資源。
+Descriptor 另有 `service_source` 及自行提供服務的編輯欄位，例如 `embedding_service_ref`、`embedding_model`、`dimensions`、`mongo_service_ref`、`rerank_service_ref`。這些欄位可供表單開發。發布時如何映射至正式服務綁定，以及自訂 Embedding 設定如何與 `profile` 一致，依 [Q-003](08_plan_and_decisions.md#q-003)、[Q-021](08_plan_and_decisions.md#q-021) 確認。W1 的發布與匯入 Mock 使用 Builder 測試用 ES 及已註冊的模型資源。
 
 Indexing 的 `vector_fields` 接受要建立索引的具名向量清單。既有的單欄 `vector_name` 仍可讀取，同一有效設定只採其中一種表示。W1 Prototype 的發布模擬使用單欄格式。Embedding 產生多個向量後，Builder 可選擇要讓 Retrieval 搜尋的欄位。
 

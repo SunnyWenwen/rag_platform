@@ -729,7 +729,7 @@ Builder 可按 [W1 開發契約索引](09_w1_builder_runtime_contract.md) 實作
 | DEV 正式接線與授權 | 管理路由與業務路由的帳密是否拆分、業務憑證的 System 作用範圍、跨 Runtime 共用索引綁定的授權及驗證位置。HTTP Client 可先沿用現行 Basic Auth 與可信 System 路由。見 [Q-019](#q-019) 和 [Q-020](#q-020)。 |
 | 管理操作復原 | 既有 GET、`reload` 和每 60 秒的補載查核已定。管理操作結果保存期限、逾期查核後的重送，以及多目標發布部分成功時的自動重試與回退策略仍待議。建議的 1 小時期限仍是候選。見 [Q-019](#q-019) 和 [Q-020](#q-020)。 |
 | 跨 Query 合併的發布與執行 | Query Transformation 位置與多 Query 必須啟用已確認。內建 Rewrite 的 [發布格式](05_system_config.md#inference-result-processing)可供 Builder 開發，Remote 節點設定及 M2 真實執行驗收見 [Q-014](#q-014)。 |
-| 自行提供模型／索引服務的發布 | 定義每種服務引用對應哪個環境綁定，自訂模型和維度如何對上 Profile。見 [Q-003](#q-003)、[Q-021](#q-021) 與 [參數適用範圍](04_component_descriptor.md#component-parameter-scope)。 |
+| 模型服務發布與 PLED ES 接線 | 模型服務仍需確認環境綁定及 Profile。PLED ES 已定三個輸入與 Secret，實際 `es_number` 到服務的解析方式及登入流程由 PLED 整合驗收。見 [Q-003](#q-003)、[Q-021](#q-021) 與 [參數適用範圍](04_component_descriptor.md#component-parameter-scope)。 |
 | Variable 與 Secret | [System 設定](05_system_config.md#system-secret)已定義 DEV 測試值、部署注入與 Module 引用；實際 Builder／Runtime 串接依 [Q-021](#q-021)／[Q-028](#q-028) 驗收。 |
 | 真實 Ingestion 的識別與追溯 | W1 Mock 可帶明確 `document_id` 並模擬候選的 `data_id`。來源版本可省略或原樣保留字串及 `null`。識別規則已定，真實 Chunking、Remote 唯一性及 ES 覆寫依 [Q-007](#q-007) 驗收。 |
 | Runtime 重新啟動後沿用既有 ES 索引 | [指紋 v1](06_runtime_api_and_deployment.md#index-fingerprint-v1-proposal) 已有 JSON Schema、序列化規則和可驗證範例。既有索引遷移與實際 ES 整合依 [Q-015](#q-015) 驗收。 |

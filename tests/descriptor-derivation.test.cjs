@@ -159,3 +159,41 @@ verifyDocumentIdentity().catch(error => {
   console.error(error);
   process.exitCode = 1;
 });
+
+const esSettings = JSON.parse(vm.runInContext(String.raw`
+  (() => {
+    const getElement = document.getElementById;
+    document.getElementById = id => id === 'page'
+      ? {querySelector:() => null,querySelectorAll:() => []} : getElement(id);
+    draft = normalizeDraft(structuredClone(fixture.config));
+    selected = 'indexing';
+    const entry = descriptor(selected,draft);
+    const values = params(draft,selected);
+    const shown = () => esConnection.then.required.filter(name => fieldVisible(entry,name,values));
+    const selector = renderField('service_source',entry.parameters_schema.properties.service_source,values.service_source);
+    const builderFields = shown();
+    Object.assign(values,{service_source:'pled_es',es_number:'000123',account:'fixture-account'});
+    draft.variable = {PLED_ES_PASSWORD:'reserved-key'};
+    changeParameter({value:'fixture-password',type:'password',dataset:{param:'password'},
+      hasAttribute:name => name === 'data-secret-password'});
+    const password = renderField('password',entry.parameters_schema.properties.password,values.password);
+    const exported = deploymentConfig(draft);
+    const pledgedFields = shown();
+    values.service_source = 'dev_test';
+    return JSON.stringify({selector,builderFields,pledgedFields,password,exported,
+      hiddenAfterSwitch:shown(),eligibleForMock:!outsideW1Preview(selected,draft)});
+  })()
+`,runtime));
+assert.match(esSettings.selector,/Builder 測試用 ES/);
+assert.match(esSettings.selector,/PLED ES/);
+assert.deepEqual(esSettings.builderFields,[]);
+assert.deepEqual(esSettings.pledgedFields,['es_number','account','password']);
+assert.match(esSettings.password,/type="password"/);
+const esExport = esSettings.exported.pipelines.ingestion.indexing.parameters;
+assert.equal(esExport.es_number,'000123');
+assert.equal(esExport.password,'{{PLED_ES_PASSWORD_2}}');
+assert.equal(esSettings.exported.secret.PLED_ES_PASSWORD_2,null);
+assert.ok(!JSON.stringify(esSettings.exported).includes('fixture-password'));
+assert.deepEqual(esSettings.hiddenAfterSwitch,[]);
+assert.equal(esSettings.eligibleForMock,true);
+console.log('PASS: Builder ES source controls and PLED Secret export');

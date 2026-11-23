@@ -112,12 +112,12 @@ Import 可選已整理欄位或待解析來源。選待解析來源時，入口�
 | 設定位置 | 來源／選項 | 條件設定 |
 |---|---|---|
 | Embedding | DEV test use／Embedding API | 自行提供時設定 API URL、Model、認證引用及必要模型資訊；不另增加使用者管理本地模型的選項 |
-| Indexing／Elasticsearch | DEV test use／使用者提供 Elasticsearch | 後者才要求 ES URL／認證等連線設定 |
+| Indexing／Elasticsearch | Builder 測試用 ES／PLED ES | Builder 測試用 ES 預設使用平台綁定。選 PLED ES 時展開 `es_number`、`account`、`password` 三欄。[來源與保存規則](05_system_config.md#elasticsearch-service-source) |
 | Indexing／Local Search（後續） | Memory／MongoDB | 選 MongoDB 才展開連線設定。模式隨 Config 跨環境固定 |
 | 共用 LLM 服務 | DEV test use／OpenAI-compatible API | 自行提供時設定 Base URL、Model、認證引用；Query Transformation 以下拉 llm_ref 引用，不各填一份連線 |
 | Rerank | None／DEV test use／Rerank API | 啟用時設定內容欄位與 Top-N；自行提供時另填 API URL、Model、認證引用 |
 
-首版 Indexing 預設使用 ES。Builder DEV 預設用平台測試資源，FTEST／ENT 匯出時填入使用單位的 ES 綁定。Local Search 選項留待後續交付。Embedding／LLM 的現有原型格式分別為 OpenAI-compatible embeddings／Chat Completions，Rerank 為 04 的平台契約；首組真實服務的相容範圍仍由 Q-003 核定。
+首版 Indexing 預設使用 ES。Builder DEV 預設用平台測試資源，FTEST／ENT 採 PLED ES。Prototype 支援兩種來源的草稿表單，發布與匯入模擬使用 Builder 測試用 ES。Local Search 選項留待後續交付。Embedding／LLM 的現有原型格式分別為 OpenAI-compatible embeddings／Chat Completions，Rerank 為 04 的平台契約；首組真實服務的相容範圍仍由 Q-003 核定。
 
 <a id="src-06-322-已註冊-developer-serviceremote-pipelined-51已有原型模擬真實整合待做"></a>
 ### User Remote API 與選用模板
@@ -214,9 +214,10 @@ Renderer 的共同輸入是已選 Component 的 Descriptor、目前草稿與該�
 | `structdata_editor` | 共用 Data Meta Schema 的 `structdata` 定義和草稿欄位宣告 | Import 文件欄位表，編輯名稱、型別、必填、全文與 Filter。保存欄位名到欄位定義的物件。 |
 | `structdata_overrides_editor` | Data Meta Schema 的 `overrides` 定義、上游有效欄名／型別／全文與 Filter 旗標、草稿覆寫值 | Indexing 欄位用途表。每個旗標可沿用、啟用或停用。沿用以省略覆寫表示，啟用、停用分別保存 `true`、`false`。 |
 | `vector_checklist` | `input.vectors` 的候選向量名稱和可用狀態、上游向量的來源欄位與 Profile、草稿中已勾選的向量名稱 | Indexing 向量勾選表，回寫選取的向量名稱陣列。 |
+| `secret_password` | 以完整 `{{KEY}}` 表示的 Secret 參數 | 以遮蔽輸入接收實值。Builder 建立或更新對應的 System Secret，元件的密碼參數只保存引用。 |
 | `textarea` | 字串 Schema 與草稿字串 | 多行文字欄，例如 Rewrite Prompt 或 Embedding 組合文字。保存字串和換行。 |
 
-欄位文字來自 `parameters_schema.properties.<欄位>.title` 與 `description`，分別顯示為欄位標籤和控制項下方的輔助文字。省略標題時使用 Builder 已有的本地化名稱或參數名稱。群組文字使用 `groups[].title` 和選填的 `example`，目前群組格式沒有 `description`。專用表格的固定表頭、按鈕與提示由 Renderer 提供。動態選項的失效及相依未就緒提示由 Builder 依 Catalog 與草稿推導，發布驗證錯誤由 Runtime 提供。
+欄位文字來自 `parameters_schema.properties.<欄位>.title` 與 `description`，分別顯示為欄位標籤和控制項下方的輔助文字。省略標題時使用 Builder 已有的本地化名稱或參數名稱。當列舉 Schema 提供 `x-enum-labels` 時，選單以其標籤呈現並儲存列舉代碼。群組文字使用 `groups[].title` 和選填的 `example`，目前群組格式沒有 `description`。專用表格的固定表頭、按鈕與提示由 Renderer 提供。動態選項的失效及相依未就緒提示由 Builder 依 Catalog 與草稿推導，發布驗證錯誤由 Runtime 提供。
 
 Import 的 `platform` Descriptor 例如以下宣告。Renderer 依序顯示入口資料形式、文件欄位表，再將 Request 參數收進進階區。
 

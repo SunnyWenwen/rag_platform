@@ -6,7 +6,7 @@ Workspace 管理多個 System。System ID、Config Revision、source_revision、
 
 同一 Config Revision 在 DEV／FTEST／ENT 沿用相同邏輯設定。端點、Secret 的實際值、DB／索引實體目標及 Runtime 限制屬環境綁定。變更方法、模型語意、維度或資料欄位產生新 Revision，依相依範圍判斷重建。每次請求採單一有效設定快照；有 queued／running Ingestion 時可存草稿，等該 System 工作完成再啟用新版。
 
-[System Config Schema 草案](../schemas/system_config.draft.schema.json)驗證發布快照。首版 DEV／FTEST／ENT 使用受管 Elasticsearch，部署設定提供環境的 ES 綁定。可參照 [ES 發布請求](../examples/system_config/README.md#runtime-http-examples)及[內建／Remote Parsing 的離線對照](../examples/system_config/README.md#local-search-config-examples)。
+[System Config Schema 草案](../schemas/system_config.draft.schema.json)驗證發布快照。首版 DEV／FTEST／ENT 使用受管 Elasticsearch，連線依 [Elasticsearch 服務來源](#elasticsearch-service-source) 與目標環境解析。可參照 [ES 發布請求](../examples/system_config/README.md#runtime-http-examples)及[內建／Remote Parsing 的離線對照](../examples/system_config/README.md#local-search-config-examples)。
 
 DEV 由 Builder 下發 System Config，獨立部署則由 Runtime 啟動時讀取指定版本。Runtime 本身的預設值與環境覆寫另由部署管理。見 [設定來源與保存位置](06_runtime_api_and_deployment.md#runtime-config-sources)。
 
@@ -118,7 +118,7 @@ Builder 在支援引用的欄位統一填 `{{KEYNAME}}`。引用名稱採 `[A-Za
 | 欄位用途 | 設定範例 | 取值規則 |
 |---|---|---|
 | 一般執行參數 | `top_k: "{{TOP_K}}"` | 依序取本 Pipeline 經驗證的 Request `parameters.TOP_K`（含宣告的預設值）、`config.variable.TOP_K`，再沿用既有的 `config.secret.TOP_K` 引用。 |
-| 認證值 | `auth.bearer_token: "{{PARSER_API_TOKEN}}"` | 只從 `config.secret.PARSER_API_TOKEN` 取得。Request 中的同名參數無法改變認證值。 |
+| 認證值 | `auth.bearer_token: "{{PARSER_API_TOKEN}}"`、PLED 的 `password: "{{PLED_ES_PASSWORD}}"` | 從同一 System 的 `config.secret` 取得。 |
 | 啟用時即須確定的值 | `max_tokens: "{{CHUNK_MAX_TOKENS}}"` | 在 System 啟用時取同名 Variable，既有的 Secret 引用仍可解析。用解析後的值驗證並編譯。 |
 
 一般欄位用 Key 是否存在判斷缺值。`0`、`false`、`""` 都是已提供的值，依欄位型別和限制驗證。型別錯誤回報驗證失敗。Config 驗證時先確認來源已宣告，執行時仍無值則回報該 Key 與欄位位置。
@@ -133,6 +133,18 @@ Builder 在 **其他設定** 提供獨立的 Variable 和 Secret Key／Value 表
 DEV 驗證與啟用使用 Builder 針對同一 System 填寫的值。Variable 的 DEV 值可隨草稿保存，Secret 的 DEV 值由受保護的測試設定提供。匯出保留 `config.variable` 與 `config.secret` 的 Key，值一律設為 `null`。正式 Runtime 啟動時以這些 Key 讀取同名環境變數。缺少值、未宣告的引用、型別或語法錯誤均應阻擋啟用並回報欄位位置。
 
 Remote 認證欄位只接受 Secret 的 Key。例如 `auth.bearer_token: "{{PARSER_API_TOKEN}}"` 由 Adapter 取值放到 `Authorization` Header。業務 Request、Document、Queue、公開驗證結果與 Log 均不承載 Secret 明文。其他欄位的 Secret 引用限制列入 [Todo Enhance](todo_enhance.md#secret-reference-scope)。部署方式與成對範例見 [Runtime 啟動與環境注入](06_runtime_api_and_deployment.md#system-secret-deployment)。
+
+<a id="elasticsearch-service-source"></a>
+## Elasticsearch 服務來源
+
+設定位置為 `config.pipelines.ingestion.indexing.parameters`。可選來源、必填條件與值型別由 [Elasticsearch 連線 Schema](../schemas/elasticsearch_connection.schema.json) 定義。內建 Inference 沿用同一 System 的索引綁定。
+
+| Builder 選項 | 屬性及執行行為 |
+|---|---|
+| Builder 測試用 ES | `service_source: dev_test`。Builder DEV 預設選項，Runtime 使用部署管理員預先綁定的 PLED 測試 ES。選取時表單只顯示服務來源。 |
+| PLED ES | `service_source: pled_es`。Builder 顯示並要求 `es_number`、`account`、`password`。`es_number` 為原樣字串，可保留前導零。`account` 為登入帳號。 |
+
+PLED 密碼可直接在 Indexing 表單輸入，Builder 將值交由 [System Secret](#system-secret) 保存，Config 的 `password` 只儲存完整引用，例如 `{{PLED_ES_PASSWORD}}`。Runtime 依 `es_number` 解析 PLED 目標，再取帳號及該 System 的密碼建立連線。三個連線欄位都在配置啟用時確定，業務請求無法覆寫。FTEST／ENT 使用 PLED ES，部署以同名環境變數注入密碼。見 [PLED Config 與部署範例](../examples/system_config/README.md#pled-elasticsearch-example)。
 
 ## Admin 全域模板
 

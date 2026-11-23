@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rag-builder.example/schemas/elasticsearch_connection.schema.json",
+  "title": "Elasticsearch connection selection",
+  "type": "object",
+  "properties": {
+    "service_source": {
+      "$ref": "https://rag-builder.example/schemas/config_enums.schema.json#/$defs/elasticsearch_service_source"
+    },
+    "es_number": {
+      "type": "string",
+      "pattern": "\\S",
+      "description": "PLED instance identifier. Preserve the identifier as text."
+    },
+    "account": {
+      "type": "string",
+      "pattern": "\\S",
+      "description": "PLED login account."
+    },
+    "password": {
+      "$ref": "https://rag-builder.example/schemas/system_config.draft.schema.json#/$defs/parameter_expression"
+    },
+    "service_ref": false,
+    "elasticsearch_service_ref": false
+  },
+  "required": [
+    "service_source"
+  ],
+  "if": {
+    "properties": {
+      "service_source": {
+        "const": "pled_es"
+      }
+    }
+  },
+  "then": {
+    "required": [
+      "es_number",
+      "account",
+      "password"
+    ]
+  },
+  "else": {
+    "not": {
+      "anyOf": [
+        {
+          "required": [
+            "es_number"
+          ]
+        },
+        {
+          "required": [
+            "account"
+          ]
+        },
+        {
+          "required": [
+            "password"
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,139 @@
+{
+  "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
+  "config_revision": "revision-1",
+  "config": {
+    "contract_version": "0.2-draft",
+    "pipelines": {
+      "ingestion": {
+        "import": {
+          "component_id": "platform",
+          "component_version": "1.0.0",
+          "parameters": {
+            "structdata": {
+              "body": {
+                "type": "string",
+                "required": true
+              },
+              "title": {
+                "type": "string",
+                "required": true,
+                "filterable": true
+              },
+              "price": {
+                "type": "number",
+                "required": false,
+                "searchable": false,
+                "filterable": false
+              },
+              "tags": {
+                "type": "string_array",
+                "required": false,
+                "searchable": false,
+                "filterable": true
+              }
+            }
+          }
+        },
+        "parsing": {
+          "component_id": "passthrough",
+          "component_version": "1.0.0",
+          "parameters": {}
+        },
+        "chunking": {
+          "component_id": "recursive",
+          "component_version": "1.0.0",
+          "parameters": {
+            "split_field": "body",
+            "output_field": "text",
+            "copy_fields": [
+              {
+                "source_field": "title",
+                "output_field": "title"
+              },
+              {
+                "source_field": "price",
+                "output_field": "price"
+              },
+              {
+                "source_field": "tags",
+                "output_field": "tags"
+              }
+            ],
+            "max_tokens": 500,
+            "overlap_tokens": 50,
+            "tokenizer_profile_id": "fixture"
+          }
+        },
+        "embedding": {
+          "component_id": "dense",
+          "component_version": "1.0.0",
+          "parameters": {
+            "profile": "text-v1",
+            "mappings": [
+              {
+                "source_field": "text",
+                "vector_name": "text"
+              }
+            ]
+          }
+        },
+        "indexing": {
+          "component_id": "elasticsearch",
+          "component_version": "1.0.0",
+          "parameters": {
+            "service_source": "pled_es",
+            "vector_name": "text",
+            "structdata_overrides": {
+              "text": {
+                "searchable": true
+              },
+              "price": {
+                "filterable": true
+              }
+            },
+            "es_number": "000123",
+            "account": "builder-reader-writer",
+            "password": "{{PLED_ES_PASSWORD}}"
+          }
+        }
+      },
+      "inference": {
+        "inference_input": {
+          "component_id": "platform",
+          "component_version": "1.0.0",
+          "parameters": {}
+        },
+        "query_transformation": {
+          "component_id": "none",
+          "component_version": "1.0.0",
+          "parameters": {}
+        },
+        "retrieval": {
+          "component_id": "builtin",
+          "component_version": "1.0.0",
+          "parameters": {
+            "per_route_k": 10,
+            "vector_fields": [
+              "text"
+            ]
+          }
+        },
+        "rerank": {
+          "component_id": "none",
+          "component_version": "1.0.0",
+          "parameters": {}
+        },
+        "fixed_filters": [
+          {
+            "field": "structdata.price",
+            "operator": "gte",
+            "value": 300
+          }
+        ]
+      }
+    },
+    "secret": {
+      "PLED_ES_PASSWORD": null
+    }
+  }
+}

@@ -11,6 +11,7 @@
 | [inference_request](inference_request.schema.json) | [query、filters、metadata、parameters](../docs/06_runtime_api_and_deployment.md#inference-api) |
 | [remote_api](remote_api.schema.json) | [Remote API 共用 v1 封裝、追蹤 Header、成功與錯誤](../docs/03_engine_and_components.md#remote-api) |
 | [query_context](query_context.schema.json) | [QueryContext[] 與 ResultItem.data 候選 Document](../docs/02_data_contracts.md#inference-contract) |
+| [elasticsearch_connection](elasticsearch_connection.schema.json) | [Elasticsearch 服務來源、PLED 連線欄位和密碼引用](../docs/05_system_config.md#elasticsearch-service-source) |
 | [index_binding](index_binding.schema.json) | [平台管理索引的格式、位置及能力](../docs/02_data_contracts.md#indexbinding) |
 | [index_fingerprint.v1](index_fingerprint.v1.schema.json) | [ES 索引相容性指紋投影與 mapping metadata](../docs/06_runtime_api_and_deployment.md#index-fingerprint-v1-proposal) |
 | [runtime_identity](runtime_identity.schema.json) | [System ID、索引世代及部署環境識別](../docs/06_runtime_api_and_deployment.md#runtime-index-ownership) |

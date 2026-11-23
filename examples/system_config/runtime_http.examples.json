@@ -23,7 +23,7 @@
           "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-1",
             "operation": "initialize",
             "config": {
@@ -76,7 +76,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
                     }
@@ -101,7 +101,7 @@
           "status": 200,
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-1",
             "context_revision": "context-1",
             "active_config_revision": null,
@@ -117,7 +117,7 @@
           "headers": {"Idempotency-Key": "initialize-001"},
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-1",
             "config": {
               "contract_version": "0.2-draft",
@@ -169,7 +169,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
                     }
@@ -425,7 +425,7 @@
           "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-1",
             "operation": "initialize",
             "config": {
@@ -508,7 +508,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {
                         "text": {
@@ -564,7 +564,7 @@
           "status": 200,
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-1",
             "context_revision": "split-initialize",
             "active_config_revision": null,
@@ -587,7 +587,7 @@
           },
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-1",
             "config": {
               "contract_version": "0.2-draft",
@@ -669,7 +669,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {
                         "text": {
@@ -785,7 +785,7 @@
           "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-1",
             "operation": "initialize",
             "config": {
@@ -868,7 +868,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {
                         "text": {
@@ -924,7 +924,7 @@
           "status": 200,
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-1",
             "context_revision": "split-blocked-initialize",
             "active_config_revision": "revision-1",
@@ -944,7 +944,7 @@
           "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-1",
             "operation": "reload",
             "config": {
@@ -1027,7 +1027,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {
                         "text": {
@@ -1083,7 +1083,7 @@
           "status": 200,
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-1",
             "context_revision": "split-reload",
             "active_config_revision": "revision-1",
@@ -1106,7 +1106,7 @@
           },
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-1",
             "config": {
               "contract_version": "0.2-draft",
@@ -1188,7 +1188,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {
                         "text": {
@@ -1481,7 +1481,7 @@
           "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-2",
             "operation": "update",
             "config": {
@@ -1534,7 +1534,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
                     }
@@ -1559,7 +1559,7 @@
           "status": 200,
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-2",
             "context_revision": "context-2",
             "active_config_revision": "revision-1",
@@ -1575,7 +1575,7 @@
           "headers": {"Idempotency-Key": "update-002"},
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-2",
             "config": {
               "contract_version": "0.2-draft",
@@ -1627,7 +1627,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
                     }
@@ -1676,7 +1676,7 @@
           "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-3",
             "operation": "update",
             "config": {
@@ -1729,7 +1729,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
                     }
@@ -1754,7 +1754,7 @@
           "status": 200,
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-3",
             "context_revision": "context-3",
             "active_config_revision": "revision-2",
@@ -1774,7 +1774,7 @@
           "headers": {"Idempotency-Key": "update-003-preview"},
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-3",
             "config": {
               "contract_version": "0.2-draft",
@@ -1826,7 +1826,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
                     }
@@ -1865,7 +1865,7 @@
           "headers": {"Idempotency-Key": "update-003"},
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-3",
             "config": {
               "contract_version": "0.2-draft",
@@ -1917,7 +1917,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
                     }
@@ -1968,7 +1968,7 @@
           "headers": {"Idempotency-Key": "update-003"},
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-3",
             "config": {
               "contract_version": "0.2-draft",
@@ -2020,7 +2020,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
                     }
@@ -2072,7 +2072,7 @@
           "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-invalid",
             "operation": "update",
             "config": {
@@ -2125,7 +2125,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
                     }
@@ -2164,7 +2164,7 @@
           "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-1",
             "operation": "reload",
             "config": {
@@ -2217,7 +2217,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
                     }
@@ -2242,7 +2242,7 @@
           "status": 200,
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-1",
             "context_revision": "context-blocked",
             "active_config_revision": null,
@@ -2310,7 +2310,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
                     }
@@ -2343,7 +2343,7 @@
           "headers": {"Idempotency-Key": "initialize-stale"},
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-1",
             "config": {
               "contract_version": "0.2-draft",
@@ -2395,7 +2395,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
                     }
@@ -2432,7 +2432,7 @@
           "headers": {"Idempotency-Key": "update-stale"},
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "draft-2",
             "config": {
               "contract_version": "0.2-draft",
@@ -2484,7 +2484,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
                     }
@@ -3116,7 +3116,7 @@
           "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "published-revision-1",
             "operation": "reload",
             "config": {
@@ -3166,7 +3166,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
                     }
@@ -3191,7 +3191,7 @@
           "status": 200,
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "published-revision-1",
             "context_revision": "context-reload-001",
             "active_config_revision": "revision-1",
@@ -3207,7 +3207,7 @@
           "headers": {"Idempotency-Key": "reload-001"},
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "published-revision-1",
             "operation": "reload",
             "config": {
@@ -3257,7 +3257,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
                     }
@@ -3498,7 +3498,7 @@
           "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "published-revision-1",
             "operation": "recover_index",
             "config": {
@@ -3548,7 +3548,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
                     }
@@ -3574,7 +3574,7 @@
           "status": 200,
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "published-revision-1",
             "context_revision": "context-recover-loaded",
             "active_config_revision": "revision-1",
@@ -3590,7 +3590,7 @@
           "headers": {"Idempotency-Key": "recover-loaded"},
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "published-revision-1",
             "operation": "recover_index",
             "config": {
@@ -3640,7 +3640,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
                     }
@@ -3733,7 +3733,7 @@
           "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "published-revision-1",
             "operation": "recover_index",
             "config": {
@@ -3783,7 +3783,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
                     }
@@ -3809,7 +3809,7 @@
           "status": 200,
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "published-revision-1",
             "context_revision": "context-recover-unloaded",
             "active_config_revision": null,
@@ -3825,7 +3825,7 @@
           "headers": {"Idempotency-Key": "recover-unloaded"},
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "published-revision-1",
             "operation": "recover_index",
             "config": {
@@ -3875,7 +3875,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
                     }
@@ -3925,7 +3925,7 @@
           "headers": {"Idempotency-Key": "recover-unloaded"},
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "published-revision-1",
             "operation": "recover_index",
             "config": {
@@ -3975,7 +3975,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
                     }
@@ -4026,7 +4026,7 @@
           "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a/config:validate",
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "published-revision-1",
             "operation": "recover_index",
             "config": {
@@ -4076,7 +4076,7 @@
                     "component_id": "elasticsearch",
                     "component_version": "1.0.0",
                     "parameters": {
-                      "service_ref": "dev-search",
+                      "service_source": "dev_test",
                       "vector_name": "text",
                       "structdata_overrides": {"text": {"searchable": true}, "price": {"filterable": true}}
                     }
@@ -4102,7 +4102,7 @@
           "status": 200,
           "body": {
             "runtime_ref": "dev-runtime",
-            "catalog_revision": "catalog-4",
+            "catalog_revision": "catalog-5",
             "draft_revision": "published-revision-1",
             "context_revision": "context-recover-es-unknown",
             "active_config_revision": "revision-1",

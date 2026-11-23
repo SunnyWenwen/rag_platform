@@ -26,6 +26,7 @@
 | Catalog／Config Validation API | [Catalog](06_runtime_api_and_deployment.md#w1-catalog) · [Catalog 回應範例](../examples/system_config/runtime_catalog.response.json) · [Config Validation](06_runtime_api_and_deployment.md#config-validation-api) |
 | Descriptor 推導驗收 | [Builder 與 Engine 的共用規格](04_component_descriptor.md#descriptor-derivation-conformance) · [共用測資](../examples/system_config/descriptor_derivation.fixture.json) |
 | System 與索引識別 | [UUID、部署環境與 ES 歸屬](06_runtime_api_and_deployment.md#runtime-index-ownership) · [建立與拒絕案例](../examples/system_config/index_fingerprint.v1.example.json) |
+| Elasticsearch 來源 | [連線欄位與 Secret 規格](05_system_config.md#elasticsearch-service-source) · [PLED ES 設定與部署範例](../examples/system_config/README.md#pled-elasticsearch-example) |
 | Inference API | [查詢 Request／Response](06_runtime_api_and_deployment.md#inference-api) · [成功回應 Schema](../schemas/runtime_http.schema.json#/$defs/inference_response) |
 | 文件／切片識別與評估 | [Document ID、Data ID](02_data_contracts.md#document-identities) · [CSV 與檔案主鍵](07_builder_ui.md#builder-source-document-id) · [文件層級排名](03_engine_and_components.md#document-level-evaluation) |
 | User Remote API | [v1 契約](03_engine_and_components.md#remote-api) · [OpenAPI](../examples/user_remote_api/openapi.json) · [JSON 範例與驗證](../examples/user_remote_api/README.md) |

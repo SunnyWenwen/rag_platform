@@ -19,7 +19,8 @@
     },
     "elasticsearch_service_source": {
       "type": "string",
-      "enum": ["dev_test", "custom_elasticsearch"],
+      "enum": ["dev_test", "pled_es"],
+      "x-enum-labels": {"dev_test": "Builder 測試用 ES", "pled_es": "PLED ES"},
       "default": "dev_test"
     },
     "mongodb_service_source": {

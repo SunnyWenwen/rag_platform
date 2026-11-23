@@ -55,9 +55,10 @@ RUNTIME_IDENTITY = json.loads((REPO / "schemas/runtime_identity.schema.json").re
 DATA_META = json.loads((REPO / "schemas/data_meta.schema.json").read_text())
 QUERY_CONTEXT = json.loads((REPO / "schemas/query_context.schema.json").read_text())
 CONFIG_ENUMS = json.loads((REPO / "schemas/config_enums.schema.json").read_text())
+ES_CONNECTION = json.loads((REPO / "schemas/elasticsearch_connection.schema.json").read_text())
 SCHEMA_REGISTRY = Registry().with_resources(
     (schema["$id"], Resource.from_contents(schema))
-    for schema in (DATA_META, QUERY_CONTEXT, DESCRIPTOR_SCHEMA, CONFIG_ENUMS, RUNTIME_IDENTITY, REMOTE_API_SCHEMA)
+    for schema in (DATA_META, QUERY_CONTEXT, DESCRIPTOR_SCHEMA, CONFIG_ENUMS, RUNTIME_IDENTITY, REMOTE_API_SCHEMA, ES_CONNECTION, SYSTEM_CONFIG_SCHEMA)
 )
 DATE_FORMATS = {
     kind: Draft202012Validator(DATA_META["$defs"][kind], format_checker=FormatChecker())
@@ -118,7 +119,7 @@ def schema_at(root, pointer):
             fail("unknown parameter path:" + pointer)
         node = child
     ref = node.get("$ref", "")
-    if ref.startswith(CONFIG_ENUMS["$id"] + "#/$defs/"):
+    if ref.startswith((CONFIG_ENUMS["$id"] + "#/$defs/", ES_CONNECTION["$id"] + "#/properties/")):
         return {**SCHEMA_REGISTRY.resolver().lookup(ref).contents,
                 **{key: value for key, value in node.items() if key != "$ref"}}
     return node
@@ -152,6 +153,8 @@ def validate_descriptor(value):
             source = value.get("option_sources", {}).get(pointer + "/*", {}).get("source")
             compatible = shape.get("type") == "array" and shape.get("items", {}).get("type") == "string" \
                 and source == "input.vectors"
+        elif control == "secret_password":
+            compatible = shape.get("$ref") == SYSTEM_CONFIG_SCHEMA["$id"] + "#/$defs/parameter_expression"
         else:
             compatible = (shape.get("type") == "string" and not {"enum", "const"} & shape.keys()
                           and pointer not in value.get("option_sources", {}))
@@ -598,6 +601,16 @@ def bind_system_parameters(snapshot, environment=None, *, request_parameters=Non
             path = f"/config/pipelines/{lane}/{module}"
             shape = descriptor.get("parameters_schema", {})
             template_fields = {"query_transformation": {"prompt"}, "embedding": {"composition_template"}}.get(module, set())
+            if module == "indexing" and node_config["component_id"] == "elasticsearch":
+                settings = node_config["parameters"]
+                if settings["service_source"] == "dev_test" and environment is not None:
+                    fail(f"Builder test ES is only available in DEV:{path}/parameters/service_source")
+                if settings["service_source"] == "pled_es":
+                    field = f"{path}/parameters/password"
+                    # Validate the credential without copying it into the index plan.
+                    if not resolve(settings["password"], {}, field, {}, {}, auth=True):
+                        fail(f"missing PLED password:{field}")
+                template_fields = {"password", "es_number", "account"}
             node_config["parameters"] = {
                 name: value if name in template_fields else resolve(
                     value, shape.get("properties", {}).get(name, {}), f"{path}/parameters/{name}", specs, request_values
@@ -1288,7 +1301,7 @@ def _():
 def _():
     sources = {entry["source"] for descriptor in BUILDER_FORM_DESCRIPTORS
                for entry in descriptor.get("option_sources", {}).values()}
-    assert sources - FIELD_SOURCES - {"input.vectors", "index_plan.vectors"} == RESOURCES.keys()
+    assert sources - FIELD_SOURCES - {"input.vectors", "index_plan.vectors"} <= RESOURCES.keys()
     catalog = deepcopy(RUNTIME_CATALOG)
     catalog["resources"]["profiles"]["text-v1"]["dimensions"] = 0
     validator = Draft202012Validator(CATALOG_SCHEMA, registry=SCHEMA_REGISTRY)
@@ -1298,6 +1311,48 @@ def _():
     existing = node("dense", mappings=[{"source_field": "text", "vector_name": "text"}], profile="removed")
     rejects(lambda: parameters("embedding", existing, context({"text": Field("string")}, {})),
             "invalid selection:/profile")
+
+
+@case("Elasticsearch sources validate PLED credentials and keep them out of the index plan")
+def _():
+    sample = json.loads((HERE / "elasticsearch.pled.export.json").read_text())
+    ingestion = sample["config"]["pipelines"]["ingestion"]
+    params = ingestion["indexing"]["parameters"]
+    published = Draft202012Validator(SYSTEM_CONFIG_SCHEMA, registry=SCHEMA_REGISTRY)
+    published.validate(sample)
+    environment = {"PLED_ES_PASSWORD": "fixture-only-password"}
+    ingestion["import"]["parameters"]["request_parameters"] = [
+        {"name": "PLED_ES_PASSWORD", "type": "string", "required": False},
+    ]
+    bound = bind_system_parameters(sample, environment, request_parameters={
+        "ingestion": {"PLED_ES_PASSWORD": "request-override"},
+    })
+    assert bound["ingestion"]["indexing"]["parameters"]["password"] == "{{PLED_ES_PASSWORD}}"
+    assert params["es_number"] == "000123"
+    _, _, index_plan = compile_local_example(sample, environment)
+    assert set(index_plan).isdisjoint(ES_CONNECTION["then"]["required"])
+    rejects(lambda: compile_local_example(sample, {}), "missing System Secret:/config/secret/PLED_ES_PASSWORD")
+    rejects(lambda: compile_local_example(sample, {"PLED_ES_PASSWORD": ""}),
+            "missing PLED password:/config/pipelines/ingestion/indexing/parameters/password")
+    sample["config"]["variable"] = sample["config"].pop("secret")
+    rejects(lambda: compile_local_example(sample, environment),
+            "undeclared System Secret PLED_ES_PASSWORD:/config/pipelines/ingestion/indexing/parameters/password")
+    sample["config"]["secret"] = sample["config"].pop("variable")
+    for field in ES_CONNECTION["then"]["required"]:
+        value = params.pop(field)
+        rejects(lambda: published.validate(sample), "ValidationError")
+        params[field] = value
+    params["password"] = "inline value"
+    rejects(lambda: published.validate(sample), "ValidationError")
+    params["service_source"] = "dev_test"
+    rejects(lambda: published.validate(sample), "ValidationError")
+    for field in ES_CONNECTION["then"]["required"]:
+        del params[field]
+    published.validate(sample)
+    rejects(lambda: compile_local_example(sample, environment),
+            "Builder test ES is only available in DEV:/config/pipelines/ingestion/indexing/parameters/service_source")
+    params["service_source"] = "custom_elasticsearch"
+    rejects(lambda: published.validate(sample), "ValidationError")
 
 
 @case("Import source controls built-in Parser compatibility")
