@@ -327,7 +327,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - 首版採 HTTP Basic，驗證位置與帳密範圍見 [Runtime 認證](06_runtime_api_and_deployment.md#runtime-basic-authentication)。D-64 的可信 Backend 路由及 Istio 傳輸設定沿用。
 
 - 已確認：文件／檔案級 ACL 延後。第一版依 System 的執行範圍隔離資料，MCP API key 授權到 System 與工具。
-- Builder Backend 是判斷使用者能否存取 Workspace／System 或執行管理操作的授權邊界。個別使用者的身分來源、角色與操作權限矩陣、Workspace 成員管理仍待定。另待平台保留欄位與 Gateway 的實機接線驗收。
+- Builder Backend 是判斷使用者能否存取 Workspace／System 或執行管理操作的授權邊界。DEV Runtime 的管理 API 只辨識 Builder 服務身分。個別使用者的身分來源、角色與操作權限矩陣、Workspace 成員管理仍待定。另待平台保留欄位與 Gateway 的實機接線驗收。
 - 負責角色：平台／身分團隊＋Backend＋Engine。
 - 決策狀態：首版文件存取範圍已確認，其他授權與保留欄位細節另議。
 
@@ -483,7 +483,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - 2026-10-28 D-41 確認：rag_engine 統一建置含 Engine／核可 Components／Runtime API 的完整 Image，rag_platform 建置 Builder Image；採用新版 Engine／Component 時仍需更新 Runtime，接口相容的 Builder 可維持原版。目標 Image 須包含 Config 所需 Component packages 並保存版本；Component 清單／鎖定格式與缺失錯誤仍待決，YAML 不會自動提供 Python 方法程式。建置／發布／部署範圍見 [Runtime API／部署](06_runtime_api_and_deployment.md#src-07-94-建置發布與部署的變更範圍)。
 
 - 已確認：DEV／FTEST／ENT 首版以 ES 為部署基準。跨環境沿用同版邏輯 Config，由部署設定提供連線與資源。Local Search 列為後續，Memory／MongoDB 模式仍適用 D-33。System Secret 使用字串 KV，匯出保留 Key，正式 Runtime 啟動時讀取同名環境變數。待定為 Image／Bundle 包裝、外部 Vault 供應、DEV 憑證保存期限、K8s 資源／Ingress／Probe 及 CD 流程。
-- [D-30](history/decisions/decision_history.md#d-30) 要求同一 Revision 跨環境沿用相同邏輯 Config。目前 Elasticsearch 連線 Schema 將 `service_source`、`es_number`、`account` 放在 Indexing 參數。若 DEV 選 `dev_test`、FTEST 選 `pled_es`，同一 Revision 的 Config 會因此改動。待定方案是把實際來源選擇及 PLED 連線資訊改由目標環境的部署設定提供，Indexing 持續保存 Elasticsearch 的邏輯設定。[現行 ES 連線規格](05_system_config.md#elasticsearch-service-source)
+- [D-30](history/decisions/decision_history.md#d-30) 的同版一致適用於 System 邏輯設定。部署用 System Config 保留原 Revision，匯出時將 DEV 的 `dev_test` 自動轉成 `pled_es`，目標環境透過 Secret 提供 ES 編號、帳號與密碼。[Elasticsearch 匯出規格](05_system_config.md#elasticsearch-service-source)
 - FTEST／ENT 由部署方管理版本、綁定、排空與切換。缺少資料索引時，建立授權、部署操作入口與如何查核前次部署紀錄待 M7 確認。獨立 Runtime 的管理 HTTP 停用。
 - 分 Pod 使用同一 Runtime Image 與 Config，環境部署設定選擇 `pipeline`。Export 的設定載體、Service／Probe 接線、角色所需 Secret 與資源的最小範圍，以及滾動切換順序待定。
 - 建議：版本鎖定 Runtime Image＋有效 Config＋環境覆寫；由目標環境提供 ES 及原始資料，獨立 Runtime 直接啟動。

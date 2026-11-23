@@ -117,7 +117,7 @@ Import 可選已整理欄位或待解析來源。選待解析來源時，入口�
 | 共用 LLM 服務 | DEV test use／OpenAI-compatible API | 自行提供時設定 Base URL、Model、認證引用；Query Transformation 以下拉 llm_ref 引用，不各填一份連線 |
 | Rerank | None／DEV test use／Rerank API | 啟用時設定內容欄位與 Top-N；自行提供時另填 API URL、Model、認證引用 |
 
-首版 Indexing 預設使用 ES。Builder DEV 預設用平台測試資源，FTEST／ENT 採 PLED ES。Prototype 支援兩種來源的草稿表單，發布與匯入模擬使用 Builder 測試用 ES。Local Search 選項留待後續交付。Embedding／LLM 的現有原型格式分別為 OpenAI-compatible embeddings／Chat Completions，Rerank 為 04 的平台契約；首組真實服務的相容範圍仍由 Q-003 核定。
+首版 Indexing 預設使用 ES。Builder DEV 預設用平台測試資源。匯出 FTEST／ENT 時自動產生 PLED ES 來源及三個 Secret 引用，部署者填入目標值。Prototype 支援兩種來源的草稿表單，發布與匯入模擬使用 Builder 測試用 ES。Local Search 選項留待後續交付。Embedding／LLM 的現有原型格式分別為 OpenAI-compatible embeddings／Chat Completions，Rerank 為 04 的平台契約；首組真實服務的相容範圍仍由 Q-003 核定。
 
 <a id="src-06-322-已註冊-developer-serviceremote-pipelined-51已有原型模擬真實整合待做"></a>
 ### User Remote API 與選用模板

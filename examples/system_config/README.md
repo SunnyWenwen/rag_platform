@@ -32,8 +32,8 @@
 ## Elasticsearch 服務來源範例
 
 - [Runtime HTTP 情境](runtime_http.examples.json) 使用 Builder DEV 預設的 `service_source: dev_test`，由部署管理員配置測試 ES 綁定。
-- [PLED ES 匯出](elasticsearch.pled.export.json) 提供 `service_source: pled_es`、保留前導零的 `es_number`、`account` 與 `password` Secret 引用。範例的 System、ES 編號及帳號均為示意值。
-- [PLED Secret 注入](deployment.pled-secret-env.example.yaml) 提供 PLED 密碼的環境變數。搭配 [System API 帳密注入](deployment.system-api-secret-env.example.yaml) 供應業務入口的帳密。真實 PLED 實例解析、登入和索引權限由 DEV Runtime 串接驗收。
+- [PLED ES 匯出](elasticsearch.pled.export.json) 示範 DEV 的 `dev_test` 匯出成 `pled_es`。匯出的 `es_number`、`account`、`password` 都使用 Secret 引用。部署填入的 ES 編號是字串，保留如 `000123` 的前導零。
+- [PLED Secret 注入](deployment.pled-secret-env.example.yaml) 提供三個環境變數，搭配 [System API 帳密注入](deployment.system-api-secret-env.example.yaml) 供應業務入口的帳密。實際 Env 名稱須和匯出 Config 一致。真實 PLED 實例解析、登入和索引權限待整合驗收。
 
 ## Elasticsearch 索引指紋
 

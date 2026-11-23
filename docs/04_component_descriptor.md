@@ -111,7 +111,7 @@ Dense Embedding 使用一份 `mappings[]` 清單，每筆有 `source_field` 和 
 |---|---|
 | Chunking 的 `tokenizer_profile_id` | 取自 Catalog 的 `resources.tokenizer_profiles`。切分方式及參數見 [Engine Chunking](03_engine_and_components.md#chunking)。 |
 | Embedding 的 `profile` | 取自 Catalog 的 `resources.profiles`，來源欄位與向量名稱寫在 `mappings[]`。W1 HTTP 範例以這份 Profile 的維度為準。 |
-| Elasticsearch 的 `service_source` | Descriptor 引用 [連線 Schema](../schemas/elasticsearch_connection.schema.json)，由 `visible_when` 在 PLED ES 選項下顯示三個必填欄位。密碼用 `secret_password` 控制項保存為 System Secret 引用。見 [服務來源](05_system_config.md#elasticsearch-service-source)。 |
+| Elasticsearch 的 `service_source` | Descriptor 引用 [連線 Schema](../schemas/elasticsearch_connection.schema.json)，由 `visible_when` 在 PLED ES 選項下顯示三個必填欄位。密碼用 `secret_password` 控制項保存為 System Secret 引用。匯出由 Builder 將三個連線欄位轉成 Secret 引用。見 [服務來源](05_system_config.md#elasticsearch-service-source)。 |
 | Local Search 的 `persistence` | `memory` 或 `mongodb`，隨有效 Config 跨環境沿用。MongoDB 的綁定及恢復見 [Q-012](08_plan_and_decisions.md#q-012) 與 [Q-021](08_plan_and_decisions.md#q-021)。 |
 | Rerank 的 `text_field`、`query_source` | `text_field` 存候選 `structdata` 的裸欄名，例如 `text`。`query_source` 選原始問題或當前 Query，評分邊界見 [Engine Rerank](03_engine_and_components.md#src-04-53-rerank)。 |
 

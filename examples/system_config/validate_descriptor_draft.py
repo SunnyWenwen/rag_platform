@@ -542,7 +542,7 @@ def validate_references(config, lane, module, node):
     path = f"/config/pipelines/{lane}/{module}/parameters"
     values = node["parameters"]
     es = module == "indexing" and node["component_id"] == "elasticsearch"
-    credential_fields = {"password"} if es else set()
+    credential_fields = set(ES_CONNECTION["then"]["required"]) if es else set()
     ordinary = {name: value for name, value in values.items() if name not in credential_fields}
     for key, location in parameter_references(ordinary, path):
         if (module, location.rsplit("/", 1)[-1], key) in {
@@ -661,11 +661,15 @@ def bind_system_parameters(snapshot, environment=None, *, request_parameters=Non
                 if settings["service_source"] == "dev_test" and environment is not None:
                     fail(f"Builder test ES is only available in DEV:{path}/parameters/service_source")
                 if settings["service_source"] == "pled_es":
-                    field = f"{path}/parameters/password"
-                    # Validate the credential without copying it into the index plan.
-                    if not resolve(settings["password"], {}, field, {}, {}, auth=True):
-                        fail(f"missing PLED password:{field}")
-                template_fields = {"password", "es_number", "account"}
+                    # Verify the bindings without copying their values into the index plan.
+                    for name in ES_CONNECTION["then"]["required"]:
+                        field = f"{path}/parameters/{name}"
+                        value = settings[name]
+                        if environment is not None and not PARAMETER_EXPRESSION.fullmatch(value):
+                            fail(f"deployed PLED field requires a System Secret reference:{field}")
+                        resolved = resolve(value, {}, field, {}, {}, auth=True)
+                        if not resolved or (name != "password" and not resolved.strip()):
+                            fail(f"missing PLED {name}:{field}")
             if lane == "ingestion" and node_config["component_id"] != "remote_api":
                 continue
             node_config["parameters"] = {
@@ -1410,20 +1414,33 @@ def _():
     published = Draft202012Validator(SYSTEM_CONFIG_SCHEMA, registry=SCHEMA_REGISTRY)
     published.validate(sample)
     api_credentials = {key: f"fixture-{key.lower()}" for key in SYSTEM_API_SECRET_KEYS}
-    environment = {**api_credentials, "PLED_ES_PASSWORD": "fixture-only-password"}
+    environment = {
+        **api_credentials, "PLED_ES_NUMBER": "000123", "PLED_ES_ACCOUNT": "fixture-es-account",
+        "PLED_ES_PASSWORD": "fixture-only-password",
+    }
     ingestion["import"]["parameters"]["request_parameters"] = [
         {"name": "PLED_ES_PASSWORD", "type": "string", "required": False},
     ]
     bound = bind_system_parameters(sample, environment, request_parameters={
         "ingestion": {"PLED_ES_PASSWORD": "request-override"},
     })
-    assert bound["ingestion"]["indexing"]["parameters"]["password"] == "{{PLED_ES_PASSWORD}}"
-    assert params["es_number"] == "000123"
-    _, _, index_plan = compile_local_example(sample, environment)
+    for field in ES_CONNECTION["then"]["required"]:
+        key = ES_CONNECTION["properties"][field]["x-deployment-secret-key"]
+        assert params[field] == bound["ingestion"]["indexing"]["parameters"][field] == "{{" + key + "}}"
+        missing = {name: value for name, value in environment.items() if name != key}
+        rejects(lambda: compile_local_example(sample, missing), f"missing System Secret:/config/secret/{key}")
+    deploy_plan = compile_local_example(sample, environment)
+    _, _, index_plan = deploy_plan
     assert set(index_plan).isdisjoint(ES_CONNECTION["then"]["required"])
-    rejects(lambda: compile_local_example(sample, api_credentials), "missing System Secret:/config/secret/PLED_ES_PASSWORD")
-    rejects(lambda: compile_local_example(sample, {**api_credentials, "PLED_ES_PASSWORD": ""}),
+    rejects(lambda: compile_local_example(sample, {**environment, "PLED_ES_PASSWORD": ""}),
             "missing PLED password:/config/pipelines/ingestion/indexing/parameters/password")
+    rejects(lambda: compile_local_example(sample, {**environment, "PLED_ES_NUMBER": " "}),
+            "missing PLED es_number:/config/pipelines/ingestion/indexing/parameters/es_number")
+    value = params["account"]
+    params["account"] = "fixture-inline-account"
+    rejects(lambda: compile_local_example(sample, environment),
+            "deployed PLED field requires a System Secret reference:/config/pipelines/ingestion/indexing/parameters/account")
+    params["account"] = value
     sample["config"]["variable"] = {"PLED_ES_PASSWORD": sample["config"]["secret"].pop("PLED_ES_PASSWORD")}
     rejects(lambda: compile_local_example(sample, environment),
             "undeclared System Secret PLED_ES_PASSWORD:/config/pipelines/ingestion/indexing/parameters/password")
@@ -1441,6 +1458,8 @@ def _():
     published.validate(sample)
     rejects(lambda: compile_local_example(sample, environment),
             "Builder test ES is only available in DEV:/config/pipelines/ingestion/indexing/parameters/service_source")
+    sample["config"]["secret"] = api_credentials
+    assert compile_local_example(sample) == deploy_plan
     params["service_source"] = "custom_elasticsearch"
     rejects(lambda: published.validate(sample), "ValidationError")
 

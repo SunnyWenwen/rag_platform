@@ -129,6 +129,24 @@ async function main() {
     await button('驗證並發布').click();
     assert.match(await impact.innerText(),/建立索引/);
     await button('確認發布').click();
+    const downloadEvent = page.waitForEvent('download');
+    const deployedVersion = await page.evaluate(() => {
+      const system = current();
+      download(system);
+      return activeRevision(system);
+    });
+    const exported = JSON.parse(fs.readFileSync(await (await downloadEvent).path(),'utf8'));
+    assert.equal(exported.system_id,createdSystemId);
+    assert.equal(exported.config_revision,deployedVersion);
+    const connection = exported.config.pipelines.ingestion.indexing.parameters;
+    assert.equal(connection.service_source,'pled_es');
+    for (const [field,key] of Object.entries({
+      es_number:'PLED_ES_NUMBER',account:'PLED_ES_ACCOUNT',password:'PLED_ES_PASSWORD'
+    })) {
+      assert.equal(connection[field],'{{' + key + '}}');
+      assert.equal(exported.config.secret[key],null);
+    }
+    assert.equal(await page.evaluate(() => params(current().active,'indexing').service_source),'dev_test');
     await closeSystem();
     await openCardAction('◇ Inference');
     assert.equal(await button('執行查詢').isDisabled(),true);

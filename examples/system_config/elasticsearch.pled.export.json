@@ -91,8 +91,8 @@
                 "filterable": true
               }
             },
-            "es_number": "000123",
-            "account": "builder-reader-writer",
+            "es_number": "{{PLED_ES_NUMBER}}",
+            "account": "{{PLED_ES_ACCOUNT}}",
             "password": "{{PLED_ES_PASSWORD}}"
           }
         }
@@ -133,6 +133,8 @@
       }
     },
     "secret": {
+      "PLED_ES_NUMBER": null,
+      "PLED_ES_ACCOUNT": null,
       "PLED_ES_PASSWORD": null,
       "INGESTION_API_USERNAME": null,
       "INGESTION_API_PASSWORD": null,

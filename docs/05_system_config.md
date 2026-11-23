@@ -118,7 +118,7 @@ Builder 在支援引用的欄位統一填 `{{KEYNAME}}`。引用名稱採 `[A-Za
 | 欄位用途 | 設定範例 | 取值規則 |
 |---|---|---|
 | 一般執行參數 | `top_k: "{{TOP_K}}"` | 先取當前 Pipeline 已驗證的 Request 參數（含宣告預設值），再取 `config.variable.TOP_K`。 |
-| 認證值 | `auth.bearer_token: "{{PARSER_API_TOKEN}}"`、PLED 的 `password: "{{PLED_ES_PASSWORD}}"` | 從同一 System 的 `config.secret` 取得。 |
+| 認證與連線值 | `auth.bearer_token: "{{PARSER_API_TOKEN}}"`、PLED ES 的 `es_number`、`account`、`password` | 引用從同一 System 的 `config.secret` 取得。PLED 匯出採下方的連線規則。 |
 | 影響索引的設定 | `max_tokens: 500` | 固定於 Config Revision。發布時遇到 `{{KEY}}` 回 `422 CONFIG_VALIDATION_FAILED` 並定位欄位。 |
 
 一般欄位用 Key 是否存在判斷缺值。`0`、`false`、`""` 都是已提供的值，依欄位型別和限制驗證。型別錯誤回報驗證失敗。Config 驗證時先確認來源已宣告，執行時仍無值則回報該 Key 與欄位位置。
@@ -134,7 +134,7 @@ Builder 在 **其他設定** 提供獨立的 Variable 和 Secret Key／Value 表
 
 DEV 驗證與啟用使用 Builder 針對同一 System 填寫的值。Variable 的 DEV 值可隨草稿保存，Secret 的 DEV 值由受保護的測試設定提供。匯出保留 `config.variable` 與 `config.secret` 的 Key，值一律設為 `null`。正式 Runtime 啟動時以這些 Key 讀取同名環境變數。缺少值、未宣告的引用、型別或語法錯誤均應阻擋啟用並回報欄位位置。
 
-Secret 只供明確列出的認證欄位使用，例如 Remote `auth.bearer_token` 與 PLED `password`。發布時檢查一般參數、巢狀 Remote 參數與 Prompt，若引用 Secret 即回 `422 CONFIG_VALIDATION_FAILED` 並定位欄位。一般參數解析只取 Request 或 Variable。Runtime 在寫 Log、Trace 或回傳診斷前先排除認證欄位與 Header，輸出路徑再將識別到的 Secret 值遮罩為 `***`。部署注入見 [Runtime 啟動與環境注入](06_runtime_api_and_deployment.md#system-secret-deployment)。
+Secret 只供明確列出的認證欄位使用，例如 Remote `auth.bearer_token` 與 PLED ES 的 [連線欄位](#elasticsearch-service-source)。發布時檢查一般參數、巢狀 Remote 參數與 Prompt，若引用 Secret 即回 `422 CONFIG_VALIDATION_FAILED` 並定位欄位。一般參數解析只取 Request 或 Variable。Runtime 在寫 Log、Trace 或回傳診斷前先排除認證欄位與 Header，輸出路徑再將識別到的 Secret 值遮罩為 `***`。部署注入見 [Runtime 啟動與環境注入](06_runtime_api_and_deployment.md#system-secret-deployment)。
 
 <a id="system-api-secret-fields"></a>
 ### System API 認證欄位
@@ -155,14 +155,16 @@ Builder 建立 System 時預填 `ingestion`、`inference`，並為該 System 的
 
 設定位置為 `config.pipelines.ingestion.indexing.parameters`。可選來源、必填條件與值型別由 [Elasticsearch 連線 Schema](../schemas/elasticsearch_connection.schema.json) 定義。內建 Inference 沿用同一 System 的索引綁定。
 
-DEV 與其他環境使用不同 ES 來源時，連線欄位的拆分仍待定。見 [Q-021 的 D-30 相容性議題](08_plan_and_decisions.md#q-021)。
-
 | Builder 選項 | 屬性及執行行為 |
 |---|---|
 | Builder 測試用 ES | `service_source: dev_test`。Builder DEV 預設選項，Runtime 使用部署管理員預先綁定的 PLED 測試 ES。選取時表單只顯示服務來源。 |
 | PLED ES | `service_source: pled_es`。Builder 顯示並要求 `es_number`、`account`、`password`。`es_number` 為原樣字串，可保留前導零。`account` 為登入帳號。 |
 
-PLED 密碼可直接在 Indexing 表單輸入，Builder 將值交由 [System Secret](#system-secret) 保存，Config 的 `password` 只儲存完整引用，例如 `{{PLED_ES_PASSWORD}}`。Runtime 依 `es_number` 解析 PLED 目標，再取帳號及該 System 的密碼建立連線。三個連線欄位都在配置啟用時確定，業務請求無法覆寫。FTEST／ENT 使用 PLED ES，部署以同名環境變數注入密碼。見 [PLED Config 與部署範例](../examples/system_config/README.md#pled-elasticsearch-example)。
+DEV 選 PLED 時，Builder 接受 ES 編號及帳號的字串值，密碼由 [System Secret](#system-secret) 保存，Config 的 `password` 採完整引用。
+
+匯出 FTEST／ENT 時，Builder 依發布快照產生部署用 System Config。DEV 的 `dev_test` 自動改成 `pled_es`，已選 `pled_es` 的來源值維持相同。三個 PLED 欄位在匯出檔都使用 Secret 引用，對應的 `config.secret` 值設成 `null`。預設 Key 由 [連線 Schema](../schemas/elasticsearch_connection.schema.json) 提供。原欄位已有有效 Secret 引用時可沿用其 Key，新增 Key 衝突時使用未占用的後綴。Kubernetes Env 名稱須與實際匯出 Key 對應，部署者為三個值各自填寫目標環境的 Secret。
+
+匯出保留原 `system_id`、`config_revision`、Pipeline 邏輯與索引 mapping／欄位設定。ES 來源和三個連線欄位屬 D-30 的環境綁定，在部署用 Config 序列化。Runtime 啟動時解析 Secret，依編號與帳密連線，並核對目標索引綁定。連線欄位禁止由業務請求覆寫。見 [PLED Config 與部署範例](../examples/system_config/README.md#pled-elasticsearch-example)。
 
 ## Admin 全域模板
 

@@ -238,6 +238,8 @@ Builder 依穩定 `runtime_ref` 保存 DEV 目標。同一 Ingestion 目標只�
 
 Runtime Image 維護涉及三項工作。Builder 在停流量期間暫停對受影響目標派送 DEV 測試及自動補載，Runtime 用現有 `detach` 停止收件並確認各流程排空，部署層負責更換 Pod。恢復前由 Builder 核對新 Runtime 並補載原先預期上線的流程。是否提供 Builder 維護操作入口，以及部署層如何回報舊程序終止、隔離和未結算寫入的查證結果，由 [Q-020](08_plan_and_decisions.md#q-020) 追蹤。Health 逾時只表示無法確認連線。強制刪除 Pod 也可能在舊程序仍運作時返回，兩者都不足以確認可接手。[Kubernetes Pod 刪除](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_delete/)
 
+例如 A Pod 的節點掉線，而 B Pod 以原 `runtime_ref` 啟動。若 A 曾向同一 ES 索引送出寫入，且無法查明 A 是否已停寫或該筆請求是否結算，Builder 顯示接手待查，暫不恢復 Ingestion。正常取得排空結果並換 Pod 時，Builder 依既有補載流程恢復。
+
 <a id="builder-query-drain"></a>
 需要刪除索引時，Builder 暫停查詢和補載，再對所有載入該世代的 Inference 目標呼叫 `detach?pipeline=inference`，包括與管理操作在同一 Pod 的目標。各 Runtime 關閉本機新查詢入口，等已接受的工作結束才回 `204`。排空包含排隊、執行與下游未結算工作，採目標 Runtime 的完整 Query Deadline 上限，逾時回 `504 DEADLINE_EXCEEDED`。有目標失聯、逾時或無法確認下游工作已停止時，Builder 暫停操作並保留索引。Builder 收齊排空結果後發送 DELETE 或允許重建的 PUT。管理目標也須核對自己的本機查詢與寫入均已排空。Builder 對單一 `detach` 的 HTTP 逾時須涵蓋該目標的排空上限與傳輸時間；PUT／DELETE 依其 ES 操作期限獨立設定逾時並保留原操作供查核。
 
@@ -729,7 +731,7 @@ D-60：使用者確認不採「寫入時禁止查詢」的共享讀寫鎖，讀�
 |---|---|
 | 使用者 → Builder UI／API | Builder Backend 驗證該 Builder 部署的入口帳密。 |
 | 呼叫端 → Runtime `/health/live`、`/health/ready` | 免 HTTP Basic。連線仍依部署的 Istio 政策。 |
-| Builder Backend → DEV Runtime `/internal/v1` 管理 API | Builder 啟動設定依 `runtime_ref` 指向部署 Secret 供應的管理帳密。DEV Runtime 從自己的部署 Secret 注入對應值並驗證。Catalog、Config 預檢、System GET 及生命週期操作都用這組帳密。 |
+| Builder Backend → DEV Runtime `/internal/v1` 管理 API | Builder 是 DEV Runtime 的單一管理身分。Builder 啟動設定依 `runtime_ref` 指向部署 Secret 供應的管理帳密，Runtime 驗證相同帳密。Catalog、Config 預檢、System GET 及生命週期操作都用這組帳密。個別使用者的授權在 Builder 處理。 |
 | Builder Backend → DEV System 測試 API | Backend 依請求的 System 和流程選取測試帳密。Runtime 從該 System 已載入的設定，對 Ingestion／文件路由驗證 Ingestion 帳密、對 Query 驗證 Inference 帳密。 |
 | 呼叫端 → 獨立 System 業務 API | 遵守相同流程分工。Runtime 啟動時由目標環境的 Secret 供應帳密。 |
 
@@ -984,7 +986,7 @@ Remote API 匯出目標環境的連線設定及 System Secret 引用表達式。
 
 不含 Image 本體、真實 Secret、原始文件、Chunk／vectors、Builder DB 或外部 DB／模型資料。目標環境需有相容資料或執行 Ingestion；部署後仍可持續 API 匯入。
 
-首版匯出受管 ES 的環境連線設定，沿用發布快照的邏輯設定。Local Search 的 Memory／MongoDB 部署屬後續範圍，若採用則持久化模式仍隨同一版 Config 沿用，實際資料由各環境準備。
+首版匯出把 DEV 測試 ES 來源轉成 `pled_es`，並以目標環境的 Secret 供應 ES 編號、帳號及密碼，沿用發布快照的邏輯設定和 Revision。見 [Elasticsearch 匯出規則](05_system_config.md#elasticsearch-service-source)。Local Search 的 Memory／MongoDB 部署屬後續範圍，若採用則持久化模式仍隨同一版 Config 沿用，實際資料由各環境準備。
 
 <a id="remote-service-deployment"></a>
 <a id="src-07-911-remote-service-manifest-與環境綁定"></a>

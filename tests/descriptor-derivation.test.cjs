@@ -172,6 +172,8 @@ const esSettings = JSON.parse(vm.runInContext(String.raw`
     const shown = () => esConnection.then.required.filter(name => fieldVisible(entry,name,values));
     const selector = renderField('service_source',entry.parameters_schema.properties.service_source,values.service_source);
     const builderFields = shown();
+    const builderExport = deploymentConfig(draft);
+    const sourceAfterExport = values.service_source;
     Object.assign(values,{service_source:'pled_es',es_number:'000123',account:'fixture-account'});
     draft.variable = {PLED_ES_PASSWORD:'reserved-key'};
     changeParameter({value:'fixture-password',type:'password',dataset:{param:'password'},
@@ -180,7 +182,7 @@ const esSettings = JSON.parse(vm.runInContext(String.raw`
     const exported = deploymentConfig(draft);
     const pledgedFields = shown();
     values.service_source = 'dev_test';
-    return JSON.stringify({selector,builderFields,pledgedFields,password,exported,
+    return JSON.stringify({selector,builderFields,pledgedFields,password,exported,builderExport,sourceAfterExport,
       hiddenAfterSwitch:shown(),eligibleForMock:!outsideW1Preview(selected,draft)});
   })()
 `,runtime));
@@ -190,10 +192,21 @@ assert.deepEqual(esSettings.builderFields,[]);
 assert.deepEqual(esSettings.pledgedFields,['es_number','account','password']);
 assert.match(esSettings.password,/type="password"/);
 const esExport = esSettings.exported.pipelines.ingestion.indexing.parameters;
-assert.equal(esExport.es_number,'000123');
+assert.equal(esExport.es_number,'{{PLED_ES_NUMBER}}');
+assert.equal(esExport.account,'{{PLED_ES_ACCOUNT}}');
 assert.equal(esExport.password,'{{PLED_ES_PASSWORD_2}}');
 assert.equal(esSettings.exported.secret.PLED_ES_PASSWORD_2,null);
-assert.ok(!JSON.stringify(esSettings.exported).includes('fixture-password'));
+for (const devValue of ['000123','fixture-account','fixture-password']) {
+  assert.ok(!JSON.stringify(esSettings.exported).includes(devValue));
+}
+assert.equal(esSettings.sourceAfterExport,'dev_test');
+const builderExport = esSettings.builderExport.pipelines.ingestion.indexing.parameters;
+assert.equal(builderExport.service_source,'pled_es');
+assert.deepEqual([builderExport.es_number,builderExport.account,builderExport.password],
+  ['{{PLED_ES_NUMBER}}','{{PLED_ES_ACCOUNT}}','{{PLED_ES_PASSWORD}}']);
+for (const key of ['PLED_ES_NUMBER','PLED_ES_ACCOUNT','PLED_ES_PASSWORD']) {
+  assert.equal(esSettings.builderExport.secret[key],null);
+}
 assert.deepEqual(esSettings.hiddenAfterSwitch,[]);
 assert.equal(esSettings.eligibleForMock,true);
 console.log('PASS: Builder ES source controls and PLED Secret export');
