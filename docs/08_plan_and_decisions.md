@@ -448,8 +448,10 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - [Runtime API 規格](06_runtime_api_and_deployment.md)定義 W1 HTTP 契約。[Builder 開發契約索引](09_w1_builder_runtime_contract.md)提供所需規格、Schema 與 Mock 入口。
 - D-60 的 Basic Auth、D-64 的可信 System 路由與錯誤核心、D-65 的文件摘要格式沿用。D-42 的欄位選項由 Builder 依 Catalog 與草稿推導。2026-11-23 定案 [Query 成功物件](06_runtime_api_and_deployment.md#inference-api)，Context 陣列置於 `contexts`，所用快照以 body 及 Header 交付。
 - 已確認應用服務使用 HTTP，Pod 間由 Istio 強制 mTLS，對外由 Gateway 提供 HTTPS。部署與開發接線見 [Istio 傳輸與服務入口](06_runtime_api_and_deployment.md#istio-http-transport)。
-- Builder 入口、DEV 管理 API 與各 System 的 Ingestion／Inference 依 [HTTP Basic 分工](06_runtime_api_and_deployment.md#runtime-basic-authentication)。DEV 管理帳密從部署 Secret 載入，System 各流程使用 [固定 Secret 欄位](05_system_config.md#system-api-secret-fields)。
+- Builder 入口、DEV 管理 API 與各 System 的 Ingestion／Inference 依 [HTTP Basic 分工](06_runtime_api_and_deployment.md#runtime-basic-authentication)。Runtime Health 免 Basic，System GET 採 DEV 管理帳密，System 業務流程使用 [固定 Config Secret 欄位](05_system_config.md#system-api-secret-fields)。
 - 管理請求逾時沿用同一 `Idempotency-Key` 查核或重送。已結束的操作結果只需覆蓋 Builder 的重送與查核窗口，初始候選為可配置的 1 小時。尚未結束或結果待查的操作保留至安全結算。結果過期時先查 System 狀態和原操作，查證後才能重新發起變更。正式期限與過期時的查核細節待定。
+- 已確認由 Builder 實作管理請求的有限重試與失敗回報。重試次數、等待時間和可重試條件待定。查不到結果時保留原操作供查核，詳見 [生命週期 API](06_runtime_api_and_deployment.md#system-lifecycle-api)。
+- 完整 [System Config Schema](../schemas/system_config.draft.schema.json) 已存在。由 Runtime 交付完整 Schema 的方式及其與 Catalog 的版本對應仍待定。詳見 [Config 驗證邊界](06_runtime_api_and_deployment.md#runtime-capability-contract)。
 - 已確認：卸載某 System 在目標 Runtime 的 Ingestion 後，該目標暫停該 System 的歷史 Run 查詢。ES 保留規則沿用，首版透過已載入同一綁定的 Ingestion 查詢。
 - Builder → DEV Runtime 已提供 [OpenAPI、Mock 及 HTTP 情境測試](09_w1_builder_runtime_contract.md#builder-runtime-quickstart)。仍待正式環境部署接線、Builder 自有 CRUD／助手／檔案 manifest、資料保留、Trace 及版本相容政策。W1 DEV Runtime 的 HTTP、ES 與模型還需整合驗收。
 - 負責角色為 Backend、Runtime、Frontend 與身分團隊。以 W1 Mock 開發，真實串接按 M3／M5 驗收。
@@ -462,7 +464,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - DEV 以穩定 `runtime_ref` 保存部署目標。寫入目標接手時，Builder 先確認舊程序及已送出的寫入已妥善處理。FTEST／ENT 的 `runtime_ref` 選填，寫入排空由部署流程負責。
 - 後加入的 DEV Runtime 由 Builder `reload` 指定版本與綁定。重建或刪除前由 Builder 協調各 Runtime 排空。逐流程 `detach` 保留索引。[排空規格](06_runtime_api_and_deployment.md#builder-query-drain)
 - Builder 使用既有 System GET 定期查核部署意圖、Config Revision 和索引世代。預設每 60 秒，可由 Builder 部署設定調整，Builder 啟動及 Runtime 恢復連線後也查核。預期上線但快照缺失或過期時預檢及 `reload`。暫時性錯誤的重試細節待定。
-- 已確認允許切版期間暫停新查詢。Ingestion 提交共用版本後，Builder 逐目標補載 Inference；舊快照未就緒時回 `503 PIPELINE_NOT_READY`，核對新版與索引世代就緒後恢復。新版已提交但補載失敗時，Builder 顯示發布及各目標的補載結果。自動重試與回復舊版的政策待定。僅變更 Inference 仍走共用版本發布。
+- 已確認允許切版期間暫停新查詢。Ingestion 提交共用版本後，Builder 逐目標補載 Inference；舊快照未就緒時回 `503 PIPELINE_NOT_READY`，核對新版與索引世代就緒後恢復。新版已提交但補載失敗時，Builder 顯示發布及各目標的補載結果，依 Q-019 處理有限重試。回復舊版的政策待定。僅變更 Inference 仍走共用版本發布。
 
 - D-56／D-64 已確認：Builder DEV／獨立 Runtime 共用 System Queue、併發、Inference Rate 及 Deadline。初始限制由部署管理者在 Runtime 環境設定 E 提供，正式載入格式與機器 Schema 待定。Runtime 控制總量，Builder 另管理 User／Workspace 配額。Worker 為排程單位。
 - D-61：共用 API service 啟動只綁服務／Registry 基礎設定，後續管理多份 System Config，不因每份 UI 設定新增服務；可依 Namespace／資源池分成少數共用服務，精確分組策略尚未選定。
@@ -728,7 +730,7 @@ Builder 可按 [W1 開發契約索引](09_w1_builder_runtime_contract.md) 實作
 | 要進入的開發範圍 | 還需要定清楚的契約 |
 |---|---|
 | DEV 正式接線與授權 | HTTP Client 可依 [OpenAPI](../openapi/runtime.dev.v1.json) 使用各路由指定的 Basic 帳密。仍需定 Builder 啟動設定的機器格式，並完成部署 Secret、Istio 及跨 Runtime 共用索引綁定的實機接線。見 [Q-019](#q-019) 和 [Q-020](#q-020)。 |
-| 管理操作復原 | 既有 GET、`reload` 和每 60 秒的補載查核已定。管理操作結果保存期限、逾期查核後的重送，以及多目標發布部分成功時的自動重試與回退策略仍待議。建議的 1 小時期限仍是候選。見 [Q-019](#q-019) 和 [Q-020](#q-020)。 |
+| 管理操作復原 | Builder 使用既有 GET、`reload` 和每 60 秒的補載查核，並負責有限重試及失敗回報。管理操作結果保存期限、重試參數、過期查核及多目標發布部分成功時的回退策略仍待議。見 [Q-019](#q-019) 和 [Q-020](#q-020)。 |
 | 跨 Query 合併的發布與執行 | Query Transformation 位置與多 Query 必須啟用已確認。內建 Rewrite 的 [發布格式](05_system_config.md#inference-result-processing)可供 Builder 開發，Remote 節點設定及 M2 真實執行驗收見 [Q-014](#q-014)。 |
 | 模型服務發布與 PLED ES 接線 | 模型服務仍需確認環境綁定及 Profile。PLED ES 已定三個輸入與 Secret，實際 `es_number` 到服務的解析方式及登入流程由 PLED 整合驗收。見 [Q-003](#q-003)、[Q-021](#q-021) 與 [參數適用範圍](04_component_descriptor.md#component-parameter-scope)。 |
 | Variable 與 Secret | [System 設定](05_system_config.md#system-secret)已定義 DEV 測試值、部署注入與 Module 引用；實際 Builder／Runtime 串接依 [Q-021](#q-021)／[Q-028](#q-028) 驗收。 |

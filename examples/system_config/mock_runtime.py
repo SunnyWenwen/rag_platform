@@ -19,7 +19,8 @@ MOCK_CREDENTIALS = {
 }
 CHALLENGE = 'Basic realm="retrieval-runtime"'
 NO_BODY = object()
-PROBE_PATHS = {"/health/live", "/health/ready", "/internal/v1/catalog"}
+HEALTH_PATHS = {"/health/live", "/health/ready"}
+PROBE_PATHS = HEALTH_PATHS | {"/internal/v1/catalog"}
 
 
 def load_scenarios(system_id=None):
@@ -48,6 +49,8 @@ def normalized_target(target):
 
 def mock_auth_scheme(target):
     path = urlsplit(target).path
+    if path in HEALTH_PATHS:
+        return None
     if path.startswith("/internal/systems/"):
         if path.endswith("/v1/queries"):
             return "systemInferenceBasic"
@@ -139,9 +142,10 @@ class MockHandler(BaseHTTPRequestHandler):
 
     def handle_request(self):
         authorization = self.headers.get("Authorization", "")
-        credentials = MOCK_CREDENTIALS[mock_auth_scheme(self.path)]
-        expected = b"Basic " + b64encode(credentials.encode())
-        if not compare_digest(authorization.encode(), expected):
+        scheme = mock_auth_scheme(self.path)
+        if scheme is not None and not compare_digest(
+            authorization.encode(), b"Basic " + b64encode(MOCK_CREDENTIALS[scheme].encode()),
+        ):
             self.close_connection = True
             response = ScenarioReplay.problem(
                 401, "UNAUTHENTICATED", "Mock Runtime credentials are missing or invalid.",

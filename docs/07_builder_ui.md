@@ -601,6 +601,7 @@ ResultSet.key 對應 Config 路徑／群組，items 位置即名次。RRF 可用
 - [ ] 設定可保存草稿，但該 System 有 queued／running Ingestion 時不啟用新版；工作結束後才允許套用，不影響其他 System，也不因此禁用 Query。
 - [ ] API 說明將 retire 更新為同步 200，顯示 deleted／not_found 的不同結果；忙碌文件顯示 409，後端異常不冒充不存在／成功。UI 刪除按鈕與確認流程位置仍待規劃。
 - [ ] 工作失敗呈現 status=failed、module 與 error；HTTP 請求錯誤讀取 error 外框，驗證位置使用 path。兩者不混同，Runtime 記錄失效仍顯示 unknown。
+- [ ] 管理操作達到 Builder 重試上限時顯示目標和最近一次錯誤。操作結果仍不明時顯示「操作結果待查」。[管理操作契約](06_runtime_api_and_deployment.md#system-lifecycle-api)
 - [ ] API／部署說明引用 22 的 Runtime 可調參數，不在單次業務表單加入環境上限或 Admin 控制頁。
 - [ ] System 操作使用穩定 system_id；不將名稱、Config Revision 或 document_id 當成該識別碼，也不在業務 body 塞入整份 Config。
 

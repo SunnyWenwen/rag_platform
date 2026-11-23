@@ -26,6 +26,7 @@
         "tags": ["Health"],
         "summary": "Check service liveness",
         "operationId": "getLiveness",
+        "security": [],
         "responses": {
           "200": {
             "description": "Service is live.",
@@ -35,8 +36,6 @@
               }
             }
           },
-          "401": {"$ref": "#/components/responses/Unauthenticated"},
-          "403": {"$ref": "#/components/responses/Forbidden"},
           "500": {"$ref": "#/components/responses/InternalError"}
         }
       }
@@ -46,6 +45,7 @@
         "tags": ["Health"],
         "summary": "Check service readiness",
         "operationId": "getReadiness",
+        "security": [],
         "responses": {
           "200": {
             "description": "Service is ready.",
@@ -55,8 +55,6 @@
               }
             }
           },
-          "401": {"$ref": "#/components/responses/Unauthenticated"},
-          "403": {"$ref": "#/components/responses/Forbidden"},
           "500": {"$ref": "#/components/responses/InternalError"},
           "503": {"$ref": "#/components/responses/NotReady"}
         }

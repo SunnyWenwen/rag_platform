@@ -21,7 +21,7 @@ python3 examples/system_config/test_runtime_http_contract.py
 
 使用與離線驗證相同的 Python 套件。測試自行開啟本機暫用 TCP Port，每組情境前重設 Mock。它以 HTTP 傳送 [共用情境](../examples/system_config/runtime_http.examples.json) 的請求，依打包後的 [OpenAPI](../openapi/runtime.dev.v1.json) 檢查路由、參數、認證挑戰、HTTP 狀態、Header 和 body，再以收到的回應檢查 Context、Run、索引世代、重送和狀態轉移。面向 Builder 的 Mock 啟動與重設見 [使用方式](../examples/system_config/README.md#mock-runtime)。
 
-Mock 測試涵蓋 Builder 所依賴的 HTTP 契約。正式 Runtime 的部署、真實資料狀態、Elasticsearch 和外部服務仍由 DEV 環境驗收。
+認證測試包含免 Basic 的兩支 Health GET、System GET 的管理帳密，以及管理／Ingestion／Inference 帳密不可交叉使用。正式 Runtime 的部署、真實資料狀態、Elasticsearch 和外部服務仍由 DEV 環境驗收。
 
 ## 共用 Descriptor 推導測資
 

@@ -75,9 +75,13 @@ class OpenAPIContract:
         op_pointer = path_pointer + pointer(method)
         operation = item[method]
         scheme = mock_auth_scheme(request["path"])
-        assert operation.get("security", self.document["security"]) == [{scheme: []}]
-        definition = self.document["components"]["securitySchemes"][scheme]
-        assert (definition["type"], definition["scheme"]) == ("http", "basic")
+        security = operation.get("security", self.document["security"])
+        if scheme is None:
+            assert security == []
+        else:
+            assert security == [{scheme: []}]
+            definition = self.document["components"]["securitySchemes"][scheme]
+            assert (definition["type"], definition["scheme"]) == ("http", "basic")
 
         inputs = {
             "path": {name: unquote(value, errors="strict") for name, value in match.groupdict().items()},
@@ -150,8 +154,9 @@ def headers_lower(headers):
 
 def send(client, method, path, body=None, headers=None, *, authenticated=True, credential_scheme=None):
     outgoing = dict(headers or {})
-    if authenticated:
-        credentials = MOCK_CREDENTIALS[credential_scheme or mock_auth_scheme(path)]
+    scheme = credential_scheme or mock_auth_scheme(path)
+    if authenticated and scheme is not None:
+        credentials = MOCK_CREDENTIALS[scheme]
         outgoing["Authorization"] = "Basic " + b64encode(credentials.encode()).decode()
     payload = None
     if body is not None:
@@ -175,10 +180,22 @@ def reset(client, scenario):
 
 
 def assert_controls(client, scenarios, api):
-    challenge = send(client, "GET", "/health/live", authenticated=False)
+    for path in ("/health/live", "/health/ready"):
+        response = send(client, "GET", path, authenticated=False)
+        assert response["status"] == 200
+        assert "www-authenticate" not in headers_lower(response["headers"])
+        api.assert_exchange({"method": "GET", "path": path}, response)
+
+    system_path = next(step["request"]["path"] for step in scenarios["happy_path"]
+                       if step["request"]["method"] == "PUT")
+    challenge = send(client, "GET", system_path, authenticated=False)
     assert challenge["status"] == 401
     assert challenge["body"]["error"]["code"] == "UNAUTHENTICATED"
-    api.assert_exchange({"method": "GET", "path": "/health/live"}, challenge)
+    api.assert_exchange({"method": "GET", "path": system_path}, challenge)
+    for scheme in ("systemIngestionBasic", "systemInferenceBasic"):
+        challenge = send(client, "GET", system_path, credential_scheme=scheme)
+        assert challenge["status"] == 401
+        api.assert_exchange({"method": "GET", "path": system_path}, challenge)
 
     reset(client, "happy_path")
     invalid = send(client, "POST", "/__mock/reset", {"scenario": "does-not-exist"})

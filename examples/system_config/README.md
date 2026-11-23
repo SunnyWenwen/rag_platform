@@ -49,6 +49,7 @@
 - 在每個 Deployment 的 Pod template 設定 `app.kubernetes.io/part-of: rag-platform`，並設定與各自 Service selector 相符的 `app.kubernetes.io/name`。Builder Backend Pod 使用 `serviceAccountName: builder-backend`。確認 Gateway 與應用 Workload 都已納入 mesh。
 - Builder 的 DEV Runtime URL 取同 Namespace 的 Service，例如 `http://dev-runtime`。FTEST／ENT 各自配置 System 主機。Ingestion 和 Inference 分 Pod 時，配置兩個 HTTP Service，讓 System 的 `/v1/queries` 路由至 Inference，`/v1/ingestions` 與 `/v1/documents` 路由至 Ingestion，Health 隨各入口的 Service 接線。
 - 在目標叢集驗收時，確認 Gateway 的 HTTPS 可以完成認證並呼叫對應服務，且外部入口無法抵達 DEV Runtime 的 `/internal`。用 Builder 身分及有效 Basic 帳密呼叫 DEV Catalog 應成功。改用其他 Workload 身分或繞開 mesh 嘗試同一請求時應遭拒，並確認已接通的 Pod 間鏈路實際使用 mTLS。
+- Runtime 的 HTTP liveness／readiness 探針使用 `/health/live`、`/health/ready`，免 Basic。Istio sidecar 部署應保留 HTTP 探針重寫，讓 kubelet 可在 STRICT mTLS 下透過 sidecar agent 探測應用程式。[Istio 探針接線](https://istio.io/latest/docs/ops/configuration/mesh/app-health-check/)
 
 [主責部署規格](../../docs/06_runtime_api_and_deployment.md#istio-http-transport) · [Istio PeerAuthentication](https://istio.io/latest/docs/reference/config/security/peer_authentication/) · [Istio HTTPS Gateway](https://istio.io/latest/docs/tasks/traffic-management/ingress/secure-ingress/)
 
@@ -118,13 +119,15 @@ python3 examples/system_config/mock_runtime.py --scenario happy_path --port 8000
 
 | 入口 | 本機帳號／密碼 |
 |---|---|
-| 管理、Health 與 Mock 重設 | `mock:mock` |
+| Runtime Health | 免帳密 |
+| 管理、System GET 與 Mock 重設 | `mock:mock` |
 | System Ingestion 和文件操作 | `ingestion:mock-ingestion` |
 | System Inference | `inference:mock-inference` |
 
 例如讀取固定的 Catalog：
 
 ```sh
+curl http://127.0.0.1:8000/health/ready
 curl -u mock:mock http://127.0.0.1:8000/internal/v1/catalog
 ```
 
