@@ -64,6 +64,17 @@ async function main() {
     await module('其他設定').click();
     const variableSettings = page.getByRole('region',{name:'Variable'});
     const secretSettings = page.getByRole('region',{name:'Secret'});
+    const apiAuth = page.getByRole('region',{name:'System API 認證'});
+    assert.equal(await apiAuth.getByLabel('Ingestion 帳號').inputValue(),'ingestion');
+    assert.equal(await apiAuth.getByLabel('Inference 帳號').inputValue(),'inference');
+    const ingestionPassword = apiAuth.getByLabel('Ingestion 密碼');
+    const inferencePassword = apiAuth.getByLabel('Inference 密碼');
+    assert.equal(await ingestionPassword.getAttribute('type'),'password');
+    assert.equal(await inferencePassword.getAttribute('type'),'password');
+    assert.match(await ingestionPassword.inputValue(),uuidV4);
+    assert.match(await inferencePassword.inputValue(),uuidV4);
+    assert.notEqual(await ingestionPassword.inputValue(),await inferencePassword.inputValue());
+    await inferencePassword.fill('fixture-inference-password');
     await variableSettings.getByRole('button',{name:'新增 Variable'}).click();
     await variableSettings.getByLabel('Variable Key').fill('trace_label');
     await variableSettings.getByLabel('Variable Key').press('Tab');
@@ -129,17 +140,29 @@ async function main() {
     await button('驗證並發布').click();
     assert.match(await impact.innerText(),/建立索引/);
     await button('確認發布').click();
+    assert.equal(await page.evaluate(() => current().active.secret.INFERENCE_API_PASSWORD),'fixture-inference-password');
+    assert.equal(await page.evaluate(() => localStorage.getItem(storageKey).includes('fixture-inference-password')),false);
+    const deployedVersion = await page.evaluate(() => activeRevision(current()));
+    await closeSystem();
+    await openCardAction('↗ Export');
+    await page.getByLabel('部署環境').selectOption('ent');
+    assert.match(await dialog.innerText(),/env: ent/);
+    assert.match(await dialog.innerText(),/PLED_ES_ACCOUNT/);
+    assert.doesNotMatch(await dialog.innerText(),/fixture-inference-password/);
     const downloadEvent = page.waitForEvent('download');
-    const deployedVersion = await page.evaluate(() => {
-      const system = current();
-      download(system);
-      return activeRevision(system);
-    });
-    const exported = JSON.parse(fs.readFileSync(await (await downloadEvent).path(),'utf8'));
+    await button('下載部署 Config JSON').click();
+    const download = await downloadEvent;
+    assert.equal(download.suggestedFilename(),createdSystemId + '.ent.json');
+    const exported = JSON.parse(fs.readFileSync(await download.path(),'utf8'));
     assert.equal(exported.system_id,createdSystemId);
     assert.equal(exported.config_revision,deployedVersion);
     const connection = exported.config.pipelines.ingestion.indexing.parameters;
     assert.equal(connection.service_source,'pled_es');
+    for (const lane of ['INGESTION','INFERENCE']) {
+      for (const field of ['USERNAME','PASSWORD']) {
+        assert.equal(exported.config.secret[lane + '_API_' + field],null);
+      }
+    }
     for (const [field,key] of Object.entries({
       es_number:'PLED_ES_NUMBER',account:'PLED_ES_ACCOUNT',password:'PLED_ES_PASSWORD'
     })) {
@@ -153,6 +176,14 @@ async function main() {
 
     await closeSystem();
     await openCardAction('↑ Ingest');
+    await dialog.getByText('原始檔案 Request 預覽',{exact:true}).click();
+    const raw = readFixture('system_config/file_ingestion.base64.request.json').documents[0];
+    await page.getByLabel('選擇原始檔案').setInputFiles({
+      name:raw.document_id,mimeType:raw.content.media_type,buffer:Buffer.from(raw.content.base64,'base64')
+    });
+    await dialog.locator('#original-file-request').waitFor();
+    assert.deepEqual(JSON.parse(await dialog.locator('#original-file-request').textContent()),{documents:[raw]});
+    assert.equal(await button('開始匯入').isDisabled(),true);
     await page.getByLabel('Ingestion Request').fill('{"documents":[]}');
     await button('預檢資料').click();
     assert.match(await page.getByRole('alert').innerText(),/至少一份文件/);
@@ -444,12 +475,24 @@ async function main() {
     assert.equal(await page.getByLabel('切分上限（tokens）').inputValue(),'384');
     await picker.selectOption('recursive');
     await button('驗證並發布').click();
+    assert.match(await page.getByRole('alert').innerText(),/請填寫有效的 DEV API 帳密/);
+    assert.equal(await apiAuth.getByLabel('Inference 密碼').inputValue(),'');
+    await apiAuth.getByLabel('Ingestion 帳號').fill('ingestion');
+    await apiAuth.getByLabel('Ingestion 密碼').fill('fixture-ingestion-after-reload');
+    await apiAuth.getByLabel('Inference 帳號').fill('inference');
+    await apiAuth.getByLabel('Inference 密碼').fill('fixture-inference-after-reload');
+    await button('驗證並發布').click();
     assert.match(await impact.innerText(),/沿用索引/);
     await button('返回').click();
     page.once('dialog',confirmation => confirmation.accept());
     await closeSystem();
     await dialog.waitFor({state:'hidden'});
     await openCardAction('Runtime');
+    await dialog.getByText('API 認證與傳輸',{exact:true}).click();
+    const runtimeAuth = dialog.locator('details').filter({hasText:'API 認證與傳輸'});
+    assert.match(await runtimeAuth.innerText(),/Istio mTLS/);
+    assert.match(await runtimeAuth.getByRole('row').filter({hasText:'/health/ready'}).innerText(),/免帳密/);
+    assert.match(await runtimeAuth.getByRole('row').filter({hasText:'System GET'}).innerText(),/Runtime 管理帳密/);
     await page.getByLabel('Runtime 拓撲').selectOption('split');
     assert.match(await dialog.innerText(),/dev-ingestion/);
     assert.match(await dialog.innerText(),/dev-inference/);

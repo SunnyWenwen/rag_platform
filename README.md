@@ -16,6 +16,6 @@ User 在 Builder 設定、測試及匯出 Retrieval System。System 由 Retrieva
 
 - [Todo Enhance](docs/todo_enhance.md) 記錄跨 Pod Ingestion 文件鎖的後續設計與驗收。
 - 接外部服務依序看 [03 Remote API](docs/03_engine_and_components.md#remote-api)、[05 設定](docs/05_system_config.md)及[契約範例](examples/user_remote_api/README.md)。
-- [01_ui_prototype.html](01_ui_prototype.html) 可離線操作。W1 流程涵蓋 Elasticsearch Config 草稿、索引發布影響、批次匯入與查詢測試。
+- [01_ui_prototype.html](01_ui_prototype.html) 可離線操作。W1 流程涵蓋 Elasticsearch Config、索引發布、批次匯入、查詢測試、Runtime 管理預覽與 FTEST／ENT 部署 Config 匯出。
 - [機器可讀契約](schemas/README.md)、[範例入口](examples/README.md)及[測試入口](tests/README.md)。舊規格及測資見[歷史索引](docs/history/superseded/2026-11-11_developer_mode.md)。
 - 圖面：[User 流程](diagrams/01_user_system_l1.png)、[Infra：Builder 啟動後](diagrams/02_infra_architecture_startup.png)、[Infra：使用者操作後](diagrams/02_infra_architecture.png)、[模組與 System](diagrams/03_module_component_concept.png)。

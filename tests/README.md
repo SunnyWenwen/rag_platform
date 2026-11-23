@@ -34,7 +34,7 @@ python3 examples/system_config/validate_descriptor_draft.py
 
 ## UI prototype 回歸
 
-瀏覽器回歸涵蓋草稿保存、元件選擇、索引發布及重建、Variable 表、System UUIDv4、CSV 缺主鍵拒絕及組合主鍵穩定性、Run 狀態與 Filter，也檢查 Runtime 分開部署、逐流程卸載／補載及 Bulk 逾時重匯。在 repo 根目錄用已安裝 Playwright 和 Chromium 的 Node.js 環境執行。
+瀏覽器回歸涵蓋草稿保存、元件選擇、索引發布及重建、Variable／Secret、System API 帳密、System UUIDv4、CSV 主鍵、原始檔案 Base64 預覽、Run 狀態與 Filter，也檢查 Runtime 認證說明、分開部署、逐流程卸載／補載、Bulk 逾時重匯，以及從 Export 下載的 PLED 部署 Config。在 repo 根目錄用已安裝 Playwright 和 Chromium 的 Node.js 環境執行。
 
 ```sh
 node tests/w1-prototype.browser.test.cjs

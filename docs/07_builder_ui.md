@@ -1,6 +1,6 @@
 # Retrieval Builder UI、原型狀態與 Backlog
 
-2026-11-17｜[目前的 UI Prototype](../01_ui_prototype.html) 沿用工作區側欄、System 卡片及設定與操作視窗。Component 選單依設計文件列出方法名稱，表單依選擇切換並保留各方法的草稿。索引發布、匯入與查詢以 W1 Elasticsearch 為模擬範圍。超出範圍的設定可保存草稿，發布時會指出不支援的模組。各方法的規格與待決細節見 [Engine／Component 開發](03_engine_and_components.md) 及 [開發計畫與決策](08_plan_and_decisions.md)。Remote API 可設定替換範圍與服務參數。下文的 v0.12～v0.15 操作紀錄對應[舊版快照](history/source_snapshots/ui-prototype-v015/01_ui_prototype.html)。
+2026-11-23｜[目前的 UI Prototype](../01_ui_prototype.html) 沿用工作區側欄、System 卡片及設定與操作視窗。Component 選單依設計文件列出方法名稱，表單依選擇切換並保留各方法的草稿。索引發布、匯入與查詢以 W1 Elasticsearch 為模擬範圍。超出範圍的設定可保存草稿，發布時會指出不支援的模組。各方法的規格與待決細節見 [Engine／Component 開發](03_engine_and_components.md) 及 [開發計畫與決策](08_plan_and_decisions.md)。Remote API 可設定替換範圍與服務參數。下文的 v0.12～v0.15 操作紀錄對應[舊版快照](history/source_snapshots/ui-prototype-v015/01_ui_prototype.html)。
 
 ## 閱讀目錄
 
@@ -382,6 +382,7 @@ Runtime 回報已發布部署的索引確認遺失時，Builder 顯示受影響�
 - 使用 DEV 綁定者可下載待設定草稿；必要資訊已填妥者標示「已填妥，尚未驗證」。
 - 只允許合法環境覆寫；更改 Embedding Model 提示返回 Edit Config 並重建。
 - 匯出保留 `config.variable` 及 `config.secret` 的 Key，值設為 `null`。部署設定以同名環境變數分別提供 ConfigMap 與 Secret。Remote API 另匯出目標環境的連線設定。
+- 已發布的 System 可選 FTEST／ENT 檢視部署用 Config。匯出將 `dev_test` 轉為 `pled_es`，沿用 System ID、Config Revision 及索引設定，三個 PLED 連線欄位由部署環境提供。畫面列出實際所需的 Secret Key。[ES 匯出規則](05_system_config.md#elasticsearch-service-source)
 - 不含實際 Secret、Image 本體、Chunk／vectors 或測試原文；提醒需在目標環境準備資料／Ingestion。
 - FTEST／ENT 檔名、環境值與完整 Bundle 待 Q-021；正式文案稱 Config／部署設定。原型舊的 RAGBlueprint／blueprint.json 僅是待遷移標籤，不是另立的產品物件；單份示意 YAML 不代表正式交付完成。
 
@@ -457,7 +458,7 @@ API 回傳最終有效清單。D-52：Chunk.metadata._rag.source_refs 為選填�
 <a id="src-10-1-已完成的原型能力"></a>
 ## Prototype／Backlog：已完成的原型能力
 
-單一 Workspace／Group 主畫面，Create／Edit 共用設定介面，提供 Ingest、Inference、檢索 Evaluation、Export。全部為瀏覽器記憶體內操作，重新整理重設；沒有真實 Engine、模型、DB、Registry、服務健康探測或部署控制器。
+單一 Workspace 主畫面，Create／Edit 共用設定介面，提供 Ingest、Inference、Runtime 與部署 Config 匯出。Prototype 在瀏覽器模擬執行，部分草稿與模擬狀態存在本機儲存，Secret 測試值只存在頁面記憶體。正式 Evaluation、AI 助手、Runtime 呼叫與部署由後端整合。
 
 - Import 欄位及 CSV 映射、各階段有效 Document Schema、批次 Ingestion Request 與逐文件驗證。
 - Fixed-size／Recursive／Header-aware 的配置、Tokenizer 連動及 metadata 繼承。原型曾示範多任務切分，正式設定只選一個切分欄位。
@@ -465,7 +466,9 @@ API 回傳最終有效清單。D-52：Chunk.metadata._rag.source_refs 為選填�
 - 推論 JSON 檢視顯示完整成功物件，`contexts` 內保留 QueryContext[]／filters／metadata。跨 Query 合併可設定並保存草稿，執行依 Engine 整合驗收。
 - 選填 _rag；Embedding 欄位模板；複製原文欄位與額外原文 Chunk 的獨立設定。
 - 內建與 User Remote API 模式、連續範圍鎖定、契約驗證及 Admin 全域模板選用。
-- AI 助手依本機規則產生 Diff，套用前驗證／過期草稿檢查；沒有 LLM 呼叫。
+- Secret 設定可編輯 Ingestion／Inference 各自的固定帳密。Runtime 與業務畫面顯示管理／流程認證分工，Health 免 Basic。
+- Ingest 可把原始檔案轉為 Base64 請求預覽。Prototype 的本機匯入模擬執行結構化 JSON／CSV，檔案解析由 Runtime 整合。
+- Export 可選 FTEST／ENT 並下載已發布 Revision 的部署用 Config JSON。完整 Kubernetes Bundle 待正式整合。
 
 <a id="6-v09-實作細節展示預設與限制"></a>
 <a id="src-10-2-結果處理與有效設定"></a>
@@ -494,11 +497,11 @@ ResultSet.key 對應 Config 路徑／群組，items 位置即名次。RRF 可用
 
 「原型完成」只代表配置／互動／模擬預覽，不代替真實功能驗收。
 
-| 編號 | 需求 | v0.13 狀態 |
+| 編號 | 需求 | 原型與整合狀態 |
 |---|---|---|
 | UIB-001／002 | Fixed-size 及 Tokens 說明 | 原型已完成；真實 Tokenizer／切分待 Engine |
-| UIB-003 | AI 助手串接 M4 核心／API | 待後端整合；目前明示本機規則 |
-| UIB-004 | Diff、驗證、套用、取消與過期回應 | 本機模擬完成；真實非同步 API／版本一致性待整合 |
+| UIB-003 | AI 助手串接 M4 核心／API | 本機規則示例見舊版快照，現行 W1 待後端整合 |
+| UIB-004 | Diff、驗證、套用、取消與過期回應 | 本機示例見舊版快照，現行 W1 待非同步 API／版本一致性整合 |
 | UIB-005／006 | 全 Chunk 保存、metadata 全繼承 | 原型已完成；儲存 Adapter 待實作 |
 | UIB-007 | Rewrite 單步試跑及模型回應驗證 | 試跑介面與 Provider 整合仍待討論 |
 | UIB-008 | 單一 Rewrite Component，以 count 設定改寫筆數 | 規格已確認，Prototype 舊選項待對齊 |
@@ -591,7 +594,7 @@ ResultSet.key 對應 Config 路徑／群組，items 位置即名次。RRF 可用
 ### D-60：讀寫並行與暫定驗證方式補充
 
 - [ ] 初次資料依 [查詢入口規則](#builder-initial-ingestion-readiness)開放。後續一般 Ingestion／retire 與查詢併行；索引未就緒、限流或錯誤依 Runtime 回應呈現。
-- [ ] Builder 入口、管理 API 與 System 各流程的帳密依 [HTTP Basic 認證](06_runtime_api_and_deployment.md#runtime-basic-authentication)。在 Secret 區呈現四個固定欄位，憑證只出現在認證 Header 或受保護的設定傳遞。
+- [x] Prototype 呈現四個固定認證欄位與 [HTTP Basic 分工](06_runtime_api_and_deployment.md#runtime-basic-authentication)。真正的驗證、授權與帳密傳遞由 Builder Backend／Runtime 整合。
 - [ ] 更新期間 Query 可反映不同時點的資料，不在 UI 宣稱原子快照；同文件 queued／running 重複提交仍保留忙碌提示。
 
 

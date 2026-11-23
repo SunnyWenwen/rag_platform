@@ -562,7 +562,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 | DS-01～DS-13 | 平台內部描述候選，舊 DS 表見歷史 | [歷史決策紀錄](history/decisions/decision_history.md) |
 | SC-01～SC-10 | D 的具體表示；Import 和有效設定推導 Document，舊 SC 候選見歷史 | [歷史決策紀錄](history/decisions/decision_history.md) |
 | API-D01～API-D07 | 已確認核心／待完成協定逐列保留 | [Runtime API 決策](#runtime-api-decisions) |
-| UIB | 所有 40 個未勾選工作項保留；021 索引、022 工作、023 文件管理、024 Descriptor | [UI Backlog](07_builder_ui.md#ui-backlog-pending) |
+| UIB | 依原型、正式整合及驗收進度更新；021 索引、022 工作、023 文件管理、024 Descriptor | [UI Backlog](07_builder_ui.md#ui-backlog-pending) |
 
 <a id="runtime-api-decisions"></a>
 <a id="src-21-7-非必備端點與本輪待討論"></a>
@@ -720,7 +720,7 @@ Agent 可自行選局部 helper／內部名稱等可逆細節；公共 Contract�
 
 - 資料驗證：[System Config／Descriptor](../examples/system_config/README.md) 與 [Document／Remote API](../examples/user_remote_api/README.md)。[測試入口](../tests/README.md)另列 UI prototype 回歸。
 - Parser 對照：現行映射與驗收界線見 [資料契約](02_data_contracts.md#data-flow)；舊版供應者對照／試驗保存在 history/superseded，不等同目前契約的完整 Parser 驗收。範例通過不表示已交付 Engine Component。
-- Prototype v0.12：現行原型完成／提案／後端待辦以 [Builder UI／Backlog](07_builder_ui.md#src-10-1-已完成的原型能力)相關章節為準。不可再把 UIB-001～013 全列未實作；多項已完成模擬，UIB-007／008 仍未核定，UIB-021～024 等累積項仍待改 UI／正式整合。
+- 原型能力、提案與後端整合進度見 [Builder UI／Backlog](07_builder_ui.md#src-10-1-已完成的原型能力)。
 - 優先決策：正式共用契約／SDK、模型與 Tokenizer、ID／更新／發布政策，再按 M0～M7 推進。D-53 的 Chunk 後模板組合與額外原文 Chunk 已確認需求，尚待實作及凍結具體設定格式，見 [資料契約](02_data_contracts.md#data-flow)。
 
 <a id="w1-contract-readiness"></a>
