@@ -1,12 +1,12 @@
 # Builder System 部署狀態與 MongoDB Collection 草案
 
-Builder 保存 System、所有 Config Revision 及各目標 Runtime 的部署意圖，並[主動管理 DEV Runtime](../06_runtime_api_and_deployment.md#builder-managed-dev-runtimes)的發布與重啟後補載。DEV 首版每個 Runtime 以一個 Pod 執行，在記憶體中持有已載入的 Config、執行物件與本地 Queue。ES 保存受管索引及控制紀錄，供 Runtime 核對索引與協調工作。獨立部署由匯出的 Config 啟動。
+Builder 保存 System、所有 Config Revision 及各目標 Runtime 的部署意圖，並[主動管理 DEV Runtime](../06_runtime_api_and_deployment.md#builder-managed-dev-runtimes)的發布與重啟後補載。DEV 首版每個 Runtime 以一個 Pod 執行，在記憶體中持有已載入的 Config、執行物件與本地 Queue。ES 保存受管索引及控制紀錄，供 Runtime 核對索引與協調 System 生命週期。Ingestion Run 留在受理 Pod 的記憶體。獨立部署由匯出的 Config 啟動。
 
 ## Collection 欄位
 
 Collection 名稱為 `builder_system_deployments`。每個 `(environment, runtime_ref, system_id)` 一筆，唯一鍵由三欄組成。環境與 Runtime 識別取自 Builder 選定的部署目標。同一目標的 Runtime 重啟或更換 Pod 時沿用 `runtime_ref`。完整 Config 依 `system_id` 與 `config_revision` 從 Builder 的 Config Revision 紀錄讀取。單純儲存或驗證草稿不建立部署紀錄。
 
-Builder 在同一筆目標紀錄中追蹤兩條流程的部署意圖。分 Pod 時各 Runtime 各有一筆，使用同一份完整 Config 與受管 ES 索引。Runtime 依 System 與索引綁定共用 [ES 控制紀錄](../06_runtime_api_and_deployment.md#ingestion-job-records)。逐流程部署見 [Runtime 契約](../06_runtime_api_and_deployment.md#runtime-pipeline-deployment)。
+Builder 在同一筆目標紀錄中追蹤兩條流程的部署意圖。分 Pod 時各 Runtime 各有一筆，使用同一份完整 Config 與受管 ES 索引。Runtime 依 System 與索引綁定共用 [ES 生命週期控制紀錄](../06_runtime_api_and_deployment.md#es-runtime-control-index)。逐流程部署見 [Runtime 契約](../06_runtime_api_and_deployment.md#runtime-pipeline-deployment)。
 
 | 欄位 | BSON 型別 | 定義 |
 |---|---|---|

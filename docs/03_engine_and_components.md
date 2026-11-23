@@ -94,7 +94,7 @@ Indexing 保存全部有效 structdata、metadata 與向量。全文與 Filter �
 2. 比較目標 Schema／Profile，拒絕不相容寫入，避免不同模型混在同一向量欄位。
 3. 依版本／冪等策略寫入 Chunk，維護 data_id 對照及 Binding。
 4. 按後端 refresh／發布規則回報 searchable；write_acknowledged 不等於 searchable。
-5. 同一 System／`document_id` 的每次索引寫入使用新的 `write_id`。IndexStore 在第一個 ES Bulk 前持久化預期 Chunk 與清理範圍，新版完整可搜尋後才清舊。Bulk 回應逾時回報 `ES_BULK_TIMEOUT`，由 Runtime 結案並釋放占用。殘留清理限原批次的 `write_id`。文件存在、清單與 Retire 也使用索引存取層。見 [ES 寫入控制紀錄與查核](06_runtime_api_and_deployment.md#es-write-control-record)。
+5. 同一 System／`document_id` 的每次索引寫入使用新的 `write_id`。IndexStore 在第一個 ES Bulk 前於本機記憶體記錄預期 Chunk 與清理範圍，新版完整可搜尋後才清舊。Bulk 回應逾時回報 `ES_BULK_TIMEOUT`，由 Runtime 結案並釋放占用。殘留清理限原批次的 `write_id`。文件存在、清單與 Retire 也使用索引存取層。見 [ES 寫入與清理](06_runtime_api_and_deployment.md#es-write-control-record)。
 
 | 後端 | 內部責任 |
 |---|---|

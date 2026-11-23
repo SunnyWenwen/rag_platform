@@ -13,7 +13,7 @@
 - [9. 目前交付狀態與下一步](#9-目前交付狀態與下一步)
 
 
-> 文件同步日期為 2026-11-20 · 開發規格草案（正式 SDK／Config 尚未凍結）
+> 文件同步日期為 2026-11-23 · 開發規格草案（正式 SDK／Config 尚未凍結）
 >
 > 目的：讓 coding agent 依同一套規格分階段開發，並持續記錄尚不清楚的問題。本文是決策／待決狀態的權威位置；它不把技術建議自動轉成使用者已核可決策。
 
@@ -48,7 +48,7 @@
 ## 2026-11-13 已確認：Retrieval System 生命週期
 
 - Builder DEV 以獨立 Runtime 承載多個 System，透過內部 API 套用、列出、查詢及卸載。單組 Config 獨立部署由 Runtime 啟動時載入，管理 API 關閉。Engine 使用共用 LangGraph 執行。
-- Runtime 以 `system_id` 管理一份生效 Config，按 System 判斷管理操作與 Ingestion 是否忙碌。每個請求與已接受的文件工作固定 Config Revision。Ingestion Queue 採記憶體，重啟後不續跑。ES 模式的工作紀錄依 [11-16 決策](#ingestion-queue-and-es-write-decision) 保存與結算。
+- Runtime 以 `system_id` 管理一份生效 Config，按 System 判斷管理操作與 Ingestion 是否忙碌。每個請求與已接受的文件工作固定 Config Revision。Ingestion Queue 採記憶體，重啟後不續跑。工作紀錄依 [Runtime 工作保留規格](06_runtime_api_and_deployment.md#ingestion-job-records)保存在受理 Pod。
 - 初始化或重連時驗證索引歸屬及相容性。明確更新遇到不相容索引時先刪再建，Builder 重新匯入。明確卸載移除該 System 的受管理索引及資料。操作前置條件按[同版本恢復決策](#system-index-recovery-decision)細分。
 
 ## 2026-11-13 已確認：Elasticsearch 文件覆寫
@@ -56,7 +56,7 @@
 - 本輪先以 Elasticsearch 為文件覆寫的後端。索引存取層產生內部 `write_id`，同一次寫入的 Chunk 共用此值，並以獨立 ES `_id` 保存。
 - 新 Chunk 全部寫入並可搜尋後才刪舊。新版失敗時，按本次 `write_id` 清理並保留舊資料。更新期間可查到新舊 Chunk。Bulk 逾時的重匯規則依 [Q-008](#q-008)。
 - `write_id` 與來源 `source_revision` 分開。ES 寫入、可見性與清理案例見 [Elasticsearch 文件覆寫](06_runtime_api_and_deployment.md#elasticsearch-document-replacement)。
-- 覆寫以同 System 的 `document_id` 為準，`source_revision` 僅供來源追溯。Runtime 重啟後依 [工作紀錄與重啟規則](06_runtime_api_and_deployment.md#ingestion-job-records) 結算。
+- 覆寫以同 System 的 `document_id` 為準，`source_revision` 僅供來源追溯。Runtime 重啟後依 [工作紀錄規則](06_runtime_api_and_deployment.md#ingestion-job-records)從空的狀態開始。
 
 ## 2026-11-13 已確認：索引重建的原始資料
 
@@ -87,11 +87,9 @@
 <a id="ingestion-queue-and-es-write-decision"></a>
 ## 2026-11-16 已確認的 Ingestion Queue 與 ES 寫入規則
 
-- 記憶體 Queue 負責排程。ES 模式在整批預檢與預留容量後，先持久化 Run 收件及文件清單，再入列回 202，並逐份保存執行結果。工作紀錄在保留期內可由 Run／文件狀態 API 查詢。
-- 同環境、同 ES 叢集的 System 共用控制索引，分別保存 Runtime 工作紀錄與 IndexStore 的寫入控制紀錄。IndexStore 於送出第一個 Bulk 前保存預期 Chunk ID、寫入批次與清理範圍。兩種紀錄以 Run 與文件識別關聯。
+- ES 持久化工作紀錄的前版方向已由 [Pod 內工作紀錄決策](#pod-local-ingestion-decision)取代。
 - 2026-11-20 確認[共用控制索引](06_runtime_api_and_deployment.md#es-runtime-control-index)使用 `rag-<env>-runtime-control-v1`。Runtime 載入使用受管 ES 的 System Config 時先確認控制索引；每個叢集與環境在首次初始化時安全地建立一次。已運作環境查無控制索引時暫停受影響的協調操作，等待查核或恢復。
-- 重啟只結算已確認停止的 instance 的工作。清舊結果待查時沿用寫入紀錄查核。失敗或中斷文件由呼叫方決定是否重匯。見 [Queue 與重啟](06_runtime_api_and_deployment.md#ingestion-job-records)。
-- 2026-11-20 確認 ES Bulk 等待逾時以 `failed` 結案並允許重新匯入，按 `write_id` 清理舊批次。整批 Run 從最後一份文件結案起，預設保留 3 天。見 [ES 寫入控制](06_runtime_api_and_deployment.md#es-write-control-record)。
+- 2026-11-20 確認 ES Bulk 等待逾時以 `failed` 結案並允許重新匯入，按 `write_id` 清理舊批次。見 [ES 寫入與清理](06_runtime_api_and_deployment.md#es-write-control-record)。
 
 <a id="system-index-recovery-decision"></a>
 ## 2026-11-19 已確認：同版本 ES 索引恢復
@@ -104,7 +102,7 @@
 <a id="pod-local-ingestion-decision"></a>
 ## 2026-11-23 已確認：Ingestion 文件占用採 Pod 內記憶體
 
-首版以每個 Pod 自己的記憶體管控同文件競爭及 Ingestion 容量，減少匯入對共用 ES 控制紀錄的讀寫。現行行為見 [Pod 內文件占用與派工](06_runtime_api_and_deployment.md#pod-local-ingestion-control)，跨 Pod 文件鎖列入 [Todo Enhance](todo_enhance.md)。
+首版的文件占用、Queue、Run 收件、工作結果及清理進度都由受理 Pod 在記憶體保存。程序終止後一併遺失。Run 保留及清理見 [Runtime 工作紀錄](06_runtime_api_and_deployment.md#ingestion-job-records)，跨 Pod 文件鎖列入 [Todo Enhance](todo_enhance.md)。
 
 ## 1. 使用方式與狀態
 
@@ -161,7 +159,7 @@
 | Remote 整合 | User 直連，支援單節點與連續區段；Admin 管理全域模板 | 2026-11-11；03、05 |
 | Flow／Config | 共用 Flow／Executor；每次請求及已接受文件固定 Config 快照，各步獨立傳入 Component Config／Context，資源作用域另管 | D-61／62；03、Engine／Component手冊、07 |
 | Config 生效／環境 | 依 System 固定生效版本並判斷忙碌；相容更新沿用索引，明確不相容更新先刪再建；獨立部署啟動時載入單一 Config | D-29／30／63／64；[Runtime 生命週期](06_runtime_api_and_deployment.md#src-07-4-systemrevision-與-engine-生命週期) |
-| Ingestion 工作 | document_id 完整覆寫、逐文件結果；整批預檢才 202；文件無 partial，Run 可 partial；Queue 留在記憶體；ES 模式保存逐文件結果，重啟依寫入證據結算；支援按 Run 批量取消 `queued`／`running` 文件 | D-56～58；[11-16 決策](#ingestion-queue-and-es-write-decision) · [批量取消](06_runtime_api_and_deployment.md#ingestion-cancel-api) |
+| Ingestion 工作 | document_id 完整覆寫、逐文件結果；整批預檢才 202；文件無 partial，Run 可 partial；Queue 和狀態由受理 Pod 在記憶體保存，重啟後清空；支援按 Run 批量取消 `queued`／`running` 文件 | D-56～58；[Pod 內工作紀錄](#pod-local-ingestion-decision) · [批量取消](06_runtime_api_and_deployment.md#ingestion-cancel-api) |
 | 讀寫／失敗 | ES 先寫新再刪舊，以 `write_id` 定位清理範圍；查詢允許混合可見；Pod 內同文件有有效占用時拒絕重送，Bulk 逾時結案後可重匯 | D-59／60；[Elasticsearch 文件覆寫](06_runtime_api_and_deployment.md#elasticsearch-document-replacement)、Q-008～Q-010／Q-017 |
 | 文件管理 | exists、文件摘要與 retire 讀取／管理實際儲存；摘要為 documents[]／next_cursor、document_id／source_revisions[]；retire 同步 200＋deleted 或 not_found，忙碌 409 | D-58／64／65；21 |
 | API／認證 | 8 支業務＋2 支 Health；Runtime 暫採一組 Basic 帳密操作服務 API；Builder 登入延後；共用 Runtime 經可信內部 System 路由選 Config | D-60／64；[Runtime API 清單](06_runtime_api_and_deployment.md#data-lifecycle-api) |
@@ -431,12 +429,12 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 <a id="q-017"></a>
 ### Q-017 Timeout、重試、取消與工作恢復
 
-- Runtime 使用有上限的記憶體 Queue。ES 持久化 Run 收件及逐文件結果。已確認停止的 instance 可依寫入紀錄結算，取消流程直接以共享紀錄協調。Run 全部文件結案後預設保留 3 天，沿用 10,000 份終態文件紀錄上限。
+- 首版的 Queue、取消與 Run 查詢由受理 Pod 的記憶體處理。預設保留期限和容量見 [終態紀錄清理](06_runtime_api_and_deployment.md#ingestion-status-retention)。
 - D-64 已確認 Runtime 整體 Deadline／狀態保存初始值與管理方式，集中見 Runtime API／部署手冊；A 的成功／錯誤核心欄位已確認。仍待排隊等待上限、模組／Client Timeout、有限重試／可重試錯誤、中斷及未知遠端副作用處理、正式 Schema／載入方式。
-- 2026-11-20 已確認同一個 Run 使用 `POST /ingestions/{run_id}/cancel` 傳入 `document_ids`。指定的 `queued`／`running` 文件直接回報 `cancelled`，已完成的文件回報原狀態。已取得寫入權的 Worker 保留原占用到結案，成功時將該文件改為 `completed`。Run 與單份文件查詢顯示同一狀態。2026-11-23 補充活躍取消的 Runtime 路由與重啟後結算。Active Run 清單、人工查核端點延後。見 [Runtime 批量取消契約](06_runtime_api_and_deployment.md#ingestion-cancel-api)。
-- 已確認 Ingestion 失敗或重啟中斷後，由呼叫方決定是否重新提交完整文件。ES Bulk 逾時可結案、釋放占用並重匯，原批次殘留另依 `write_id` 清理。模組內部的執行預算與重試條件另議。
+- 2026-11-20 已確認同一個 Run 使用 `POST /ingestions/{run_id}/cancel` 傳入 `document_ids`。指定的 `queued`／`running` 文件直接回報 `cancelled`，已完成的文件回報原狀態。已取得寫入權的 Worker 保留原占用到結案，成功時將該文件改為 `completed`。Run 與單份文件查詢顯示同一狀態。2026-11-23 補充活躍取消的 Runtime 路由與重啟後的查無紀錄行為。Active Run 清單、人工查核端點延後。見 [Runtime 批量取消契約](06_runtime_api_and_deployment.md#ingestion-cancel-api)。
+- 已確認 Ingestion 失敗或重啟中斷後，由呼叫方決定是否重新提交完整文件。ES Bulk 逾時與原批次清理見 [ES 寫入與清理](06_runtime_api_and_deployment.md#es-write-control-record)。模組內部的執行預算與重試條件另議。
 - 負責角色：Engine＋Runtime；阻擋 M1 錯誤政策及 M3 工作語意。
-- 決策狀態為 Queue 排程、ES 狀態持久化、重啟結算及不自動重試已確認。其餘由 [Runtime 規格](06_runtime_api_and_deployment.md#ingestion-job-records) 追蹤。
+- 記憶體 Queue、工作紀錄與重啟後不續跑的行為已確認。其餘由 [Runtime 規格](06_runtime_api_and_deployment.md#ingestion-job-records) 追蹤。
 
 <a id="q-018"></a>
 ### Q-018 Evaluation 範圍與 Gate
@@ -464,7 +462,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 
 - Builder DEV 共用 Runtime，外部 API 由服務提供者維運，資源隔離與配額另行驗證。
 - 2026-11-20 確認：DEV 可在同一 Runtime 或受管 ES 的不同 Pod 分別啟用 Ingestion 與 Inference。Builder 以 `runtime_ref` 選 Runtime，透過同一組生命週期 API 的 `pipeline` 選流程。Ingestion 管理共用索引與生效版本，Inference 使用 `reload` 接回，兩條流程均回報自身載入／就緒狀態並可獨立卸載。見 [流程部署契約](06_runtime_api_and_deployment.md#runtime-pipeline-deployment)。
-- DEV 平台管理員在部署時指定固定 `runtime_ref`，供 Builder 核對目標並追蹤發布狀態。FTEST／ENT 獨立部署可省略該值。Run 收件的 Runtime 以每次程序啟動產生的 `runtime_instance_id` 辨識。見 [部署模式](06_runtime_api_and_deployment.md#src-21-81-builder-共用模式與獨立部署模式d-61d-62)與 [ES 控制索引](06_runtime_api_and_deployment.md#es-runtime-control-index)。
+- DEV 平台管理員在部署時指定固定 `runtime_ref`，供 Builder 核對目標並追蹤發布狀態。FTEST／ENT 獨立部署可省略該值。System 生命週期紀錄以每次程序啟動產生的 `runtime_instance_id` 辨識執行程序。見 [部署模式](06_runtime_api_and_deployment.md#src-21-81-builder-共用模式與獨立部署模式d-61d-62)與 [ES 控制索引](06_runtime_api_and_deployment.md#es-runtime-control-index)。
 - 後加入的 DEV Runtime 由 Builder 對預期流程下發已發布 Config 並執行 `reload`，跨 Runtime 的既有綁定授權與查核待定。清除受管索引使用 System DELETE；共用索引時 Runtime 關閉所有關聯 Runtime 的新請求入口並排空工作。逐流程 [detach](06_runtime_api_and_deployment.md#runtime-system-detach) 保留共用索引。
 - Builder 使用既有 System GET 定期查核部署意圖、Config Revision 和索引世代。預設每 60 秒，可由 Builder 部署設定調整，Builder 啟動及 Runtime 恢復連線後也查核。預期上線但快照缺失或過期時預檢及 `reload`。暫時性錯誤的重試細節待定。
 - 已確認允許切版期間暫停新查詢。Ingestion 提交共用版本後，Builder 逐目標補載 Inference；舊快照未就緒時回 `503 PIPELINE_NOT_READY`，核對新版與索引世代就緒後恢復。新版已提交但補載失敗時，Builder 顯示發布及各目標的補載結果。自動重試與回復舊版的政策待定。僅變更 Inference 仍走共用版本發布。
@@ -587,8 +585,8 @@ Retire 已確認為直接刪除，不做 soft delete／restore API；再次使�
 | ID | 已確認 | 仍待確認／建議 | 關聯 |
 |---|---|---|---|
 | API-D01 | 單一 POST、批次物件的非空 documents、單筆也置於 documents；整批預檢通過才 202；逐文件結果 | Rate／Queue 與特殊來源的實際測試 | Q-019／Q-009 |
-| API-D02 | 提供 Run／文件查詢。Run 可為 `partial`，查無紀錄回 200＋`unknown`。ES 保存收件及逐文件結果，Run 在全部文件結案後預設保留 3 天 | 重啟結算與輪詢整合驗收 | Q-019／Q-017 |
-| API-D03 | Retire 同步回 200＋`document_id` 和 `result`，同文件仍有有效占用或未收尾的寫入殘留時回 409 | 後端完整刪除能力、部分刪除／未知結果與重試清理協定仍待核定 | Q-008／Q-017／Q-028 |
+| API-D02 | 提供 Run／文件查詢。Run 可為 `partial`，查無紀錄回 200＋`unknown`。受理 Pod 保存收件及逐文件結果 | 驗證兩種狀態查詢、到期、容量回收及重啟後查無紀錄 | Q-019／Q-017 |
+| API-D03 | Retire 同步回 200＋`document_id` 和 `result`，同文件在受理 Pod 有有效占用時回 409 | 後端完整刪除能力、部分刪除／未知結果與重試清理協定仍待核定 | Q-008／Q-017／Q-028 |
 | API-D04 | D-64 確認 22 的初始預設與管理方式：E 的 Runtime 環境設定，由 Admin／部署管理者提供；Query 額滿直接拒絕 | 候選參數路徑、正式機器 Schema／載入方式、排程／計數算法與實際容量驗證；不新增單次請求覆寫 | Q-017／Q-020／Q-027 |
 | API-D05 | 固定 Config 快照，按 System 判斷忙碌。Builder DEV 以定期查核補載，索引確認遺失時走人工確認的恢復流程。ES Bulk 逾時結案後可重匯 | ES 晚到寫入及殘留清理的整合驗收、獨立部署的索引建立方式 | Q-008～010／Q-015／Q-017／Q-019／Q-021／Q-028 |
 | API-D06 | Builder 登入延後；Runtime API 暫用一組 HTTP Basic 帳密操作全部 API；首期不做角色／逐 API 授權 | D-64 已選 相關章節 的受保護內部 System 路由；HTTPS／Secret 注入／網路保護與檢查位置待細化；對外 Health 同一帳密，Probe 接法為部署細節 | Q-006／Q-019／Q-020 |
@@ -596,7 +594,7 @@ Retire 已確認為直接刪除，不做 soft delete／restore API；再次使�
 
 HTTP 範例見 [Runtime HTTP 測資](../examples/system_config/README.md#runtime-http-examples)。實作待辦依上表的 Q-ID 追蹤。
 
-實作驗收涵蓋單筆／Batch 接收、文件忙碌衝突、Queue 滿、逐文件 partial、兩種狀態查詢、重啟後的逐筆結算、同 ID 完整替換、Query 無命中／不就緒／限流、Inference 路徑或 Rerank 失敗，以及已授權 System 隔離。
+實作驗收涵蓋單筆／Batch 接收、文件忙碌衝突、Queue 滿、逐文件 partial、兩種狀態查詢、到期及重啟後查無工作紀錄、同 ID 完整替換、Query 無命中／不就緒／限流、Inference 路徑或 Rerank 失敗，以及已授權 System 隔離。
 
 <a id="rewrite-output-proposal"></a>
 <a id="src-04-511-討論提案rewrite-的結構化輸出與共用-llm-邊界"></a>

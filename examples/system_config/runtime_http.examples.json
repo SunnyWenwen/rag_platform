@@ -2868,7 +2868,28 @@
         }
       }
     ],
-    "cancel_ingestion_wrong_runtime": [
+    "ingestion_history_unavailable": [
+      {
+        "request": {"method": "GET", "path": "/internal/systems/es-example/v1/ingestions/ing-cancel"},
+        "response": {"status": 200, "body": {"run_id": "ing-cancel", "status": "unknown"}}
+      },
+      {
+        "request": {
+          "method": "GET",
+          "path": "/internal/systems/es-example/v1/documents/guide-running/ingestion-status"
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "document_id": "guide-running",
+            "run_id": null,
+            "status": "unknown",
+            "module": null,
+            "updated_at": null,
+            "error": null
+          }
+        }
+      },
       {
         "request": {
           "method": "POST",
@@ -2876,15 +2897,8 @@
           "body": {"document_ids": ["guide-running"]}
         },
         "response": {
-          "status": 503,
-          "body": {
-            "error": {
-              "code": "SYSTEM_STATE_UNKNOWN",
-              "message": "請向原受理的 Runtime 取消此 Run。",
-              "module": null,
-              "run_id": "ing-cancel"
-            }
-          }
+          "status": 404,
+          "body": {"error": {"code": "INGESTION_RUN_NOT_FOUND", "message": "此 Runtime 查無這次 Ingestion Run。", "module": null}}
         }
       }
     ],

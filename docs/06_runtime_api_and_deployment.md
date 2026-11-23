@@ -55,8 +55,8 @@
 | 部署紀錄（建議形狀） | 對應同一 system_id／config_revision，另記環境、連線／Secret 引用、資料目標及 Runtime 資源；欄位與部署 ID 待 Q-015／Q-021 |
 | IndexBinding | 單 System 唯一索引的格式、target、欄位／向量能力；資料版本／就緒狀態另由 Runtime 管理 |
 | ServiceReference | DEV 或使用者服務連線設定。認證欄位可引用所屬 System 的 `{{KEY}}`。System 的 llms 有明確作用域。 |
-| Runtime IngestionRun／文件工作狀態 | ES 模式的 Run 收件與逐文件結果保存在控制索引。Queue 本身由 Runtime 在記憶體執行。見 [紀錄的保存與重啟](#ingestion-job-records) |
-| ES 寫入控制紀錄 | IndexStore 在 Bulk 前保存特定文件的寫入及清理查核資訊，與 Run 以識別碼關聯。見 [ES 寫入控制紀錄](#es-write-control-record) |
+| Runtime IngestionRun／文件工作狀態 | Queue、占用、Run 和逐文件狀態皆在受理 Pod 的記憶體。見 [工作紀錄與保留](#ingestion-job-records) |
+| 文件寫入與清理進度 | IndexStore 在本機記憶體保存目前操作的查核資訊。見 [ES 寫入與清理](#es-write-control-record) |
 | EvaluationRun | 評估的 Config／資料版本、狀態、數量、錯誤與報告引用，依 M6／Q-018 處理 |
 | Dataset／EvaluationReport | 版本化 Dataset、逐題結果、指標、Judge／Rubric、Target |
 | ExportArtifact | Config／Image／環境覆寫、驗證狀態、產出版本 |
@@ -65,7 +65,7 @@ Builder 的 System 部署紀錄與 Runtime 重連同步見 [MongoDB Collection �
 
 正式管理階層只有 Workspace → System；同一 System 在 DEV／FTEST／ENT 沿用相同邏輯 Config Revision，部署綁定分環境保存。部署識別／儲存形狀待定，不額外建 Group 或 Blueprint。Config Store 與 Artifact／Run Store 不等於搜尋選配 MongoDB；Memory 模式仍可能保存平台管理資料；獨立 Runtime 不強制連回平台儲存。
 
-Builder 保存並管理可供重新匯入的原始資料（原始檔、CSV 或結構化 JSON）。儲存及保留方式由 Builder 後續規劃，見 [Q-016](08_plan_and_decisions.md#q-016)。解析結果、Prompt／Context Trace、評估報告保留與刪除規則也依 Q-016 追蹤。Ingestion Queue 屬 Runtime 記憶體。ES 模式的收件和文件結果可跨重啟查詢，Builder 依查核結果決定是否重送。歷史評估報告保留對應的舊 Config。
+Builder 保存並管理可供重新匯入的原始資料（原始檔、CSV 或結構化 JSON）。儲存及保留方式由 Builder 後續規劃，見 [Q-016](08_plan_and_decisions.md#q-016)。解析結果、Prompt／Context Trace、評估報告保留與刪除規則也依 Q-016 追蹤。Ingestion 的 Queue 和工作結果由受理 Pod 在記憶體保存。歷史評估報告保留對應的舊 Config。
 
 <a id="src-07-4-systemrevision-與-engine-生命週期"></a>
 ## System／Revision 與 Engine 生命週期
@@ -205,11 +205,11 @@ User 設定已部署的外部服務。Runtime 在執行時依有效環境綁定�
 <a id="system-ingestion-drain"></a>
 每個 `system_id` 一次處理一個生命週期變更。發布、生效綁定變更或刪除前，受理管理操作的 Runtime 在本機同步關閉新 Ingestion／Retire 的入口並檢查本機工作。若有本機工作、待結算的索引寫入或 Retire，或其他 Runtime 尚未確認退出寫入，回 `409 SYSTEM_BUSY`。查核所需狀態無法取得時回 `503 SYSTEM_STATE_UNKNOWN`。操作未能取得管理權且原版本仍可服務時恢復原本的本機入口。各 System 各自處理。
 
-啟用 Ingestion 時，Runtime 在共用 System 生命週期紀錄登記目前的索引世代與 `runtime_instance_id`，並與新版本發布及關閉入口使用同一份紀錄核對。這項登記只在流程啟用、退出或管理時更新。DEV 由 Builder 先暫停對其他 Ingestion 目標送件，再逐一呼叫 `detach?pipeline=ingestion`。目標在本機無工作及未結算寫入後移除登記並回 `204`。獨立部署由部署方排空並停止其他寫入程序。若 Runtime 非預期停止，須有部署層確認它已停止，並依原 Run、寫入和 Retire 紀錄確認相關 ES 操作皆已安全結算，才可移除遺留登記。管理操作完成後，由 Builder 或部署方依新生效版本恢復需要的寫入目標。
+啟用 Ingestion 時，Runtime 在共用 System 生命週期紀錄登記目前的索引世代與 `runtime_instance_id`，並與新版本發布及關閉入口使用同一份紀錄核對。這項登記只在流程啟用、退出或管理時更新。DEV 由 Builder 先暫停對其他 Ingestion 目標送件，再逐一呼叫 `detach?pipeline=ingestion`。目標在本機無工作及未結算寫入後移除登記並回 `204`。獨立部署由部署方排空並停止其他寫入程序。若 Runtime 非預期停止，須有部署層確認程序已終止，才可移除遺留的啟用登記。刪除或重建時，管理操作仍按原索引世代和實體目標執行。已送出的 ES 請求可能在程序終止後才完成。管理操作完成後，由 Builder 或部署方依新生效版本恢復需要的寫入目標。
 
 相容更新時，舊查詢保留原 Config 和索引世代引用，等引用結束才釋放原版資源。需要刪除索引時，由共用生命週期紀錄先禁止取得新查詢引用，確認既有引用已排空才刪除。一般文件寫入仍可與查詢併行。
 
-新版驗證失敗時，原生效版本與索引繼續使用。若已刪除索引但建立新索引失敗，回報更新失敗，該 System 保持不可用，待重試成功後由 Builder 重新匯入。Runtime 重啟後，舊工作依[工作紀錄與重啟規則](#ingestion-job-records)結算。未完成的管理操作依共用控制紀錄中的操作 ID、已確認步驟及實體索引目標查核後再接手。
+新版驗證失敗時，原生效版本與索引繼續使用。若已刪除索引但建立新索引失敗，回報更新失敗，該 System 保持不可用，待重試成功後由 Builder 重新匯入。Runtime 重啟後，Ingestion 工作紀錄和占用從空的狀態開始。未完成的管理操作依共用控制紀錄中的操作 ID、已確認步驟及實體索引目標查核後再接手。
 
 獨立部署遇到相容索引時可接回。部署時若確認目標索引不存在，是否須由部署者指定建立，或由部署流程按綁定狀態建立，留到 [Q-021](08_plan_and_decisions.md#q-021) 定案。部署方在新索引建立後重新匯入資料。DEV 由 Builder 依 [變更影響](05_system_config.md#變更影響)向使用者呈現重建及停查影響。
 
@@ -337,10 +337,10 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 
 - 同一 System 的同一 document_id 以新文件完整替換；不存在則新增，成功後移除該文件不再產出的舊 Chunk。
 - 更新與執行結果以 `document_id` 為單位，Batch 中各文件獨立。ES 確認新批次完整可搜尋後才清理舊資料，清理完成才標 `completed`。依 D-60，更新期間可讀到新舊混合。詳見 [Elasticsearch 文件覆寫](#elasticsearch-document-replacement)。
-- 排隊及執行工作留在記憶體。重啟時結算紀錄，呼叫方可在確認結果後重新提交整份文件。已中斷或失敗的工作不自動重排或重試。
+- 排隊、執行及工作結果都在記憶體。Runtime 重啟或 Pod 被替換後，舊工作和結果一併遺失，不補跑或結算。
 - Runtime 統一管理有上限的 Ingestion Queue、併發、Inference Rate limit／併發與逾時。每 Pod 內每 System 的文件執行併發可配置，預設 1；調高前需驗證 Component／共享資源安全，不等於無限制並行。
 - 同一 Pod 內，同一 System 的同一 `document_id` 有有效占用時拒絕再次提交。已登記終態並解除占用的 ES Bulk 逾時工作可重新提交，詳見 [ES 寫入查核](#es-write-control-record)。
-- ES 模式下，Runtime 持久化 Run 收件與逐文件狀態。`GET /v1/ingestions/{run_id}` 讀取工作紀錄，文件存在性與摘要仍由檢索資料索引判斷。
+- Run／文件狀態查詢使用受理 Pod 的記憶體。文件存在性與摘要由實際檢索資料索引判斷。
 - 202 表示已接受排隊，不表示解析、Embedding、索引或可搜尋已成功；提交後須可查詢結果。
 - Inference 沿用 query／filters／metadata 輸入，同步回 QueryContext[]；不做 Generation，不因非同步 Ingestion 而新增 InferenceState。
 - D-57：整批接收前預檢通過才入列、回 202；入列後逐文件結果，文件無 partial，Run 可 partial，無紀錄回 200＋unknown。這不是要求完成 Parsing／Embedding／Indexing 才回 202。
@@ -351,7 +351,7 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 - D-60：Runtime API 暫採 HTTP Basic Auth，預設一組帳密可操作該 API service 提供的全部 API，首期不做逐角色／逐 API 權限；Builder 使用者登入另議。
 - D-61～D-63：多個 System 共用 Runtime 與 LangGraph，各請求固定 Config 快照。切版、索引及資源交接見 [System 管理](#src-07-4-systemrevision-與-engine-生命週期)。服務池分組與快取回收策略依 Q-020。
 
-- D-64：確認接收／文件與 Run 狀態核心欄位及錯誤格式；ES 模式的覆寫失敗可從工作紀錄查詢，實際索引狀態依文件覆寫規格查核。初始限制見 Runtime API／部署手冊。可信內部 System 路由見 [HTTP 共通規格](#runtime-http-common)。
+- D-64：確認接收／文件與 Run 狀態核心欄位及錯誤格式；Pod 存續期間的覆寫失敗可從本機工作紀錄查詢，實際索引狀態依文件覆寫規格查核。初始限制見 Runtime API／部署手冊。可信內部 System 路由見 [HTTP 共通規格](#runtime-http-common)。
 
 - D-65：文件清單回 documents[]＋next_cursor，每筆 document_id／source_revisions[]，彙整實際儲存版本；不提供最新成功版或版本歷史推定。分頁參數見 [資料生命週期 API](#data-lifecycle-api)。
 
@@ -363,7 +363,7 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 
 路由可固定註冊，由 Runtime 依 System 及流程的狀態受理。`/ingestions`、`/documents` 與其子操作都屬 Ingestion，`/queries` 屬 Inference。System 可確認但指定業務流程未載入時回 `409 PIPELINE_NOT_ENABLED`。流程已載入但切版中或本機快照尚未對齊時回 `503 PIPELINE_NOT_READY`。只有索引尚未就緒時沿用 `503 INDEX_NOT_READY`。每條流程就緒後可獨立受理，例如 Ingestion 卸載後，索引仍就緒時可繼續查詢。
 
-對目標 Runtime 執行 `:detach?pipeline=ingestion` 後，該 Runtime 的 `GET /ingestions/{run_id}` 及逐文件狀態查詢依相同的流程門檻暫停，ES Run 紀錄按原保留政策保存。可透過仍啟用該 System Ingestion 且使用同一綁定的 Runtime 查詢，或在原目標重新啟用後查詢。首版沿用現有入口。
+Run 查詢、文件工作狀態與批量取消都送原受理 Pod。對目標 Runtime 執行 `:detach?pipeline=ingestion` 後，這些 API 依流程門檻暫停；同一程序內重新啟用後可查仍在保留期內的紀錄。Pod 被替換後，即使沿用 `runtime_ref`，也查不到前一個程序的工作。
 
 | Method／Path | 請求 | 成功回應 |
 |---|---|---|
@@ -427,7 +427,7 @@ Location: /v1/ingestions/ing-001
 
 受理 Pod 一次檢查整批的本機占用。只要有一份文件被占用，整批回 `409 DOCUMENT_BUSY`，並用 [`error.conflicts`](#ingestion-document-busy)列出該 Pod 當次檢查的全部衝突。
 
-Ingestion 依 [Pod 內文件占用與派工](#pod-local-ingestion-control)預留整批容量、保存 Run 收件、放進本機 Queue，再回 `202`。容量與大小上限見 [Runtime 設定](#src-22-2-已確認的初始預設)。
+Ingestion 依 [Pod 內文件占用與派工](#pod-local-ingestion-control)在本機一次完成預留、建立 Run 與入列，再回 `202`。容量與大小上限見 [Runtime 設定](#src-22-2-已確認的初始預設)。
 
 <a id="ingestion-cancel-api"></a>
 ### 批量取消 Ingestion 文件
@@ -446,9 +446,9 @@ Runtime 登記取消後，取消與狀態查詢皆直接顯示 `cancelled`。若
 
 - 對 `queued` 工作，取消與領取在本機同步機制內核對同一筆 `run_id`、`document_id` 和狀態。取消先成功時，保存 `cancelled` 後釋放文件占用及等待名額。Worker 之後取到本機 Queue 中的該項目，領取檢查失敗便跳過。
 - 對 `running` 工作，取消與取得首次索引寫入權使用同一個本機同步機制。取消先成功時，保存 `cancelled` 並釋放占用，舊 Worker 的首次寫入檢查會失敗。若原 Worker 已取得寫入權並完成原批次，確認索引發布成功後將該文件改為 `completed`。若以失敗或 Bulk 逾時結案，則維持 `cancelled`。兩種情況都依[寫入結算規則](#es-write-control-record)釋放原占用。
-- 有 `queued` 或 `running` 文件需變更時，將取消送到原受理 Runtime。其他 Runtime 可查 Run 並回報不需變更的既有結果；若收到需變更的取消請求，且原執行者尚未確認停止，整次回 `503 SYSTEM_STATE_UNKNOWN`。已確認原執行者停止時，可依[重啟後結算](#ingestion-job-records)及寫入紀錄處理取消與原批次的結算。
+- 取消由原受理 Pod 直接處理。其他 Pod 查無該 Run 時回 `404 INGESTION_RUN_NOT_FOUND`，與原程序重啟後查無 Run 的行為相同。
 
-查無或已到期的 Run 回 `404 INGESTION_RUN_NOT_FOUND`。Request body 不合 Schema 回 `422 REQUEST_VALIDATION_FAILED`。無法確認取消登記結果時回 `503 SYSTEM_STATE_UNKNOWN`，呼叫方可用相同的 `run_id` 與 `document_ids` 查核及重送。重送時依該 Run 文件當下的狀態回報，仍為 `cancelled` 時回 `cancelled`，已成功發布時回 `already_finished`。完整請求及混合結果見 [HTTP Mock](../examples/system_config/README.md#runtime-http-examples)。
+查無或已到期的 Run 回 `404 INGESTION_RUN_NOT_FOUND`。Request body 不合 Schema 回 `422 REQUEST_VALIDATION_FAILED`。若呼叫端未收到回應，可向原受理 Pod 查核或用相同的 `run_id` 及 `document_ids` 重送。重送時依該 Run 文件當下的狀態回報，仍為 `cancelled` 時回 `cancelled`，已成功發布時回 `already_finished`。完整請求及混合結果見 [HTTP Mock](../examples/system_config/README.md#runtime-http-examples)。
 
 <a id="src-21-4-文件狀態與一次提交的狀態"></a>
 ## 文件狀態與一次提交的狀態
@@ -456,7 +456,7 @@ Runtime 登記取消後，取消與狀態查詢皆直接顯示 `cancelled`。若
 <a id="src-21-41-文件級狀態"></a>
 ### 文件級狀態
 
-**document_id 來自 Request 的每份 Document，不需要先在索引中成功存在。**整批預檢通過、入列時即建立 Run 與每份文件的 queued 紀錄；Worker 按進度更新 running、最後可知 Module、狀態時間與結果。ES 模式須逐份持久化結果，供 `GET /v1/ingestions/{run_id}` 跨重啟查詢。
+**document_id 來自 Request 的每份 Document，不需要先在索引中成功存在。**整批預檢通過、入列時即建立 Run 與每份文件的 queued 紀錄；Worker 按進度更新 running、最後可知 Module、狀態時間與結果。Run 與逐文件狀態皆從原受理 Pod 查詢。
 
 | 階段 | Runtime 工作紀錄 | 搜尋資料／判斷 |
 |---|---|---|
@@ -466,7 +466,7 @@ Runtime 登記取消後，取消與狀態查詢皆直接顯示 `cancelled`。若
 | 已登記取消 | `cancelled` | 原批次仍可能完成。占用未釋放時同文件仍忙碌 |
 | 執行失敗 | failed＋error | 工作失敗紀錄仍可查；不等於必有成功索引 |
 | 成功發布 | completed | 才表示本次完整處理成功 |
-| Runtime 重啟 | ES 模式結算舊 instance 的未完成工作 | 依寫入證據判斷 failed、unknown 或 completed |
+| Runtime 重啟或 Pod 被替換 | 舊工作紀錄遺失，狀態查詢回 `unknown` | 已寫入的 Chunk 仍可能存在，依檢索資料索引確認 |
 | 紀錄已到期或不存在 | unknown | 文件存在性透過實際檢索索引查詢 |
 
 
@@ -510,7 +510,7 @@ Runtime 登記取消後，取消與狀態查詢皆直接顯示 `cancelled`。若
 <a id="src-21-42-run-是一次接收文件是更新單位"></a>
 ### Run 是一次接收，文件是更新單位
 
-文件狀態查詢以可信的 `(system_id, document_id)` 找出最新收件的 Run。用收件時間排序，同時以 `run_id` 固定平手排序；此排序只供狀態查詢。每次合法重新提交建立新 Run，各 Run 的狀態按各自的 `run_id` 保存，保留期內皆可查詢。
+文件狀態查詢以可信的 `(system_id, document_id)` 找出最新收件的 Run。依本機收件順序查找該文件最後受理且仍保留的 Run。每次合法重新提交建立新 Run，各 Run 的狀態按各自的 `run_id` 保存，保留期內皆可查詢。
 
 已接受的工作以 `GET` 查詢，回傳 `200`。Run 依逐文件狀態彙總，對應關係見 [Runtime HTTP Schema](../schemas/runtime_http.schema.json) 的 `ingestion_run_status`。
 
@@ -533,12 +533,22 @@ Runtime 登記取消後，取消與狀態查詢皆直接顯示 `cancelled`。若
 
 <a id="src-21-43-紀錄的保存與重啟"></a>
 <a id="ingestion-job-records"></a>
-### 紀錄的保存與重啟
+### 工作紀錄、保留與重啟
+
+受理 Pod 在記憶體保存 Queue、占用、Run、逐文件狀態及當次寫入或刪除的清理資訊。這些工作資料不寫入 ES。程序終止時這些資料一併遺失，重啟從空狀態開始。已送到 ES 的資料操作仍可能生效。HTTP 連線中斷但程序繼續執行時，已入列的工作照常執行。
+
+<a id="ingestion-status-retention"></a>
+#### 終態紀錄清理
+
+- 每個 Run 從最後一份文件完成本機結案起最多保留三天（259,200 秒）。已回報 `cancelled` 但仍在收尾的文件，完成收尾後才算結案。
+- 每個 Pod 預設每小時清理已到期的 Run，並回收逐文件紀錄及本機查詢對照。狀態查詢及取消只檢查目標紀錄是否到期，到期即視為查無。提交 Ingestion 只檢查本批文件的活躍占用與容量。
+- 每個 Pod 最多保留 10,000 份已結案的文件工作紀錄。Run 結案時若超過上限，從最早結案的 Run 開始整組回收。活躍工作由 Queue 容量、執行 Deadline、結案及取消管理。三天清理只處理歷史紀錄。
+- 到期、程序重啟或切換 Pod 後查無紀錄時，GET Run 及文件工作狀態回既有的 `200` ＋ `unknown`，取消回 `404 INGESTION_RUN_NOT_FOUND`。呼叫方可查實際文件是否存在，或決定是否重新提交完整文件。Runtime 不續跑或補結算舊工作。
 
 <a id="es-runtime-control-index"></a>
-#### Elasticsearch 共用控制索引
+#### Elasticsearch System 生命週期控制索引
 
-對使用 Elasticsearch 的 System，在同一部署環境、同一 ES 叢集共用一個控制索引。每個 System 的檢索資料索引按原有生命週期管理。控制紀錄依 System 與索引綁定隔離。多個 Runtime 共用同一 System 的受管索引時，共用該索引綁定的控制紀錄。System 重建或卸載時，控制索引繼續保存尚待查核的紀錄。
+對使用 Elasticsearch 的 System，在同一部署環境、同一 ES 叢集共用一個控制索引。每個 System 的檢索資料索引按原有生命週期管理。控制紀錄依 System 與索引綁定隔離。多個 Runtime 共用同一 System 的受管索引時，共用該索引綁定的控制紀錄。控制索引保存 System 級的版本、索引世代、管理操作及生命週期協調資訊。
 
 首版控制索引名稱為 `rag-<env>-runtime-control-v1`，如 `rag-dev-runtime-control-v1` 或 `rag-ftest-runtime-control-v1`。`<env>` 使用部署環境的小寫識別，`v1` 是控制紀錄格式版本。各 Runtime 以同一環境識別存取同一叢集時使用相同名稱。
 
@@ -551,30 +561,6 @@ Runtime 登記取消後，取消與狀態查詢皆直接顯示 `cancelled`。若
 | 已運作的環境缺少控制索引、格式不相容，或無法核實索引及部署狀態 | System 的協調操作維持未就緒，回 `503 SYSTEM_STATE_UNKNOWN`。保留狀態供查核，等待部署方確認或恢復原控制資料。 |
 
 控制索引之外的環境層級部署紀錄記錄首建資格和結果。Runtime 確認此叢集與環境已完成初始建立後才開放 System 操作。首建結果不明時先查核先前的建立操作。單一 System 尚未建立檢索索引，或 ES 回報控制索引不存在，都不足以確認環境首次初始化。控制紀錄寫入限已初始化的索引，首次建立走上述流程。檢索索引的 `initialize`／`recover_index` 依 [System 索引生命週期](#system-index-lifecycle) 執行。
-
-| 資料 | 保存位置 | 寫入時機與用途 |
-|---|---|---|
-| Ingestion Queue | 受理 Pod 記憶體 | 整批預檢和確認收件後入列，供受理 Pod 派工 |
-| 文件占用、Worker 領取及容量 | 受理 Pod 記憶體 | 依 [Pod 內文件占用與派工](#pod-local-ingestion-control)同步更新 |
-| System 生命週期 | ES 控制索引，每個 System 的受管索引綁定一筆 | 生效版本、索引世代、管理操作、Ingestion 流程啟停和 Query 世代引用 |
-| Run 收件與逐文件狀態 | ES 控制索引的 Runtime 工作紀錄 | 入列前保存 `system_id`、`run_id`、`config_revision`、Runtime instance、收件時間及整批文件識別。批次確認受理後，逐份更新狀態、最後階段、時間及錯誤，供 Run／文件 API 查詢 |
-| ES 寫入與刪除紀錄 | 同一控制索引，由 IndexStore 管理 | 送第一個 Bulk 或 Retire 前保存，追蹤特定批次的寫入、清理或直接刪除。紀錄可用識別碼關聯 Run、文件與索引世代 |
-
-#### 重啟後結算
-
-Runtime 重啟從空 Queue 與空的文件占用表開始。ES 紀錄供查詢及結算，重啟時不重建占用表。確認舊執行者已停止後，Runtime 可依下表及原批次的實際寫入結果結算，或處理呼叫方對遺留 `queued`／`running` 文件的[取消](#ingestion-cancel-api)。只結算原 Run，並依 `write_id` 查核與清理。呼叫方依結果決定是否重新提交，遺留工作無自動重排或續跑。
-
-| 上一次的狀態或查核結果 | 重啟後的文件狀態 |
-|---|---|
-| 原本已 `completed` 或 `failed` | 保留已確認的結果 |
-| 已 `cancelled` | 已結案時保留結果。其餘依[取消與寫入結算規則](#ingestion-cancel-api)處理，包含原 Worker 已確認停止且 Bulk 結果遺失的情境 |
-| 原為 `queued` 或 `running`，可確認尚未送出 ES Bulk | `failed`，原因 `runtime_restarted`，保留最後可知階段 |
-| 已有寫入控制紀錄，原 Worker 確認停止且 Bulk 結果遺失，尚未進入清舊 | `failed`，原因 `runtime_restarted`。登記終態並保留本批次的清理範圍 |
-| 新版已進入清舊階段，清理仍待確認 | `unknown`，按已記錄的清理範圍查核 |
-| 確認新版完整可搜尋，且舊批次清理完成 | `completed` |
-| 確認前次寫入已結束、處理失敗，且未完成批次已安全清理 | `failed`，保留錯誤供呼叫方決定是否重送 |
-
-Run 與逐文件紀錄在最後一份文件結案後預設保留 3 天（259,200 秒）。Runtime 以持久化的結案時間判斷取消的文件何時可回收。原工作已登記取消但仍有待結算寫入時，該文件仍顯示 `cancelled`，完成結算後才登記結案時間。沿用最多 10,000 份終態文件紀錄的上限，超出時從最舊的已結案 Run 整組清理。未清理的 ES 批次控制紀錄保留至清理結算，即使 Run 紀錄已回收。非 ES 後端的持久化工作紀錄另議。
 
 <a id="src-21-5-inference"></a>
 <a id="inference-api"></a>
@@ -647,7 +633,7 @@ HTTP 語意參考 [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html#section
 <a id="ingestion-document-busy"></a>
 ### Ingestion 文件占用衝突
 
-`POST /ingestions` 回 `409 DOCUMENT_BUSY` 時，`error.conflicts` 必須是非空陣列，依 `documents` 請求順序列出受理 Pod 同一次本機檢查中所有仍被占用的文件。每筆包含 `document_id`、當下的文件工作 `status`，以及已知時的 `run_id`。收件尚在預留時回報 `queued`，確認受理前省略 `run_id`。若占用來自 `retire`，`status` 為 `null`，省略 `run_id`。仍持有占用的 `cancelled` 工作也會列入。
+`POST /ingestions` 回 `409 DOCUMENT_BUSY` 時，`error.conflicts` 必須是非空陣列，依 `documents` 請求順序列出受理 Pod 同一次本機檢查中所有仍被占用的文件。每筆包含 `document_id`、當下的文件工作 `status`，以及已知時的 `run_id`。若占用來自 `retire`，`status` 為 `null`，省略 `run_id`。仍持有占用的 `cancelled` 工作也會列入。
 
 `error.path` 指向第一筆衝突文件的 `document_id`，`error.run_id` 在能確認第一筆所屬 Run 時回傳。Builder 用 `error.conflicts` 顯示整批衝突；這次拒絕不入列任何文件，也不新增 Run。見[批量占用衝突範例](../examples/system_config/README.md#runtime-http-examples)。
 
@@ -675,7 +661,7 @@ Builder 儲存許多 UI Config 不等於建立等量 API service／Pod。Runtime
 
 「不綁單份 Config」不代表程式可任意熱替換：可用 Local Components／Adapters 仍由所選 Runtime Image／Registry 版本決定。新 Component 程式依既定 Image 發布流程；不同 Config 在既有能力內組裝 System。
 
-Builder 下發新版時，依 [System 管理](#src-07-4-systemrevision-與-engine-生命週期)判斷忙碌、索引相容性及切換方式。Runtime 重啟時各 System 從空的記憶體 Queue 開始，保存在 ES 的工作紀錄依重啟規則結算。Builder 可重新下發 Config，通過相容性檢查後接回 ES 索引。
+Builder 下發新版時，依 [System 管理](#src-07-4-systemrevision-與-engine-生命週期)判斷忙碌、索引相容性及切換方式。Runtime 重啟時各 System 從空的工作狀態開始。Builder 可重新下發 Config，通過相容性檢查後接回 ES 索引。
 
 兩條流程可在同一 Pod 啟用，也可拆成 Ingestion 與 Inference Pod 並連同一受管 ES 索引。多副本寫入遵循 [Pod 內文件占用與派工](#pod-local-ingestion-control)的範圍與分流條件。外部 API、ES 及其他依賴以環境綁定提供。
 
@@ -692,19 +678,14 @@ Runtime 等待 ES Bulk 回應逾時時，將該文件結案為 `failed`，已登
 Elasticsearch 索引存取層為每次文件寫入產生一個 `write_id`，例如 UUID。同一份文件此次輸出的全部 Chunk 共用此值。將它存入每筆 ES Chunk 的內部欄位（mapping 為 `keyword`）。ES `_id` 由 `document_id`、`write_id`、`data_id` 唯一且穩定地衍生，讓舊批次和新批次在同一索引內並存。`source_revision` 供來源追溯。相同 `document_id` 的新提交依既有覆寫規則執行，即使 `source_revision` 相同而內容有變。`write_id` 用於精確定位寫入批次，時間可供診斷。
 
 <a id="es-write-control-record"></a>
-#### ES 寫入控制紀錄與查核
+#### ES 寫入與清理
 
-1. 準備並驗證新版 Chunk 集合，取得同一 System／文件可確認的舊 `write_id`，固定清理範圍。IndexStore 先保存寫入控制紀錄，至少包含 `system_id`、`document_id`、`run_id`（有 Runtime Run 時）、目標實體索引、索引世代、本次 `write_id`、預期 Chunk `_id`、舊批次範圍及寫入或清理階段。Worker 在本機核對原 Run、文件、占用權杖、索引世代及 `running` 狀態後，登記進入寫入階段。確認寫入紀錄及本機授權後才送第一個 Bulk。Queue 收件時尚未建立寫入紀錄。
-2. Bulk 有回應時逐筆檢查結果。新版完整寫入且可搜尋後，才按已記錄的舊批次範圍清理。確認舊資料已不可搜尋後，才標文件 `completed`。
-3. 確認前次寫入已結束且新版未完整寫入時，清理本次 `write_id` 的殘留，保留舊資料。清理確認後標 `failed`。若新版已可搜尋、只有清舊結果未確認，保留新版及舊批次清理範圍，狀態為 `unknown`。後續依同一範圍查核及處理清理，不重跑整份 Ingestion。
-4. 等待 ES Bulk 回應逾時時，本次 Worker 停止提交該批次後續的寫入與清舊操作。Runtime 以本機占用權杖及原 `run_id`、`write_id`、索引世代核對該工作。若已登記取消，維持 `cancelled`，其餘保存 `failed` 及 `ES_BULK_TIMEOUT`（`module: "indexing"`）。結案後釋放本次文件占用與執行名額。原工作晚到的回應不得更改終態或新工作的占用。重新提交會建立新的 `run_id` 與 `write_id`。
-5. Bulk 逾時結案後，IndexStore 依原實體索引、`document_id` 與 `write_id` 嘗試清理該批殘留。這項清理和下一次匯入可各自執行，只清理逾時的批次。已送出的 Bulk 可能在清理後晚到，讓逾時批次的 Chunk 被查到。連續重匯失敗或仍查到逾時批次時，依寫入控制紀錄人工查核。清舊或 Retire 已送出的刪除操作逾時仍按各自的查核規則處理。
+1. 準備新版 Chunk，查詢這份文件目前可見的舊批次並固定清理範圍。在記憶體保留目標實體索引、索引世代、本次 `write_id`、預期 Chunk ID 及舊批次範圍。首次 Bulk 前，Worker 在本機核對原 Run、文件、占用權杖、索引世代與狀態。
+2. Bulk 有回應時逐筆檢查。新版完整可搜尋後才清理指定的舊批次，確認清理後將文件標為 `completed`。若新版確認寫入失敗，只清理本次 `write_id` 的 Chunk。若清舊結果在單文件 Deadline 內仍無法確認，結案為 `unknown`，已登記取消則保留 `cancelled`。
+3. ES Bulk 回應逾時時停止本次後續寫入與清舊，結案為 `failed`，錯誤為 `ES_BULK_TIMEOUT`。已登記取消時維持 `cancelled`。釋放占用後可手動重送。本機若嘗試清理逾時批次，只按其實體索引、`document_id` 與原 `write_id` 清理。晚到回應不得改變已結案的 Run 或新工作的占用。
+4. Runtime 終止後丟棄原寫入和清理進度。下次匯入按當時可見的 Chunk 正常覆寫。舊請求若晚到，可能留下多批 Chunk；持續異常時查實際索引。
 
-原工作已登記取消且仍持有占用時，若確認發布成功，將該文件更新為 `completed`。清舊結果待查時仍顯示 `cancelled`，並依原清理範圍查核。未成功而結案時維持 `cancelled`。
-
-允許更新或清理期間暫時讀到新舊混合。驗收包含舊版 10 筆、新版 6 筆成功後只剩新 6 筆，以及新版第 4 筆確認失敗時只清理本批成功的 Chunk、保留舊 10 筆。另驗收 Bulk 逾時結案後可重匯，原批次晚到的回應只供原批次查核，清理範圍限原 `write_id`。
-
-待驗證項目包括 ES 端可證明操作結束的依據、舊索引缺少 `write_id` 的遷移，以及清理 API 與錯誤碼。參考 [Elasticsearch Bulk](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-bulk)、[Multi-get](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-mget) 與 [Refresh](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/refresh-parameter)。
+驗收包含舊版 10 筆、新版 6 筆成功後只剩新 6 筆，以及新版有一筆失敗時只清理本批 Chunk。另驗收 Bulk 逾時後可重匯，舊回應及清理限原批次。
 
 <a id="src-21-83-已確認不加平台-query-讀寫鎖"></a>
 ### 已確認：不加平台 Query 讀寫鎖
@@ -755,7 +736,7 @@ S1 是 system_id 示意：由 Builder Backend 建立並維護的穩定 Retrieval
 
 | 問題 | 查詢位置 | Runtime 重啟後 |
 |---|---|---|
-| 最近一次 Ingestion 是否成功／失敗 | Runtime 工作紀錄 | ES 模式查持久紀錄並依重啟規則結算，查無紀錄回 unknown |
+| 最近一次 Ingestion 是否成功／失敗 | 受理 Pod 記憶體 | 舊紀錄遺失，狀態回 `unknown` |
 | 文件目前是否存在／有哪些 ID | System 實際文件儲存／索引 | ES／MongoDB 等持久資料仍可在後端就緒後查；Local Memory 資料若已遺失則清單為空 |
 | retire 是否刪掉文件資料 | 直接刪除對應儲存、索引與本地搜尋副本 | 不能只清記憶體索引而保留供重建資料，否則可能重啟復活 |
 
@@ -803,7 +784,7 @@ ES 分頁聚合依據：[Composite aggregation](https://www.elastic.co/docs/refe
 
 Retire 刪除該 System／document_id 對應的 Chunk、vectors、全文／向量索引，以及供恢復／重建使用的持久儲存與搜尋副本。具體儲存布局由 Artifact／backend 決定，不因 ID 命名相同就刪除其他 System 的文件，也不要求刪除使用者傳入 URI 所指的外部來源檔案。
 
-D-64 已確認同步完成並回 200，以 `result` 區分確實刪除和確認原本不存在。同文件在受理 Pod 仍有有效占用時回 `409 DOCUMENT_BUSY`，並依同一本機占用規則排斥匯入。送出 ES 刪除前保存該次 Retire 的目標索引世代與操作進度，供逾時或重啟後查核。若已有 Bulk 逾時且可能晚到，Retire 須先確認原批次已安全收尾。回應核心如下。
+D-64 已確認同步完成並回 200，以 `result` 區分確實刪除和確認原本不存在。同文件在受理 Pod 仍有有效占用時回 `409 DOCUMENT_BUSY`，並依同一本機占用規則排斥匯入。Retire 限本機操作期間追蹤刪除進度。逾時或結果不明時回對應錯誤，單次操作結束就釋放占用。原 ES 請求晚到時，仍可能改變文件的存在狀態。回應核心如下。
 
 ```json
 {"document_id": "manual-001", "result": "deleted"}
@@ -832,7 +813,7 @@ Document 管理是索引／儲存管理能力，不新增 Pipeline Module。平�
 - **設定歸屬 E：Runtime 環境／資源設定。**與 D 的演算法、Component 選用、Chunk 大小及搜尋 Top N 分開；後者仍見 資料契約手冊／各 Component Config Schema，不在此重複列出。
 - **Builder DEV**：Admin／平台部署管理者提供預設與限制，Runtime 在後端執行控制。一般 Builder User 不透過每次 Ingestion／Query body 覆寫；不因本文件新增 Admin 設定頁。
 - **FTEST／ENT**：部署管理者提供同一套 Runtime 設定，可以調整上限；使用相同實作，無須連回 Builder DB。
-- 表中的參數路徑是文件用候選名稱。正式檔案名稱、JSON Schema／環境變數映射、載入／重載方式與 OpenAPI 仍待實作規格核定；不因此宣稱熱更新或零停機。若套用方式需重啟，依工作紀錄結算及各後端的索引恢復規則處理。
+- 表中的參數路徑是文件用候選名稱。正式檔案名稱、JSON Schema／環境變數映射、載入／重載方式與 OpenAPI 仍待實作規格核定；不因此宣稱熱更新或零停機。若套用方式需重啟，依各後端的索引接回規則處理。
 - Runtime 總量與每 System 限制同時生效，不把每 System 上限乘以 System 數量當成總容量；個別 System 差異化覆寫、User／Workspace 額外配額及公平排程另案。
 
 <a id="src-22-2-已確認的初始預設"></a>
@@ -854,8 +835,8 @@ Document 管理是索引／儲存管理能力，不新增 Pipeline Module。平�
 | inference.max_concurrency_per_system | 同時執行 Query 數／個 | 2 | 每 System | 同步查詢額滿直接拒絕，不進 Ingestion 的長工作 Queue |
 | inference.max_concurrency_total | 同時執行 Query 總數／個 | 8 | 整個 Runtime 程序 | 各 System 共用總量，不以所有個別上限之和代替 |
 | inference.timeout_seconds | 同步 Query Deadline／秒 | 60 | 單次 Query | 包含所選 Query Transformation／Retrieval／Fusion／Rerank 的整體執行；上游逾時與失敗不可偽裝成功 |
-| status.retention_seconds | 已結案 Run 的紀錄保存時間／秒 | 259,200（3 天） | Runtime 工作紀錄，ES 模式持久化 | 從最後一份文件結案起算，按 Run 與逐文件紀錄整組清理 |
-| status.max_terminal_documents | 可回收終態文件紀錄上限／份 | 10,000 | 整個 Runtime 程序 | 計文件工作，不是唯一 document_id 數；超過時間或數量限制時清最舊已結束 Run，保留完整 Run／文件關聯 |
+| status.retention_seconds | 已結案 Run 的紀錄保留時間／秒 | 259,200（3 天） | 受理 Pod 記憶體 | 見 [終態紀錄清理](#ingestion-status-retention) |
+| status.max_terminal_documents | 可回收終態文件紀錄上限／份 | 10,000 | 整個 Runtime 程序 | 回收順序見 [終態紀錄清理](#ingestion-status-retention) |
 
 數值須為有效正值；份數、bytes、併發數及紀錄數為正整數。每 System 的 Queue／併發上限不得超過對應 Runtime 總上限。完整驗證錯誤、設定格式與套用接口留 Q-002／Q-017／Q-019，不把候選路徑當成已發布機器 Schema。
 
@@ -867,9 +848,7 @@ HTTP body、檔案及文件數限制各自生效。例如單個 Base64 檔案解
 - 接收時先做整批快速預檢、同文件忙碌檢查及容量預留，再建立 Run／queued 狀態並回 202。不做部分入列；來源取得、昂貴 Parsing、Embedding／Indexing 仍由 Worker 執行。
 - 每 System 配額／Rate 額滿與 Runtime 整體無容量要可區分；21 的 HTTP／錯誤碼表仍需完整 OpenAPI 對齊，不因本表凍結所有錯誤 code。
 - Inference 使用同步入口，額滿直接拒絕，首期不新增短等待 Queue 或 async Query 工作 API。
-- 完成、失敗與可安全回收的 Run 以時間與數量雙重限制保存，任一到達即清理最舊已結束 Run；不能只刪文件最新對照卻留下錯誤 Run 彙總，或無界保存全部歷史。
-- ES 模式下，Runtime 重啟可查保留期內的 Run 與逐文件結果。記憶體 Queue 重新初始化，舊工作按 [重啟規則](#ingestion-job-records) 結算。
-- ES Bulk 逾時結案後，批次清理紀錄依 `write_id` 保留至清理結算。10,000 的上限適用於已結案 Run 的文件紀錄。
+- Run 歷史紀錄依 [終態紀錄清理](#ingestion-status-retention)回收。Runtime 重啟後工作紀錄與占用從空開始。
 - 調整併發須驗證 Component、Client 與索引的安全性。占用、排隊及執行容量按 [Pod 內文件占用與派工](#pod-local-ingestion-control)管理。
 
 <a id="src-22-4-文件摘要與分頁參數"></a>
@@ -882,7 +861,7 @@ W1 的預設筆數、上限、排序與 Cursor 行為見 [資料生命週期 API
 
 之後新增／修改 Runtime 控制參數，需在本表記錄名稱、單位、預設、作用範圍與執行位置，並同步環境設定 Schema、驗證及部署說明；目前尚未交付該機器 Schema／實作。模型／HTTP Client 的逐次 timeout、重試及檔案暫存保存規則若另行定案，再納入對應表，不把它們假裝已由整體 Deadline 完整決定。
 
-實作驗收至少覆蓋：文件數／body／來源大小邊界、整批容量預留、每 System 與全域限制同時生效、Query 額滿拒絕、處理逾時、終態 Run 整組清理、活躍及未確認寫入紀錄的保留、重啟後 failed／unknown／completed 的判定，以及 Builder DEV／FTEST／ENT 使用相同控制。這是未來驗收要求，不是已通過的 Runtime 測試。
+實作驗收至少覆蓋：文件數／body／來源大小邊界、整批容量預留、每 System 與全域限制同時生效、Query 額滿拒絕、處理逾時、三天到期、超出上限時整組回收、清理不觸碰活躍占用、重啟後查無舊 Run，以及 Builder DEV／FTEST／ENT 使用相同控制。這是未來驗收要求，不是已通過的 Runtime 測試。
 
 <a id="src-07-6-非同步工作與一致性"></a>
 ## 排程、同程序 Memory 與一致性限制
@@ -891,7 +870,7 @@ D-56 已確認：Builder DEV 與 FTEST／ENT 共用 Runtime 工作控制，Libra
 
 Batch 逐文件處理。併發 1 時依序，併發 2 時不同文件可同時處理。相同 `(system_id, document_id)` 在受理 Pod 有有效占用時拒絕再次提交。提高併發須驗證 Component、Client 與共享索引，Query 沿用 D-60 的讀寫併行規則。
 
-每份文件完整替換。ES 的寫入、逾時重匯及清理依 [Elasticsearch 文件覆寫](#elasticsearch-document-replacement)。Runtime 重啟丟棄記憶體 Queue。ES 模式保留舊 `run_id` 及逐文件狀態，按 [重啟規則](#ingestion-job-records) 結算。既有索引可依相容性接回。
+每份文件完整替換。ES 的寫入、逾時重匯及清理依 [Elasticsearch 文件覆寫](#elasticsearch-document-replacement)。Runtime 重啟丟棄工作及清理進度，既有索引可依相容性接回。
 
 Local Search 屬後續部署範圍。其設計採同程序／單副本，Memory 索引由同一程序內的兩條流程共用。首版部署和驗收採受管 ES。
 
@@ -901,23 +880,22 @@ Local Search 屬後續部署範圍。其設計採同程序／單副本，Memory 
 - ES 文件覆寫順序已定，仍待驗證清理失敗、未知結果查核及崩潰後殘留處理。其他後端的寫入與搜尋可見性另議。
 - 固定快照、System 切版／卸載及持久索引相容規則見 [System 管理](#src-07-4-systemrevision-與-engine-生命週期)。一般寫入與 Query 依 D-60 併行，未知寫入與失敗清理仍依 API-D05 追蹤。
 - ES Bulk 回應逾時可結案後重匯，清理限原 `write_id`。等待清舊結果、Retire 的查核、殘留清理與告警細節仍需整合驗收。
-- Queue／並行／Rate／Deadline／紀錄保留初始值已依 D-64 記於Runtime 控制手冊；尚待正式設定 Schema／載入方式、已確認寫入紀錄的保留細節，以及 ES 寫入終止證據與整合驗收。
+- Queue／並行／Rate／Deadline／紀錄保留初始值已依 D-64 記於Runtime 控制手冊；尚待正式設定 Schema／載入方式、以及 ES 寫入與逾時清理的整合驗收。
 
 方向已確認不表示提交機制已實作；詳細盤點與待決子項見 Runtime API／部署。
 
 <a id="pod-local-ingestion-control"></a>
 ### Pod 內文件占用與派工
 
-每個 Runtime Pod 以記憶體保存 `(system_id, document_id)` 的活躍占用、Queue 及容量。同一 Pod 的 HTTP Handler 與 Worker 共享同步機制。ES 保存 Run、文件狀態和批次寫入等持久資料，文件占用、配額與領取全部在 Pod 內完成。
+每個 Runtime Pod 以記憶體保存 `(system_id, document_id)` 的活躍占用、Queue 及容量。同一 Pod 的 HTTP Handler 與 Worker 共享同步機制。Run 收件、文件狀態、批次寫入進度及歷史紀錄也由受理 Pod 在記憶體保存。
 
 | 階段 | 執行方式 |
 |---|---|
-| 預檢與預留 | 通過輸入預檢後，在同一個本機臨界區檢查 System 入口、整批文件占用及容量。若有占用，整批回 `409 DOCUMENT_BUSY` 並列出全部[本機衝突](#ingestion-document-busy)。容量不足回 `503 RUNTIME_CAPACITY_EXHAUSTED`。通過才一次預留全批占用及容量。 |
-| 確認收件 | 以唯一 `run_id` 持久化 Run 的完整收件與初始文件狀態。確認寫入後整批放入本機 Queue，再回 `202`。確認未寫入時釋放本次全部預留。ES 回應不明時按原 `run_id` 查核，無法確認則回 `503 SYSTEM_STATE_UNKNOWN`，保留本機預留至收件結果結算。 |
+| 預檢與入列 | 通過輸入預檢後，在同一個本機臨界區檢查 System 入口、整批文件占用及容量。若有占用，整批回 `409 DOCUMENT_BUSY` 並列出全部[本機衝突](#ingestion-document-busy)。容量不足回 `503 RUNTIME_CAPACITY_EXHAUSTED`。通過才一起預留、建立 Run 及入列，再回 `202`。 |
 | 領取與寫入 | 受理 Pod 的 Worker 取得執行名額時，核對原 Run 及文件的本機占用權杖，原子轉成執行中。同一個本機同步機制也管[取消](#ingestion-cancel-api)與首次索引寫入。 |
-| 結算與釋放 | 保存原 Run 的文件結果後，由持有同一占用權杖的工作釋放占用及名額。首次寫入前取消可釋放文件占用，已開始執行的 Worker 仍計入併發至實際停止。Retire 使用同一占用鍵並保留至刪除結果可查明。清舊待查與 ES Bulk 逾時依[寫入查核規則](#es-write-control-record)結算。Pod 重啟依[持久紀錄](#ingestion-job-records)查核原工作。 |
+| 結算與釋放 | 更新本機文件狀態，由持有同一占用權杖的工作釋放占用及名額。首次寫入前取消可釋放文件占用，已開始執行的 Worker 仍計入併發至實際停止。Retire 使用同一占用鍵，結束當次操作後釋放。寫入逾時依[寫入規則](#es-write-control-record)結案。 |
 
-排隊與執行上限各 Pod 獨立計算。未知結果與 Retire 的活躍占用也須計入本機總量，避免未結算工作無界累積。
+排隊與執行上限各 Pod 獨立計算。仍在查核或執行 Retire 的工作也須計入本機總量，避免未結算工作無界累積。
 
 不同 Pod 可各自受理同一 `(system_id, document_id)`，並行匯入可能讓同一文件留下多個批次，Retire 後亦可能因另一 Pod 的寫入而再出現。需要避免上述競爭的 System，首版將 Ingestion 與 Retire 集中路由到同一個寫入 Pod；Inference 可獨立擴展。切換寫入 Pod 前先排空舊入口。共用索引的版本與管理操作遵循 [System 排空條件](#system-ingestion-drain)。跨 Pod 文件鎖列入 [Todo Enhance](todo_enhance.md)。
 
