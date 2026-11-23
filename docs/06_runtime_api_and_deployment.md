@@ -810,13 +810,12 @@ Document 管理是索引／儲存管理能力，不新增 Pipeline Module。平�
 <a id="runtime-config-sources"></a>
 ## 設定來源與保存位置
 
-| 設定 | 來源與保存位置 | Runtime 如何載入 |
+| 設定 | 作用範圍 | 載入與保存 |
 |---|---|---|
-| DEV 的 System Config | Builder 保存各 System 的發布快照及部署紀錄。部署紀錄按環境、Runtime 目標及 System 保存預期版本和流程。 | Runtime 啟動可有零組 System Config。Builder 經管理 API 下發後，Runtime 在記憶體按 `system_id` 保存已載入的版本、快照與索引綁定。重啟後由 Builder 補載。 |
-| 獨立部署的 System Config | 部署方隨 Bundle 提供一份指定版本的 System Config 快照，部署設定另存。 | Runtime 啟動讀取該快照，以環境的 `pipeline` 選擇啟用流程；重啟時重新讀取。此模式關閉管理 HTTP。 |
-| Runtime 程序設定 | Runtime 提供程序預設值，部署管理者提供環境覆寫，例如 Queue、Deadline 和清理間隔。 | 程序啟動時載入有效設定，供同一 Pod 內各 System 共用。這些值保存在部署設定及 Runtime 程序記憶體，與 System Config Revision 分開。 |
+| System Config | 個別 System 的 Pipeline、Component 及 System Secret。以 `system_id` 和 `config_revision` 辨識，使用同一份 [System Config Schema](../schemas/system_config.draft.schema.json)。 | DEV 由 Builder 保存發布快照與部署紀錄，經管理 API 下發，重啟後由 Builder 補載。獨立部署由部署方隨 Bundle 提供快照，Runtime 每次啟動時讀取。兩個入口都把已載入的快照保存在 Runtime 記憶體。 |
+| Runtime 程序設定 | 整個 Runtime 程序共用的 Queue 容量、Deadline、工作紀錄保留與清理間隔等。 | Runtime 啟動時先讀取部署設定，對省略的欄位套用 Runtime 預設值，再用有效設定初始化 Queue 及背景 Task。有效值在程序記憶體保存，與 System Config Revision 分開。 |
 
-兩種部署模式的 System Config 使用同一份 [System Config Schema](../schemas/system_config.draft.schema.json)，以 `system_id` 及 `config_revision` 辨識。來源依部署模式判定；`SystemStatus` 回報版本及流程載入狀態。[Builder 部署紀錄](drafts/builder_system_deployment_mongodb.md) · [獨立啟動](#src-07-93-獨立啟動)
+[Builder 部署紀錄](drafts/builder_system_deployment_mongodb.md) · [獨立啟動](#src-07-93-獨立啟動) · [Runtime 程序預設](#src-22-2-已確認的初始預設)
 
 <a id="src-22-1-範圍與管理方式"></a>
 ## Runtime 設定：範圍與管理方式
