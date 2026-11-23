@@ -19,3 +19,12 @@
 ### 驗收案例
 
 以兩個 Ingestion Pod 和實際 ES 驗證同文件雙提交、部分重疊批次、不同文件並行、Ingestion 與 Retire 競爭、跨 Pod 取消、受理和寫入階段崩潰、索引世代切換，以及舊 Bulk 或刪除回應晚到。驗證衝突方無部分入列、舊工作不影響新批次，以及單 Pod 行為符合既有 HTTP 契約。
+
+<a id="inference-only-config-update"></a>
+## 匯入期間發布純 Inference 更新
+
+**狀態：後續增強。** 首版發布 System Config 新版本時，仍須通過 [Ingestion 排空檢查](06_runtime_api_and_deployment.md#system-ingestion-drain)。同一 System 有排隊、執行中或待結算的匯入工作時，`update` 回 `409 SYSTEM_BUSY`。
+
+- **判定條件。** 由 Runtime 比對目前生效版本與候選版本的有效設定。只有 Inference 行為改變，且 Ingestion 的有效設定、共用相依及 ES 索引綁定、世代與指紋均相容且未受影響，才能走此更新路徑。共用 Secret 或服務綁定若也影響 Ingestion，或影響範圍無法確認，沿用排空檢查。
+- **版本切換。** 已受理的 Ingestion 與查詢固定使用各自的舊快照。發布後，新查詢在目標載入且就緒時使用新設定，Ingestion 照常收件。後續設計須確認共用 Config Revision 如何與各流程的載入版本一起核對，並處理 Builder 對不同 Pod 的發布與補載。
+- **驗收。** 同一 System 有排隊或執行中的 Ingestion 時，修改查詢的 `top_n` 可成功發布，新查詢生效且匯入不中斷。修改切分、文件 Embedding 或影響 Ingestion 的共用綁定時，仍走原排空流程。
