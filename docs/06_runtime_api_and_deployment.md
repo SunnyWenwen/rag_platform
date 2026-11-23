@@ -238,7 +238,7 @@ Runtime 的 Config 編譯器輸出 [指紋投影 Schema](../schemas/index_finger
 | Remote 階段 | `kind: remote` 以 `module`／`through` 表示含首尾的替代範圍，附 `adapter_version`、Remote HTTP 的 `contract_version`、取自節點 `revision` 的 `implementation_revision`、有效 `parameters` 和輸出 `output_structdata`。`connection` 與 `auth` 不參與。 |
 | `index.component_id`、`component_version`、`structdata` | 解析後的 Indexing 實作識別及套用 overrides 後的有效欄位型別與搜尋能力。 |
 | `index.vector_bindings`、`embedding_spaces` | 兩個物件都以已選入索引的向量名稱為鍵，鍵集合必須一致。前者沿用 IndexBinding 的來源欄位、Profile ID 與維度，後者記錄實際模型 ID 與穩定版本。沒有索引向量時皆為 `{}`。 |
-| `index.mapping`、`settings` | 解析後的 ES 欄位、動態規則、runtime fields、`_source` 及會影響相容性的原生 `analysis`、`similarity`。預設值由目標後端能力與設定解析；無宣告的 `dynamic_templates` 用 `[]`，無定義的 `runtime`、`analysis`、`similarity` 用 `{}`。原生 ES 物件由 ES 驗證。後端若有會改變索引語意而 v1 投影未涵蓋的設定，回報相容性未確認。 |
+| `index.mapping`、`settings` | 解析後的 ES 欄位、動態規則、runtime fields、`_source` 及會影響相容性的原生 `analysis`、`similarity`。預設值由目標後端能力與設定解析；無宣告的 `dynamic_templates` 用 `[]`，無定義的 `runtime`、`analysis`、`similarity` 用 `{}`。原生 ES 物件由 ES 驗證。`dynamic: strict` 下，`Document.metadata` 以 `{"type": "object", "enabled": false}` 整包保存，不建立子欄位索引。後端若有會改變索引語意而 v1 投影未涵蓋的設定，回報相容性未確認。 |
 
 純 Inference 參數、運作限額、端點、憑證與單文件的 `source_revision` 都不參與指紋。`env`、`system_id`、`index_generation` 及 `created_by_operation_id` 用於識別及查核。影響索引的設定固定於 Config Revision。Remote Ingestion 依 [參數契約](05_system_config.md#parameter-references)排除已宣告的僅執行期參數，投影使用其餘固定值。切換 ES 來源或 `es_number` 時核對實體目標與歸屬，密碼輪替只需重新連線並核對原綁定。
 
@@ -343,7 +343,7 @@ Descriptor 的欄位推導規則見 [Component Descriptor](04_component_descript
 | `resources.models` | 可選的邏輯模型引用及顯示名稱。 |
 | `resources.elasticsearch_services` | 保留的 Catalog 資源集合，首版回空物件。Indexing 服務來源由 Descriptor 引用的 [ES 連線契約](05_system_config.md#elasticsearch-service-source) 決定。 |
 
-以 [Catalog Schema](../schemas/runtime_catalog.draft.schema.json) 驗證 [Catalog 回應範例](../examples/system_config/runtime_catalog.response.json)。四種資源集合皆可為空。Catalog 不帶實際認證憑證或連線測試結果。Runtime 變更 Descriptor 或可用資源清單時更新 `catalog_revision`。Builder 在同一次目標環境編輯中共用目錄。驗證或套用若發現 Runtime 識別或 Catalog 版本不符，回 `409 STALE_CATALOG`。Builder 重新取目錄並檢查既有選值。已選版本找不到時保留原值並提示修正。
+以 [Catalog Schema](../schemas/runtime_catalog.draft.schema.json) 驗證 [Catalog 回應範例](../examples/system_config/runtime_catalog.response.json)。四種資源集合皆可為空。Catalog 不帶實際認證憑證或連線測試結果。Runtime 由 Descriptor 與可用資源清單的內容計算 `catalog_revision`（例如 `catalog-<hash>`），任一項變更時值就會改變。Builder 把它當成不透明字串，只做相等比對。Builder 在同一次目標環境編輯中共用目錄。驗證或套用若發現 Runtime 識別或 Catalog 版本不符，回 `409 STALE_CATALOG`。Builder 重新取目錄並檢查既有選值。已選版本找不到時保留原值並提示修正。
 
 #### 在 Builder 解析 `option_sources`
 
@@ -685,7 +685,7 @@ D-64：第一版同步查詢額滿直接拒絕，不加短等待 Queue，也不�
 | 輸入 | `inputSchema` 由生效 Config 產生：`query` 必填；`filters` 沿用 Inference Request 的 Filter 形狀；`parameters` 列出 Inference Input 宣告的 Request 參數、型別與必填性。 |
 | 輸出 | `structuredContent` 為與 `/queries` 相同的成功物件，`outputSchema` 對應 [inference_response](../schemas/runtime_http.schema.json#/$defs/inference_response)。`content` 另附一段文字，依名次列出 rank、score、`document_id` 及主文欄位，主文欄位由 `mcp.text_field` 指定，預設 `text`。 |
 | 限制 | 與 `/queries` 共用每 System 的頻率、併發及 60 秒 Deadline。 |
-| 錯誤 | 認證失敗與 HTTP 層錯誤沿用 HTTP 狀態碼。JSON-RPC 格式錯誤及未知工具回 JSON-RPC error。查詢執行失敗，例如參數或 Filter 無效、索引未就緒、限流、上游失敗或逾時，回 `isError: true` 的工具結果，`content` 文字含錯誤 `code` 與 `message`，`structuredContent` 為 `{"error": ...}`，格式同 [錯誤物件](#runtime-http-errors)。 |
+| 錯誤 | 認證失敗與 HTTP 層錯誤沿用 HTTP 狀態碼。JSON-RPC 格式錯誤及未知工具回 JSON-RPC error。查詢執行失敗，例如參數或 Filter 無效、索引未就緒、限流、上游失敗或逾時，回 `isError: true` 的工具結果，`content` 文字為 `CODE: message`，代碼同 [錯誤物件](#runtime-http-errors)。錯誤結果不帶 `structuredContent`，因為 MCP Client 會依工具的 `outputSchema` 檢查結構化內容。 |
 
 以下是 `tools/list` 回傳的工具片段，System 宣告了選填的 `language` 參數。
 

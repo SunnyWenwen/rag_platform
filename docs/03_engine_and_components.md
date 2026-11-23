@@ -49,7 +49,7 @@ Remote Ingestion 的 `output` 在 Config 中是 Schema 宣告，在 HTTP Respons
 | 方法 | 切分依據 | 有效設定 |
 |---|---|---|
 | Fixed-size | 按固定 Token 視窗切分 | `max_tokens`、`overlap_tokens`、`tokenizer_profile_id`，共用 `split_field`、`output_field`、`copy_fields`。 |
-| Recursive | 依分隔符優先序找邊界，過長片段繼續細切 | 共用設定加上 `separators`（分隔符順序）及 `keep_separator`（是否保留分隔符）。 |
+| Recursive | 依分隔符優先序找邊界，過長片段繼續細切 | 共用設定加上 `separators`（分隔符順序）及 `keep_separator`（是否保留分隔符）。`separators` 省略時 Runtime 使用 `["\n\n", "\n", " ", ""]`，此預設不含中文標點。 |
 | Header-aware | 先依標題層級切分，超長章節再用 Recursive | 共用設定加上 `header_levels`、標題能力及 Recursive 備援參數。 |
 
 Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一塊不足 size 時保留、不補齊。視窗涵蓋文件結尾即停止，不再產生只重複末尾 overlap 的多餘 Chunk。例如 Token 串長 11、size=4、overlap=1，半開區間依序為 `[0:4]`、`[3:7]`、`[6:10]`、`[9:11]`；長度為 10 時則在 `[6:10]` 結束。這是 Token 視窗語意例子；Unicode 完整邊界、offset 映射及實際模型輸入重新計數的精確策略仍由 Q-004 核定，不能靠任意 decode Token 片段破壞原文。

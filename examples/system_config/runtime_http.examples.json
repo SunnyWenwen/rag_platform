@@ -110,7 +110,7 @@
             "context_revision": "context-1",
             "active_config_revision": null,
             "loaded": false,
-            "index_impact": {"action": "create", "code": "INDEX_MISSING", "message": "建立空索引。", "index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"}
+            "index_impact": {"action": "create", "code": "INDEX_MISSING", "message": "建立空索引。", "index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"}
           }
         }
       },
@@ -426,7 +426,7 @@
             "Idempotency-Key": "drain-delete-inference",
             "X-Expected-Config-Revision": "revision-1",
             "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "X-Expected-Index-Fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "X-Expected-Index-Fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -434,7 +434,7 @@
         }
       },
       {
-        "request": {"method": "DELETE", "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a", "headers": {"Idempotency-Key": "unload-001", "X-Expected-Config-Revision": "revision-1", "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01", "X-Expected-Index-Fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"}},
+        "request": {"method": "DELETE", "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a", "headers": {"Idempotency-Key": "unload-001", "X-Expected-Config-Revision": "revision-1", "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01", "X-Expected-Index-Fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"}},
         "response": {"status": 204}
       },
       {
@@ -604,7 +604,7 @@
               "action": "create",
               "code": "INDEX_MISSING",
               "message": "建立空索引。",
-              "index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+              "index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
             },
             "pipeline": "ingestion"
           }
@@ -958,7 +958,7 @@
             "pipeline": "inference",
             "expected_active_revision": "revision-1",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -1121,7 +1121,7 @@
             "pipeline": "inference",
             "expected_active_revision": "revision-1",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -1137,7 +1137,7 @@
               "action": "reuse",
               "code": "INDEX_COMPATIBLE",
               "message": "接回已發布的索引。",
-              "index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+              "index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
             },
             "pipeline": "inference"
           }
@@ -1290,7 +1290,7 @@
             "config_revision": "revision-1",
             "pipeline": "inference",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -1330,7 +1330,7 @@
             "Idempotency-Key": "split-detach-ingestion",
             "X-Expected-Config-Revision": "revision-1",
             "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "X-Expected-Index-Fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "X-Expected-Index-Fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -1474,7 +1474,7 @@
           "headers": {
             "X-Expected-Config-Revision": "revision-2",
             "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "X-Expected-Index-Fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "X-Expected-Index-Fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -1615,7 +1615,7 @@
             },
             "expected_active_revision": "revision-1",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -1627,7 +1627,7 @@
             "context_revision": "context-2",
             "active_config_revision": "revision-1",
             "loaded": true,
-            "index_impact": {"action": "reuse", "code": "INDEX_COMPATIBLE", "message": "沿用索引。", "index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"}
+            "index_impact": {"action": "reuse", "code": "INDEX_COMPATIBLE", "message": "沿用索引。", "index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"}
           }
         }
       },
@@ -1715,7 +1715,7 @@
             "expected_active_revision": "revision-1",
             "config_revision": "revision-2",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -1818,7 +1818,7 @@
             },
             "expected_active_revision": "revision-2",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -1923,7 +1923,7 @@
             "expected_active_revision": "revision-2",
             "config_revision": "revision-3",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -1941,7 +1941,7 @@
             "Idempotency-Key": "drain-rebuild-inference",
             "X-Expected-Config-Revision": "revision-2",
             "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "X-Expected-Index-Fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "X-Expected-Index-Fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -2033,7 +2033,7 @@
             "config_revision": "revision-3",
             "allow_rebuild": true,
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27",
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061",
             "target_index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202"
           }
         },
@@ -2141,7 +2141,7 @@
             "config_revision": "revision-3",
             "allow_rebuild": true,
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27",
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061",
             "target_index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202"
           }
         },
@@ -2247,7 +2247,7 @@
             },
             "expected_active_revision": "revision-1",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -2440,7 +2440,7 @@
             },
             "expected_active_revision": "revision-1",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -2625,7 +2625,7 @@
             "expected_active_revision": "revision-1",
             "config_revision": "revision-2",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -2634,7 +2634,7 @@
         }
       },
       {
-        "request": {"method": "DELETE", "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a", "headers": {"Idempotency-Key": "unload-busy", "X-Expected-Config-Revision": "revision-1", "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01", "X-Expected-Index-Fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"}},
+        "request": {"method": "DELETE", "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a", "headers": {"Idempotency-Key": "unload-busy", "X-Expected-Config-Revision": "revision-1", "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01", "X-Expected-Index-Fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"}},
         "response": {
           "status": 409,
           "body": {"error": {"code": "SYSTEM_BUSY", "message": "System 有執行中的匯入。", "module": null}}
@@ -3215,7 +3215,7 @@
           "headers": {
             "X-Expected-Config-Revision": "revision-1",
             "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "X-Expected-Index-Fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "X-Expected-Index-Fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -3315,7 +3315,7 @@
             },
             "expected_active_revision": "revision-1",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -3327,7 +3327,7 @@
             "context_revision": "context-reload-001",
             "active_config_revision": "revision-1",
             "loaded": false,
-            "index_impact": {"action": "reuse", "code": "INDEX_COMPATIBLE", "message": "接回現有索引。", "index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"}
+            "index_impact": {"action": "reuse", "code": "INDEX_COMPATIBLE", "message": "接回現有索引。", "index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"}
           }
         }
       },
@@ -3412,7 +3412,7 @@
             "expected_active_revision": "revision-1",
             "config_revision": "revision-1",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -3468,7 +3468,7 @@
             "Idempotency-Key": "detach-b-busy",
             "X-Expected-Config-Revision": "revision-1",
             "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "X-Expected-Index-Fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "X-Expected-Index-Fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -3490,7 +3490,7 @@
             "Idempotency-Key": "detach-b",
             "X-Expected-Config-Revision": "revision-1",
             "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "X-Expected-Index-Fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "X-Expected-Index-Fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -3505,7 +3505,7 @@
             "Idempotency-Key": "detach-b",
             "X-Expected-Config-Revision": "revision-1",
             "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "X-Expected-Index-Fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "X-Expected-Index-Fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -3519,7 +3519,7 @@
           "headers": {
             "X-Expected-Config-Revision": "revision-1",
             "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "X-Expected-Index-Fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "X-Expected-Index-Fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -3551,7 +3551,7 @@
             "Idempotency-Key": "unload-unverified",
             "X-Expected-Config-Revision": "revision-1",
             "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "X-Expected-Index-Fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "X-Expected-Index-Fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -3570,7 +3570,7 @@
           "headers": {
             "X-Expected-Config-Revision": "revision-1",
             "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "X-Expected-Index-Fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "X-Expected-Index-Fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -3600,7 +3600,7 @@
             "Idempotency-Key": "unload-without-config",
             "X-Expected-Config-Revision": "revision-1",
             "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "X-Expected-Index-Fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "X-Expected-Index-Fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -3626,7 +3626,7 @@
     ],
     "recover_index_loaded": [
       {
-        "request": {"method": "GET", "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a", "headers": {"X-Expected-Config-Revision": "revision-1", "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01", "X-Expected-Index-Fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"}},
+        "request": {"method": "GET", "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a", "headers": {"X-Expected-Config-Revision": "revision-1", "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01", "X-Expected-Index-Fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"}},
         "response": {
           "status": 200,
           "body": {
@@ -3724,7 +3724,7 @@
             "recovery_from": {"config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"},
             "expected_active_revision": "revision-1",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -3736,7 +3736,7 @@
             "context_revision": "context-recover-loaded",
             "active_config_revision": "revision-1",
             "loaded": true,
-            "index_impact": {"action": "recover", "code": "PUBLISHED_INDEX_MISSING", "message": "索引已遺失。請確認建立同版本的新空索引，再重新匯入。", "index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"}
+            "index_impact": {"action": "recover", "code": "PUBLISHED_INDEX_MISSING", "message": "索引已遺失。請確認建立同版本的新空索引，再重新匯入。", "index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"}
           }
         }
       },
@@ -3822,7 +3822,7 @@
             "expected_active_revision": "revision-1",
             "config_revision": "revision-1",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27",
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061",
             "target_index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202"
           }
         },
@@ -3853,7 +3853,7 @@
             "Idempotency-Key": "stale-unload",
             "X-Expected-Config-Revision": "revision-1",
             "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "X-Expected-Index-Fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "X-Expected-Index-Fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -3862,7 +3862,7 @@
         }
       },
       {
-        "request": {"method": "GET", "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a", "headers": {"X-Expected-Config-Revision": "revision-1", "X-Expected-Index-Generation": "f65ce489-2a7e-421c-8bef-3d03464fc202", "X-Expected-Index-Fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"}},
+        "request": {"method": "GET", "path": "/internal/v1/systems/7b38858b-6f26-4647-9dfb-84044000413a", "headers": {"X-Expected-Config-Revision": "revision-1", "X-Expected-Index-Generation": "f65ce489-2a7e-421c-8bef-3d03464fc202", "X-Expected-Index-Fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"}},
         "response": {
           "status": 200,
           "body": {
@@ -3970,7 +3970,7 @@
             "recovery_from": {"config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"},
             "expected_active_revision": "revision-1",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -3982,7 +3982,7 @@
             "context_revision": "context-recover-unloaded",
             "active_config_revision": null,
             "loaded": false,
-            "index_impact": {"action": "recover", "code": "PUBLISHED_INDEX_MISSING", "message": "索引已遺失。請確認依原發布版本建立新空索引，再重新匯入。", "index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"}
+            "index_impact": {"action": "recover", "code": "PUBLISHED_INDEX_MISSING", "message": "索引已遺失。請確認依原發布版本建立新空索引，再重新匯入。", "index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"}
           }
         }
       },
@@ -4068,7 +4068,7 @@
             "expected_active_revision": "revision-1",
             "config_revision": "revision-1",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27",
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061",
             "target_index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202"
           }
         },
@@ -4173,7 +4173,7 @@
             "expected_active_revision": "revision-1",
             "config_revision": "revision-1",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27",
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061",
             "target_index_generation": "f65ce489-2a7e-421c-8bef-3d03464fc202"
           }
         },
@@ -4277,7 +4277,7 @@
             "recovery_from": {"config_revision": "revision-1", "index_generation": "40925e4c-56ba-4092-a019-69391d558b01"},
             "expected_active_revision": "revision-1",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -4302,7 +4302,7 @@
           "headers": {
             "X-Expected-Config-Revision": "revision-1",
             "X-Expected-Index-Generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "X-Expected-Index-Fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+            "X-Expected-Index-Fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
           }
         },
         "response": {
@@ -4475,7 +4475,7 @@
             },
             "expected_active_revision": "revision-1",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27",
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061",
             "pipeline": "ingestion"
           }
         },
@@ -4492,7 +4492,7 @@
               "action": "reuse",
               "code": "INDEX_COMPATIBLE",
               "message": "接回現有索引。",
-              "index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+              "index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
             },
             "pipeline": "ingestion"
           }
@@ -4644,7 +4644,7 @@
             "expected_active_revision": "revision-1",
             "config_revision": "revision-1",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27",
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061",
             "pipeline": "ingestion"
           }
         },
@@ -4818,7 +4818,7 @@
             },
             "expected_active_revision": "revision-1",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27",
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061",
             "pipeline": "ingestion"
           }
         },
@@ -4835,7 +4835,7 @@
               "action": "reuse",
               "code": "INDEX_COMPATIBLE",
               "message": "沿用索引。",
-              "index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27"
+              "index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061"
             },
             "pipeline": "ingestion"
           }
@@ -4987,7 +4987,7 @@
             "expected_active_revision": "revision-1",
             "config_revision": "revision-2",
             "expected_index_generation": "40925e4c-56ba-4092-a019-69391d558b01",
-            "expected_index_fingerprint": "da1bd90796b8e9da6d0ddb664f5b9e6b3514a6b3a64187c5cdd08a518d950d27",
+            "expected_index_fingerprint": "960e016634959d725bf8130fdd1f1328ed20cf66c15db27679dc5a2336525061",
             "pipeline": "ingestion"
           }
         },
