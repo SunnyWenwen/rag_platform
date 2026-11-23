@@ -1,4 +1,12 @@
-# User Remote API 範例
+# User Remote API v1 範例
+
+使用 [OpenAPI](openapi.json) 實作共用 POST 封裝，使用 Builder 產生的有效 Schema 驗證該 System 的 `input` 與 `output`。OpenAPI 的路徑為示意，Runtime 呼叫 Config 中的完整 Endpoint。保留 OpenAPI 與 [共用 Remote Schema](../../schemas/remote_api.schema.json) 的相對目錄以解析引用。
+
+| HTTP | 搭配範例 |
+|---|---|
+| POST Request | `Content-Type: application/json`、`X-Request-Id: remote-manual-001`，配置認證時加 `Authorization: Bearer <token>`。見 [Parsing → Embedding](remote_ingestion.request.json)／[單一 Retrieval](remote_retrieval.request.json)。 |
+| 200 Response | JSON `output` 內放驗證後的區段資料。見 [Ingestion](remote_ingestion.response.json)／[Retrieval](remote_retrieval.response.json)。 |
+| 415 Response | [錯誤封裝](remote_error.response.json)帶可診斷的錯誤識別及布林重試提示。 |
 
 [批次 Ingestion](ingestion.request.json) 提交兩份文件，`source_revision` 分別為 `null` 與 `""`，Runtime 在 Parser 前拆成兩個工作。[第一筆 Remote Request](remote_ingestion.request.json) 傳單份 Document 與業務參數。Runtime 依 Remote 節點的 `auth.bearer_token: "{{PARSER_API_TOKEN}}"` 取得 System Secret 並組成認證 Header。[Parsing → Embedding Response](remote_ingestion.response.json) 保留 `source_revision: null` 並帶具名向量，符合[區段輸出契約](remote_ingestion.response.schema.json)。
 
@@ -6,6 +14,6 @@
 
 首版模板由 Admin 維護版本化設定檔，套用時複製設定。這組資料是 HTTP 與 Schema 測資。正式 Config 檔案包裝及 Runtime 連線整合另行驗收。
 
-這組 Remote Ingestion 涵蓋 Parsing → Embedding。另一組 [Remote Parsing Config](../system_config/local_memory.remote_parsing.json) 示範完整的 `config.secret` 和 `auth.bearer_token` 設定，並提供[部署對照](../system_config/README.md#system-secret-examples)。兩組的業務 Request Body 都只帶業務參數。
+這組 Remote Ingestion 涵蓋 Parsing → Embedding。另一組 [Remote Parsing Config](../system_config/local_memory.remote_parsing.json) 示範完整的 `config.secret` 和 `auth.bearer_token` 設定，並提供[部署對照](../system_config/README.md#system-secret-examples)。共用 Request 封裝帶版本與區段。其 `parameters` 只包含業務參數，認證從 Header 傳入。
 
 在 repo 根目錄執行 `python3 examples/user_remote_api/validate.py`，使用 Python jsonschema 與 referencing。

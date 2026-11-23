@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rag-builder.example/schemas/remote_api.schema.json",
+  "title": "User Remote API wire contract v1",
+  "$defs": {
+    "contract_version": {"type": "string", "const": "1"},
+    "request_id": {"type": "string", "minLength": 1},
+    "ingestion_module": {"enum": ["parsing", "chunking", "embedding"]},
+    "inference_module": {"enum": ["query_transformation", "retrieval", "rerank"]},
+    "segment": {
+      "type": "object",
+      "required": ["module", "through"],
+      "properties": {"module": {"type": "string"}, "through": {"type": "string"}},
+      "additionalProperties": false,
+      "oneOf": [
+        {"properties": {"module": {"const": "parsing"}, "through": {"enum": ["parsing", "chunking", "embedding"]}}},
+        {"properties": {"module": {"const": "chunking"}, "through": {"enum": ["chunking", "embedding"]}}},
+        {"properties": {"module": {"const": "embedding"}, "through": {"const": "embedding"}}},
+        {"properties": {"module": {"const": "query_transformation"}, "through": {"enum": ["query_transformation", "retrieval", "rerank"]}}},
+        {"properties": {"module": {"const": "retrieval"}, "through": {"enum": ["retrieval", "rerank"]}}},
+        {"properties": {"module": {"const": "rerank"}, "through": {"const": "rerank"}}}
+      ]
+    },
+    "request": {
+      "type": "object",
+      "required": ["contract_version", "segment", "input", "parameters"],
+      "properties": {
+        "contract_version": {"$ref": "#/$defs/contract_version"},
+        "segment": {"$ref": "#/$defs/segment"},
+        "input": {"type": ["object", "array"], "description": "Validate against the System and segment input schema."},
+        "parameters": {"type": "object"}
+      },
+      "if": {"properties": {"segment": {"properties": {"module": {"const": "parsing"}}}}},
+      "then": {"properties": {"input": {"type": "object"}}},
+      "else": {"properties": {"input": {"type": "array"}}},
+      "additionalProperties": true
+    },
+    "success": {
+      "type": "object",
+      "required": ["output"],
+      "properties": {
+        "output": {"type": "array", "description": "Validate against the System and segment output schema."}
+      },
+      "additionalProperties": true
+    },
+    "failure": {
+      "type": "object",
+      "required": ["error"],
+      "properties": {
+        "error": {
+          "type": "object",
+          "required": ["code", "message", "retryable"],
+          "properties": {
+            "code": {"type": "string", "minLength": 1},
+            "message": {"type": "string", "minLength": 1},
+            "retryable": {"type": "boolean"}
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

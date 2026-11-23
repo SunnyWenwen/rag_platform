@@ -50,13 +50,14 @@ BUILDER_FORM_DESCRIPTORS = json.loads((HERE / "builder_form.descriptors.json").r
 CATALOG_SCHEMA = json.loads((REPO / "schemas/runtime_catalog.draft.schema.json").read_text())
 RUNTIME_CATALOG = json.loads((HERE / "runtime_catalog.response.json").read_text())
 SYSTEM_CONFIG_SCHEMA = json.loads((REPO / "schemas/system_config.draft.schema.json").read_text())
+REMOTE_API_SCHEMA = json.loads((REPO / "schemas/remote_api.schema.json").read_text())
 RUNTIME_IDENTITY = json.loads((REPO / "schemas/runtime_identity.schema.json").read_text())
 DATA_META = json.loads((REPO / "schemas/data_meta.schema.json").read_text())
 QUERY_CONTEXT = json.loads((REPO / "schemas/query_context.schema.json").read_text())
 CONFIG_ENUMS = json.loads((REPO / "schemas/config_enums.schema.json").read_text())
 SCHEMA_REGISTRY = Registry().with_resources(
     (schema["$id"], Resource.from_contents(schema))
-    for schema in (DATA_META, QUERY_CONTEXT, DESCRIPTOR_SCHEMA, CONFIG_ENUMS, RUNTIME_IDENTITY)
+    for schema in (DATA_META, QUERY_CONTEXT, DESCRIPTOR_SCHEMA, CONFIG_ENUMS, RUNTIME_IDENTITY, REMOTE_API_SCHEMA)
 )
 DATE_FORMATS = {
     kind: Draft202012Validator(DATA_META["$defs"][kind], format_checker=FormatChecker())
@@ -970,6 +971,11 @@ def _():
     parser["component_version"] = "2.0.0"
     rejects(lambda: compile_local_example(snapshot), "unknown Remote API adapter version")
     parser["component_version"] = "1.0.0"
+    del parser["contract_version"]
+    rejects(lambda: compile_local_example(snapshot), "ValidationError")
+    parser["contract_version"] = "2"
+    rejects(lambda: compile_local_example(snapshot), "ValidationError")
+    parser["contract_version"] = REMOTE_API_SCHEMA["$defs"]["contract_version"]["const"]
     parser["component_id"] = "passthrough"
     rejects(lambda: compile_local_example(snapshot), "ValidationError")
 
@@ -977,6 +983,7 @@ def _():
     inference = snapshot["config"]["pipelines"]["inference"]
     inference["retrieval"] = {
         "component_id": "remote_api",
+        "contract_version": "1",
         "component_version": "1.0.0",
         "through": "rerank",
         "service_ref": "external-search",

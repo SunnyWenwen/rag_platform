@@ -122,7 +122,7 @@ Import 可選已整理欄位或待解析來源。選待解析來源時，入口�
 <a id="src-06-322-已註冊-developer-serviceremote-pipelined-51已有原型模擬真實整合待做"></a>
 ### User Remote API 與選用模板
 
-User 在節點切換到 Remote API，設定 Endpoint、認證、參數及替換範圍。涵蓋的節點顯示管理來源，原內建設定留在草稿。Builder 顯示由上游推導的 Request 與有效 Response Schema，並提供本機回應驗證。涵蓋 Embedding 時宣告向量輸出；內建向量 Retrieval 按 Profile 設定 Query Encoder。
+User 在節點切換到 Remote API，設定 Endpoint、認證、參數及替換範圍。新增時填入支援的 Remote 契約版本，儲存及匯出一併保留。涵蓋的節點顯示管理來源，原內建設定留在草稿。Builder 顯示包含 `contract_version`、`segment` 的請求，及包裝 `output` 的有效成功 Response Schema，並提供本機回應驗證。服務方依 [Remote v1 OpenAPI](../examples/user_remote_api/openapi.json) 實作。涵蓋 Embedding 時宣告向量輸出；內建向量 Retrieval 按 Profile 設定 Query Encoder。
 
 Admin 在 Builder 以外維護版本化全域模板。Builder 顯示可選版本，套用時複製至目前草稿。User 可調整設定及環境綁定。模板目錄為唯讀，系統儲存沿用既有驗證。
 
@@ -265,7 +265,7 @@ CSV 每 row 對應一份 Document。需要以多列合併文件的能力尚未�
 <a id="builder-csv-replacement"></a>
 ### CSV 整批替換
 
-Builder 的 CSV 資料上傳以目標 System 的索引資料為替換範圍。先完成整份 CSV 的解析及映射預檢，再清除該 System 的既有索引資料，將新 CSV 的所有列重新匯入。每列 ID 需在本次資料集中唯一。清除及重送的具體 API、失敗處理和 CSV ID 生成由 Builder 後續規劃。
+Builder 的 CSV 資料上傳以目標 System 的索引資料為替換範圍。先完成整份 CSV 的解析及映射預檢，再清除該 System 的既有索引資料，將新 CSV 的所有列重新匯入。每列 ID 依[來源文件識別規則](#builder-source-document-id)產生，並在本批內保持唯一。清除及重送的具體 API 和失敗處理由 Builder 後續規劃。
 
 <a id="src-06-42-映射與預覽"></a>
 ### 映射與預覽
@@ -277,9 +277,15 @@ Builder 的 CSV 資料上傳以目標 System 的索引資料為替換範圍。�
 | 映射 | 可將同一 column 填入多個目標；未映射欄位不送出。已映射的 `source_revision` 保留 CSV 原始文字，空儲存格傳 `""`。 |
 | 必填 | 無預設值的 input 必填欄位須映射 |
 | 型別 | number 有限值；boolean 規則明確；array 用 JSON 解析；正式強制轉型政策 Q-002 |
-| ID | 可映射來源主鍵；整批替換時須確保本次資料集的文件 ID 唯一，自動 ID 生成方式待定 |
+| ID | 單欄主鍵或組合主鍵必填。在預檢驗證主鍵值與重複的 `document_id`。 |
 | 預覽 | 原始列 → 批次 Request → 各階段 Document；標示實際解析或模擬，錯誤對應列號／模組／欄位 |
 | 保存 | 成功後保存映射；是否成為執行 Config Revision 的一部分見 Q-015 |
+
+<a id="builder-source-document-id"></a>
+#### 來源文件識別
+
+- API 呼叫端提供自己的穩定來源主鍵。Builder 匯入 CSV 時，使用者選一欄直接映射為 `document_id`，或至少兩欄作為組合主鍵。組合欄名依 UTF-16 code unit 升冪排列，以 RFC 8785 序列化 `[[欄名, 原始儲存格字串], ...]`，取 UTF-8 的 SHA-256 小寫十六進位摘要並加上 `csv:` 前綴。單欄及組合值均保留前導零等原始文字，空白主鍵和重複 ID 在預檢拒絕。列號及隨機 UUID 禁用。
+- 原始檔案上傳使用明確指定的穩定文件 ID，或將 `[來源命名空間, 相對路徑]` 以相同方式序列化並雜湊，使用 `file:` 前綴。同來源路徑重新上傳沿用 ID。內容摘要可選記為 `source_revision`。欄位限制見[文件識別契約](02_data_contracts.md#document-identities)。
 
 Prototype 限制 ≤1 MB 且在瀏覽器讀取，不等於正式產品限制。正式檔案上傳、樣本保留、敏感欄位與大小限制見 Q-016／Q-019／Q-024。
 
@@ -340,7 +346,7 @@ Builder 對新建立、清空後重新建置或同版本恢復索引的資料集
 |---|---|
 | 基本 | 檢索內容、分數／排名／來源、索引未就緒／服務錯誤 |
 | 進階 | 原始與衍生 Query、各路候選、融合結果、Rerank 前後、實際 Context、耗時／用量 |
-| 版本 | 取自 Inference 的 `X-Config-Revision`、`X-Index-Generation`。Trace 使用的 `request_id` 依 Q-019 後續契約。 |
+| 版本 | 讀取 Inference body 的 `config_revision`、`index_generation`，並可由對應 Header 追查實際版本。純外部 Retrieval 的索引世代為 `null` 時顯示無平台索引。Trace 使用的 `request_id` 依 Q-019 後續契約。 |
 
 Trace 保存與敏感內容政策見 Q-016，診斷顯示範圍見 Q-025。Filter 表單分別顯示固定條件與本次附加條件，日期時間預設顯示 Asia/Taipei。Inference 執行失敗時顯示 Runtime 的錯誤，成功但無候選時顯示無命中。Ingest／Inference 的「查看 API 端點」呈現 Base URL、認證、JSON、cURL、回應及錯誤。Ingest 另示範 `run_id` 輪詢。檔案上傳由 Builder 轉為 Runtime Ingestion JSON，見 [Runtime 上傳邊界](06_runtime_api_and_deployment.md#src-07-54-builder-上傳與自行部署)。查看說明不會觸發工作。
 
@@ -350,7 +356,7 @@ Trace 保存與敏感內容政策見 Q-016，診斷顯示範圍見 Q-025。Filte
 <a id="src-06-71-evaluation"></a>
 ### Evaluation
 
-Dataset 欄位預覽 → 指標所需標註檢查 → 執行 → 進度／逐題結果／摘要。缺 Ground Truth 不顯示虛構分數；skipped／failed／scored 分開。設定改動後舊報告標記對應舊版，保留歷史的正式政策由 Runtime API／部署手冊 決定。
+Dataset 欄位預覽 → 指標所需標註檢查 → 執行 → 進度／逐題結果／摘要。相關度標註使用 `document_id`，指標依[文件層級排名](03_engine_and_components.md#document-level-evaluation)計算。缺 Ground Truth 不顯示虛構分數；skipped／failed／scored 分開。設定改動後舊報告標記對應舊版，保留歷史的正式政策由 Runtime API／部署手冊 決定。
 
 Comparison、門檻與 Release Gate 為 Q-018；UI 不自行認定所有測試都通過即可部署。
 
@@ -455,7 +461,7 @@ API 回傳最終有效清單。D-52：Chunk.metadata._rag.source_refs 為選填�
 - Import 欄位及 CSV 映射、各階段有效 Document Schema、批次 Ingestion Request 與逐文件驗證。
 - Fixed-size／Recursive／Header-aware 的配置、Tokenizer 連動及 metadata 繼承。原型曾示範多任務切分，正式設定只選一個切分欄位。
 - 全部 Chunk 內容預設保存；全文、向量、Filter 能力分開，失效欄位保留並報錯。
-- 推論使用 QueryContext[]／filters／metadata。跨 Query 合併可設定並保存草稿，執行依 Engine 整合驗收。
+- 推論 JSON 檢視顯示完整成功物件，`contexts` 內保留 QueryContext[]／filters／metadata。跨 Query 合併可設定並保存草稿，執行依 Engine 整合驗收。
 - 選填 _rag；Embedding 欄位模板；複製原文欄位與額外原文 Chunk 的獨立設定。
 - 內建與 User Remote API 模式、連續範圍鎖定、契約驗證及 Admin 全域模板選用。
 - AI 助手依本機規則產生 Diff，套用前驗證／過期草稿檢查；沒有 LLM 呼叫。
@@ -505,7 +511,7 @@ ResultSet.key 對應 Config 路徑／群組，items 位置即名次。RRF 可用
 | UIB-017 | KISS 選填追溯／metadata 提示 | 原型完成；不捏造 _rag；真實 Component 自行支援 |
 | UIB-018 | Embedding 前欄位模板 | 字串替換／驗證／Picker／預覽／有效匯出完成；模型 Token 上限仍待真實 Tokenizer |
 | UIB-019 | 額外原文 Chunk | 控制、獨立 copy、每 Unit/task 去重示例及變更影響完成；真實切分待 Engine |
-| UIB-020 | 簡化推論 Contract | D-54 本輪完成：root QueryContext[]，含 filters／metadata；無歷史物件 |
+| UIB-020 | 簡化推論 Contract | 成功物件含版本及 `contexts`，Context 保留 filters／metadata |
 | UIB-024 | Descriptor 驅動 I/O 資料規格與逐層相依 | v0.13 完成本機互動示範，正式 Engine／Registry／API 待整合，見文末 |
 
 <a id="uib-010-component-selection"></a>

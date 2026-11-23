@@ -16,6 +16,7 @@ const boot = script.indexOf('\nif (!stored) {');
 assert.ok(boot > 0,'Prototype startup boundary');
 const runtime = vm.createContext({
   crypto:webcrypto,
+  TextEncoder,
   structuredClone,
   document:{getElementById:id => jsonScripts[id] ?? {addEventListener() {}},addEventListener() {}},
   localStorage:{getItem:() => null},
@@ -114,3 +115,47 @@ assert.match(settings.secretTable,/type="password".*data-setting-value="TOKEN"/)
 assert.deepEqual(settings.saved,{secret:{TOKEN:null},variable:{CHUNK_MAX_TOKENS:'720'}});
 assert.deepEqual(settings.exported,{secret:{TOKEN:null},variable:{CHUNK_MAX_TOKENS:null}});
 console.log('PASS: Prototype renders, saves and exports Variable separately from Secret');
+
+async function verifyDocumentIdentity() {
+  const outcome = await vm.runInContext(String.raw`
+    (async () => {
+      const config = fixture.config;
+      const primary = parseCSV('key,tenant,title,body\n001,west,Guide,Steps');
+      const reordered = parseCSV('body,title,tenant,key\nSteps,Guide,west,001');
+      const mapping = {'structdata.title':'title','structdata.body':'body'};
+      const single = await mapCSV(config,primary,{...mapping,document_id:'key'});
+      const first = await mapCSV(config,primary,{...mapping,document_id_columns:['key','tenant']});
+      const second = await mapCSV(config,reordered,{...mapping,document_id_columns:['tenant','key']});
+      checkBatch(first,config);
+      const idProblem = id => {
+        try { checkBatch({documents:[{...single.documents[0],document_id:id}]},config); }
+        catch (error) { return error.message; }
+      };
+      let missing;
+      try { await mapCSV(config,primary,mapping); }
+      catch (error) { missing = error.message; }
+      return {
+        single:single.documents[0].document_id,
+        first:first.documents[0].document_id,
+        second:second.documents[0].document_id,
+        missing,
+        atLimit:idProblem('設'.repeat(85) + 'a'),
+        tooLong:idProblem('設'.repeat(86)),
+        control:idProblem('a' + String.fromCharCode(0x85) + 'b')
+      };
+    })()
+  `, runtime);
+  assert.equal(outcome.single,'001');
+  assert.match(outcome.first,/^csv:[0-9a-f]{64}$/);
+  assert.equal(outcome.first,outcome.second);
+  assert.match(outcome.missing,/document_id/);
+  assert.equal(outcome.atLimit,undefined);
+  assert.match(outcome.tooLong,/256 bytes/);
+  assert.match(outcome.control,/控制字元/);
+  console.log('PASS: Prototype requires a stable CSV key and enforces UTF-8 Document ID limits');
+}
+
+verifyDocumentIdentity().catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});

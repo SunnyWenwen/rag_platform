@@ -20,6 +20,14 @@ Elasticsearch 索引存取層在每筆 ES Chunk 保存內部 `write_id`。同一
 
 共用外層只要求 `document_id`。Import 依設定決定是否要求 `content`、`structdata` 及其欄位。檢索候選額外必須提供 `data_id`、`structdata`，詳細欄位由有效 System Schema 決定。`content.media_type` 指定來源格式，`uri` 引用可取得的來源，`base64` 承載同一來源的編碼內容。
 
+<a id="document-identities"></a>
+## 文件與切片識別
+
+- `document_id` 在同一 System 內識別來源文件。呼叫端提供穩定主鍵，重送同一來源沿用原值。按 [Document Schema](../schemas/document.schema.json#/$defs/document_id) 驗證非空和控制字元，再以 `document-id` 格式驗證有效 UTF-8 及位元組上限。身分比較以原字串為準，保留大小寫、空白及 Unicode 拼法。Builder 的 [CSV 和檔案主鍵](07_builder_ui.md#builder-source-document-id) 遵守同一規格。
+- `data_id` 識別有效搜尋集合中的單一切片。不同文件或切片必須有不同 ID，同一切片經不同搜尋路徑回傳時使用相同 ID。內建 Chunking 由 Engine 統一取 `[document_id, unit_ordinal, chunk_ordinal]`，序號從零開始，`chunk_ordinal` 在每個 Unit 內重新起算。按 RFC 8785 序列化為 UTF-8，再取 SHA-256 的小寫十六進位摘要。相同輸入、有效設定及 Unit 順序可重現，來源內容或解析／切分改變後，原 ID 與切片對應可失效。外部引用與標準答案以 `document_id` 為準。
+- Remote Chunking 必須自行指派 `data_id`。Engine 驗證單次回應的已宣告切片識別在輸出內唯一。Remote 服務需使用可跨文件區分的命名空間，並在同一搜尋集合的各呼叫及搜尋路徑維持身分一致。Remote Embedding 沿用已有的 `data_id`。
+- `source_revision` 供追溯來源版本。`document_id` 決定覆寫對象，ES 的 `write_id` 和實體 `_id` 區分儲存批次。詳見 [Elasticsearch 文件覆寫](06_runtime_api_and_deployment.md#elasticsearch-document-replacement)。
+
 <a id="data-flow"></a>
 ## 各階段有效 Schema
 
@@ -77,7 +85,7 @@ Chunking 逐 Unit 處理同一個選定欄位，可另外保留該欄位的原�
 <a id="inference-contract"></a>
 ## QueryContext／ResultSet／ResultItem
 
-[QueryContext[]](../schemas/query_context.schema.json) 是 Query Transformation、Retrieval、Rerank 的共用 I/O，也是 Runtime Inference 成功回應。每份 Context 有 `ori_query`、`query`、`filters`、`result_sets`、`metadata`。每個 ResultSet 以 `key` 表示搜尋路徑或群組，`items` 的順序代表排名。`ResultItem.data` 必填，值為候選 `Document`，`score` 選填。無命中時回空候選。
+[QueryContext[]](../schemas/query_context.schema.json) 是 Query Transformation、Retrieval、Rerank 的共用 I/O，也是 [Inference HTTP 成功回應](06_runtime_api_and_deployment.md#inference-api) 的 `contexts` 欄位。每份 Context 有 `ori_query`、`query`、`filters`、`result_sets`、`metadata`。每個 ResultSet 以 `key` 表示搜尋路徑或群組，`items` 的順序代表排名。`ResultItem.data` 必填，值為候選 `Document`，`score` 選填。無命中時回空候選。
 
 | 欄位 | 建立與使用方式 |
 |---|---|

@@ -77,7 +77,7 @@ Ingestion 與 Inference 各自受理業務 API，可由同一 Runtime 啟用，�
 | Component Instance（元件實例） | Component 的執行物件；每次執行接收本次參數及 Context。無狀態且可安全併行者可共用，有狀態或綁定特定資源者可依 System／資源分開，不要求每份 Config 各有一份實例 |
 | Pipeline（處理流程） | Module 及其執行規則組成的流程；本產品採固定骨架，依 Config 選擇 Component、參數及核定的組合策略 |
 | Ingestion | 將輸入資料經 Import、Parsing、Chunking、Embedding、Indexing 處理，準備可供查詢的資料／索引 |
-| Inference | 接收問題，由 Inference Input 初始化 QueryContext[]，執行 Query Transformation、Retrieval、依配置進行 Fusion／Rerank，回傳最終排序的檢索結果 |
+| Inference | 接收問題，由 Inference Input 初始化 QueryContext[]，執行 Query Transformation、Retrieval、依配置進行 Fusion／Rerank，回傳 [Inference 結果與版本](06_runtime_api_and_deployment.md#inference-api) |
 
 Module／Component 是職責與選擇層次，不以 Python Class 或 Function 的實作形式區分；實作及 I/O Contract 見 [Engine／Component 開發](03_engine_and_components.md)。Ingestion 與 Inference 透過資料／索引綁定銜接，不要求每次提問都重新 Ingestion。純全文模式略過 Embedding、None 的 pass-through，以及 Fusion 的合併時點等執行規則見 [架構與責任相關章節](#src-03-31-系統組成與管理階層)／Engine手冊；本節不增加通用 DAG 編輯器。
 

@@ -4,14 +4,12 @@
   "title": "Document",
   "type": "object",
   "properties": {
-    "document_id": {
-      "type": "string",
-      "minLength": 1
-    },
+    "document_id": {"$ref": "#/$defs/document_id"},
     "source_revision": {
       "type": ["string", "null"]
     },
     "data_id": {
+      "description": "Chunk identity within a retrieval scope. Its mapping to a chunk may change after rechunking.",
       "type": "string",
       "minLength": 1
     },
@@ -83,6 +81,14 @@
   ],
   "additionalProperties": false,
   "$defs": {
+    "document_id": {
+      "description": "Stable System-scoped source ID. The document-id format requires a UTF-8 byte length no greater than maxLength.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F]+(?![\\s\\S])",
+      "format": "document-id"
+    },
     "denseVector": {
       "type": "object",
       "properties": {

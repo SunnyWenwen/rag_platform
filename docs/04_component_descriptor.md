@@ -29,7 +29,7 @@
 1. 從 Import 設定取得原始 `Document.structdata` 欄位，使用 [Data Meta Schema](02_data_contracts.md#data-meta-schema) 的型別與屬性。
 2. 依有效方法推導該步輸出。內建方法按規則繼承或衍生欄位。Remote Parsing／Chunking 列出實際輸出，保留欄位由 Builder 帶入上游定義，轉型、補值保證及新欄位由產生階段宣告。涵蓋 Embedding 時一併宣告向量名稱、來源、維度及 Profile。
 3. 將有效輸出用於下游的欄位選項、必填性、型別與相依驗證。Indexing 只合併搜尋能力覆寫，再以同一份最終設定推導候選 Schema 及 IndexBinding。選到不存在、型別不符或未保證出現的欄位時保留草稿選值並顯示錯誤。
-4. 用同一有效 Schema 產生 Remote Request／Response 預覽和 Runtime 驗證。Inference 共用 QueryContext[]，候選 Document 引用 System 可檢索 Schema。
+4. 用同一有效 Schema 產生 Remote Request 的 `input`、成功 Response 的 `output` 和 Runtime 驗證，外層沿用 [Remote HTTP 契約](03_engine_and_components.md#remote-api)。Inference 共用 QueryContext[]，候選 Document 引用 System 可檢索 Schema。
 
 Builder 在草稿變更時推導有效 I/O 供欄位選項和預覽。W1 內建 Parser 在檔案來源模式沿用原有 structdata 並產生必填的 `contenttext`，Indexing 則以逐欄覆寫合併全文及 Filter 旗標。這兩條是 Builder 與 Engine 共用的內建推導規則。執行時，Runtime 用同一契約驗證資料及發布設定。
 

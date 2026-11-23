@@ -204,13 +204,8 @@
           "type": "string",
           "minLength": 1
         },
-        "through": {
-          "enum": [
-            "parsing",
-            "chunking",
-            "embedding"
-          ]
-        },
+        "contract_version": {"$ref": "https://rag-builder.example/schemas/remote_api.schema.json#/$defs/contract_version"},
+        "through": {"$ref": "https://rag-builder.example/schemas/remote_api.schema.json#/$defs/ingestion_module"},
         "service_ref": {
           "type": "string",
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
@@ -228,6 +223,7 @@
       "required": [
         "component_id",
         "component_version",
+        "contract_version",
         "through",
         "service_ref",
         "parameters",
@@ -245,13 +241,8 @@
           "type": "string",
           "minLength": 1
         },
-        "through": {
-          "enum": [
-            "query_transformation",
-            "retrieval",
-            "rerank"
-          ]
-        },
+        "contract_version": {"$ref": "https://rag-builder.example/schemas/remote_api.schema.json#/$defs/contract_version"},
+        "through": {"$ref": "https://rag-builder.example/schemas/remote_api.schema.json#/$defs/inference_module"},
         "service_ref": {
           "type": "string",
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
@@ -266,6 +257,7 @@
       "required": [
         "component_id",
         "component_version",
+        "contract_version",
         "through",
         "service_ref",
         "parameters"

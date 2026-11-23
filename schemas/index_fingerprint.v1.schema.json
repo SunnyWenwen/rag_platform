@@ -54,9 +54,10 @@
       "type": "object",
       "properties": {
         "kind": {"const": "remote"},
-        "module": {"$ref": "#/$defs/module"},
-        "through": {"$ref": "#/$defs/module"},
+        "module": {"$ref": "remote_api.schema.json#/$defs/ingestion_module"},
+        "through": {"$ref": "remote_api.schema.json#/$defs/ingestion_module"},
         "adapter_version": {"$ref": "#/$defs/nonempty"},
+        "contract_version": {"$ref": "remote_api.schema.json#/$defs/contract_version"},
         "implementation_revision": {"$ref": "#/$defs/nonempty"},
         "parameters": {
           "description": "Output-affecting parameters resolved from the remote contract. Runtime request values are excluded.",
@@ -64,7 +65,7 @@
         },
         "output_structdata": {"$ref": "#/$defs/effective_structdata"}
       },
-      "required": ["kind", "module", "through", "adapter_version", "implementation_revision", "parameters", "output_structdata"],
+      "required": ["kind", "module", "through", "adapter_version", "contract_version", "implementation_revision", "parameters", "output_structdata"],
       "additionalProperties": false
     },
     "index": {

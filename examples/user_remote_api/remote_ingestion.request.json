@@ -1,4 +1,6 @@
 {
+  "contract_version": "1",
+  "segment": {"module": "parsing", "through": "embedding"},
   "input": {
     "document_id": "manual-001",
     "source_revision": null,

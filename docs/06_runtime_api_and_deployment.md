@@ -194,7 +194,7 @@ Runtime 的 Config 編譯器輸出 [指紋投影 Schema](../schemas/index_finger
 | `version` | 投影規則版本，首版固定為 `1`，參與計算。 |
 | `ingestion` | 依 Import → Parsing → Chunking → Embedding 的實際執行順序列出階段。內建方法以 `kind: builtin`、`module`、`component_id`、`component_version` 識別。每個有效階段攜帶 `output_structdata`，欄位的 `required`、`searchable`、`filterable` 全部展開。 |
 | 內建階段的 `parameters` | 由 Component 投影允許清單產生。Import 保留有效 `source`，欄位約束取自 `output_structdata`。Parsing 保留會改變輸出的生效模式及參數，Passthrough 為 `{}`。Recursive Chunking 保留有效切分／輸出欄位、複製映射、長度、overlap、分隔符及切分選項，並以 `tokenizer_revision` 表示已解析的穩定 Tokenizer 識別。Dense Embedding 保留實際啟用的文字合成與有效模板，向量映射及模型識別由 `index` 記錄。其他 Component 需定義各自的輸出影響投影，編譯器才可判定相容。 |
-| Remote 階段 | `kind: remote` 以 `module`／`through` 表示含首尾的替代範圍，附 `adapter_version`、穩定的 `implementation_revision`、有效 `parameters` 和輸出 `output_structdata`。缺少可解析的實作版本時回報相容性未確認。 |
+| Remote 階段 | `kind: remote` 以 `module`／`through` 表示含首尾的替代範圍，附 `adapter_version`、Remote HTTP 的 `contract_version`、穩定的 `implementation_revision`、有效 `parameters` 和輸出 `output_structdata`。缺少可解析的實作版本時回報相容性未確認。 |
 | `index.component_id`、`component_version`、`structdata` | 解析後的 Indexing 實作識別及套用 overrides 後的有效欄位型別與搜尋能力。 |
 | `index.vector_bindings`、`embedding_spaces` | 兩個物件都以已選入索引的向量名稱為鍵，鍵集合必須一致。前者沿用 IndexBinding 的來源欄位、Profile ID 與維度，後者記錄實際模型 ID 與穩定版本。沒有索引向量時皆為 `{}`。 |
 | `index.mapping`、`settings` | 解析後的 ES 欄位、動態規則、runtime fields、`_source` 及會影響相容性的原生 `analysis`、`similarity`。預設值由目標後端能力與設定解析；無宣告的 `dynamic_templates` 用 `[]`，無定義的 `runtime`、`analysis`、`similarity` 用 `{}`。原生 ES 物件由 ES 驗證。後端若有會改變索引語意而 v1 投影未涵蓋的設定，回報相容性未確認。 |
@@ -356,7 +356,7 @@ Library 仍可直接由 Python 使用；本表描述 Runtime HTTP／工作管理
 - 同一 Pod 內，同一 System 的同一 `document_id` 有有效占用時拒絕再次提交。已登記終態並解除占用的 ES Bulk 逾時工作可重新提交，詳見 [ES 寫入查核](#es-write-control-record)。
 - Run／文件狀態查詢使用受理 Pod 的記憶體。文件存在性與摘要由實際檢索資料索引判斷。
 - 202 表示已接受排隊，不表示解析、Embedding、索引或可搜尋已成功；提交後須可查詢結果。
-- Inference 沿用 query／filters／metadata 輸入，同步回 QueryContext[]；不做 Generation，不因非同步 Ingestion 而新增 InferenceState。
+- Inference 沿用 query／filters／metadata 輸入，同步回 [Inference 成功物件](#inference-api)；不做 Generation，不因非同步 Ingestion 而新增 InferenceState。
 - D-57：整批接收前預檢通過才入列、回 202；入列後逐文件結果，文件無 partial，Run 可 partial，無紀錄回 200＋unknown。這不是要求完成 Parsing／Embedding／Indexing 才回 202。
 - D-57／D-58：首期需要 retire，已確認為直接刪除該 System／document_id 的儲存資料與搜尋索引，不是保留資料的邏輯停用；後續 D-64 確認同步 200＋deleted／not_found，忙碌文件 409，後端／Remote 清理協定仍待細化。排隊與執行中的工作見[批量取消](#ingestion-cancel-api)。
 - D-58：一支 POST /v1/ingestions 接收批次物件，documents 為非空 Document[]；Parser 每次仍接收單份物件，不另開 :batch。
@@ -388,7 +388,7 @@ Run 查詢、文件工作狀態與批量取消都送原受理 Pod。對目標 Ru
 | `GET /documents/{document_id}/exists` | 無 | `200` ＋ `document_exists`，讀實際文件資料。 |
 | `GET /documents?limit=…&cursor=…` | `document_list_query`。 | `200` ＋ `document_list`。以 `document_id` 升冪分頁，Cursor 限同一 System，終頁回 `null`。僅彙整實際可見的非空版本字串，沒有就回 `[]`。資料寫入期間可變動。 |
 | `POST /documents/{document_id}:retire` | 無 | `200` ＋ `document_retire`，同步完成，文件忙碌回 `409`。 |
-| [`POST /queries`](#inference-api) | [InferenceRequest](../schemas/inference_request.schema.json)。 | `200` ＋根層 [QueryContext[]](../schemas/query_context.schema.json)。 |
+| [`POST /queries`](#inference-api) | [InferenceRequest](../schemas/inference_request.schema.json)。 | `200` ＋[inference_response](../schemas/runtime_http.schema.json#/$defs/inference_response)。 |
 
 回應物件及分頁參數的定義見 [Runtime HTTP Schema](../schemas/runtime_http.schema.json)。提交範例、狀態欄位與儲存語意分別見 [Ingestion](#src-21-3-ingestion-的提交與接收)、[Ingestion Run 與文件狀態](#src-21-4-文件狀態與一次提交的狀態)與 [文件管理](#src-21-9-文件資料查詢與直接刪除)。錯誤見 [HTTP 格式與狀態碼](#runtime-http-errors)。
 
@@ -470,7 +470,7 @@ Runtime 登記取消後，取消與狀態查詢皆直接顯示 `cancelled`。若
 <a id="src-21-41-文件級狀態"></a>
 ### 文件級狀態
 
-**document_id 來自 Request 的每份 Document，不需要先在索引中成功存在。**整批預檢通過、入列時即建立 Run 與每份文件的 queued 紀錄；Worker 按進度更新 running、最後可知 Module、狀態時間與結果。Run 與逐文件狀態皆從原受理 Pod 查詢。
+**`document_id` 由呼叫端提供。** 入口、狀態、批量取消、存在查詢與 Retire 均使用同一 [文件識別契約](02_data_contracts.md#document-identities)。帶入 URL 時，以 UTF-8 對文件 ID 做 percent-encoding，作為單一路徑區段；Runtime 解碼一次後驗證。首次匯入可帶尚未存在於索引的 ID。整批預檢通過、入列時即建立 Run 與每份文件的 queued 紀錄；Worker 按進度更新 running、最後可知 Module、狀態時間與結果。Run 與逐文件狀態皆從原受理 Pod 查詢。
 
 | 階段 | Runtime 工作紀錄 | 搜尋資料／判斷 |
 |---|---|---|
@@ -584,7 +584,7 @@ Runtime 登記取消後，取消與狀態查詢皆直接顯示 `cancelled`。若
 <a id="src-21-51-request-與結果"></a>
 ### Request 與結果
 
-`POST /queries` 使用 [InferenceRequest Schema](../schemas/inference_request.schema.json) 與 [QueryContext[] Schema](../schemas/query_context.schema.json)。有命中、無命中及上游失敗的完整回應見 [HTTP JSON 範例](../examples/system_config/README.md#runtime-http-examples)。
+`POST /queries` 使用 [InferenceRequest Schema](../schemas/inference_request.schema.json) 與 [InferenceResponse Schema](../schemas/runtime_http.schema.json#/$defs/inference_response)。有命中、無命中、純外部 Retrieval 及上游失敗的完整回應見 [HTTP JSON 範例](../examples/system_config/README.md#runtime-http-examples)。
 
 ```json
 {"query": "設備多久需要清潔？", "filters": [{"field": "structdata.department", "operator": "eq", "value": "manufacturing"}], "metadata": {"language": "zh-TW"}, "parameters": {"top_k": 5}}
@@ -592,7 +592,9 @@ Runtime 登記取消後，取消與狀態查詢皆直接顯示 `cancelled`。若
 
 `query` 必填，`filters`／`metadata`／`parameters` 選填，預設 []／{}／{}。Runtime 先確定呼叫可操作的 System，依 Inference Input 宣告驗證參數，並依同一 Config Revision 驗證請求 Filter 的有效欄位、運算子和值。Runtime 合併固定 Filter 與請求 Filter 後，再初始化 QueryContext[] 並執行所選 Component。無效 Filter 回輸入驗證錯誤。`filters` 用於資料篩選，System 選擇及授權由 Runtime 的路由和認證設定決定。見 [資料契約](02_data_contracts.md)。
 
-成功 body 根層是 **QueryContext[]**，以 `X-Config-Revision` 回傳所用的 Config 版本。有平台索引時，以 `X-Index-Generation` 回傳所用索引世代。索引與必要查詢依賴已就緒時，空索引可以正常執行 Inference。首版每次請求的所有必要節點、Query 及搜尋路徑成功後才回 `200`。索引不就緒、服務失敗或逾時依原因回錯誤；首版沒有部分成功回應或自動降級。既有錯誤的 HTTP 映射見 [HTTP 與錯誤](#src-21-6-http狀態與錯誤層次提案)。
+成功回應的 `contexts` 承載 [QueryContext[]](../schemas/query_context.schema.json)，`config_revision` 與 `index_generation` 記錄該次查詢實際使用的快照。兩值也透過 `X-Config-Revision` 和 `X-Index-Generation` 回傳，已回的 Header 須與 body 一致。純外部 Retrieval 若未使用平台索引，body 的 `index_generation` 為 `null` 且省略對應 Header。Client 忽略未識別的外層欄位。
+
+索引與必要查詢依賴已就緒時，空索引可以正常執行 Inference。首版每次請求的所有必要節點、Query 及搜尋路徑成功後才回 `200`。索引不就緒、服務失敗或逾時依原因回錯誤；首版沒有部分成功回應或自動降級。既有錯誤的 HTTP 映射見 [HTTP 與錯誤](#src-21-6-http狀態與錯誤層次提案)。
 
 | 執行情境 | 回應 |
 |---|---|
@@ -690,7 +692,7 @@ Runtime 等待 ES Bulk 回應逾時時，將該文件結案為 `failed`，已登
 
 本節定義同一個 System 內以 `document_id` 為單位的 Elasticsearch 更新。一批 Ingestion 中的每份文件各自處理，受理時在 Pod 內檢查占用。整個 System 的索引重建依 [索引生命週期](#system-index-lifecycle) 處理。
 
-Elasticsearch 索引存取層為每次文件寫入產生一個 `write_id`，例如 UUID。同一份文件此次輸出的全部 Chunk 共用此值。將它存入每筆 ES Chunk 的內部欄位（mapping 為 `keyword`）。ES `_id` 由 `document_id`、`write_id`、`data_id` 唯一且穩定地衍生，讓舊批次和新批次在同一索引內並存。`source_revision` 供來源追溯。相同 `document_id` 的新提交依既有覆寫規則執行，即使 `source_revision` 相同而內容有變。`write_id` 用於精確定位寫入批次，時間可供診斷。
+Elasticsearch 索引存取層為每次文件寫入產生一個 `write_id`，例如 UUID。同一份文件此次輸出的全部 Chunk 共用此值。將它存入每筆 ES Chunk 的內部欄位（mapping 為 `keyword`）。ES `_id` 對 `[document_id, write_id, data_id]` 依 RFC 8785 序列化後，以 UTF-8 計算 SHA-256 並輸出小寫十六進位摘要，讓舊批次和新批次在同一索引內並存。`source_revision` 供來源追溯。相同 `document_id` 的新提交依既有覆寫規則執行，即使 `source_revision` 相同而內容有變。`write_id` 用於精確定位寫入批次，時間可供診斷。
 
 <a id="es-write-control-record"></a>
 #### ES 寫入與清理
@@ -943,7 +945,7 @@ MongoDB 保存不等於跨 Pod 索引同步。重建失敗、DB 中斷、Profile
 
 另有待確認的 Query Rewrite 單模組測試提案，見 [Builder UI／Backlog](08_plan_and_decisions.md#rewrite-test-proposal)／UI Backlog手冊 UIB-007：若採用，Backend 以請求草稿呼叫相同 Engine 模組／LLM Adapter，測試不依賴已保存 System 或索引。認證、服務引用與逾時規則仍需核定；接口精確路徑／Envelope 留 Q-019，不新增已凍結的公開 Runtime API。M2 可先由 SDK 驗證模組，Builder 入口屬 M5；Mock 與真實呼叫分開驗收。
 
-Evaluation Runner 於 M6 交付完整驗收，綁定 Dataset／Config／Index／Engine／Judge 版本，逐題呼叫同一 Target，收集實際 ResultSets／排名／來源／錯誤後交 04 評分。重用相同 Retrieval-only Query API；不收集生成答案或做答案正確性評估。併發、快取、重試、成本與 Gate 見 Q-018／Q-027。
+Evaluation Runner 於 M6 交付完整驗收，綁定 Dataset／Config／Index／Engine／Judge 版本，逐題呼叫同一 Target，讀取成功回應的 `contexts`、快照版本及錯誤，按指定 ResultSet 執行 [文件排名評估](03_engine_and_components.md#document-level-evaluation)。重用相同 Retrieval-only Query API；不收集生成答案或做答案正確性評估。併發、快取、重試、成本與 Gate 見 Q-018／Q-027。
 
 AI 助手在 M4 先交付獨立核心與 Python／API 入口：接受需求、明確允許的樣本、可用服務資訊及可選的既有 Config／基準識別，產生受 Schema／Registry 限制的 Config 草稿、理由、Diff、缺少設定與驗證結果。資訊不足可回需補齊的草稿，不宣稱已可執行；不猜服務／憑證，不自動 Ingestion。Config 合法仍需使用者／驗收腳本明確交給 Engine／Runtime 執行，不等同檢索品質已驗收。
 

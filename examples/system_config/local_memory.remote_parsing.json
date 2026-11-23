@@ -43,6 +43,7 @@
         },
         "parsing": {
           "component_id": "remote_api",
+          "contract_version": "1",
           "component_version": "1.0.0",
           "through": "parsing",
           "service_ref": "document-normalizer",

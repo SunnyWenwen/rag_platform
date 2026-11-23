@@ -27,9 +27,9 @@ DEV 由 Builder 下發 System Config，獨立部署則由 Runtime 啟動時讀�
 | `config.variable` | 選填的 System 級一般環境參數 KV，例如切分長度或語言。見 [Variable 與 Secret](#system-secret)。 |
 | `config.pipelines` | 包含 `ingestion`、`inference`。每個有效模組對應一個節點。 |
 | 節點的 `component_id`、`component_version`、`parameters` | 分別選方法、固定版本、保存該方法的設定。個別參數由所選 Descriptor 的 `parameters_schema` 定義。 |
-| Remote 節點的 `through`、`service_ref`、`auth`、`output` | `through` 含括區段最後一個模組，首節點由 Pipeline 上的 key 指定。 `service_ref` 引用環境的外部服務綁定。選填的 `auth.bearer_token` 使用 `{{KEY}}`。Ingestion Remote 另須以 `output` 宣告適用的 `structdata` 或 `vectors`，Inference 依 System 的有效候選 Schema 驗證。 |
+| Remote 節點的 `contract_version`、`through`、`service_ref`、`auth`、`output` | `contract_version` 固定此節點使用的 [Remote HTTP 版本](03_engine_and_components.md#remote-api)，與 `component_version` 各自保存。 `through` 含括區段最後一個模組，首節點由 Pipeline 上的 key 指定。 `service_ref` 引用環境的外部服務綁定。選填的 `auth.bearer_token` 使用 `{{KEY}}`。Ingestion Remote 另須以 `output` 宣告適用的 `structdata` 或 `vectors`，Inference 依 System 的有效候選 Schema 驗證。 |
 
-發布時依固定的 Pipeline 順序核對節點。Remote 區段涵蓋的後續節點在有效設定中省略，由首節點涵蓋。JSON Schema 驗證結構，編譯器檢查覆蓋是否完整且無重疊、元件版本、欄位相依及引用。見 [Runtime 驗證契約](06_runtime_api_and_deployment.md#config-validation-api)。
+新增 Remote 節點時，Builder 填入目前可用的契約版本。發布及匯出沿用已保存的版本。發布時依固定的 Pipeline 順序核對節點。Remote 區段涵蓋的後續節點在有效設定中省略，由首節點涵蓋。JSON Schema 驗證結構，編譯器檢查覆蓋是否完整且無重疊、元件版本、欄位相依及引用。見 [Runtime 驗證契約](06_runtime_api_and_deployment.md#config-validation-api)。
 
 <a id="config-enums"></a>
 ### 固定選項的儲存值

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "UNSUPPORTED_MEDIA_TYPE",
+    "message": "不支援這種 PDF 格式",
+    "retryable": false
+  }
+}

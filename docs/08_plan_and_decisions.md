@@ -334,13 +334,9 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 <a id="q-007"></a>
 ### Q-007 文件／Chunk ID 與 source_revision
 
-- 2026-11-03 D-52：必要 data_id 仍須有效／清單內唯一，但不強制由 fingerprint／ordinal 計算，也不強制將計算資訊寫入 _rag。SDK helper 可選用；穩定／更新語意按實作及此 Q-ID 核定。
-- 2026-10-30 D-47：已同意可重現 ID 方向；[資料契約](02_data_contracts.md#data-flow)～6 提供有效切分計畫 fingerprint＋文件內全域 ordinal 的 Python 參考演算法。仍待檔案拆多文件、CSV 整批替換的 ID 生成、跨語言 canonicalization 與正式遷移。
-- D-65 確認文件摘要清單回 document_id＋source_revisions[]，彙整實際儲存 Chunk 的非空版本字串。覆寫以 `document_id` 為準，接受相同 `source_revision` 帶入新內容。來源版本供追溯，`""`、`null` 或版本字串都原樣保留，省略時下游也省略。沒有非空版本字串的文件回 `source_revisions: []`。
-- 建議：跨批更新要求穩定 document_id，內容版本與 Config 分開；採明確可重現的衍生 ID 規則。
-- 替代：每批當新文件；需接受無法自然更新與重複資料後果。
-- 負責角色：Engine＋資料／產品；阻擋 M1 正式 ID 規範及 M2 更新。
-- 決策：未定；更新 Engine／資料契約手冊／UI手冊／Runtime／部署手冊。
+- 2026-11-23 已確認 [文件與切片識別規則](02_data_contracts.md#document-identities)、[Builder 的 CSV／檔案主鍵](07_builder_ui.md#builder-source-document-id)與 [ES 寫入批次識別](06_runtime_api_and_deployment.md#elasticsearch-document-replacement)。更新沿用同一 `document_id`，Engine 對內建切分產生可重現的 ID，Remote Chunking 自行產生唯一 ID。
+- D-65 的來源版本及文件摘要保留現行規則，見 [Document](02_data_contracts.md#document)與[文件清單](06_runtime_api_and_deployment.md#src-21-93-文件摘要清單d-65-已確認核心)。
+- 待驗收：多文件主鍵碰撞、跨語言序列化一致性、Remote Chunking 與同一文件重切分後的覆寫。
 
 <a id="q-008"></a>
 ### Q-008 重送、更新與刪除
@@ -403,7 +399,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - 已確認：內建 Retrieval 先依 `per_route_k` 限制每 Query／每路，多路時須以所選 RRF 或 Sum Score 融合，每 Query 交付一份。跨 Query 可選 Retrieval 或 Rerank 完成後，並可再分組及截斷。
 - 已確認：分組可選多個候選 Document 單值欄位，開啟時預選 `document_id`。Rerank=None 時仍可執行後置跨 Query 規則。
 - 2026-11-23 確認：RRF 與 Sum Score 只用於單一 Query 的多路召回。跨 Query 依 `data_id` 保留最高分，Group By 保留各組最高分。Query Transformation 設定合併時點與選填分組、Top N。見 [Engine 執行規則](03_engine_and_components.md#result-processing)及 [發布格式](05_system_config.md#inference-result-processing)。
-- 待實作與驗收：RRF／Sum Score 的專屬參數、可驗算的融合分數與同分順序、ES Adapter，以及 Remote Query Transformation 將多 Query 交給平台處理時的節點設定。真實資料與服務的整合驗收留在 M2。Local Search Adapter 列為後續。
+- 待實作與驗收：RRF／Sum Score 的專屬參數、可驗算的融合分數與同分順序、ES Adapter，以及 Remote Query Transformation 將多 Query 交給平台處理時的節點設定。真實資料與服務的整合驗收留在 M2，涵蓋 ES 原生融合的命中識別、同文件不同切片、不同寫入批次及跨 Query。Local Search Adapter 列為後續。
 
 <a id="q-015"></a>
 ### Q-015 Revision、有效 Config Hash 與 Index 版本
@@ -439,18 +435,18 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 <a id="q-018"></a>
 ### Q-018 Evaluation 範圍與 Gate
 
-- 不清楚：首批指標、Dataset／Ground Truth 格式、Judge／Rubric、Chunk／Document 層級、Rerank 前後、公開檢索 Target、Gate 門檻。
-- 已移除答案正確性／Faithfulness 與自訂答案 JSON 的驗收；Evaluation 聚焦檢索排名、延遲、Usage／錯誤。
+- 不清楚：首批指標及精確公式、Dataset Schema、Judge／Rubric、原文片段比對、Rerank 前後、公開檢索 Target、Gate 門檻。
+- 已移除答案正確性／Faithfulness 與自訂答案 JSON 的驗收；Evaluation 聚焦檢索排名、延遲、Usage／錯誤。2026-11-23 確認以 `document_id` 標註並依[唯一文件排名](03_engine_and_components.md#document-level-evaluation)評估。
 - 建議：先有可驗算的 Retrieval 指標與操作指標，再加明示 Judge；缺資料拒絕或 skipped。
 - 替代：先 End-to-end Judge；不得冒充有可靠 Retrieval Ground Truth。
 - 負責角色：產品／資料＋Engine＋Backend；阻擋 M6 正式評估／Gate，不卡 Query 主線。
-- 決策：未定；更新 架構／Engine 手冊／UI手冊／Runtime／部署手冊。
+- 文件標註與排名單位已定。完整評估格式與門檻在 M6 定案。
 
 <a id="q-019"></a>
 ### Q-019 API／HTTP Envelope 與呼叫認證
 
 - [Runtime API 規格](06_runtime_api_and_deployment.md)定義 W1 HTTP 契約。[Builder 開發契約索引](09_w1_builder_runtime_contract.md)提供所需規格、Schema 與 Mock 入口。
-- D-60 的 Basic Auth、D-64 的可信 System 路由與錯誤核心、D-65 的文件摘要格式沿用。D-42 的欄位選項由 Builder 依 Catalog 與草稿推導。Query 成功 body 保持 `QueryContext[]`，版本以 Header 回傳。
+- D-60 的 Basic Auth、D-64 的可信 System 路由與錯誤核心、D-65 的文件摘要格式沿用。D-42 的欄位選項由 Builder 依 Catalog 與草稿推導。2026-11-23 定案 [Query 成功物件](06_runtime_api_and_deployment.md#inference-api)，Context 陣列置於 `contexts`，所用快照以 body 及 Header 交付。
 - DEV 管理 API 與 Ingestion／Inference 是否使用不同帳密、業務帳密是否綁定個別 System，待認證機制討論。需一起確定認證檢查的位置與部署時如何注入帳密。
 - 管理請求逾時沿用同一 `Idempotency-Key` 查核或重送。已結束的操作結果只需覆蓋 Builder 的重送與查核窗口，初始候選為可配置的 1 小時。尚未結束或結果待查的操作保留至安全結算。結果過期時先查 System 狀態和原操作，查證後才能重新發起變更。正式期限與過期時的查核細節待定。
 - 已確認：卸載某 System 在目標 Runtime 的 Ingestion 後，該目標暫停該 System 的歷史 Run 查詢。ES 保留規則沿用，首版透過已載入同一綁定的 Ingestion 查詢。
@@ -550,7 +546,8 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 ### Q-028 User Remote API 整合
 
 - 已確認：支援連續區段、固定 HTTP 封裝、上游推導 Request、輸出欄位與向量宣告、共用 QueryContext[]、外部候選符合有效 System Schema。Remote 可使用傳入的 filters，自行決定過濾、排序與截斷。Bearer 認證以 `{{KEY}}` 取用同一 System 的啟動設定，由 Adapter 組成 Header。
-- 待核定：正式 Config 序列化、連線驗證、逾時及重試政策、錯誤觀測與容量門檻。
+- 2026-11-23 已確認 [Remote v1](03_engine_and_components.md#remote-api) 及 [OpenAPI](../examples/user_remote_api/openapi.json)。Config 固定 Wire 版本，封裝含實際區段，Header 提供呼叫追蹤，失敗提供重試提示。
+- 待核定：連線驗證、實際逾時及重試預算、錯誤觀測與容量門檻、未來同時支援多版本的遷移期限。
 - 驗收：同區段呼叫一次、無重疊、驗證失敗可定位、內建與 Remote 切換、外部 Retrieval 與下游相容、匯出可解析部署綁定。見 [Engine](03_engine_and_components.md#remote-api)。
 
 ## 決策與待辦的唯一登錄位置
@@ -734,7 +731,7 @@ Builder 可按 [W1 開發契約索引](09_w1_builder_runtime_contract.md) 實作
 | 跨 Query 合併的發布與執行 | Query Transformation 位置與多 Query 必須啟用已確認。內建 Rewrite 的 [發布格式](05_system_config.md#inference-result-processing)可供 Builder 開發，Remote 節點設定及 M2 真實執行驗收見 [Q-014](#q-014)。 |
 | 自行提供模型／索引服務的發布 | 定義每種服務引用對應哪個環境綁定，自訂模型和維度如何對上 Profile。見 [Q-003](#q-003)、[Q-021](#q-021) 與 [參數適用範圍](04_component_descriptor.md#component-parameter-scope)。 |
 | Variable 與 Secret | [System 設定](05_system_config.md#system-secret)已定義 DEV 測試值、部署注入與 Module 引用；實際 Builder／Runtime 串接依 [Q-021](#q-021)／[Q-028](#q-028) 驗收。 |
-| 真實 Ingestion 的識別與追溯 | W1 Mock 可帶明確 `document_id` 並模擬候選的 `data_id`。來源版本可省略或原樣保留字串及 `null`。切分 ID 的穩定性與更新語意依 [Q-007](#q-007) 核定。 |
+| 真實 Ingestion 的識別與追溯 | W1 Mock 可帶明確 `document_id` 並模擬候選的 `data_id`。來源版本可省略或原樣保留字串及 `null`。識別規則已定，真實 Chunking、Remote 唯一性及 ES 覆寫依 [Q-007](#q-007) 驗收。 |
 | Runtime 重新啟動後沿用既有 ES 索引 | [指紋 v1](06_runtime_api_and_deployment.md#index-fingerprint-v1-proposal) 已有 JSON Schema、序列化規則和可驗證範例。既有索引遷移與實際 ES 整合依 [Q-015](#q-015) 驗收。 |
 | 多個 Runtime 共用同一 System 的 ES 索引 | 以實際 ES 驗證 [Pod 內整批受理](06_runtime_api_and_deployment.md#pod-local-ingestion-control)、取消與首次寫入競爭、逾時重匯及舊批次清理。另驗證獨立的 Inference Pod 可讀同一索引，以及管理操作遵循 [System 排空條件](06_runtime_api_and_deployment.md#system-ingestion-drain)。 |
 | FTEST／ENT 獨立部署 | Export 的設定載體、服務與探針接線、索引不存在時的建立入口及滾動切換順序。見 [Q-021](#q-021)。 |

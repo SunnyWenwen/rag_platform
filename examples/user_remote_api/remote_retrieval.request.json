@@ -1,4 +1,6 @@
 {
+  "contract_version": "1",
+  "segment": {"module": "retrieval", "through": "retrieval"},
   "input": [
     {
       "ori_query": "如何保養設備？",

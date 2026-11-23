@@ -1,5 +1,6 @@
 """Verify the HTTP Mock fixtures without starting Runtime or any backing service."""
 import json
+import sys
 from dataclasses import asdict
 from hashlib import sha256
 from pathlib import Path
@@ -12,21 +13,26 @@ from validate_descriptor_draft import ConfigError, compile_local_example, valida
 
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
+from contract_validation import contract_formats
+
 SCHEMAS = {path.name: json.loads(path.read_text()) for path in (HERE.parents[1] / "schemas").glob("*.json")}
 REGISTRY = Registry().with_resources((schema["$id"], Resource.from_contents(schema)) for schema in SCHEMAS.values())
 SYSTEM_PATH = "/internal/v1/systems/"
 DRAFT_KEYS = ("runtime_ref", "catalog_revision", "draft_revision")
 HTTP_SCHEMA = SCHEMAS["runtime_http.schema.json"]
 DOCUMENT_STATES = HTTP_SCHEMA["$defs"]["document_status"]["enum"]
+FORMATS = contract_formats(SCHEMAS["document.schema.json"])
+
 
 def schema(name):
-    return Draft202012Validator(SCHEMAS[name], registry=REGISTRY)
+    return Draft202012Validator(SCHEMAS[name], registry=REGISTRY, format_checker=FORMATS)
 
 
 def validate_http(name, value):
     definition = {"$ref": f'{HTTP_SCHEMA["$id"]}#/$defs/{name}'}
     Draft202012Validator(
-        definition, registry=REGISTRY, format_checker=Draft202012Validator.FORMAT_CHECKER
+        definition, registry=REGISTRY, format_checker=FORMATS
     ).validate(value)
 
 
@@ -41,6 +47,15 @@ def verify_index_fingerprint(fields, vectors, system_id, index_generation):
     definition = SCHEMAS["index_fingerprint.v1.schema.json"]
     projection_check = schema("index_fingerprint.v1.schema.json")
     projection_check.validate(projection)
+    remote_stage = {
+        "kind": "remote", "module": "parsing", "through": "embedding",
+        "adapter_version": "1.0.0", "contract_version": "1", "implementation_revision": "external-v1",
+        "parameters": {}, "output_structdata": projection["ingestion"][-1]["output_structdata"],
+    }
+    remote_projection = {**projection, "ingestion": [projection["ingestion"][0], remote_stage]}
+    projection_check.validate(remote_projection)
+    del remote_stage["contract_version"]
+    assert not projection_check.is_valid(remote_projection)
     meta_check = Draft202012Validator({"$ref": definition["$id"] + "#/$defs/mapping_meta"}, registry=REGISTRY)
     meta_check.validate(meta)
     assert meta["system_id"] == system_id
@@ -312,9 +327,12 @@ def verify(scenarios):
                 schema("inference_request.schema.json").validate(sent)
                 if status == 200:
                     validate_filters(sent.get("filters", []), index["filters"], "/filters")
-                    schema("query_context.schema.json").validate(body)
-                    assert response["headers"]["X-Config-Revision"] == "revision-1"
-                    for context in body:
+                    validate_http("inference_response", body)
+                    assert body["config_revision"] == response["headers"]["X-Config-Revision"]
+                    assert body["index_generation"] == response["headers"].get("X-Index-Generation")
+                    if body["index_generation"] is None:
+                        assert "X-Index-Generation" not in response["headers"]
+                    for context in body["contexts"]:
                         assert context["ori_query"] == sent["query"]
                         assert context["filters"] == (
                             initial_config["pipelines"]["inference"].get("fixed_filters", [])
@@ -327,8 +345,19 @@ def verify(scenarios):
 
     document, = next(item["request"]["body"]["documents"] for item in happy
                      if item["request"]["path"].endswith("/ingestions"))
-    contexts = next(item["response"]["body"] for item in happy if item["request"]["path"].endswith("/queries"))
-    candidate = contexts[0]["result_sets"][0]["items"][0]["data"]
+    query_response = next(item["response"]["body"] for item in happy if item["request"]["path"].endswith("/queries"))
+    response_check = Draft202012Validator(
+        {"$ref": f'{HTTP_SCHEMA["$id"]}#/$defs/inference_response'}, registry=REGISTRY
+    )
+    assert not response_check.is_valid(query_response["contexts"])
+    assert not response_check.is_valid({k: v for k, v in query_response.items() if k != "index_generation"})
+    validate_http("inference_response", {**query_response, "index_generation": None, "warnings": []})
+
+    document_check = schema("document.schema.json")
+    document_check.validate({"document_id": "設" * 85 + "a"})
+    for bad_id in ("", "設" * 86, "a\nb", "a\u0085b", "a\ud800"):
+        assert not document_check.is_valid({"document_id": bad_id})
+    candidate = query_response["contexts"][0]["result_sets"][0]["items"][0]["data"]
     listing = next(item["response"]["body"]["documents"] for item in happy
                    if urlsplit(item["request"]["path"]).path.endswith("/documents"))
     assert candidate["document_id"] == document["document_id"]
