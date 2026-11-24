@@ -15,6 +15,7 @@
 - `src/rag_engine/contracts/data/` 不可手改。規格變更時先改 rag_platform，再執行 `make sync-contracts`（在 rag_platform 內預設取 `../..`，其他位置加 `PLATFORM=<rag_platform 路徑>`）。
 - Runtime 一個 Pod 只能跑一個程序。不要加 gunicorn、多 worker 或跨程序共享狀態。
 - `runtime/ingestion.py` 中修改占用、Queue、Run 狀態的程式碼不能有 `await`。
+- LangGraph 節點之間傳值只能放在 state。每個節點拿到的 `config["configurable"]` 是副本，在節點內寫入後面的節點看不到；它只放呼叫端傳入的唯讀值。
 - 會影響索引內容的設定一定要進 `engine/compiler.py` 的指紋投影；純查詢參數不能進。
 - 錯誤一律用 `ApiError`（runtime）或 `EngineError` 子類（engine 以下），代碼要在 rag_platform 06 的錯誤表中。
 - Log 不得含 Secret 值、`Authorization` 或文件原文全文。
@@ -26,7 +27,10 @@ make install        # uv sync
 make check          # 全部檢查
 make run            # 本機示範：記憶體索引＋hash 向量＋測試資源，帳密 mock/mock
 make test-es        # 需要 RAG_TEST_ES_URL，對真實 ES 驗證
+make smoke          # 對啟動中的 Runtime 走完整流程（預設 http://127.0.0.1:8080，可加 URL=...）
 ```
+
+測試分層與換成公司環境的做法見 `docs/testing.md`。
 
 ## 新增一個內建 Component
 

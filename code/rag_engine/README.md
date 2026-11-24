@@ -6,6 +6,7 @@ RAG System Factory 的 Engine、內建 Components 與 Runtime API。Builder（�
 - 技術選型：[docs/tech_stack.md](docs/tech_stack.md)
 - 程式架構：[docs/architecture.md](docs/architecture.md)
 - 交接狀態與後續工作：[docs/roadmap.md](docs/roadmap.md)
+- 測試方式：[docs/testing.md](docs/testing.md)
 - 開發 Agent 規則：[AGENTS.md](AGENTS.md)
 
 ## 快速開始
@@ -24,7 +25,11 @@ make check
 make run
 ```
 
-`make run` 以記憶體索引、hash 向量與測試資源在 `http://127.0.0.1:8080` 啟動 DEV Runtime，管理帳密 `mock`／`mock`，只供本機示範。
+`make run` 以記憶體索引、hash 向量與測試資源在 `http://127.0.0.1:8080` 啟動 DEV Runtime，管理帳密 `mock`／`mock`，只供本機示範。另開一個終端機執行下列指令，會對它走完整個 Builder 流程：
+
+```bash
+make smoke
+```
 
 ## 主要環境變數
 

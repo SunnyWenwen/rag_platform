@@ -2,11 +2,13 @@
 
 ## 目前狀態
 
-M1 主流程（結構化資料 → Recursive 切分 → Dense Embedding → ES → 查詢）與兩條 LangGraph 已寫好，並在記憶體索引、hash 向量與測試 tokenizer 上端到端跑通。接真實 ES 與 bge-m3 的部分尚未驗證，M2 的方法尚未實作。
+M1 的程式部分已完成：主流程（結構化資料 → Recursive 切分 → Dense Embedding → ES → 查詢）、兩條 LangGraph、內建 Retrieval 參數的 `{{KEY}}` 取值，以及 FTEST／ENT 獨立部署模式。這些都在記憶體索引、hash 向量與測試 tokenizer 上端到端跑通，並以 `make run`＋`make smoke` 用真實 HTTP 操作過完整流程。接真實 ES 與 bge-m3 的部分尚未驗證，M2 的方法尚未實作。測試分層與換成公司環境的做法見 [testing.md](testing.md)。
 
 | 狀態 | 項目 | 證據 |
 |---|---|---|
-| 已實作並有測試 | DEV 的 17 個 HTTP 操作、MCP、Health、Basic 認證、`X-Request-Id`、錯誤格式 | `tests/test_runtime_flow.py`、`tests/test_mcp.py`（官方 MCP client 實測）；回應皆以 `runtime_http.schema.json` 驗證 |
+| 已實作並有測試 | DEV 的 17 個 HTTP 操作、MCP、Health、Basic 認證、`X-Request-Id`、錯誤格式 | `tests/test_runtime_flow.py`、`tests/test_mcp.py`（官方 MCP client 實測）；回應皆以 `runtime_http.schema.json` 驗證；`scripts/smoke_dev_runtime.py` 對啟動中的 Runtime 走真實 HTTP |
+| 已實作並有測試 | 內建 Retrieval 參數的 `{{KEY}}`：先取 Request 值（含宣告預設），再取 Variable 並依參數型別解析；發布時能驗的先驗，只能由 Request 提供的逐次驗證 | `tests/test_engine_units.py`、`tests/test_runtime_flow.py` |
+| 已實作並有測試 | FTEST／ENT 獨立部署模式（`RAG_MODE=standalone`）：匯出格式 Config、環境變數取值、`/v1` 與 `/mcp`、單一流程、索引不存在時 not ready | `tests/test_standalone.py` |
 | 已實作並有測試 | 生命週期：initialize、reload、update（沿用／重建）、recover_index、detach、DELETE、Idempotency-Key、STALE_CONTEXT（記憶體索引） | `tests/test_runtime_flow.py` |
 | 已實作並有測試 | 匯入控制：佇列、asyncio Worker、文件占用、整批衝突、取消含 `cancelling`、Bulk 逾時、紀錄保留 | `tests/test_ingestion_control.py` |
 | 已實作並有測試 | Ingestion LangGraph：解析（直傳或 Remote）→ Recursive 切分 → Dense Embedding；寫入 ES 在圖外由 Runtime 處理 | `tests/test_runtime_flow.py`、`tests/test_remote_and_embedding.py` |
@@ -16,7 +18,6 @@ M1 主流程（結構化資料 → Recursive 切分 → Dense Embedding → ES �
 | 已寫、未對真實服務驗證 | bge-m3 Embedding client | 只有 MockTransport 測試（R2） |
 | 已寫、未對真實服務驗證 | 載入 bge-m3 `tokenizer.json` | 開發環境拿不到檔案，尚未執行過（R2） |
 | 已寫、未對真實服務驗證 | PLED ES 位址組法（`RAG_PLED_ES_URL_TEMPLATE`） | 未測試（R1） |
-| 已寫、沒有測試 | FTEST／ENT 獨立部署模式的啟動流程（`RAG_MODE=standalone`） | 見 R4 |
 | 還沒做 | 見 R4 功能缺口 | |
 
 ## 建議順序
@@ -43,26 +44,33 @@ Base image 已定為 `python:3.12.13-slim-bookworm`。套上公司的 PyPI 映�
 ### R3 DEV 上線
 
 1. 建 Image、套 `deploy/k8s/dev-runtime.yaml`，接 Istio 與 Gateway（見 rag_platform `examples/system_config/deployment.istio-http.example.yaml`）。
-2. 讓 rag_platform 的 `examples/system_config/test_runtime_http_contract.py` 可以改打真實 Runtime：只驗 Schema、OpenAPI 與狀態轉移，不比對 Mock 的固定 body。
+2. 執行 `make smoke URL=<DEV Runtime 位址>`（設定 `RAG_SMOKE_MANAGEMENT_USERNAME`／`_PASSWORD`），走完 17 個操作與 MCP，作為上線驗收。rag_platform 的 `test_runtime_http_contract.py` 綁定 Mock 的情境重設與固定 body，不拿來打真實 Runtime。
 3. 和外包 Builder 一起跑 Catalog → 預檢 → 發布 → 匯入 → 查詢 → 取消 → 卸載。
 
 ### R4 功能缺口（依里程碑）
 
 | 缺口 | 里程碑 | 備註 |
 |---|---|---|
-| 內建 Inference 參數的 `{{KEY}}` 取值 | M1 | 目前編譯時拒絕，見 05#parameter-references |
 | `content` 來源與檔案 Parser | M2 | Q-005；目前只有 `passthrough` |
-| Fixed-size、Header-aware 切分；`preserve_original`、`include_original_chunk` | M2 | 目前編譯時拒絕 |
+| Fixed-size、Header-aware 切分；`preserve_original`、`include_original_chunk` | M2 | 目前編譯時拒絕。Fixed-size 的 Token 邊界與 offset 規則待 Q-004；Header-aware 需要檔案 Parser（Q-005）；兩者也還沒列進 Runtime Catalog |
 | Rewrite（LLM）與 Rerank `model_api` | M2 | Catalog 尚未列出 |
 | Remote Query Transformation 產生多 Query 後的平台合併設定 | M2 | Q-014／Q-028，目前用預設合併 |
 | FTEST／ENT 首次建立索引的指令 | M7 | rag_platform `docs/todo_enhance.md#standalone-index-initialization` |
 | SIGTERM 優雅關閉 | 後續 | `todo_enhance.md#runtime-graceful-shutdown` |
-| Readiness 檢查 ES 連線、OpenTelemetry | M3 | |
-| 獨立部署模式（`RAG_MODE=standalone`）的自動測試 | M7 | 程式已寫，需補啟動、載入 Config、查核索引與只啟用單一流程的測試 |
+| OpenTelemetry | M3 | Readiness 依 06 只檢查服務初始化（獨立部署另檢查綁定索引），不檢查 ES 連線 |
 | 切分改用 `asyncio.to_thread` | 暫不做 | 依 KISS 先維持單執行緒；查詢明顯被大文件切分拖慢時再評估 |
 | 事件迴圈延遲 Log | 暫不做 | 同上；需要判斷是否改多程序 Worker 時再加 |
 | Ingestion 多程序 Worker | 後續優化 | 需要時再啟動，見 rag_platform `docs/todo_enhance.md#ingestion-process-workers` |
 | 未載入 System 的 GET 查核只查 `dev_test` 叢集 | M3 | PLED 叢集的位址需要 Config，未載入時無從得知 |
+
+## 補測試時發現並已修正的問題
+
+| 問題 | 影響 | 修正 |
+|---|---|---|
+| 查詢的 Request 參數寫在 `config["configurable"]`，LangGraph 每個節點拿到的是副本 | Remote Inference 節點收不到 Request 參數，`{{KEY}}` 只能取到 Variable 或報缺值 | 改放 `InferenceState`；`test_remote_rerank_receives_request_parameters` |
+| 單一 System 的匯入 Queue 額滿回 `429 RATE_LIMITED` | 與 06 不符，Builder 會用錯的分流 | 改回 `503 RUNTIME_CAPACITY_EXHAUSTED`；`test_full_queue_answers_runtime_capacity_exhausted` |
+| `ContractError` 是 frozen dataclass | 例外被重新拋出時變成 `FrozenInstanceError` | 改成一般 dataclass |
+| 獨立部署啟動錯誤包在 MCP 的 TaskGroup 裡；`RAG_INDEX_GENERATION` 格式沒檢查 | 部署錯誤訊息難讀；格式錯時要到回應才失敗 | 先載入 System 再啟動 Worker 與 MCP；啟動時檢查 UUID v4 |
 
 ## 已回寫 rag_platform 的實作決定
 
