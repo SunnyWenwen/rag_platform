@@ -14,6 +14,9 @@
 
 - 遵守 KISS：先寫最簡單、能讀懂的版本。優先用一般函式、`if`／`for` 與 dataclass；不要為了少幾行而用 walrus、metaclass、自訂 decorator、泛型、動態產生函式或過度抽象。效能或擴充需求真的出現時再改，並在 `docs/roadmap.md` 記錄原因。
 - 併行只用單程序 asyncio。不要加 `asyncio.to_thread`、執行緒池或多程序 Worker；需要時先在 roadmap 提出，經確認後再做。
+- 檢查與執行之間只要有 `await`，就在最後一個 `await` 之後、執行之前再檢查一次。例如匯入路由讀完 body 後再核對流程入口，之後到入列不再 `await`。
+- 管理操作先關閉要影響的入口，再檢查工作、再等待；失敗時恢復入口。
+- 寫測試前過一遍 `docs/testing.md` 的「測試設計檢查表」；改到 06 規定的行為時同步更新 `docs/spec_coverage.md`。
 - 每次修改後執行 `make check`（ruff、mypy、import-linter、pytest），全部通過才算完成。新行為要有測試。
 - HTTP 回應形狀以 `src/rag_engine/contracts/data/schemas/runtime_http.schema.json` 為準；測試用 `validate_http(...)` 驗證每個回應。
 - `src/rag_engine/contracts/data/` 不可手改。規格變更時先改 rag_platform，再執行 `make sync-contracts`（在 rag_platform 內預設取 `../..`，其他位置加 `PLATFORM=<rag_platform 路徑>`）。

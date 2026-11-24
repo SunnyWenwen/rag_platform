@@ -9,7 +9,7 @@ M1 的程式部分已完成：主流程（結構化資料 → Recursive 切分 �
 | 已實作並有測試 | DEV 的 17 個 HTTP 操作、MCP、Health、Basic 認證、`X-Request-Id`、錯誤格式 | `tests/test_runtime_flow.py`、`tests/test_mcp.py`（官方 MCP client 實測）；回應皆以 `runtime_http.schema.json` 驗證；`scripts/smoke_dev_runtime.py` 對啟動中的 Runtime 走真實 HTTP |
 | 已實作並有測試 | 內建 Retrieval 參數的 `{{KEY}}`：先取 Request 值（含宣告預設），再取 Variable 並依參數型別解析；發布時能驗的先驗，只能由 Request 提供的逐次驗證 | `tests/test_engine_units.py`、`tests/test_runtime_flow.py` |
 | 已實作並有測試 | FTEST／ENT 獨立部署模式（`RAG_MODE=standalone`）：匯出格式 Config、環境變數取值、`/v1` 與 `/mcp`、單一流程、索引不存在時 not ready | `tests/test_standalone.py` |
-| 已實作並有測試 | 生命週期：initialize、reload、update（沿用／重建）、recover_index、detach、DELETE、Idempotency-Key、STALE_CONTEXT（記憶體索引） | `tests/test_runtime_flow.py` |
+| 已實作並有測試 | 生命週期：initialize、reload、update（沿用／重建）、recover_index、detach、DELETE、Idempotency-Key、STALE_CONTEXT、重建中斷後續作（記憶體索引）。逐條對照見 [spec_coverage.md](spec_coverage.md) | `tests/test_runtime_flow.py`、`test_lifecycle_rules.py`、`test_lifecycle_safety.py`。註：`reload`、`recover_index` 在 2026-11-24 前其實沒有測試，之前這列寫錯了 |
 | 已實作並有測試 | 匯入控制：佇列、asyncio Worker、文件占用、整批衝突、取消含 `cancelling`、Bulk 逾時、紀錄保留 | `tests/test_ingestion_control.py` |
 | 已實作並有測試 | Ingestion LangGraph：解析（直傳或 Remote）→ 切分 → Dense Embedding；寫入 ES 在圖外由 Runtime 處理 | `tests/test_runtime_flow.py`、`tests/test_remote_and_embedding.py` |
 | 已實作並有測試 | 切分三種方法：Recursive；Fixed-size（固定 Token 視窗，規格範例與邊界案例）；Header-aware（Markdown ATX 標題切段、程式碼區塊、前言段、無標題退回 Recursive）。Catalog 由 rag_platform 的 Descriptor registry（`builder_form.descriptors.json`）依 `IMPLEMENTED` 篩選 | `tests/test_engine_units.py`、`tests/test_runtime_flow.py` |
@@ -85,6 +85,13 @@ Base image 已定為 `python:3.12.13-slim-bookworm`。套上公司的 PyPI 映�
 | 重啟後未載入的 PLED System 只在預設 ES 查核 | GET 回錯誤的 `404`、DELETE 回錯誤的 `204` 並留下索引 | 部署可連 PLED 時改回 `503 SYSTEM_STATE_UNKNOWN` |
 | `context_revision` 只綁 Config 與本機版本 | 用一般驗證的結果或改過的草稿版本仍能套用 | 依 06 綁定目標、Catalog、Config、草稿、流程、操作、預期綁定與預檢結果 |
 | ES Client 快取鍵只有網址與帳號 | 密碼輪替後仍用舊連線 | 快取鍵含密碼（只在記憶體，不寫 Log） |
+| 重建續作只靠程序記憶體；重建待續時 DELETE 仍回 `204` | Runtime 重啟後無法依原計畫續建；原操作被 DELETE 打斷 | 原世代已不存在且候選版需重建時預檢回 `rebuild_required`，續作依實體索引與 `created_by_operation_id`；待續期間其他 PUT／DELETE／detach 回 `409 SYSTEM_BUSY`（06 已補充） |
+| 重建先刪舊索引才查核目標世代 | 目標等於舊世代時原地重建；目標被占用時舊索引已刪 | 關入口與刪除前先確認目標世代是新的且未被其他操作建立 |
+| 帶綁定的 GET 回傳本機舊 Snapshot 的 `created_by_operation_id` | Builder 誤判新索引是否由本次操作建立 | 取自指定的實體索引，載入與就緒仍取本機 |
+| 同一操作在處理中重送時回 `409 SYSTEM_BUSY` | 與 06「同程序仍在處理時先等結果」不符 | 同一 `Idempotency-Key` 的重送等原操作完成並回其結果（逐條對照時發現） |
+| 已載入時再 `initialize`：預檢回 `SYSTEM_STATE_CONFLICT`，PUT 卻回 `REVISION_CONFLICT` | 預檢與套用的錯誤不一致 | PUT 先回報預檢的阻擋原因（逐條對照時發現） |
+| `recover_index` 未檢查 `config_revision` 等於 `recovery_from.config_revision` | 可用恢復操作換到其他版本 | 不符回 `422`，`path: /config_revision`（逐條對照時發現） |
+| `reload` 不相容時的代碼 `INDEX_FINGERPRINT_MISMATCH` 不是 06 的範例代碼 | Builder 依代碼分流時對不上 | 改用 `INDEX_RECONNECT_INCOMPATIBLE`（逐條對照時發現） |
 | 查詢的 Request 參數寫在 `config["configurable"]`，LangGraph 每個節點拿到的是副本 | Remote Inference 節點收不到 Request 參數，`{{KEY}}` 只能取到 Variable 或報缺值 | 改放 `InferenceState`；`test_remote_rerank_receives_request_parameters` |
 | 單一 System 的匯入 Queue 額滿回 `429 RATE_LIMITED` | 與 06 不符，Builder 會用錯的分流 | 改回 `503 RUNTIME_CAPACITY_EXHAUSTED`；`test_full_queue_answers_runtime_capacity_exhausted` |
 | `ContractError` 是 frozen dataclass | 例外被重新拋出時變成 `FrozenInstanceError` | 改成一般例外類別（不用 dataclass，避免例外無法 hash） |

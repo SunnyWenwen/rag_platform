@@ -8,7 +8,9 @@ applies one operation per System at a time.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -48,7 +50,7 @@ _BLOCKED_ERRORS = {
     "SYSTEM_STATE_CONFLICT": "SYSTEM_STATE_CONFLICT",
     "PUBLISHED_INDEX_MISSING": "INDEX_CONFLICT",
     "PUBLISHED_INDEX_PRESENT": "INDEX_CONFLICT",
-    "INDEX_FINGERPRINT_MISMATCH": "INDEX_CONFLICT",
+    "INDEX_RECONNECT_INCOMPATIBLE": "INDEX_CONFLICT",
 }
 
 
@@ -111,12 +113,29 @@ class SystemRegistry:
         self.queries = queries
         self.systems: dict[str, LoadedSystem] = {}
         self._locks: dict[str, asyncio.Lock] = {}
+        # system_id -> Idempotency-Key of the management operation running now. A resend of that
+        # same operation waits for its result instead of being refused (06 line 134).
+        self._in_flight: dict[str, str] = {}
         self.idempotency = IdempotencyStore(settings.idempotency_retention_seconds)
 
     # ------------------------------------------------------------------ status
 
     def _lock(self, system_id: str) -> asyncio.Lock:
         return self._locks.setdefault(system_id, asyncio.Lock())
+
+    @contextlib.asynccontextmanager
+    async def _operation(self, system_id: str, key: str) -> AsyncIterator[None]:
+        """One management operation per System at a time. Another operation is refused with
+        SYSTEM_BUSY; a resend of the running one (same Idempotency-Key) waits for it."""
+        lock = self._lock(system_id)
+        if lock.locked() and self._in_flight.get(system_id) != key:
+            raise ApiError("SYSTEM_BUSY", "Another management operation is running for this System.")
+        async with lock:
+            self._in_flight[system_id] = key
+            try:
+                yield
+            finally:
+                self._in_flight.pop(system_id, None)
 
     def status(self, system: LoadedSystem) -> dict[str, Any]:
         snapshot = system.snapshot
@@ -315,7 +334,7 @@ class SystemRegistry:
             if old is not None:
                 return _impact("blocked", "PUBLISHED_INDEX_PRESENT", "原索引仍存在，請改用 reload。")
             if expected_fingerprint is not None and fingerprint != expected_fingerprint:
-                return _impact("blocked", "INDEX_FINGERPRINT_MISMATCH", "Config 與已發布版本的索引不符。")
+                return _impact("blocked", "INDEX_RECONNECT_INCOMPATIBLE", "Config 與已發布版本的索引不符。")
             return _impact(
                 "recover",
                 "PUBLISHED_INDEX_MISSING",
@@ -354,7 +373,7 @@ class SystemRegistry:
             return _impact("blocked", "INDEX_OWNERSHIP_UNVERIFIED", "實際 mapping 與已發布設定不符。")
         if operation == "reload":
             if fingerprint != expected_fingerprint:
-                return _impact("blocked", "INDEX_FINGERPRINT_MISMATCH", "Config 與已發布版本的索引不符。")
+                return _impact("blocked", "INDEX_RECONNECT_INCOMPATIBLE", "Config 與已發布版本的索引不符。")
             return _impact("reuse", "INDEX_COMPATIBLE", "接回已發布的索引。", fingerprint)
         if fingerprint == expected_fingerprint:
             return _impact("reuse", "INDEX_COMPATIBLE", "沿用索引。", fingerprint)
@@ -450,10 +469,10 @@ class SystemRegistry:
         replay = self.idempotency.find(system_id, "apply", key, request_hash)
         if replay is not None and replay.body is not None:
             return replay.body
-        lock = self._lock(system_id)
-        if lock.locked():
-            raise ApiError("SYSTEM_BUSY", "Another management operation is running for this System.")
-        async with lock:
+        async with self._operation(system_id, key):
+            replay = self.idempotency.find(system_id, "apply", key, request_hash)
+            if replay is not None and replay.body is not None:
+                return replay.body  # the original finished while this resend waited
             system = await self._apply(system_id, body, key, request_hash)
         result = self.status(system)
         self.idempotency.remember(system_id, "apply", key, request_hash, 200, result)
@@ -467,14 +486,20 @@ class SystemRegistry:
             if local.pending_rebuild != (key, request_hash):
                 self._raise_if_rebuild_pending(local)
             return await self._rebuild(system_id, local, compiled, body, key)
+        if body["operation"] == "recover_index" and body["config_revision"] != body["recovery_from"]["config_revision"]:
+            raise ApiError(
+                "REQUEST_VALIDATION_FAILED",
+                "recover_index keeps the published revision: config_revision must equal recovery_from.config_revision.",
+                path="/config_revision",
+            )
         impact = await self._index_impact(system_id, compiled, body)
         if body["context_revision"] != self._context_revision(system_id, compiled, body, impact):
             raise ApiError("STALE_CONTEXT", "The Runtime state changed since validation. Validate again.")
-        if local is not None and local.loaded and body["expected_active_revision"] != local.snapshot.config_revision:
-            raise ApiError("REVISION_CONFLICT", "The expected active revision does not match this Runtime.")
-        if impact["action"] == "blocked":
+        if impact["action"] == "blocked":  # the same reason the preview reported
             code = _BLOCKED_ERRORS.get(impact["code"], "SYSTEM_STATE_CONFLICT")
             raise ApiError(code, impact["message"])
+        if local is not None and local.loaded and body["expected_active_revision"] != local.snapshot.config_revision:
+            raise ApiError("REVISION_CONFLICT", "The expected active revision does not match this Runtime.")
         operation = body["operation"]
         revision = body["config_revision"]
         pipelines = self._pipelines(body)
@@ -603,10 +628,9 @@ class SystemRegistry:
             raise ApiError("SYSTEM_NOT_FOUND", "The System is not loaded in this Runtime.")
         self._raise_if_rebuild_pending(local)
         self._check_binding(local, expected)
-        lock = self._lock(system_id)
-        if lock.locked():
-            raise ApiError("SYSTEM_BUSY", "Another management operation is running for this System.")
-        async with lock:
+        async with self._operation(system_id, key):
+            if self.idempotency.find(system_id, "detach", key, request_hash) is not None:
+                return
             targets = (pipeline,) if pipeline else PIPELINES
             # Close the entries first, so nothing new is accepted while this operation waits.
             previous = {name: local.pipelines[name].ready for name in targets}
@@ -658,10 +682,9 @@ class SystemRegistry:
         generation, fingerprint = expected.get("generation"), expected.get("fingerprint")
         if local is None and generation is None:
             raise ApiError("SYSTEM_NOT_FOUND", "The System is not loaded and no index generation was given.")
-        lock = self._lock(system_id)
-        if lock.locked():
-            raise ApiError("SYSTEM_BUSY", "Another management operation is running for this System.")
-        async with lock:
+        async with self._operation(system_id, key):
+            if self.idempotency.find(system_id, "delete", key, request_hash) is not None:
+                return
             if local is not None:
                 self._check_binding(local, {k: v for k, v in expected.items() if v is not None})
                 if self.ingestion.has_active_work(system_id):

@@ -10,7 +10,7 @@ import pytest
 
 from conftest import INGESTION, RuntimeClient, basic, make_settings, validate_http
 from rag_engine.adapters.embedding import HashEmbedder
-from rag_engine.adapters.index_store import ChunkRecord, InMemoryIndexStore
+from rag_engine.adapters.index_store import ChunkRecord, IndexStateUnknown, InMemoryIndexStore
 from rag_engine.core.resources import EmbeddingProfile
 from rag_engine.engine.pipelines import EngineDeps
 from rag_engine.runtime.ingestion import aggregate
@@ -286,3 +286,28 @@ async def test_retire_takes_a_slot_of_the_pod_total(runtime: RuntimeClient) -> N
     assert (await retire).json() == {"document_id": "x", "result": "not_found"}
     done = await runtime.wait_run(queued_run, {"completed", "partial", "failed"})
     assert done["status"] == "completed", done
+
+
+class UnsureCleanupStore(InMemoryIndexStore):
+    """Old-batch cleanup cannot be confirmed, so the document ends as ``unknown``."""
+
+    async def delete_batches(self, name: str, document_id: str, write_ids: Any) -> int:
+        if write_ids:
+            raise IndexStateUnknown("delete_by_query reported failures")
+        return 0
+
+
+async def test_cancel_of_an_unknown_document_is_not_cancellable(runtime: RuntimeClient) -> None:
+    runtime.app.state.stores._memory = UnsureCleanupStore()
+    await runtime.initialize()
+    first = await runtime.ingest([doc("guide-1", "text")])
+    await runtime.wait_run(first.json()["run_id"], {"completed"})
+    second = await runtime.ingest([doc("guide-1", "new text")])  # replaces the first batch
+    run_id = second.json()["run_id"]
+    done = await runtime.wait_run(run_id, {"completed", "partial", "failed", "unknown"})
+    assert done["documents"][0]["status"] == "unknown", done
+    cancel = await runtime.http.post(
+        f"{runtime.business}/ingestions/{run_id}/cancel", json={"document_ids": ["guide-1"]}, headers=basic(INGESTION)
+    )
+    validate_http("ingestion_cancel_result", cancel.json())
+    assert cancel.json()["documents"] == [{"document_id": "guide-1", "result": "not_cancellable", "status": "unknown"}]

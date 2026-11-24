@@ -64,3 +64,4 @@ v1 採最簡單的做法：一個 uvicorn 程序、一條執行緒、一個 asyn
 5. `contracts/data/` 只能用 `scripts/sync_contracts.py` 從 rag_platform 同步，不在這裡手改。
 6. Secret 只用在認證欄位；Log 與錯誤不得含 Secret 值或 `Authorization`。
 7. LangGraph 節點之間傳值只能放在 state。`config["configurable"]` 在每個節點是副本，只放呼叫端傳入的唯讀值（Deadline、request_id、進度回呼等）。查詢的 Request 參數與逐次解析的 Retrieval 設定都放在 `InferenceState`。
+8. 檢查與執行之間有 `await` 時，執行前要再檢查一次；管理操作先關入口再等待。見 `AGENTS.md`。
