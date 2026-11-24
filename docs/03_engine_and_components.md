@@ -44,30 +44,47 @@ Remote Ingestion 的 `output` 在 Config 中是 Schema 宣告，在 HTTP Respons
 
 **契約**：同文件的 Document[] → Document[]，輸出各筆具有 data_id，向量在 Embedding 階段加入。[切片識別規則](02_data_contracts.md#document-identities) 適用於內建及 Remote Chunking。每份有效 Chunking 設定只選一個來源欄位，逐 Unit 切分同一欄位。_rag 來源位置與 fingerprint 選填。
 
-**目的與方法**：Fixed-size／Recursive／Header-aware；預設直接切 Document.structdata.text 並寫回 text，不顯示欄位選單、不自動複製其他 fields。進階設定可指定一組 `split_field`／`output_field`，並另外設定要完整複製的欄位。切分輸出及複製欄位的名稱須唯一。metadata 預設全部繼承，不再逐欄勾選。三種方法均以 Token 計量，沿用指定 Tokenizer／revision。2026-10-16 新增的「fix chunk」統一稱 **Fixed-size Chunking（固定 Token 視窗）**；方法已列入需求；Prototype v0.10 有設定展示，正式 Engine／Tokenizer 尚未實作。
+**目的與方法**：Fixed-size／Recursive／Header-aware；預設直接切 Document.structdata.text 並寫回 text，不顯示欄位選單、不自動複製其他 fields。進階設定可指定一組 `split_field`／`output_field`，並另外設定要完整複製的欄位。切分輸出及複製欄位的名稱須唯一。metadata 預設全部繼承，不再逐欄勾選。三種方法均以 Token 計量，沿用指定 Tokenizer／revision。2026-10-16 新增的「fix chunk」統一稱 **Fixed-size Chunking（固定 Token 視窗）**。三種方法的 Token 計量見 [Token 計量規則](#chunk-token-rules)，Header-aware 的標題判定見 [Header-aware 規則](#header-aware-rules)。
 
 | 方法 | 切分依據 | 有效設定 |
 |---|---|---|
 | Fixed-size | 按固定 Token 視窗切分 | `max_tokens`、`overlap_tokens`、`tokenizer_profile_id`，共用 `split_field`、`output_field`、`copy_fields`。 |
 | Recursive | 依分隔符優先序找邊界，過長片段繼續細切 | 共用設定加上 `separators`（分隔符順序）及 `keep_separator`（是否保留分隔符）。`separators` 省略時 Runtime 使用 `["\n\n", "\n", " ", ""]`，此預設不含中文標點。 |
-| Header-aware | 先依標題層級切分，超長章節再用 Recursive | 共用設定加上 `header_levels`、標題能力及 Recursive 備援參數。 |
+| Header-aware | 先依 Markdown 標題切段，超長段落再用 Recursive | 共用設定加上 `header_levels`（預設 `[1, 2, 3]`）及 Recursive 備援參數 `separators`、`keep_separator`。 |
 
-Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一塊不足 size 時保留、不補齊。視窗涵蓋文件結尾即停止，不再產生只重複末尾 overlap 的多餘 Chunk。例如 Token 串長 11、size=4、overlap=1，半開區間依序為 `[0:4]`、`[3:7]`、`[6:10]`、`[9:11]`；長度為 10 時則在 `[6:10]` 結束。這是 Token 視窗語意例子；Unicode 完整邊界、offset 映射及實際模型輸入重新計數的精確策略仍由 Q-004 核定，不能靠任意 decode Token 片段破壞原文。
+Fixed-size 的邏輯步長為 `size - overlap`；從 Token 0 開始，最後一塊不足 size 時保留、不補齊。視窗涵蓋文件結尾即停止，不再產生只重複末尾 overlap 的多餘 Chunk。例如 Token 串長 11、size=4、overlap=1，半開區間依序為 `[0:4]`、`[3:7]`、`[6:10]`、`[9:11]`；長度為 10 時則在 `[6:10]` 結束。
+
+<a id="chunk-token-rules"></a>
+**Token 計量規則**（[Q-004](08_plan_and_decisions.md#q-004)，2026-11-24 定案，三種方法共用）：
+
+1. 計數不含 Tokenizer 自動加上的特殊 Token，例如 bge-m3 的 `<s>`、`</s>`。
+2. 切點落在 Token 對應的原文字元位置，每個 Chunk 都是原文的子字串，不把 Token 解碼回文字。不屬於任何 Token 的空白若在切點上，就落在兩塊之間。以完整字元為單位切，非 BMP 字元不會被切開。
+3. 以切分時的計數為準，不把 Chunk 重新編碼再計數。實際模型輸入超過上限時，由 Embedding 回 `EMBEDDING_INPUT_TOO_LONG`。
+
+<a id="header-aware-rules"></a>
+**Header-aware 規則**（2026-11-24 定案）：
+
+1. 切分欄位當作 Markdown。直傳（passthrough）的結構化資料，以及開啟「保留 Markdown 標題」的檔案 Parser 輸出都可使用。
+2. 只認 ATX 標題：行首最多 3 個空白，接 1～6 個 `#`，再接空白或行尾。```` ``` ```` 或 `~~~` 圍起的程式碼區塊內不算；`#` 後面沒有空白（例如 `#標籤`）不算；不支援以 `===`、`---` 畫底線的標題。
+3. 只在 `header_levels` 列出的層級切段；其他層級的標題留在所屬段落內。
+4. 每段從標題行開始，到下一個切段標題之前為止；第一個標題之前的內容自成一段。標題行留在該段第一塊的開頭，不另外輸出標題路徑欄位。
+5. 一段不超過 `max_tokens` 時整段成一塊；超過時以 Recursive 的 `separators`、`keep_separator` 與 `overlap_tokens` 在段內細切。段與段之間不做 overlap，也不合併相鄰的短段。
+6. 整篇沒有可切的標題時，整篇以 Recursive 切分。
 
 **處理**：
 
 1. 檢查切分來源存在且為非空白 string。明確複製的欄位須在上游 Schema 中，複製時沿用型別和必填性。選填欄位缺值時，對應輸出也省略；必填來源缺失、型別錯誤、全空白或零切片時回報明確失敗。
 2. 依所選方法切分：Fixed-size 使用上述固定視窗；Recursive 依 separators 優先序切分，必要時處理過長片段，size 是上限、overlap 是目標值。
-3. Header-aware 先依可靠標題層級切分，再對超長章節 Recursive；標題取自當筆 Markdown；無標題時依 Component 明確策略處理，不跨 Unit 尋找。
+3. Header-aware 依 [Header-aware 規則](#header-aware-rules) 先切段，再對超長段落 Recursive；標題取自當筆 Markdown，無標題時整篇 Recursive，不跨 Unit 尋找。
 4. 記錄 unit_index 與原 Unit 字串範圍，不從帶 overlap 的文字猜測位置，不跨 Unit 合併。
 5. 從同一 Unit 複製指定欄位到 Document.structdata。整包繼承輸入 Document 的 metadata 與可信來源資訊。Component 可選擇提供 metadata._rag.source_refs／chunking，平台保留欄位由 Runtime 管理，見 Q-006。
 6. 由 Component 或 SDK helper 產生必要且唯一的 data_id，初始化 vectors={}。fingerprint／ordinal 的 Hash 規則僅為選用參考工具，不強制所有 Component 實作或輸出，見 [資料契約](02_data_contracts.md)～6。
 
 **驗證／例外**：size 為正整數、overlap 為整數且 `0 ≤ overlap < size`、Tokenizer 可用；涵蓋重複文字、非 BMP 字元、空段及極長無分隔文字。Fixed-size 不啟用 separators／keep_separator／header_levels，也不要求 結構化 heading Blocks；未啟用的方法參數可保留草稿，但不驗證或匯出為有效參數。複製欄位未被主要內容切分，不保證其長度小於 size。
 
-**驗收**：單塊不超過約定 Token 上限；offset 可精確還原主要文字；相同輸入與切分設定得到相同 ID；Header-aware 標題能力不足會拒絕。Fixed-size 另驗證零 overlap、短文件、恰好整塊、末塊不足、Unicode、切到結尾不再輸出 overlap-only Chunk，且不因變更停用的 separators／標題層級而改變結果。切換方法、size／overlap 或有效 Tokenizer 屬 Ingestion 配置變更，需重新切分及重建受影響索引。
+**驗收**：單塊不超過約定 Token 上限；offset 可精確還原主要文字；相同輸入與切分設定得到相同 ID；Header-aware 不把程式碼區塊內的 `#` 當標題，前言自成一段，無標題時結果與 Recursive 相同。Fixed-size 另驗證零 overlap、短文件、恰好整塊、末塊不足、Unicode、切到結尾不再輸出 overlap-only Chunk，且不因變更停用的 separators／標題層級而改變結果。切換方法、size／overlap 或有效 Tokenizer 屬 Ingestion 配置變更，需重新切分及重建受影響索引。
 
-**待決**：Q-004、Q-005、Q-007；Token 精確計數、切分 fallback 與 overlap 邊界需測試材料。
+**待決**：Q-005、Q-007；真實 Tokenizer 的切分結果需測試材料。
 
 D-53 的保留完整原文功能已在 Prototype v0.12 以舊 Unit 模型示範，Engine 實作仍待驗收。現行 Chunking 的輸入與輸出使用共用 [Document](02_data_contracts.md)。舊 Unit 的案例見[歷史契約快照](history/superseded/legacy_contracts/README.md)。
 
@@ -89,7 +106,7 @@ D-53 的保留完整原文功能已在 Prototype v0.12 以舊 Unit 模型示範�
 
 **驗收**：一筆 Chunk 可有兩個具名向量；後續仍取得原文；Query Encoding 依相同 Profile 配對；換模型／維度被判需重建。
 
-**待決**：Q-003、Q-004、Q-009、Q-017。Sparse、多模態及 late interaction 為後續。
+**待決**：Q-003、Q-009、Q-017。Sparse、多模態及 late interaction 為後續。
 
 <a id="src-04-45-indexing-與搜尋-adapter"></a>
 ### Indexing 與索引存取

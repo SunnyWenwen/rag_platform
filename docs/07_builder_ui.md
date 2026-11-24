@@ -159,8 +159,8 @@ Admin 在 Builder 以外維護版本化全域模板。Builder 顯示可選版本
 | 欄位未建立全文／向量索引，但已存在於 Chunk | 仍可用於 Rerank／檢索結果消費端 等內容消費；只有相對應的搜尋能力不能選，不能以「未勾儲存」拒絕 |
 | structdata 欄位的有效 filterable 為 false | 保留內容，欄位無法選為固定或動態 Filter。已存在的固定 Filter 標示失效並阻擋發布 |
 | metadata | 整包顯示與保存，欄位選單使用有效 structdata |
-| Chunking 選 Fixed-size（待實作） | Token Size／Overlap／Tokenizer 有效；分隔符／keep_separator／標題層級不生效且保留草稿，不要求 Parsing headings |
-| Header-aware 所需標題能力未開啟 | 顯示相依原因，提供定位 Parsing 進階設定的方式；無法滿足時阻止保存 |
+| Chunking 選 Fixed-size | Token Size／Overlap／Tokenizer 有效；分隔符／keep_separator／標題層級不生效且保留草稿，不要求 Parsing headings |
+| Header-aware 搭配檔案 Parser 但未開啟「保留 Markdown 標題」 | 顯示相依原因，提供定位 Parsing 進階設定的方式；無法滿足時阻止保存。直傳（passthrough）把切分欄位當 Markdown，不受此限制，見 [Header-aware 規則](03_engine_and_components.md#header-aware-rules) |
 
 卡控只處理設定相依；不代替實際後端能力、Profile 或連線驗證。規則由 Engine／Component 開發手冊／資料契約手冊 共用來源推導。
 
@@ -501,7 +501,7 @@ ResultSet.key 對應 Config 路徑／群組，items 位置即名次。RRF 可用
 
 | 編號 | 需求 | 原型與整合狀態 |
 |---|---|---|
-| UIB-001／002 | Fixed-size 及 Tokens 說明 | 原型已完成；真實 Tokenizer／切分待 Engine |
+| UIB-001／002 | Fixed-size 及 Tokens 說明 | 原型已完成；Runtime 已實作，見 [Token 計量規則](03_engine_and_components.md#chunk-token-rules) |
 | UIB-003 | AI 助手串接 M4 核心／API | 本機規則示例見舊版快照，現行 W1 待後端整合 |
 | UIB-004 | Diff、驗證、套用、取消與過期回應 | 本機示例見舊版快照，現行 W1 待非同步 API／版本一致性整合 |
 | UIB-005／006 | 全 Chunk 保存、metadata 全繼承 | 原型已完成；儲存 Adapter 待實作 |

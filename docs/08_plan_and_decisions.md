@@ -316,11 +316,11 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 <a id="q-004"></a>
 ### Q-004 Token 計量、切分邊界與溢位
 
-- 已確認：Fixed-size／Recursive／Header-aware 均用 Token 計量；Fixed-size 固定視窗、不依標題／分隔符切分。待定：Token 計數版本、prefix／特殊 Token、Unicode 安全邊界／原文 offsets、重新編碼計數、單塊超長與複製欄位、overlap／fallback、Tokenizer 離線檔案。
+- 已確認：Fixed-size／Recursive／Header-aware 均用 Token 計量；Fixed-size 固定視窗、不依標題／分隔符切分。Token 計數版本由 Runtime resources 的 Tokenizer Profile `revision` 固定，`tokenizer.json` 隨 Image 離線提供。
 - 建議：固定 Tokenizer／revision，以實際模型輸入檢查；超限回可定位錯誤，截斷需明示。
 - 替代：自動切分／截斷，需定義來源與警告語意。
 - 負責角色：Engine；阻擋 M1 Token／模型上限驗收。
-- 決策：未定；更新 Engine／資料契約手冊、Unicode／長文字 fixtures。
+- 決策：2026-11-24 定案，見 [Token 計量規則](03_engine_and_components.md#chunk-token-rules)。計數不含特殊 Token；依 Token 的原文字元位置切，Chunk 一律是原文子字串；以切分時的計數為準，不重新編碼計數。模型輸入超限由 Embedding 回 `EMBEDDING_INPUT_TOO_LONG`，不自動截斷；複製欄位不受切分上限約束。Header-aware 的標題判定與無標題時退回 Recursive 同日定案，見 [Header-aware 規則](03_engine_and_components.md#header-aware-rules)。
 
 <a id="q-005"></a>
 ### Q-005 Parser／OCR 首批格式
