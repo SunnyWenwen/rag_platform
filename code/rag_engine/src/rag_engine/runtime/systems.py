@@ -64,6 +64,9 @@ class LoadedSystem:
     pipelines: dict[str, PipelineState] = field(default_factory=lambda: {p: PipelineState() for p in PIPELINES})
     index_ready: bool | None = True
     created_by_operation_id: str | None = None
+    # (Idempotency-Key, request hash) of a rebuild that started deleting the old index. Only that
+    # same operation may run again to finish it.
+    pending_rebuild: tuple[str, str] | None = None
 
     @property
     def loaded(self) -> bool:
@@ -135,7 +138,10 @@ class SystemRegistry:
             "system_id": snapshot.system_id,
             "active_config_revision": snapshot.config_revision,
             "loaded": system.loaded,
-            "busy": self._lock(snapshot.system_id).locked() or self.ingestion.has_active_work(snapshot.system_id),
+            # A half-done rebuild also blocks other management changes until it is resent.
+            "busy": self._lock(snapshot.system_id).locked()
+            or self.ingestion.has_active_work(snapshot.system_id)
+            or system.pending_rebuild is not None,
             "index_ready": system.index_ready,
             "index_generation": generation,
             "can_ingest": ingestion.loaded and ingestion.ready and system.index_ready is True,
@@ -168,6 +174,7 @@ class SystemRegistry:
                 local.index_ready = False
             return self.status(local)
         if info is None:
+            self._raise_if_cluster_unknown()
             raise ApiError("SYSTEM_NOT_FOUND", "No loaded System and no index for the expected generation.")
         body: dict[str, Any] = {
             "system_id": system_id,
@@ -250,11 +257,25 @@ class SystemRegistry:
         except ConfigInvalid as error:
             raise ApiError("CONFIG_VALIDATION_FAILED", error.message, module=error.module, path=error.path) from error
 
-    def _context_revision(self, system_id: str, compiled: CompiledSystem) -> str:
+    def _context_revision(
+        self, system_id: str, compiled: CompiledSystem, body: dict[str, Any], impact: dict[str, Any]
+    ) -> str:
+        """Binds target, Catalog, Config, draft, pipeline, operation, expected binding and the
+        preview result (06 config validation), plus the local state they were checked against."""
         local = self.systems.get(system_id)
         state = {
+            "system_id": system_id,
             "catalog": self.catalog.catalog_revision,
             "config": sha256_hex(compiled.config),
+            "draft": body.get("draft_revision"),
+            "pipeline": body.get("pipeline"),
+            "operation": body.get("operation"),
+            "expected": [
+                body.get("expected_active_revision"),
+                body.get("expected_index_generation"),
+                body.get("expected_index_fingerprint"),
+            ],
+            "impact": impact,
             "active": local.snapshot.config_revision if local and local.loaded else None,
             "generation": local.snapshot.index_generation if local else None,
         }
@@ -304,7 +325,18 @@ class SystemRegistry:
             return self._blocked_from(error)
         if info is None:
             return _impact("blocked", "PUBLISHED_INDEX_MISSING", "已發布的索引不存在，請確認後改用 recover_index。")
-        if not mapping_compatible(compiled.index.mappings["properties"], info.mappings.get("properties", {})):
+        # _meta already proved the ownership. The mapping is compared with the published version:
+        # the candidate when it keeps the index, else the active snapshot. A candidate that changes
+        # the mapping is a rebuild, not a mismatch.
+        if fingerprint == expected_fingerprint:
+            published: dict[str, Any] | None = compiled.index.mappings
+        elif local is not None and local.snapshot.compiled.fingerprint == expected_fingerprint:
+            published = local.snapshot.compiled.index.mappings
+        else:
+            published = None
+        if published is not None and not mapping_compatible(
+            published["properties"], info.mappings.get("properties", {})
+        ):
             return _impact("blocked", "INDEX_OWNERSHIP_UNVERIFIED", "實際 mapping 與已發布設定不符。")
         if operation == "reload":
             if fingerprint != expected_fingerprint:
@@ -390,7 +422,7 @@ class SystemRegistry:
             "runtime_ref": self.catalog.runtime_ref,
             "catalog_revision": self.catalog.catalog_revision,
             "draft_revision": body["draft_revision"],
-            "context_revision": self._context_revision(system_id, compiled),
+            "context_revision": self._context_revision(system_id, compiled, body, impact),
             "active_config_revision": local.snapshot.config_revision if local and local.loaded else None,
             "loaded": loaded,
             "index_impact": impact,
@@ -408,20 +440,27 @@ class SystemRegistry:
         if lock.locked():
             raise ApiError("SYSTEM_BUSY", "Another management operation is running for this System.")
         async with lock:
-            system = await self._apply(system_id, body, key)
+            system = await self._apply(system_id, body, key, request_hash)
         result = self.status(system)
         self.idempotency.remember(system_id, "apply", key, request_hash, 200, result)
         return result
 
-    async def _apply(self, system_id: str, body: dict[str, Any], key: str) -> LoadedSystem:
+    async def _apply(self, system_id: str, body: dict[str, Any], key: str, request_hash: str) -> LoadedSystem:
         self._check_envelope("apply_request", body)
         compiled = self._compile(body)
-        if body["context_revision"] != self._context_revision(system_id, compiled):
-            raise ApiError("STALE_CONTEXT", "The Runtime state changed since validation. Validate again.")
         local = self.systems.get(system_id)
+        if local is not None and local.pending_rebuild is not None:
+            if local.pending_rebuild != (key, request_hash):
+                raise ApiError(
+                    "SYSTEM_STATE_CONFLICT",
+                    "A rebuild is half done. Resend it with its original Idempotency-Key and body.",
+                )
+            return await self._rebuild(local, compiled, body, key)
+        impact = await self._index_impact(system_id, compiled, body)
+        if body["context_revision"] != self._context_revision(system_id, compiled, body, impact):
+            raise ApiError("STALE_CONTEXT", "The Runtime state changed since validation. Validate again.")
         if local is not None and local.loaded and body["expected_active_revision"] != local.snapshot.config_revision:
             raise ApiError("REVISION_CONFLICT", "The expected active revision does not match this Runtime.")
-        impact = await self._index_impact(system_id, compiled, body)
         if impact["action"] == "blocked":
             code = _BLOCKED_ERRORS.get(impact["code"], "SYSTEM_STATE_CONFLICT")
             raise ApiError(code, impact["message"])
@@ -458,19 +497,8 @@ class SystemRegistry:
         elif impact["action"] == "rebuild_required":
             assert local is not None
             await self._close_and_drain(local)
-            old_name = local.snapshot.index_name
-            try:
-                await local.snapshot.store.delete_index(old_name)
-            except IndexStateUnknown as error:
-                raise ApiError("SYSTEM_STATE_UNKNOWN", error.message) from error
-            assert target is not None
-            snapshot = self._build(system_id, revision, compiled, target)
-            await self._create_index(snapshot, key)
-            system = LoadedSystem(snapshot, created_by_operation_id=key)
-            system.pipelines = {
-                name: PipelineState(state.loaded, state.loaded) for name, state in local.pipelines.items()
-            }
-            self._load(system, pipelines)
+            local.pending_rebuild = (key, request_hash)  # from here only this operation may continue
+            system = await self._rebuild(local, compiled, body, key)
         else:  # reuse
             generation = body["expected_index_generation"]
             if (
@@ -492,6 +520,25 @@ class SystemRegistry:
         _log.info("system applied", extra={"code": operation, "status": revision})
         return system
 
+    async def _rebuild(
+        self, local: LoadedSystem, compiled: CompiledSystem, body: dict[str, Any], key: str
+    ) -> LoadedSystem:
+        """Delete the old index and create the target one. Safe to run again with the same
+        operation: a missing old index and a target created by this operation are both fine."""
+        local.index_ready = False  # entries are closed; the old index is about to go
+        try:
+            await local.snapshot.store.delete_index(local.snapshot.index_name)
+        except IndexStateUnknown as error:
+            raise ApiError("SYSTEM_STATE_UNKNOWN", error.message) from error
+        snapshot = self._build(
+            local.snapshot.system_id, body["config_revision"], compiled, body["target_index_generation"]
+        )
+        await self._create_index(snapshot, key)
+        system = LoadedSystem(snapshot, created_by_operation_id=key)
+        system.pipelines = {name: PipelineState(state.loaded, state.loaded) for name, state in local.pipelines.items()}
+        self._load(system, self._pipelines(body))
+        return system
+
     def _load(self, system: LoadedSystem, pipelines: tuple[str, ...]) -> None:
         for name in pipelines:
             system.pipelines[name] = PipelineState(loaded=True, ready=True)
@@ -511,16 +558,35 @@ class SystemRegistry:
             raise ApiError("SYSTEM_BUSY", "Another management operation is running for this System.")
         async with lock:
             targets = (pipeline,) if pipeline else PIPELINES
+            # Close the entries first, so nothing new is accepted while this operation waits.
+            previous = {name: local.pipelines[name].ready for name in targets}
+            for name in targets:
+                local.pipelines[name].ready = False
             if "ingestion" in targets and self.ingestion.has_active_work(system_id):
+                self._reopen(local, previous)
                 raise ApiError("SYSTEM_BUSY", "Ingestion work is still queued or running for this System.")
-            if "inference" in targets and local.pipelines["inference"].loaded:
-                local.pipelines["inference"].ready = False
-                if not await self.queries.drain(system_id, self.settings.inference_timeout_seconds):
-                    local.pipelines["inference"].ready = True
-                    raise ApiError("DEADLINE_EXCEEDED", "Accepted queries did not finish within the query deadline.")
+            drains = "inference" in targets and local.pipelines["inference"].loaded
+            if drains and not await self.queries.drain(system_id, self.settings.inference_timeout_seconds):
+                self._reopen(local, previous)
+                raise ApiError("DEADLINE_EXCEEDED", "Accepted queries did not finish within the query deadline.")
             for name in targets:
                 local.pipelines[name] = PipelineState()
         self.idempotency.remember(system_id, "detach", key, request_hash, 204, None)
+
+    def _raise_if_cluster_unknown(self) -> None:
+        """An unloaded System was looked up on the default ES only. When the deployment can also
+        reach PLED clusters, "not found there" does not mean missing, so report it as unknown."""
+        if self.stores.pled_configured():
+            raise ApiError(
+                "SYSTEM_STATE_UNKNOWN",
+                "The System is not loaded and its index may be on a PLED cluster this Runtime cannot locate. "
+                "Reload the System with its published Config first.",
+            )
+
+    @staticmethod
+    def _reopen(local: LoadedSystem, previous: dict[str, bool]) -> None:
+        for name, ready in previous.items():
+            local.pipelines[name].ready = ready
 
     @staticmethod
     def _check_binding(local: LoadedSystem, expected: dict[str, str]) -> None:
@@ -562,6 +628,8 @@ class SystemRegistry:
                     for state in local.pipelines.values():
                         state.ready = state.loaded
                 raise
+            if info is None and local is None:
+                self._raise_if_cluster_unknown()
             if info is not None:
                 try:
                     await store.delete_index(info.name)

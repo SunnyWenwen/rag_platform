@@ -72,12 +72,19 @@ Base image 已定為 `python:3.12.13-slim-bookworm`。套上公司的 PyPI 映�
 | 切分改用 `asyncio.to_thread` | 暫不做 | 依 KISS 先維持單執行緒；查詢明顯被大文件切分拖慢時再評估 |
 | 事件迴圈延遲 Log | 暫不做 | 同上；需要判斷是否改多程序 Worker 時再加 |
 | Ingestion 多程序 Worker | 後續優化 | 需要時再啟動，見 rag_platform `docs/todo_enhance.md#ingestion-process-workers` |
-| 未載入 System 的 GET 查核只查 `dev_test` 叢集 | M3 | PLED 叢集的位址需要 Config，未載入時無從得知 |
+| 未載入 System 的 GET／DELETE 無法查 PLED 叢集 | M3 | 位址需要 Config，未載入時無從得知。部署可連 PLED 且預設 ES 查無索引時回 `503 SYSTEM_STATE_UNKNOWN`，Builder 先以已發布 Config reload 再查核或刪除 |
 
 ## 補測試時發現並已修正的問題
 
 | 問題 | 影響 | 修正 |
 |---|---|---|
+| 卸載時入口沒有先關：慢速上傳讀完 body 後仍入列；整組卸載等查詢結束時仍收新匯入 | detach 回 `204` 後仍有文件寫進索引 | detach 先關目標流程入口再檢查與等待；匯入與查詢讀完 body 後再核對一次入口（之後到入列沒有 `await`）；`test_lifecycle_safety.py` |
+| update 預檢用候選版 mapping 核對舊索引 | 合法的 mapping 變更（例如關閉 `filterable`）被判成 `INDEX_OWNERSHIP_UNVERIFIED` | 歸屬由 `_meta` 證明；mapping 與已發布版本比對（沿用索引時用候選版，否則用生效中的 Snapshot），變更改回 `rebuild_required` |
+| 重建刪舊索引後建新索引失敗，狀態仍是 `index_ready: true`，重送回 `INDEX_CONFLICT` | 無法續作，System 卡住 | 刪舊前記下操作鍵與請求；狀態改未就緒且 `busy`；同一操作重送可續建原目標世代，其他操作回 `SYSTEM_STATE_CONFLICT` |
+| ES `delete_by_query` 只讀 `deleted` | 清舊批次或 Retire 部分失敗仍回成功 | `timed_out`、`failures`、`version_conflicts` 任一出現就視為結果不明（清舊走 `unknown`，Retire 回 `503 SYSTEM_STATE_UNKNOWN`） |
+| 重啟後未載入的 PLED System 只在預設 ES 查核 | GET 回錯誤的 `404`、DELETE 回錯誤的 `204` 並留下索引 | 部署可連 PLED 時改回 `503 SYSTEM_STATE_UNKNOWN` |
+| `context_revision` 只綁 Config 與本機版本 | 用一般驗證的結果或改過的草稿版本仍能套用 | 依 06 綁定目標、Catalog、Config、草稿、流程、操作、預期綁定與預檢結果 |
+| ES Client 快取鍵只有網址與帳號 | 密碼輪替後仍用舊連線 | 快取鍵含密碼（只在記憶體，不寫 Log） |
 | 查詢的 Request 參數寫在 `config["configurable"]`，LangGraph 每個節點拿到的是副本 | Remote Inference 節點收不到 Request 參數，`{{KEY}}` 只能取到 Variable 或報缺值 | 改放 `InferenceState`；`test_remote_rerank_receives_request_parameters` |
 | 單一 System 的匯入 Queue 額滿回 `429 RATE_LIMITED` | 與 06 不符，Builder 會用錯的分流 | 改回 `503 RUNTIME_CAPACITY_EXHAUSTED`；`test_full_queue_answers_runtime_capacity_exhausted` |
 | `ContractError` 是 frozen dataclass | 例外被重新拋出時變成 `FrozenInstanceError` | 改成一般例外類別（不用 dataclass，避免例外無法 hash） |

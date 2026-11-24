@@ -37,6 +37,18 @@ from rag_engine.core.types import Fields
 _SOURCE_EXCLUDES = ["vectors", "write_id"]
 
 
+def _confirmed_deletes(response: Any, what: str) -> int:
+    """Deleted count of a delete_by_query that ES confirms in full. Timeouts, failures and version
+    conflicts leave documents behind, so the result is unknown, never success."""
+    conflicts = response.get("version_conflicts", 0)
+    if response.get("timed_out") or response.get("failures") or conflicts:
+        raise IndexStateUnknown(
+            f"{what} not confirmed: timed_out={bool(response.get('timed_out'))}, "
+            f"failures={len(response.get('failures') or [])}, version_conflicts={conflicts}"
+        )
+    return int(response.get("deleted", 0))
+
+
 class ElasticsearchIndexStore:
     def __init__(self, client: AsyncElasticsearch) -> None:
         self._es = client
@@ -136,7 +148,7 @@ class ElasticsearchIndexStore:
             )
         except (ApiError, TransportError) as error:
             raise IndexStateUnknown(f"batch cleanup result unknown: {error}") from error
-        return int(response.get("deleted", 0))
+        return _confirmed_deletes(response, "batch cleanup")
 
     async def document_exists(self, name: str, document_id: str) -> bool:
         try:
@@ -185,7 +197,7 @@ class ElasticsearchIndexStore:
             )
         except (ApiError, TransportError) as error:
             raise IndexStateUnknown(f"document deletion result unknown: {error}") from error
-        return int(response.get("deleted", 0))
+        return _confirmed_deletes(response, "document deletion")
 
     async def search(self, name: str, route: SearchRoute, fields: Fields) -> list[Hit]:
         try:

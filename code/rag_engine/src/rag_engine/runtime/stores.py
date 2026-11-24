@@ -13,7 +13,8 @@ class StoreProvider:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._memory = InMemoryIndexStore()
-        self._stores: dict[tuple[str, str | None], Any] = {}
+        # Keyed by URL and credentials: a rotated password gets a new client. Never log the key.
+        self._stores: dict[tuple[str, str | None, str | None], Any] = {}
 
     @property
     def memory(self) -> InMemoryIndexStore:
@@ -28,6 +29,10 @@ class StoreProvider:
         password = self._settings.es_password.get_secret_value() if self._settings.es_password else None
         return self._elasticsearch(self._settings.es_url, self._settings.es_username, password)
 
+    def pled_configured(self) -> bool:
+        """True when Systems on this Runtime may keep their index on a PLED cluster."""
+        return self._settings.index_backend == "elasticsearch" and bool(self._settings.pled_es_url_template)
+
     def for_connection(self, connection: dict[str, Any]) -> IndexStore:
         if self._settings.index_backend == "memory" or connection["service_source"] == "dev_test":
             return self.default()
@@ -41,7 +46,7 @@ class StoreProvider:
         return self._elasticsearch(url, connection.get("account"), connection.get("password"))
 
     def _elasticsearch(self, url: str, username: str | None, password: str | None) -> IndexStore:
-        key = (url, username)
+        key = (url, username, password)
         store = self._stores.get(key)
         if store is None:
             from elasticsearch import AsyncElasticsearch

@@ -282,8 +282,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @business.post("/ingestions", status_code=202)
     async def submit(request: Request) -> JSONResponse:
-        snapshot = system_for(request, "ingestion")
+        system_for(request, "ingestion")  # fail fast before reading the body
         body = await json_body(request, settings)
+        # Check again: a management operation may have closed the entry while the body arrived.
+        # From here to submit() there is no await, so the check and the enqueue cannot be split.
+        snapshot = system_for(request, "ingestion")
         check_body(schema_ref("ingestion_request.schema.json"), body)
         documents = body["documents"]
         if len(documents) > settings.ingestion_max_documents:
@@ -367,8 +370,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @business.post("/queries")
     async def query(request: Request) -> JSONResponse:
-        snapshot = system_for(request, "inference")
+        system_for(request, "inference")  # fail fast before reading the body
         body = await json_body(request, settings)
+        snapshot = system_for(request, "inference")  # the entry may have closed while the body arrived
         check_body(schema_ref("inference_request.schema.json"), body)
         result = await registry.queries.run(snapshot, body)
         headers = {"X-Config-Revision": result["config_revision"]}

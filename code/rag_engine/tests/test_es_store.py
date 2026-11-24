@@ -16,7 +16,7 @@ import pytest
 
 from rag_engine.adapters.es_mapping import analysis_settings, index_mappings
 from rag_engine.adapters.es_store import ElasticsearchIndexStore
-from rag_engine.adapters.index_store import ChunkRecord, IndexDefinition, SearchRoute
+from rag_engine.adapters.index_store import ChunkRecord, IndexDefinition, IndexStateUnknown, SearchRoute
 from rag_engine.core.resources import EmbeddingProfile
 from rag_engine.core.types import FieldSpec, VectorSpec
 
@@ -64,7 +64,7 @@ class FakeES:
 
     async def delete_by_query(self, **kwargs: Any) -> dict[str, Any]:
         self.calls.append(("delete_by_query", kwargs))
-        return {"deleted": 2}
+        return self.responses.get("delete_by_query", {"deleted": 2})
 
     async def count(self, **kwargs: Any) -> dict[str, Any]:
         self.calls.append(("count", kwargs))
@@ -104,6 +104,25 @@ async def test_search_and_listing_shapes() -> None:
     page, next_after = await store.list_documents("idx", None, 2)
     assert page == [("doc-0", ["r1"]), ("doc-1", ["r1"])] and next_after == "doc-1"
     assert fake.calls[-1][1]["aggs"]["documents"]["composite"]["size"] == 3
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        {"deleted": 1, "failures": [{"cause": {"type": "es_rejected_execution_exception"}}]},
+        {"deleted": 0, "timed_out": True, "failures": []},
+        {"deleted": 1, "version_conflicts": 1, "failures": []},
+    ],
+)
+async def test_partial_deletes_are_not_reported_as_done(response: dict[str, Any]) -> None:
+    """Old-batch cleanup and Retire both need a delete that ES confirms in full."""
+    store = ElasticsearchIndexStore(FakeES({"delete_by_query": response}))  # type: ignore[arg-type]
+    with pytest.raises(IndexStateUnknown):
+        await store.delete_batches("idx", "d", {"w-old"})
+    with pytest.raises(IndexStateUnknown):
+        await store.delete_document("idx", "d")
+    complete = ElasticsearchIndexStore(FakeES({"delete_by_query": {"deleted": 2, "failures": []}}))  # type: ignore[arg-type]
+    assert await complete.delete_document("idx", "d") == 2
 
 
 @pytest.mark.es
