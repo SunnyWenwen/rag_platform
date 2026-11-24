@@ -372,7 +372,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 <a id="q-010"></a>
 ### Q-010 Ingestion／Query 併發與發布
 
-- D-56 已確認：每 Pod 內每 System 的文件併發可配置、預設 1。同一 Pod 的不同文件可依上限並行。Bulk 逾時結案後可重匯，詳見 Q-008。D-60 允許查詢和寫入併行。
+- D-56 已確認：每 Pod 內每 System 的文件併發可配置。2026-11-24 初始預設調為每 System 2、每 Pod 4，接上真實 Embedding 服務量測後再定，見 [初始預設](06_runtime_api_and_deployment.md#src-22-2-已確認的初始預設)。同一 Pod 的不同文件可依上限並行。Bulk 逾時結案後可重匯，詳見 Q-008。D-60 允許查詢和寫入併行。
 - D-60 已確認讀寫各自進行，不因寫入阻擋 Query、不加共享讀寫鎖或原子快照；同文件重複提交忙碌拒絕保留。
 - D-61～D-63：Builder DEV 使用共用 Runtime 與 LangGraph。每次執行固定 Config 快照，更新須等該 System 已接受的 Ingestion 完成。相容更新讓舊查詢跑完；索引重建與卸載須先排空。見 [Runtime 生命週期](06_runtime_api_and_deployment.md#src-07-4-systemrevision-與-engine-生命週期)。
 - 仍待：未知 Remote 操作、實體後端寫入可見性、失敗清理及跨重啟的生命週期失敗處理。

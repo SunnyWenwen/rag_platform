@@ -51,8 +51,9 @@ class Settings(BaseSettings):
     # --- Ingestion queue and workers (per Pod)
     ingestion_queue_max_waiting_per_system: int = Field(100, gt=0)
     ingestion_queue_max_waiting_total: int = Field(500, gt=0)
-    ingestion_max_concurrency_per_system: int = Field(1, gt=0)
-    ingestion_max_concurrency_total: int = Field(2, gt=0)
+    # Raised from 1 / 2 on 2026-11-24; revisit after measuring the bge-m3 service (roadmap R2).
+    ingestion_max_concurrency_per_system: int = Field(2, gt=0)
+    ingestion_max_concurrency_total: int = Field(4, gt=0)
     ingestion_document_timeout_seconds: float = Field(600, gt=0)
 
     # --- Inference

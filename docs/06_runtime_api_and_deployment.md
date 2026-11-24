@@ -960,8 +960,8 @@ Document 管理是索引／儲存管理能力，不新增 Pipeline Module。平�
 | sources.max_file_bytes | URI／Base64 單份檔案大小／bytes | 10,485,760（10 MiB） | 每份來源檔案 | 以下載／解碼後內容計算；SDK resolver／相容 Component 限制。已超過此值的遠端來源可在 Worker 取得時失敗，不承諾 202 前下載完所有檔案 |
 | ingestion.queue.max_waiting_per_system | 等待文件數／份 | 100 | 每 Pod 內每 System | 只計 queued；執行中受 concurrency 控制，整批接收須一致預留容量 |
 | ingestion.queue.max_waiting_total | 等待文件總數／份 | 500 | 整個 Runtime 程序 | 共用 Queue 容量，不是每 System 都額外取得 500 份 |
-| ingestion.max_concurrency_per_system | 同時執行文件數／份 | 1 | 每 Pod 內每 System | 不同文件可提高並行；同 document_id 仍有有效占用時拒絕重送 |
-| ingestion.max_concurrency_total | 同時執行文件總數／份 | 2 | 整個 Runtime 程序 | 與每 System 上限共同控制；Worker 是排程概念，不要求新 Pod |
+| ingestion.max_concurrency_per_system | 同時執行文件數／份 | 2 | 每 Pod 內每 System | 不同文件可提高並行；同 document_id 仍有有效占用時拒絕重送。2026-11-24 由 1 調為 2，接上真實 Embedding 服務量測後再定 |
+| ingestion.max_concurrency_total | 同時執行文件總數／份 | 4 | 整個 Runtime 程序 | 與每 System 上限共同控制；Worker 是排程概念，不要求新 Pod。2026-11-24 由 2 調為 4，量測後可在 4～8 之間調整 |
 | ingestion.document_timeout_seconds | 單文件處理 Deadline／秒 | 600 | 每份已開始執行的文件 | 由 Worker 開始處理起計算；排隊等待不算入本值。逾時不等於 Remote 寫入已停止，未知結果依 API-D05 |
 | inference.rate_limit_per_system_rps | 請求速率／次每秒 | 5 | 每 System | 在 Runtime 接收入口執行；具體計數／突發算法待實作，不新增未確認的 burst 參數 |
 | inference.max_concurrency_per_system | 同時執行 Query 數／個 | 2 | 每 System | 同步查詢額滿直接拒絕，不進 Ingestion 的長工作 Queue |
@@ -999,7 +999,7 @@ W1 的預設筆數、上限、排序與 Cursor 行為見 [資料生命週期 API
 <a id="src-07-6-非同步工作與一致性"></a>
 ## 排程、同程序 Memory 與一致性限制
 
-D-56 已確認：Builder DEV 與 FTEST／ENT 共用 Runtime 工作控制，Library 執行流程；Builder 上傳與直接呼叫 API 走同一 Queue，不再重複排一次。每 Pod 內每 System 的文件執行併發可配置、預設 1；Runtime 再設總量，Inference 有頻率／併發／Deadline。D-64 已確認初始預設與管理方式：E 的 Runtime 環境設定，由 Admin／部署管理者控制，不由每次文件／Query 任意覆寫；完整可調項、單位與作用範圍集中見 22，正式參數路徑／機器 Schema 與載入方式仍待核定。
+D-56 已確認：Builder DEV 與 FTEST／ENT 共用 Runtime 工作控制，Library 執行流程；Builder 上傳與直接呼叫 API 走同一 Queue，不再重複排一次。每 Pod 內每 System 的文件執行併發可配置，預設見 [初始預設](#src-22-2-已確認的初始預設)；Runtime 再設總量，Inference 有頻率／併發／Deadline。D-64 已確認初始預設與管理方式：E 的 Runtime 環境設定，由 Admin／部署管理者控制，不由每次文件／Query 任意覆寫；完整可調項、單位與作用範圍集中見 22，正式參數路徑／機器 Schema 與載入方式仍待核定。
 
 Batch 逐文件處理。併發 1 時依序，併發 2 時不同文件可同時處理。相同 `(system_id, document_id)` 在受理 Pod 有有效占用時拒絕再次提交。提高併發須驗證 Component、Client 與共享索引，Query 沿用 D-60 的讀寫併行規則。
 

@@ -31,8 +31,9 @@ Base image 已定為 `python:3.12.13-slim-bookworm`。套上公司的 PyPI 映�
 ### R2 bge-m3
 
 1. 部署 Embedding 服務（例如 `deploy/k8s/bge-m3-embedding.example.yaml` 的 TEI），確認 `/v1/embeddings` 回 1024 維。
-2. 把 `tokenizer.json` 放到 `models/bge-m3/`，`resources/dev.yaml` 填入同一個 commit。
-3. 新增 `-m embedding` 實機測試：同一句話的 Query 向量與文件向量 cosine 接近 1，長度超過 8192 token 會回 `EMBEDDING_INPUT_TOO_LONG`。
+2. 量測匯入並行：目前預設每 System 2、每 Pod 4（`RAG_INGESTION_MAX_CONCURRENCY_PER_SYSTEM`／`_TOTAL`）。以實際文件量測 Embedding 服務的延遲與吞吐，決定每 Pod 維持 4 或調到 8，並回寫 rag_platform 06 的初始預設表。
+3. 把 `tokenizer.json` 放到 `models/bge-m3/`，`resources/dev.yaml` 填入同一個 commit。
+4. 新增 `-m embedding` 實機測試：同一句話的 Query 向量與文件向量 cosine 接近 1，長度超過 8192 token 會回 `EMBEDDING_INPUT_TOO_LONG`。
 
 ### R3 DEV 上線
 
