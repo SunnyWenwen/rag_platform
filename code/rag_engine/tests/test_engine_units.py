@@ -344,6 +344,19 @@ def test_builtin_retrieval_parameters_resolve_request_then_variable() -> None:
         resolve_retrieval(refs, compiled.index, {})
     assert raised.value.path == "/parameters/K"
 
+    # Errors not tied to one parameter keep a readable message.
+    fields = reference_config({}, vector_fields="{{FIELDS}}", fulltext_fields=["structdata.text"])
+    fields["pipelines"]["inference"]["inference_input"]["parameters"]["request_parameters"] = [
+        {"name": "FIELDS", "type": "array", "required": True}
+    ]
+    refs = compile_system(fields, catalog).inference.retrieval_references
+    assert refs is not None
+    with pytest.raises(RequestInvalid) as raised:
+        resolve_retrieval(refs, compiled.index, {"FIELDS": ["text"]})  # two routes need fusion
+    assert (
+        raised.value.path == "/parameters" and raised.value.message == "fusion is required for multiple search routes"
+    )
+
 
 @pytest.mark.parametrize(
     ("variables", "retrieval", "location"),

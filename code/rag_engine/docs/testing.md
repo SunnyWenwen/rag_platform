@@ -20,7 +20,7 @@
 | 檔案 | 範圍 |
 |---|---|
 | `test_runtime_flow.py` | 發布、匯入、查詢、文件管理、detach、DELETE、update（沿用／重建）、`{{KEY}}` 參數、錯誤定位 |
-| `test_ingestion_control.py` | 佔用與整批衝突、取消（含 `cancelling`）、Bulk 逾時、Queue 額滿 `503`、保留期 |
+| `test_ingestion_control.py` | 占用與整批衝突、取消（含 `cancelling`）、Bulk 逾時、Queue 額滿 `503`、Retire 計入 Pod 總量、保留期 |
 | `test_mcp.py` | 真的 uvicorn＋官方 MCP client |
 | `test_remote_and_embedding.py` | Remote Parsing 進 Ingestion、Remote Rerank 收到 Request 參數 |
 | `test_standalone.py` | FTEST／ENT 模式：匯出格式 Config、環境變數取值、`/v1`、單一流程、索引不存在時 not ready、啟動錯誤 |

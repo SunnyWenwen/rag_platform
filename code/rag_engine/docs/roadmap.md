@@ -33,7 +33,7 @@ Base image 已定為 `python:3.12.13-slim-bookworm`。套上公司的 PyPI 映�
 
 1. 設定 `RAG_TEST_ES_URL`、帳密，執行 `make test-es`。確認 IK＋stconvert 分析器建立成功、簡體查詢命中繁體內容、`int8_hnsw` kNN 與 Filter 可用。
 2. 檢查 `runtime/systems.py` 的 `mapping_compatible`：ES 讀回的 mapping 可能補上預設值（例如 `index_options` 的 `m`、`ef_construction`），確認比對方向正確，不會誤判。
-3. 用 `RAG_INDEX_BACKEND=elasticsearch` 啟動 Runtime，重跑 `tests/test_runtime_flow.py` 的流程（可把 fixture 的 settings 換成 ES）。
+3. 用 `RAG_INDEX_BACKEND=elasticsearch` 與 `RAG_ES_URL` 等設定啟動 Runtime，執行 `make smoke` 走完整流程（見 [testing.md](testing.md#4-整機-smoke)）。
 
 ### R2 bge-m3
 
@@ -70,7 +70,9 @@ Base image 已定為 `python:3.12.13-slim-bookworm`。套上公司的 PyPI 映�
 |---|---|---|
 | 查詢的 Request 參數寫在 `config["configurable"]`，LangGraph 每個節點拿到的是副本 | Remote Inference 節點收不到 Request 參數，`{{KEY}}` 只能取到 Variable 或報缺值 | 改放 `InferenceState`；`test_remote_rerank_receives_request_parameters` |
 | 單一 System 的匯入 Queue 額滿回 `429 RATE_LIMITED` | 與 06 不符，Builder 會用錯的分流 | 改回 `503 RUNTIME_CAPACITY_EXHAUSTED`；`test_full_queue_answers_runtime_capacity_exhausted` |
-| `ContractError` 是 frozen dataclass | 例外被重新拋出時變成 `FrozenInstanceError` | 改成一般 dataclass |
+| `ContractError` 是 frozen dataclass | 例外被重新拋出時變成 `FrozenInstanceError` | 改成一般例外類別（不用 dataclass，避免例外無法 hash） |
+| 執行中的 Retire 沒有計入 Pod 的執行總量 | 與 06 不符，大量 Retire 可無上限累積 | Retire 佔一個執行名額，額滿回 `503 RUNTIME_CAPACITY_EXHAUSTED`；`test_retire_takes_a_slot_of_the_pod_total` |
+| `{{KEY}}` 解析錯誤不屬於單一參數時（例如缺 `fusion`），訊息的參數名稱是空的 | 錯誤訊息難讀 | 直接使用原訊息，`path` 為 `/parameters` |
 | 獨立部署啟動錯誤包在 MCP 的 TaskGroup 裡；`RAG_INDEX_GENERATION` 格式沒檢查 | 部署錯誤訊息難讀；格式錯時要到回應才失敗 | 先載入 System 再啟動 Worker 與 MCP；啟動時檢查 UUID v4 |
 
 ## 已回寫 rag_platform 的實作決定

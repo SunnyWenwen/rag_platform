@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterator
-from dataclasses import dataclass
 from functools import cache
 from importlib import resources
 from typing import Any
@@ -18,12 +17,13 @@ SCHEMA_BASE = "https://rag-builder.example/schemas/"
 _DATA = resources.files("rag_engine.contracts") / "data"
 
 
-@dataclass
 class ContractError(Exception):
     """A contract violation located by a JSON Pointer into the validated instance."""
 
-    message: str
-    path: str = ""
+    def __init__(self, message: str, path: str = "") -> None:
+        super().__init__(message)
+        self.message = message
+        self.path = path
 
     def __str__(self) -> str:
         return f"{self.message} at {self.path or '/'}"

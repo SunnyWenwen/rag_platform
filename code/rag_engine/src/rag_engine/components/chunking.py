@@ -184,7 +184,7 @@ def _recursive(text: str, start: int, end: int, settings: ChunkSettings, index: 
         current.append(piece)
     if current:
         chunks.append((current[0][0], current[-1][1]))
-    return [text[start:end].strip() for start, end in chunks if text[start:end].strip()]
+    return [text[first:last].strip() for first, last in chunks if text[first:last].strip()]
 
 
 def chunk_documents(units: list[Document], settings: ChunkSettings, tokenizer: Tokenizer) -> list[Document]:

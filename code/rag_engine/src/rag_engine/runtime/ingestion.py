@@ -129,6 +129,9 @@ class IngestionControl:
         self._queues: dict[str, deque[tuple[str, str]]] = {}
         self._waiting: dict[str, int] = {}
         self._running: dict[str, int] = {}
+        # Retire operations in progress. They take a slot of the Pod total like a running
+        # document (06#pod-local-ingestion-control), so unfinished work cannot pile up.
+        self._retiring = 0
         self._order: deque[str] = deque()
         self._wakeup = asyncio.Event()
         self._tasks: list[asyncio.Task[None]] = []
@@ -149,6 +152,10 @@ class IngestionControl:
         self._tasks.clear()
 
     # ------------------------------------------------------------------ queries used by lifecycle
+
+    def _busy_slots(self) -> int:
+        """Running documents plus Retire operations; at most ingestion_max_concurrency_total."""
+        return sum(self._running.values()) + self._retiring
 
     def has_active_work(self, system_id: str) -> bool:
         if any(key[0] == system_id for key in self._occupancy):
@@ -287,18 +294,27 @@ class IngestionControl:
                 "The document is still being processed in this Runtime Pod.",
                 run_id=conflict.get("run_id"),
             )
+        if self._busy_slots() >= self._settings.ingestion_max_concurrency_total:
+            raise ApiError(
+                "RUNTIME_CAPACITY_EXHAUSTED", "The Runtime is at its Ingestion capacity.", headers={"Retry-After": "5"}
+            )
         token = uuid.uuid4().hex
         self._occupancy[(system_id, document_id)] = _Occupancy(token, None)
+        self._retiring += 1
         return token
 
     def release_retire(self, system_id: str, document_id: str, token: str) -> None:
         occupancy = self._occupancy.get((system_id, document_id))
         if occupancy is not None and occupancy.token == token:
             del self._occupancy[(system_id, document_id)]
+        self._retiring -= 1
+        self._wakeup.set()  # a waiting worker may take the freed slot
 
     # ------------------------------------------------------------------ workers
 
     def _pick(self) -> _Job | None:
+        if self._busy_slots() >= self._settings.ingestion_max_concurrency_total:
+            return None  # a Retire holds a slot; release_retire wakes the workers
         for _ in range(len(self._order)):
             system_id = self._order[0]
             self._order.rotate(-1)

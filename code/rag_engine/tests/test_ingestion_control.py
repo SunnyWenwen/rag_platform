@@ -230,3 +230,59 @@ async def test_full_queue_answers_runtime_capacity_exhausted(runtime: RuntimeCli
         done = await runtime.wait_run(run_id, {"completed", "partial", "failed"})
         assert done["status"] == "completed", done
     assert (await runtime.ingest([doc("d", "text")])).status_code == 202
+
+
+class GatedDeleteStore(InMemoryIndexStore):
+    """Blocks Retire's delete until the gate opens."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.gate = asyncio.Event()
+        self.entered = asyncio.Event()
+
+    async def delete_document(self, name: str, document_id: str) -> int:
+        self.entered.set()
+        await self.gate.wait()
+        return await super().delete_document(name, document_id)
+
+
+ONE_SLOT = make_settings(ingestion_max_concurrency_per_system=1, ingestion_max_concurrency_total=1)
+
+
+@pytest.mark.parametrize("settings", [ONE_SLOT])
+async def test_retire_takes_a_slot_of_the_pod_total(runtime: RuntimeClient) -> None:
+    """06#pod-local-ingestion-control: Retire in progress counts toward the Pod total."""
+    registry = runtime.app.state.registry
+    embedder = GatedEmbedder()
+    hold = asyncio.Event()
+    embedder.gates["HOLD"] = hold
+    registry.deps = EngineDeps(embedder=embedder, http=registry.deps.http)
+    store = GatedDeleteStore()
+    runtime.app.state.stores._memory = store
+    await runtime.initialize()
+    retire_path = f"{runtime.business}/documents/x:retire"
+
+    # A running document takes the only slot, so a Retire is refused.
+    held = await runtime.ingest([doc("a", "HOLD text")])
+    held_run = held.json()["run_id"]
+
+    async def a_running() -> bool:
+        return (await runtime.run(held_run))["counts"]["running"] == 1
+
+    await _until(a_running)
+    refused = await runtime.http.post(retire_path, headers=basic(INGESTION))
+    assert refused.status_code == 503 and refused.json()["error"]["code"] == "RUNTIME_CAPACITY_EXHAUSTED"
+    hold.set()
+    await runtime.wait_run(held_run, {"completed"})
+
+    # A Retire in progress takes the slot: a new document waits until the Retire ends.
+    retire = asyncio.create_task(runtime.http.post(retire_path, headers=basic(INGESTION)))
+    await asyncio.wait_for(store.entered.wait(), 5)
+    queued = await runtime.ingest([doc("b", "text")])
+    queued_run = queued.json()["run_id"]
+    await asyncio.sleep(0.05)
+    assert (await runtime.run(queued_run))["counts"]["queued"] == 1
+    store.gate.set()
+    assert (await retire).json() == {"document_id": "x", "result": "not_found"}
+    done = await runtime.wait_run(queued_run, {"completed", "partial", "failed"})
+    assert done["status"] == "completed", done

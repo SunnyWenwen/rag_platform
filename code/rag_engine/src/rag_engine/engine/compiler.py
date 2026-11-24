@@ -677,10 +677,10 @@ def resolve_retrieval(refs: RetrievalReferences, index: IndexPlan, request_value
         _check_parameters(refs.schema, params, path, "retrieval")
         return _compile_retrieval(params, index, path)
     except ConfigInvalid as error:
-        location = (error.path or "").removeprefix(path + "/parameters/").split("/")[0]
+        location = (error.path or "").removeprefix(path + "/parameters").strip("/").split("/")[0]
         source = refs.references.get(location)
         raise RequestInvalid(
-            f"invalid retrieval parameter {location}: {error.message}",
+            f"invalid retrieval parameter {location}: {error.message}" if location else error.message,
             path=f"/parameters/{source}" if source else "/parameters",
             module="retrieval",
         ) from error
