@@ -186,6 +186,94 @@ async def test_failed_rebuild_reports_not_ready_and_resumes_with_the_same_operat
     assert await store.get_index(old_name) is None and await store.get_index(new_name) is not None
 
 
+async def plan_rebuild(runtime: RuntimeClient, published: dict[str, Any], target: str) -> dict[str, Any]:
+    """Preview a rebuild (max_tokens change) and return the PUT body for ``target``."""
+    rebuilt = scenario_config()
+    rebuilt["pipelines"]["ingestion"]["chunking"]["parameters"]["max_tokens"] = 200
+    planned = await preview(runtime, rebuilt, **update_body(published))
+    assert planned["validation"]["index_impact"]["action"] == "rebuild_required", planned["validation"]
+    return {
+        **planned["request"],
+        "context_revision": planned["validation"]["context_revision"],
+        "config_revision": "revision-2",
+        "target_index_generation": target,
+        "allow_rebuild": True,
+    }
+
+
+async def put(runtime: RuntimeClient, body: dict[str, Any], key: str) -> Any:
+    return await runtime.http.put(SYSTEM_PATH, json=body, headers={**basic(MANAGEMENT), "Idempotency-Key": key})
+
+
+async def test_half_done_rebuild_blocks_delete_and_resumes_after_a_restart(runtime: RuntimeClient) -> None:
+    store = FlakyCreateStore()
+    runtime.app.state.stores._memory = store
+    published = await runtime.initialize()
+    old_name = f"rag-builder-{SYSTEM_ID}-{published['status']['index_generation']}"
+    target = str(uuid.uuid4())
+    apply = await plan_rebuild(runtime, published, target)
+    store.fail_creates = 1
+    assert (await put(runtime, apply, "rebuild-1")).status_code == 503
+
+    # While half done, other management operations wait for the original one.
+    deleted = await runtime.http.delete(
+        SYSTEM_PATH, headers={**basic(MANAGEMENT), "Idempotency-Key": "delete-1", **binding(published)}
+    )
+    assert deleted.status_code == 409 and deleted.json()["error"]["code"] == "SYSTEM_BUSY", deleted.text
+
+    # Restart: the Runtime forgets everything. The Builder redoes the preview with the original
+    # plan and resends the original operation key and target generation (06 失敗與交接).
+    runtime.app.state.registry.systems.clear()
+    redo = await plan_rebuild(runtime, published, target)
+    resumed = await put(runtime, redo, "rebuild-1")
+    assert resumed.status_code == 200, resumed.text
+    body = resumed.json()
+    assert body["index_generation"] == target and body["index_ready"] is True and body["can_ingest"]
+    assert body["created_by_operation_id"] == "rebuild-1"
+    assert store.created == [old_name, f"rag-builder-{SYSTEM_ID}-{target}"]
+
+
+async def test_rebuild_checks_the_target_before_deleting_anything(runtime: RuntimeClient) -> None:
+    published = await runtime.initialize()
+    store = runtime.app.state.stores.memory
+    old_generation = published["status"]["index_generation"]
+    old_name = f"rag-builder-{SYSTEM_ID}-{old_generation}"
+
+    same = await put(runtime, await plan_rebuild(runtime, published, old_generation), "rebuild-same")
+    assert same.status_code == 409 and same.json()["error"]["code"] == "INDEX_CONFLICT", same.text
+
+    taken = str(uuid.uuid4())
+    meta = runtime.app.state.registry._expected_meta(SYSTEM_ID, published["fingerprint"], "another-operation")
+    await store.create_index(IndexDefinition(f"rag-builder-{SYSTEM_ID}-{taken}", {"_meta": meta}, {}))
+    occupied = await put(runtime, await plan_rebuild(runtime, published, taken), "rebuild-taken")
+    assert occupied.status_code == 409 and occupied.json()["error"]["code"] == "INDEX_CONFLICT", occupied.text
+
+    # Nothing was deleted and the System still serves.
+    assert await store.get_index(old_name) is not None
+    status = (await runtime.http.get(SYSTEM_PATH, headers=basic(MANAGEMENT))).json()
+    assert status["index_generation"] == old_generation and status["can_ingest"] and status["can_query"], status
+
+
+# ---------------------------------------------------------------- GET of a specified generation
+
+
+async def test_get_reports_the_creator_of_the_specified_index(runtime: RuntimeClient) -> None:
+    published = await runtime.initialize()
+    store = runtime.app.state.stores.memory
+    new_generation = str(uuid.uuid4())
+    meta = runtime.app.state.registry._expected_meta(SYSTEM_ID, published["fingerprint"], "update-7")
+    await store.create_index(IndexDefinition(f"rag-builder-{SYSTEM_ID}-{new_generation}", {"_meta": meta}, {}))
+    headers = {**binding(published), "X-Expected-Index-Generation": new_generation}
+
+    observed = (await runtime.http.get(SYSTEM_PATH, headers={**basic(MANAGEMENT), **headers})).json()
+    assert observed["created_by_operation_id"] == "update-7"  # from the specified index
+    assert observed["loaded"] is True and observed["index_generation"] == published["status"]["index_generation"]
+
+    missing = {**headers, "X-Expected-Index-Generation": str(uuid.uuid4())}
+    observed = (await runtime.http.get(SYSTEM_PATH, headers={**basic(MANAGEMENT), **missing})).json()
+    assert "created_by_operation_id" not in observed  # the specified index does not exist
+
+
 # ---------------------------------------------------------------- 4. Retire with an unconfirmed delete
 
 

@@ -172,7 +172,12 @@ class SystemRegistry:
         if local is not None:
             if local.snapshot.index_generation == generation and info is None:
                 local.index_ready = False
-            return self.status(local)
+            # Loaded and ready come from this Runtime; the creator comes from the specified index (06).
+            loaded = self.status(local)
+            loaded.pop("created_by_operation_id", None)
+            if info is not None and info.meta.get("created_by_operation_id"):
+                loaded["created_by_operation_id"] = info.meta["created_by_operation_id"]
+            return loaded
         if info is None:
             self._raise_if_cluster_unknown()
             raise ApiError("SYSTEM_NOT_FOUND", "No loaded System and no index for the expected generation.")
@@ -324,6 +329,15 @@ class SystemRegistry:
         except ApiError as error:
             return self._blocked_from(error)
         if info is None:
+            if operation == "update" and fingerprint != expected_fingerprint:
+                # A rebuild deletes the old index anyway. It may already be gone because a rebuild of
+                # this plan was interrupted (06 失敗與交接), so the plan can continue.
+                return _impact(
+                    "rebuild_required",
+                    "INDEX_FINGERPRINT_CHANGED",
+                    "原索引已不存在。確認後以新世代建立索引並重新匯入。",
+                    fingerprint,
+                )
             return _impact("blocked", "PUBLISHED_INDEX_MISSING", "已發布的索引不存在，請確認後改用 recover_index。")
         # _meta already proved the ownership. The mapping is compared with the published version:
         # the candidate when it keeps the index, else the active snapshot. A candidate that changes
@@ -451,11 +465,8 @@ class SystemRegistry:
         local = self.systems.get(system_id)
         if local is not None and local.pending_rebuild is not None:
             if local.pending_rebuild != (key, request_hash):
-                raise ApiError(
-                    "SYSTEM_STATE_CONFLICT",
-                    "A rebuild is half done. Resend it with its original Idempotency-Key and body.",
-                )
-            return await self._rebuild(local, compiled, body, key)
+                self._raise_if_rebuild_pending(local)
+            return await self._rebuild(system_id, local, compiled, body, key)
         impact = await self._index_impact(system_id, compiled, body)
         if body["context_revision"] != self._context_revision(system_id, compiled, body, impact):
             raise ApiError("STALE_CONTEXT", "The Runtime state changed since validation. Validate again.")
@@ -474,7 +485,8 @@ class SystemRegistry:
             )
         if impact["action"] == "rebuild_required" and not body.get("allow_rebuild", False):
             raise ApiError("REBUILD_CONFIRMATION_REQUIRED", impact["message"])
-        if operation == "update" and (local is None or not local.loaded):
+        # A rebuild may continue without a loaded System (after a restart); keeping the index needs one.
+        if operation == "update" and impact["action"] != "rebuild_required" and (local is None or not local.loaded):
             raise ApiError("SYSTEM_STATE_CONFLICT", "Reload the published revision before updating.")
         if local is not None and operation in ("update", "recover_index") and self.ingestion.has_active_work(system_id):
             raise ApiError("SYSTEM_BUSY", "Ingestion work is still queued or running for this System.")
@@ -495,10 +507,12 @@ class SystemRegistry:
                 system.pipelines = {name: PipelineState(state.loaded, state.loaded) for name, state in previous.items()}
             self._load(system, pipelines)
         elif impact["action"] == "rebuild_required":
-            assert local is not None
-            await self._close_and_drain(local)
-            local.pending_rebuild = (key, request_hash)  # from here only this operation may continue
-            system = await self._rebuild(local, compiled, body, key)
+            assert target is not None
+            await self._check_rebuild_target(compiled, system_id, body["expected_index_generation"], target, key)
+            if local is not None:
+                await self._close_and_drain(local)
+                local.pending_rebuild = (key, request_hash)  # from here only this operation may continue
+            system = await self._rebuild(system_id, local, compiled, body, key)
         else:  # reuse
             generation = body["expected_index_generation"]
             if (
@@ -520,24 +534,59 @@ class SystemRegistry:
         _log.info("system applied", extra={"code": operation, "status": revision})
         return system
 
-    async def _rebuild(
-        self, local: LoadedSystem, compiled: CompiledSystem, body: dict[str, Any], key: str
-    ) -> LoadedSystem:
-        """Delete the old index and create the target one. Safe to run again with the same
-        operation: a missing old index and a target created by this operation are both fine."""
-        local.index_ready = False  # entries are closed; the old index is about to go
+    async def _check_rebuild_target(
+        self, compiled: CompiledSystem, system_id: str, old_generation: str, target: str, key: str
+    ) -> None:
+        """Before anything is closed or deleted: the target must be a new generation that no other
+        operation has created."""
+        if target == old_generation:
+            raise ApiError(
+                "INDEX_CONFLICT",
+                "target_index_generation must be a new generation.",
+                path="/target_index_generation",
+            )
+        store = self.stores.for_connection(compiled.index.connection)
         try:
-            await local.snapshot.store.delete_index(local.snapshot.index_name)
+            existing = await store.get_index(index_name(self.settings.env, system_id, target))
         except IndexStateUnknown as error:
             raise ApiError("SYSTEM_STATE_UNKNOWN", error.message) from error
-        snapshot = self._build(
-            local.snapshot.system_id, body["config_revision"], compiled, body["target_index_generation"]
-        )
+        if existing is not None and existing.meta.get("created_by_operation_id") != key:
+            raise ApiError("INDEX_CONFLICT", "The target index generation is already used by another operation.")
+
+    async def _rebuild(
+        self,
+        system_id: str,
+        local: LoadedSystem | None,
+        compiled: CompiledSystem,
+        body: dict[str, Any],
+        key: str,
+    ) -> LoadedSystem:
+        """Delete the old index and create the target one. Safe to run again with the same
+        operation, also after a restart: a missing old index and a target created by this
+        operation are both fine."""
+        old_store = local.snapshot.store if local is not None else self.stores.for_connection(compiled.index.connection)
+        if local is not None:
+            local.index_ready = False  # entries are closed; the old index is about to go
+        try:
+            await old_store.delete_index(index_name(self.settings.env, system_id, body["expected_index_generation"]))
+        except IndexStateUnknown as error:
+            raise ApiError("SYSTEM_STATE_UNKNOWN", error.message) from error
+        snapshot = self._build(system_id, body["config_revision"], compiled, body["target_index_generation"])
         await self._create_index(snapshot, key)
         system = LoadedSystem(snapshot, created_by_operation_id=key)
-        system.pipelines = {name: PipelineState(state.loaded, state.loaded) for name, state in local.pipelines.items()}
+        if local is not None:
+            system.pipelines = {
+                name: PipelineState(state.loaded, state.loaded) for name, state in local.pipelines.items()
+            }
         self._load(system, self._pipelines(body))
         return system
+
+    @staticmethod
+    def _raise_if_rebuild_pending(local: LoadedSystem | None) -> None:
+        if local is not None and local.pending_rebuild is not None:
+            raise ApiError(
+                "SYSTEM_BUSY", "A rebuild is half done. Resend it with its original Idempotency-Key and body first."
+            )
 
     def _load(self, system: LoadedSystem, pipelines: tuple[str, ...]) -> None:
         for name in pipelines:
@@ -552,6 +601,7 @@ class SystemRegistry:
         local = self.systems.get(system_id)
         if local is None:
             raise ApiError("SYSTEM_NOT_FOUND", "The System is not loaded in this Runtime.")
+        self._raise_if_rebuild_pending(local)
         self._check_binding(local, expected)
         lock = self._lock(system_id)
         if lock.locked():
@@ -604,6 +654,7 @@ class SystemRegistry:
         if self.idempotency.find(system_id, "delete", key, request_hash) is not None:
             return
         local = self.systems.get(system_id)
+        self._raise_if_rebuild_pending(local)
         generation, fingerprint = expected.get("generation"), expected.get("fingerprint")
         if local is None and generation is None:
             raise ApiError("SYSTEM_NOT_FOUND", "The System is not loaded and no index generation was given.")
