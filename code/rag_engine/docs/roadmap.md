@@ -2,17 +2,22 @@
 
 ## 目前狀態
 
-| 範圍 | 狀態 | 證據 |
+M1 主流程（結構化資料 → Recursive 切分 → Dense Embedding → ES → 查詢）與兩條 LangGraph 已寫好，並在記憶體索引、hash 向量與測試 tokenizer 上端到端跑通。接真實 ES 與 bge-m3 的部分尚未驗證，M2 的方法尚未實作。
+
+| 狀態 | 項目 | 證據 |
 |---|---|---|
-| 17 個 DEV HTTP 操作、MCP、Health | 已實作 | `tests/test_runtime_flow.py`、`tests/test_mcp.py`（官方 MCP client 實測） |
-| Basic 認證、`X-Request-Id`、錯誤格式 | 已實作 | 同上，所有回應以 `runtime_http.schema.json` 驗證 |
-| 生命週期：initialize、reload、update（沿用／重建）、recover_index、detach、DELETE、Idempotency-Key、STALE_CONTEXT | 已實作（記憶體索引） | `test_runtime_flow.py` |
-| Pod 內匯入控制：占用、整批衝突、Queue、取消含 `cancelling`、Bulk 逾時、保留期 | 已實作 | `tests/test_ingestion_control.py` |
-| Config 編譯與索引指紋 | 已實作 | 與 rag_platform 指紋範例的投影及摘要完全一致 |
-| Recursive 切分、Dense Embedding、RRF／Sum、group_by、跨 Query 合併、Filter | 已實作 | `tests/test_engine_units.py` |
-| Remote API Adapter 與 Remote Ingestion | 已實作 | `tests/test_remote_and_embedding.py`（MockTransport） |
-| `ElasticsearchIndexStore` | **已寫、未對真實叢集驗證** | 只有假 client 的請求形狀測試；實機測試 `tests/test_es_store.py -m es` 待跑 |
-| bge-m3 Embedding client、HF Tokenizer 載入 | **已寫、未對真實服務驗證** | MockTransport 測試 |
+| 已實作並有測試 | DEV 的 17 個 HTTP 操作、MCP、Health、Basic 認證、`X-Request-Id`、錯誤格式 | `tests/test_runtime_flow.py`、`tests/test_mcp.py`（官方 MCP client 實測）；回應皆以 `runtime_http.schema.json` 驗證 |
+| 已實作並有測試 | 生命週期：initialize、reload、update（沿用／重建）、recover_index、detach、DELETE、Idempotency-Key、STALE_CONTEXT（記憶體索引） | `tests/test_runtime_flow.py` |
+| 已實作並有測試 | 匯入控制：佇列、asyncio Worker、文件占用、整批衝突、取消含 `cancelling`、Bulk 逾時、紀錄保留 | `tests/test_ingestion_control.py` |
+| 已實作並有測試 | Ingestion LangGraph：解析（直傳或 Remote）→ Recursive 切分 → Dense Embedding；寫入 ES 在圖外由 Runtime 處理 | `tests/test_runtime_flow.py`、`tests/test_remote_and_embedding.py` |
+| 已實作並有測試 | Inference LangGraph：查詢輸入 → Query Transformation（none 或 Remote）→ 內建檢索或 Remote → Rerank（none 或 Remote）→ 收斂成 `final` | `tests/test_runtime_flow.py`、`tests/test_mcp.py` |
+| 已實作並有測試 | Config 編譯與索引指紋（與 rag_platform 指紋範例完全一致）；BM25／向量檢索、RRF／Sum、group_by、跨 Query 合併、Filter；Remote API Adapter | `tests/test_engine_units.py`、`tests/test_remote_and_embedding.py` |
+| 已寫、未對真實服務驗證 | `ElasticsearchIndexStore`（ES 8.19、IK＋stconvert、`int8_hnsw`） | 只有假 client 測試；實機測試 `make test-es` 待跑（R1） |
+| 已寫、未對真實服務驗證 | bge-m3 Embedding client | 只有 MockTransport 測試（R2） |
+| 已寫、未對真實服務驗證 | 載入 bge-m3 `tokenizer.json` | 開發環境拿不到檔案，尚未執行過（R2） |
+| 已寫、未對真實服務驗證 | PLED ES 位址組法（`RAG_PLED_ES_URL_TEMPLATE`） | 未測試（R1） |
+| 已寫、沒有測試 | FTEST／ENT 獨立部署模式的啟動流程（`RAG_MODE=standalone`） | 見 R4 |
+| 還沒做 | 見 R4 功能缺口 | |
 
 ## 建議順序
 
@@ -53,6 +58,10 @@ Base image 已定為 `python:3.12.13-slim-bookworm`。套上公司的 PyPI 映�
 | FTEST／ENT 首次建立索引的指令 | M7 | rag_platform `docs/todo_enhance.md#standalone-index-initialization` |
 | SIGTERM 優雅關閉 | 後續 | `todo_enhance.md#runtime-graceful-shutdown` |
 | Readiness 檢查 ES 連線、OpenTelemetry | M3 | |
+| 獨立部署模式（`RAG_MODE=standalone`）的自動測試 | M7 | 程式已寫，需補啟動、載入 Config、查核索引與只啟用單一流程的測試 |
+| 切分改用 `asyncio.to_thread` | 可選 | 讓大文件切分不卡住同 Pod 的查詢，改動很小 |
+| 事件迴圈延遲 Log | 可選 | 定期量測事件迴圈被卡住的時間，超過門檻就記錄，作為是否改用多程序 Worker 的依據 |
+| Ingestion 多程序 Worker | 後續優化 | 需要時再啟動，見 rag_platform `docs/todo_enhance.md#ingestion-process-workers` |
 | 未載入 System 的 GET 查核只查 `dev_test` 叢集 | M3 | PLED 叢集的位址需要 Config，未載入時無從得知 |
 
 ## 已回寫 rag_platform 的實作決定

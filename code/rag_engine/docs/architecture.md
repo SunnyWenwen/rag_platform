@@ -31,6 +31,17 @@ contracts   rag_platform 的 JSON Schema、OpenAPI、Catalog Descriptor 複本
 | `runtime/mcp.py` | 每個 System 一個查詢工具 | 06#inference-mcp |
 | `adapters/es_store.py`、`es_mapping.py` | ES 8.19 讀寫、mapping、IK＋stconvert、Filter 轉 Query DSL | 02#filter-semantics |
 
+## 併行模型
+
+v1 採最簡單的做法：一個 uvicorn 程序、一條執行緒、一個 asyncio 事件迴圈。
+
+| 範圍 | 做法 | 主要設定 |
+|---|---|---|
+| Ingestion | 收件後逐份文件放進各 System 的佇列；n 個 asyncio Worker 輪流從各 System 取件，執行 LangGraph 並寫入 ES | `RAG_INGESTION_MAX_CONCURRENCY_TOTAL`（n，預設 4）、`RAG_INGESTION_MAX_CONCURRENCY_PER_SYSTEM`（預設 2） |
+| Inference 與 MCP | 每個請求在自己的協程內直接執行 LangGraph，不排隊；額滿立即拒絕 | 每 System 速率 5 次／秒、並行 2，每 Pod 並行 8，期限 60 秒 |
+
+等 bge-m3、ES、Remote API 時以 `await` 讓出執行緒，所以這些等待可以重疊。切分、tokenize、向量 JSON 解析是 CPU 工作，會在事件迴圈上執行到完成，匯入大文件時同 Pod 的查詢會短暫變慢。若之後持續卡住，再改用 rag_platform `docs/todo_enhance.md#ingestion-process-workers` 的多程序 Worker。
+
 ## 請求流程
 
 **發布（DEV）**：Builder `config:validate` → 編譯 Config、算候選指紋、查核實體索引 → 回 `index_impact` 與 `context_revision` → Builder 以相同內容加 `target_index_generation` 送 PUT → Runtime 依操作建立或接回索引、編譯 LangGraph、建立 Snapshot。

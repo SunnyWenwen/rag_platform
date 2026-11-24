@@ -184,3 +184,27 @@ Runtime 收到 `SIGTERM` 後依序處理。
 ### 驗收案例
 
 遺失 `202` 後以同一 Key 重送，取得相同 `run_id`，文件只處理一次。不同內容使用同一 Key 時遭拒。
+
+<a id="ingestion-process-workers"></a>
+## Ingestion 多程序 Worker
+
+**狀態：後續增強，需要時再啟動。** v1 的 Runtime 是單一程序、單一 asyncio 事件迴圈：Ingestion 以 n 個 asyncio Worker 並行（預設每 Pod 4、每 System 2），查詢在同一事件迴圈處理。切分、tokenize 與向量 JSON 解析都在事件迴圈上執行，匯入大文件時同 Pod 的查詢會短暫變慢。若實測匯入吞吐或查詢延遲持續受影響，再把 Ingestion 改為本節的多程序做法。
+
+### 期望行為
+
+- 一個協調程序加上 n 個子程序，每個子程序以 asyncio 同時處理最多 m 份文件，最多 n×m 份同時處理。Inference 與 MCP 仍在協調程序，只依 `pipeline` 啟用 Inference 的 Pod 不啟動子程序。
+- 協調程序持有全部狀態：已載入的 System、佇列、文件占用、Run 與文件狀態、派工表與子程序健康。子程序只有快取，包括依 `(system_id, config_revision)` 編譯的 Config 與 LangGraph、tokenizer，以及 ES、bge-m3、Remote API 的連線。
+- 子程序執行完整的 Ingestion 流程，包含寫入 ES。協調程序在子程序回報結果、或確認子程序已結束之後才釋放該文件的占用，避免逾時、重送、索引重建時舊工作晚到的寫入。
+- 處理中的文件取消後一律先回 `cancelling`，子程序在步驟之間或寫入前看到取消旗標就停止。單文件期限由子程序在寫入前自行判斷。這是對 [批量取消](06_runtime_api_and_deployment.md#ingestion-cancel-api) 現行語意的變更，啟動時要同步更新規格與 Builder。
+- 子程序崩潰時，協調程序依派工表把受影響的文件結案為 `failed` 或 `unknown`，再重開子程序。更新、刪除、卸載前，協調程序等該 System 在各子程序的文件回報結果，再通知子程序清掉舊版本快取。
+
+### 設計待評估
+
+- 協調程序與子程序間的訊息格式：派工、進度、結果、取消、排空與健康檢查。
+- Config 與連線所需 Secret 傳入子程序的方式，以及 Log 不得記錄 Secret 的保證。
+- n、m 的預設值，以及與 Pod CPU、bge-m3 吞吐的關係。
+- 是否先只把切分等 CPU 步驟交給程序池，作為較小的中間步驟。
+
+### 驗收案例
+
+多程序下同一批文件與單程序結果一致；子程序崩潰後其文件正確結案且占用釋放；逾時文件不會在結案後寫入 ES；取消、重送、索引重建與卸載在有文件處理中時行為符合規格；匯入大文件期間查詢延遲不受明顯影響。
