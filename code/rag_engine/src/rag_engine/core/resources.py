@@ -50,8 +50,17 @@ class TokenizerProfile:
 
 @dataclass(frozen=True)
 class ModelResource:
+    """An LLM of the company LLM service (06#llm-service-deployment). Users only pick the ID."""
+
     model_id: str
     label: str
+    # OpenAI-compatible base URL, for example http://llm.internal/v1 (POST {endpoint}/chat/completions).
+    endpoint: str | None = None
+    request_model: str | None = None  # model name sent to the service; defaults to model_id
+    # Name of the environment variable holding the service token, sent as "Authorization: Bearer".
+    api_key_env: str | None = None
+    timeout_seconds: float = 20.0
+    temperature: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -105,7 +114,8 @@ def fixture_resources() -> RuntimeResources:
                 }
             },
             "tokenizer_profiles": {"fixture": {"label": "DEV Tokenizer", "revision": "fixture@1"}},
-            "models": {"default-llm": {"label": "DEV LLM"}},
+            # The fixture LLM has no real service; tests replace the HTTP client.
+            "models": {"default-llm": {"label": "DEV LLM", "endpoint": "http://llm.fixture.invalid/v1"}},
             "text_analysis": "standard",
         }
     )

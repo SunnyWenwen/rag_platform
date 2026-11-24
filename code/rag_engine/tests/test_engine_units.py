@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+from typing import Any
 
 import pytest
 
@@ -18,7 +19,7 @@ from rag_engine.core.filters import matches, validate_filters
 from rag_engine.core.resources import fixture_resources
 from rag_engine.core.types import FieldSpec
 from rag_engine.engine.catalog import build_catalog
-from rag_engine.engine.compiler import compile_system, resolve_retrieval
+from rag_engine.engine.compiler import compile_system, resolve_references
 
 TOKENIZER = SimpleTokenizer("fixture@1")
 
@@ -290,14 +291,14 @@ def test_fingerprint_ignores_query_settings_and_tracks_chunking() -> None:
 def test_compiler_rejects_unavailable_components_and_bad_references() -> None:
     catalog = build_catalog("dev-runtime", fixture_resources())
     config = scenario_config()
-    config["pipelines"]["inference"]["query_transformation"] = {
-        "component_id": "rewrite",
+    config["pipelines"]["inference"]["rerank"] = {
+        "component_id": "model_api",
         "component_version": "1.0.0",
-        "parameters": {},
+        "parameters": {"text_field": "text"},
     }
     with pytest.raises(ConfigInvalid) as raised:
         compile_system(config, catalog)
-    assert raised.value.path == "/config/pipelines/inference/query_transformation/component_id"
+    assert raised.value.path == "/config/pipelines/inference/rerank/component_id"
     config = scenario_config()
     config["pipelines"]["ingestion"]["chunking"]["parameters"]["max_tokens"] = "{{SIZE}}"
     with pytest.raises(ConfigInvalid):
@@ -322,26 +323,29 @@ def reference_config(variables: dict[str, str], **retrieval: object) -> dict:
     return config
 
 
+def resolve(compiled: Any, request_values: dict[str, Any]) -> Any:
+    return resolve_references("retrieval", compiled.inference, compiled.index, request_values)
+
+
 def test_builtin_retrieval_parameters_resolve_request_then_variable() -> None:
     catalog = build_catalog("dev-runtime", fixture_resources())
     compiled = compile_system(reference_config({"TOP_N": "2"}, top_n="{{TOP_N}}", per_route_k="{{K}}"), catalog)
-    refs = compiled.inference.retrieval_references
-    assert refs is not None
+    refs = compiled.inference.references["retrieval"]
     assert refs.references == {"top_n": "TOP_N", "per_route_k": "K"}
     assert refs.variable_values == {"top_n": 2}  # parsed to the integer parameter type
     # Query-only references do not touch the index fingerprint.
     assert compiled.fingerprint == compile_system(scenario_config(), catalog).fingerprint
 
-    by_variable = resolve_retrieval(refs, compiled.index, {"K": 4})
+    by_variable = resolve(compiled, {"K": 4})
     assert (by_variable.top_n, by_variable.per_route_k) == (2, 4)
-    by_request = resolve_retrieval(refs, compiled.index, {"K": 4, "TOP_N": 5})
+    by_request = resolve(compiled, {"K": 4, "TOP_N": 5})
     assert by_request.top_n == 5
 
     with pytest.raises(RequestInvalid) as raised:
-        resolve_retrieval(refs, compiled.index, {"K": 4, "TOP_N": 0})
+        resolve(compiled, {"K": 4, "TOP_N": 0})
     assert raised.value.path == "/parameters/TOP_N" and "top_n" in raised.value.message
     with pytest.raises(RequestInvalid) as raised:
-        resolve_retrieval(refs, compiled.index, {})
+        resolve(compiled, {})
     assert raised.value.path == "/parameters/K"
 
     # Errors not tied to one parameter keep a readable message.
@@ -349,10 +353,8 @@ def test_builtin_retrieval_parameters_resolve_request_then_variable() -> None:
     fields["pipelines"]["inference"]["inference_input"]["parameters"]["request_parameters"] = [
         {"name": "FIELDS", "type": "array", "required": True}
     ]
-    refs = compile_system(fields, catalog).inference.retrieval_references
-    assert refs is not None
     with pytest.raises(RequestInvalid) as raised:
-        resolve_retrieval(refs, compiled.index, {"FIELDS": ["text"]})  # two routes need fusion
+        resolve(compile_system(fields, catalog), {"FIELDS": ["text"]})  # two routes need fusion
     assert (
         raised.value.path == "/parameters" and raised.value.message == "fusion is required for multiple search routes"
     )

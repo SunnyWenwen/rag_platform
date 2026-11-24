@@ -31,4 +31,14 @@ tokenizer_profiles:
     path: /opt/models/bge-m3/tokenizer.json
     revision: "bge-m3@REPLACE_WITH_MODEL_COMMIT"
 
-models: {}
+# LLMs of the company LLM service that the built-in Rewrite may use (06#llm-service-deployment).
+# Users only pick the ID in the Builder (llm_ref); "default-llm" matches the Descriptor default.
+models:
+  default-llm:
+    label: 公司 LLM
+    endpoint: http://REPLACE_WITH_LLM_SERVICE/v1
+    request_model: REPLACE_WITH_MODEL_NAME
+    timeout_seconds: 20
+    temperature: 0
+    # If the service needs a token (the Runtime refuses to start when the variable is empty):
+    # api_key_env: RAG_LLM_API_KEY

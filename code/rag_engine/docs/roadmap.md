@@ -2,7 +2,7 @@
 
 ## 目前狀態
 
-M1 的程式部分已完成：主流程（結構化資料 → Recursive 切分 → Dense Embedding → ES → 查詢）、兩條 LangGraph、內建 Retrieval 參數的 `{{KEY}}` 取值，以及 FTEST／ENT 獨立部署模式。M2 的 Fixed-size 與 Header-aware 切分也已實作（規則見 rag_platform 03#chunk-token-rules、03#header-aware-rules）。這些都在記憶體索引、hash 向量與測試 tokenizer 上端到端跑通，並以 `make run`＋`make smoke` 用真實 HTTP 操作過完整流程。接真實 ES 與 bge-m3 的部分尚未驗證，其餘 M2 方法尚未實作。測試分層與換成公司環境的做法見 [testing.md](testing.md)。
+M1 的程式部分已完成：主流程（結構化資料 → Recursive 切分 → Dense Embedding → ES → 查詢）、兩條 LangGraph、內建 Retrieval 參數的 `{{KEY}}` 取值，以及 FTEST／ENT 獨立部署模式。M2 的 Fixed-size、Header-aware 切分與 Rewrite（LLM）也已實作（規則見 rag_platform 03#chunk-token-rules、03#header-aware-rules、03#rewrite-rules）。這些都在記憶體索引、hash 向量與測試 tokenizer 上端到端跑通，並以 `make run`＋`make smoke` 用真實 HTTP 操作過完整流程。接真實 ES、bge-m3 與公司 LLM 的部分尚未驗證，其餘 M2 方法尚未實作。測試分層與換成公司環境的做法見 [testing.md](testing.md)。
 
 | 狀態 | 項目 | 證據 |
 |---|---|---|
@@ -16,7 +16,9 @@ M1 的程式部分已完成：主流程（結構化資料 → Recursive 切分 �
 | 已實作並有測試 | Inference LangGraph：查詢輸入 → Query Transformation（none 或 Remote）→ 內建檢索或 Remote → Rerank（none 或 Remote）→ 收斂成 `final` | `tests/test_runtime_flow.py`、`tests/test_mcp.py` |
 | 已實作並有測試 | Config 編譯與索引指紋（與 rag_platform 指紋範例完全一致）；BM25／向量檢索、RRF／Sum、group_by、跨 Query 合併、Filter；Remote API Adapter | `tests/test_engine_units.py`、`tests/test_remote_and_embedding.py` |
 | 已寫、未對真實服務驗證 | `ElasticsearchIndexStore`（ES 8.19、IK＋stconvert、`int8_hnsw`） | 只有假 client 測試；實機測試 `make test-es` 待跑（R1） |
+| 已實作並有測試 | Rewrite：公司 LLM（OpenAI 相容 Chat Completions、JSON Schema 輸出）、格式驗證、重試 1 次、退回原始問題、跨 Query 合併時點（Retrieval 後或 Rerank 後）、參數 `{{KEY}}` | `tests/test_rewrite.py`（假 LLM）；本機以假的 OpenAI 相容服務跑過 `make smoke SMOKE_ARGS=--rewrite` |
 | 已寫、未對真實服務驗證 | bge-m3 Embedding client | 只有 MockTransport 測試（R2） |
+| 已寫、未對真實服務驗證 | 公司 LLM client（`adapters/llm.py`） | 只有假服務測試；要確認公司服務支援 `response_format` 的 `json_schema`（R2b） |
 | 已寫、未對真實服務驗證 | 載入 bge-m3 `tokenizer.json` | 開發環境拿不到檔案，尚未執行過（R2） |
 | 已寫、未對真實服務驗證 | PLED ES 位址組法（`RAG_PLED_ES_URL_TEMPLATE`） | 未測試（R1） |
 | 還沒做 | 見 R4 功能缺口 | |
@@ -44,6 +46,12 @@ Base image 已定為 `python:3.12.13-slim-bookworm`。套上公司的 PyPI 映�
 3. 把 `tokenizer.json` 放到 `models/bge-m3/`，`resources/dev.yaml` 填入同一個 commit。
 4. 新增 `-m embedding` 實機測試：同一句話的 Query 向量與文件向量 cosine 接近 1，長度超過 8192 token 會回 `EMBEDDING_INPUT_TOO_LONG`。
 
+### R2b 公司 LLM
+
+1. 在 resources 的 `models` 填入公司 LLM（見 [integration.md](integration.md)），用其中的 curl 確認服務接受 `response_format` 的 `json_schema`，含 `minItems`／`maxItems`。
+2. 執行 `make smoke SMOKE_ARGS=--rewrite`，確認改寫結果合理；若常出現 `REWRITE_FALLBACK` 警告，檢查模型輸出與 Prompt。
+3. 若服務不支援 `json_schema`，與規格負責人確認後再加 `json_object` 模式（03#rewrite-rules 不允許默默改用較弱模式）。
+
 ### R3 DEV 上線
 
 1. 建 Image、套 `deploy/k8s/dev-runtime.yaml`，接 Istio 與 Gateway（見 rag_platform `examples/system_config/deployment.istio-http.example.yaml`）。
@@ -56,7 +64,7 @@ Base image 已定為 `python:3.12.13-slim-bookworm`。套上公司的 PyPI 映�
 |---|---|---|
 | `content` 來源與檔案 Parser | M2 | Q-005；目前只有 `passthrough` |
 | 切分的 `preserve_original`、`include_original_chunk` | M2 | 目前編譯時拒絕，語意見 D-53 |
-| Rewrite（LLM）與 Rerank `model_api` | M2 | Catalog 尚未列出 |
+| Rerank `model_api` | M2 | Catalog 尚未列出；Rerank 服務契約待 Q-003 |
 | Remote Query Transformation 產生多 Query 後的平台合併設定 | M2 | Q-014／Q-028，目前用預設合併 |
 | FTEST／ENT 首次建立索引的指令 | M7 | rag_platform `docs/todo_enhance.md#standalone-index-initialization` |
 | SIGTERM 優雅關閉 | 後續 | `todo_enhance.md#runtime-graceful-shutdown` |

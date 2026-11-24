@@ -12,7 +12,7 @@ from typing import Any
 from rag_engine.components.chunking import ChunkSettings
 from rag_engine.components.embedding import DenseSettings
 from rag_engine.components.remote import RemoteCall
-from rag_engine.core.resources import EmbeddingProfile, TokenizerProfile
+from rag_engine.core.resources import EmbeddingProfile, ModelResource, TokenizerProfile
 from rag_engine.core.types import Fields, Vectors
 from rag_engine.engine.values import RequestParameter, SystemValues
 
@@ -79,8 +79,8 @@ class BuiltinRetrieval:
 
 
 @dataclass(frozen=True)
-class RetrievalReferences:
-    """Built-in Retrieval parameters written as ``"{{KEY}}"``, resolved for each request.
+class ParameterReferences:
+    """Built-in Inference parameters written as ``"{{KEY}}"``, resolved for each request.
 
     Rule (05#parameter-references): the request value first (declared defaults included),
     then the same-named System Variable parsed to the parameter type.
@@ -90,6 +90,19 @@ class RetrievalReferences:
     references: dict[str, str]  # parameter name -> KEY
     variable_values: dict[str, Any]  # parameter name -> parsed System Variable value
     schema: dict[str, Any]  # the Descriptor's parameters_schema
+
+
+@dataclass(frozen=True)
+class RewriteStage:
+    """Built-in Rewrite Query Transformation (03#rewrite-rules)."""
+
+    model: ModelResource  # from llm_ref; a fixed choice
+    prompt: str
+    count: int
+    include_original: bool
+    cross_query_at: str  # "after_retrieval" or "after_rerank"
+    cross_query_group_by: tuple[str, ...]
+    cross_query_top_n: int | None
 
 
 @dataclass(frozen=True)
@@ -103,13 +116,14 @@ class McpSettings:
 class InferencePlan:
     request_parameters: dict[str, RequestParameter]
     fixed_filters: list[dict[str, Any]]
-    transformation: RemoteSegment | None
+    transformation: RemoteSegment | RewriteStage | None
     retrieval: BuiltinRetrieval | RemoteSegment | None
     rerank: RemoteSegment | None
     candidate_fields: Fields
     mcp: McpSettings
     uses_platform_index: bool
-    retrieval_references: RetrievalReferences | None = None
+    # Module key ("query_transformation", "retrieval") -> parameters resolved per request.
+    references: dict[str, ParameterReferences] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

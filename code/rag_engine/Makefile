@@ -30,9 +30,10 @@ run:
 
 # Drive a running Runtime through the whole Builder flow over HTTP (start it first with `make run`).
 # Against a deployed DEV Runtime: make smoke URL=https://... with RAG_SMOKE_MANAGEMENT_USERNAME/PASSWORD set.
+# Add SMOKE_ARGS=--rewrite to also query through the company LLM.
 URL ?= http://127.0.0.1:8080
 smoke:
-	uv run python scripts/smoke_dev_runtime.py --base-url $(URL)
+	uv run python scripts/smoke_dev_runtime.py --base-url $(URL) $(SMOKE_ARGS)
 
 image:
 	docker build -t rag-runtime:$$(uv run python -c "import rag_engine; print(rag_engine.__version__)") .

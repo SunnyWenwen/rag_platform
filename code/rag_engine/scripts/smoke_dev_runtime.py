@@ -9,6 +9,9 @@ Every response body is validated against the vendored runtime_http.schema.json.
 Management credentials come from --username/--password or RAG_SMOKE_MANAGEMENT_USERNAME /
 RAG_SMOKE_MANAGEMENT_PASSWORD (default mock/mock, the `make run` values). The script uses a
 new random System ID and deletes the System at the end.
+
+--rewrite also switches the System to the built-in Rewrite with the first Catalog model and
+runs a query through the company LLM service (needs a Runtime whose resources list a real LLM).
 """
 
 from __future__ import annotations
@@ -145,8 +148,9 @@ def build_config(catalog: dict[str, Any], ingestion: tuple[str, str], inference:
 
 
 class Smoke:
-    def __init__(self, base_url: str, management: tuple[str, str]) -> None:
+    def __init__(self, base_url: str, management: tuple[str, str], rewrite: bool = False) -> None:
         self.base_url = base_url.rstrip("/")
+        self.rewrite = rewrite
         self.http = httpx.Client(base_url=self.base_url, timeout=30)
         self.management = management
         self.system_id = str(uuid.uuid4())
@@ -308,8 +312,39 @@ class Smoke:
         result = self.query({"query": "保養"})
         assert result["config_revision"] == "revision-2" and len(self.items(result)) == 1
         step("update query-only setting → index reused, revision-2 serves")
+        revision = "revision-2"
 
-        binding["X-Expected-Config-Revision"] = "revision-2"
+        if self.rewrite:
+            model = next(iter(catalog["resources"]["models"]))
+            config["pipelines"]["inference"]["query_transformation"] = {
+                "component_id": "rewrite",
+                "component_version": "1.0.0",
+                "parameters": {
+                    "llm_ref": model,
+                    "prompt": "從不同搜尋角度改寫這個問題，產生 {{count}} 個檢索問題。\n問題：{{query}}",
+                    "count": 2,
+                    "include_original": True,
+                },
+            }
+            config["variable"]["TOP_N"] = "5"
+            rewritten = self.preview_and_apply(
+                catalog,
+                config,
+                "update",
+                "revision-3",
+                active="revision-2",
+                generation=status["index_generation"],
+                fingerprint=fingerprint,
+            )
+            assert rewritten["validation"]["index_impact"]["action"] == "reuse"
+            result = self.query({"query": "散熱孔怎麼清潔？"})
+            variants = result["query_variants"]
+            assert variants[0] == "散熱孔怎麼清潔？" and self.items(result), result
+            fallback = " (fell back to the original question: check the Runtime log)" if len(variants) == 1 else ""
+            step(f"rewrite with {model} → {variants}{fallback}")
+            revision = "revision-3"
+
+        binding["X-Expected-Config-Revision"] = revision
         detached = self.manage(
             "POST",
             f"{self.system_path}:detach",
@@ -346,8 +381,9 @@ def main() -> int:
     parser.add_argument("--base-url", default="http://127.0.0.1:8080")
     parser.add_argument("--username", default=os.environ.get("RAG_SMOKE_MANAGEMENT_USERNAME", "mock"))
     parser.add_argument("--password", default=os.environ.get("RAG_SMOKE_MANAGEMENT_PASSWORD", "mock"))
+    parser.add_argument("--rewrite", action="store_true", help="also query through the built-in Rewrite (real LLM)")
     args = parser.parse_args()
-    smoke = Smoke(args.base_url, (args.username, args.password))
+    smoke = Smoke(args.base_url, (args.username, args.password), rewrite=args.rewrite)
     print(f"Runtime {smoke.base_url}, System {smoke.system_id}")
     started = time.monotonic()
     smoke.run()

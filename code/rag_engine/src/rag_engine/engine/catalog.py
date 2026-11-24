@@ -22,6 +22,7 @@ IMPLEMENTED: frozenset[tuple[str, str, str]] = frozenset(
         ("indexing", "elasticsearch", "1.0.0"),
         ("inference_input", "platform", "1.0.0"),
         ("query_transformation", "none", "1.0.0"),
+        ("query_transformation", "rewrite", "1.0.0"),
         ("retrieval", "builtin", "1.0.0"),
         ("rerank", "none", "1.0.0"),
     }

@@ -7,9 +7,9 @@ runtime     FastAPI app、Basic 認證、X-Request-Id、錯誤格式、System �
   │
 engine      Config 編譯器、索引指紋、LangGraph 流程、文件驗證、索引寫入（write_id 批次替換）
   │
-components  切分（Recursive、Fixed-size、Header-aware）、Dense Embedding、融合／分組／跨 Query 合併、Remote API Adapter
+components  切分（Recursive、Fixed-size、Header-aware）、Dense Embedding、Rewrite、融合／分組／跨 Query 合併、Remote API Adapter
   │
-adapters    IndexStore（記憶體／Elasticsearch）、ES mapping 與查詢、Embedding client、Tokenizer
+adapters    IndexStore（記憶體／Elasticsearch）、ES mapping 與查詢、Embedding client、LLM client、Tokenizer
   │
 core        資料型別、錯誤、Filter 語意、RFC 8785、Runtime resources
   │
@@ -32,6 +32,7 @@ contracts   rag_platform 的 JSON Schema、OpenAPI、Descriptor registry 複本
 | `runtime/inference.py` | 每 System 速率與併發、全域併發、60 秒 Deadline、排空 | 06#inference-api |
 | `runtime/mcp.py` | 每個 System 一個查詢工具 | 06#inference-mcp |
 | `adapters/es_store.py`、`es_mapping.py` | ES 8.19 讀寫、mapping、IK＋stconvert、Filter 轉 Query DSL | 02#filter-semantics |
+| `components/rewrite.py`、`adapters/llm.py` | Rewrite：Prompt 取值、JSON Schema 結構化輸出、格式驗證、重試與退回原始問題；LLM client 只負責 Chat Completions 傳輸 | 03#rewrite-rules、06#llm-service-deployment |
 
 ## 併行模型
 

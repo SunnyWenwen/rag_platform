@@ -19,7 +19,7 @@ from rag_engine.contracts import ContractError, errors, schema_ref
 from rag_engine.core.canonical import sha256_hex
 from rag_engine.core.errors import ConfigInvalid, RequestInvalid
 from rag_engine.core.filters import validate_filters
-from rag_engine.core.resources import RuntimeResources
+from rag_engine.core.resources import ModelResource, RuntimeResources
 from rag_engine.core.types import Fields, FieldSpec, Vectors, VectorSpec, fields_meta
 from rag_engine.engine.catalog import REMOTE_ADAPTER_VERSIONS, Catalog
 from rag_engine.engine.plan import (
@@ -32,8 +32,9 @@ from rag_engine.engine.plan import (
     IngestionPlan,
     IngestionStage,
     McpSettings,
+    ParameterReferences,
     RemoteSegment,
-    RetrievalReferences,
+    RewriteStage,
 )
 from rag_engine.engine.values import (
     EXPRESSION,
@@ -536,8 +537,8 @@ def _compile_inference(
     )
     fixed = list(nodes.get("fixed_filters", []))
     validate_filters(fixed, index.fields, "/config/pipelines/inference/fixed_filters", error=ConfigInvalid)
-    segments: dict[str, RemoteSegment | BuiltinRetrieval | None] = {}
-    retrieval_refs: RetrievalReferences | None = None
+    segments: dict[str, RemoteSegment | BuiltinRetrieval | RewriteStage | None] = {}
+    references: dict[str, ParameterReferences] = {}
     covered: set[str] = set()
     for module in REMOTE_INFERENCE:
         node = nodes.get(module)
@@ -568,7 +569,13 @@ def _compile_inference(
         descriptor = _find_descriptor(catalog, lane, module, node)
         params = node["parameters"]
         _no_secret_refs(params, path + "/parameters", values, module)
-        refs = _builtin_references(params, specs, values, path, module)
+        # The Rewrite prompt is a text template: its references are filled in place, per request.
+        templates = ("prompt",) if node["component_id"] == "rewrite" else ()
+        refs = _builtin_references(params, specs, values, path, module, templates)
+        if "llm_ref" in refs:
+            raise ConfigInvalid(
+                "llm_ref must be a model listed in the Catalog", path=path + "/parameters/llm_ref", module=module
+            )
         schema = descriptor["parameters_schema"]
         variable_values = {
             name: _variable_value(values.variables[key], schema, name, path, module)
@@ -588,13 +595,18 @@ def _compile_inference(
             else:
                 deferred.add(name)
         _check_parameters(schema, sample, path, module, skip=deferred)
+        # With references, the settings built for each request replace the ones built here.
         if module == "retrieval":
-            # With references, the settings built for each request replace this one.
             segments[module] = _compile_retrieval(sample, index, path, skip=deferred)
-            if refs:
-                retrieval_refs = RetrievalReferences(dict(params), refs, variable_values, schema)
+        elif node["component_id"] == "rewrite":
+            model = catalog.resources.models.get(params["llm_ref"])
+            if model is None:
+                raise ConfigInvalid("unknown model", path=path + "/parameters/llm_ref", module=module)
+            segments[module] = _rewrite_stage(sample, model, index, path, skip=deferred)
         else:
             segments[module] = None  # "none" methods
+        if refs:
+            references[module] = ParameterReferences(dict(params), refs, variable_values, schema)
     mcp = nodes.get("mcp", {})
     text_field = mcp.get("text_field", "text")
     spec = index.fields.get(text_field)
@@ -605,7 +617,8 @@ def _compile_inference(
     transformation = segments.get("query_transformation")
     retrieval = segments.get("retrieval")
     rerank = segments.get("rerank")
-    assert transformation is None or isinstance(transformation, RemoteSegment)
+    assert transformation is None or isinstance(transformation, RemoteSegment | RewriteStage)
+    assert retrieval is None or isinstance(retrieval, BuiltinRetrieval | RemoteSegment)
     assert rerank is None or isinstance(rerank, RemoteSegment)
     return InferencePlan(
         request_parameters=specs,
@@ -616,17 +629,35 @@ def _compile_inference(
         candidate_fields=index.fields,
         mcp=McpSettings(mcp.get("tool_name", "search"), mcp.get("description"), text_field),
         uses_platform_index=isinstance(retrieval, BuiltinRetrieval),
-        retrieval_references=retrieval_refs,
+        references=references,
     )
 
 
 def _builtin_references(
-    params: dict[str, Any], specs: dict[str, RequestParameter], values: SystemValues, path: str, module: str
+    params: dict[str, Any],
+    specs: dict[str, RequestParameter],
+    values: SystemValues,
+    path: str,
+    module: str,
+    templates: tuple[str, ...] = (),
 ) -> dict[str, str]:
-    """Top-level parameters written as ``"{{KEY}}"``. KEY must be a request parameter or a Variable."""
+    """Top-level parameters written as ``"{{KEY}}"``. KEY must be a request parameter or a Variable.
+
+    Parameters named in ``templates`` are text templates: their references stay in place and are
+    only checked here; ``{{query}}`` and ``{{count}}`` are built in.
+    """
     found: dict[str, str] = {}
     for name, value in params.items():
         location = f"{path}/parameters/{name}"
+        if name in templates:
+            for key, _ in references(value, location):
+                if key not in ("query", "count") and key not in specs and key not in values.variables:
+                    raise ConfigInvalid(
+                        f"{key} is neither an Inference request parameter nor a System Variable",
+                        path=location,
+                        module=module,
+                    )
+            continue
         match = EXPRESSION.match(value) if isinstance(value, str) else None
         if match is None:
             for _, inner in references(value, location):
@@ -660,9 +691,12 @@ def _variable_value(raw: str, schema: dict[str, Any], name: str, path: str, modu
         ) from error
 
 
-def resolve_retrieval(refs: RetrievalReferences, index: IndexPlan, request_values: dict[str, Any]) -> BuiltinRetrieval:
-    """Retrieval settings for one request: request value first, then the parsed Variable."""
-    path = _node_path("inference", "retrieval")
+def resolve_references(
+    module: str, plan: InferencePlan, index: IndexPlan, request_values: dict[str, Any]
+) -> BuiltinRetrieval | RewriteStage:
+    """Settings of ``module`` for one request: request value first, then the parsed Variable."""
+    refs = plan.references[module]
+    path = _node_path("inference", module)
     params = dict(refs.parameters)
     for name, key in refs.references.items():
         if key in request_values:
@@ -671,19 +705,50 @@ def resolve_retrieval(refs: RetrievalReferences, index: IndexPlan, request_value
             params[name] = refs.variable_values[name]
         else:
             raise RequestInvalid(
-                f"no value for {key}, used by retrieval parameter {name}", path=f"/parameters/{key}", module="retrieval"
+                f"no value for {key}, used by {module} parameter {name}", path=f"/parameters/{key}", module=module
             )
     try:
-        _check_parameters(refs.schema, params, path, "retrieval")
-        return _compile_retrieval(params, index, path)
+        _check_parameters(refs.schema, params, path, module)
+        if module == "retrieval":
+            return _compile_retrieval(params, index, path)
+        assert isinstance(plan.transformation, RewriteStage)
+        return _rewrite_stage(params, plan.transformation.model, index, path)
     except ConfigInvalid as error:
         location = (error.path or "").removeprefix(path + "/parameters").strip("/").split("/")[0]
         source = refs.references.get(location)
         raise RequestInvalid(
-            f"invalid retrieval parameter {location}: {error.message}" if location else error.message,
+            f"invalid {module} parameter {location}: {error.message}" if location else error.message,
             path=f"/parameters/{source}" if source else "/parameters",
-            module="retrieval",
+            module=module,
         ) from error
+
+
+def _check_group_by(names: tuple[str, ...], index: IndexPlan, location: str, module: str) -> None:
+    """Group-by fields are document_id or string fields of the index (03#group-by-representative)."""
+    for position, name in enumerate(names):
+        spec = index.fields.get(name.removeprefix("structdata."))
+        if name != "document_id" and (spec is None or spec.type != "string"):
+            raise ConfigInvalid(
+                "group_by needs document_id or a string field", path=f"{location}/{position}", module=module
+            )
+
+
+def _rewrite_stage(
+    params: dict[str, Any], model: ModelResource, index: IndexPlan, path: str, skip: set[str] | None = None
+) -> RewriteStage:
+    """Rewrite settings. A cross-query group-by named in ``skip`` is not checked."""
+    skip = skip or set()
+    group_by = () if "cross_query_group_by" in skip else tuple(params.get("cross_query_group_by", []))
+    _check_group_by(group_by, index, path + "/parameters/cross_query_group_by", "query_transformation")
+    return RewriteStage(
+        model=model,
+        prompt=params["prompt"],
+        count=params["count"],
+        include_original=params["include_original"],
+        cross_query_at=params.get("cross_query_at", "after_retrieval"),
+        cross_query_group_by=group_by,
+        cross_query_top_n=params.get("cross_query_top_n"),
+    )
 
 
 def _compile_retrieval(
@@ -709,14 +774,7 @@ def _compile_retrieval(
                 path=f"{path}/parameters/fulltext_fields/{position}",
                 module="retrieval",
             )
-    for position, name in enumerate(group_by):
-        spec = index.fields.get(name.removeprefix("structdata."))
-        if name != "document_id" and (spec is None or spec.type != "string"):
-            raise ConfigInvalid(
-                "group_by needs document_id or a string field",
-                path=f"{path}/parameters/group_by/{position}",
-                module="retrieval",
-            )
+    _check_group_by(group_by, index, path + "/parameters/group_by", "retrieval")
     routes = len(vector_fields) + len(fulltext_fields)
     if routes > 1 and "fusion" not in params:
         raise ConfigInvalid(

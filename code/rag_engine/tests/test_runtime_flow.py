@@ -59,7 +59,8 @@ async def test_management_routes_need_management_credentials(runtime: RuntimeCli
 async def test_catalog_lists_only_implemented_components(runtime: RuntimeClient) -> None:
     catalog = await runtime.catalog()
     keys = {(item["module"], item["component_id"]) for item in catalog["descriptors"]}
-    assert ("chunking", "recursive") in keys and ("query_transformation", "rewrite") not in keys
+    assert ("chunking", "recursive") in keys and ("query_transformation", "rewrite") in keys
+    assert ("rerank", "model_api") not in keys
 
 
 async def test_publish_ingest_query_and_manage_documents(runtime: RuntimeClient) -> None:

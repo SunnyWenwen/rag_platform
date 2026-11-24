@@ -29,7 +29,14 @@ data:
         kind: huggingface
         path: /opt/models/bge-m3/tokenizer.json
         revision: "bge-m3@REPLACE_WITH_MODEL_COMMIT"
-    models: {}
+    models:
+      default-llm:
+        label: 公司 LLM
+        endpoint: http://REPLACE_WITH_LLM_SERVICE/v1
+        request_model: REPLACE_WITH_MODEL_NAME
+        timeout_seconds: 20
+        temperature: 0
+        api_key_env: RAG_LLM_API_KEY
 ---
 apiVersion: v1
 kind: Service
@@ -96,7 +103,9 @@ spec:
               valueFrom: {secretKeyRef: {name: dev-runtime-management, key: username}}
             - name: RAG_MANAGEMENT_PASSWORD
               valueFrom: {secretKeyRef: {name: dev-runtime-management, key: password}}
-            # Only with api_key_env in resources.yaml:
+            - name: RAG_LLM_API_KEY   # the company LLM token (api_key_env of default-llm)
+              valueFrom: {secretKeyRef: {name: dev-runtime-llm, key: token}}
+            # Only with api_key_env in the embedding profile:
             # - name: RAG_EMBEDDING_API_KEY
             #   valueFrom: {secretKeyRef: {name: dev-runtime-embedding, key: token}}
           volumeMounts:

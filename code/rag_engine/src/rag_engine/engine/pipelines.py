@@ -23,10 +23,11 @@ from rag_engine.components import results
 from rag_engine.components.chunking import chunk_documents
 from rag_engine.components.embedding import embed_documents
 from rag_engine.components.remote import call_remote
+from rag_engine.components.rewrite import render_prompt, rewrite_queries
 from rag_engine.core.errors import RequestInvalid, UpstreamError
 from rag_engine.core.filters import validate_filters
 from rag_engine.core.types import Document
-from rag_engine.engine.compiler import resolve_retrieval
+from rag_engine.engine.compiler import resolve_references
 from rag_engine.engine.documents import check_query_contexts, check_remote_documents
 from rag_engine.engine.plan import (
     BuiltinRetrieval,
@@ -35,6 +36,7 @@ from rag_engine.engine.plan import (
     EmbedStage,
     IngestionStage,
     RemoteSegment,
+    RewriteStage,
 )
 from rag_engine.engine.values import bind_request, resolve_parameters
 
@@ -54,6 +56,7 @@ class InferenceState(TypedDict, total=False):
     # its own copy of config["configurable"], so writes there are not seen downstream.
     request_values: dict[str, Any]  # validated request parameters with declared defaults
     retrieval: BuiltinRetrieval | None  # per-request settings when parameters use {{KEY}}
+    rewrite: RewriteStage | None  # per-request settings when parameters use {{KEY}}
     initial: dict[str, Any]
     contexts: list[dict[str, Any]]
     query_variants: list[str]
@@ -153,18 +156,23 @@ def build_inference_graph(
     graph = StateGraph(InferenceState)
     graph.add_node("inference_input", _input_node(system))
     steps: list[tuple[str, Any]] = []
-    if plan.transformation is not None:
+    if isinstance(plan.transformation, RemoteSegment):
         steps.append(
             (f"remote_{plan.transformation.module}", _remote_inference_node(plan.transformation, system, deps))
         )
+    elif isinstance(plan.transformation, RewriteStage):
+        steps.append(("rewrite", _rewrite_node(system, deps)))
     if isinstance(plan.retrieval, RemoteSegment):
         steps.append(("remote_retrieval", _remote_inference_node(plan.retrieval, system, deps)))
     elif isinstance(plan.retrieval, BuiltinRetrieval):
         assert store is not None and index_name is not None
         steps.append(("retrieval", _retrieval_node(plan.retrieval, system, deps, store, index_name)))
+    retrieval_ends_alone = not (isinstance(plan.retrieval, RemoteSegment) and plan.retrieval.through == "rerank")
+    if isinstance(plan.transformation, RewriteStage) and retrieval_ends_alone:
+        steps.append(("cross_query", _cross_query_node(system)))  # merges when cross_query_at is after_retrieval
     if plan.rerank is not None:
         steps.append(("remote_rerank", _remote_inference_node(plan.rerank, system, deps)))
-    graph.add_node("finalize", _finalize_node())
+    graph.add_node("finalize", _finalize_node(system))
     graph.add_edge(START, "inference_input")
     previous = "inference_input"
     for name, node in steps:
@@ -182,10 +190,8 @@ def _input_node(system: CompiledSystem) -> Any:
     async def inference_input(state: InferenceState, config: RunnableConfig) -> dict[str, Any]:
         request = _configurable(config)["request"]
         bound = bind_request(plan.request_parameters, request.get("parameters", {}))
-        retrieval = None
-        if plan.retrieval_references is not None:
-            # Resolve "{{KEY}}" Retrieval parameters before any Remote call so a bad value fails fast.
-            retrieval = resolve_retrieval(plan.retrieval_references, system.index, bound)
+        # Resolve "{{KEY}}" parameters before any model or Remote call so a bad value fails fast.
+        resolved = {module: resolve_references(module, plan, system.index, bound) for module in plan.references}
         filters = request.get("filters", [])
         validate_filters(filters, plan.candidate_fields, "/filters", error=RequestInvalid)
         initial = {
@@ -197,7 +203,8 @@ def _input_node(system: CompiledSystem) -> Any:
         }
         return {
             "request_values": bound,
-            "retrieval": retrieval,
+            "retrieval": resolved.get("retrieval"),
+            "rewrite": resolved.get("query_transformation"),
             "initial": initial,
             "contexts": [initial],
             "query_variants": [request["query"]],
@@ -222,9 +229,13 @@ def _remote_inference_node(segment: RemoteSegment, system: CompiledSystem, deps:
         update: dict[str, Any] = {"contexts": contexts}
         if segment.module == "query_transformation":
             update["query_variants"] = [context["query"] for context in contexts]
-        if segment.through == "rerank" and (len(contexts) != 1 or len(contexts[0]["result_sets"]) != 1):
+        # Ending the pipeline: one Context per incoming query, each with one ResultSet. Several
+        # Contexts (per-query Rerank after a Rewrite) are merged across queries in finalize.
+        ends_alone = len(contexts) == len(state["contexts"])
+        if segment.through == "rerank" and (not ends_alone or any(len(c["result_sets"]) != 1 for c in contexts)):
             raise UpstreamError(
-                "a Remote segment ending the pipeline must return one Context and one ResultSet", module=segment.module
+                "a Remote segment ending the pipeline must return one Context per query, each with one ResultSet",
+                module=segment.module,
             )
         return update
 
@@ -265,10 +276,56 @@ def _retrieval_node(
     return retrieval
 
 
-def _finalize_node() -> Any:
+def _rewrite_settings(state: InferenceState, system: CompiledSystem) -> RewriteStage | None:
+    stage = state.get("rewrite") or system.inference.transformation
+    return stage if isinstance(stage, RewriteStage) else None
+
+
+def _rewrite_node(system: CompiledSystem, deps: EngineDeps) -> Any:
+    async def rewrite(state: InferenceState, config: RunnableConfig) -> dict[str, Any]:
+        stage = _rewrite_settings(state, system)
+        assert stage is not None
+        initial = state["initial"]
+        prompt = render_prompt(
+            stage.prompt, initial["query"], stage.count, state["request_values"], system.values.variables
+        )
+        queries = await rewrite_queries(
+            deps.http,
+            stage.model,
+            prompt,
+            initial["query"],
+            stage.count,
+            stage.include_original,
+            deadline=_configurable(config)["deadline"],
+        )
+        return {"contexts": [{**initial, "query": query} for query in queries], "query_variants": queries}
+
+    return rewrite
+
+
+def _cross_query_node(system: CompiledSystem) -> Any:
+    """Merge the per-query lists right after Retrieval when ``cross_query_at`` is after_retrieval."""
+
+    async def cross_query(state: InferenceState, config: RunnableConfig) -> dict[str, Any]:
+        stage = _rewrite_settings(state, system)
+        contexts = state["contexts"]
+        if stage is None or stage.cross_query_at != "after_retrieval" or len(contexts) < 2:
+            return {}
+        items = results.cross_query_merge(contexts, list(stage.cross_query_group_by), stage.cross_query_top_n)
+        return {"contexts": [{**state["initial"], "result_sets": [{"key": "cross_query", "items": items}]}]}
+
+    return cross_query
+
+
+def _finalize_node(system: CompiledSystem) -> Any:
     async def finalize(state: InferenceState, config: RunnableConfig) -> dict[str, Any]:
         contexts = state["contexts"]
-        merged = results.cross_query_merge(contexts, None, None) if len(contexts) > 1 else None
+        merged = None
+        if len(contexts) > 1:  # several queries still separate: merge across queries now
+            stage = _rewrite_settings(state, system)
+            group = list(stage.cross_query_group_by) if stage else []
+            limit = stage.cross_query_top_n if stage else None
+            merged = results.cross_query_merge(contexts, group, limit)
         return {"final": results.finalize(contexts, state["initial"], merged)}
 
     return finalize

@@ -23,6 +23,7 @@
 | `test_ingestion_control.py` | 占用與整批衝突、取消（含 `cancelling`）、Bulk 逾時、Queue 額滿 `503`、Retire 計入 Pod 總量、保留期 |
 | `test_mcp.py` | 真的 uvicorn＋官方 MCP client |
 | `test_remote_and_embedding.py` | Remote Parsing 進 Ingestion、Remote Rerank 收到 Request 參數 |
+| `test_rewrite.py` | Rewrite：回答格式規則、Prompt 取值、重試與退回原始問題、服務錯誤與逾時（假 LLM），以及跨 Query 合併時點的 HTTP 流程 |
 | `test_standalone.py` | FTEST／ENT 模式：匯出格式 Config、環境變數取值、`/v1`、單一流程、索引不存在時 not ready、啟動錯誤 |
 
 記憶體索引、hash 向量與測試 tokenizer 只是替身，排名結果不代表真實品質。這一層驗證的是 Runtime 邏輯與 API 契約，換成真實 ES 或 bge-m3 時這些測試照樣有效，不需要改。
@@ -61,7 +62,7 @@ make smoke
 RAG_SMOKE_MANAGEMENT_USERNAME=... RAG_SMOKE_MANAGEMENT_PASSWORD=... make smoke URL=https://dev-runtime.example
 ```
 
-腳本取 Catalog 中第一個 Embedding Profile 與 Tokenizer Profile 組 Config，ES 來源用 `dev_test`。
+腳本取 Catalog 中第一個 Embedding Profile 與 Tokenizer Profile 組 Config，ES 來源用 `dev_test`。加 `SMOKE_ARGS=--rewrite` 會再切換成 Rewrite（Catalog 第一個模型）查詢一次，用來驗證公司 LLM。
 
 ## 換成公司環境時
 
