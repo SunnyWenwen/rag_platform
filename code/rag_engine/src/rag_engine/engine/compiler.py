@@ -799,10 +799,19 @@ def compile_system(
     catalog: Catalog,
     *,
     environment: Mapping[str, str] | None = None,
+    pipeline: str | None = None,
 ) -> CompiledSystem:
-    """Validate and compile ``config``. ``environment`` is None in DEV (values in Config)."""
+    """Validate and compile ``config``. ``environment`` is None in DEV (values in Config).
+
+    ``pipeline`` is the only pipeline a standalone Pod serves: the System API credentials of the
+    other pipeline are then not required (05: 分 Pod 時各 Runtime 只需注入自己流程的帳密).
+    """
     _shape(config)
-    values = load_values(config, environment)
+    optional = set()
+    if pipeline is not None:
+        other = "INFERENCE" if pipeline == "ingestion" else "INGESTION"
+        optional = {f"{other}_API_USERNAME", f"{other}_API_PASSWORD"}
+    values = load_values(config, environment, optional)
     ingestion, state, indexing = _compile_ingestion(config, catalog, values)
     index = _compile_index(indexing, state, values, catalog.resources, environment)
     inference = _compile_inference(config, catalog, values, index)

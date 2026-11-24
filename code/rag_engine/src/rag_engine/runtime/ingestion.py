@@ -64,7 +64,10 @@ class DocRecord:
 class Run:
     run_id: str
     system_id: str
-    snapshot: Snapshot
+    # The Config version that runs the work; released when the Run finishes so old versions
+    # (Snapshot with its two LangGraphs) do not pile up while terminal Runs are kept.
+    snapshot: Snapshot | None
+    config_revision: str
     parameters: dict[str, Any]
     request_id: str | None
     documents: dict[str, DocRecord]
@@ -81,7 +84,7 @@ class Run:
         return {
             "run_id": self.run_id,
             "status": self.status(),
-            "config_revision": self.snapshot.config_revision,
+            "config_revision": self.config_revision,
             "counts": {"total": len(records), **counts},
             "documents": [record.view() for record in records],
         }
@@ -204,7 +207,7 @@ class IngestionControl:
             records[document["document_id"]] = DocRecord(document["document_id"], token, document)
             self._occupancy[(system_id, document["document_id"])] = _Occupancy(token, run_id)
             self._latest[(system_id, document["document_id"])] = run_id
-        run = Run(run_id, system_id, snapshot, parameters, request_id_var.get(), records)
+        run = Run(run_id, system_id, snapshot, snapshot.config_revision, parameters, request_id_var.get(), records)
         self._runs[(system_id, run_id)] = run
         queue = self._queues.setdefault(system_id, deque())
         for document_id in records:
@@ -361,6 +364,7 @@ class IngestionControl:
     async def _execute(self, job: _Job) -> None:
         run, record = job.run, job.record
         snapshot = run.snapshot
+        assert snapshot is not None  # released only after every document finished
         system_token = system_id_var.set(run.system_id)
         run_token = run_id_var.set(run.run_id)
         request_token = request_id_var.set(run.request_id)
@@ -443,6 +447,7 @@ class IngestionControl:
             del self._occupancy[key]
         if all(item.status in TERMINAL for item in run.documents.values()):
             run.finished_at = time.monotonic()
+            run.snapshot = None
             self._enforce_record_limit()
 
     # ------------------------------------------------------------------ retention

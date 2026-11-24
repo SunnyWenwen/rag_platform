@@ -40,8 +40,13 @@ class SystemValues:
         return (username, password) if username and password else None
 
 
-def load_values(config: dict[str, Any], environment: Mapping[str, str] | None) -> SystemValues:
-    """DEV takes the values carried in the Config; standalone reads same-named env vars."""
+def load_values(
+    config: dict[str, Any], environment: Mapping[str, str] | None, optional: set[str] | None = None
+) -> SystemValues:
+    """DEV takes the values carried in the Config; standalone reads same-named env vars.
+
+    Keys in ``optional`` may be missing (they are left out of the result)."""
+    optional = optional or set()
     secrets = config.get("secret", {})
     variables = config.get("variable", {})
     reserved = sorted(set(variables) & set(RESERVED_SECRET_KEYS))
@@ -57,6 +62,8 @@ def load_values(config: dict[str, Any], environment: Mapping[str, str] | None) -
             if environment is not None:
                 value = environment.get(key)
             if not isinstance(value, str):
+                if key in optional:
+                    continue
                 raise ConfigInvalid(f"missing value for {key}", path=f"/config/{scope}/{key}")
             resolved[key] = value
         return resolved

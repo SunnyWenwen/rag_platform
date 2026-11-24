@@ -45,6 +45,12 @@ v1 採最簡單的做法：一個 uvicorn 程序、一條執行緒、一個 asyn
 
 等 bge-m3、ES、Remote API 時以 `await` 讓出執行緒，所以這些等待可以重疊。切分、tokenize、向量 JSON 解析是 CPU 工作，會在事件迴圈上執行到完成，匯入大文件時同 Pod 的查詢會短暫變慢。目前接受這個代價，不加 `asyncio.to_thread` 或多程序；若之後持續卡住，再改用 rag_platform `docs/todo_enhance.md#ingestion-process-workers` 的多程序 Worker。
 
+## 記憶體用量
+
+2026-11-24 在本機以記憶體索引、hash 向量與測試 Config 量測（`tracemalloc`）：每個已載入的 System（Snapshot、編譯結果、兩張 LangGraph）約 75 KiB，200 個 System 約 15 MiB；同一 System 連續切版 200 次只增加 0.3 MiB，舊版會被回收。程序本身（Python 與套件）峰值 RSS 約 173 MiB。
+
+未計入：ES 索引資料（在 ES）、匯入中的文件內容、終態 Run 紀錄（上限 10,000 份文件）。每組不同的 ES 位址與帳密會建立一個 ES client 與連線池，選 PLED 的 System 很多且帳密各不相同時，client 數量會跟著增加，接上真實 ES 後要實測。
+
 ## 請求流程
 
 **發布（DEV）**：Builder `config:validate` → 編譯 Config、算候選指紋、查核實體索引 → 回 `index_impact` 與 `context_revision` → Builder 以相同內容加 `target_index_generation` 送 PUT → Runtime 依操作建立或接回索引、編譯 LangGraph、建立 Snapshot。

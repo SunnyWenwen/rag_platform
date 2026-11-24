@@ -92,6 +92,14 @@ Base image 已定為 `python:3.12.13-slim-bookworm`。套上公司的 PyPI 映�
 | 已載入時再 `initialize`：預檢回 `SYSTEM_STATE_CONFLICT`，PUT 卻回 `REVISION_CONFLICT` | 預檢與套用的錯誤不一致 | PUT 先回報預檢的阻擋原因（逐條對照時發現） |
 | `recover_index` 未檢查 `config_revision` 等於 `recovery_from.config_revision` | 可用恢復操作換到其他版本 | 不符回 `422`，`path: /config_revision`（逐條對照時發現） |
 | `reload` 不相容時的代碼 `INDEX_FINGERPRINT_MISMATCH` 不是 06 的範例代碼 | Builder 依代碼分流時對不上 | 改用 `INDEX_RECONNECT_INCOMPATIBLE`（逐條對照時發現） |
+| 預期綁定指向同 System 的另一個世代 B 時，查核 B 卻刪掉載入中的 A | 誤刪正在服務的索引 | 已載入時預期世代與指紋須等於本機綁定，否則預檢 `blocked`（`INDEX_BINDING_CONFLICT`）、PUT `409 INDEX_CONFLICT`，任何刪除前就擋下 |
+| DELETE 只帶 Config Revision 也會刪除受管索引 | 缺少世代與指紋的查核 | 三個綁定 Header 都要帶，缺一項回 `422` |
+| `recover_index` 的 `recovery_from` 可以指向別的世代 | 原索引還在時仍切到新空索引 | `recovery_from` 必須等於預期的世代與版本 |
+| 只跑 Inference 的獨立 Pod 仍要求 Ingestion 帳密 | 分 Pod 部署無法啟動 | 只要求已啟用流程的 System API 帳密（05） |
+| 獨立部署只查核 `_meta`，不比對實際 mapping | mapping 不符仍開放查詢 | mapping 不符時 not ready 並記錄錯誤 |
+| `reload` 相同版本與世代時沿用舊 Snapshot | 換密碼後仍用舊值 | Config 內容（含值）相同才沿用 |
+| 單一路徑的結果可能出現重複 `data_id` | 重匯時新舊批次短暫同時可見 | 每條路徑依 `data_id` 去重，保留分數最高者 |
+| 已結束的 Run 持有舊版 Snapshot 與兩張 LangGraph | 切版後舊版無法回收，紀錄保留期內持續累積 | Run 結束時釋放 Snapshot，只保留 `config_revision` |
 | 查詢的 Request 參數寫在 `config["configurable"]`，LangGraph 每個節點拿到的是副本 | Remote Inference 節點收不到 Request 參數，`{{KEY}}` 只能取到 Variable 或報缺值 | 改放 `InferenceState`；`test_remote_rerank_receives_request_parameters` |
 | 單一 System 的匯入 Queue 額滿回 `429 RATE_LIMITED` | 與 06 不符，Builder 會用錯的分流 | 改回 `503 RUNTIME_CAPACITY_EXHAUSTED`；`test_full_queue_answers_runtime_capacity_exhausted` |
 | `ContractError` 是 frozen dataclass | 例外被重新拋出時變成 `FrozenInstanceError` | 改成一般例外類別（不用 dataclass，避免例外無法 hash） |

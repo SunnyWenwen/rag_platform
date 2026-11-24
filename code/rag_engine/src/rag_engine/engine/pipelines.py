@@ -259,7 +259,9 @@ def _retrieval_node(
                     "fulltext", field_name, settings.per_route_k, context["filters"], text=context["query"]
                 )
                 hits = await store.search(index_name, route, fields)
-                route_lists.append([{"data": hit.document, "score": hit.score} for hit in hits])
+                route_lists.append(
+                    results.unique_data_ids([{"data": hit.document, "score": hit.score} for hit in hits])
+                )
             for vector_name in settings.vector_fields:
                 profile = resources_profiles[system.index.vectors[vector_name].embedding_profile_id]
                 query_vector = (await deps.embedder.embed([context["query"]], profile))[0]
@@ -267,7 +269,9 @@ def _retrieval_node(
                     "vector", vector_name, settings.per_route_k, context["filters"], vector=query_vector
                 )
                 hits = await store.search(index_name, route, fields)
-                route_lists.append([{"data": hit.document, "score": hit.score} for hit in hits])
+                route_lists.append(
+                    results.unique_data_ids([{"data": hit.document, "score": hit.score} for hit in hits])
+                )
             items = results.fuse(route_lists, settings.fusion, settings.rrf_k)
             items = results.top_n(results.group_by(items, list(settings.group_by)), settings.top_n)
             contexts.append({**context, "result_sets": [{"key": "retrieval", "items": items}]})

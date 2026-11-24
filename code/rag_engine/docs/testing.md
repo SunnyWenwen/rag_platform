@@ -25,6 +25,7 @@
 | `test_remote_and_embedding.py` | Remote Parsing 進 Ingestion、Remote Rerank 收到 Request 參數 |
 | `test_rewrite.py` | Rewrite：回答格式規則、Prompt 取值、重試與退回原始問題、服務錯誤與逾時（假 LLM），以及跨 Query 合併時點的 HTTP 流程 |
 | `test_standalone.py` | FTEST／ENT 模式：匯出格式 Config、環境變數取值、`/v1`、單一流程、索引不存在時 not ready、啟動錯誤 |
+| `test_lifecycle_rules.py`、`test_request_limits.py`、`test_review_round3.py` | 06 生命週期與查詢限制的逐條測試，以及第三輪審查的綁定、DELETE、恢復、分 Pod、換密碼、重複 `data_id`、舊版回收；對照見 [spec_coverage.md](spec_coverage.md) |
 | `test_lifecycle_safety.py` | 管理操作的時序與恢復：卸載時的慢速上傳與等待查詢、合法 mapping 變更、重建中斷後續作、Retire 刪除不明、未載入的 PLED System、`context_revision` 綁定、ES Client 換密碼 |
 
 記憶體索引、hash 向量與測試 tokenizer 只是替身，排名結果不代表真實品質。這一層驗證的是 Runtime 邏輯與 API 契約，換成真實 ES 或 bge-m3 時這些測試照樣有效，不需要改。

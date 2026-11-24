@@ -25,16 +25,22 @@
 | B `reload`：接回既有索引；Config 不相容時 `blocked`（`INDEX_RECONNECT_INCOMPATIBLE`） | `test_lifecycle_rules.py::test_reload_after_restart_reconnects_the_existing_index`、`test_reload_with_an_incompatible_config_is_blocked` |
 | C `update`：相容沿用；需重建回 `rebuild_required`，未確認回 `409 REBUILD_CONFIRMATION_REQUIRED` | `test_runtime_flow.py::test_update_reuses_or_requires_rebuild_confirmation` |
 | C `update`：預期生效版本不符回 `409 REVISION_CONFLICT` | `test_lifecycle_rules.py::test_expected_binding_mismatches` |
+| 預期索引綁定須是本機已載入的綁定；指向同 System 的另一個世代時，刪除或切換前回 `409 INDEX_CONFLICT` | `test_review_round3.py::test_update_against_another_generation_is_refused_before_any_delete` |
+| `reload` 相同版本與世代但值不同（例如換密碼）時使用新值 | `test_review_round3.py::test_reload_after_detach_uses_rotated_credentials` |
 | C `update`：合法 mapping 變更是 `rebuild_required`；舊索引與生效版本不符時仍 `INDEX_OWNERSHIP_UNVERIFIED` | `test_lifecycle_safety.py::test_mapping_change_previews_as_rebuild_and_tampering_still_blocks` |
 | C `update`：已開始的查詢固定舊版到結束 | `test_lifecycle_rules.py::test_running_query_keeps_the_old_version` |
 | 重建：刪除任何索引前確認目標世代是新的且未被其他操作建立，否則 `409 INDEX_CONFLICT` 且服務不變 | `test_lifecycle_safety.py::test_rebuild_checks_the_target_before_deleting_anything` |
 | 重建中斷：未就緒、`busy`；同一操作重送續建；重啟後依原計畫重做預檢與 PUT 也能續建；其間其他 PUT、DELETE、detach 回 `409 SYSTEM_BUSY` | `test_lifecycle_safety.py::test_failed_rebuild_reports_not_ready_and_resumes_with_the_same_operation`、`test_half_done_rebuild_blocks_delete_and_resumes_after_a_restart` |
 | D DELETE：關入口、排空、刪索引、`204`；之後 GET `404` | `test_runtime_flow.py::test_publish_ingest_query_and_manage_documents` |
 | D DELETE：本機有未結算作業回 `409 SYSTEM_BUSY` | `test_lifecycle_rules.py::test_work_in_progress_blocks_detach_delete_and_retire` |
+| D DELETE：受管索引必須帶預期世代與指紋，缺任一項在關入口或刪除前回 `422` | `test_review_round3.py::test_delete_without_generation_or_fingerprint_is_refused` |
 | detach：先關入口；Ingestion 有工作回 `409 SYSTEM_BUSY`；同一操作重送回 `204` | 同上；`test_lifecycle_safety.py::test_upload_read_during_detach_is_refused` |
 | detach：版本不符 `409 REVISION_CONFLICT`，世代不符 `409 INDEX_CONFLICT` | `test_lifecycle_rules.py::test_expected_binding_mismatches` |
 | detach Inference：等查詢結束；逾時回 `504 DEADLINE_EXCEEDED` 並恢復入口 | `test_lifecycle_rules.py::test_detach_inference_times_out_and_reopens`、`test_lifecycle_safety.py::test_detaching_both_pipelines_closes_ingestion_while_queries_drain` |
 | `recover_index`：原索引仍在時 `blocked`；確認遺失後以新世代建立；`config_revision` 須等於 `recovery_from.config_revision`（否則 `422`） | `test_lifecycle_rules.py::test_recover_index_after_the_index_is_lost` |
+| `recover_index`：`recovery_from` 必須指向預期的已發布綁定（世代與版本），否則 `422` | `test_review_round3.py::test_recover_index_cannot_point_away_from_the_published_binding` |
+| 獨立部署分 Pod：只需注入自己流程的 System API 帳密（05） | `test_review_round3.py::test_inference_only_pod_needs_only_inference_credentials` |
+| 獨立部署：索引歸屬正確但實際 mapping 不符時不開放（not ready） | `test_review_round3.py::test_standalone_index_with_a_wrong_mapping_is_not_ready` |
 | ES 換密碼使用新連線 | `test_lifecycle_safety.py::test_es_clients_follow_password_rotation` |
 
 ## Pod 內匯入控制、取消與 Retire
@@ -50,6 +56,8 @@
 | 取消表：結果待查的 `unknown` 回 `not_cancellable` | `test_ingestion_control.py::test_cancel_of_an_unknown_document_is_not_cancellable` |
 | Bulk 逾時：文件 `failed`（`ES_BULK_TIMEOUT`），可重送 | `test_ingestion_control.py::test_bulk_timeout_fails_document_and_allows_retry` |
 | 同文件重送以新 `write_id` 取代舊批次 | `test_ingestion_control.py::test_resubmission_replaces_previous_chunks` |
+| 新舊批次同時可見時（D-60 允許），同一份結果清單不重複 `data_id` | `test_review_round3.py::test_no_duplicate_data_id_while_old_and_new_batches_are_visible` |
+| 已結束的 Run 不保留舊版 Config（Snapshot 與兩張 LangGraph），切版後可回收 | `test_review_round3.py::test_finished_runs_release_the_old_snapshot` |
 | 清舊或 Retire 的刪除未完整確認（逾時、failures、version_conflicts）視為不明 | `test_es_store.py::test_partial_deletes_are_not_reported_as_done`、`test_lifecycle_safety.py::test_retire_reports_an_unconfirmed_delete` |
 | 紀錄保留期與數量上限、重啟後 `unknown` | `test_ingestion_control.py::test_unknown_run_and_retention` |
 | Retire 回 `deleted`／`not_found`；文件仍在處理時 `409 DOCUMENT_BUSY` | `test_runtime_flow.py::test_publish_ingest_query_and_manage_documents`、`test_lifecycle_rules.py::test_work_in_progress_blocks_detach_delete_and_retire` |

@@ -251,8 +251,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         headers = request.headers
         key = headers.get("idempotency-key")
         revision = headers.get("x-expected-config-revision")
-        if not key or not revision:
-            raise ApiError("REQUEST_VALIDATION_FAILED", "Idempotency-Key and X-Expected-Config-Revision are required.")
+        # Every System of this Runtime has a managed index, so DELETE needs its whole binding (06).
+        generation = headers.get("x-expected-index-generation")
+        fingerprint = headers.get("x-expected-index-fingerprint")
+        if not key or not revision or not generation or not fingerprint:
+            raise ApiError(
+                "REQUEST_VALIDATION_FAILED",
+                "Idempotency-Key and the three expected binding headers are required for a managed index.",
+            )
         await registry.delete(
             system_id,
             key,

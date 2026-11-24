@@ -51,6 +51,7 @@ _BLOCKED_ERRORS = {
     "PUBLISHED_INDEX_MISSING": "INDEX_CONFLICT",
     "PUBLISHED_INDEX_PRESENT": "INDEX_CONFLICT",
     "INDEX_RECONNECT_INCOMPATIBLE": "INDEX_CONFLICT",
+    "INDEX_BINDING_CONFLICT": "INDEX_CONFLICT",
 }
 
 
@@ -325,8 +326,32 @@ class SystemRegistry:
             ):
                 return _impact("blocked", "SYSTEM_STATE_CONFLICT", "System 已有發布版本或已載入。")
             return _impact("create", "INDEX_MISSING", "建立空索引。", fingerprint)
+        # The Builder names the binding it expects; when this Runtime has a System loaded it must be
+        # that one, or a check of B would end in changing or deleting A.
+        if (
+            local is not None
+            and local.loaded
+            and (
+                expected_generation != local.snapshot.index_generation
+                or expected_fingerprint != local.snapshot.compiled.fingerprint
+            )
+        ):
+            return _impact("blocked", "INDEX_BINDING_CONFLICT", "預期的索引綁定與本機載入的不同。")
         if operation == "recover_index":
             recovery = body["recovery_from"]
+            # recovery_from describes the published binding being recovered (06 恢復查核).
+            if recovery["index_generation"] != expected_generation:
+                raise ApiError(
+                    "REQUEST_VALIDATION_FAILED",
+                    "recovery_from must name the expected index generation.",
+                    path="/recovery_from/index_generation",
+                )
+            if body["expected_active_revision"] not in (None, recovery["config_revision"]):
+                raise ApiError(
+                    "REQUEST_VALIDATION_FAILED",
+                    "recovery_from must name the expected active revision.",
+                    path="/recovery_from/config_revision",
+                )
             try:
                 old = await self._owned(store, system_id, recovery["index_generation"], None)
             except ApiError as error:
@@ -544,6 +569,7 @@ class SystemRegistry:
                 local is not None
                 and local.snapshot.config_revision == revision
                 and local.snapshot.index_generation == generation
+                and local.snapshot.compiled.config == compiled.config  # e.g. a rotated password
             ):
                 system = local
             else:
@@ -718,7 +744,9 @@ class SystemRegistry:
         """FTEST/ENT: load one Config at startup. The index must already exist (Q-021)."""
         system_id = snapshot_body["system_id"]
         try:
-            compiled = compile_system(snapshot_body["config"], self.catalog, environment=environment)
+            compiled = compile_system(
+                snapshot_body["config"], self.catalog, environment=environment, pipeline=self.settings.pipeline
+            )
         except ConfigInvalid as error:
             raise RuntimeError(f"invalid System Config: {error}") from error
         generation = self.settings.index_generation
@@ -732,7 +760,14 @@ class SystemRegistry:
         if expected != compiled.fingerprint:
             raise RuntimeError("RAG_INDEX_FINGERPRINT does not match the Config")
         info = await self._owned(snapshot.store, system_id, generation, expected)
-        system = LoadedSystem(snapshot, index_ready=info is not None)
+        index_ready = info is not None
+        if info is not None and not mapping_compatible(
+            compiled.index.mappings["properties"], info.mappings.get("properties", {})
+        ):
+            # Ownership alone is not enough to serve (06: 歸屬、指紋與實際 mapping 均符合才能沿用).
+            _log.error("index mapping does not match the Config", extra={"code": "INDEX_OWNERSHIP_UNVERIFIED"})
+            index_ready = False
+        system = LoadedSystem(snapshot, index_ready=index_ready)
         pipelines = (self.settings.pipeline,) if self.settings.pipeline else PIPELINES
         for name in pipelines:
             system.pipelines[name] = PipelineState(loaded=True, ready=True)

@@ -81,6 +81,19 @@ def group_by(items: list[Item], fields: list[str] | None) -> list[Item]:
     return [item for position, item in enumerate(items) if keep[position]]
 
 
+def unique_data_ids(items: list[Item]) -> list[Item]:
+    """Keep the first (best) candidate of each data_id. While a re-ingested document has its old
+    and new batch both visible (06 D-60), one route may return the same data_id twice."""
+    seen: set[str] = set()
+    unique = []
+    for item in items:
+        data_id = item["data"]["data_id"]
+        if data_id not in seen:
+            seen.add(data_id)
+            unique.append(item)
+    return unique
+
+
 def top_n(items: list[Item], limit: int | None) -> list[Item]:
     return items if limit is None else items[:limit]
 
