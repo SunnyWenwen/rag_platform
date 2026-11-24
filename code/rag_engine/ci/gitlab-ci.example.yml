@@ -10,11 +10,18 @@ check:
     - pip install uv==0.11.*
   script:
     - uv sync --frozen
-    - uv run ruff check src tests
-    - uv run ruff format --check src tests
+    # Same steps as `make check` (the slim image has no make). No external service is needed:
+    # tests marked `es` / `embedding` skip themselves unless RAG_TEST_* variables are set.
+    - uv run ruff check src tests scripts
+    - uv run ruff format --check src tests scripts
     - uv run mypy
+    - uv run mypy scripts
     - uv run lint-imports
-    - uv run pytest -q
+    - uv run pytest -q --junitxml=pytest-report.xml
+  artifacts:
+    when: always
+    reports:
+      junit: pytest-report.xml
 
 image:
   stage: image
