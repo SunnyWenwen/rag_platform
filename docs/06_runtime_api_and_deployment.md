@@ -207,6 +207,7 @@ Runtime 的管理入口須能接受 Builder 下發 Config，System 的 Ingest／
 - **恢復發起。** 在 DEV，Builder 維持 `desired` 的已發布版本。Runtime 未載入或 `index_ready: false` 時，Builder 可在同步期間以預檢查核原因，並依發布紀錄區分首次部署與遺失。已確認索引遺失時，Runtime 暫停受影響 System 的查詢與匯入。Builder 顯示新索引會從空的開始、須重新匯入，等使用者確認後才提交 `recover_index` 和原已發布的 Config。同步與補載流程只查核與回報遺失，已確認發起的操作可依原操作鍵查核及重送。
 - **恢復查核。** Builder 保存前次版本、世代與指紋，帶入 `recovery_from` 及預期綁定。Runtime 查核指定舊實體不存在後，才依 Builder 提供的新世代建立索引。找到任何索引時核對其歸屬及綁定；ES 失聯或權限不足時維持待查。
 - **失敗與交接。** 新版驗證失敗時舊版可繼續服務。已刪舊但未建立新版時，Builder 保留最後提交的版本與待確認操作，保持受影響流程停流量。透過明確目標的 GET 查核原世代與預定新世代，確認後重送原計畫或送 `reload` 補載。各 Inference 目標載入指定世代且就緒後恢復受理；初次匯入依 Builder 的查詢開放規則。
+- **重建的 Runtime 端保證**（2026-11-24 補充）。重建在關閉入口與刪除任何索引前，先確認目標世代是新的、且沒有被其他操作建立；不符時回 `409 INDEX_CONFLICT`，原索引與服務維持不變。已刪舊但未建立新版時，以原計畫重做預檢會因原世代已不存在而回 `rebuild_required`，以原操作鍵與原目標世代重送 PUT 即可續建；Runtime 重啟、未載入該 System 時也一樣，因為續作依據的是實體索引與 `created_by_operation_id`，不是程序記憶體。同一程序內重建待續時，該 System 的其他 PUT、DELETE 與 `detach` 回 `409 SYSTEM_BUSY`，狀態回報 `index_ready: false`、`busy: true`。
 - System Config 依[部署模式與設定來源](#runtime-config-sources)載入。
 
 Runtime 從有效 Config 推導會影響索引內容、向量語意及搜尋能力的設定，將結果正規化後計算 SHA-256。輸入包括生效的解析／切分設定、文件 Embedding Profile（含模型版本與維度）及推導出的索引 mapping 和搜尋設定。正規化消除 JSON 物件鍵順序的影響，保留具語意的順序。純 Inference 參數如 `top_n` 不改變指紋。精確欄位與序列化見[索引指紋 v1](#index-fingerprint-v1-proposal)。
