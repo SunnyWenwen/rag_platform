@@ -340,7 +340,7 @@ Descriptor 的欄位推導規則見 [Component Descriptor](04_component_descript
 |---|---|
 | `resources.profiles` | Embedding Profile ID、顯示名稱及向量維度。 |
 | `resources.tokenizer_profiles` | Chunking 可引用的 Tokenizer Profile ID 及顯示名稱。 |
-| `resources.models` | 可選的邏輯模型引用及顯示名稱。 |
+| `resources.models` | 可選的邏輯模型引用及顯示名稱。服務位址與認證屬部署設定，見 [LLM 服務部署](#llm-service-deployment)。 |
 | `resources.elasticsearch_services` | 保留的 Catalog 資源集合，首版回空物件。Indexing 服務來源由 Descriptor 引用的 [ES 連線契約](05_system_config.md#elasticsearch-service-source) 決定。 |
 
 以 [Catalog Schema](../schemas/runtime_catalog.draft.schema.json) 驗證 [Catalog 回應範例](../examples/system_config/runtime_catalog.response.json)。四種資源集合皆可為空。Catalog 不帶實際認證憑證或連線測試結果。Runtime 由 Descriptor 與可用資源清單的內容計算 `catalog_revision`（例如 `catalog-<hash>`），任一項變更時值就會改變。Builder 把它當成不透明字串，只做相等比對。Builder 在同一次目標環境編輯中共用目錄。驗證或套用若發現 Runtime 識別或 Catalog 版本不符，回 `409 STALE_CATALOG`。Builder 重新取目錄並檢查既有選值。已選版本找不到時保留原值並提示修正。
@@ -1087,6 +1087,11 @@ Remote API 節點的網址與 Token 以 Variable／Secret 引用匯出，部署�
 ### Remote API 與環境綁定
 
 Remote 節點的 `connection.url` 與 Variable 型 Header 引用 `config.variable`，Runtime 啟動時讀同名環境變數解析。需要 Bearer 認證時，節點的 `auth.bearer_token` 填 Secret 的 `{{KEY}}`。Runtime 只使用該 System 啟動時載入的值來組出網址與認證 Header。欄位見 [Remote 節點設定](05_system_config.md#remote-node-settings)。一般執行參數按 [Request 優先規則](05_system_config.md#parameter-references)解析。業務 Request、Document、Remote 業務參數、模板、索引及記錄只承載各自的業務資料或引用。
+
+<a id="llm-service-deployment"></a>
+### LLM 服務部署
+
+Rewrite 使用公司共用的 LLM 服務（OpenAI 相容 Chat Completions）。Runtime 的部署設定列出可用模型：ID、顯示名稱、服務位址、實際模型名稱、生成設定，以及存放 Token 的環境變數名稱。Catalog 只回 ID 與顯示名稱，Builder 據此提供 `llm_ref` 選項，使用者不填連線資訊。Token 由部署的 Kubernetes Secret 注入 Runtime 的環境變數，不寫進 System Config 或 Runtime 設定檔；設定了 Token 變數名稱卻沒有值時，Runtime 不啟動。DEV 與 FTEST／ENT 相同：System 使用 Rewrite 時，承載它的 Runtime 部署要列出所選模型並提供對應 Secret。呼叫與失敗規則見 [Rewrite 執行規則](03_engine_and_components.md#rewrite-rules)。
 
 <a id="system-secret-deployment"></a>
 ### Runtime 啟動與 Variable／Secret 注入

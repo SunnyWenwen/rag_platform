@@ -311,7 +311,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - 建議：先選一組可實測的 Adapter／服務及 Profile，各有 Fake 與真實契約測試；不同格式顯式 Adapter。
 - 替代：第一期支援多 Provider 格式，增加測試矩陣。
 - 負責角色：Engine＋模型服務提供方；阻擋 M1 真實服務。
-- 決策：未定；更新 Engine／資料契約手冊／Runtime／部署手冊。
+- 決策：2026-11-24 定案 LLM 部分：Rewrite 使用公司共用 LLM 服務的 OpenAI 相容 Chat Completions，以 JSON Schema 結構化輸出；服務位址、模型與 Token 屬 Runtime 部署設定，使用者只選模型。見 [Rewrite 執行規則](03_engine_and_components.md#rewrite-rules)與 [LLM 服務部署](06_runtime_api_and_deployment.md#llm-service-deployment)。Rerank 服務契約仍未定。
 
 <a id="q-004"></a>
 ### Q-004 Token 計量、切分邊界與溢位
@@ -436,6 +436,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 <a id="q-017"></a>
 ### Q-017 Timeout、重試、取消與工作恢復
 
+- 2026-11-24 確認：Rewrite 的模型呼叫遇格式錯誤、HTTP 429／5xx、連線失敗或逾時最多重試 1 次，見 [Rewrite 執行規則](03_engine_and_components.md#rewrite-rules)。
 - 首版的 Queue、取消與 Run 查詢由受理 Pod 的記憶體處理。預設保留期限和容量見 [終態紀錄清理](06_runtime_api_and_deployment.md#ingestion-status-retention)。
 - D-64 已確認 Runtime 整體 Deadline／狀態保存初始值與管理方式，集中見 Runtime API／部署手冊；A 的成功／錯誤核心欄位已確認。仍待排隊等待上限、模組／Client Timeout、有限重試／可重試錯誤、中斷及未知遠端副作用處理、正式 Schema／載入方式。
 - 2026-11-20 已確認同一個 Run 使用 `POST /ingestions/{run_id}/cancel` 傳入 `document_ids`。尚未取得寫入權的 `queued`／`running` 文件直接回報 `cancelled`，已完成的文件回報原狀態。2026-11-23 補充：已取得寫入權的文件回報非終態 `cancelling`，Worker 保留原占用到結案，成功時改為 `completed`，失敗或 Bulk 逾時時改為 `cancelled`。Run 彙總將 `cancelling` 視為進行中。Run 與單份文件查詢顯示同一狀態。2026-11-23 補充活躍取消的 Runtime 路由與重啟後的查無紀錄行為。Active Run 清單、人工查核端點延後。見 [Runtime 批量取消契約](06_runtime_api_and_deployment.md#ingestion-cancel-api)。
@@ -513,7 +514,8 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 ### Q-023 Inference 失敗、無命中與資源上限
 
 - 已確認：首版任一必要 Query、搜尋路徑或 Rerank 等節點最終失敗，整次回可定位錯誤。全部必要操作成功但查無命中時，回成功空候選。見 [Runtime Inference](06_runtime_api_and_deployment.md#src-21-5-inference)。
-- 待定：候選數與資源上限、超限錯誤及各服務的重試條件。重試另見 Q-017，部分結果與降級留待後續討論。
+- 2026-11-24 確認：Rewrite 的回應內容重試後仍不合格（格式錯誤、拒答、截斷）時，退回只用原始問題繼續查詢，不視為失敗；模型服務本身失敗仍整次回錯誤。見 [Rewrite 執行規則](03_engine_and_components.md#rewrite-rules)。
+- 待定：候選數與資源上限、超限錯誤及其他服務的重試條件。重試另見 Q-017，其他節點的部分結果與降級留待後續討論。
 - 負責角色：產品＋Engine。
 - 決策狀態：首版回應語意已確認，細節待實作及驗收。
 
@@ -614,7 +616,7 @@ HTTP 範例見 [Runtime HTTP 測資](../examples/system_config/README.md#runtime
 <a id="src-04-511-討論提案rewrite-的結構化輸出與共用-llm-邊界"></a>
 ### 討論提案：Rewrite 的結構化輸出與共用 LLM 邊界
 
-**狀態：2026-10-16 提案，待使用者確認及 Q-003／Q-017／Q-023 核定；不是已實作或已凍結的公共 Contract。** 建議 UI 加單模組試跑，見 Builder UI／Backlog手冊／UI Backlog手冊；輸出形狀與數量由平台提供，Prompt 主要描述如何改寫，不讓使用者每次重寫機器可讀契約。
+**狀態：2026-11-24 定案，規則見 [Rewrite 執行規則](03_engine_and_components.md#rewrite-rules)。以下保留 2026-10-16 的提案內容作為背景。** 建議 UI 加單模組試跑，見 Builder UI／Backlog手冊／UI Backlog手冊；輸出形狀與數量由平台提供，Prompt 主要描述如何改寫，不讓使用者每次重寫機器可讀契約。
 
 Rewrite 的模型回應草案為 `{queries: [...]}`，由 `count` 決定所需筆數。原始問題及 include_original 由平台處理，與模型要求生成的數量分開。ori_query、filters、metadata 由 Runtime 保留／複製，LLM 只生成 query 文字，不負責授權或結果物件。
 

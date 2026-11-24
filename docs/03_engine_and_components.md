@@ -149,6 +149,17 @@ FAISS 的維度／metric 不足以證明向量空間相容。cosine／inner prod
 
 **驗收**：同一 `component_id` 可用 `count=1` 或 `count>1`。`include_original` 由平台套用，模型只需產生改寫字串。`none` 直接使用原始問題。
 
+<a id="rewrite-rules"></a>
+**Rewrite 執行規則**（2026-11-24 定案）：
+
+1. **模型**：`llm_ref` 只能選 Catalog `resources.models` 列出的模型，是固定選項，不接受 `{{KEY}}`。模型服務的位址、實際模型名稱、生成設定與認證都屬 Runtime 部署設定，使用者不填寫。認證 Token 由部署的 Secret 注入，見 [LLM 服務部署](06_runtime_api_and_deployment.md#llm-service-deployment)。
+2. **呼叫**：使用 OpenAI 相容的 Chat Completions。平台固定的 system 訊息說明輸出格式與筆數；`prompt` 帶入 `{{query}}`、`{{count}}` 與其他引用後作為 user 訊息。以 `response_format` 的 JSON Schema（strict）要求回 `{"queries": [...]}`，筆數上下限都是 `count`。`temperature` 屬部署設定，預設 0。
+3. **驗證**：每筆先去除前後空白。下列情況視為格式錯誤：不是合法 JSON、有 `queries` 以外的鍵、筆數不等於 `count`、有空字串、改寫之間重複。改寫與原始問題相同是允許的。
+4. **組成查詢**：`include_original` 開啟時原始問題排第一，再接改寫；最終清單去掉完全相同的字串，`query_variants` 依此清單。
+5. **重試**：格式錯誤、HTTP 429／5xx、連線失敗或逾時，最多重試 1 次，同一次查詢最多呼叫 2 次。每次呼叫的逾時取模型設定與查詢剩餘期限的較小值。拒答與回應被截斷（`finish_reason: length`）不重試。
+6. **退回原始問題**：重試後仍是格式錯誤、拒答或截斷時，本次只用原始問題繼續查詢，不視為失敗，Runtime 記錄警告。模型服務本身最終失敗（連線、HTTP 錯誤）時，整次查詢回 `502 UPSTREAM_ERROR`；逾時回 `504 DEADLINE_EXCEEDED`。
+7. **參數引用**：`prompt` 內可在文字中引用 `{{KEY}}`；`count`、`include_original` 與跨 Query 設定依 [共用取值規則](05_system_config.md#parameter-references) 以整個欄位引用。
+
 <a id="src-04-511-討論提案rewrite-的結構化輸出與共用-llm-邊界"></a>
 [Rewrite 的模型回應與共用 LLM 提案](08_plan_and_decisions.md#rewrite-output-proposal)
 
@@ -168,7 +179,7 @@ query_transformation:
     include_original: true
 ```
 
-這份設定要求兩筆改寫，並讓原始問題一併搜尋。Descriptor 與離線驗證見 [System Config 範例](../examples/system_config/README.md)。Provider 能力與重試依 Q-003／Q-017 另定。首版 Inference 的失敗行為依 Q-023。
+這份設定要求兩筆改寫，並讓原始問題一併搜尋。Descriptor 與離線驗證見 [System Config 範例](../examples/system_config/README.md)。模型呼叫、驗證、重試與退回原始問題見 [Rewrite 執行規則](#rewrite-rules)。
 
 <a id="src-04-52-retrieval"></a>
 ### Retrieval
