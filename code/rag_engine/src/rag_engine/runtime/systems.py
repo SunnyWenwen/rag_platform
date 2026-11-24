@@ -20,7 +20,7 @@ from rag_engine.adapters.index_store import (
     IndexStore,
 )
 from rag_engine.contracts import errors as contract_errors
-from rag_engine.contracts import http_def
+from rag_engine.contracts import http_def, schema_ref
 from rag_engine.core.canonical import sha256_hex
 from rag_engine.core.errors import ConfigInvalid
 from rag_engine.engine.catalog import Catalog
@@ -582,6 +582,9 @@ class SystemRegistry:
         generation = self.settings.index_generation
         if not generation:
             raise RuntimeError("RAG_INDEX_GENERATION is required in standalone mode")
+        uuid_v4 = schema_ref("runtime_identity.schema.json", "/$defs/uuid_v4")
+        if next(contract_errors(uuid_v4, generation), None) is not None:
+            raise RuntimeError("RAG_INDEX_GENERATION must be the UUID v4 of the index generation")
         snapshot = self._build(system_id, snapshot_body["config_revision"], compiled, generation)
         expected = self.settings.index_fingerprint or compiled.fingerprint
         if expected != compiled.fingerprint:

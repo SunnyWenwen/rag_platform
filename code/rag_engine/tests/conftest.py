@@ -147,7 +147,11 @@ async def running(app: Any) -> AsyncIterator[None]:
             await stop.wait()
 
     task = asyncio.create_task(serve())
-    await started.wait()
+    waiter = asyncio.create_task(started.wait())
+    await asyncio.wait({task, waiter}, return_when=asyncio.FIRST_COMPLETED)
+    if not started.is_set():  # startup failed: raise its error instead of waiting forever
+        waiter.cancel()
+        await task
     try:
         yield
     finally:

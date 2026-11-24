@@ -110,10 +110,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @contextlib.asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         configure_logging(settings.log_level)
+        if settings.mode == "standalone":
+            # Load before starting workers and MCP so a bad deployment fails with a plain error.
+            await registry.load_standalone(standalone_body, dict(os.environ))
         ingestion.start()
         async with mcp.manager.run():
-            if settings.mode == "standalone":
-                await registry.load_standalone(standalone_body, dict(os.environ))
             app.state.ready = True
             try:
                 yield

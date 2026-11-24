@@ -18,7 +18,7 @@ SCHEMA_BASE = "https://rag-builder.example/schemas/"
 _DATA = resources.files("rag_engine.contracts") / "data"
 
 
-@dataclass(frozen=True)
+@dataclass
 class ContractError(Exception):
     """A contract violation located by a JSON Pointer into the validated instance."""
 
