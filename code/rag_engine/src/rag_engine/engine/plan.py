@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from rag_engine.components.chunking import RecursiveSettings
+from rag_engine.components.chunking import ChunkSettings
 from rag_engine.components.embedding import DenseSettings
 from rag_engine.components.remote import RemoteCall
 from rag_engine.core.resources import EmbeddingProfile, TokenizerProfile
@@ -32,7 +32,7 @@ class RemoteSegment:
 
 @dataclass(frozen=True)
 class ChunkStage:
-    settings: RecursiveSettings
+    settings: ChunkSettings
     tokenizer: TokenizerProfile
 
 

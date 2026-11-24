@@ -2,7 +2,7 @@
 
 ## 目前狀態
 
-M1 的程式部分已完成：主流程（結構化資料 → Recursive 切分 → Dense Embedding → ES → 查詢）、兩條 LangGraph、內建 Retrieval 參數的 `{{KEY}}` 取值，以及 FTEST／ENT 獨立部署模式。這些都在記憶體索引、hash 向量與測試 tokenizer 上端到端跑通，並以 `make run`＋`make smoke` 用真實 HTTP 操作過完整流程。接真實 ES 與 bge-m3 的部分尚未驗證，M2 的方法尚未實作。測試分層與換成公司環境的做法見 [testing.md](testing.md)。
+M1 的程式部分已完成：主流程（結構化資料 → Recursive 切分 → Dense Embedding → ES → 查詢）、兩條 LangGraph、內建 Retrieval 參數的 `{{KEY}}` 取值，以及 FTEST／ENT 獨立部署模式。M2 的 Fixed-size 與 Header-aware 切分也已實作（規則見 rag_platform 03#chunk-token-rules、03#header-aware-rules）。這些都在記憶體索引、hash 向量與測試 tokenizer 上端到端跑通，並以 `make run`＋`make smoke` 用真實 HTTP 操作過完整流程。接真實 ES 與 bge-m3 的部分尚未驗證，其餘 M2 方法尚未實作。測試分層與換成公司環境的做法見 [testing.md](testing.md)。
 
 | 狀態 | 項目 | 證據 |
 |---|---|---|
@@ -11,7 +11,8 @@ M1 的程式部分已完成：主流程（結構化資料 → Recursive 切分 �
 | 已實作並有測試 | FTEST／ENT 獨立部署模式（`RAG_MODE=standalone`）：匯出格式 Config、環境變數取值、`/v1` 與 `/mcp`、單一流程、索引不存在時 not ready | `tests/test_standalone.py` |
 | 已實作並有測試 | 生命週期：initialize、reload、update（沿用／重建）、recover_index、detach、DELETE、Idempotency-Key、STALE_CONTEXT（記憶體索引） | `tests/test_runtime_flow.py` |
 | 已實作並有測試 | 匯入控制：佇列、asyncio Worker、文件占用、整批衝突、取消含 `cancelling`、Bulk 逾時、紀錄保留 | `tests/test_ingestion_control.py` |
-| 已實作並有測試 | Ingestion LangGraph：解析（直傳或 Remote）→ Recursive 切分 → Dense Embedding；寫入 ES 在圖外由 Runtime 處理 | `tests/test_runtime_flow.py`、`tests/test_remote_and_embedding.py` |
+| 已實作並有測試 | Ingestion LangGraph：解析（直傳或 Remote）→ 切分 → Dense Embedding；寫入 ES 在圖外由 Runtime 處理 | `tests/test_runtime_flow.py`、`tests/test_remote_and_embedding.py` |
+| 已實作並有測試 | 切分三種方法：Recursive；Fixed-size（固定 Token 視窗，規格範例與邊界案例）；Header-aware（Markdown ATX 標題切段、程式碼區塊、前言段、無標題退回 Recursive）。Catalog 由 rag_platform 的 Descriptor registry（`builder_form.descriptors.json`）依 `IMPLEMENTED` 篩選 | `tests/test_engine_units.py`、`tests/test_runtime_flow.py` |
 | 已實作並有測試 | Inference LangGraph：查詢輸入 → Query Transformation（none 或 Remote）→ 內建檢索或 Remote → Rerank（none 或 Remote）→ 收斂成 `final` | `tests/test_runtime_flow.py`、`tests/test_mcp.py` |
 | 已實作並有測試 | Config 編譯與索引指紋（與 rag_platform 指紋範例完全一致）；BM25／向量檢索、RRF／Sum、group_by、跨 Query 合併、Filter；Remote API Adapter | `tests/test_engine_units.py`、`tests/test_remote_and_embedding.py` |
 | 已寫、未對真實服務驗證 | `ElasticsearchIndexStore`（ES 8.19、IK＋stconvert、`int8_hnsw`） | 只有假 client 測試；實機測試 `make test-es` 待跑（R1） |
@@ -52,7 +53,7 @@ Base image 已定為 `python:3.12.13-slim-bookworm`。套上公司的 PyPI 映�
 | 缺口 | 里程碑 | 備註 |
 |---|---|---|
 | `content` 來源與檔案 Parser | M2 | Q-005；目前只有 `passthrough` |
-| Fixed-size、Header-aware 切分；`preserve_original`、`include_original_chunk` | M2 | 目前編譯時拒絕。Fixed-size 的 Token 邊界與 offset 規則待 Q-004；Header-aware 需要檔案 Parser（Q-005）；兩者也還沒列進 Runtime Catalog |
+| 切分的 `preserve_original`、`include_original_chunk` | M2 | 目前編譯時拒絕，語意見 D-53 |
 | Rewrite（LLM）與 Rerank `model_api` | M2 | Catalog 尚未列出 |
 | Remote Query Transformation 產生多 Query 後的平台合併設定 | M2 | Q-014／Q-028，目前用預設合併 |
 | FTEST／ENT 首次建立索引的指令 | M7 | rag_platform `docs/todo_enhance.md#standalone-index-initialization` |

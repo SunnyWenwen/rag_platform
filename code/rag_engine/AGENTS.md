@@ -36,5 +36,5 @@ make smoke          # 對啟動中的 Runtime 走完整流程（預設 http://12
 
 1. 在 `components/` 寫純函式實作與單元測試。
 2. 在 `engine/compiler.py` 加參數驗證、欄位推導與指紋投影；需要新的計畫型別時加在 `engine/plan.py`；在 `engine/pipelines.py` 的 `run_ingestion_stage` 或查詢節點接上。
-3. 在 `engine/catalog.py` 的 `IMPLEMENTED` 加入 `(module, component_id, version)`，Descriptor 必須已存在於 rag_platform 的 Catalog。
+3. 在 `engine/catalog.py` 的 `IMPLEMENTED` 加入 `(module, component_id, version)`。Descriptor 必須已存在於 rag_platform 的 Descriptor registry（`examples/system_config/builder_form.descriptors.json`，同步後為 `contracts/data/catalog/descriptors.json`）。
 4. 補一個走 HTTP 的流程測試。

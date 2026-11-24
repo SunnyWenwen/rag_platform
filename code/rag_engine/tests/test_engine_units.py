@@ -11,7 +11,7 @@ from conftest import FIXTURES, scenario_config
 from rag_engine.adapters.es_mapping import analysis_settings, field_mapping, filter_clauses, index_mappings
 from rag_engine.adapters.tokenizer import SimpleTokenizer
 from rag_engine.components import results
-from rag_engine.components.chunking import RecursiveSettings, chunk_documents, split_text
+from rag_engine.components.chunking import ChunkSettings, chunk_documents, markdown_sections, split_text
 from rag_engine.core.canonical import chunk_data_id, sha256_hex
 from rag_engine.core.errors import ConfigInvalid, DocumentFailed, EngineError, RequestInvalid
 from rag_engine.core.filters import matches, validate_filters
@@ -24,9 +24,15 @@ TOKENIZER = SimpleTokenizer("fixture@1")
 
 
 def settings(
-    max_tokens: int = 10, overlap: int = 2, separators: tuple[str, ...] = ("\n\n", "\n", "。", "")
-) -> RecursiveSettings:
-    return RecursiveSettings("body", "text", (("title", "title"),), max_tokens, overlap, separators, False)
+    max_tokens: int = 10,
+    overlap: int = 2,
+    separators: tuple[str, ...] = ("\n\n", "\n", "。", ""),
+    method: str = "recursive",
+    header_levels: tuple[int, ...] = (1, 2, 3),
+) -> ChunkSettings:
+    return ChunkSettings(
+        "body", "text", (("title", "title"),), max_tokens, overlap, separators, False, method, header_levels
+    )
 
 
 # ---------------------------------------------------------------- chunking
@@ -62,6 +68,127 @@ def test_chunk_ids_follow_the_document_identity_rule() -> None:
     assert chunks[0]["metadata"] == {"a": 1}
     with pytest.raises(DocumentFailed):
         chunk_documents([{"document_id": "d", "structdata": {"body": "   "}}], settings(), TOKENIZER)
+
+
+# ---------------------------------------------------------------- fixed-size (03#chunking acceptance cases)
+
+
+def fixed(text: str, max_tokens: int, overlap: int) -> list[str]:
+    return split_text(text, settings(max_tokens, overlap, method="fixed_size"), TOKENIZER)
+
+
+def test_fixed_size_windows_follow_the_spec_example() -> None:
+    # The test tokenizer counts one token per CJK character.
+    assert fixed("一二三四五六七八九十壹", 4, 1) == ["一二三四", "四五六七", "七八九十", "十壹"]  # 11 tokens
+    assert fixed("一二三四五六七八九十", 4, 1) == ["一二三四", "四五六七", "七八九十"]  # ends at [6:10]
+
+
+def test_fixed_size_edge_cases() -> None:
+    assert fixed("一二三四五六七八", 4, 0) == ["一二三四", "五六七八"]  # exact blocks, no overlap-only chunk
+    assert fixed("一二", 4, 1) == ["一二"]  # short document: one chunk, not padded
+    assert fixed("一二三四五", 4, 0) == ["一二三四", "五"]  # last block shorter than size
+    # Cuts fall on token offsets: spaces inside a window stay, a space on the cut drops out.
+    assert fixed("alpha beta gamma delta", 2, 0) == ["alpha beta", "gamma delta"]
+    # Non-BMP characters (emoji, CJK Extension B) are whole characters, never cut in half.
+    text = "😀一𠀀二😀三"
+    chunks = fixed(text, 2, 1)
+    assert chunks == ["😀一", "一𠀀", "𠀀二", "二😀", "😀三"]
+    assert all(chunk in text for chunk in chunks)
+
+
+def test_fixed_size_ignores_recursive_and_heading_settings() -> None:
+    text = "第一段。\n\n# 標題\n第二段。"
+    base = split_text(text, settings(4, 1, method="fixed_size"), TOKENIZER)
+    other = split_text(text, settings(4, 1, separators=("。",), method="fixed_size", header_levels=(1,)), TOKENIZER)
+    assert base == other
+
+
+# ---------------------------------------------------------------- header-aware (03#header-aware-rules)
+
+MARKDOWN = """前言說明。
+# 第一章
+內容一。
+## 1.1 小節
+內容二。
+```
+# 程式碼裡的井號
+```
+#標籤 不是標題
+#### 深層標題
+內容三。
+# 第二章
+內容四。"""
+
+
+def test_markdown_sections_follow_the_heading_rules() -> None:
+    sections = [MARKDOWN[start:end].strip() for start, end in markdown_sections(MARKDOWN, (1, 2, 3))]
+    assert sections == [
+        "前言說明。",  # text before the first heading is its own section
+        "# 第一章\n內容一。",
+        "## 1.1 小節\n內容二。\n```\n# 程式碼裡的井號\n```\n#標籤 不是標題\n#### 深層標題\n內容三。",
+        "# 第二章\n內容四。",
+    ]
+    level_one = [MARKDOWN[start:end].strip() for start, end in markdown_sections(MARKDOWN, (1,))]
+    assert len(level_one) == 3  # "## 1.1" is not a split level, so it stays inside chapter one
+    assert level_one[1].startswith("# 第一章") and "## 1.1 小節" in level_one[1]
+
+    # "~~~" fences, up to three leading spaces, and CRLF line ends.
+    text = "~~~\n# x\n~~~\n   ### 縮排標題\n文字\r\n# 下一節\r\n"
+    assert [text[start:end].strip() for start, end in markdown_sections(text, (1, 2, 3))] == [
+        "~~~\n# x\n~~~",
+        "### 縮排標題\n文字",
+        "# 下一節",
+    ]
+
+
+def test_header_aware_keeps_sections_apart_and_falls_back_to_recursive() -> None:
+    chunks = split_text(MARKDOWN, settings(200, 0, method="header_aware"), TOKENIZER)
+    assert chunks[0] == "前言說明。" and chunks[1] == "# 第一章\n內容一。" and chunks[-1] == "# 第二章\n內容四。"
+
+    # A long section is split with Recursive inside it; the heading starts its first chunk and
+    # no chunk crosses into the next section.
+    long_text = "# 甲\n" + "一二三四五。" * 6 + "\n# 乙\n短。"
+    chunks = split_text(long_text, settings(8, 2, method="header_aware"), TOKENIZER)
+    assert chunks[0].startswith("# 甲") and chunks[-1] == "# 乙\n短。"
+    assert all("乙" not in chunk for chunk in chunks[:-1])
+    assert all(len(TOKENIZER.spans(chunk)) <= 8 for chunk in chunks)
+
+    # Without headings the result equals Recursive on the whole text.
+    plain = "第一段說明清潔散熱孔。第二段說明更換濾網。\n\n第三段說明檢查風扇轉速是否正常。"
+    assert split_text(plain, settings(method="header_aware"), TOKENIZER) == split_text(plain, settings(), TOKENIZER)
+
+
+def chunking_config(component_id: str, **parameters: object) -> dict:
+    config = scenario_config()
+    node = config["pipelines"]["ingestion"]["chunking"]
+    node["component_id"] = component_id
+    node["parameters"].update(parameters)
+    return config
+
+
+def test_chunking_methods_compile_with_their_own_fingerprint_inputs() -> None:
+    catalog = build_catalog("dev-runtime", fixture_resources())
+    assert {item["component_id"] for item in catalog.descriptors if item["module"] == "chunking"} == {
+        "recursive",
+        "fixed_size",
+        "header_aware",
+    }
+    recursive = compile_system(scenario_config(), catalog)
+    fixed_size = compile_system(chunking_config("fixed_size"), catalog)
+    header_aware = compile_system(chunking_config("header_aware"), catalog)
+    assert len({recursive.fingerprint, fixed_size.fingerprint, header_aware.fingerprint}) == 3
+
+    projection = {stage["module"]: stage for stage in header_aware.index.projection["ingestion"]}["chunking"]
+    assert projection["parameters"]["header_levels"] == [1, 2, 3]  # the Descriptor default
+    fixed_projection = {stage["module"]: stage for stage in fixed_size.index.projection["ingestion"]}["chunking"]
+    assert "separators" not in fixed_projection["parameters"]
+    assert compile_system(chunking_config("header_aware", header_levels=[1]), catalog).fingerprint != (
+        header_aware.fingerprint
+    )
+    # Fixed-size has no separators parameter in its Descriptor.
+    with pytest.raises(ConfigInvalid) as raised:
+        compile_system(chunking_config("fixed_size", separators=["。"]), catalog)
+    assert raised.value.path == "/config/pipelines/ingestion/chunking/parameters"
 
 
 # ---------------------------------------------------------------- result processing

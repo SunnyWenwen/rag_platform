@@ -316,3 +316,22 @@ async def test_retrieval_parameter_references_over_http(runtime: RuntimeClient) 
     error = invalid.json()["error"]
     validate_http("error_response", invalid.json())
     assert error["code"] == "REQUEST_VALIDATION_FAILED" and error["path"] == "/parameters/TOP_N"
+
+
+async def test_header_aware_chunking_over_http(runtime: RuntimeClient) -> None:
+    config = scenario_config()
+    chunking = config["pipelines"]["ingestion"]["chunking"]
+    chunking["component_id"] = "header_aware"
+    chunking["parameters"]["header_levels"] = [1, 2]
+    await runtime.initialize(config)
+    body = "簡介。\n# 安裝\n先關閉電源。\n## 檢查\n確認風扇轉動。\n### 細節\n用手轉動。"
+    accepted = await runtime.ingest(
+        [{"document_id": "manual", "structdata": {"body": body, "title": "手冊", "price": 400}}]
+    )
+    done = await runtime.wait_run(accepted.json()["run_id"], {"completed", "partial", "failed"})
+    assert done["status"] == "completed", done
+
+    response = await runtime.query({"query": "風扇"})
+    assert response.status_code == 200, response.text
+    texts = {item["data"]["structdata"]["text"] for item in response.json()["contexts"][0]["result_sets"][0]["items"]}
+    assert texts == {"簡介。", "# 安裝\n先關閉電源。", "## 檢查\n確認風扇轉動。\n### 細節\n用手轉動。"}

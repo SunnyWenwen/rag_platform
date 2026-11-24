@@ -7,13 +7,13 @@ runtime     FastAPI app、Basic 認證、X-Request-Id、錯誤格式、System �
   │
 engine      Config 編譯器、索引指紋、LangGraph 流程、文件驗證、索引寫入（write_id 批次替換）
   │
-components  Recursive 切分、Dense Embedding、融合／分組／跨 Query 合併、Remote API Adapter
+components  切分（Recursive、Fixed-size、Header-aware）、Dense Embedding、融合／分組／跨 Query 合併、Remote API Adapter
   │
 adapters    IndexStore（記憶體／Elasticsearch）、ES mapping 與查詢、Embedding client、Tokenizer
   │
 core        資料型別、錯誤、Filter 語意、RFC 8785、Runtime resources
   │
-contracts   rag_platform 的 JSON Schema、OpenAPI、Catalog Descriptor 複本
+contracts   rag_platform 的 JSON Schema、OpenAPI、Descriptor registry 複本
 ```
 
 上層可以 import 下層，反向禁止，由 `make layers` 檢查。

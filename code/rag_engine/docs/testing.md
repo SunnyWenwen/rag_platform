@@ -11,7 +11,7 @@
 
 ## 1. 單元測試
 
-純函式與元件：切分、融合／分組、Filter、編譯器與錯誤定位、索引指紋、ES mapping 與 Query DSL、Remote API 封裝（`httpx.MockTransport`）、OpenAI-compatible Embedding client（MockTransport）、ES 請求形狀（假 client）。
+純函式與元件：切分（Recursive、Fixed-size 的規格範例與邊界、Header-aware 的標題規則）、融合／分組、Filter、編譯器與錯誤定位、索引指紋、ES mapping 與 Query DSL、Remote API 封裝（`httpx.MockTransport`）、OpenAI-compatible Embedding client（MockTransport）、ES 請求形狀（假 client）。
 
 ## 2. HTTP 流程測試
 

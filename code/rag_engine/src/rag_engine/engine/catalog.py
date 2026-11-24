@@ -16,6 +16,8 @@ IMPLEMENTED: frozenset[tuple[str, str, str]] = frozenset(
         ("import", "platform", "1.0.0"),
         ("parsing", "passthrough", "1.0.0"),
         ("chunking", "recursive", "1.0.0"),
+        ("chunking", "fixed_size", "1.0.0"),
+        ("chunking", "header_aware", "1.0.0"),
         ("embedding", "dense", "1.0.0"),
         ("indexing", "elasticsearch", "1.0.0"),
         ("inference_input", "platform", "1.0.0"),
@@ -50,11 +52,10 @@ class Catalog:
 
 
 def build_catalog(runtime_ref: str, resources: RuntimeResources) -> Catalog:
-    source = load_json("catalog/descriptors.fixture.json")
+    # The full Descriptor registry of rag_platform; the Catalog lists the implemented ones.
+    registry = load_json("catalog/descriptors.json")
     descriptors = tuple(
-        item
-        for item in source["descriptors"]
-        if (item["module"], item["component_id"], item["component_version"]) in IMPLEMENTED
+        item for item in registry if (item["module"], item["component_id"], item["component_version"]) in IMPLEMENTED
     )
     view = resources.catalog_view()
     revision = "catalog-" + sha256_hex({"descriptors": list(descriptors), "resources": view})[:12]

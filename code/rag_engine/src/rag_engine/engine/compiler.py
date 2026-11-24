@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from rag_engine.adapters.es_mapping import analysis_settings, index_mappings
-from rag_engine.components.chunking import DEFAULT_SEPARATORS, RecursiveSettings
+from rag_engine.components.chunking import ChunkSettings
 from rag_engine.components.embedding import TEMPLATE_FIELD, DenseSettings
 from rag_engine.components.remote import RemoteCall
 from rag_engine.contracts import ContractError, errors, schema_ref
@@ -360,31 +360,30 @@ def _compile_chunking(node: dict[str, Any], resources: RuntimeResources, state: 
         if item["output_field"] in output:
             raise ConfigInvalid("duplicate output field", path=location + "/output_field", module="chunking")
         output[item["output_field"]] = source
-    settings = RecursiveSettings.from_parameters(params)
+    settings = ChunkSettings.from_parameters(node["component_id"], params)
     state.fields = output
     state.stages.append(ChunkStage(settings, tokenizer))
-    state.projection.append(
-        _stage_projection(
-            "chunking",
-            node,
-            {
-                "split_field": settings.split_field,
-                "output_field": settings.output_field,
-                "copy_fields": [
-                    {"source_field": source, "output_field": target}
-                    for source, target in sorted(settings.copy_fields, key=lambda pair: pair[1])
-                ],
-                "max_tokens": settings.max_tokens,
-                "overlap_tokens": settings.overlap_tokens,
-                "tokenizer_revision": tokenizer.revision,
-                "separators": list(params.get("separators", DEFAULT_SEPARATORS)),
-                "keep_separator": settings.keep_separator,
-                "preserve_original": False,
-                "include_original_chunk": False,
-            },
-            state.fields,
-        )
-    )
+    # Fingerprint projection: only the parameters the method uses (03#chunking: changing a
+    # disabled parameter must not change the result).
+    projected: dict[str, Any] = {
+        "split_field": settings.split_field,
+        "output_field": settings.output_field,
+        "copy_fields": [
+            {"source_field": source, "output_field": target}
+            for source, target in sorted(settings.copy_fields, key=lambda pair: pair[1])
+        ],
+        "max_tokens": settings.max_tokens,
+        "overlap_tokens": settings.overlap_tokens,
+        "tokenizer_revision": tokenizer.revision,
+    }
+    if settings.method in ("recursive", "header_aware"):
+        projected["separators"] = list(settings.separators)
+        projected["keep_separator"] = settings.keep_separator
+    if settings.method == "header_aware":
+        projected["header_levels"] = list(settings.header_levels)
+    projected["preserve_original"] = False
+    projected["include_original_chunk"] = False
+    state.projection.append(_stage_projection("chunking", node, projected, state.fields))
 
 
 def _compile_embedding(node: dict[str, Any], resources: RuntimeResources, state: _IngestionState, path: str) -> None:

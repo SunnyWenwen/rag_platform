@@ -26,7 +26,10 @@ def main() -> None:
         shutil.copy2(schema, DATA / "schemas" / schema.name)
     shutil.copy2(platform / "openapi/runtime.dev.v1.json", DATA / "openapi/runtime.dev.v1.json")
     examples = platform / "examples/system_config"
-    shutil.copy2(examples / "runtime_catalog.response.json", DATA / "catalog/descriptors.fixture.json")
+    # builder_form.descriptors.json is the full Descriptor registry; the Runtime Catalog lists
+    # the entries in engine/catalog.py IMPLEMENTED.
+    (DATA / "catalog").mkdir(exist_ok=True)
+    shutil.copy2(examples / "builder_form.descriptors.json", DATA / "catalog/descriptors.json")
     for name in ("runtime_http.examples.json", "index_fingerprint.v1.example.json", "local_memory.remote_parsing.json"):
         shutil.copy2(examples / name, FIXTURES / name)
     commit = subprocess.run(
