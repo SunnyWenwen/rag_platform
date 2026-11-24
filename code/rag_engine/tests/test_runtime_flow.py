@@ -7,7 +7,16 @@ from __future__ import annotations
 
 import uuid
 
-from conftest import INFERENCE, INGESTION, MANAGEMENT, SYSTEM_ID, RuntimeClient, basic, validate_http
+from conftest import (
+    INFERENCE,
+    INGESTION,
+    MANAGEMENT,
+    SYSTEM_ID,
+    RuntimeClient,
+    basic,
+    scenario_config,
+    validate_http,
+)
 
 DOCS = [
     {
@@ -274,3 +283,36 @@ async def test_config_errors_are_located(runtime: RuntimeClient) -> None:
         headers=basic(MANAGEMENT),
     )
     assert stale.status_code == 409 and stale.json()["error"]["code"] == "STALE_CATALOG"
+
+
+async def test_retrieval_parameter_references_over_http(runtime: RuntimeClient) -> None:
+    config = scenario_config()
+    inference = config["pipelines"]["inference"]
+    inference["fixed_filters"] = []
+    inference["inference_input"]["parameters"]["request_parameters"] = [
+        {"name": "TOP_N", "type": "integer", "required": False}
+    ]
+    inference["retrieval"]["parameters"]["top_n"] = "{{TOP_N}}"
+    config["variable"] = {"TOP_N": "1"}
+    await runtime.initialize(config)
+    accepted = await runtime.ingest(DOCS)
+    done = await runtime.wait_run(accepted.json()["run_id"], {"completed", "partial", "failed"})
+    assert done["status"] == "completed", done
+
+    def items(response: object) -> list[str]:
+        body = response.json()  # type: ignore[attr-defined]
+        validate_http("inference_response", body)
+        return [item["data"]["document_id"] for item in body["contexts"][0]["result_sets"][0]["items"]]
+
+    by_variable = await runtime.query({"query": "保養"})
+    assert by_variable.status_code == 200, by_variable.text
+    assert len(items(by_variable)) == 1
+    by_request = await runtime.query({"query": "保養", "parameters": {"TOP_N": 2}})
+    assert by_request.status_code == 200, by_request.text
+    assert len(items(by_request)) == 2
+
+    invalid = await runtime.query({"query": "保養", "parameters": {"TOP_N": 0}})
+    assert invalid.status_code == 422
+    error = invalid.json()["error"]
+    validate_http("error_response", invalid.json())
+    assert error["code"] == "REQUEST_VALIDATION_FAILED" and error["path"] == "/parameters/TOP_N"

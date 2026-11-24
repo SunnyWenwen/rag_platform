@@ -26,6 +26,7 @@ from rag_engine.components.remote import call_remote
 from rag_engine.core.errors import RequestInvalid, UpstreamError
 from rag_engine.core.filters import validate_filters
 from rag_engine.core.types import Document
+from rag_engine.engine.compiler import resolve_retrieval
 from rag_engine.engine.documents import check_query_contexts, check_remote_documents
 from rag_engine.engine.plan import (
     BuiltinRetrieval,
@@ -49,6 +50,10 @@ class IngestionState(TypedDict):
 
 
 class InferenceState(TypedDict, total=False):
+    # Values a node computes for later nodes live in the state: LangGraph gives each node
+    # its own copy of config["configurable"], so writes there are not seen downstream.
+    request_values: dict[str, Any]  # validated request parameters with declared defaults
+    retrieval: BuiltinRetrieval | None  # per-request settings when parameters use {{KEY}}
     initial: dict[str, Any]
     contexts: list[dict[str, Any]]
     query_variants: list[str]
@@ -177,7 +182,10 @@ def _input_node(system: CompiledSystem) -> Any:
     async def inference_input(state: InferenceState, config: RunnableConfig) -> dict[str, Any]:
         request = _configurable(config)["request"]
         bound = bind_request(plan.request_parameters, request.get("parameters", {}))
-        _configurable(config)["request_values"] = bound
+        retrieval = None
+        if plan.retrieval_references is not None:
+            # Resolve "{{KEY}}" Retrieval parameters before any Remote call so a bad value fails fast.
+            retrieval = resolve_retrieval(plan.retrieval_references, system.index, bound)
         filters = request.get("filters", [])
         validate_filters(filters, plan.candidate_fields, "/filters", error=RequestInvalid)
         initial = {
@@ -187,7 +195,13 @@ def _input_node(system: CompiledSystem) -> Any:
             "result_sets": [],
             "metadata": request.get("metadata", {}),
         }
-        return {"initial": initial, "contexts": [initial], "query_variants": [request["query"]]}
+        return {
+            "request_values": bound,
+            "retrieval": retrieval,
+            "initial": initial,
+            "contexts": [initial],
+            "query_variants": [request["query"]],
+        }
 
     return inference_input
 
@@ -195,7 +209,7 @@ def _input_node(system: CompiledSystem) -> Any:
 def _remote_inference_node(segment: RemoteSegment, system: CompiledSystem, deps: EngineDeps) -> Any:
     async def remote(state: InferenceState, config: RunnableConfig) -> dict[str, Any]:
         options = _configurable(config)
-        parameters = resolve_parameters(segment.parameters, options.get("request_values", {}), system.values.variables)
+        parameters = resolve_parameters(segment.parameters, state["request_values"], system.values.variables)
         output = await call_remote(
             deps.http,
             segment.call,
@@ -221,25 +235,30 @@ def _retrieval_node(
     plan: BuiltinRetrieval, system: CompiledSystem, deps: EngineDeps, store: IndexStore, index_name: str
 ) -> Any:
     fields = system.index.fields
-    profiles = {name: system.index.vectors[name].embedding_profile_id for name in plan.vector_fields}
 
     async def retrieval(state: InferenceState, config: RunnableConfig) -> dict[str, Any]:
-        resources_profiles = _configurable(config)["profiles"]
+        options = _configurable(config)
+        resources_profiles = options["profiles"]
+        settings = state.get("retrieval") or plan
         contexts = []
         for context in state["contexts"]:
             route_lists: list[list[results.Item]] = []
-            for field_name in plan.fulltext_fields:
-                route = SearchRoute("fulltext", field_name, plan.per_route_k, context["filters"], text=context["query"])
+            for field_name in settings.fulltext_fields:
+                route = SearchRoute(
+                    "fulltext", field_name, settings.per_route_k, context["filters"], text=context["query"]
+                )
                 hits = await store.search(index_name, route, fields)
                 route_lists.append([{"data": hit.document, "score": hit.score} for hit in hits])
-            for vector_name in plan.vector_fields:
-                profile = resources_profiles[profiles[vector_name]]
+            for vector_name in settings.vector_fields:
+                profile = resources_profiles[system.index.vectors[vector_name].embedding_profile_id]
                 query_vector = (await deps.embedder.embed([context["query"]], profile))[0]
-                route = SearchRoute("vector", vector_name, plan.per_route_k, context["filters"], vector=query_vector)
+                route = SearchRoute(
+                    "vector", vector_name, settings.per_route_k, context["filters"], vector=query_vector
+                )
                 hits = await store.search(index_name, route, fields)
                 route_lists.append([{"data": hit.document, "score": hit.score} for hit in hits])
-            items = results.fuse(route_lists, plan.fusion, plan.rrf_k)
-            items = results.top_n(results.group_by(items, list(plan.group_by)), plan.top_n)
+            items = results.fuse(route_lists, settings.fusion, settings.rrf_k)
+            items = results.top_n(results.group_by(items, list(settings.group_by)), settings.top_n)
             contexts.append({**context, "result_sets": [{"key": "retrieval", "items": items}]})
         return {"contexts": contexts}
 

@@ -8,7 +8,7 @@ import time
 import httpx
 import pytest
 
-from conftest import INGESTION, RuntimeClient, basic
+from conftest import INGESTION, RuntimeClient, basic, scenario_config
 from rag_engine.adapters.embedding import OpenAICompatibleEmbedder
 from rag_engine.components.remote import RemoteCall, call_remote
 from rag_engine.core.errors import UpstreamError
@@ -107,6 +107,55 @@ async def test_remote_parsing_runs_inside_ingestion(runtime: RuntimeClient) -> N
     assert requests[0]["parameters"] == {"language": "zh-TW", "trace_label": "request-label"}
     page = await runtime.http.get(f"{runtime.business}/documents", headers=basic(INGESTION))
     assert page.json()["documents"][0]["document_id"] == "doc-1"
+
+
+async def test_remote_rerank_receives_request_parameters(runtime: RuntimeClient) -> None:
+    """Request values bound by the input node must reach later Remote Inference nodes."""
+    seen: list[dict] = []
+
+    def reranker(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        seen.append(body)
+        contexts = body["input"]
+        for context in contexts:
+            items = context["result_sets"][0]["items"][: body["parameters"]["limit"]]
+            context["result_sets"] = [{"key": "rerank", "items": items}]
+        return httpx.Response(200, json={"output": contexts})
+
+    config = scenario_config()
+    inference = config["pipelines"]["inference"]
+    inference["fixed_filters"] = []
+    inference["inference_input"]["parameters"]["request_parameters"] = [
+        {"name": "LIMIT", "type": "integer", "required": False, "default_value": "5"}
+    ]
+    inference["rerank"] = {
+        "component_id": "remote_api",
+        "component_version": "1.0.0",
+        "contract_version": "1",
+        "through": "rerank",
+        "connection": {"url": "{{REMOTE_RERANK_URL}}", "timeout_seconds": 10},
+        "parameters": {"limit": "{{LIMIT}}", "mode": "fast"},
+    }
+    config["variable"] = {"REMOTE_RERANK_URL": "https://rerank.dev.example/v1/rerank"}
+    registry = runtime.app.state.registry
+    registry.deps = EngineDeps(embedder=registry.deps.embedder, http=client(reranker))
+    await runtime.initialize(config)
+    accepted = await runtime.ingest(
+        [
+            {"document_id": "a", "structdata": {"body": "清潔散熱孔", "title": "t", "price": 1}},
+            {"document_id": "b", "structdata": {"body": "更換濾網", "title": "t", "price": 2}},
+        ]
+    )
+    done = await runtime.wait_run(accepted.json()["run_id"], {"completed", "failed"})
+    assert done["status"] == "completed", done
+
+    response = await runtime.query({"query": "清潔", "parameters": {"LIMIT": 1}})
+    assert response.status_code == 200, response.text
+    assert seen[-1]["parameters"] == {"limit": 1, "mode": "fast"}
+    assert len(response.json()["contexts"][0]["result_sets"][0]["items"]) == 1
+    response = await runtime.query({"query": "清潔"})
+    assert response.status_code == 200, response.text
+    assert seen[-1]["parameters"] == {"limit": 5, "mode": "fast"}  # declared default
 
 
 async def test_openai_compatible_embedder_batches_and_validates() -> None:

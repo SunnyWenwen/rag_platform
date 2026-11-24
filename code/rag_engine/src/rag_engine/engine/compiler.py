@@ -6,6 +6,7 @@ located by a JSON Pointer relative to the request body (``/config/...``).
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -16,7 +17,7 @@ from rag_engine.components.embedding import TEMPLATE_FIELD, DenseSettings
 from rag_engine.components.remote import RemoteCall
 from rag_engine.contracts import ContractError, errors, schema_ref
 from rag_engine.core.canonical import sha256_hex
-from rag_engine.core.errors import ConfigInvalid
+from rag_engine.core.errors import ConfigInvalid, RequestInvalid
 from rag_engine.core.filters import validate_filters
 from rag_engine.core.resources import RuntimeResources
 from rag_engine.core.types import Fields, FieldSpec, Vectors, VectorSpec, fields_meta
@@ -32,10 +33,12 @@ from rag_engine.engine.plan import (
     IngestionStage,
     McpSettings,
     RemoteSegment,
+    RetrievalReferences,
 )
 from rag_engine.engine.values import (
     EXPRESSION,
     RESERVED_SECRET_KEYS,
+    RequestParameter,
     SystemValues,
     load_values,
     references,
@@ -80,20 +83,35 @@ def _node_path(lane: str, module: str) -> str:
     return f"/config/pipelines/{lane}/{module}"
 
 
-def _descriptor(catalog: Catalog, lane: str, module: str, node: dict[str, Any]) -> dict[str, Any]:
-    path = _node_path(lane, module)
+def _find_descriptor(catalog: Catalog, lane: str, module: str, node: dict[str, Any]) -> dict[str, Any]:
     descriptor = catalog.descriptor(module, node["component_id"], node["component_version"])
     if descriptor is None:
         raise ConfigInvalid(
             f"{module} component {node['component_id']}@{node['component_version']} is not available in this Runtime",
-            path=path + "/component_id",
+            path=_node_path(lane, module) + "/component_id",
             module=module,
         )
+    return descriptor
+
+
+def _check_parameters(
+    schema: dict[str, Any], parameters: dict[str, Any], path: str, module: str, skip: set[str] | None = None
+) -> None:
+    """Validate ``parameters`` against a Descriptor schema; errors under ``skip`` names are ignored."""
+    skip = skip or set()
     try:
-        for error in errors(descriptor["parameters_schema"], node["parameters"]):
+        for error in errors(schema, parameters):
+            parts = error.path.split("/")
+            if len(parts) > 1 and parts[1] in skip:
+                continue
             raise ConfigInvalid(error.message, path=f"{path}/parameters{error.path}", module=module)
     except ContractError as error:  # pragma: no cover - defensive
         raise ConfigInvalid(str(error), path=path, module=module) from error
+
+
+def _descriptor(catalog: Catalog, lane: str, module: str, node: dict[str, Any]) -> dict[str, Any]:
+    descriptor = _find_descriptor(catalog, lane, module, node)
+    _check_parameters(descriptor["parameters_schema"], node["parameters"], _node_path(lane, module), module)
     return descriptor
 
 
@@ -520,6 +538,7 @@ def _compile_inference(
     fixed = list(nodes.get("fixed_filters", []))
     validate_filters(fixed, index.fields, "/config/pipelines/inference/fixed_filters", error=ConfigInvalid)
     segments: dict[str, RemoteSegment | BuiltinRetrieval | None] = {}
+    retrieval_refs: RetrievalReferences | None = None
     covered: set[str] = set()
     for module in REMOTE_INFERENCE:
         node = nodes.get(module)
@@ -547,16 +566,34 @@ def _compile_inference(
             )
             covered.update(_covered(REMOTE_INFERENCE, module, through))
             continue
-        _descriptor(catalog, lane, module, node)
-        _no_secret_refs(node["parameters"], path + "/parameters", values, module)
-        for _, location in references(node["parameters"], path + "/parameters"):
-            raise ConfigInvalid(
-                "parameter expressions in built-in Inference parameters are not supported yet",
-                path=location,
-                module=module,
-            )
+        descriptor = _find_descriptor(catalog, lane, module, node)
+        params = node["parameters"]
+        _no_secret_refs(params, path + "/parameters", values, module)
+        refs = _builtin_references(params, specs, values, path, module)
+        schema = descriptor["parameters_schema"]
+        variable_values = {
+            name: _variable_value(values.variables[key], schema, name, path, module)
+            for name, key in refs.items()
+            if key in values.variables
+        }
+        # Validate now with the values known at publish time. A reference that only a
+        # request can fill is skipped here and checked for each request.
+        sample = dict(params)
+        deferred: set[str] = set()
+        for name, key in refs.items():
+            request_spec = specs.get(key)
+            if request_spec is not None and request_spec.has_default:
+                sample[name] = request_spec.default
+            elif name in variable_values:
+                sample[name] = variable_values[name]
+            else:
+                deferred.add(name)
+        _check_parameters(schema, sample, path, module, skip=deferred)
         if module == "retrieval":
-            segments[module] = _compile_retrieval(node["parameters"], index, path)
+            # With references, the settings built for each request replace this one.
+            segments[module] = _compile_retrieval(sample, index, path, skip=deferred)
+            if refs:
+                retrieval_refs = RetrievalReferences(dict(params), refs, variable_values, schema)
         else:
             segments[module] = None  # "none" methods
     mcp = nodes.get("mcp", {})
@@ -580,12 +617,84 @@ def _compile_inference(
         candidate_fields=index.fields,
         mcp=McpSettings(mcp.get("tool_name", "search"), mcp.get("description"), text_field),
         uses_platform_index=isinstance(retrieval, BuiltinRetrieval),
+        retrieval_references=retrieval_refs,
     )
 
 
-def _compile_retrieval(params: dict[str, Any], index: IndexPlan, path: str) -> BuiltinRetrieval:
-    vector_fields = tuple(params.get("vector_fields", []))
-    fulltext_fields = tuple(params.get("fulltext_fields", []))
+def _builtin_references(
+    params: dict[str, Any], specs: dict[str, RequestParameter], values: SystemValues, path: str, module: str
+) -> dict[str, str]:
+    """Top-level parameters written as ``"{{KEY}}"``. KEY must be a request parameter or a Variable."""
+    found: dict[str, str] = {}
+    for name, value in params.items():
+        location = f"{path}/parameters/{name}"
+        match = EXPRESSION.match(value) if isinstance(value, str) else None
+        if match is None:
+            for _, inner in references(value, location):
+                raise ConfigInvalid(
+                    'a reference must be the whole value of a top-level parameter, e.g. "{{TOP_N}}"',
+                    path=inner,
+                    module=module,
+                )
+            continue
+        key = match[1]
+        if key not in specs and key not in values.variables:
+            raise ConfigInvalid(
+                f"{key} is neither an Inference request parameter nor a System Variable", path=location, module=module
+            )
+        found[name] = key
+    return found
+
+
+def _variable_value(raw: str, schema: dict[str, Any], name: str, path: str, module: str) -> Any:
+    """Parse a Variable (always a string) to the parameter's type: strings as is, others as JSON."""
+    target = schema.get("properties", {}).get(name, {}).get("type", "string")
+    if target == "string":
+        return raw
+    try:
+        return json.loads(raw)
+    except ValueError as error:
+        raise ConfigInvalid(
+            f"System Variable value is not valid JSON for type {target}",
+            path=f"{path}/parameters/{name}",
+            module=module,
+        ) from error
+
+
+def resolve_retrieval(refs: RetrievalReferences, index: IndexPlan, request_values: dict[str, Any]) -> BuiltinRetrieval:
+    """Retrieval settings for one request: request value first, then the parsed Variable."""
+    path = _node_path("inference", "retrieval")
+    params = dict(refs.parameters)
+    for name, key in refs.references.items():
+        if key in request_values:
+            params[name] = request_values[key]
+        elif name in refs.variable_values:
+            params[name] = refs.variable_values[name]
+        else:
+            raise RequestInvalid(
+                f"no value for {key}, used by retrieval parameter {name}", path=f"/parameters/{key}", module="retrieval"
+            )
+    try:
+        _check_parameters(refs.schema, params, path, "retrieval")
+        return _compile_retrieval(params, index, path)
+    except ConfigInvalid as error:
+        location = (error.path or "").removeprefix(path + "/parameters/").split("/")[0]
+        source = refs.references.get(location)
+        raise RequestInvalid(
+            f"invalid retrieval parameter {location}: {error.message}",
+            path=f"/parameters/{source}" if source else "/parameters",
+            module="retrieval",
+        ) from error
+
+
+def _compile_retrieval(
+    params: dict[str, Any], index: IndexPlan, path: str, skip: set[str] | None = None
+) -> BuiltinRetrieval:
+    """Check the parameters against the index. Field lists named in ``skip`` are not checked."""
+    skip = skip or set()
+    vector_fields = () if "vector_fields" in skip else tuple(params.get("vector_fields", []))
+    fulltext_fields = () if "fulltext_fields" in skip else tuple(params.get("fulltext_fields", []))
+    group_by = () if "group_by" in skip else tuple(params.get("group_by", []))
     for position, name in enumerate(vector_fields):
         if name not in index.vectors:
             raise ConfigInvalid(
@@ -601,7 +710,7 @@ def _compile_retrieval(params: dict[str, Any], index: IndexPlan, path: str) -> B
                 path=f"{path}/parameters/fulltext_fields/{position}",
                 module="retrieval",
             )
-    for position, name in enumerate(params.get("group_by", [])):
+    for position, name in enumerate(group_by):
         spec = index.fields.get(name.removeprefix("structdata."))
         if name != "document_id" and (spec is None or spec.type != "string"):
             raise ConfigInvalid(
@@ -620,7 +729,7 @@ def _compile_retrieval(params: dict[str, Any], index: IndexPlan, path: str) -> B
         per_route_k=params["per_route_k"],
         fusion=params.get("fusion"),
         rrf_k=params.get("rrf_k", 60),
-        group_by=tuple(params.get("group_by", [])),
+        group_by=group_by,
         top_n=params.get("top_n"),
     )
 

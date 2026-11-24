@@ -79,6 +79,20 @@ class BuiltinRetrieval:
 
 
 @dataclass(frozen=True)
+class RetrievalReferences:
+    """Built-in Retrieval parameters written as ``"{{KEY}}"``, resolved for each request.
+
+    Rule (05#parameter-references): the request value first (declared defaults included),
+    then the same-named System Variable parsed to the parameter type.
+    """
+
+    parameters: dict[str, Any]  # parameters as written in the Config
+    references: dict[str, str]  # parameter name -> KEY
+    variable_values: dict[str, Any]  # parameter name -> parsed System Variable value
+    schema: dict[str, Any]  # the Descriptor's parameters_schema
+
+
+@dataclass(frozen=True)
 class McpSettings:
     tool_name: str = "search"
     description: str | None = None
@@ -95,6 +109,7 @@ class InferencePlan:
     candidate_fields: Fields
     mcp: McpSettings
     uses_platform_index: bool
+    retrieval_references: RetrievalReferences | None = None
 
 
 @dataclass(frozen=True)

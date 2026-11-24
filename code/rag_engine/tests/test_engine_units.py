@@ -13,12 +13,12 @@ from rag_engine.adapters.tokenizer import SimpleTokenizer
 from rag_engine.components import results
 from rag_engine.components.chunking import RecursiveSettings, chunk_documents, split_text
 from rag_engine.core.canonical import chunk_data_id, sha256_hex
-from rag_engine.core.errors import ConfigInvalid, DocumentFailed, EngineError
+from rag_engine.core.errors import ConfigInvalid, DocumentFailed, EngineError, RequestInvalid
 from rag_engine.core.filters import matches, validate_filters
 from rag_engine.core.resources import fixture_resources
 from rag_engine.core.types import FieldSpec
 from rag_engine.engine.catalog import build_catalog
-from rag_engine.engine.compiler import compile_system
+from rag_engine.engine.compiler import compile_system, resolve_retrieval
 
 TOKENIZER = SimpleTokenizer("fixture@1")
 
@@ -180,6 +180,65 @@ def test_compiler_rejects_unavailable_components_and_bad_references() -> None:
     with pytest.raises(ConfigInvalid) as raised:
         compile_system(config, catalog)
     assert raised.value.path == "/config/pipelines/inference/fixed_filters/0/field"
+
+
+def reference_config(variables: dict[str, str], **retrieval: object) -> dict:
+    """Scenario Config whose built-in Retrieval parameters use ``{{KEY}}`` references."""
+    config = scenario_config()
+    inference = config["pipelines"]["inference"]
+    inference["inference_input"]["parameters"]["request_parameters"] = [
+        {"name": "TOP_N", "type": "integer", "required": False},
+        {"name": "K", "type": "integer", "required": True},
+    ]
+    inference["retrieval"]["parameters"].update(retrieval)
+    config["variable"] = variables
+    return config
+
+
+def test_builtin_retrieval_parameters_resolve_request_then_variable() -> None:
+    catalog = build_catalog("dev-runtime", fixture_resources())
+    compiled = compile_system(reference_config({"TOP_N": "2"}, top_n="{{TOP_N}}", per_route_k="{{K}}"), catalog)
+    refs = compiled.inference.retrieval_references
+    assert refs is not None
+    assert refs.references == {"top_n": "TOP_N", "per_route_k": "K"}
+    assert refs.variable_values == {"top_n": 2}  # parsed to the integer parameter type
+    # Query-only references do not touch the index fingerprint.
+    assert compiled.fingerprint == compile_system(scenario_config(), catalog).fingerprint
+
+    by_variable = resolve_retrieval(refs, compiled.index, {"K": 4})
+    assert (by_variable.top_n, by_variable.per_route_k) == (2, 4)
+    by_request = resolve_retrieval(refs, compiled.index, {"K": 4, "TOP_N": 5})
+    assert by_request.top_n == 5
+
+    with pytest.raises(RequestInvalid) as raised:
+        resolve_retrieval(refs, compiled.index, {"K": 4, "TOP_N": 0})
+    assert raised.value.path == "/parameters/TOP_N" and "top_n" in raised.value.message
+    with pytest.raises(RequestInvalid) as raised:
+        resolve_retrieval(refs, compiled.index, {})
+    assert raised.value.path == "/parameters/K"
+
+
+@pytest.mark.parametrize(
+    ("variables", "retrieval", "location"),
+    [
+        ({}, {"top_n": "{{MISSING}}"}, "top_n"),
+        ({"TOP_N": "2"}, {"top_n": "top-{{TOP_N}}"}, "top_n"),
+        ({"TOP_N": "two"}, {"top_n": "{{TOP_N}}"}, "top_n"),
+        ({"TOP_N": "0"}, {"top_n": "{{TOP_N}}"}, "top_n"),
+        ({"FIELDS": '["missing"]'}, {"vector_fields": "{{FIELDS}}"}, "vector_fields/0"),
+        ({}, {"top_n": "{{INFERENCE_API_PASSWORD}}"}, "top_n"),
+    ],
+)
+def test_builtin_retrieval_reference_errors_are_located(
+    variables: dict[str, str], retrieval: dict[str, object], location: str
+) -> None:
+    catalog = build_catalog("dev-runtime", fixture_resources())
+    config = reference_config(variables, **retrieval)
+    if "TOP_N" in variables:  # let the Variable be used: no request parameter of the same name
+        config["pipelines"]["inference"]["inference_input"]["parameters"]["request_parameters"] = []
+    with pytest.raises(ConfigInvalid) as raised:
+        compile_system(config, catalog)
+    assert raised.value.path == f"/config/pipelines/inference/retrieval/parameters/{location}"
 
 
 def remote_parsing_config() -> dict:
