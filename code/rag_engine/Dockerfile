@@ -1,7 +1,8 @@
 # Retrieval Runtime image. Build from the repository root:
 #   docker build -t rag-runtime:0.1.0 .
-# Replace the base images with the company mirror if Docker Hub / ghcr.io are not reachable.
-ARG PYTHON_IMAGE=python:3.12-slim
+# The Python base image is the decided company standard (Debian 12 bookworm). If Docker Hub /
+# ghcr.io are not reachable, point the ARGs at the company mirror of the same tags.
+ARG PYTHON_IMAGE=python:3.12.13-slim-bookworm
 ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.11
 
 FROM ${UV_IMAGE} AS uv

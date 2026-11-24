@@ -6,7 +6,7 @@
 
 | 項目 | 決定 | 鎖定版本 | 理由 |
 |---|---|---|---|
-| 語言 | Python 3.12 | `>=3.12,<3.13` | LangGraph 與 ES client 皆支援；部門另有標準時只改 `pyproject.toml` 與 `Dockerfile` |
+| 語言 | Python 3.12（Image 為 3.12.13） | `>=3.12,<3.13` | 部門標準；LangGraph 與 ES client 皆支援 |
 | 套件與鎖檔 | uv、`pyproject.toml`、`uv.lock` | uv 0.11 | 鎖檔可重現；公司 PyPI 映像用 `UV_INDEX_URL` |
 | 專案結構 | 單一套件 `rag-engine`，src layout | — | 分層 `runtime → engine → components → adapters → core → contracts`，由 import-linter 強制。Python／AI 助手可直接 import Engine，不必經 HTTP |
 | HTTP 服務 | FastAPI＋Uvicorn，**單一 worker** | FastAPI 0.165、Uvicorn 0.54 | 文件占用、Queue、Run 都在程序記憶體，一個 Pod 只能有一個程序 |
@@ -24,7 +24,7 @@
 | Log 與追蹤 | 標準 logging 輸出 JSON，`contextvars` 帶 `request_id`、`system_id`、`run_id` | — | `X-Request-Id` 規則見 06；OpenTelemetry 列為後續 |
 | 測試 | pytest＋pytest-asyncio；httpx `ASGITransport`／`MockTransport`；MCP 以 uvicorn＋官方 client 實測 | pytest 8 | ES 實機測試以 `-m es` 選擇執行 |
 | 程式品質 | ruff（lint＋format）、mypy、import-linter | — | `make check` 一次執行 |
-| Image 與部署 | `python:3.12-slim` 多階段建置、非 root；DEV 用 `replicas: 1` 的 StatefulSet | — | 見 `Dockerfile` 與 `deploy/k8s/` |
+| Image 與部署 | `python:3.12.13-slim-bookworm` 多階段建置、非 root；DEV 用 `replicas: 1` 的 StatefulSet | — | 部門指定的 base image，鎖到 patch 版與 Debian 12 bookworm。見 `Dockerfile` 與 `deploy/k8s/` |
 
 ## 為什麼不這樣做
 
@@ -38,9 +38,8 @@
 
 | 項目 | 目前的預設 | 要改的地方 |
 |---|---|---|
-| 部門 Python 版本 | 3.12 | `pyproject.toml` 的 `requires-python`、`.python-version`、`Dockerfile` |
 | 內部 PyPI 映像 | 公開 PyPI | 環境變數 `UV_INDEX_URL`，或 `pyproject.toml` 的 `[[tool.uv.index]]` |
-| Base image | `python:3.12-slim`、`ghcr.io/astral-sh/uv:0.11` | `Dockerfile` 的 `PYTHON_IMAGE`、`UV_IMAGE` |
+| uv 的來源 image | `ghcr.io/astral-sh/uv:0.11`（只在建置階段複製 uv 執行檔） | `Dockerfile` 的 `UV_IMAGE`，或改用公司映像 |
 | CI 平台 | `ci/gitlab-ci.example.yml` 範例 | 依公司 CI 改寫，核心是 `make check` |
 | bge-m3 版本 | `REPLACE_WITH_MODEL_COMMIT` | `resources/dev.yaml`、`deploy/k8s/dev-runtime.yaml` |
 | PLED ES 位址規則 | `https://es{es_number}.pled.example:9200` | `RAG_PLED_ES_URL_TEMPLATE` |

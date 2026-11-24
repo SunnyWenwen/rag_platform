@@ -3,7 +3,7 @@ stages: [check, image]
 
 check:
   stage: check
-  image: python:3.12-slim
+  image: python:3.12.13-slim-bookworm
   variables:
     UV_CACHE_DIR: .uv-cache
   before_script:

@@ -277,7 +277,7 @@ M0 凍結 Document、批次 Request、Remote I/O、有效參數與候選規則�
 - 建議：沿用 Python／既有生態；選最小必要套件並鎖定。Web Framework／前端沿用部門標準；具體版本要實測再鎖。
 - 替代：以專案獨立技術棧開發，需增加維運／整合評估。
 - 負責角色：技術負責人＋Engine／前後端；阻擋 M0 正式依賴及 M1 ES 選型。
-- 決策：2026-11-23 定案 Runtime 技術選型：Python 3.12、uv、FastAPI 單一程序、LangGraph、Elasticsearch 8.19（IK＋stconvert）、bge-m3 由獨立 Embedding 服務提供、官方 MCP SDK。版本鎖與理由見 [Runtime 技術選型](../code/rag_engine/docs/tech_stack.md)，可執行骨架見 [code/rag_engine](../code/rag_engine/README.md)。部門的 Python 版本、PyPI 映像、base image 與 CI 待確認後套用。
+- 決策：2026-11-23 定案 Runtime 技術選型：Python 3.12、uv、FastAPI 單一程序、LangGraph、Elasticsearch 8.19（IK＋stconvert）、bge-m3 由獨立 Embedding 服務提供、官方 MCP SDK。版本鎖與理由見 [Runtime 技術選型](../code/rag_engine/docs/tech_stack.md)，可執行骨架見 [code/rag_engine](../code/rag_engine/README.md)。2026-11-24 確認 base image 為 `python:3.12.13-slim-bookworm`。部門的 PyPI 映像與 CI 待確認後套用。
 
 <a id="q-002"></a>
 ### Q-002 共用 Schema、Config、SDK 與版本凍結

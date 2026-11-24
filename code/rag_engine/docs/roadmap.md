@@ -20,7 +20,7 @@
 
 ### R0 公司環境
 
-套上公司的 Python 版本、PyPI 映像、base image 與 CI（見 `docs/tech_stack.md` 末表）。驗收：乾淨環境 `make install && make check` 通過。
+Base image 已定為 `python:3.12.13-slim-bookworm`。套上公司的 PyPI 映像、uv 來源 image 與 CI（見 `docs/tech_stack.md` 末表），並在公司建一次 Image 確認 `useradd`、uv 安裝與啟動正常。驗收：乾淨環境 `make install && make check` 通過。
 
 ### R1 PLED 測試 ES
 
