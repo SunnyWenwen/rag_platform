@@ -32,6 +32,9 @@ class EmbeddingProfile:
     tokenizer_profile_id: str | None = None
     # Elasticsearch dense_vector index_options, for example {"type": "int8_hnsw"}.
     index_options: dict[str, Any] | None = None
+    # Name of the environment variable holding the service token, sent as
+    # "Authorization: Bearer <token>". The token itself never goes in the resources file.
+    api_key_env: str | None = None
 
 
 @dataclass(frozen=True)

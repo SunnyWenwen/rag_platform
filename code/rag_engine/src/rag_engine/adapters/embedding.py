@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
 import struct
 from typing import Protocol
 
@@ -58,8 +59,11 @@ class OpenAICompatibleEmbedder:
     async def _batch(self, batch: list[str], profile: EmbeddingProfile) -> list[list[float]]:
         url = profile.endpoint.rstrip("/") + "/embeddings"  # type: ignore[union-attr]
         payload = {"model": profile.request_model or profile.model_id, "input": batch}
+        headers = {}
+        if profile.api_key_env:
+            headers["Authorization"] = f"Bearer {os.environ.get(profile.api_key_env, '')}"
         try:
-            response = await self._client.post(url, json=payload, timeout=profile.timeout_seconds)
+            response = await self._client.post(url, json=payload, headers=headers, timeout=profile.timeout_seconds)
         except httpx.TimeoutException as error:
             raise UpstreamError(
                 "embedding service timed out", code="DEADLINE_EXCEEDED", module="embedding", retryable=True

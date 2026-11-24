@@ -29,6 +29,8 @@ M1 的程式部分已完成：主流程（結構化資料 → Recursive 切分 �
 
 Base image 已定為 `python:3.12.13-slim-bookworm`。套上公司的 PyPI 映像、uv 來源 image 與 CI（見 `docs/tech_stack.md` 末表），並在公司建一次 Image 確認 `useradd`、uv 安裝與啟動正常。驗收：乾淨環境 `make install && make check` 通過。
 
+設定方式、驗證指令與常見問題集中在 [integration.md](integration.md)，以下只列順序與驗收。
+
 ### R1 PLED 測試 ES
 
 1. 設定 `RAG_TEST_ES_URL`、帳密，執行 `make test-es`。確認 IK＋stconvert 分析器建立成功、簡體查詢命中繁體內容、`int8_hnsw` kNN 與 Filter 可用。

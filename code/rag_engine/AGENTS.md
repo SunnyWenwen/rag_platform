@@ -5,6 +5,10 @@
 1. `docs/tech_stack.md`：技術選型與理由，不要換掉已定的框架。
 2. `docs/architecture.md`：分層、模組責任與不可破壞的規則。
 3. `docs/roadmap.md`：目前狀態、下一步與已知缺口。
+4. `docs/integration.md`：接上公司 ES、Embedding 等資源的設定、驗證步驟與常見問題。
+5. `docs/testing.md`：測試分層，以及哪些測試要接真實服務。
+
+規格尚未定案的項目（roadmap R4 標註的 Q 編號、D-53 等）不要在 Runtime 自行決定語意；先在 rag_platform 提出並確認。
 
 ## 工作規則
 

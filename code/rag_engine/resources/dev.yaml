@@ -19,6 +19,9 @@ profiles:
     tokenizer_profile_id: bge-m3
     index_options:
       type: int8_hnsw
+    # If the service needs a token: name the environment variable that holds it. The Runtime
+    # sends "Authorization: Bearer <value>" and refuses to start when the variable is empty.
+    # api_key_env: RAG_EMBEDDING_API_KEY
 
 tokenizer_profiles:
   bge-m3:

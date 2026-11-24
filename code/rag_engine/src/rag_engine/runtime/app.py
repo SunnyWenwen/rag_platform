@@ -92,6 +92,11 @@ def decode_cursor(system_id: str, cursor: str) -> str:
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings()  # type: ignore[call-arg]
     resources = RuntimeResources.from_file(settings.resources_file) if settings.resources_file else fixture_resources()
+    for profile in resources.profiles.values():
+        if profile.api_key_env and not os.environ.get(profile.api_key_env):
+            raise RuntimeError(
+                f"embedding profile {profile.profile_id}: environment variable {profile.api_key_env} is empty"
+            )
     catalog = build_catalog(settings.runtime_ref, resources)
     stores = StoreProvider(settings)
     http = httpx.AsyncClient()

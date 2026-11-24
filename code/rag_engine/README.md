@@ -7,6 +7,7 @@ RAG System Factory 的 Engine、內建 Components 與 Runtime API。Builder（�
 - 程式架構：[docs/architecture.md](docs/architecture.md)
 - 交接狀態與後續工作：[docs/roadmap.md](docs/roadmap.md)
 - 測試方式：[docs/testing.md](docs/testing.md)
+- 接上公司 ES、Embedding：[docs/integration.md](docs/integration.md)
 - 開發 Agent 規則：[AGENTS.md](AGENTS.md)
 
 ## 快速開始
@@ -43,10 +44,11 @@ make smoke
 | `RAG_INDEX_BACKEND` | `elasticsearch` 或 `memory`（測試用） | `memory` |
 | `RAG_EMBEDDING_BACKEND` | `service`（OpenAI-compatible）或 `hash`（測試用） | `service` |
 | `RAG_ES_URL`、`RAG_ES_USERNAME`、`RAG_ES_PASSWORD` | Builder 測試用 ES（`dev_test`） | — |
+| `RAG_ES_CA_CERTS`、`RAG_ES_VERIFY_CERTS` | ES 的 CA 憑證檔與是否驗證憑證 | —、`true` |
 | `RAG_PLED_ES_URL_TEMPLATE` | 由 `es_number` 組出 PLED 叢集位址 | — |
 | `RAG_CONFIG_FILE`、`RAG_PIPELINE`、`RAG_INDEX_GENERATION` | standalone 啟動的 Config、流程與索引世代 | — |
 
-限流、Queue、保留期等其餘設定見 `src/rag_engine/runtime/settings.py`，預設值依 06 的「已確認的初始預設」。
+限流、Queue、保留期等其餘設定見 `src/rag_engine/runtime/settings.py`，預設值依 06 的「已確認的初始預設」。Embedding 服務位址、Token 環境變數名稱與 Tokenizer 寫在 resources 檔（`resources/dev.yaml`），見 [docs/integration.md](docs/integration.md)。
 
 ## 目錄
 

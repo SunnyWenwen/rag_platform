@@ -22,6 +22,7 @@ data:
         tokenizer_profile_id: bge-m3
         index_options:
           type: int8_hnsw
+        # api_key_env: RAG_EMBEDDING_API_KEY   # only if the embedding service needs a token
     tokenizer_profiles:
       bge-m3:
         label: BGE-M3 tokenizer
@@ -95,6 +96,9 @@ spec:
               valueFrom: {secretKeyRef: {name: dev-runtime-management, key: username}}
             - name: RAG_MANAGEMENT_PASSWORD
               valueFrom: {secretKeyRef: {name: dev-runtime-management, key: password}}
+            # Only with api_key_env in resources.yaml:
+            # - name: RAG_EMBEDDING_API_KEY
+            #   valueFrom: {secretKeyRef: {name: dev-runtime-embedding, key: token}}
           volumeMounts:
             - name: resources
               mountPath: /etc/rag

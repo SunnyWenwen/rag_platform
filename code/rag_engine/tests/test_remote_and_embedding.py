@@ -179,3 +179,38 @@ async def test_openai_compatible_embedder_batches_and_validates() -> None:
     async with client(lambda request: httpx.Response(200, json={"data": [{"index": 0, "embedding": [1.0]}]})) as http:
         with pytest.raises(UpstreamError):
             await OpenAICompatibleEmbedder(http).embed(["a"], profile)
+
+
+async def test_embedder_sends_the_token_from_the_named_environment_variable(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("EMBEDDING_API_KEY", "token-123")
+    profile = EmbeddingProfile(
+        "bge-m3", "BGE-M3", 1, "BAAI/bge-m3", "rev", endpoint="http://emb/v1", api_key_env="EMBEDDING_API_KEY"
+    )
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.headers["authorization"])
+        return httpx.Response(200, json={"data": [{"index": 0, "embedding": [1.0]}]})
+
+    async with client(handler) as http:
+        await OpenAICompatibleEmbedder(http).embed(["a"], profile)
+    assert seen == ["Bearer token-123"]
+
+
+def test_runtime_refuses_to_start_without_the_embedding_token(
+    tmp_path: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from pathlib import Path
+
+    from conftest import make_settings
+    from rag_engine.runtime.app import create_app
+
+    resources = Path(str(tmp_path)) / "resources.yaml"
+    resources.write_text(
+        "profiles:\n"
+        "  bge-m3: {label: BGE-M3, dimensions: 1024, model_id: BAAI/bge-m3, model_revision: r,\n"
+        "           endpoint: http://emb/v1, api_key_env: EMBEDDING_API_KEY}\n"
+    )
+    monkeypatch.delenv("EMBEDDING_API_KEY", raising=False)
+    with pytest.raises(RuntimeError, match="EMBEDDING_API_KEY"):
+        create_app(make_settings(resources_file=str(resources)))
