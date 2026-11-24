@@ -181,8 +181,11 @@ class IngestionControl:
             )
         waiting = self._waiting.get(system_id, 0)
         total_waiting = sum(self._waiting.values())
+        # 06#pod-local-ingestion-control: any queue capacity shortage is 503 RUNTIME_CAPACITY_EXHAUSTED.
         if waiting + len(documents) > self._settings.ingestion_queue_max_waiting_per_system:
-            raise ApiError("RATE_LIMITED", "The System's Ingestion queue is full.", headers={"Retry-After": "5"})
+            raise ApiError(
+                "RUNTIME_CAPACITY_EXHAUSTED", "The System's Ingestion queue is full.", headers={"Retry-After": "5"}
+            )
         if total_waiting + len(documents) > self._settings.ingestion_queue_max_waiting_total:
             raise ApiError(
                 "RUNTIME_CAPACITY_EXHAUSTED", "The Runtime Ingestion queue is full.", headers={"Retry-After": "5"}

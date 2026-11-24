@@ -189,3 +189,44 @@ def test_run_status_aggregation() -> None:
     assert aggregate(["failed", "cancelled"]) == "failed"
     assert aggregate(["completed", "failed"]) == "partial"
     assert aggregate(["completed", "cancelled"]) == "partial"
+
+
+SMALL_QUEUE = make_settings(
+    ingestion_max_concurrency_per_system=1,
+    ingestion_max_concurrency_total=1,
+    ingestion_queue_max_waiting_per_system=2,
+    ingestion_queue_max_waiting_total=3,
+)
+
+
+@pytest.mark.parametrize("settings", [SMALL_QUEUE])  # replaces the module's settings fixture for this test
+async def test_full_queue_answers_runtime_capacity_exhausted(runtime: RuntimeClient) -> None:
+    registry = runtime.app.state.registry
+    embedder = GatedEmbedder()
+    gate = asyncio.Event()
+    embedder.gates["HOLD"] = gate
+    registry.deps = EngineDeps(embedder=embedder, http=registry.deps.http)
+    await runtime.initialize()
+
+    # One document runs (held at embedding); then two wait and fill the per-System queue (2).
+    held = await runtime.ingest([doc("a", "HOLD text")])
+    assert held.status_code == 202, held.text
+    held_run = held.json()["run_id"]
+
+    async def one_running() -> bool:
+        return (await runtime.run(held_run))["counts"]["running"] == 1
+
+    await _until(one_running)
+    waiting = await runtime.ingest([doc("b", "text"), doc("c", "text")])
+    assert waiting.status_code == 202, waiting.text
+    full = await runtime.ingest([doc("d", "text")])
+    assert full.status_code == 503, full.text
+    validate_http("error_response", full.json())
+    assert full.json()["error"]["code"] == "RUNTIME_CAPACITY_EXHAUSTED"
+    assert full.headers["retry-after"] == "5"
+
+    gate.set()
+    for run_id in (held_run, waiting.json()["run_id"]):
+        done = await runtime.wait_run(run_id, {"completed", "partial", "failed"})
+        assert done["status"] == "completed", done
+    assert (await runtime.ingest([doc("d", "text")])).status_code == 202

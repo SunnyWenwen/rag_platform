@@ -1,4 +1,4 @@
-.PHONY: install check lint typecheck layers test test-es run image sync-contracts
+.PHONY: install check lint typecheck layers test test-es run smoke image sync-contracts
 
 install:
 	uv sync --frozen
@@ -6,11 +6,12 @@ install:
 check: lint typecheck layers test
 
 lint:
-	uv run ruff check src tests
-	uv run ruff format --check src tests
+	uv run ruff check src tests scripts
+	uv run ruff format --check src tests scripts
 
 typecheck:
 	uv run mypy
+	uv run mypy scripts
 
 layers:
 	uv run lint-imports
@@ -26,6 +27,12 @@ test-es:
 run:
 	RAG_MANAGEMENT_USERNAME=mock RAG_MANAGEMENT_PASSWORD=mock RAG_EMBEDDING_BACKEND=hash \
 		uv run python -m rag_engine.runtime
+
+# Drive a running Runtime through the whole Builder flow over HTTP (start it first with `make run`).
+# Against a deployed DEV Runtime: make smoke URL=https://... with RAG_SMOKE_MANAGEMENT_USERNAME/PASSWORD set.
+URL ?= http://127.0.0.1:8080
+smoke:
+	uv run python scripts/smoke_dev_runtime.py --base-url $(URL)
 
 image:
 	docker build -t rag-runtime:$$(uv run python -c "import rag_engine; print(rag_engine.__version__)") .
