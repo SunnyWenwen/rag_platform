@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -25,10 +24,12 @@ from rag_engine.contracts import http_def
 from rag_engine.core.canonical import sha256_hex
 from rag_engine.core.errors import ConfigInvalid
 from rag_engine.engine.catalog import Catalog
-from rag_engine.engine.compiler import CompiledSystem, compile_system
+from rag_engine.engine.compiler import compile_system
 from rag_engine.engine.index_writer import IndexWriter
 from rag_engine.engine.pipelines import EngineDeps, build_inference_graph, build_ingestion_graph
+from rag_engine.engine.plan import CompiledSystem
 from rag_engine.runtime.errors import ApiError
+from rag_engine.runtime.idempotency import IdempotencyStore
 from rag_engine.runtime.inference import QueryService
 from rag_engine.runtime.ingestion import IngestionControl
 from rag_engine.runtime.settings import Settings
@@ -69,14 +70,6 @@ class LoadedSystem:
         return any(state.loaded for state in self.pipelines.values())
 
 
-@dataclass(frozen=True)
-class _Replay:
-    request_hash: str
-    status: int
-    body: dict[str, Any] | None
-    expires: float
-
-
 def _impact(action: str, code: str, message: str, fingerprint: str | None = None) -> dict[str, Any]:
     impact: dict[str, Any] = {"action": action, "code": code, "message": message}
     if fingerprint is not None:
@@ -115,7 +108,7 @@ class SystemRegistry:
         self.queries = queries
         self.systems: dict[str, LoadedSystem] = {}
         self._locks: dict[str, asyncio.Lock] = {}
-        self._replays: dict[tuple[str, str, str], _Replay] = {}
+        self.idempotency = IdempotencyStore(settings.idempotency_retention_seconds)
 
     # ------------------------------------------------------------------ status
 
@@ -329,21 +322,6 @@ class SystemRegistry:
             return _impact("blocked", "INDEX_CHECK_UNAVAILABLE", "目前無法確認 ES 索引是否存在。")
         return _impact("blocked", "INDEX_OWNERSHIP_UNVERIFIED", "目標索引的歸屬無法確認。")
 
-    def _replay(self, system_id: str, kind: str, key: str, request_hash: str) -> _Replay | None:
-        now = time.monotonic()
-        for stale in [k for k, v in self._replays.items() if v.expires < now]:
-            del self._replays[stale]
-        replay = self._replays.get((system_id, kind, key))
-        if replay is not None and replay.request_hash != request_hash:
-            raise ApiError("IDEMPOTENCY_CONFLICT", "The Idempotency-Key was used for a different request.")
-        return replay
-
-    def _remember(
-        self, system_id: str, kind: str, key: str, request_hash: str, status: int, body: dict[str, Any] | None
-    ) -> None:
-        expires = time.monotonic() + self.settings.idempotency_retention_seconds
-        self._replays[(system_id, kind, key)] = _Replay(request_hash, status, body, expires)
-
     def _build(self, system_id: str, revision: str, compiled: CompiledSystem, generation: str) -> Snapshot:
         store = self.stores.for_connection(compiled.index.connection)
         name = index_name(self.settings.env, system_id, generation)
@@ -423,7 +401,7 @@ class SystemRegistry:
 
     async def apply(self, system_id: str, body: dict[str, Any], key: str) -> dict[str, Any]:
         request_hash = sha256_hex(body)
-        replay = self._replay(system_id, "apply", key, request_hash)
+        replay = self.idempotency.find(system_id, "apply", key, request_hash)
         if replay is not None and replay.body is not None:
             return replay.body
         lock = self._lock(system_id)
@@ -432,7 +410,7 @@ class SystemRegistry:
         async with lock:
             system = await self._apply(system_id, body, key)
         result = self.status(system)
-        self._remember(system_id, "apply", key, request_hash, 200, result)
+        self.idempotency.remember(system_id, "apply", key, request_hash, 200, result)
         return result
 
     async def _apply(self, system_id: str, body: dict[str, Any], key: str) -> LoadedSystem:
@@ -522,7 +500,7 @@ class SystemRegistry:
 
     async def detach(self, system_id: str, pipeline: str | None, key: str, expected: dict[str, str]) -> None:
         request_hash = sha256_hex({"pipeline": pipeline, **expected})
-        if self._replay(system_id, "detach", key, request_hash) is not None:
+        if self.idempotency.find(system_id, "detach", key, request_hash) is not None:
             return
         local = self.systems.get(system_id)
         if local is None:
@@ -542,7 +520,7 @@ class SystemRegistry:
                     raise ApiError("DEADLINE_EXCEEDED", "Accepted queries did not finish within the query deadline.")
             for name in targets:
                 local.pipelines[name] = PipelineState()
-        self._remember(system_id, "detach", key, request_hash, 204, None)
+        self.idempotency.remember(system_id, "detach", key, request_hash, 204, None)
 
     @staticmethod
     def _check_binding(local: LoadedSystem, expected: dict[str, str]) -> None:
@@ -557,7 +535,7 @@ class SystemRegistry:
 
     async def delete(self, system_id: str, key: str, expected: dict[str, str | None]) -> None:
         request_hash = sha256_hex(expected)
-        if self._replay(system_id, "delete", key, request_hash) is not None:
+        if self.idempotency.find(system_id, "delete", key, request_hash) is not None:
             return
         local = self.systems.get(system_id)
         generation, fingerprint = expected.get("generation"), expected.get("fingerprint")
@@ -590,7 +568,7 @@ class SystemRegistry:
                 except IndexStateUnknown as error:
                     raise ApiError("SYSTEM_STATE_UNKNOWN", error.message) from error
             self.systems.pop(system_id, None)
-        self._remember(system_id, "delete", key, request_hash, 204, None)
+        self.idempotency.remember(system_id, "delete", key, request_hash, 204, None)
 
     # ------------------------------------------------------------------ standalone
 

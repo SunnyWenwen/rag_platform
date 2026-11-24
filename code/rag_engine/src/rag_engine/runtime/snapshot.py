@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from rag_engine.adapters.index_store import IndexStore
-from rag_engine.engine.compiler import CompiledSystem
 from rag_engine.engine.index_writer import IndexWriter
+from rag_engine.engine.plan import CompiledSystem
 
 
 @dataclass(frozen=True)

@@ -9,7 +9,6 @@ work state lives in the accepting Pod's memory, not in LangGraph.
 from __future__ import annotations
 
 import time
-from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any, TypedDict
 
@@ -27,17 +26,16 @@ from rag_engine.components.remote import call_remote
 from rag_engine.core.errors import RequestInvalid, UpstreamError
 from rag_engine.core.filters import validate_filters
 from rag_engine.core.types import Document
-from rag_engine.engine.compiler import (
+from rag_engine.engine.documents import check_query_contexts, check_remote_documents
+from rag_engine.engine.plan import (
     BuiltinRetrieval,
     ChunkStage,
     CompiledSystem,
     EmbedStage,
+    IngestionStage,
     RemoteSegment,
 )
-from rag_engine.engine.documents import check_query_contexts, check_remote_documents
 from rag_engine.engine.values import bind_request, resolve_parameters
-
-ProgressCallback = Callable[[str], Awaitable[None] | None]
 
 
 @dataclass(frozen=True)
@@ -61,33 +59,25 @@ def _configurable(config: RunnableConfig) -> dict[str, Any]:
     return config.get("configurable", {})
 
 
-async def _progress(config: RunnableConfig, module: str) -> None:
-    callback = _configurable(config).get("progress")
-    if callback is not None:
-        result = callback(module)
-        if result is not None:
-            await result
-
-
 # ---------------------------------------------------------------------------- ingestion
 
 
 def build_ingestion_graph(system: CompiledSystem, deps: EngineDeps) -> Any:
-    """parse -> chunk -> embed, one node per effective stage. Indexing is done by the Runtime."""
+    """One node per effective stage, in order. Indexing is done by the Runtime, not the graph."""
     graph = StateGraph(IngestionState)
     previous = START
     for position, stage in enumerate(system.ingestion.stages):
-        name = f"{position}_{_stage_name(stage)}"
-        graph.add_node(name, _ingestion_node(stage, system, deps))
+        name = f"{position}_{_stage_module(stage)}"
+        graph.add_node(name, _make_ingestion_node(stage, system, deps))
         graph.add_edge(previous, name)
         previous = name
     graph.add_edge(previous, END)
     return graph.compile()
 
 
-def _stage_name(stage: object) -> str:
+def _stage_module(stage: IngestionStage) -> str:
     if isinstance(stage, RemoteSegment):
-        return f"remote_{stage.module}"
+        return stage.module
     if isinstance(stage, ChunkStage):
         return "chunking"
     if isinstance(stage, EmbedStage):
@@ -95,63 +85,57 @@ def _stage_name(stage: object) -> str:
     return "parsing"
 
 
-def _ingestion_node(stage: object, system: CompiledSystem, deps: EngineDeps) -> Any:
-    if isinstance(stage, RemoteSegment):
+def _make_ingestion_node(stage: IngestionStage, system: CompiledSystem, deps: EngineDeps) -> Any:
+    async def node(state: IngestionState, config: RunnableConfig) -> dict[str, Any]:
+        options = _configurable(config)
+        documents = await run_ingestion_stage(stage, state["documents"], system, deps, options)
+        return {"documents": documents}
 
-        async def remote(state: IngestionState, config: RunnableConfig) -> dict[str, Any]:
-            await _progress(config, stage.module)
-            options = _configurable(config)
-            documents = state["documents"]
-            document_id = documents[0]["document_id"]
-            parameters = resolve_parameters(
-                stage.parameters, options.get("request_values", {}), system.values.variables
-            )
-            payload: Any = documents[0] if stage.module == "parsing" else documents
-            output = await call_remote(
-                deps.http,
-                stage.call,
-                payload,
-                parameters,
-                upstream_request_id=options.get("request_id"),
-                deadline=options["deadline"],
-            )
-            chunked = "chunking" in stage.covered or stage.module == "embedding"
-            checked = check_remote_documents(
-                output,
-                document_id,
-                stage.output_fields or {},
-                stage.output_vectors or {},
-                stage.module,
-                chunked=chunked,
-            )
-            return {"documents": checked}
+    return node
 
-        return remote
+
+async def run_ingestion_stage(
+    stage: IngestionStage,
+    documents: list[Document],
+    system: CompiledSystem,
+    deps: EngineDeps,
+    options: dict[str, Any],
+) -> list[Document]:
+    """Run one Ingestion stage on the Documents of one source document."""
+    progress = options.get("progress")
+    if progress is not None:
+        progress(_stage_module(stage))
+
     if isinstance(stage, ChunkStage):
+        tokenizer = load_tokenizer(stage.tokenizer)
+        return chunk_documents(documents, stage.settings, tokenizer)
 
-        async def chunk(state: IngestionState, config: RunnableConfig) -> dict[str, Any]:
-            await _progress(config, "chunking")
-            tokenizer = load_tokenizer(stage.tokenizer)
-            return {"documents": chunk_documents(state["documents"], stage.settings, tokenizer)}
-
-        return chunk
     if isinstance(stage, EmbedStage):
+        embed_tokenizer = load_tokenizer(stage.tokenizer) if stage.tokenizer else None
+        return await embed_documents(documents, stage.settings, stage.profile, deps.embedder, embed_tokenizer)
 
-        async def embed(state: IngestionState, config: RunnableConfig) -> dict[str, Any]:
-            await _progress(config, "embedding")
-            tokenizer = load_tokenizer(stage.tokenizer) if stage.tokenizer else None
-            documents = await embed_documents(
-                state["documents"], stage.settings, stage.profile, deps.embedder, tokenizer
-            )
-            return {"documents": documents}
+    if isinstance(stage, RemoteSegment):
+        parameters = resolve_parameters(stage.parameters, options.get("request_values", {}), system.values.variables)
+        payload: Any = documents[0] if stage.module == "parsing" else documents
+        output = await call_remote(
+            deps.http,
+            stage.call,
+            payload,
+            parameters,
+            upstream_request_id=options.get("request_id"),
+            deadline=options["deadline"],
+        )
+        chunked = "chunking" in stage.covered or stage.module == "embedding"
+        return check_remote_documents(
+            output,
+            documents[0]["document_id"],
+            stage.output_fields or {},
+            stage.output_vectors or {},
+            stage.module,
+            chunked=chunked,
+        )
 
-        return embed
-
-    async def passthrough(state: IngestionState, config: RunnableConfig) -> dict[str, Any]:
-        await _progress(config, "parsing")
-        return {"documents": state["documents"]}
-
-    return passthrough
+    return documents  # Passthrough parsing keeps structured Documents as they are.
 
 
 # ---------------------------------------------------------------------------- inference

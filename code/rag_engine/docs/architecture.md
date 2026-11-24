@@ -23,9 +23,11 @@ contracts   rag_platform 的 JSON Schema、OpenAPI、Catalog Descriptor 複本
 | 模組 | 責任 | 規格 |
 |---|---|---|
 | `engine/compiler.py` | 驗證 System Config、推導各階段欄位、Remote 連線解析、Index 計畫、指紋投影 | 05、06#index-fingerprint-v1-proposal |
+| `engine/plan.py` | 編譯結果的資料型別（`CompiledSystem`、各階段計畫），只有欄位沒有邏輯 | |
 | `engine/pipelines.py` | 每個 Config Revision 編譯兩張 LangGraph：Ingestion（parse→chunk→embed）、Inference（input→transform→retrieval→rerank→finalize） | 03 |
 | `engine/index_writer.py` | 固定舊批次範圍 → Bulk 新 `write_id` → 新版可搜尋後清舊 | 06#es-write-control-record |
-| `runtime/systems.py` | 載入的 System、預檢 `index_impact`、initialize／reload／update／recover_index、detach、DELETE、Idempotency-Key | 06#system-lifecycle-api |
+| `runtime/systems.py` | 載入的 System、預檢 `index_impact`、initialize／reload／update／recover_index、detach、DELETE | 06#system-lifecycle-api |
+| `runtime/idempotency.py` | 管理操作的 Idempotency-Key 重送與衝突判斷（Pod 內記憶體，逾期清除） | 06#system-lifecycle-api |
 | `runtime/ingestion.py` | 文件占用、Queue、Worker、Run 狀態、取消（含 `cancelling`）、保留期清理 | 06#pod-local-ingestion-control |
 | `runtime/inference.py` | 每 System 速率與併發、全域併發、60 秒 Deadline、排空 | 06#inference-api |
 | `runtime/mcp.py` | 每個 System 一個查詢工具 | 06#inference-mcp |
@@ -40,7 +42,7 @@ v1 採最簡單的做法：一個 uvicorn 程序、一條執行緒、一個 asyn
 | Ingestion | 收件後逐份文件放進各 System 的佇列；n 個 asyncio Worker 輪流從各 System 取件，執行 LangGraph 並寫入 ES | `RAG_INGESTION_MAX_CONCURRENCY_TOTAL`（n，預設 4）、`RAG_INGESTION_MAX_CONCURRENCY_PER_SYSTEM`（預設 2） |
 | Inference 與 MCP | 每個請求在自己的協程內直接執行 LangGraph，不排隊；額滿立即拒絕 | 每 System 速率 5 次／秒、並行 2，每 Pod 並行 8，期限 60 秒 |
 
-等 bge-m3、ES、Remote API 時以 `await` 讓出執行緒，所以這些等待可以重疊。切分、tokenize、向量 JSON 解析是 CPU 工作，會在事件迴圈上執行到完成，匯入大文件時同 Pod 的查詢會短暫變慢。若之後持續卡住，再改用 rag_platform `docs/todo_enhance.md#ingestion-process-workers` 的多程序 Worker。
+等 bge-m3、ES、Remote API 時以 `await` 讓出執行緒，所以這些等待可以重疊。切分、tokenize、向量 JSON 解析是 CPU 工作，會在事件迴圈上執行到完成，匯入大文件時同 Pod 的查詢會短暫變慢。目前接受這個代價，不加 `asyncio.to_thread` 或多程序；若之後持續卡住，再改用 rag_platform `docs/todo_enhance.md#ingestion-process-workers` 的多程序 Worker。
 
 ## 請求流程
 

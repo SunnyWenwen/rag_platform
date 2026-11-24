@@ -7,7 +7,7 @@ from typing import Any
 
 from rag_engine.contracts import errors, schema_ref
 from rag_engine.core.errors import EngineError, RequestInvalid, UpstreamError
-from rag_engine.core.filters import _value_ok
+from rag_engine.core.filters import value_matches_type
 from rag_engine.core.types import Document, Fields, Vectors
 
 
@@ -23,7 +23,7 @@ def check_structdata(
         if spec.type == "string_array":
             ok = isinstance(value, list) and all(isinstance(item, str) for item in value)
         else:
-            ok = _value_ok(spec.type, value)
+            ok = value_matches_type(spec.type, value)
         if not ok:
             raise error(f"field {name} must be {spec.type}", path=f"{path}/{name}", module=module)
     for name, spec in fields.items():

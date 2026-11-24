@@ -16,7 +16,6 @@ import logging
 import time
 import uuid
 from collections import deque
-from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
@@ -275,10 +274,9 @@ class IngestionControl:
 
     # ------------------------------------------------------------------ Retire
 
-    @contextlib.contextmanager
-    def retire_guard(self, system_id: str, document_id: str) -> Iterator[None]:
-        key = (system_id, document_id)
-        occupancy = self._occupancy.get(key)
+    def reserve_retire(self, system_id: str, document_id: str) -> str:
+        """Occupy the document for a Retire. Returns the token for release_retire."""
+        occupancy = self._occupancy.get((system_id, document_id))
         if occupancy is not None:
             conflict = self._conflict(system_id, document_id, occupancy)
             raise ApiError(
@@ -287,12 +285,13 @@ class IngestionControl:
                 run_id=conflict.get("run_id"),
             )
         token = uuid.uuid4().hex
-        self._occupancy[key] = _Occupancy(token, None)
-        try:
-            yield
-        finally:
-            if self._occupancy.get(key, _Occupancy("", None)).token == token:
-                del self._occupancy[key]
+        self._occupancy[(system_id, document_id)] = _Occupancy(token, None)
+        return token
+
+    def release_retire(self, system_id: str, document_id: str, token: str) -> None:
+        occupancy = self._occupancy.get((system_id, document_id))
+        if occupancy is not None and occupancy.token == token:
+            del self._occupancy[(system_id, document_id)]
 
     # ------------------------------------------------------------------ workers
 
@@ -407,18 +406,17 @@ class IngestionControl:
         if record.status not in ("running", "cancelling"):
             return
         if success:
-            self._finish(run, record, "completed", None, module=None)
+            record.module = None
+            self._finish(run, record, "completed", None)
         elif record.status == "cancelling":
             self._finish(run, record, "cancelled", None)
         else:
             self._finish(run, record, "unknown" if unknown else "failed", error)
 
-    def _finish(
-        self, run: Run, record: DocRecord, status: str, error: dict[str, Any] | None, module: str | object | None = ...
-    ) -> None:
-        record.status, record.error, record.updated_at = status, error, _now()
-        if module is not ...:
-            record.module = module  # type: ignore[assignment]
+    def _finish(self, run: Run, record: DocRecord, status: str, error: dict[str, Any] | None) -> None:
+        record.status = status
+        record.error = error
+        record.updated_at = _now()
         record.payload = None
         key = (run.system_id, record.document_id)
         occupancy = self._occupancy.get(key)

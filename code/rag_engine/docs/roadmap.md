@@ -59,8 +59,8 @@ Base image 已定為 `python:3.12.13-slim-bookworm`。套上公司的 PyPI 映�
 | SIGTERM 優雅關閉 | 後續 | `todo_enhance.md#runtime-graceful-shutdown` |
 | Readiness 檢查 ES 連線、OpenTelemetry | M3 | |
 | 獨立部署模式（`RAG_MODE=standalone`）的自動測試 | M7 | 程式已寫，需補啟動、載入 Config、查核索引與只啟用單一流程的測試 |
-| 切分改用 `asyncio.to_thread` | 可選 | 讓大文件切分不卡住同 Pod 的查詢，改動很小 |
-| 事件迴圈延遲 Log | 可選 | 定期量測事件迴圈被卡住的時間，超過門檻就記錄，作為是否改用多程序 Worker 的依據 |
+| 切分改用 `asyncio.to_thread` | 暫不做 | 依 KISS 先維持單執行緒；查詢明顯被大文件切分拖慢時再評估 |
+| 事件迴圈延遲 Log | 暫不做 | 同上；需要判斷是否改多程序 Worker 時再加 |
 | Ingestion 多程序 Worker | 後續優化 | 需要時再啟動，見 rag_platform `docs/todo_enhance.md#ingestion-process-workers` |
 | 未載入 System 的 GET 查核只查 `dev_test` 叢集 | M3 | PLED 叢集的位址需要 Config，未載入時無從得知 |
 

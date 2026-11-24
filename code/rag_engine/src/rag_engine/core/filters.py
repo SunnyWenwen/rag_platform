@@ -20,7 +20,8 @@ _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _DATETIME = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})$")
 
 
-def _value_ok(kind: str, value: Any) -> bool:
+def value_matches_type(kind: str, value: Any) -> bool:
+    """True when ``value`` is a valid value of Data Meta field type ``kind``."""
     if kind in ("string", "string_array"):
         return isinstance(value, str)
     if kind == "boolean":
@@ -69,7 +70,7 @@ def validate_filters(
             if operator not in ("eq", "in") and spec.type not in RANGE_TYPES:
                 raise error(f"operator {operator} is not valid for {spec.type}", path=location + "/operator")
             values = condition["value"] if operator == "in" else [condition["value"]]
-            if not values or not all(_value_ok(spec.type, value) for value in values):
+            if not values or not all(value_matches_type(spec.type, value) for value in values):
                 raise error(f"value does not match field type {spec.type}", path=location + "/value")
 
 

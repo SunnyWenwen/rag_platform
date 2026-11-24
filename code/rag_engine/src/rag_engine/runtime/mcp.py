@@ -21,7 +21,7 @@ from rag_engine import __version__
 from rag_engine.contracts import errors as contract_errors
 from rag_engine.contracts import load_json, schema_ref
 from rag_engine.core.errors import EngineError
-from rag_engine.engine.compiler import CompiledSystem
+from rag_engine.engine.plan import CompiledSystem
 from rag_engine.runtime.auth import require
 from rag_engine.runtime.errors import ApiError
 from rag_engine.runtime.inference import QueryService

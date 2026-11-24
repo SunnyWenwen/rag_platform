@@ -34,7 +34,7 @@ from rag_engine.runtime.errors import ApiError, api_error_handler, engine_error_
 from rag_engine.runtime.inference import QueryService
 from rag_engine.runtime.ingestion import IngestionControl
 from rag_engine.runtime.mcp import McpEndpoint
-from rag_engine.runtime.observability import RequestIdMiddleware, configure_logging
+from rag_engine.runtime.observability import configure_logging, effective_request_id, request_id_var
 from rag_engine.runtime.settings import Settings
 from rag_engine.runtime.stores import StoreProvider
 from rag_engine.runtime.systems import SystemRegistry
@@ -135,7 +135,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.stores = stores
     app.add_exception_handler(ApiError, api_error_handler)
     app.add_exception_handler(EngineError, engine_error_handler)
-    app.add_middleware(RequestIdMiddleware)
+
+    @app.middleware("http")
+    async def request_id(request: Request, call_next: Any) -> Response:
+        """Accept or assign X-Request-Id, expose it to logs and errors, and echo it back."""
+        value = effective_request_id(request.headers.get("x-request-id"))
+        request.state.request_id = value
+        token = request_id_var.set(value)
+        try:
+            response: Response = await call_next(request)
+        finally:
+            request_id_var.reset(token)
+        response.headers["X-Request-Id"] = value
+        return response
 
     # ------------------------------------------------------------------ health (no auth)
 
@@ -339,8 +351,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @business.post("/documents/{document_id:path}:retire")
     async def retire(document_id: str, request: Request) -> dict[str, Any]:
         snapshot = system_for(request, "ingestion")
-        with registry.ingestion.retire_guard(snapshot.system_id, document_id):
+        token = registry.ingestion.reserve_retire(snapshot.system_id, document_id)
+        try:
             deleted = await snapshot.store.delete_document(snapshot.index_name, document_id)
+        finally:
+            registry.ingestion.release_retire(snapshot.system_id, document_id, token)
         return {"document_id": document_id, "result": "deleted" if deleted else "not_found"}
 
     @business.post("/queries")

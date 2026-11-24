@@ -7,7 +7,7 @@ located by a JSON Pointer relative to the request body (``/config/...``).
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from rag_engine.adapters.es_mapping import analysis_settings, index_mappings
@@ -18,13 +18,24 @@ from rag_engine.contracts import ContractError, errors, schema_ref
 from rag_engine.core.canonical import sha256_hex
 from rag_engine.core.errors import ConfigInvalid
 from rag_engine.core.filters import validate_filters
-from rag_engine.core.resources import EmbeddingProfile, RuntimeResources, TokenizerProfile
+from rag_engine.core.resources import RuntimeResources
 from rag_engine.core.types import Fields, FieldSpec, Vectors, VectorSpec, fields_meta
 from rag_engine.engine.catalog import REMOTE_ADAPTER_VERSIONS, Catalog
+from rag_engine.engine.plan import (
+    BuiltinRetrieval,
+    ChunkStage,
+    CompiledSystem,
+    EmbedStage,
+    IndexPlan,
+    InferencePlan,
+    IngestionPlan,
+    IngestionStage,
+    McpSettings,
+    RemoteSegment,
+)
 from rag_engine.engine.values import (
     EXPRESSION,
     RESERVED_SECRET_KEYS,
-    RequestParameter,
     SystemValues,
     load_values,
     references,
@@ -38,103 +49,6 @@ REMOTE_INFERENCE = ("query_transformation", "retrieval", "rerank")
 REMOTE_TIMEOUT_LIMITS = {"ingestion": 600, "inference": 60}
 ES_CREDENTIAL_FIELDS = ("es_number", "account", "password")
 FINGERPRINT_VERSION = 1
-
-
-# ---------------------------------------------------------------------------- plan types
-
-
-@dataclass(frozen=True)
-class RemoteSegment:
-    module: str
-    through: str
-    covered: tuple[str, ...]
-    call: RemoteCall
-    parameters: dict[str, Any]
-    runtime_only: frozenset[str]
-    revision: str | None
-    output_fields: Fields | None = None
-    output_vectors: Vectors | None = None
-
-
-@dataclass(frozen=True)
-class ChunkStage:
-    settings: RecursiveSettings
-    tokenizer: TokenizerProfile
-
-
-@dataclass(frozen=True)
-class EmbedStage:
-    settings: DenseSettings
-    profile: EmbeddingProfile
-    tokenizer: TokenizerProfile | None
-
-
-IngestionStage = RemoteSegment | ChunkStage | EmbedStage | str  # "passthrough"
-
-
-@dataclass(frozen=True)
-class IngestionPlan:
-    import_source: str
-    import_fields: Fields
-    request_parameters: dict[str, RequestParameter]
-    stages: tuple[IngestionStage, ...]
-
-
-@dataclass(frozen=True)
-class IndexPlan:
-    component_id: str
-    component_version: str
-    fields: Fields
-    vectors: Vectors
-    mappings: dict[str, Any]
-    analysis: dict[str, Any]
-    connection: dict[str, Any]
-    projection: dict[str, Any]
-    fingerprint: str
-
-
-@dataclass(frozen=True)
-class BuiltinRetrieval:
-    vector_fields: tuple[str, ...]
-    fulltext_fields: tuple[str, ...]
-    per_route_k: int
-    fusion: str | None
-    rrf_k: int
-    group_by: tuple[str, ...]
-    top_n: int | None
-
-
-@dataclass(frozen=True)
-class McpSettings:
-    tool_name: str = "search"
-    description: str | None = None
-    text_field: str = "text"
-
-
-@dataclass(frozen=True)
-class InferencePlan:
-    request_parameters: dict[str, RequestParameter]
-    fixed_filters: list[dict[str, Any]]
-    transformation: RemoteSegment | None
-    retrieval: BuiltinRetrieval | RemoteSegment | None
-    rerank: RemoteSegment | None
-    candidate_fields: Fields
-    mcp: McpSettings
-    uses_platform_index: bool
-
-
-@dataclass(frozen=True)
-class CompiledSystem:
-    config: dict[str, Any]
-    values: SystemValues
-    ingestion: IngestionPlan
-    index: IndexPlan
-    inference: InferencePlan
-    warnings: list[str] = field(default_factory=list)
-
-    @property
-    def fingerprint(self) -> str:
-        return self.index.fingerprint
 
 
 # ---------------------------------------------------------------------------- helpers

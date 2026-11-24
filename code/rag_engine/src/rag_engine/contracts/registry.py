@@ -64,17 +64,12 @@ def http_def(name: str) -> dict[str, Any]:
     return schema_ref("runtime_http.schema.json", f"/$defs/{name}")
 
 
-@cache
-def _validator(serialized: str) -> Draft202012Validator:
-    return Draft202012Validator(json.loads(serialized), registry=_registry(), format_checker=FormatChecker())
-
-
 def _pointer(error: ValidationError) -> str:
     return "".join(f"/{str(part).replace('~', '~0').replace('/', '~1')}" for part in error.absolute_path)
 
 
 def errors(schema: dict[str, Any], instance: Any) -> Iterator[ContractError]:
-    validator = _validator(json.dumps(schema, sort_keys=True))
+    validator = Draft202012Validator(schema, registry=_registry(), format_checker=FormatChecker())
     for error in sorted(validator.iter_errors(instance), key=lambda item: list(item.absolute_path)):
         yield ContractError(error.message, _pointer(error))
 
