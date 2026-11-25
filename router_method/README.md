@@ -18,7 +18,7 @@ python router_method/server.py
 
 開啟 [http://127.0.0.1:8765](http://127.0.0.1:8765)。可用 `--port` 指定其他埠。
 
-1. 切到 **Provider**，按 **Provide Retrieval System Template**。表單預填三支 API、Auth、Ingestion／Inference 說明與 JSON Sample，以及 Config Schema，並提供 User 表單預覽。上架後可在 Template 圖卡選 **Edit Template**。
+1. 切到 **Provider**，按 **Provide Retrieval System Template**。表單預填三支 API、Auth、Ingestion／Inference 說明與 JSON Sample，以及 Config Schema，並提供 User 表單預覽。上架後可在 Template 圖卡選 **Edit Template**。Provider 頁與編輯表單的 **使用說明** 會開啟 [Provider 使用說明書](http://127.0.0.1:8765/provider-guide)，包含設定欄位、API 契約與排查方式。
 2. 切到 **User**，從左側選擇 Workspace，再按 **Create Retrieval System**。選擇已上架的 Provider Template 並填寫參數。Builder 呼叫 Init，收到 `200` 或 `204` 後將 System 顯示在該 Workspace 的圖卡清單。
 3. 在 System 圖卡按 **Ingest** 或 **Inference**，使用預填的 Sample 或編輯 JSON Body，輸入呼叫端的 Auth Header 值後送出。內建示範的兩個操作都使用 `Bearer demo-token`。
 4. Route Service 依 System 和操作取已登錄的 URL，送出 `{system_id, parameters, payload}` 並轉發 Auth。Response 區保留 Provider 的 Body 與狀態碼。Init 的 `payload` 為 `null`。

@@ -42,6 +42,7 @@ RESERVED_HEADERS = {
 }
 STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
+    "/provider-guide": ("provider-guide.html", "text/html; charset=utf-8"),
     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
     "/config-schema.meta.schema.json": ("config-schema.meta.schema.json", "application/schema+json"),
