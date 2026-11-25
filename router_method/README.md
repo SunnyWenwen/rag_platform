@@ -36,13 +36,13 @@ python router_method/mock_retrieval_service.py
 
 在 Router 的 **User → Create Retrieval System** 選擇 **Mock Retrieval Service**、輸入 System 名稱，再按 **建立並初始化**。建立後可從圖卡直接使用預填的 JSON Sample 測試 Ingest 和 Inference。此範本不需 Auth 或額外設定。
 
-| API | Response Body（HTTP 200，UTF-8 純文字） |
+| API | Response 的 `message` 欄位（HTTP 200，JSON） |
 |---|---|
 | `POST http://127.0.0.1:8766/init` | `成功呼叫init` |
 | `POST http://127.0.0.1:8766/ingestion` | `成功呼叫ingestion` |
 | `POST http://127.0.0.1:8766/inference` | `成功呼叫inference` |
 
-Mock Service 固定回應純文字，用來確認三支 API 有被呼叫。若以 `--port` 改用其他埠，先在 Provider 圖卡編輯範本的三個 URL，再建立 System。
+Mock 的 `"see payload"` 回傳收到的完整 JSON Body。從 Router 呼叫時，這裡會看到 `system_id`、`parameters` 及巢狀的 `payload`。操作頁的 **送往 Router 的 Request** 則顯示瀏覽器送出的 HTTP 方法、路徑、Body 和遮蔽後的 Auth，方便對照兩段請求。若以 `--port` 改用其他埠，先在 Provider 圖卡編輯範本的三個 URL，再建立 System。
 
 ## Meta Schema 支援範圍
 

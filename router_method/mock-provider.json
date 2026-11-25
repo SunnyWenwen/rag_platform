@@ -8,13 +8,13 @@
     "ingestion": {
       "url": "http://127.0.0.1:8766/ingestion",
       "auth": null,
-      "description": "送出 JSON Body 後回傳純文字「成功呼叫ingestion」。",
+      "description": "送出 JSON Body 後，回應會顯示成功訊息與 Mock 收到的完整 Request Body（see payload）。",
       "sample": { "documents": [{ "text": "這是一筆測試文件。" }] }
     },
     "inference": {
       "url": "http://127.0.0.1:8766/inference",
       "auth": null,
-      "description": "送出 JSON Body 後回傳純文字「成功呼叫inference」。",
+      "description": "送出 JSON Body 後，回應會顯示成功訊息與 Mock 收到的完整 Request Body（see payload）。",
       "sample": { "query": "測試查詢" }
     }
   },

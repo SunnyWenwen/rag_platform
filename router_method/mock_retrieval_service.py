@@ -1,6 +1,7 @@
 """Start a standalone mock Provider for the Router MVP."""
 
 import argparse
+import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
 
@@ -25,10 +26,20 @@ class MockRetrievalHandler(BaseHTTPRequestHandler):
         except ValueError:
             self.send_error(400, "Invalid Content-Length")
             return
-        self.rfile.read(length)
-        body = message.encode("utf-8")
+        try:
+            raw = self.rfile.read(length)
+            payload = json.loads(raw) if raw else None
+            body = json.dumps(
+                {"message": message, "see payload": payload},
+                ensure_ascii=False,
+                allow_nan=False,
+                indent=2,
+            ).encode("utf-8")
+        except (ValueError, RecursionError):
+            self.send_error(400, "Invalid JSON request body")
+            return
         self.send_response(200)
-        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)

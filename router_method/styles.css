@@ -100,6 +100,9 @@ textarea { resize: vertical; }
 #request-body { min-height: 177px; }
 .response-editor { margin: 0; min-height: 177px; max-height: 510px; overflow: auto; padding: 12px 13px; border-radius: 8px; background: #132d32; color: #e1f1ef; white-space: pre-wrap; overflow-wrap: anywhere; font: .83rem/1.55 var(--mono); }
 .response-editor:empty::before { content: "送出請求後會顯示回應"; color: #a9c4c5; font-family: system-ui, sans-serif; }
+.sent-request { margin-top: 16px; }
+.sent-request h3 { margin-bottom: 7px; }
+.sent-request .response-editor { min-height: 0; max-height: 320px; }
 .http-status { font: 700 .75rem var(--mono); color: #05685a; }
 .http-status.failed { color: #aa3e21; }
 .send-row { display: flex; justify-content: flex-end; margin-top: 12px; }

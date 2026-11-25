@@ -536,6 +536,17 @@ function buildConsole(route, endpoint) {
   sendRow.append(send);
   request.append(sendRow);
 
+  const sentRequest = node("section", "sent-request");
+  sentRequest.hidden = true;
+  const sentTitle = node("h3", "", "送往 Router 的 Request");
+  sentTitle.id = "sent-request-title";
+  const sentPreview = node("pre", "response-editor");
+  sentPreview.tabIndex = 0;
+  sentPreview.setAttribute("aria-labelledby", sentTitle.id);
+  sentRequest.append(sentTitle, sentPreview);
+  const requestColumn = node("div");
+  requestColumn.append(request, sentRequest);
+
   const result = node("section");
   const resultTitle = node("div", "console-title");
   const status = node("span", "http-status");
@@ -545,25 +556,32 @@ function buildConsole(route, endpoint) {
   response.tabIndex = 0;
   response.setAttribute("aria-label", "Response Body");
   result.append(resultTitle, response);
-  grid.append(request, result);
+  grid.append(requestColumn, result);
 
   request.addEventListener("submit", async (event) => {
     event.preventDefault();
-    await sendRequest({ route, endpoint, requestBody, auth, send, status, response });
+    await sendRequest({ route, endpoint, requestBody, auth, send, status, response, sentRequest, sentPreview });
   });
   return grid;
 }
 
-async function sendRequest({ route, endpoint, requestBody, auth, send, status, response }) {
+async function sendRequest({ route, endpoint, requestBody, auth, send, status, response, sentRequest, sentPreview }) {
   send.disabled = true;
   status.textContent = "傳送中…";
   status.classList.remove("failed");
   response.textContent = "";
   try {
-    parseJSON(requestBody.value, "Request Body");
+    const body = requestBody.value;
+    parseJSON(body, "Request Body");
     const headers = new Headers({ "Content-Type": "application/json" });
-    if (auth?.value) headers.set(endpoint.auth.header, auth.value);
-    const result = await fetch(route, { method: "POST", headers, body: requestBody.value });
+    const requestLines = ["POST " + route, "Content-Type: application/json"];
+    if (auth?.value) {
+      headers.set(endpoint.auth.header, auth.value);
+      requestLines.push(endpoint.auth.header + ": [已遮蔽]");
+    }
+    sentPreview.textContent = [...requestLines, "", body].join("\n");
+    sentRequest.hidden = false;
+    const result = await fetch(route, { method: "POST", headers, body });
     status.textContent = "HTTP " + result.status;
     status.classList.toggle("failed", !result.ok);
     response.textContent = (await result.text()) || "空白回應";
