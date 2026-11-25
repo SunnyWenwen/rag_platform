@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>Retrieval Router</title>
+  <title>Retrieval Router MVP</title>
   <link rel="stylesheet" href="/styles.css">
   <script defer src="/app.js"></script>
 </head>
@@ -16,7 +16,7 @@
         <button type="button" data-page="user" aria-current="page">User</button>
         <button type="button" data-page="provider">Provider</button>
       </nav>
-      <span class="environment"><span></span>本機 Prototype</span>
+      <span class="environment"><span></span>本機 MVP</span>
     </div>
   </header>
 
@@ -45,9 +45,9 @@
       <header class="page-heading">
         <div>
           <h1>Provider 服務</h1>
-          <p>上架既有 Retrieval Service，提供使用者建立與操作 System 所需的設定。</p>
+          <p>已預填內建 Provider 的設定，可直接上架，也可以換成自己的服務。</p>
         </div>
-        <button type="button" class="button secondary" id="fill-demo">載入範例</button>
+        <button type="button" class="button secondary" id="fill-demo" disabled>重載範例</button>
       </header>
 
       <div class="provider-layout">

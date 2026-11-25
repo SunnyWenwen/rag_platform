@@ -475,11 +475,19 @@ async function start() {
   }
   $("create-system").disabled = true;
   setupProvider();
+  let providerDraftEdited = false;
+  $("provider-form").addEventListener("input", () => {
+    providerDraftEdited = true;
+  }, { once: true });
   try {
     const result = await api("/api/catalog");
     state.providers = result.providers;
     state.systems = result.systems;
     state.systemId = state.systems[0]?.system_id;
+    if (providerById("demo")) {
+      $("fill-demo").disabled = false;
+      if (!providerDraftEdited) fillDemo();
+    }
     renderCatalog();
     renderSystems();
   } catch (error) {

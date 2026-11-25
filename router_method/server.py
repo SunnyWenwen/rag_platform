@@ -1,4 +1,4 @@
-"""Run the local Provider routing prototype with an embedded demonstration service."""
+"""Run the Retrieval Router MVP with an embedded demonstration Provider."""
 
 import argparse
 import json
@@ -20,6 +20,7 @@ from jsonschema.exceptions import ValidationError
 
 ROOT = Path(__file__).resolve().parent
 OPERATIONS = ("init", "ingestion", "inference")
+DEMO_INIT_AUTH = "Bearer demo-init-token"
 MAX_REQUEST_BYTES = 2_000_000
 META_SCHEMA = json.loads((ROOT / "config-schema.meta.schema.json").read_text())
 META_VALIDATOR = Draft202012Validator(META_SCHEMA)
@@ -201,7 +202,9 @@ class PrototypeServer(ThreadingHTTPServer):
         endpoint = provider["apis"]["init"]
         headers = {}
         if auth := endpoint["auth"]:
-            secret = os.environ.get(auth["secret_ref"])
+            demo_init = self.providers["demo"]["apis"]["init"]
+            # The built-in credential applies only to the embedded demo endpoint.
+            secret = DEMO_INIT_AUTH if endpoint == demo_init else os.environ.get(auth["secret_ref"])
             if not secret:
                 raise InputError(f"尚未設定 Init 憑證環境變數 {auth['secret_ref']}。")
             headers[auth["header"]] = secret
@@ -236,6 +239,8 @@ class PrototypeServer(ThreadingHTTPServer):
         system_id = required_text(raw.get("system_id"), "system_id")
         parameters = require_object(raw.get("parameters"), "parameters")
         if operation == "init":
+            if headers.get("Authorization") != DEMO_INIT_AUTH:
+                return Reply(401, b"", {"WWW-Authenticate": "Bearer"})
             with self.lock:
                 self.documents.setdefault(system_id, {})
             return Reply(204, b"", {})
@@ -346,7 +351,7 @@ def main():
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
     with PrototypeServer(args.port) as server:
-        print(f"Retrieval Router Prototype · {server.origin}", flush=True)
+        print(f"Retrieval Router MVP · {server.origin}", flush=True)
         try:
             server.serve_forever()
         except KeyboardInterrupt:
