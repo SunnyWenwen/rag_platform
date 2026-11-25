@@ -1,0 +1,26 @@
+{
+  "system_name": "Mock Retrieval Service",
+  "apis": {
+    "init": {
+      "url": "http://127.0.0.1:8766/init",
+      "auth": null
+    },
+    "ingestion": {
+      "url": "http://127.0.0.1:8766/ingestion",
+      "auth": null,
+      "description": "送出 JSON Body 後回傳純文字「成功呼叫ingestion」。",
+      "sample": { "documents": [{ "text": "這是一筆測試文件。" }] }
+    },
+    "inference": {
+      "url": "http://127.0.0.1:8766/inference",
+      "auth": null,
+      "description": "送出 JSON Body 後回傳純文字「成功呼叫inference」。",
+      "sample": { "query": "測試查詢" }
+    }
+  },
+  "config_schema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  }
+}

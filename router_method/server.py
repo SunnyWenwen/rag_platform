@@ -34,7 +34,7 @@ META_VALIDATOR = Draft202012Validator(META_SCHEMA)
 SYSTEM_ROUTE = re.compile(r"/systems/([a-f0-9-]{36})/(ingestion|inference)")
 SYSTEM_CONFIG_ROUTE = re.compile(r"/api/systems/([a-f0-9-]{36})")
 SYSTEM_EXPORT_ROUTE = re.compile(r"/api/systems/([a-f0-9-]{36})/export")
-PROVIDER_CONFIG_ROUTE = re.compile(r"/api/providers/(demo|[a-f0-9-]{36})")
+PROVIDER_CONFIG_ROUTE = re.compile(r"/api/providers/(demo|mock-retrieval|[a-f0-9-]{36})")
 HEADER_NAME = re.compile(r"[A-Za-z][A-Za-z0-9!#$%&'*+.^_\x60|~-]*")
 RESERVED_HEADERS = {
     "connection", "content-encoding", "content-length", "content-type", "cookie",
@@ -172,13 +172,15 @@ class PrototypeServer(ThreadingHTTPServer):
         self.lock = threading.Lock()
         self.active_requests = Counter()
         self.updating = set()
-        demo = json.loads((ROOT / "demo-provider.json").read_text())
+        demo = json.loads((ROOT / "demo-provider.json").read_text(encoding="utf-8"))
         self.origin = f"http://127.0.0.1:{self.server_port}"
         for api in demo["apis"].values():
             api["url"] = self.origin + urlsplit(api["url"]).path
         demo["id"] = "demo"
         self.demo_template = demo
-        self.providers = {"demo": demo}
+        mock = validate_provider(json.loads((ROOT / "mock-provider.json").read_text(encoding="utf-8")))
+        mock["id"] = "mock-retrieval"
+        self.providers = {"demo": demo, mock["id"]: mock}
         parameters = {name: field["default"] for name, field in demo["config_schema"]["properties"].items()}
         system_id = "00000000-0000-4000-8000-000000000001"
         self.systems = {system_id: {

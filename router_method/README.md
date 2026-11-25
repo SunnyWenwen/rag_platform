@@ -5,6 +5,7 @@
 - [Config Schema Meta Schema](config-schema.meta.schema.json)
 - [Provider 與 User 流程圖](architecture.md)
 - [示範 Provider 的 System Description](demo-provider.json)
+- [Mock Retrieval Service 預設範本](mock-provider.json)
 
 ## 啟動
 
@@ -24,6 +25,24 @@ python router_method/server.py
 5. **Edit Config** 以相同 System ID 重新呼叫 Init，成功後才套用設定。**Export YAML** 下載已啟用的 Router 設定、參數與 API 綁定，Init Auth 保留環境變數引用。
 
 Provider Templates 是跨 Workspace 共用的目錄。調整 Template 後，新建的 System 使用最新內容。既有 System 保留建立時的 API 與 Schema。
+
+## 用獨立 Mock Service 建立 System
+
+Router 啟動時會自動上架 **Mock Retrieval Service** 範本。使用前，在另一個終端啟動 Mock Service 並保持運作。
+
+```sh
+python router_method/mock_retrieval_service.py
+```
+
+在 Router 的 **User → Create Retrieval System** 選擇 **Mock Retrieval Service**、輸入 System 名稱，再按 **建立並初始化**。建立後可從圖卡直接使用預填的 JSON Sample 測試 Ingest 和 Inference。此範本不需 Auth 或額外設定。
+
+| API | Response Body（HTTP 200，UTF-8 純文字） |
+|---|---|
+| `POST http://127.0.0.1:8766/init` | `成功呼叫init` |
+| `POST http://127.0.0.1:8766/ingestion` | `成功呼叫ingestion` |
+| `POST http://127.0.0.1:8766/inference` | `成功呼叫inference` |
+
+Mock Service 固定回應純文字，用來確認三支 API 有被呼叫。若以 `--port` 改用其他埠，先在 Provider 圖卡編輯範本的三個 URL，再建立 System。
 
 ## Meta Schema 支援範圍
 
