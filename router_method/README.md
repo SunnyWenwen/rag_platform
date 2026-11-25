@@ -9,22 +9,43 @@
 
 ## 啟動
 
-在 repo 根目錄執行：
+在 repo 根目錄安裝 Python 套件。Builder 建置前端時需要 Node.js 與 npm。
 
 ```sh
 python -m pip install -r router_method/requirements.txt
+```
+
+分別啟動兩個程序。
+
+```sh
+# 終端 1 · Route Service
+python router_method/router_service.py --enable-builder
+
+# 終端 2 · Builder
 python router_method/server.py
 ```
 
-開啟 [http://127.0.0.1:8765](http://127.0.0.1:8765)。可用 `--port` 指定其他埠。
+開啟 [http://127.0.0.1:8765](http://127.0.0.1:8765)。Builder 的 Python 啟動入口會建置 React 並提供前端和管理 API。可以用 `--skip-build` 啟動已準備好 `dist/app.js` 的 Builder。Route Service 預設在 `127.0.0.1:8767`，改埠時同步調整 Builder 的 `--router-url`。
 
 1. 切到 **Provider**，按 **Provide Retrieval System Template**。表單預填三支 API、Auth、Ingestion／Inference 說明與 JSON Sample，以及 Config Schema，並提供 User 表單預覽。上架後可在 Template 圖卡選 **Edit Template**。Provider 頁與編輯表單的 **使用說明** 會開啟 [Provider 使用說明書](http://127.0.0.1:8765/provider-guide)，包含設定欄位、API 契約與排查方式。
-2. 切到 **User**，從左側選擇 Workspace，再按 **Create Retrieval System**。選擇已上架的 Provider Template 並填寫參數。Builder 呼叫 Init，收到 `200` 或 `204` 後將 System 顯示在該 Workspace 的圖卡清單。
+2. 切到 **User**，從左側選擇 Workspace，再按 **Create Retrieval System**。選擇已上架的 Provider Template 並填寫參數。Builder 請 Route Service 註冊 System，Route Service 呼叫 Provider Init，收到 `200` 或 `204` 後生效。
 3. 在 System 圖卡按 **Ingest** 或 **Inference**，使用預填的 Sample 或編輯 JSON Body，輸入呼叫端的 Auth Header 值後送出。內建示範的兩個操作都使用 `Bearer demo-token`。
-4. Route Service 依 System 和操作取已登錄的 URL，送出 `{system_id, parameters, payload}` 並轉發 Auth。Response 區保留 Provider 的 Body 與狀態碼。Init 的 `payload` 為 `null`。
+4. Builder 將操作頁的同源請求轉給獨立 Route Service。Route Service 依 System 和操作取已登錄的 URL，送出 `{system_id, parameters, payload}` 並轉發 Auth。Response 區保留 Provider 的 Body 與狀態碼。Init 的 `payload` 為 `null`。
 5. **Edit Config** 以相同 System ID 重新呼叫 Init，成功後才套用設定。**Export YAML** 下載已啟用的 Router 設定、參數與 API 綁定，Init Auth 保留環境變數引用。
 
 Provider Templates 是跨 Workspace 共用的目錄。調整 Template 後，新建的 System 使用最新內容。既有 System 保留建立時的 API 與 Schema。
+
+## Route Service 單獨部署
+
+在 Builder 的 System 圖卡按 **Export YAML**，將 YAML 放到 Route Service 執行環境，確認其中的 Provider URL 可連線。Init 如有 `secret_ref`，在 Route Service 的程序環境提供對應的值。
+
+```sh
+python router_method/router_service.py --config retrieval-system.yaml
+```
+
+啟動時會讀取 YAML、呼叫 Provider Init，成功後提供 `POST /systems/{system_id}/ingestion` 和 `POST /systems/{system_id}/inference`。可用多個 `--config` 載入多套 System。跨主機部署時可在自己的服務網路設定 `--host`，例如容器內監聽 `0.0.0.0`。本機管理入口的 `--enable-builder` 只可與 `127.0.0.1` 搭配。
+
+Builder 與 Router 的執行狀態各自存在程序記憶體。開發時重啟 Router 後，可在 Builder 以 **Edit Config → 儲存並套用** 重新註冊已建立的 System，或用匯出的 YAML 啟動 Router。
 
 ## 用獨立 Mock Service 建立 System
 
@@ -58,6 +79,6 @@ Ingest／Inference 送出後，下方的 **cURL（Bash）** 顯示可重送該�
 
 ## Auth 與資料
 
-- 內建 Provider 的 Init Auth 已預填，後端會在呼叫內建 Init 端點時帶入示範憑證。接自己的 Provider 時，可填 Header 名稱和環境變數名稱，並在啟動後端前設定該變數。
+- 內建 Provider 的 Init Auth 已預填，Route Service 以同機 Builder 模式呼叫內建 Init 端點時會帶入示範憑證。接自己的 Provider 時，可填 Header 名稱和環境變數名稱，並在啟動 Route Service 前設定該變數。
 - Ingestion／Inference 的 Auth 欄位宣告須帶的 Header 與選填格式提示。User 輸入完整 Header 值，Route Service 依原值轉發。
 - MVP 資料保存在服務程序記憶體，重新啟動會恢復示範資料。Provider 上架 URL 和使用者存取由本機操作人員管理。

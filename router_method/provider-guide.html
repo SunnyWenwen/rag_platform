@@ -43,7 +43,7 @@
                 <tr><th scope="row">System 名稱</th><td>範本在 Provider 目錄及 User 選單中的名稱。User 建立的 System 另有自己的名稱。</td></tr>
                 <tr><th scope="row">Init URL</th><td>建立或重新套用 System 設定時呼叫的完整 HTTP／HTTPS URL。</td></tr>
                 <tr><th scope="row">Ingestion／Inference URL</th><td>User 執行對應操作時，Router 呼叫的完整 HTTP／HTTPS URL。路徑由 Provider 自訂。</td></tr>
-                <tr><th scope="row">Init Auth</th><td>填 Header 名稱及 Router 後端的環境變數名稱，例如 <code>Authorization</code> 和 <code>PROVIDER_INIT_AUTH</code>。環境變數的值須包含完整 Header 值，例如 <code>Bearer &lt;token&gt;</code>。若 Init 無需認證，兩欄皆留空。</td></tr>
+                <tr><th scope="row">Init Auth</th><td>填 Header 名稱及 Route Service 程序的環境變數名稱，例如 <code>Authorization</code> 和 <code>PROVIDER_INIT_AUTH</code>。環境變數的值須包含完整 Header 值，例如 <code>Bearer &lt;token&gt;</code>。若 Init 無需認證，兩欄皆留空。</td></tr>
                 <tr><th scope="row">Ingestion／Inference Auth</th><td>填 Header 名稱及選填的格式提示，例如 <code>Authorization</code>、<code>Bearer</code>。User 送出請求時輸入完整值，包含必要的前綴。若 API 無需認證，將對應 Auth 欄位留空。</td></tr>
                 <tr><th scope="row">使用說明與 JSON Sample</th><td>Ingestion 與 Inference 各填一組。說明應寫清楚支援的操作、必填欄位及結果。Sample 會預填 User 的 Request Body，直接寫業務 JSON。</td></tr>
                 <tr><th scope="row">Config Schema</th><td>定義 User 建立 System 時可設定的參數。User 填入的值會由 Router 放進每次請求的 <code>parameters</code>。</td></tr>
@@ -91,8 +91,8 @@
           <h2>運作機制</h2>
           <ol>
             <li><strong>上架 Template</strong> 會驗證設定格式並儲存範本。到建立 System 時才會實際呼叫 Init，因此範本上架成功後仍須做連線驗收。</li>
-            <li><strong>建立或編輯 System</strong> 時，Router 驗證參數並呼叫 Init。Edit Config 沿用原本的 <code>system_id</code>。Init 失敗時，Router 保留原先生效的設定。</li>
-            <li><strong>送出業務請求</strong> 時，User 呼叫 <code>POST /systems/{system_id}/ingestion</code> 或 <code>POST /systems/{system_id}/inference</code>。Router 依 System 的 API 綁定挑選 URL，補上 <code>system_id</code> 與 <code>parameters</code>，並原值轉發範本指定的業務 Auth Header。Provider 負責驗證憑證與 System 的操作權限。</li>
+            <li><strong>建立或編輯 System</strong> 時，Builder 驗證參數並向獨立 Route Service 註冊。Router 呼叫 Provider Init，成功後才生效。Edit Config 沿用原本的 <code>system_id</code>。Init 失敗時，Router 保留原先生效的設定。</li>
+            <li><strong>送出業務請求</strong> 時，User 呼叫 <code>POST /systems/{system_id}/ingestion</code> 或 <code>POST /systems/{system_id}/inference</code>。Builder 操作頁透過同源入口轉發給 Router，獨立部署時也可直接呼叫 Router。Router 補上 <code>system_id</code> 與 <code>parameters</code>，並原值轉發範本指定的業務 Auth Header。Provider 負責驗證憑證與 System 的操作權限。</li>
             <li><strong>更新 Template</strong> 後，新建的 System 採用最新內容。既有 System 會沿用建立時的 API 和 Schema。</li>
           </ol>
           <h3>對照兩段 Ingestion 請求</h3>
@@ -165,7 +165,7 @@
                 <tr><th scope="row"><code>400</code> 或表單驗證失敗</th><td>檢查 Schema、必填參數與業務 JSON。若訊息指出 Init Secret 缺少，請確認 Router 後端環境已設定對應變數。</td></tr>
                 <tr><th scope="row">Provider 回 <code>401</code>／<code>403</code></th><td>確認 Auth Header 名稱、完整值及權限是否符合 Provider 的要求。</td></tr>
                 <tr><th scope="row"><code>409</code></th><td>System 正在處理請求或套用設定，等當前操作完成後再試。</td></tr>
-                <tr><th scope="row">Router 回 <code>502</code></th><td>確認 Provider 已啟動，URL 可從 Router 後端連通。若發生在建立或編輯 System，也要確認 Init 已回 <code>200</code> 或 <code>204</code>。</td></tr>
+                <tr><th scope="row">Router 回 <code>502</code></th><td>若錯誤提到 Route Service，檢查 Builder 的 Router URL 與 Router 是否啟動。若錯誤提到 Provider，檢查 Provider URL 與連線。建立或編輯 System 時也要確認 Init 已回 <code>200</code> 或 <code>204</code>。</td></tr>
               </tbody>
             </table>
           </div>
