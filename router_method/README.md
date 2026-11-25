@@ -17,10 +17,13 @@ python router_method/server.py
 
 開啟 [http://127.0.0.1:8765](http://127.0.0.1:8765)。可用 `--port` 指定其他埠。
 
-1. 開啟 **Provider page**。頁面已預填 System 名稱、三支 API 的 URL 和 Auth、Ingestion／Inference 說明與 JSON Sample，以及 Config Schema。右側可以預覽 User 表單，直接按 **上架服務** 即可使用這套設定。改填自己的服務後，可按 **重載範例** 還原。
-2. 在 **User page** 選擇已上架的 Provider，填寫參數並建立 System。Builder 呼叫 Init，收到 `200` 或 `204` 後啟用 System。
-3. 開啟 **Ingestion** 或 **Inference**，使用預填的 Sample 或編輯 JSON Body，輸入呼叫端的 Auth Header 值後送出。內建示範的兩個操作都使用 `Bearer demo-token`。
+1. 切到 **Provider**，按 **Provide Retrieval System Template**。表單預填三支 API、Auth、Ingestion／Inference 說明與 JSON Sample，以及 Config Schema，並提供 User 表單預覽。上架後可在 Template 圖卡選 **Edit Template**。
+2. 切到 **User**，從左側選擇 Workspace，再按 **Create Retrieval System**。選擇已上架的 Provider Template 並填寫參數。Builder 呼叫 Init，收到 `200` 或 `204` 後將 System 顯示在該 Workspace 的圖卡清單。
+3. 在 System 圖卡按 **Ingest** 或 **Inference**，使用預填的 Sample 或編輯 JSON Body，輸入呼叫端的 Auth Header 值後送出。內建示範的兩個操作都使用 `Bearer demo-token`。
 4. Route Service 依 System 和操作取已登錄的 URL，送出 `{system_id, parameters, payload}` 並轉發 Auth。Response 區保留 Provider 的 Body 與狀態碼。Init 的 `payload` 為 `null`。
+5. **Edit Config** 以相同 System ID 重新呼叫 Init，成功後才套用設定。**Export YAML** 下載已啟用的 Router 設定、參數與 API 綁定，Init Auth 保留環境變數引用。
+
+Provider Templates 是跨 Workspace 共用的目錄。調整 Template 後，新建的 System 使用最新內容。既有 System 保留建立時的 API 與 Schema。
 
 ## Meta Schema 支援範圍
 

@@ -7,6 +7,7 @@ import re
 import socket
 import threading
 import uuid
+from collections import Counter
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -14,6 +15,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
+import yaml
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import ValidationError
 
@@ -21,10 +23,18 @@ from jsonschema.exceptions import ValidationError
 ROOT = Path(__file__).resolve().parent
 OPERATIONS = ("init", "ingestion", "inference")
 DEMO_INIT_AUTH = "Bearer demo-init-token"
+WORKSPACES = {
+    "customer-support": "Customer Support",
+    "engineering": "Engineering",
+    "operations": "Operations",
+}
 MAX_REQUEST_BYTES = 2_000_000
 META_SCHEMA = json.loads((ROOT / "config-schema.meta.schema.json").read_text())
 META_VALIDATOR = Draft202012Validator(META_SCHEMA)
 SYSTEM_ROUTE = re.compile(r"/systems/([a-f0-9-]{36})/(ingestion|inference)")
+SYSTEM_CONFIG_ROUTE = re.compile(r"/api/systems/([a-f0-9-]{36})")
+SYSTEM_EXPORT_ROUTE = re.compile(r"/api/systems/([a-f0-9-]{36})/export")
+PROVIDER_CONFIG_ROUTE = re.compile(r"/api/providers/(demo|[a-f0-9-]{36})")
 HEADER_NAME = re.compile(r"[A-Za-z][A-Za-z0-9!#$%&'*+.^_\x60|~-]*")
 RESERVED_HEADERS = {
     "connection", "content-encoding", "content-length", "content-type", "cookie",
@@ -160,25 +170,35 @@ class PrototypeServer(ThreadingHTTPServer):
     def __init__(self, port):
         super().__init__(("127.0.0.1", port), Handler)
         self.lock = threading.Lock()
+        self.active_requests = Counter()
+        self.updating = set()
         demo = json.loads((ROOT / "demo-provider.json").read_text())
         self.origin = f"http://127.0.0.1:{self.server_port}"
         for api in demo["apis"].values():
             api["url"] = self.origin + urlsplit(api["url"]).path
         demo["id"] = "demo"
+        self.demo_template = demo
         self.providers = {"demo": demo}
         parameters = {name: field["default"] for name, field in demo["config_schema"]["properties"].items()}
         system_id = "00000000-0000-4000-8000-000000000001"
         self.systems = {system_id: {
             "system_id": system_id,
             "system_name": "產品文件測試",
+            "workspace_id": "customer-support",
             "provider_id": "demo",
+            "provider": demo,
             "parameters": parameters,
         }}
         self.documents = {system_id: {"warranty-01": "產品保固一年，購買日起算。"}}
 
     def catalog(self):
         with self.lock:
-            return {"providers": list(self.providers.values()), "systems": list(self.systems.values())}
+            return {
+                "workspaces": [{"id": key, "name": name} for key, name in WORKSPACES.items()],
+                "providers": list(self.providers.values()),
+                "demo_template": self.demo_template,
+                "systems": list(self.systems.values()),
+            }
 
     def create_provider(self, raw):
         provider = validate_provider(raw)
@@ -187,22 +207,61 @@ class PrototypeServer(ThreadingHTTPServer):
             self.providers[provider["id"]] = provider
         return as_json(201, provider)
 
+    def update_provider(self, provider_id, raw):
+        provider = {**validate_provider(raw), "id": provider_id}
+        with self.lock:
+            if provider_id not in self.providers:
+                return as_json(404, {"error": "找不到指定的 Provider Template。"})
+            self.providers[provider_id] = provider
+        return as_json(200, provider)
+
     def create_system(self, raw):
         require_object(raw, "System")
         name = required_text(raw.get("system_name"), "System 名稱")
         provider_id = required_text(raw.get("provider_id"), "Provider")
+        workspace_id = raw.get("workspace_id", "customer-support")
+        if not isinstance(workspace_id, str) or workspace_id not in WORKSPACES:
+            raise InputError("找不到指定的 Workspace。")
         with self.lock:
             provider = self.providers.get(provider_id)
         if provider is None:
             raise InputError("找不到指定的 Provider。")
         parameters = require_object(raw.get("parameters"), "parameters")
+        system = {
+            "system_id": str(uuid.uuid4()), "system_name": name,
+            "workspace_id": workspace_id, "provider_id": provider_id,
+            "provider": provider, "parameters": parameters,
+        }
+        return self.publish_system(system, 201)
+
+    def update_system(self, system_id, raw):
+        require_object(raw, "System")
+        name = required_text(raw.get("system_name"), "System 名稱")
+        parameters = require_object(raw.get("parameters"), "parameters")
+        with self.lock:
+            current = self.systems.get(system_id)
+            if current is None:
+                return as_json(404, {"error": "找不到已啟用的 System。"})
+            if system_id in self.updating or self.active_requests[system_id]:
+                return as_json(409, {"error": "System 正在處理請求或套用設定，請稍後再試。"})
+            candidate = {**current, "system_name": name, "parameters": parameters}
+            self.updating.add(system_id)
+        try:
+            return self.publish_system(candidate, 200)
+        finally:
+            with self.lock:
+                self.updating.remove(system_id)
+
+    def publish_system(self, system, status):
+        system_id = system["system_id"]
+        provider = system["provider"]
+        parameters = system["parameters"]
         schema = {**provider["config_schema"], "additionalProperties": False}
         validate(Draft202012Validator(schema), parameters, "System 設定")
-        system_id = str(uuid.uuid4())
         endpoint = provider["apis"]["init"]
         headers = {}
         if auth := endpoint["auth"]:
-            demo_init = self.providers["demo"]["apis"]["init"]
+            demo_init = self.demo_template["apis"]["init"]
             # The built-in credential applies only to the embedded demo endpoint.
             secret = DEMO_INIT_AUTH if endpoint == demo_init else os.environ.get(auth["secret_ref"])
             if not secret:
@@ -213,26 +272,49 @@ class PrototypeServer(ThreadingHTTPServer):
         }, headers)
         if reply.status not in {200, 204}:
             return as_json(502, {
-                "error": f"Provider Init 回傳 HTTP {reply.status}，System 尚未啟用。"
+                "error": f"Provider Init 回傳 HTTP {reply.status}，設定未生效。"
             })
-        system = {"system_id": system_id, "system_name": name, "provider_id": provider_id, "parameters": parameters}
         with self.lock:
             self.systems[system_id] = system
-        return as_json(201, system)
+        return as_json(status, system)
+
+    def export_system(self, system_id):
+        with self.lock:
+            system = self.systems.get(system_id)
+        if system is None:
+            return as_json(404, {"error": "找不到已啟用的 System。"})
+        config = {
+            key: system[key] for key in ("system_id", "system_name", "workspace_id", "provider_id", "parameters")
+        }
+        config["apis"] = system["provider"]["apis"]
+        body = yaml.safe_dump(config, allow_unicode=True, sort_keys=False).encode()
+        return Reply(200, body, {
+            "Content-Type": "application/yaml; charset=utf-8",
+            "Content-Disposition": f'attachment; filename="retrieval-system-{system_id}.yaml"',
+        })
 
     def forward(self, system_id, operation, payload, request_headers):
         with self.lock:
             system = self.systems.get(system_id)
             if system is None:
                 return as_json(404, {"error": "找不到已啟用的 System。"})
-            endpoint = self.providers[system["provider_id"]]["apis"][operation]
-        headers = {}
-        if auth := endpoint["auth"]:
-            if (value := request_headers.get(auth["header"])) is not None:
-                headers[auth["header"]] = value
-        return exchange(endpoint["url"], {
-            "system_id": system_id, "parameters": system["parameters"], "payload": payload
-        }, headers)
+            if system_id in self.updating:
+                return as_json(409, {"error": "System 正在套用設定，請稍後再試。"})
+            endpoint = system["provider"]["apis"][operation]
+            self.active_requests[system_id] += 1
+        try:
+            headers = {}
+            if auth := endpoint["auth"]:
+                if (value := request_headers.get(auth["header"])) is not None:
+                    headers[auth["header"]] = value
+            return exchange(endpoint["url"], {
+                "system_id": system_id, "parameters": system["parameters"], "payload": payload
+            }, headers)
+        finally:
+            with self.lock:
+                self.active_requests[system_id] -= 1
+                if not self.active_requests[system_id]:
+                    del self.active_requests[system_id]
 
     def demo_request(self, operation, raw, headers):
         require_object(raw, "Provider Request")
@@ -284,7 +366,7 @@ def reject_json_constant(value):
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
-        # The prototype keeps credentials and request contents out of access logs.
+        # Keep credentials and request contents out of access logs.
         return
 
     def read_json(self):
@@ -309,6 +391,8 @@ class Handler(BaseHTTPRequestHandler):
         path = urlsplit(self.path).path
         if path == "/api/catalog":
             reply = as_json(200, self.server.catalog())
+        elif route := SYSTEM_EXPORT_ROUTE.fullmatch(path):
+            reply = self.server.export_system(route[1])
         elif path in STATIC_FILES:
             filename, content_type = STATIC_FILES[path]
             reply = Reply(200, (ROOT / filename).read_bytes(), {"Content-Type": content_type})
@@ -330,20 +414,33 @@ class Handler(BaseHTTPRequestHandler):
             return self.server.demo_request(path.removeprefix("/demo/"), body, self.headers)
         return as_json(404, {"error": "找不到操作路徑。"})
 
-    def do_POST(self):
+    def replace(self, path, body):
+        if route := SYSTEM_CONFIG_ROUTE.fullmatch(path):
+            return self.server.update_system(route[1], body)
+        if route := PROVIDER_CONFIG_ROUTE.fullmatch(path):
+            return self.server.update_provider(route[1], body)
+        return as_json(404, {"error": "找不到操作路徑。"})
+
+    def handle_json(self, action):
         path = urlsplit(self.path).path
         allowed_origins = {self.server.origin, f"http://localhost:{self.server.server_port}"}
         origin = self.headers.get("Origin")
         if origin is not None and origin not in allowed_origins:
-            self.write_reply(as_json(403, {"error": "此原型只接受同源瀏覽器請求。"}))
+            self.write_reply(as_json(403, {"error": "此 MVP 只接受同源瀏覽器請求。"}))
             return
         try:
-            reply = self.dispatch(path, self.read_json())
+            reply = action(path, self.read_json())
         except InputError as error:
             reply = as_json(400, {"error": str(error)})
         except UpstreamError as error:
             reply = as_json(502, {"error": str(error)})
         self.write_reply(reply)
+
+    def do_POST(self):
+        self.handle_json(self.dispatch)
+
+    def do_PUT(self):
+        self.handle_json(self.replace)
 
 
 def main():

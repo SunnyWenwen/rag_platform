@@ -9,48 +9,49 @@
   <script defer src="/app.js"></script>
 </head>
 <body>
-  <header class="topbar">
-    <div class="topbar-inner">
-      <div class="brand"><span class="brand-mark" aria-hidden="true">⇄</span> Retrieval Router</div>
-      <nav class="page-nav" aria-label="工作區">
+  <aside class="sidebar" aria-label="Workspace 導覽">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">r</span> Retrieval Router</div>
+    <h2 class="sidebar-label" id="workspace-label">Workspaces</h2>
+    <nav id="workspace-list" aria-labelledby="workspace-label"></nav>
+    <span class="environment">本機 MVP</span>
+  </aside>
+
+  <main class="main">
+    <header class="workspace-header">
+      <p class="crumb" id="breadcrumb">Workspaces</p>
+      <nav class="page-nav" aria-label="模式切換">
         <button type="button" data-page="user" aria-current="page">User</button>
         <button type="button" data-page="provider">Provider</button>
       </nav>
-      <span class="environment"><span></span>本機 MVP</span>
-    </div>
-  </header>
-
-  <main class="main">
+      <button type="button" class="button primary" id="create-system" disabled>＋ Create Retrieval System</button>
+      <button type="button" class="button primary" id="create-provider" hidden disabled>＋ Provide Retrieval System Template</button>
+    </header>
     <p id="load-error" class="notice error" role="alert" hidden></p>
+    <p id="workspace-message" class="notice" role="status" hidden></p>
 
     <section id="user-page">
-      <header class="page-heading">
-        <div>
-          <h1>Retrieval Systems</h1>
-          <p>選用已上架的 Provider，建立 System 並測試匯入與查詢。</p>
-        </div>
-        <button type="button" class="button primary" id="create-system">建立 System</button>
-      </header>
-
-      <div class="workspace">
-        <aside class="rail panel" aria-label="System 清單">
-          <header><h2>已建立的 Systems</h2></header>
-          <div id="system-list" class="rail-list"></div>
-        </aside>
-        <section id="workbench" class="workbench panel" aria-label="System 操作區"></section>
+      <div class="workspace-heading">
+        <h1 id="workspace-name">Retrieval Systems</h1>
+        <p id="system-count" class="muted"></p>
       </div>
+      <div id="system-list" class="cards"></div>
     </section>
 
     <section id="provider-page" hidden>
-      <header class="page-heading">
-        <div>
-          <h1>Provider 服務</h1>
-          <p>已預填內建 Provider 的設定，可直接上架，也可以換成自己的服務。</p>
-        </div>
-        <button type="button" class="button secondary" id="fill-demo" disabled>重載範例</button>
-      </header>
+      <div class="workspace-heading">
+        <h1>Retrieval System Templates</h1>
+        <p id="provider-count" class="muted"></p>
+      </div>
+      <div id="provider-list" class="cards"></div>
+    </section>
+  </main>
 
-      <div class="provider-layout">
+  <dialog id="provider-dialog" class="wide-dialog" aria-labelledby="provider-dialog-title">
+    <header class="dialog-header">
+      <h2 id="provider-dialog-title">Provide Retrieval System Template</h2>
+      <button type="button" class="icon-button" data-close aria-label="關閉">×</button>
+    </header>
+    <div class="provider-layout dialog-body">
         <form id="provider-form" class="panel provider-form">
           <header class="panel-heading">
             <h2>新增 Retrieval Service</h2>
@@ -67,7 +68,10 @@
           </label>
           <div class="form-actions">
             <a href="/config-schema.meta.schema.json" target="_blank" rel="noopener">檢視 Meta Schema ↗</a>
-            <button type="submit" id="publish-provider" class="button primary">上架服務</button>
+            <div class="form-buttons">
+              <button type="button" class="button secondary" id="fill-demo">重載範例</button>
+              <button type="submit" id="publish-provider" class="button primary">上架服務</button>
+            </div>
           </div>
           <p id="provider-message" class="notice" role="status" hidden></p>
         </form>
@@ -80,23 +84,29 @@
             </header>
             <div id="schema-preview" aria-live="polite"></div>
           </section>
-          <section class="panel preview-panel" aria-labelledby="catalog-title">
-            <header class="panel-heading"><h2 id="catalog-title">已上架的服務</h2></header>
-            <div id="provider-list" class="provider-list"></div>
-          </section>
         </aside>
+    </div>
+  </dialog>
+
+  <dialog id="operation-dialog" class="wide-dialog" aria-labelledby="operation-title">
+    <header class="dialog-header">
+      <div>
+        <h2 id="operation-title"></h2>
+        <p id="operation-subtitle"></p>
       </div>
-    </section>
-  </main>
+      <button type="button" class="icon-button" data-close aria-label="關閉">×</button>
+    </header>
+    <section id="workbench" aria-label="System 操作區"></section>
+  </dialog>
 
   <dialog id="create-dialog" aria-labelledby="create-dialog-title">
     <form id="system-form" class="dialog-form">
       <header class="dialog-header">
         <div>
-          <h2 id="create-dialog-title">建立 System</h2>
-          <p>選擇 Provider 並填寫初始化設定。</p>
+          <h2 id="create-dialog-title">Create Retrieval System</h2>
+          <p id="system-dialog-description">選擇 Provider Template 並填寫初始化設定。</p>
         </div>
-        <button type="button" class="icon-button" id="close-dialog" aria-label="關閉">×</button>
+        <button type="button" class="icon-button" data-close aria-label="關閉">×</button>
       </header>
       <div class="dialog-body">
         <label class="field">
@@ -111,7 +121,7 @@
         <p id="system-error" class="notice error" role="alert" hidden></p>
       </div>
       <footer class="dialog-footer">
-        <button type="button" class="button secondary" id="cancel-create">取消</button>
+        <button type="button" class="button secondary" data-close>取消</button>
         <button type="submit" class="button primary" id="publish-system">建立並初始化</button>
       </footer>
     </form>

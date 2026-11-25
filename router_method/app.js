@@ -4,8 +4,13 @@ const operations = { init: "Init", ingestion: "Ingestion", inference: "Inference
 const $ = (id) => document.getElementById(id);
 const jsonText = (value) => JSON.stringify(value, null, 2);
 const has = (object, key) => Object.hasOwn(object, key);
-const state = { providers: [], systems: [], systemId: null, operation: "ingestion", drafts: new Map() };
+const state = {
+  page: "user", workspaces: [], workspaceId: null, providers: [], systems: [], demoTemplate: null,
+  systemId: null, operation: "ingestion", drafts: new Map(),
+};
 const providerFields = new Map();
+let editingProvider = null;
+let editingSystem = null;
 let validateTimer;
 let previewRevision = 0;
 let readConfig = () => ({});
@@ -66,9 +71,9 @@ function notice(element, message, failed = false) {
   element.hidden = !message;
 }
 
-async function api(path, body) {
+async function api(path, body, method = "POST") {
   const response = await fetch(path, body === undefined ? undefined : {
-    method: "POST",
+    method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
@@ -82,15 +87,20 @@ function providerById(id) {
 }
 
 function selectPage(page) {
+  state.page = page;
   $("user-page").hidden = page !== "user";
   $("provider-page").hidden = page !== "provider";
+  $("create-system").hidden = page !== "user";
+  $("create-provider").hidden = page !== "provider";
   for (const pill of document.querySelectorAll("[data-page]")) {
     if (pill.dataset.page === page) pill.setAttribute("aria-current", "page");
     else pill.removeAttribute("aria-current");
   }
+  notice($("workspace-message"), "");
+  renderWorkspace();
 }
 
-function schemaForm(container, schema) {
+function schemaForm(container, schema, parameters) {
   container.replaceChildren();
   if (schema.title) container.append(node("h3", "schema-title", schema.title));
   if (schema.description) container.append(node("p", "schema-description", schema.description));
@@ -99,6 +109,7 @@ function schemaForm(container, schema) {
   const controls = new Map();
   for (const [name, spec] of Object.entries(schema.properties)) {
     const values = spec.enum || (spec.type === "boolean" ? [true, false] : null);
+    const initial = parameters ? (has(parameters, name) ? parameters[name] : undefined) : spec.default;
     let control;
     if (values) {
       control = node("select");
@@ -107,40 +118,33 @@ function schemaForm(container, schema) {
         const label = typeof value === "boolean" ? (value ? "是" : "否") : String(value);
         control.append(option(String(index), label));
       });
-      if (has(spec, "default")) control.value = String(values.indexOf(spec.default));
+      if (initial !== undefined) control.value = String(values.indexOf(initial));
     } else {
       const numeric = spec.type === "integer" || spec.type === "number";
       control = input(numeric ? "number" : "text");
       if (numeric) control.step = spec.type === "integer" ? "1" : "any";
-      if (has(spec, "default")) control.value = spec.default;
+      if (initial !== undefined) control.value = initial;
     }
     control.name = name;
     if (required.has(name)) control.setAttribute("aria-required", "true");
     group.append(field(spec.title || name, control, { required: required.has(name), hint: spec.description }));
-    controls.set(name, { control, spec, values });
+    controls.set(name, { control, spec, values, initial });
   }
   if (controls.size) container.append(group);
   else container.append(node("p", "muted", "此 Provider 沒有額外設定。"));
 
   return () => {
     const pairs = [];
-    for (const [name, { control, spec, values }] of controls) {
+    for (const [name, { control, spec, values, initial }] of controls) {
       if (control.validity.badInput || control.validity.stepMismatch) {
         control.focus();
         throw new Error("請輸入有效的" + (spec.type === "integer" ? "整數" : "數字") + "：" + name);
       }
       const value = control.value;
-      if (value === "" && spec.default !== "") {
+      if (value === "" && (values || initial !== "")) {
         if (required.has(name)) {
           control.focus();
           throw new Error("請填寫必填欄位：" + name);
-        }
-        continue;
-      }
-      if (values && value === "") {
-        if (required.has(name)) {
-          control.focus();
-          throw new Error("請選擇必填欄位：" + name);
         }
         continue;
       }
@@ -207,15 +211,17 @@ function setupProvider() {
   $("config-schema").addEventListener("input", () => refreshPreview());
   $("fill-demo").addEventListener("click", fillDemo);
   $("provider-form").addEventListener("submit", publishProvider);
-  refreshPreview(0);
 }
 
 function fillDemo() {
-  const demo = providerById("demo");
-  if (!demo) return;
-  $("provider-name").value = demo.system_name + "（範例）";
+  fillProviderForm(state.demoTemplate, state.demoTemplate.system_name + "（範例）");
+}
+
+function fillProviderForm(provider, name = provider.system_name) {
+  $("provider-name").value = name;
   for (const [key, entry] of providerFields) {
-    const endpoint = demo.apis[key];
+    const endpoint = provider.apis[key];
+    entry.details.open = key === "init";
     entry.url.value = endpoint.url;
     entry.header.value = endpoint.auth?.header || "";
     entry.authValue.value = (key === "init" ? endpoint.auth?.secret_ref : endpoint.auth?.scheme) || "";
@@ -224,9 +230,19 @@ function fillDemo() {
       entry.sample.value = jsonText(endpoint.sample);
     }
   }
-  $("config-schema").value = jsonText(demo.config_schema);
+  $("config-schema").value = jsonText(provider.config_schema);
   notice($("provider-message"), "");
   refreshPreview(0);
+}
+
+function openProviderDialog(provider = null) {
+  editingProvider = provider?.id ?? null;
+  $("provider-dialog-title").textContent = provider ? "Edit Template" : "Provide Retrieval System Template";
+  $("publish-provider").textContent = provider ? "儲存調整" : "上架服務";
+  $("fill-demo").hidden = Boolean(provider);
+  if (provider) fillProviderForm(provider);
+  else fillDemo();
+  $("provider-dialog").showModal();
 }
 
 function requireValue(control, label) {
@@ -275,10 +291,13 @@ async function publishProvider(event) {
   submit.disabled = true;
   notice($("provider-message"), "");
   try {
-    const provider = await api("/api/providers", describeProvider());
-    state.providers.push(provider);
-    renderCatalog();
-    notice($("provider-message"), "服務「" + provider.system_name + "」已上架，可在 User 工作區選用。");
+    const path = editingProvider ? "/api/providers/" + editingProvider : "/api/providers";
+    const provider = await api(path, describeProvider(), editingProvider ? "PUT" : "POST");
+    if (editingProvider) state.providers = state.providers.map(item => item.id === provider.id ? provider : item);
+    else state.providers.push(provider);
+    $("provider-dialog").close();
+    renderWorkspace();
+    notice($("workspace-message"), "已儲存「" + provider.system_name + "」。");
   } catch (error) {
     notice($("provider-message"), error.message, true);
   } finally {
@@ -286,23 +305,25 @@ async function publishProvider(event) {
   }
 }
 
-function renderCatalog() {
-  $("provider-list").replaceChildren(...state.providers.map(
-    (provider) => node("div", "catalog-item", provider.system_name),
-  ));
-  $("create-system").disabled = !state.providers.length;
-}
-
 function updateCreateConfig() {
-  const provider = providerById($("system-provider").value);
-  if (provider) readConfig = schemaForm($("system-config"), provider.config_schema);
+  const provider = editingSystem?.provider || providerById($("system-provider").value);
+  if (provider) readConfig = schemaForm($("system-config"), provider.config_schema, editingSystem?.parameters);
   notice($("system-error"), "");
 }
 
-function openCreateDialog() {
+function openSystemDialog(system = null) {
+  editingSystem = system;
   $("system-form").reset();
-  const choices = state.providers.map((provider) => option(provider.id, provider.system_name));
+  const providers = system ? [system.provider] : state.providers;
+  const choices = providers.map((provider) => option(provider.id, provider.system_name));
   $("system-provider").replaceChildren(...choices);
+  $("system-provider").disabled = Boolean(system);
+  $("system-name").value = system?.system_name ?? "";
+  $("create-dialog-title").textContent = system ? "Edit Config" : "Create Retrieval System";
+  $("system-dialog-description").textContent = system
+    ? "儲存時會以同一個 System ID 重新呼叫 Provider Init。"
+    : "選擇 Provider Template 並填寫初始化設定。";
+  $("publish-system").textContent = system ? "儲存並套用" : "建立並初始化";
   updateCreateConfig();
   $("create-dialog").showModal();
 }
@@ -315,16 +336,21 @@ async function publishSystem(event) {
   submit.textContent = "初始化中…";
   notice($("system-error"), "");
   try {
-    const system = await api("/api/systems", {
-      provider_id: $("system-provider").value,
+    const config = {
       system_name: $("system-name").value.trim(),
       parameters: readConfig(),
-    });
-    state.systems.push(system);
-    state.systemId = system.system_id;
-    state.operation = "ingestion";
+    };
+    if (!editingSystem) {
+      config.provider_id = $("system-provider").value;
+      config.workspace_id = state.workspaceId;
+    }
+    const path = editingSystem ? "/api/systems/" + editingSystem.system_id : "/api/systems";
+    const system = await api(path, config, editingSystem ? "PUT" : "POST");
+    if (editingSystem) state.systems = state.systems.map(item => item.system_id === system.system_id ? system : item);
+    else state.systems.push(system);
     $("create-dialog").close();
-    renderSystems();
+    renderWorkspace();
+    notice($("workspace-message"), "已套用「" + system.system_name + "」的設定。");
   } catch (error) {
     notice($("system-error"), error.message, true);
   } finally {
@@ -333,24 +359,94 @@ async function publishSystem(event) {
   }
 }
 
-function renderSystems() {
-  const list = $("system-list");
-  list.replaceChildren();
-  if (!state.systems.length) list.append(node("p", "empty", "目前沒有已建立的 System。"));
-  for (const system of state.systems) {
-    const item = button("", "rail-item");
-    item.setAttribute("aria-current", String(system.system_id === state.systemId));
-    item.append(
-      node("strong", "", system.system_name),
-      node("small", "", providerById(system.provider_id).system_name),
-    );
-    item.addEventListener("click", () => {
+function workspaceEntry(name, count, active) {
+  const entry = button("", "workspace-link");
+  entry.setAttribute("aria-pressed", String(active));
+  const icon = node("span", "workspace-icon", "▦");
+  icon.setAttribute("aria-hidden", "true");
+  entry.append(icon, node("span", "", name), node("span", "workspace-count", String(count)));
+  return entry;
+}
+
+function card(name, detail, glyph) {
+  const article = node("article", "card");
+  const top = node("div", "card-top");
+  const icon = node("span", "system-icon", glyph);
+  icon.setAttribute("aria-hidden", "true");
+  top.append(icon);
+  article.append(top, node("h2", "", name), node("p", "card-meta", detail));
+  return article;
+}
+
+function systemCard(system) {
+  const article = card(system.system_name, system.provider.system_name, "▧");
+  article.firstElementChild.append(node("span", "tag", "已啟用"));
+  const actions = node("div", "card-actions");
+  for (const [key, label] of [["ingestion", "Ingest"], ["inference", "Inference"]]) {
+    const trigger = button(label, "button secondary");
+    trigger.addEventListener("click", () => {
       state.systemId = system.system_id;
-      renderSystems();
+      state.operation = key;
+      renderWorkbench();
+      $("operation-dialog").showModal();
     });
-    list.append(item);
+    actions.append(trigger);
   }
-  renderWorkbench();
+  const links = node("div", "card-links");
+  const edit = button("Edit Config", "link-button");
+  edit.addEventListener("click", () => openSystemDialog(system));
+  const download = node("a", "link-button", "Export YAML");
+  download.href = "/api/systems/" + system.system_id + "/export";
+  download.download = "";
+  links.append(edit, download);
+  article.append(actions, links);
+  return article;
+}
+
+function providerCard(provider) {
+  const count = Object.keys(provider.config_schema.properties).length;
+  const article = card(provider.system_name, "Init · Ingestion · Inference · " + count + " 個設定欄位", "▤");
+  const actions = node("div", "card-actions");
+  const edit = button("Edit Template", "button secondary");
+  edit.addEventListener("click", () => openProviderDialog(provider));
+  actions.append(edit);
+  article.append(actions);
+  return article;
+}
+
+function renderWorkspace() {
+  const nav = $("workspace-list");
+  nav.replaceChildren();
+  $("create-system").disabled = !state.providers.length;
+  $("create-provider").disabled = !state.demoTemplate;
+  if (state.page === "provider") {
+    $("workspace-label").textContent = "Provider";
+    $("breadcrumb").textContent = "Provider / Templates";
+    nav.append(workspaceEntry("Templates", state.providers.length, true));
+    $("provider-count").textContent = state.providers.length + " Retrieval System Templates";
+    $("provider-list").replaceChildren(...state.providers.map(providerCard));
+    return;
+  }
+  $("workspace-label").textContent = "Workspaces";
+  const workspace = state.workspaces.find(item => item.id === state.workspaceId);
+  if (!workspace) return;
+  const systems = state.systems.filter(item => item.workspace_id === workspace.id);
+  for (const item of state.workspaces) {
+    const count = state.systems.filter(system => system.workspace_id === item.id).length;
+    const entry = workspaceEntry(item.name, count, item.id === workspace.id);
+    entry.addEventListener("click", () => {
+      state.workspaceId = item.id;
+      notice($("workspace-message"), "");
+      renderWorkspace();
+      nav.querySelector('[aria-pressed="true"]').focus();
+    });
+    nav.append(entry);
+  }
+  $("breadcrumb").textContent = "Workspaces / " + workspace.name;
+  $("workspace-name").textContent = workspace.name;
+  $("system-count").textContent = systems.length + " Retrieval Systems";
+  const cards = systems.length ? systems.map(systemCard) : [node("p", "empty", "此 Workspace 尚無 Retrieval System。")];
+  $("system-list").replaceChildren(...cards);
 }
 
 function renderWorkbench() {
@@ -362,18 +458,14 @@ function renderWorkbench() {
     return;
   }
 
-  const provider = providerById(system.provider_id);
-  const header = node("header", "workbench-header");
-  const meta = node("div", "system-meta");
-  const status = node("span", "tag");
-  status.append(node("span", "status-dot"), "已啟用");
-  meta.append(status, node("span", "muted", provider.system_name));
-  header.append(node("h2", "", system.system_name), meta);
+  const provider = system.provider;
+  $("operation-title").textContent = system.system_name;
+  $("operation-subtitle").textContent = provider.system_name;
 
   const tabs = node("nav", "operation-nav");
   tabs.setAttribute("aria-label", "System 操作");
   for (const key of ["ingestion", "inference"]) {
-    const tab = button(operations[key], "");
+    const tab = button(key === "ingestion" ? "Ingest" : "Inference", "");
     tab.setAttribute("aria-pressed", String(key === state.operation));
     tab.addEventListener("click", () => {
       state.operation = key;
@@ -388,7 +480,7 @@ function renderWorkbench() {
   const path = node("div", "endpoint");
   path.append(node("span", "method", "POST"), node("code", "", route));
   body.append(node("p", "instructions", endpoint.description), path, buildConsole(route, endpoint));
-  desk.append(header, tabs, body);
+  desk.append(tabs, body);
 }
 
 function buildConsole(route, endpoint) {
@@ -469,27 +561,24 @@ async function start() {
   }
   $("system-form").addEventListener("submit", publishSystem);
   $("system-provider").addEventListener("change", updateCreateConfig);
-  $("create-system").addEventListener("click", openCreateDialog);
-  for (const id of ["close-dialog", "cancel-create"]) {
-    $(id).addEventListener("click", () => $("create-dialog").close());
+  $("create-system").addEventListener("click", () => openSystemDialog());
+  $("create-provider").addEventListener("click", () => openProviderDialog());
+  for (const dialog of document.querySelectorAll("dialog")) {
+    const isSaving = () => dialog.querySelector('button[type="submit"]:disabled');
+    for (const close of dialog.querySelectorAll("[data-close]")) {
+      close.addEventListener("click", () => { if (!isSaving()) dialog.close(); });
+    }
+    dialog.addEventListener("cancel", event => { if (isSaving()) event.preventDefault(); });
   }
-  $("create-system").disabled = true;
   setupProvider();
-  let providerDraftEdited = false;
-  $("provider-form").addEventListener("input", () => {
-    providerDraftEdited = true;
-  }, { once: true });
   try {
     const result = await api("/api/catalog");
     state.providers = result.providers;
     state.systems = result.systems;
-    state.systemId = state.systems[0]?.system_id;
-    if (providerById("demo")) {
-      $("fill-demo").disabled = false;
-      if (!providerDraftEdited) fillDemo();
-    }
-    renderCatalog();
-    renderSystems();
+    state.workspaces = result.workspaces;
+    state.workspaceId = state.workspaces[0]?.id;
+    state.demoTemplate = result.demo_template;
+    renderWorkspace();
   } catch (error) {
     notice($("load-error"), "讀取 System 與 Provider 失敗：" + error.message, true);
   }
