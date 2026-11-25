@@ -157,6 +157,7 @@
           <p>可以先用 Router 內建的 <strong>Mock Retrieval Service</strong> 範本驗證。從 repo 根目錄在另一個終端啟動 Mock，再用 User 模式選擇該範本建立 System。</p>
           <pre><code>python router_method/mock_retrieval_service.py</code></pre>
           <p>送出 Ingest 或 Inference 後，比較 <strong>送往 Router 的 Request</strong> 和 Mock 回應的 <code>"see payload"</code>，就能看到 Router 包裝前後的 JSON。畫面會遮蔽 Request 的 Auth 值。</p>
+          <p>請求區下方的 <strong>cURL（Bash）</strong> 可重送同一次請求。若指令有 <code>[已遮蔽]</code>，請替換為完整 Auth Header 值。回應的 <code>Retrieval-Response-Source</code> 由 Router 設定。Router 自產的 <code>400</code>、<code>404</code> 和 <code>502</code> 標為 <code>router</code>，轉發的 Provider 回應標為 <code>provider</code>。</p>
           <div class="guide-table-wrap">
             <table>
               <thead><tr><th scope="col">狀況</th><th scope="col">檢查項目</th></tr></thead>

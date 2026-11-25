@@ -50,6 +50,7 @@ STATIC_FILES = {
 PROVIDER_RESPONSE_HEADERS = (
     "Content-Type", "Content-Encoding", "Content-Language", "Retry-After", "WWW-Authenticate",
 )
+RESPONSE_SOURCE_HEADER = "Retrieval-Response-Source"
 
 
 class InputError(ValueError):
@@ -75,10 +76,15 @@ class Reply:
     headers: dict[str, str]
 
 
-def as_json(status, value):
+def as_json(status, value, *, headers=None):
     return Reply(status, json.dumps(value, ensure_ascii=False).encode(), {
-        "Content-Type": "application/json; charset=utf-8"
+        "Content-Type": "application/json; charset=utf-8",
+        **(headers or {}),
     })
+
+
+def router_error(status, message):
+    return as_json(status, {"error": message}, headers={RESPONSE_SOURCE_HEADER: "router"})
 
 
 def require_object(value, label):
@@ -162,6 +168,7 @@ def exchange(url, body, auth_headers):
             response = error
         with response:
             headers = {name: response.headers[name] for name in PROVIDER_RESPONSE_HEADERS if name in response.headers}
+            headers[RESPONSE_SOURCE_HEADER] = "provider"
             return Reply(response.status, response.read(), headers)
     except (URLError, socket.timeout, OSError, ValueError) as error:
         raise UpstreamError("無法取得 Provider 回應，請確認服務 URL 與連線。") from error
@@ -214,7 +221,7 @@ class PrototypeServer(ThreadingHTTPServer):
         provider = {**validate_provider(raw), "id": provider_id}
         with self.lock:
             if provider_id not in self.providers:
-                return as_json(404, {"error": "找不到指定的 Provider Template。"})
+                return router_error(404, "找不到指定的 Provider Template。")
             self.providers[provider_id] = provider
         return as_json(200, provider)
 
@@ -244,7 +251,7 @@ class PrototypeServer(ThreadingHTTPServer):
         with self.lock:
             current = self.systems.get(system_id)
             if current is None:
-                return as_json(404, {"error": "找不到已啟用的 System。"})
+                return router_error(404, "找不到已啟用的 System。")
             if system_id in self.updating or self.active_requests[system_id]:
                 return as_json(409, {"error": "System 正在處理請求或套用設定，請稍後再試。"})
             candidate = {**current, "system_name": name, "parameters": parameters}
@@ -274,9 +281,7 @@ class PrototypeServer(ThreadingHTTPServer):
             "system_id": system_id, "parameters": parameters, "payload": None
         }, headers)
         if reply.status not in {200, 204}:
-            return as_json(502, {
-                "error": f"Provider Init 回傳 HTTP {reply.status}，設定未生效。"
-            })
+            return router_error(502, f"Provider Init 回傳 HTTP {reply.status}，設定未生效。")
         with self.lock:
             self.systems[system_id] = system
         return as_json(status, system)
@@ -285,7 +290,7 @@ class PrototypeServer(ThreadingHTTPServer):
         with self.lock:
             system = self.systems.get(system_id)
         if system is None:
-            return as_json(404, {"error": "找不到已啟用的 System。"})
+            return router_error(404, "找不到已啟用的 System。")
         config = {
             key: system[key] for key in ("system_id", "system_name", "workspace_id", "provider_id", "parameters")
         }
@@ -300,7 +305,7 @@ class PrototypeServer(ThreadingHTTPServer):
         with self.lock:
             system = self.systems.get(system_id)
             if system is None:
-                return as_json(404, {"error": "找不到已啟用的 System。"})
+                return router_error(404, "找不到已啟用的 System。")
             if system_id in self.updating:
                 return as_json(409, {"error": "System 正在套用設定，請稍後再試。"})
             endpoint = system["provider"]["apis"][operation]
@@ -400,7 +405,7 @@ class Handler(BaseHTTPRequestHandler):
             filename, content_type = STATIC_FILES[path]
             reply = Reply(200, (ROOT / filename).read_bytes(), {"Content-Type": content_type})
         else:
-            reply = as_json(404, {"error": "找不到路徑。"})
+            reply = router_error(404, "找不到路徑。")
         self.write_reply(reply)
 
     def dispatch(self, path, body):
@@ -415,14 +420,14 @@ class Handler(BaseHTTPRequestHandler):
             return self.server.forward(*route.groups(), body, self.headers)
         if path.removeprefix("/demo/") in OPERATIONS and path.startswith("/demo/"):
             return self.server.demo_request(path.removeprefix("/demo/"), body, self.headers)
-        return as_json(404, {"error": "找不到操作路徑。"})
+        return router_error(404, "找不到操作路徑。")
 
     def replace(self, path, body):
         if route := SYSTEM_CONFIG_ROUTE.fullmatch(path):
             return self.server.update_system(route[1], body)
         if route := PROVIDER_CONFIG_ROUTE.fullmatch(path):
             return self.server.update_provider(route[1], body)
-        return as_json(404, {"error": "找不到操作路徑。"})
+        return router_error(404, "找不到操作路徑。")
 
     def handle_json(self, action):
         path = urlsplit(self.path).path
@@ -434,9 +439,9 @@ class Handler(BaseHTTPRequestHandler):
         try:
             reply = action(path, self.read_json())
         except InputError as error:
-            reply = as_json(400, {"error": str(error)})
+            reply = router_error(400, str(error))
         except UpstreamError as error:
-            reply = as_json(502, {"error": str(error)})
+            reply = router_error(502, str(error))
         self.write_reply(reply)
 
     def do_POST(self):

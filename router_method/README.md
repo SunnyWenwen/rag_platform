@@ -44,6 +44,8 @@ python router_method/mock_retrieval_service.py
 
 Mock 的 `"see payload"` 回傳收到的完整 JSON Body。從 Router 呼叫時，這裡會看到 `system_id`、`parameters` 及巢狀的 `payload`。操作頁的 **送往 Router 的 Request** 則顯示瀏覽器送出的 HTTP 方法、路徑、Body 和遮蔽後的 Auth，方便對照兩段請求。若以 `--port` 改用其他埠，先在 Provider 圖卡編輯範本的三個 URL，再建立 System。
 
+Ingest／Inference 送出後，下方的 **cURL（Bash）** 顯示可重送該次請求的指令。需要 Auth 時，請將指令中的 `[已遮蔽]` 換成完整的 Header 值。Response 區從 `Retrieval-Response-Source` 顯示來源。當 Router 自己回 `400`、`404` 或 `502`，來源為 `router`。轉發 Provider 回應時，來源為 `provider`，狀態碼與 Body 照原樣回傳。
+
 ## Meta Schema 支援範圍
 
 | 位置 | 允許的欄位 |

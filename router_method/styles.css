@@ -104,7 +104,11 @@ textarea { resize: vertical; }
 .response-editor:empty::before { content: "送出請求後會顯示回應"; color: #a9c4c5; font-family: system-ui, sans-serif; }
 .sent-request { margin-top: 16px; }
 .sent-request h3 { margin-bottom: 7px; }
+.sent-request pre + h3 { margin-top: 12px; }
 .sent-request .response-editor { min-height: 0; max-height: 320px; }
+.response-meta { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px 10px; }
+.response-source { color: var(--description); font-size: .75rem; }
+.response-source:empty { display: none; }
 .http-status { font: 700 .75rem var(--mono); color: #05685a; }
 .http-status.failed { color: #aa3e21; }
 .send-row { display: flex; justify-content: flex-end; margin-top: 12px; }

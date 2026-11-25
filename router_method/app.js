@@ -543,7 +543,12 @@ function buildConsole(route, endpoint) {
   const sentPreview = node("pre", "response-editor");
   sentPreview.tabIndex = 0;
   sentPreview.setAttribute("aria-labelledby", sentTitle.id);
-  sentRequest.append(sentTitle, sentPreview);
+  const curlTitle = node("h3", "", "cURL（Bash）");
+  curlTitle.id = "sent-curl-title";
+  const curlPreview = node("pre", "response-editor");
+  curlPreview.tabIndex = 0;
+  curlPreview.setAttribute("aria-labelledby", curlTitle.id);
+  sentRequest.append(sentTitle, sentPreview, curlTitle, curlPreview);
   const requestColumn = node("div");
   requestColumn.append(request, sentRequest);
 
@@ -551,7 +556,10 @@ function buildConsole(route, endpoint) {
   const resultTitle = node("div", "console-title");
   const status = node("span", "http-status");
   status.setAttribute("role", "status");
-  resultTitle.append(node("h3", "", "Response Body"), status);
+  const source = node("span", "response-source");
+  const resultMeta = node("div", "response-meta");
+  resultMeta.append(status, source);
+  resultTitle.append(node("h3", "", "Response Body"), resultMeta);
   const response = node("pre", "response-editor");
   response.tabIndex = 0;
   response.setAttribute("aria-label", "Response Body");
@@ -560,29 +568,51 @@ function buildConsole(route, endpoint) {
 
   request.addEventListener("submit", async (event) => {
     event.preventDefault();
-    await sendRequest({ route, endpoint, requestBody, auth, send, status, response, sentRequest, sentPreview });
+    await sendRequest({
+      route, endpoint, requestBody, auth, send, status, source, response,
+      sentRequest, sentPreview, curlPreview,
+    });
   });
   return grid;
 }
 
-async function sendRequest({ route, endpoint, requestBody, auth, send, status, response, sentRequest, sentPreview }) {
+function shellQuote(value) {
+  return "'" + value.replaceAll("'", "'\\''") + "'";
+}
+
+function curlCommand(route, headers, body) {
+  const url = new URL(route, window.location.origin).href;
+  const lines = ["curl --request POST " + shellQuote(url)];
+  for (const header of headers) lines.push("--header " + shellQuote(header));
+  lines.push("--data-binary " + shellQuote(body));
+  return lines.join(" \\\n  ");
+}
+
+async function sendRequest({
+  route, endpoint, requestBody, auth, send, status, source, response,
+  sentRequest, sentPreview, curlPreview,
+}) {
   send.disabled = true;
   status.textContent = "傳送中…";
   status.classList.remove("failed");
+  source.textContent = "";
   response.textContent = "";
   try {
     const body = requestBody.value;
     parseJSON(body, "Request Body");
     const headers = new Headers({ "Content-Type": "application/json" });
-    const requestLines = ["POST " + route, "Content-Type: application/json"];
+    const displayHeaders = ["Content-Type: application/json"];
     if (auth?.value) {
       headers.set(endpoint.auth.header, auth.value);
-      requestLines.push(endpoint.auth.header + ": [已遮蔽]");
+      displayHeaders.push(endpoint.auth.header + ": [已遮蔽]");
     }
-    sentPreview.textContent = [...requestLines, "", body].join("\n");
+    sentPreview.textContent = ["POST " + route, ...displayHeaders, "", body].join("\n");
+    curlPreview.textContent = curlCommand(route, displayHeaders, body);
     sentRequest.hidden = false;
     const result = await fetch(route, { method: "POST", headers, body });
     status.textContent = "HTTP " + result.status;
+    const responseSource = result.headers.get("Retrieval-Response-Source");
+    if (responseSource) source.textContent = "來源 " + responseSource;
     status.classList.toggle("failed", !result.ok);
     response.textContent = (await result.text()) || "空白回應";
   } catch (error) {
