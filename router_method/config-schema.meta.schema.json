@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Provider Config Schema",
+  "type": "object",
+  "required": ["type", "properties"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "const": "https://json-schema.org/draft/2020-12/schema" },
+    "type": { "const": "object" },
+    "title": { "type": "string" },
+    "description": { "type": "string" },
+    "properties": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/field" }
+    },
+    "required": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "additionalProperties": { "const": false }
+  },
+  "$defs": {
+    "field": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["string", "integer", "number", "boolean"] },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "default": {},
+        "enum": { "type": "array", "minItems": 1, "uniqueItems": true }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "string" } } },
+          "then": { "properties": { "default": { "type": "string" }, "enum": { "items": { "type": "string" } } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "integer" } } },
+          "then": { "properties": { "default": { "type": "integer" }, "enum": { "items": { "type": "integer" } } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "number" } } },
+          "then": { "properties": { "default": { "type": "number" }, "enum": { "items": { "type": "number" } } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "boolean" } } },
+          "then": { "properties": { "default": { "type": "boolean" }, "enum": { "items": { "type": "boolean" } } } }
+        }
+      ]
+    }
+  }
+}

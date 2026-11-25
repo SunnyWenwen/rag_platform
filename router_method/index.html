@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Retrieval Router</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">⇄</span> Retrieval Router</div>
+      <nav class="page-nav" aria-label="工作區">
+        <button type="button" data-page="user" aria-current="page">User</button>
+        <button type="button" data-page="provider">Provider</button>
+      </nav>
+      <span class="environment"><span></span>本機 Prototype</span>
+    </div>
+  </header>
+
+  <main class="main">
+    <p id="load-error" class="notice error" role="alert" hidden></p>
+
+    <section id="user-page">
+      <header class="page-heading">
+        <div>
+          <h1>Retrieval Systems</h1>
+          <p>選用已上架的 Provider，建立 System 並測試匯入與查詢。</p>
+        </div>
+        <button type="button" class="button primary" id="create-system">建立 System</button>
+      </header>
+
+      <div class="workspace">
+        <aside class="rail panel" aria-label="System 清單">
+          <header><h2>已建立的 Systems</h2></header>
+          <div id="system-list" class="rail-list"></div>
+        </aside>
+        <section id="workbench" class="workbench panel" aria-label="System 操作區"></section>
+      </div>
+    </section>
+
+    <section id="provider-page" hidden>
+      <header class="page-heading">
+        <div>
+          <h1>Provider 服務</h1>
+          <p>上架既有 Retrieval Service，提供使用者建立與操作 System 所需的設定。</p>
+        </div>
+        <button type="button" class="button secondary" id="fill-demo">載入範例</button>
+      </header>
+
+      <div class="provider-layout">
+        <form id="provider-form" class="panel provider-form">
+          <header class="panel-heading">
+            <h2>新增 Retrieval Service</h2>
+            <p>System Description</p>
+          </header>
+          <label class="field">
+            <span>System 名稱 <span class="required-mark">*</span></span>
+            <input id="provider-name" name="system_name" placeholder="例如產品文件檢索" required>
+          </label>
+          <div id="provider-apis" class="provider-apis"></div>
+          <label class="field">
+            <span>Config Schema <span class="required-mark">*</span></span>
+            <textarea id="config-schema" class="code-input" rows="12" spellcheck="false" required></textarea>
+          </label>
+          <div class="form-actions">
+            <a href="/config-schema.meta.schema.json" target="_blank" rel="noopener">檢視 Meta Schema ↗</a>
+            <button type="submit" id="publish-provider" class="button primary">上架服務</button>
+          </div>
+          <p id="provider-message" class="notice" role="status" hidden></p>
+        </form>
+
+        <aside class="provider-side">
+          <section class="panel preview-panel" aria-labelledby="preview-title">
+            <header class="panel-heading">
+              <h2 id="preview-title">User 表單預覽</h2>
+              <p>依 Config Schema 即時更新。</p>
+            </header>
+            <div id="schema-preview" aria-live="polite"></div>
+          </section>
+          <section class="panel preview-panel" aria-labelledby="catalog-title">
+            <header class="panel-heading"><h2 id="catalog-title">已上架的服務</h2></header>
+            <div id="provider-list" class="provider-list"></div>
+          </section>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="create-dialog" aria-labelledby="create-dialog-title">
+    <form id="system-form" class="dialog-form">
+      <header class="dialog-header">
+        <div>
+          <h2 id="create-dialog-title">建立 System</h2>
+          <p>選擇 Provider 並填寫初始化設定。</p>
+        </div>
+        <button type="button" class="icon-button" id="close-dialog" aria-label="關閉">×</button>
+      </header>
+      <div class="dialog-body">
+        <label class="field">
+          <span>Provider <span class="required-mark">*</span></span>
+          <select id="system-provider"></select>
+        </label>
+        <label class="field">
+          <span>System 名稱 <span class="required-mark">*</span></span>
+          <input id="system-name" placeholder="例如產品保固知識庫" required>
+        </label>
+        <div id="system-config" class="dialog-config"></div>
+        <p id="system-error" class="notice error" role="alert" hidden></p>
+      </div>
+      <footer class="dialog-footer">
+        <button type="button" class="button secondary" id="cancel-create">取消</button>
+        <button type="submit" class="button primary" id="publish-system">建立並初始化</button>
+      </footer>
+    </form>
+  </dialog>
+</body>
+</html>

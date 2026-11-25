@@ -1,0 +1,38 @@
+{
+  "system_name": "產品文件檢索",
+  "apis": {
+    "init": {
+      "url": "http://127.0.0.1:8765/demo/init",
+      "auth": null
+    },
+    "ingestion": {
+      "url": "http://127.0.0.1:8765/demo/ingestion",
+      "auth": { "header": "Authorization", "scheme": "Bearer" },
+      "description": "以 document_id 新增或覆寫產品文件。action 可填 upsert、list 或 delete。upsert 另外帶 text，list 可省略 document_id。示範憑證為 Bearer demo-token。",
+      "sample": {
+        "action": "upsert",
+        "document_id": "warranty-01",
+        "text": "產品保固一年，購買日起算。"
+      }
+    },
+    "inference": {
+      "url": "http://127.0.0.1:8765/demo/inference",
+      "auth": { "header": "Authorization", "scheme": "Bearer" },
+      "description": "填入 query 查詢目前資料集。回應包含 results 清單，查無符合文件時回傳空清單。示範憑證為 Bearer demo-token。",
+      "sample": { "query": "產品保固多久？" }
+    }
+  },
+  "config_schema": {
+    "type": "object",
+    "title": "檢索設定",
+    "description": "指定資料集、文件語言與查詢結果上限。",
+    "properties": {
+      "collection": { "type": "string", "title": "資料集名稱", "description": "識別此 System 使用的資料集。", "default": "product_docs" },
+      "language": { "type": "string", "title": "文件語言", "enum": ["zh-TW", "en"], "default": "zh-TW" },
+      "top_k": { "type": "integer", "title": "回傳筆數", "default": 5 },
+      "include_text": { "type": "boolean", "title": "回傳文件內容", "default": true }
+    },
+    "required": ["collection"],
+    "additionalProperties": false
+  }
+}
