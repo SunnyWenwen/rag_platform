@@ -79,7 +79,7 @@ h3 { font-size: .95rem; }
 .link-button { border: 0; padding: 4px; background: transparent; color: var(--accent); font-size: .8rem; font-weight: 700; }
 .link-button:hover { text-decoration: underline; }
 .field { display: grid; gap: 6px; min-width: 0; }
-.field > span { font-size: .85rem; font-weight: 690; }
+.field > span, .auth-field > label { font-size: .85rem; font-weight: 690; }
 .field > small { color: var(--description); font-size: .8rem; overflow-wrap: anywhere; }
 .required-mark { color: var(--accent); }
 input, select, textarea {
@@ -89,6 +89,13 @@ input, select, textarea {
 input::placeholder, textarea::placeholder { color: #64777c; }
 textarea { resize: vertical; }
 .auth-field { margin: 11px 0; }
+.password-control { position: relative; }
+.password-control input { padding-inline-end: 48px; }
+.password-toggle { position: absolute; inset: 3px 3px 3px auto; width: 40px; display: grid; place-items: center; border: 0; border-radius: 6px; background: var(--surface); color: var(--description); }
+.password-toggle:hover { color: var(--accent); background: var(--accent-soft); }
+.eye-icon { position: relative; display: grid; place-items: center; width: 18px; height: 12px; border: 1.5px solid currentColor; border-radius: 75% / 95%; }
+.eye-icon::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.password-control input[type="text"] + .password-toggle .eye-icon::after { content: ""; position: absolute; width: 21px; height: 1.5px; border-radius: 2px; background: currentColor; box-shadow: 0 -1px var(--surface); transform: rotate(45deg); }
 .code-input { width: 100%; background: #f8fbfb; font: .83rem/1.55 var(--mono); }
 #request-body { min-height: 177px; }
 .response-editor { margin: 0; min-height: 177px; max-height: 510px; overflow: auto; padding: 12px 13px; border-radius: 8px; background: #132d32; color: #e1f1ef; white-space: pre-wrap; overflow-wrap: anywhere; font: .83rem/1.55 var(--mono); }

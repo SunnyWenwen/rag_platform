@@ -50,6 +50,32 @@ function input(type = "text", placeholder = "") {
   return element;
 }
 
+function authField(header, control) {
+  const wrapper = node("div", "field auth-field");
+  const label = node("label", "", header);
+  control.id = "request-auth";
+  control.autocomplete = "off";
+  label.htmlFor = control.id;
+
+  const row = node("div", "password-control");
+  const toggle = button("", "password-toggle");
+  const icon = node("span", "eye-icon");
+  icon.setAttribute("aria-hidden", "true");
+  toggle.append(icon);
+  toggle.setAttribute("aria-controls", control.id);
+  const setVisibility = (visible) => {
+    control.type = visible ? "text" : "password";
+    const action = visible ? "隱藏憑證" : "顯示憑證";
+    toggle.setAttribute("aria-label", action);
+    toggle.title = action;
+  };
+  setVisibility(false);
+  toggle.addEventListener("click", () => setVisibility(control.type === "password"));
+  row.append(control, toggle);
+  wrapper.append(label, row);
+  return wrapper;
+}
+
 function textarea(rows) {
   const element = node("textarea", "code-input");
   element.rows = rows;
@@ -503,12 +529,7 @@ function buildConsole(route, endpoint) {
   });
   request.append(requestTitle, requestBody);
   const auth = endpoint.auth ? input("password", endpoint.auth.scheme ? endpoint.auth.scheme + " …" : "輸入憑證") : null;
-  if (auth) {
-    auth.autocomplete = "off";
-    const label = field(endpoint.auth.header, auth);
-    label.classList.add("auth-field");
-    request.append(label);
-  }
+  if (auth) request.append(authField(endpoint.auth.header, auth));
   const sendRow = node("div", "send-row");
   const send = button("送出請求", "button primary");
   send.type = "submit";
