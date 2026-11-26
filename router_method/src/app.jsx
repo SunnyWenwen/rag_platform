@@ -11,7 +11,11 @@ async function api(path, body, method = "POST") {
     method, headers: {"Content-Type": "application/json"}, body: JSON.stringify(body),
   });
   const result = await response.json();
-  if (!response.ok) throw new Error(result.error || "HTTP " + response.status);
+  if (!response.ok) {
+    throw Object.assign(new Error(result.error || "HTTP " + response.status), {
+      status: response.status, initUnconfirmed: result.init_unconfirmed === true,
+    });
+  }
   return result;
 }
 
@@ -239,20 +243,32 @@ function SystemDialog({system, providers, workspaceId, onSave, onClose}) {
   const [values, setValues] = useState(() => defaultInputs(provider.config_schema, system?.parameters));
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [unconfirmed, setUnconfirmed] = useState(false);
+  const retry = useRef(null);
 
   async function save(event) {
     event.preventDefault();
     setBusy(true);
     setError("");
     try {
-      const schema = provider.config_schema;
-      const initial = system?.parameters || Object.fromEntries(Object.entries(schema.properties).map(([key, field]) => [key, field.default]));
-      const config = {system_name: name.trim(), parameters: readParameters(schema, values, initial)};
-      if (!system) Object.assign(config, {provider_id: provider.id, workspace_id: workspaceId});
+      if (!retry.current) {
+        const schema = provider.config_schema;
+        const initial = system?.parameters || Object.fromEntries(Object.entries(schema.properties).map(([key, field]) => [key, field.default]));
+        const config = {system_name: name.trim(), parameters: readParameters(schema, values, initial)};
+        if (!system) Object.assign(config, {
+          system_id: crypto.randomUUID(), provider_id: provider.id, workspace_id: workspaceId,
+        });
+        retry.current = config;
+      }
       const path = system ? "/api/systems/" + system.system_id : "/api/systems";
-      await onSave(await api(path, config, system ? "PUT" : "POST"));
+      await onSave(await api(path, retry.current, system ? "PUT" : "POST"));
     } catch (err) {
-      setError(err.message);
+      const unknown = Boolean(retry.current && (err.initUnconfirmed || !err.status || (unconfirmed && err.status === 409)));
+      setUnconfirmed(unknown);
+      if (!unknown) retry.current = null;
+      setError(unknown
+        ? "初始化結果未確認。請重試以沿用同一個 System ID 與設定。"
+        : err.message);
     } finally {
       setBusy(false);
     }
@@ -262,23 +278,25 @@ function SystemDialog({system, providers, workspaceId, onSave, onClose}) {
     subtitle={system ? "儲存時會以同一個 System ID 重新呼叫 Provider Init。" : "選擇 Provider Template 並填寫初始化設定。"} busy={busy} onClose={onClose}>
     <form id="system-form" onSubmit={save}>
       <div className="dialog-body">
-        <Field label="Provider" required><select id="system-provider" value={provider.id} disabled={Boolean(system)} onChange={event => {
-          const selected = providers.find(item => item.id === event.target.value);
-          setProvider(selected);
-          setValues(defaultInputs(selected.config_schema));
-          setError("");
-        }}>
-          {(system ? [system.provider] : providers).map(item => <option key={item.id} value={item.id}>{item.system_name}</option>)}
-        </select></Field>
-        <Field label="System 名稱" required><input id="system-name" value={name} onChange={event => setName(event.target.value)} required/></Field>
-        <div id="system-config" className="dialog-config">
-          <ParametersForm schema={provider.config_schema} values={values} onChange={(key, value) => setValues(current => ({...current, [key]: value}))}/>
+        <div inert={unconfirmed || busy}>
+          <Field label="Provider" required><select id="system-provider" value={provider.id} disabled={Boolean(system)} onChange={event => {
+            const selected = providers.find(item => item.id === event.target.value);
+            setProvider(selected);
+            setValues(defaultInputs(selected.config_schema));
+            setError("");
+          }}>
+            {(system ? [system.provider] : providers).map(item => <option key={item.id} value={item.id}>{item.system_name}</option>)}
+          </select></Field>
+          <Field label="System 名稱" required><input id="system-name" value={name} onChange={event => setName(event.target.value)} required/></Field>
+          <div id="system-config" className="dialog-config">
+            <ParametersForm schema={provider.config_schema} values={values} onChange={(key, value) => setValues(current => ({...current, [key]: value}))}/>
+          </div>
         </div>
         <Notice error text={error}/>
       </div>
       <footer className="dialog-footer">
         <button type="button" className="button secondary" disabled={busy} onClick={onClose}>取消</button>
-        <button className="button primary" id="publish-system" disabled={busy}>{busy ? "初始化中…" : system ? "儲存並套用" : "建立並初始化"}</button>
+        <button className="button primary" id="publish-system" disabled={busy}>{busy ? "初始化中…" : unconfirmed ? "重試初始化" : system ? "儲存並套用" : "建立並初始化"}</button>
       </footer>
     </form>
   </Dialog>;
@@ -302,15 +320,14 @@ function shellQuote(value) {
   return "'" + value.replaceAll("'", "'\\''") + "'";
 }
 
-function curlCommand(route, headers, body) {
-  const url = new URL(route, window.location.origin).href;
-  const lines = ["curl --request POST " + shellQuote(url)];
+function curlCommand(url, headers, body) {
+  const lines = ["curl --globoff --request POST " + shellQuote(url)];
   for (const header of headers) lines.push("--header " + shellQuote(header));
   lines.push("--data-binary " + shellQuote(body));
   return lines.join(" \\\n  ");
 }
 
-function Console({route, endpoint, drafts, busy, setBusy}) {
+function Console({route, systemId, endpoint, drafts, busy, setBusy}) {
   const sample = jsonText(endpoint.sample);
   const [body, setBody] = useState(() => drafts.get(route) ?? sample);
   const [credential, setCredential] = useState("");
@@ -323,14 +340,19 @@ function Console({route, endpoint, drafts, busy, setBusy}) {
     setBusy(true);
     setResponse({status: "傳送中…", source: "", body: ""});
     try {
-      parseJSON(body, "Request Body");
+      parseJSON(body, "Payload");
+      const providerBody = '{\n  "system_id": ' + jsonText(systemId) + ',\n  "payload": ' + body + "\n}";
       const headers = new Headers({"Content-Type": "application/json"});
       const display = ["Content-Type: application/json"];
       if (endpoint.auth && credential) {
         headers.set(endpoint.auth.header, credential);
         display.push(endpoint.auth.header + ": [已遮蔽]");
       }
-      setSent({preview: ["POST " + route, ...display, "", body].join("\n"), curl: curlCommand(route, display, body)});
+      setSent({
+        provider: ["POST " + endpoint.url, ...display, "", providerBody].join("\n"),
+        builder: ["POST " + route, ...display, "", body].join("\n"),
+        curl: curlCommand(endpoint.url, display, providerBody),
+      });
       const result = await fetch(route, {method: "POST", headers, body});
       setResponse({
         status: "HTTP " + result.status, source: result.headers.get(responseSource), failed: !result.ok,
@@ -346,18 +368,21 @@ function Console({route, endpoint, drafts, busy, setBusy}) {
   return <div className="console-grid">
     <div>
       <form onSubmit={send}>
-        <div className="console-title"><h3>Request Body</h3><button type="button" className="link-button" onClick={() => {
+        <div className="console-title"><h3>Request Payload</h3><button type="button" className="link-button" onClick={() => {
           drafts.delete(route); setBody(sample); input.current.focus();
         }}>還原範例</button></div>
-        <textarea id="request-body" ref={input} className="code-input" rows="7" spellCheck={false} aria-label="Request Body"
+        <textarea id="request-body" ref={input} className="code-input" rows="7" spellCheck={false} aria-label="Request Payload"
           value={body} onChange={event => { drafts.set(route, event.target.value); setBody(event.target.value); }}/>
         {endpoint.auth && <AuthField auth={endpoint.auth} value={credential} onChange={event => setCredential(event.target.value)}/>}
         <div className="send-row"><button className="button primary" disabled={busy}>送出請求</button></div>
       </form>
       {sent && <section className="sent-request">
-        <h3 id="sent-request-title">送往 Router 的 Request</h3>
-        <pre className="response-editor" tabIndex="0" aria-labelledby="sent-request-title">{sent.preview}</pre>
-        <h3 id="sent-curl-title">cURL（Bash）</h3>
+        <h3 id="sent-request-title">Provider Request</h3>
+        <pre className="response-editor" tabIndex="0" aria-labelledby="sent-request-title">{sent.provider}</pre>
+        <details><summary>瀏覽器送往 Builder 的測試 Request</summary>
+          <pre className="response-editor" tabIndex="0">{sent.builder}</pre>
+        </details>
+        <h3 id="sent-curl-title">直連 Provider 的 cURL（Bash）</h3>
         <pre className="response-editor" tabIndex="0" aria-labelledby="sent-curl-title">{sent.curl}</pre>
       </section>}
     </div>
@@ -374,7 +399,7 @@ function Console({route, endpoint, drafts, busy, setBusy}) {
 function OperationDialog({system, initialOperation, drafts, onClose}) {
   const [operation, setOperation] = useState(initialOperation);
   const [busy, setBusy] = useState(false);
-  const route = "/systems/" + system.system_id + "/" + operation;
+  const route = "/api/systems/" + system.system_id + "/test/" + operation;
   const endpoint = system.provider.apis[operation];
   return <Dialog id="operation-dialog" title={system.system_name} subtitle={system.provider.system_name} wide busy={busy} onClose={onClose}>
     <section id="workbench" aria-label="System 操作區">
@@ -384,8 +409,8 @@ function OperationDialog({system, initialOperation, drafts, onClose}) {
       </nav>
       <div className="operation-body">
         <p className="instructions">{endpoint.description}</p>
-        <div className="endpoint"><span className="method">POST</span><code>{route}</code></div>
-        <Console key={route} route={route} endpoint={endpoint} drafts={drafts} busy={busy} setBusy={setBusy}/>
+        <div className="endpoint"><span className="method">POST</span><code>{endpoint.url}</code></div>
+        <Console key={route} route={route} systemId={system.system_id} endpoint={endpoint} drafts={drafts} busy={busy} setBusy={setBusy}/>
       </div>
     </section>
   </Dialog>;
@@ -443,7 +468,7 @@ function App() {
 
   return <>
     <aside className="sidebar" aria-label="Workspace 導覽">
-      <div className="brand"><span className="brand-mark" aria-hidden="true">r</span> Retrieval Router</div>
+      <div className="brand"><span className="brand-mark" aria-hidden="true">r</span> Retrieval Builder</div>
       <h2 className="sidebar-label" id="workspace-label">{providerPage ? "Provider" : "Workspaces"}</h2>
       <nav id="workspace-list" aria-labelledby="workspace-label">
         {providerPage ? <WorkspaceEntry name="Templates" count={providers.length} active/>

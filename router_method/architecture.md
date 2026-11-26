@@ -1,49 +1,64 @@
-# Builder、Route Service 與 Runtime
+# Provider 模式架構
 
-Builder 的 Python 程序建置並提供 React 前端和管理 API。Provider 版 System 由獨立 Route Service 呼叫現有的 Retrieval Provider，可透過匯出的 YAML 在沒有 Builder 的環境啟動。
-
-```mermaid
-flowchart TD
-    B["React Builder 與 Python 管理 API"]
-    R["獨立 Route Service"]
-    P["既有 Provider Service"]
-    E["Runtime 與索引管理"]
-    B -->|"Provider 路徑：註冊設定及同源轉發"| R
-    R -->|"Init、Ingestion、Inference"| P
-    B -.->|"後續整合 Runtime 路徑"| E
-```
-
-Provider 路徑先滿足快速接入既有服務的需求。Runtime 路徑與它平行，日後再接回原有的索引重建與 Runtime 生命週期操作。這次的執行介面是 Router MVP 的 Provider 路徑。
-
-## Provider 上架視角
+Python 啟動並提供 React Builder 與管理 API。Builder 管理上架與 System 設定，Provider 以 `system_id` 管理生效設定及資料。Builder 操作頁的業務測試經 Builder 後端呼叫 Provider，應用程式可直接呼叫 Provider。設定式 Runtime 是 Builder 的另一條路徑，可獨立整合既有的索引與生命週期操作。
 
 ```mermaid
 flowchart TD
-    P["Provider 開啟 Provider page"] --> D["填寫 System 名稱與三支 API"]
-    D --> X["填寫 Ingestion / Inference 說明與範例"]
-    X --> S["貼上 Config Schema 並預覽表單"]
-    S --> V{"Builder 驗證 Schema 與上架資料"}
-    V -->|修正| S
-    V -->|通過| C["上架至 Provider 目錄"]
-    C --> U["User 可選用已上架服務"]
+    U["User / Provider 操作頁"] --> B["Builder 後端"]
+    B -->|"Init 與 UI 測試"| P["Provider Service"]
+    C["業務呼叫端"] -->|"Ingestion / Inference"| P
+    P --> D["System 設定、索引與資料"]
+    B -.->|"設定式 System"| R["Runtime"]
 ```
 
-Provider 預覽與 User 建立表單使用相同欄位渲染。Provider 提供三支固定 API，並透過各業務 API 的說明與範例定義各自的操作。
-
-## User 建立與送出請求
+## Provider 上架
 
 ```mermaid
 flowchart TD
-    U["User 選 Provider 並填寫設定"] --> I["Builder 註冊至 Route Service，Router 呼叫 Provider Init"]
-    I --> D{"Provider 回報就緒"}
-    D -->|未就緒| E["Builder 顯示發布失敗"]
-    D -->|就緒| S["Builder 啟用 System"]
-    S --> T["User 選 Ingestion 或 Inference"]
-    T --> F["顯示說明並填入 Provider Sample"]
-    F --> Q["User 編輯 Payload 並送出"]
-    Q --> R["Route Service 補上 System ID 與已發布參數"]
-    R --> P["依操作轉發到對應 Provider URL"]
-    P --> A["原樣回傳 Provider 結果給 User"]
+    P["準備 Init、Ingestion、Inference"] --> D["填寫名稱、URL、Auth、說明及 Sample"]
+    D --> S["貼上 Config Schema 並預覽表單"]
+    S --> V{"Builder 驗證範本"}
+    V -->|修正| D
+    V -->|通過| C["User 可在目錄選用"]
 ```
 
-Builder 發起註冊，Route Service 呼叫 Init，Provider 執行資源初始化。瀏覽器透過 Builder 的同源入口送出業務請求，部署後的呼叫端也可直連 Router。Route Service 保留呼叫端 Auth，Provider 判斷 Payload 的操作並管理資料。
+範本上架會驗證欄位及 Schema。建立 System 時才會呼叫 Init 驗證實際連線與初始化。
+
+## User 建立與編輯設定
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant B as Builder
+    participant P as Provider
+    U->>B: 建立或編輯 System
+    B->>P: Init {system_id, parameters}
+    alt 設定已生效
+        P-->>B: HTTP 200 或 204
+        B-->>U: 顯示已套用設定
+    else Provider 回報失敗
+        P-->>B: 失敗狀態
+        B-->>U: 顯示失敗，保留最近一次確認的設定
+    else Builder 未取得結果
+        B-->>U: 結果未確認，以相同 ID 和設定重試
+    end
+```
+
+Edit Config 沿用既有 System ID。Provider 應先驗證並準備資源，完成後才切換生效設定。同一個 ID 和設定重送時應能安全重試。若逾時，Provider 可能已收到並處理該次 Init，Builder 會等成功回應才更新本機紀錄。
+
+## User 測試與應用程式呼叫
+
+```mermaid
+sequenceDiagram
+    participant U as Builder 操作頁
+    participant B as Builder 後端
+    participant P as Provider
+    participant C as 業務呼叫端
+    U->>B: 送出業務 Payload 與 Auth
+    B->>P: POST {system_id, payload} 與 Auth
+    P-->>U: 經 Builder 回傳 HTTP 狀態碼及 Body
+    C->>P: 直連業務 URL，帶相同 JSON 與 Auth
+    P-->>C: HTTP 狀態碼及 Body
+```
+
+Provider 依 Auth 判斷呼叫者可否操作該 System，再依 ID 讀取 Init 保存的設定。Ingestion Payload 內各種操作的意義與資料生命週期由 Provider 定義。

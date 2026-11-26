@@ -3,7 +3,7 @@
   "apis": {
     "init": {
       "url": "http://127.0.0.1:8765/demo/init",
-      "auth": { "header": "Authorization", "secret_ref": "ROUTER_DEMO_INIT_AUTH" }
+      "auth": { "header": "Authorization", "secret_ref": "BUILDER_DEMO_INIT_AUTH" }
     },
     "ingestion": {
       "url": "http://127.0.0.1:8765/demo/ingestion",

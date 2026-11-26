@@ -1,71 +1,63 @@
-# Retrieval Router MVP
+# Retrieval Builder MVP
 
-此 MVP 包含 Provider 上架、User 建立 System，以及透過 Route Service 實際呼叫 Provider 的流程。
+Builder 提供 Provider Template 上架、Workspace 內的 Retrieval System 管理，以及 Ingestion／Inference 測試。Provider 負責每個 System 的設定、認證、資源與資料生命週期。呼叫端可直接使用 Provider API，執行時只需帶 `system_id`、業務 `payload` 及 Provider 要求的 Auth。
 
-- [Config Schema Meta Schema](config-schema.meta.schema.json)
 - [Provider 與 User 流程圖](architecture.md)
-- [示範 Provider 的 System Description](demo-provider.json)
-- [Mock Retrieval Service 預設範本](mock-provider.json)
+- [Provider 使用說明書](provider-guide.html)
+- [Config Schema Meta Schema](config-schema.meta.schema.json)
+- [示範 Provider System Description](demo-provider.json)
+- [Mock Provider 範本](mock-provider.json)
 
 ## 啟動
 
-在 repo 根目錄安裝 Python 套件。Builder 建置前端時需要 Node.js 與 npm。
+從 repo 根目錄執行。Builder 建置前端需要 Node.js 與 npm。
 
 ```sh
 python -m pip install -r router_method/requirements.txt
-```
-
-分別啟動兩個程序。
-
-```sh
-# 終端 1 · Route Service
-python router_method/router_service.py --enable-builder
-
-# 終端 2 · Builder
 python router_method/server.py
 ```
 
-開啟 [http://127.0.0.1:8765](http://127.0.0.1:8765)。Builder 的 Python 啟動入口會建置 React 並提供前端和管理 API。可以用 `--skip-build` 啟動已準備好 `dist/app.js` 的 Builder。Route Service 預設在 `127.0.0.1:8767`，改埠時同步調整 Builder 的 `--router-url`。
+開啟 [http://127.0.0.1:8765](http://127.0.0.1:8765)。Python 啟動入口會建置 React 並提供前端與管理 API。已建置 `dist/app.js` 時可加 `--skip-build`。接入自己的 Provider 時，請先啟動該服務並確認 Builder 後端能連到其 URL。
 
-1. 切到 **Provider**，按 **Provide Retrieval System Template**。表單預填三支 API、Auth、Ingestion／Inference 說明與 JSON Sample，以及 Config Schema，並提供 User 表單預覽。上架後可在 Template 圖卡選 **Edit Template**。Provider 頁與編輯表單的 **使用說明** 會開啟 [Provider 使用說明書](http://127.0.0.1:8765/provider-guide)，包含設定欄位、API 契約與排查方式。
-2. 切到 **User**，從左側選擇 Workspace，再按 **Create Retrieval System**。選擇已上架的 Provider Template 並填寫參數。Builder 請 Route Service 註冊 System，Route Service 呼叫 Provider Init，收到 `200` 或 `204` 後生效。
-3. 在 System 圖卡按 **Ingest** 或 **Inference**，使用預填的 Sample 或編輯 JSON Body，輸入呼叫端的 Auth Header 值後送出。內建示範的兩個操作都使用 `Bearer demo-token`。
-4. Builder 將操作頁的同源請求轉給獨立 Route Service。Route Service 依 System 和操作取已登錄的 URL，送出 `{system_id, parameters, payload}` 並轉發 Auth。Response 區保留 Provider 的 Body 與狀態碼。Init 的 `payload` 為 `null`。
-5. **Edit Config** 以相同 System ID 重新呼叫 Init，成功後才套用設定。**Export YAML** 下載已啟用的 Router 設定、參數與 API 綁定，Init Auth 保留環境變數引用。
+## 上架與使用
 
-Provider Templates 是跨 Workspace 共用的目錄。調整 Template 後，新建的 System 使用最新內容。既有 System 保留建立時的 API 與 Schema。
+1. 在 **Provider → Provide Retrieval System Template** 填寫 System 名稱、三支 API 的 URL 與 Auth、Ingestion／Inference 說明與 JSON Sample，以及 Config Schema。右側會預覽 User 表單。可從 Provider 頁開啟使用說明書。
+2. 在 **User → Create Retrieval System** 選 Workspace 與範本、填寫設定。Builder 分配 `system_id`，直接向 Provider 的 Init API 送出 `{system_id, parameters}`。Provider 回 `200` 或 `204` 後，Builder 才顯示已啟用的 System。
+3. 在圖卡按 **Ingest** 或 **Inference**，編輯預填的 Sample，並視需要輸入完整 Auth Header 值。Builder 後端補上 `system_id`，以 `{system_id, payload}` 呼叫 Provider。Response 區呈現 Provider 的 HTTP 狀態碼及 Body。內建示範的業務憑證為 `Bearer demo-token`。
+4. **Edit Config** 用原本的 `system_id` 重新呼叫 Init，Provider 成功套用後 Builder 才更新畫面上的設定。Init 明確失敗時，Builder 顯示錯誤並保留最後確認成功的設定，Provider 應保留對應的生效設定和資源。若 Builder 沒收到 Init 結果，畫面提供重試，沿用同一個 ID 與設定。
+5. **Export YAML** 下載直連資訊，包含 System ID 及兩支業務 API 的 URL、Auth 提示、說明和 Sample。呼叫端可使用已完成初始化的 Provider，或從操作頁複製直連 Provider 的 cURL。Auth 值在畫面及 cURL 中會遮蔽，重送時請填入真實值。
 
-## Route Service 單獨部署
+Provider Template 在 Workspace 間共用。調整 Template 後，新建的 System 使用最新內容，既有 System 沿用建立時的 API 與 Schema。匯出 YAML 用於呼叫已初始化的 System。Provider 自行管理服務部署及資源初始化。
 
-在 Builder 的 System 圖卡按 **Export YAML**，將 YAML 放到 Route Service 執行環境，確認其中的 Provider URL 可連線。Init 如有 `secret_ref`，在 Route Service 的程序環境提供對應的值。
+## Provider API 契約
 
-```sh
-python router_method/router_service.py --config retrieval-system.yaml
-```
+| API | Method 與 JSON Body | Provider 職責 |
+|---|---|---|
+| Init | `POST {system_id, parameters}` | 建立或更新設定與所需資源。設定可用時才回 `200` 或 `204`。 |
+| Ingestion | `POST {system_id, payload}` | 依 System ID 取得已生效設定並處理 Provider 定義的資料操作。 |
+| Inference | `POST {system_id, payload}` | 依 System ID 取得已生效設定並執行查詢。 |
 
-啟動時會讀取 YAML、呼叫 Provider Init，成功後提供 `POST /systems/{system_id}/ingestion` 和 `POST /systems/{system_id}/inference`。可用多個 `--config` 載入多套 System。跨主機部署時可在自己的服務網路設定 `--host`，例如容器內監聽 `0.0.0.0`。本機管理入口的 `--enable-builder` 只可與 `127.0.0.1` 搭配。
+三支 API 都使用 `Content-Type: application/json`。由 Provider 驗證業務憑證有權操作指定的 `system_id`。已收到的 Provider 業務回應在測試頁標示為 `provider`，由 Builder 產生的輸入驗證、System 查找或上游連線錯誤則標示為 `builder`。測試頁使用的 Header 為 `Retrieval-Response-Source`。
 
-Builder 與 Router 的執行狀態各自存在程序記憶體。開發時重啟 Router 後，可在 Builder 以 **Edit Config → 儲存並套用** 重新註冊已建立的 System，或用匯出的 YAML 啟動 Router。
+Init 的 `secret_ref` 指向 **Builder 程序**的環境變數，值包含完整 Header 內容。內建示範提供自己的 Init 憑證。業務 Auth 由呼叫端提供，測試頁只傳送範本指定的 Auth Header。既有服務如果要把設定放進每次內部呼叫，由 Provider 在自己的介面層轉換。
 
-## 用獨立 Mock Service 建立 System
+## 用獨立 Mock Provider 測試
 
-Router 啟動時會自動上架 **Mock Retrieval Service** 範本。使用前，在另一個終端啟動 Mock Service 並保持運作。
+Builder 啟動時會載入 **Mock Retrieval Service** 範本。另開終端啟動 Mock。
 
 ```sh
 python router_method/mock_retrieval_service.py
 ```
 
-在 Router 的 **User → Create Retrieval System** 選擇 **Mock Retrieval Service**、輸入 System 名稱，再按 **建立並初始化**。建立後可從圖卡直接使用預填的 JSON Sample 測試 Ingest 和 Inference。此範本不需 Auth 或額外設定。
+接著在 **User → Create Retrieval System** 選 Mock 範本。本機 Mock 不需 Auth 或額外設定。若改用其他埠，先更新範本的三個 URL，再建立 System。
 
-| API | Response 的 `message` 欄位（HTTP 200，JSON） |
+| API | HTTP 200 的 `message` |
 |---|---|
 | `POST http://127.0.0.1:8766/init` | `成功呼叫init` |
 | `POST http://127.0.0.1:8766/ingestion` | `成功呼叫ingestion` |
 | `POST http://127.0.0.1:8766/inference` | `成功呼叫inference` |
 
-Mock 的 `"see payload"` 回傳收到的完整 JSON Body。從 Router 呼叫時，這裡會看到 `system_id`、`parameters` 及巢狀的 `payload`。操作頁的 **送往 Router 的 Request** 則顯示瀏覽器送出的 HTTP 方法、路徑、Body 和遮蔽後的 Auth，方便對照兩段請求。若以 `--port` 改用其他埠，先在 Provider 圖卡編輯範本的三個 URL，再建立 System。
-
-Ingest／Inference 送出後，下方的 **cURL（Bash）** 顯示可重送該次請求的指令。需要 Auth 時，請將指令中的 `[已遮蔽]` 換成完整的 Header 值。Response 區從 `Retrieval-Response-Source` 顯示來源。當 Router 自己回 `400`、`404` 或 `502`，來源為 `router`。轉發 Provider 回應時，來源為 `provider`，狀態碼與 Body 照原樣回傳。
+Mock 的 `"see payload"` 會回傳收到的完整 JSON Body。操作頁的 **Provider Request** 可與此欄位對照。展開 **瀏覽器送往 Builder 的測試 Request** 可看到只包含業務 Payload 的瀏覽器請求。Mock 重啟後須重新 Init，已建立的 System 可透過 **Edit Config** 重新套用。
 
 ## Meta Schema 支援範圍
 
@@ -75,10 +67,4 @@ Ingest／Inference 送出後，下方的 **cURL（Bash）** 顯示可重送該�
 | 單一參數 | `type`、`title`、`description`、`default`、`enum` |
 | 參數型別 | `string`、`integer`、`number`、`boolean` |
 
-有 `enum` 時顯示下拉選單，其餘依型別顯示輸入欄。Builder 同時檢查 `required` 指向已宣告參數，以及 `default` 符合欄位設定。啟動參數驗證採已宣告欄位。
-
-## Auth 與資料
-
-- 內建 Provider 的 Init Auth 已預填，Route Service 以同機 Builder 模式呼叫內建 Init 端點時會帶入示範憑證。接自己的 Provider 時，可填 Header 名稱和環境變數名稱，並在啟動 Route Service 前設定該變數。
-- Ingestion／Inference 的 Auth 欄位宣告須帶的 Header 與選填格式提示。User 輸入完整 Header 值，Route Service 依原值轉發。
-- MVP 資料保存在服務程序記憶體，重新啟動會恢復示範資料。Provider 上架 URL 和使用者存取由本機操作人員管理。
+`enum` 顯示為下拉選單。Builder 會驗證必填欄位、預設值及送出的設定。Builder、內建示範和 Mock 皆為本機 MVP，執行狀態保存在各自的程序記憶體。

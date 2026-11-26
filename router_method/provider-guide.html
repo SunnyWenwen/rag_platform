@@ -4,15 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>Provider 使用說明書 · Retrieval Router MVP</title>
+  <title>Provider 使用說明書 · Retrieval Builder MVP</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <main class="provider-guide">
-    <a href="/">Retrieval Router MVP</a>
+    <a href="/">Retrieval Builder MVP</a>
     <header class="guide-header">
       <h1>Provider 使用說明書</h1>
-      <p>把既有 Retrieval Service 上架為範本，讓使用者建立自己的 Retrieval System，並透過 Router 匯入資料與查詢。</p>
+      <p>把既有 Retrieval Service 上架為範本，讓使用者建立自己的 Retrieval System，並透過 Provider API 匯入資料與查詢。</p>
     </header>
     <div class="guide-layout">
       <nav class="panel guide-nav" aria-label="說明書目錄">
@@ -28,7 +28,7 @@
         <section class="panel guide-section" id="start">
           <h2>快速上架</h2>
           <ol>
-            <li>啟動自己的服務，準備 Router 後端可連線的 <code>init</code>、<code>ingestion</code> 和 <code>inference</code> URL。若服務與 Router 跑在不同機器或容器，請填 Router 所在環境可以解析的位址。</li>
+            <li>啟動自己的服務，準備 Builder 後端可連線的 <code>init</code>、<code>ingestion</code> 和 <code>inference</code> URL。若服務與 Builder 跑在不同機器或容器，請填 Builder 所在環境可以解析的位址。</li>
             <li>進入 <strong>Provider → Provide Retrieval System Template</strong>，填寫服務名稱、三支 API 的 URL 與 Auth、兩支業務 API 的說明和 JSON Sample，以及 Config Schema。從右側預覽 User 建立 System 時會看到的欄位。</li>
             <li>按 <strong>上架服務</strong>，切到 <strong>User → Create Retrieval System</strong>，選擇新範本並建立 System。確認 Init 成功後，從 System 圖卡測試 <strong>Ingest</strong> 和 <strong>Inference</strong>。</li>
           </ol>
@@ -42,11 +42,11 @@
               <tbody>
                 <tr><th scope="row">System 名稱</th><td>範本在 Provider 目錄及 User 選單中的名稱。User 建立的 System 另有自己的名稱。</td></tr>
                 <tr><th scope="row">Init URL</th><td>建立或重新套用 System 設定時呼叫的完整 HTTP／HTTPS URL。</td></tr>
-                <tr><th scope="row">Ingestion／Inference URL</th><td>User 執行對應操作時，Router 呼叫的完整 HTTP／HTTPS URL。路徑由 Provider 自訂。</td></tr>
-                <tr><th scope="row">Init Auth</th><td>填 Header 名稱及 Route Service 程序的環境變數名稱，例如 <code>Authorization</code> 和 <code>PROVIDER_INIT_AUTH</code>。環境變數的值須包含完整 Header 值，例如 <code>Bearer &lt;token&gt;</code>。若 Init 無需認證，兩欄皆留空。</td></tr>
+                <tr><th scope="row">Ingestion／Inference URL</th><td>Builder 測試與業務呼叫端直連使用的完整 HTTP／HTTPS URL。路徑由 Provider 自訂。</td></tr>
+                <tr><th scope="row">Init Auth</th><td>填 Header 名稱及 Builder 程序的環境變數名稱，例如 <code>Authorization</code> 和 <code>PROVIDER_INIT_AUTH</code>。環境變數的值須包含完整 Header 值，例如 <code>Bearer &lt;token&gt;</code>。若 Init 無需認證，兩欄皆留空。</td></tr>
                 <tr><th scope="row">Ingestion／Inference Auth</th><td>填 Header 名稱及選填的格式提示，例如 <code>Authorization</code>、<code>Bearer</code>。User 送出請求時輸入完整值，包含必要的前綴。若 API 無需認證，將對應 Auth 欄位留空。</td></tr>
                 <tr><th scope="row">使用說明與 JSON Sample</th><td>Ingestion 與 Inference 各填一組。說明應寫清楚支援的操作、必填欄位及結果。Sample 會預填 User 的 Request Body，直接寫業務 JSON。</td></tr>
-                <tr><th scope="row">Config Schema</th><td>定義 User 建立 System 時可設定的參數。User 填入的值會由 Router 放進每次請求的 <code>parameters</code>。</td></tr>
+                <tr><th scope="row">Config Schema</th><td>定義 User 建立 System 時可設定的參數。User 填入的值在 Init 時放進 <code>parameters</code>，由 Provider 依 System ID 保存。</td></tr>
               </tbody>
             </table>
           </div>
@@ -57,28 +57,27 @@
 
         <section class="panel guide-section" id="contract">
           <h2>Provider API 契約</h2>
-          <p>Router 以 <strong>POST</strong> 和 <code>Content-Type: application/json</code> 呼叫三支 API。每次的 JSON Body 都包含以下三個欄位。</p>
+          <p>三支 API 皆以 <strong>POST</strong> 和 <code>Content-Type: application/json</code> 呼叫。</p>
           <div class="guide-table-wrap">
             <table>
-              <thead><tr><th scope="col">欄位</th><th scope="col">內容</th></tr></thead>
+              <thead><tr><th scope="col">API</th><th scope="col">JSON Body</th><th scope="col">用途</th></tr></thead>
               <tbody>
-                <tr><th scope="row"><code>system_id</code></th><td>Router 分配的 System ID。Provider 可用它識別索引、資料集或資源，並依服務需求隔離不同 System 的資料。</td></tr>
-                <tr><th scope="row"><code>parameters</code></th><td>完整的 System 設定。Init 收到待套用的設定，業務操作收到目前生效的設定。沒有參數時為 <code>{}</code>。</td></tr>
-                <tr><th scope="row"><code>payload</code></th><td>Init 固定為 <code>null</code>。Ingestion／Inference 則是 User 送往 Router 的業務 JSON。</td></tr>
+                <tr><th scope="row">Init</th><td><code>{system_id, parameters}</code></td><td>依 System ID 建立或更新設定與資源。若無參數，傳 <code>{}</code>。</td></tr>
+                <tr><th scope="row">Ingestion</th><td><code>{system_id, payload}</code></td><td>用已生效的設定處理資料操作。</td></tr>
+                <tr><th scope="row">Inference</th><td><code>{system_id, payload}</code></td><td>用已生效的設定執行查詢。</td></tr>
               </tbody>
             </table>
           </div>
           <h3>Init</h3>
-          <p>建立或接回執行所需的資源，並套用 <code>parameters</code>。同一個 <code>system_id</code> 可能因 Edit Config 再次呼叫 Init，請處理重複初始化與參數變更。準備好後才回 <code>200</code> 或 <code>204</code>，Router 便會啟用該 System 或更新設定。</p>
+          <p>Init 收到的是完整的新設定。請先驗證參數，準備好資源後才切換生效設定，並回 <code>200</code> 或 <code>204</code>。建立索引、切換資源或更新設定失敗時，回傳錯誤並保留原本可用的設定和資源。使用相同 <code>system_id</code> 進行 Edit Config 或重試時，Provider 需妥善處理重複初始化與同一 System 的並行更新。</p>
           <pre><code data-example="init">{
   "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
-  "parameters": {"collection": "product_docs", "top_k": 5},
-  "payload": null
+  "parameters": {"collection": "product_docs", "top_k": 5}
 }</code></pre>
           <h3>Ingestion</h3>
           <p>依 <code>payload</code> 執行 Provider 支援的資料操作。需要支援上傳、覆寫、列出或刪除時，可由 Provider 定義 <code>action</code>、文件 ID 與回應格式。若有非同步工作，也可定義如何取得工作 ID 與查詢狀態。</p>
           <h3>Inference</h3>
-          <p>依 <code>system_id</code>、<code>parameters</code> 與查詢 <code>payload</code> 執行檢索。查詢格式、命中欄位、排序與錯誤由 Provider 定義，並在 Template 的使用說明中列明。Ingestion 與 Inference 的 HTTP 狀態碼和 Response Body 會由 Router 原樣轉回，Response 可為 JSON 或純文字。</p>
+          <p>依 <code>system_id</code> 取得生效設定，再用 <code>payload</code> 執行查詢。請在範本說明中寫清楚查詢格式、結果欄位及錯誤。Builder 測試頁保留 Provider 的 HTTP 狀態碼和 Response Body，回應可為 JSON 或純文字。</p>
           <p>以下是 Provider 自訂的 Inference 回應範例。沒有命中時可回 <code>{"results":[]}</code>。</p>
           <pre><code data-example="inference-response">{
   "results": [
@@ -91,12 +90,13 @@
           <h2>運作機制</h2>
           <ol>
             <li><strong>上架 Template</strong> 會驗證設定格式並儲存範本。到建立 System 時才會實際呼叫 Init，因此範本上架成功後仍須做連線驗收。</li>
-            <li><strong>建立或編輯 System</strong> 時，Builder 驗證參數並向獨立 Route Service 註冊。Router 呼叫 Provider Init，成功後才生效。Edit Config 沿用原本的 <code>system_id</code>。Init 失敗時，Router 保留原先生效的設定。</li>
-            <li><strong>送出業務請求</strong> 時，User 呼叫 <code>POST /systems/{system_id}/ingestion</code> 或 <code>POST /systems/{system_id}/inference</code>。Builder 操作頁透過同源入口轉發給 Router，獨立部署時也可直接呼叫 Router。Router 補上 <code>system_id</code> 與 <code>parameters</code>，並原值轉發範本指定的業務 Auth Header。Provider 負責驗證憑證與 System 的操作權限。</li>
+            <li><strong>建立或編輯 System</strong> 時，Builder 驗證參數並直接呼叫 Provider Init。有成功回應才會套用設定。Edit Config 沿用原本的 <code>system_id</code>。Provider 明確回報失敗時顯示錯誤。Builder 未取得結果時會提示結果未確認，允許用同一個 ID 與設定重試。</li>
+            <li><strong>從 Builder 測試</strong> 時，使用者輸入業務 Payload 和完整 Auth 值。Builder 後端補上 <code>system_id</code>，將範本指定的 Auth Header 原值傳給 Provider。Provider 驗證呼叫端是否有權操作該 System，並管理各 System 的設定與資料隔離。</li>
+            <li><strong>業務程式直連</strong> 時，使用 Provider 的 URL、<code>{system_id, payload}</code> 及 Auth 即可。<strong>Export YAML</strong> 提供兩支業務 API 的呼叫資訊，適用於已初始化的 System。</li>
             <li><strong>更新 Template</strong> 後，新建的 System 採用最新內容。既有 System 會沿用建立時的 API 和 Schema。</li>
           </ol>
           <h3>對照兩段 Ingestion 請求</h3>
-          <p>User 的 JSON Body</p>
+          <p>Builder 測試頁輸入的 Payload</p>
           <pre><code data-example="user-ingestion">{
   "action": "upsert",
   "document_id": "warranty-01",
@@ -105,7 +105,6 @@
           <p>Provider 實際收到的 JSON Body</p>
           <pre><code data-example="provider-ingestion">{
   "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
-  "parameters": {"collection": "product_docs", "top_k": 5},
   "payload": {
     "action": "upsert",
     "document_id": "warranty-01",
@@ -154,22 +153,22 @@
 
         <section class="panel guide-section" id="verify">
           <h2>驗收與排查</h2>
-          <p>可以先用 Router 內建的 <strong>Mock Retrieval Service</strong> 範本驗證。從 repo 根目錄在另一個終端啟動 Mock，再用 User 模式選擇該範本建立 System。</p>
+          <p>可以用 Builder 內建的 <strong>Mock Retrieval Service</strong> 範本驗證。從 repo 根目錄啟動 Mock，再在 User 頁用該範本建立 System。</p>
           <pre><code>python router_method/mock_retrieval_service.py</code></pre>
-          <p>送出 Ingest 或 Inference 後，比較 <strong>送往 Router 的 Request</strong> 和 Mock 回應的 <code>"see payload"</code>，就能看到 Router 包裝前後的 JSON。畫面會遮蔽 Request 的 Auth 值。</p>
-          <p>請求區下方的 <strong>cURL（Bash）</strong> 可重送同一次請求。若指令有 <code>[已遮蔽]</code>，請替換為完整 Auth Header 值。回應的 <code>Retrieval-Response-Source</code> 由 Router 設定。Router 自產的 <code>400</code>、<code>404</code> 和 <code>502</code> 標為 <code>router</code>，轉發的 Provider 回應標為 <code>provider</code>。</p>
+          <p>送出 Ingest 或 Inference 後，可比較 <strong>Provider Request</strong> 與 Mock 的 <code>"see payload"</code>，另可展開瀏覽器送往 Builder 的測試請求。<strong>直連 Provider 的 cURL（Bash）</strong> 會帶上 System ID。請把 <code>[已遮蔽]</code> 換成完整的 Auth Header 值。</p>
+          <p>Builder 測試頁以 <code>Retrieval-Response-Source</code> 標示回應來源。<code>provider</code> 代表收到 Provider 的 HTTP 回應。<code>builder</code> 代表 Builder 端的驗證、System 查找或連線錯誤。</p>
           <div class="guide-table-wrap">
             <table>
               <thead><tr><th scope="col">狀況</th><th scope="col">檢查項目</th></tr></thead>
               <tbody>
-                <tr><th scope="row"><code>400</code> 或表單驗證失敗</th><td>檢查 Schema、必填參數與業務 JSON。若訊息指出 Init Secret 缺少，請確認 Router 後端環境已設定對應變數。</td></tr>
+                <tr><th scope="row"><code>400</code> 或表單驗證失敗</th><td>檢查 Schema、必填參數與業務 JSON。若訊息指出 Init Secret 缺少，請確認 Builder 後端環境已設定對應變數。</td></tr>
                 <tr><th scope="row">Provider 回 <code>401</code>／<code>403</code></th><td>確認 Auth Header 名稱、完整值及權限是否符合 Provider 的要求。</td></tr>
                 <tr><th scope="row"><code>409</code></th><td>System 正在處理請求或套用設定，等當前操作完成後再試。</td></tr>
-                <tr><th scope="row">Router 回 <code>502</code></th><td>若錯誤提到 Route Service，檢查 Builder 的 Router URL 與 Router 是否啟動。若錯誤提到 Provider，檢查 Provider URL 與連線。建立或編輯 System 時也要確認 Init 已回 <code>200</code> 或 <code>204</code>。</td></tr>
+                <tr><th scope="row">Builder 回 <code>502</code></th><td>若收到 Init HTTP 錯誤，檢查 Provider 的設定驗證及資源初始化。若結果未確認，檢查 Provider URL 和連線，使用同一個 ID 及設定重試。</td></tr>
               </tbody>
             </table>
           </div>
-          <p>目前 Router MVP 將自己上架的 Template 和建立的 System 保存在程序記憶體，重啟後會載入內建示範範本。</p>
+          <p>本機 MVP 將範本和 System 放在程序記憶體。Mock 重啟後可從 Builder 用 Edit Config 重新 Init。實際 Provider 應依服務需求保存設定、資源與資料。</p>
         </section>
       </article>
     </div>

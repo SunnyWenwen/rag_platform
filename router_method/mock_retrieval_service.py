@@ -1,55 +1,48 @@
-"""Start a standalone mock Provider for the Router MVP."""
+"""Start a standalone mock Retrieval Provider."""
 
 import argparse
-import json
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlsplit
+from http.server import ThreadingHTTPServer
+from threading import Lock
+
+from provider_http import JsonHandler, as_json, provider_request
 
 
 RESPONSES = {
-    "/init": "成功呼叫init",
-    "/ingestion": "成功呼叫ingestion",
-    "/inference": "成功呼叫inference",
+    "init": "成功呼叫init",
+    "ingestion": "成功呼叫ingestion",
+    "inference": "成功呼叫inference",
 }
 
 
-class MockRetrievalHandler(BaseHTTPRequestHandler):
+class MockRetrievalHandler(JsonHandler):
     def do_POST(self):
-        message = RESPONSES.get(urlsplit(self.path).path)
-        if message is None:
-            self.send_error(404)
-            return
-        try:
-            length = int(self.headers.get("Content-Length", "0"))
-            if length < 0:
-                raise ValueError
-        except ValueError:
-            self.send_error(400, "Invalid Content-Length")
-            return
-        try:
-            raw = self.rfile.read(length)
-            payload = json.loads(raw) if raw else None
-            body = json.dumps(
-                {"message": message, "see payload": payload},
-                ensure_ascii=False,
-                allow_nan=False,
-                indent=2,
-            ).encode("utf-8")
-        except (ValueError, RecursionError):
-            self.send_error(400, "Invalid JSON request body")
-            return
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+        self.handle_json(self.dispatch, same_origin=False)
+
+    def dispatch(self, path, body):
+        operation = path.removeprefix("/")
+        if operation not in RESPONSES:
+            return as_json(404, {"error": "找不到 Mock API。"})
+        system_id = provider_request(operation, body)
+        with self.server.lock:
+            if operation == "init":
+                self.server.parameters[system_id] = body["parameters"]
+            elif system_id not in self.server.parameters:
+                return as_json(404, {"error": "Mock Provider 尚未初始化此 System。"})
+        return as_json(200, {"message": RESPONSES[operation], "see payload": body})
+
+
+class MockServer(ThreadingHTTPServer):
+    def __init__(self, port):
+        super().__init__(("127.0.0.1", port), MockRetrievalHandler)
+        self.lock = Lock()
+        self.parameters = {}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=8766)
     args = parser.parse_args()
-    with ThreadingHTTPServer(("127.0.0.1", args.port), MockRetrievalHandler) as server:
+    with MockServer(args.port) as server:
         print(f"Mock Retrieval Service · http://127.0.0.1:{server.server_port}", flush=True)
         try:
             server.serve_forever()
