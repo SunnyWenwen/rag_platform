@@ -162,12 +162,15 @@ class JsonHandler(BaseHTTPRequestHandler):
         # Keep credentials and request contents out of access logs.
         return
 
+    def read_request_body(self, size):
+        return self.rfile.read(size)
+
     def read_json(self):
         try:
             size = int(self.headers.get("Content-Length", "0"))
             if not 0 < size <= MAX_REQUEST_BYTES:
                 raise ValueError("JSON Body 大小超出允許範圍。")
-            return json.loads(self.rfile.read(size), parse_constant=reject_json_constant, parse_float=finite_float)
+            return json.loads(self.read_request_body(size), parse_constant=reject_json_constant, parse_float=finite_float)
         except (ValueError, RecursionError) as error:
             raise InputError(f"JSON Body 無效。{error}") from error
 

@@ -14,7 +14,7 @@
         "header": "Authorization",
         "scheme": "Bearer mock-token"
       },
-      "description": "直接送出含 system_id 和 payload 的 JSON。Mock 回傳已儲存的 domain_name 與實際收到的 Request Body（see payload）。",
+      "description": "直接送出含 system_id 和 payload 的 JSON。Mock 回傳已儲存的業務領域（domain_name） 與實際收到的 Request Body（see payload）。",
       "sample": {
         "documents": [
           {
@@ -29,7 +29,7 @@
         "header": "Authorization",
         "scheme": "Bearer mock-token"
       },
-      "description": "直接送出含 system_id 和 payload 的 JSON。Mock 回傳已儲存的 domain_name 與實際收到的 Request Body（see payload）。",
+      "description": "直接送出含 system_id 和 payload 的 JSON。Mock 回傳已儲存的業務領域（domain_name） 與實際收到的 Request Body（see payload）。",
       "sample": {
         "query": "測試查詢"
       }
@@ -40,9 +40,9 @@
     "properties": {
       "domain_name": {
         "type": "string",
-        "title": "Domain name",
-        "description": "供 Mock 依 System ID 保存的網域名稱。",
-        "default": "example.com"
+        "title": "業務領域",
+        "description": "指定此 System 的業務領域，例如客服、財務或產品支援。",
+        "default": "客服"
       }
     },
     "additionalProperties": false,

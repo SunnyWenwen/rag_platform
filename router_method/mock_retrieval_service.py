@@ -1,6 +1,7 @@
 """Start a standalone mock Retrieval Provider."""
 
 import argparse
+import json
 import os
 from http.server import ThreadingHTTPServer
 from threading import Lock
@@ -17,10 +18,32 @@ RESPONSES = {
     "inference": "成功呼叫inference",
 }
 DEFAULT_BUILDER_ORIGINS = {"http://127.0.0.1:8765", "http://localhost:8765"}
+CREDENTIAL_HEADERS = {"authorization", "proxy-authorization", "cookie", "x-api-key"}
 
 
 class MockRetrievalHandler(ProviderCorsHandler):
     browser_provider_paths = frozenset({"/ingestion", "/inference"})
+
+    def read_request_body(self, size):
+        body = super().read_request_body(size)
+        self.request_body = body
+        return body
+
+    def write_reply(self, reply):
+        headers = [
+            [name, "[redacted]" if name.lower() in CREDENTIAL_HEADERS else value]
+            for name, value in self.headers.items()
+        ]
+        entry = {
+            "method": self.command,
+            "url": self.path,
+            "request_headers": headers,
+            "request_body": getattr(self, "request_body", b"").decode("utf-8", errors="replace"),
+            "status": reply.status,
+            "response_body": reply.body.decode("utf-8", errors="replace"),
+        }
+        print("[Mock Provider] " + json.dumps(entry, ensure_ascii=False, indent=2), flush=True)
+        super().write_reply(reply)
 
     def do_POST(self):
         self.handle_json(self.dispatch, same_origin=False)

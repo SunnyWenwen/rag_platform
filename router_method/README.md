@@ -49,7 +49,7 @@ Builder 啟動時會載入 **Mock Retrieval Service** 範本。另開終端啟�
 python router_method/mock_retrieval_service.py
 ```
 
-接著在 **User → Create Retrieval System** 選 Mock 範本，填寫 **Domain name**（預設 `example.com`）。Mock 會依 System ID 保存此設定。
+接著在 **User → Create Retrieval System** 選 Mock 範本，填寫 **業務領域**（`domain_name`，預設「客服」）。Mock 會依 System ID 保存此設定。
 
 - Init 使用 `Authorization: Bearer mock-init-token`。在預設 URL 下，Builder 和 Mock 會自動使用這個公開測試值。如需自訂，在兩個程序啟動前都設定 `BUILDER_MOCK_INIT_AUTH` 為完整 Header 值。
 - Ingestion 和 Inference 都使用 `Authorization: Bearer mock-token`。操作頁的 Auth 提示會直接顯示這個公開測試值，可複製到輸入框。
@@ -61,7 +61,9 @@ python router_method/mock_retrieval_service.py
 | `POST http://127.0.0.1:8766/ingestion` | `成功呼叫ingestion` |
 | `POST http://127.0.0.1:8766/inference` | `成功呼叫inference` |
 
-Mock 的 `"see payload"` 會回傳收到的完整 JSON Body。操作頁的 **Provider Request** 可與此欄位對照。業務回應也會顯示由 Init 保存的 `domain_name`。Mock 重啟後須重新 Init，已建立的 System 可透過 **Edit Config** 重新套用。
+Mock 的 `"see payload"` 會回傳收到的完整 JSON Body。操作頁的 **Provider Request** 可與此欄位對照。業務回應也會顯示由 Init 保存的業務領域（`domain_name`）。Mock 重啟後須重新 Init，已建立的 System 可透過 **Edit Config** 重新套用。
+
+Mock 的 console 會印出 HTTP 方法、請求 URL（含 query string）、請求 Headers 與 Body，以及回應狀態碼和 Body。`Authorization`、`Proxy-Authorization`、`Cookie` 和 `X-API-Key` 的值會顯示為 `[redacted]`。
 
 ## Meta Schema 支援範圍
 

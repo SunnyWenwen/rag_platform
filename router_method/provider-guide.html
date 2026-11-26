@@ -151,8 +151,8 @@
           <h2>驗收與排查</h2>
           <p>可以用 Builder 內建的 <strong>Mock Retrieval Service</strong> 範本驗證。從 repo 根目錄啟動 Mock，再在 User 頁用該範本建立 System。</p>
           <pre><code>python router_method/mock_retrieval_service.py</code></pre>
-          <p>建立時填寫 <strong>Domain name</strong>，在 Init 回應視窗可看到 Mock 接到的設定。Mock 的三支 API 都需要 Authorization。Init 由 Builder 帶入內建測試憑證，業務請求請填提示中的 <code>Bearer mock-token</code>。</p>
-          <p>送出 Ingest 或 Inference 後，可比較 <strong>Provider Request</strong> 與 Mock 的 <code>"see payload"</code>。回應也會顯示 Init 保存的 <code>domain_name</code>。<strong>直連 Provider 的 cURL（Bash）</strong> 會帶上 System ID，請把 <code>[已遮蔽]</code> 換成完整的 Auth Header 值。</p>
+          <p>建立時填寫 <strong>業務領域</strong>（<code>domain_name</code>，預設「客服」），在 Init 回應視窗可看到 Mock 接到的設定。Mock 的三支 API 都需要 Authorization。Init 由 Builder 帶入內建測試憑證，業務請求請填提示中的 <code>Bearer mock-token</code>。</p>
+          <p>送出 Ingest 或 Inference 後，可比較 <strong>Provider Request</strong> 與 Mock 的 <code>"see payload"</code>。回應也會顯示 Init 保存的業務領域（<code>domain_name</code>）。<strong>直連 Provider 的 cURL（Bash）</strong> 會帶上 System ID，請把 <code>[已遮蔽]</code> 換成完整的 Auth Header 值。</p>
           <div class="guide-table-wrap">
             <table>
               <thead><tr><th scope="col">狀況</th><th scope="col">檢查項目</th></tr></thead>
@@ -164,6 +164,7 @@
               </tbody>
             </table>
           </div>
+          <p>Mock 的 console 會印出 HTTP 方法、請求 URL（含 query string）、請求 Headers 與 Body，以及回應狀態碼和 Body。常見憑證 Header（如 <code>Authorization</code>）會顯示為 <code>[redacted]</code>。</p>
           <p>本機 MVP 將範本和 System 放在程序記憶體。Mock 重啟後可從 Builder 用 Edit Config 重新 Init。實際 Provider 應依服務需求保存設定、資源與資料。</p>
         </section>
       </article>
