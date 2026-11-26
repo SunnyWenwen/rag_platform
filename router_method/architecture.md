@@ -1,11 +1,12 @@
 # Provider 模式架構
 
-Python 啟動並提供 React Builder 與管理 API。Builder 管理上架與 System 設定，Provider 以 `system_id` 管理生效設定及資料。Builder 操作頁的業務測試經 Builder 後端呼叫 Provider，應用程式可直接呼叫 Provider。設定式 Runtime 是 Builder 的另一條路徑，可獨立整合既有的索引與生命週期操作。
+Python 啟動並提供 React Builder 與管理 API。Builder 管理上架與 System 設定，Provider 以 `system_id` 管理生效設定及資料。Builder 操作頁和應用程式直接呼叫 Provider 的業務 API。設定式 Runtime 是 Builder 的另一條路徑，可獨立整合既有的索引與生命週期操作。
 
 ```mermaid
 flowchart TD
     U["User / Provider 操作頁"] --> B["Builder 後端"]
-    B -->|"Init 與 UI 測試"| P["Provider Service"]
+    B -->|Init| P["Provider Service"]
+    U -->|"Ingestion / Inference"| P
     C["業務呼叫端"] -->|"Ingestion / Inference"| P
     P --> D["System 設定、索引與資料"]
     B -.->|"設定式 System"| R["Runtime"]
@@ -34,11 +35,11 @@ sequenceDiagram
     U->>B: 建立或編輯 System
     B->>P: Init {system_id, parameters}
     alt 設定已生效
-        P-->>B: HTTP 200 或 204
-        B-->>U: 顯示已套用設定
+        P-->>B: HTTP 200 或 204，附選填 Body
+        B-->>U: 套用設定並顯示 Init 回應
     else Provider 回報失敗
-        P-->>B: 失敗狀態
-        B-->>U: 顯示失敗，保留最近一次確認的設定
+        P-->>B: 失敗狀態及 Body
+        B-->>U: 顯示 Init 回應並保留原設定
     else Builder 未取得結果
         B-->>U: 結果未確認，以相同 ID 和設定重試
     end
@@ -51,12 +52,11 @@ Edit Config 沿用既有 System ID。Provider 應先驗證並準備資源，完�
 ```mermaid
 sequenceDiagram
     participant U as Builder 操作頁
-    participant B as Builder 後端
     participant P as Provider
     participant C as 業務呼叫端
-    U->>B: 送出業務 Payload 與 Auth
-    B->>P: POST {system_id, payload} 與 Auth
-    P-->>U: 經 Builder 回傳 HTTP 狀態碼及 Body
+    U->>P: 跨來源時先送 CORS 預檢
+    U->>P: POST {system_id, payload} 與 Auth
+    P-->>U: HTTP 狀態碼及 Body
     C->>P: 直連業務 URL，帶相同 JSON 與 Auth
     P-->>C: HTTP 狀態碼及 Body
 ```

@@ -17,8 +17,9 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import ValidationError
 
 from provider_http import (
-    OPERATIONS, RESPONSE_SOURCE_HEADER, InputError, JsonHandler, Reply, UpstreamError, as_json,
-    builder_error, exchange, provider_request, require_object, required_text, validate_apis,
+    MOCK_INIT_AUTH, MOCK_INIT_SECRET_REF, MOCK_ORIGIN, OPERATIONS, RESPONSE_SOURCE_HEADER,
+    InputError, ProviderCorsHandler, Reply, UpstreamError, as_json, builder_error, call_init,
+    provider_request, require_object, required_text, validate_apis,
 )
 
 
@@ -33,7 +34,6 @@ WORKSPACES = {
 META_SCHEMA = json.loads((ROOT / "config-schema.meta.schema.json").read_text())
 META_VALIDATOR = Draft202012Validator(META_SCHEMA)
 SYSTEM_CONFIG_ROUTE = re.compile(r"/api/systems/([a-f0-9-]{36})")
-SYSTEM_TEST_ROUTE = re.compile(r"/api/systems/([a-f0-9-]{36})/test/(ingestion|inference)")
 SYSTEM_EXPORT_ROUTE = re.compile(r"/api/systems/([a-f0-9-]{36})/export")
 PROVIDER_CONFIG_ROUTE = re.compile(r"/api/providers/(demo|mock-retrieval|[a-f0-9-]{36})")
 STATIC_FILES = {
@@ -86,8 +86,10 @@ class BuilderServer(ThreadingHTTPServer):
         self.lock = threading.Lock()
         self.updating = set()
         self.unconfirmed_creates = {}
+        self.init_responses = {}
         demo = json.loads((ROOT / "demo-provider.json").read_text(encoding="utf-8"))
         self.origin = f"http://127.0.0.1:{self.server_port}"
+        self.provider_origins = {self.origin, f"http://localhost:{self.server_port}"}
         for api in demo["apis"].values():
             api["url"] = self.origin + urlsplit(api["url"]).path
         demo["id"] = "demo"
@@ -158,7 +160,7 @@ class BuilderServer(ThreadingHTTPServer):
             current = self.systems.get(system_id)
             if current is not None:
                 if all(current[key] == value for key, value in system.items()):
-                    return as_json(200, current)
+                    return as_json(200, {**current, "init_response": self.init_responses.get(system_id)})
                 return builder_error(409, "System ID 已存在。")
             pending = self.unconfirmed_creates.get(system_id)
             if pending is not None:
@@ -206,14 +208,15 @@ class BuilderServer(ThreadingHTTPServer):
             ref = auth["secret_ref"]
             if ref == DEMO_INIT_SECRET_REF and endpoint["url"] == self.origin + "/demo/init":
                 secret = DEMO_INIT_AUTH
+            elif ref == MOCK_INIT_SECRET_REF and endpoint["url"] == MOCK_ORIGIN + "/init":
+                secret = os.environ.get(ref, MOCK_INIT_AUTH)
             else:
                 secret = os.environ.get(ref)
             if not secret:
                 raise InputError(f"尚未設定 Builder 的 Init 憑證環境變數 {ref}。")
             headers[auth["header"]] = secret
         try:
-            reply = exchange(endpoint["url"], {"system_id": system_id, "parameters": parameters},
-                             headers, read_body=False)
+            init_response = call_init(endpoint["url"], {"system_id": system_id, "parameters": parameters}, headers)
         except UpstreamError:
             if status == 201:
                 with self.lock:
@@ -223,17 +226,20 @@ class BuilderServer(ThreadingHTTPServer):
                 "init_unconfirmed": True,
                 "system_id": system_id,
             }, headers={RESPONSE_SOURCE_HEADER: "builder"})
-        if reply.status not in {200, 204}:
+        provider_status = init_response["status"]
+        if provider_status not in {200, 204}:
             with self.lock:
                 self.unconfirmed_creates.pop(system_id, None)
             return as_json(502, {
-                "error": f"Provider Init 回傳 HTTP {reply.status}，設定未生效。",
-                "provider_status": reply.status,
+                "error": f"Provider Init 回傳 HTTP {provider_status}，設定未生效。",
+                "provider_status": provider_status,
+                "init_response": init_response,
             }, headers={RESPONSE_SOURCE_HEADER: "provider"})
         with self.lock:
             self.systems[system_id] = system
+            self.init_responses[system_id] = init_response
             self.unconfirmed_creates.pop(system_id, None)
-        return as_json(status, system)
+        return as_json(status, {**system, "init_response": init_response})
 
     def export_system(self, system_id):
         with self.lock:
@@ -245,21 +251,6 @@ class BuilderServer(ThreadingHTTPServer):
             "Content-Type": "application/yaml; charset=utf-8",
             "Content-Disposition": f'attachment; filename="retrieval-system-{system_id}.yaml"',
         })
-
-    def test_operation(self, system_id, operation, payload, request_headers):
-        with self.lock:
-            system = self.systems.get(system_id)
-            if system is None:
-                return builder_error(404, "找不到已啟用的 System。")
-            if system_id in self.updating:
-                return builder_error(409, "System 正在套用設定，請稍後再試。")
-        endpoint = system["provider"]["apis"][operation]
-        headers = {}
-        if auth := endpoint["auth"]:
-            if (value := request_headers.get(auth["header"])) is not None:
-                headers[auth["header"]] = value
-        reply = exchange(endpoint["url"], {"system_id": system_id, "payload": payload}, headers)
-        return Reply(reply.status, reply.body, {**reply.headers, "Content-Security-Policy": "sandbox"})
 
     def demo_request(self, operation, raw, headers):
         system_id = provider_request(operation, raw)
@@ -306,7 +297,9 @@ class BuilderServer(ThreadingHTTPServer):
             raise InputError("可用的示範 action 為 upsert、list、delete。")
 
 
-class Handler(JsonHandler):
+class Handler(ProviderCorsHandler):
+    browser_provider_paths = frozenset({"/demo/ingestion", "/demo/inference"})
+
     def do_GET(self):
         path = urlsplit(self.path).path
         if path == "/api/catalog":
@@ -328,8 +321,6 @@ class Handler(JsonHandler):
         if path == "/api/schema/validate":
             validate_schema(body)
             return as_json(200, {"valid": True})
-        if route := SYSTEM_TEST_ROUTE.fullmatch(path):
-            return self.server.test_operation(*route.groups(), body, self.headers)
         if path.removeprefix("/demo/") in OPERATIONS and path.startswith("/demo/"):
             return self.server.demo_request(path.removeprefix("/demo/"), body, self.headers)
         return builder_error(404, "找不到操作路徑。")
@@ -342,7 +333,8 @@ class Handler(JsonHandler):
         return builder_error(404, "找不到操作路徑。")
 
     def do_POST(self):
-        self.handle_json(self.dispatch)
+        path = urlsplit(self.path).path
+        self.handle_json(self.dispatch, same_origin=path not in self.browser_provider_paths)
 
     def do_PUT(self):
         self.handle_json(self.replace)

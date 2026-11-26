@@ -13,14 +13,16 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 OPERATIONS = ("init", "ingestion", "inference")
 MAX_REQUEST_BYTES = 2_000_000
+MAX_INIT_RESPONSE_BYTES = 64 * 1024
+MOCK_ORIGIN = "http://127.0.0.1:8766"
+MOCK_INIT_SECRET_REF = "BUILDER_MOCK_INIT_AUTH"
+MOCK_INIT_AUTH = "Bearer mock-init-token"
+MOCK_REQUEST_AUTH = "Bearer mock-token"
 HEADER_NAME = re.compile(r"[A-Za-z][A-Za-z0-9!#$%&'*+.^_\x60|~-]*")
 RESERVED_HEADERS = {
     "connection", "content-encoding", "content-length", "content-type", "cookie",
     "expect", "host", "origin", "proxy-authorization", "transfer-encoding",
 }
-PROVIDER_RESPONSE_HEADERS = (
-    "Content-Type", "Content-Encoding", "Content-Language", "Retry-After", "WWW-Authenticate",
-)
 RESPONSE_SOURCE_HEADER = "Retrieval-Response-Source"
 
 
@@ -113,7 +115,7 @@ def validate_apis(value):
     return apis
 
 
-def exchange(url, body, auth_headers, *, read_body=True, timeout=15):
+def call_init(url, body, auth_headers, *, timeout=15):
     try:
         request = Request(
             url,
@@ -126,9 +128,20 @@ def exchange(url, body, auth_headers, *, read_body=True, timeout=15):
         except HTTPError as error:
             response = error
         with response:
-            headers = {name: response.headers[name] for name in PROVIDER_RESPONSE_HEADERS if name in response.headers}
-            headers[RESPONSE_SOURCE_HEADER] = "provider"
-            return Reply(response.status, response.read() if read_body else b"", headers)
+            result = {"status": response.status, "body": ""}
+            try:
+                raw = response.read(MAX_INIT_RESPONSE_BYTES + 1)
+            except (OSError, HTTPException):
+                result["body_unavailable"] = True
+                return result
+            encoding = response.headers.get_content_charset() or "utf-8"
+            try:
+                result["body"] = raw[:MAX_INIT_RESPONSE_BYTES].decode(encoding, errors="replace")
+            except (LookupError, ValueError):
+                result["body"] = raw[:MAX_INIT_RESPONSE_BYTES].decode("utf-8", errors="replace")
+            if len(raw) > MAX_INIT_RESPONSE_BYTES:
+                result["truncated"] = True
+            return result
     except (URLError, OSError, ValueError, HTTPException) as error:
         raise UpstreamError("無法取得 Provider 回應，請確認服務 URL 與連線。") from error
 
@@ -186,3 +199,26 @@ class JsonHandler(BaseHTTPRequestHandler):
         except UpstreamError as error:
             reply = builder_error(502, str(error))
         self.write_reply(reply)
+
+
+class ProviderCorsHandler(JsonHandler):
+    browser_provider_paths = frozenset()
+
+    def end_headers(self):
+        if urlsplit(self.path).path in self.browser_provider_paths:
+            self.send_header("Vary", "Origin")
+            if (origin := self.headers.get("Origin")) in self.server.provider_origins:
+                self.send_header("Access-Control-Allow-Origin", origin)
+        super().end_headers()
+
+    def do_OPTIONS(self):
+        if urlsplit(self.path).path not in self.browser_provider_paths:
+            self.write_reply(as_json(404, {"error": "找不到操作路徑。"}))
+        elif (self.headers.get("Origin") not in self.server.provider_origins
+                or self.headers.get("Access-Control-Request-Method") != "POST"):
+            self.write_reply(as_json(403, {"error": "此來源或方法不在 Provider 的 CORS 設定內。"}))
+        else:
+            self.write_reply(Reply(204, b"", {
+                "Access-Control-Allow-Methods": "POST",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            }))

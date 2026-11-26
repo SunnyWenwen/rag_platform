@@ -4,7 +4,6 @@ import {createRoot} from "react-dom/client";
 const operations = {init: "Init", ingestion: "Ingestion", inference: "Inference"};
 const businessOperations = [["ingestion", "Ingest"], ["inference", "Inference"]];
 const jsonText = value => JSON.stringify(value, null, 2);
-const responseSource = "Retrieval-Response-Source";
 
 async function api(path, body, method = "POST") {
   const response = await fetch(path, body === undefined ? undefined : {
@@ -13,7 +12,7 @@ async function api(path, body, method = "POST") {
   const result = await response.json();
   if (!response.ok) {
     throw Object.assign(new Error(result.error || "HTTP " + response.status), {
-      status: response.status, initUnconfirmed: result.init_unconfirmed === true,
+      status: response.status, initUnconfirmed: result.init_unconfirmed === true, initResponse: result.init_response,
     });
   }
   return result;
@@ -198,7 +197,8 @@ function ProviderDialog({provider, demo, onSave, onClose}) {
                 <Field label={label + " URL"} required><input id={key + "-url"} type="url" {...props("url")}/></Field>
                 <div className="auth-fields">
                   <Field label="Auth Header" hint="留空表示無需 Auth。"><input id={key + "-auth-header"} {...props("header")}/></Field>
-                  <Field label={key === "init" ? "Secret 環境變數" : "Auth 格式提示"}><input id={key + "-auth-value"} {...props("authValue")}/></Field>
+                  <Field label={key === "init" ? "Secret 環境變數" : "Auth 格式提示"}
+                    hint={key === "init" ? undefined : "使用者會看到這段文字。可填格式或公開的示範憑證。"}><input id={key + "-auth-value"} {...props("authValue")}/></Field>
                 </div>
                 {key !== "init" && <>
                   <Field label={label + " 使用說明"} required><textarea id={key + "-description"} rows="2" {...props("description")}/></Field>
@@ -243,11 +243,11 @@ function SystemDialog({system, providers, workspaceId, onSave, onClose}) {
   const [values, setValues] = useState(() => defaultInputs(provider.config_schema, system?.parameters));
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [unconfirmed, setUnconfirmed] = useState(false);
+  const [initOutcome, setInitOutcome] = useState(null);
   const retry = useRef(null);
 
   async function save(event) {
-    event.preventDefault();
+    event?.preventDefault();
     setBusy(true);
     setError("");
     try {
@@ -261,24 +261,58 @@ function SystemDialog({system, providers, workspaceId, onSave, onClose}) {
         retry.current = config;
       }
       const path = system ? "/api/systems/" + system.system_id : "/api/systems";
-      await onSave(await api(path, retry.current, system ? "PUT" : "POST"));
+      const {init_response: response, ...item} = await api(path, retry.current, system ? "PUT" : "POST");
+      retry.current = null;
+      onSave(item);
+      setInitOutcome({response, message: "設定已套用。"});
     } catch (err) {
-      const unknown = Boolean(retry.current && (err.initUnconfirmed || !err.status || (unconfirmed && err.status === 409)));
-      setUnconfirmed(unknown);
+      const unknown = Boolean(retry.current && (err.initUnconfirmed || !err.status || (initOutcome?.unknown && err.status === 409)));
       if (!unknown) retry.current = null;
-      setError(unknown
-        ? "初始化結果未確認。請重試以沿用同一個 System ID 與設定。"
-        : err.message);
+      if (unknown) {
+        setInitOutcome({unknown, failed: true, message: "初始化結果未確認。請重試以沿用同一個 System ID 與設定。"});
+      } else if (err.initResponse) {
+        setInitOutcome({response: err.initResponse, failed: true, message: err.message});
+      } else {
+        setInitOutcome(null);
+        setError(err.message);
+      }
     } finally {
       setBusy(false);
     }
   }
 
-  return <Dialog id="create-dialog" title={system ? "Edit Config" : "Create Retrieval System"}
+  if (initOutcome) {
+    const {response, message, failed, unknown} = initOutcome;
+    const dismiss = failed && !unknown ? () => setInitOutcome(null) : onClose;
+    return <Dialog key="init" id="init-response-dialog" title="Provider Init Response"
+      subtitle={system ? "Edit Config" : "Create Retrieval System"} busy={busy} onClose={dismiss}>
+      <div className="dialog-body">
+        <Notice error={failed} text={message}/>
+        <div className="console-title">
+          <h3>Response Body</h3>
+          {response && <span className={"http-status" + (failed ? " failed" : "")}>HTTP {response.status}</span>}
+        </div>
+        <pre className="response-editor" tabIndex="0" aria-label="Init Response Body">{
+          response?.body_unavailable ? "無法讀取回應內容" : response?.body || (response ? "空白回應" : "未取得 Provider 回應")
+        }</pre>
+        {response?.truncated && <Notice text="僅顯示回應的前 64 KiB。"/>}
+      </div>
+      <footer className="dialog-footer">
+        <button type="button" className={"button " + (unknown ? "secondary" : "primary")} disabled={busy} onClick={dismiss}>
+          {failed && !unknown ? "返回設定" : "關閉結果"}
+        </button>
+        {unknown && <button type="button" className="button primary" disabled={busy} onClick={() => save()}>
+          {busy ? "初始化中…" : "重試初始化"}
+        </button>}
+      </footer>
+    </Dialog>;
+  }
+
+  return <Dialog key="config" id="create-dialog" title={system ? "Edit Config" : "Create Retrieval System"}
     subtitle={system ? "儲存時會以同一個 System ID 重新呼叫 Provider Init。" : "選擇 Provider Template 並填寫初始化設定。"} busy={busy} onClose={onClose}>
     <form id="system-form" onSubmit={save}>
       <div className="dialog-body">
-        <div inert={unconfirmed || busy}>
+        <div inert={busy}>
           <Field label="Provider" required><select id="system-provider" value={provider.id} disabled={Boolean(system)} onChange={event => {
             const selected = providers.find(item => item.id === event.target.value);
             setProvider(selected);
@@ -296,7 +330,7 @@ function SystemDialog({system, providers, workspaceId, onSave, onClose}) {
       </div>
       <footer className="dialog-footer">
         <button type="button" className="button secondary" disabled={busy} onClick={onClose}>取消</button>
-        <button className="button primary" id="publish-system" disabled={busy}>{busy ? "初始化中…" : unconfirmed ? "重試初始化" : system ? "儲存並套用" : "建立並初始化"}</button>
+        <button className="button primary" id="publish-system" disabled={busy}>{busy ? "初始化中…" : system ? "儲存並套用" : "建立並初始化"}</button>
       </footer>
     </form>
   </Dialog>;
@@ -309,10 +343,11 @@ function AuthField({auth, value, onChange}) {
     <label htmlFor="request-auth">{auth.header}</label>
     <div className="password-control">
       <input id="request-auth" type={visible ? "text" : "password"} autoComplete="off" value={value} onChange={onChange}
-        placeholder={auth.scheme ? auth.scheme + " …" : "輸入憑證"}/>
+        placeholder="輸入完整憑證" aria-describedby={auth.scheme ? "request-auth-hint" : undefined}/>
       <button type="button" className="password-toggle" aria-controls="request-auth" aria-label={action} title={action}
         onClick={() => setVisible(!visible)}><span className="eye-icon" aria-hidden="true"/></button>
     </div>
+    {auth.scheme && <small id="request-auth-hint">{auth.scheme}</small>}
   </div>;
 }
 
@@ -327,9 +362,9 @@ function curlCommand(url, headers, body) {
   return lines.join(" \\\n  ");
 }
 
-function Console({route, systemId, endpoint, drafts, busy, setBusy}) {
-  const sample = jsonText(endpoint.sample);
-  const [body, setBody] = useState(() => drafts.get(route) ?? sample);
+function Console({draftKey, systemId, endpoint, drafts, busy, setBusy}) {
+  const sample = jsonText({system_id: systemId, payload: endpoint.sample});
+  const [body, setBody] = useState(() => drafts.get(draftKey) ?? sample);
   const [credential, setCredential] = useState("");
   const [sent, setSent] = useState(null);
   const [response, setResponse] = useState({status: "", source: "", body: ""});
@@ -338,10 +373,13 @@ function Console({route, systemId, endpoint, drafts, busy, setBusy}) {
   async function send(event) {
     event.preventDefault();
     setBusy(true);
-    setResponse({status: "傳送中…", source: "", body: ""});
+    setSent(null);
+    setResponse({status: "傳送中…", body: ""});
     try {
-      parseJSON(body, "Payload");
-      const providerBody = '{\n  "system_id": ' + jsonText(systemId) + ',\n  "payload": ' + body + "\n}";
+      const parsed = parseJSON(body, "Request Body");
+      if (!parsed || parsed.system_id !== systemId || !Object.hasOwn(parsed, "payload") || Object.keys(parsed).length !== 2) {
+        throw new Error("Request Body 須包含此 System 的 system_id 與 payload。");
+      }
       const headers = new Headers({"Content-Type": "application/json"});
       const display = ["Content-Type: application/json"];
       if (endpoint.auth && credential) {
@@ -349,17 +387,28 @@ function Console({route, systemId, endpoint, drafts, busy, setBusy}) {
         display.push(endpoint.auth.header + ": [已遮蔽]");
       }
       setSent({
-        provider: ["POST " + endpoint.url, ...display, "", providerBody].join("\n"),
-        builder: ["POST " + route, ...display, "", body].join("\n"),
-        curl: curlCommand(endpoint.url, display, providerBody),
+        provider: ["POST " + endpoint.url, ...display, "", body].join("\n"),
+        curl: curlCommand(endpoint.url, display, body),
       });
-      const result = await fetch(route, {method: "POST", headers, body});
-      setResponse({
-        status: "HTTP " + result.status, source: result.headers.get(responseSource), failed: !result.ok,
-        body: (await result.text()) || "空白回應",
-      });
+      let result;
+      try {
+        result = await fetch(endpoint.url, {
+          method: "POST", headers, body, credentials: "omit", redirect: "error",
+          referrerPolicy: "no-referrer", signal: AbortSignal.timeout(15_000),
+        });
+      } catch (err) {
+        if (err.name === "TimeoutError") throw new Error("等待 Provider 回應逾時。");
+        throw new Error("瀏覽器無法連到 Provider。請確認 API URL、連線與 Provider 的 CORS 設定。若 Builder 使用 HTTPS，請使用 HTTPS Provider URL。");
+      }
+      let responseBody;
+      try {
+        responseBody = (await result.text()) || "空白回應";
+      } catch {
+        responseBody = "無法讀取回應內容";
+      }
+      setResponse({status: "HTTP " + result.status, source: "provider", failed: !result.ok, body: responseBody});
     } catch (err) {
-      setResponse({status: "傳送失敗", source: "", body: err.message, failed: true});
+      setResponse({status: "傳送失敗", body: err.message, failed: true});
     } finally {
       setBusy(false);
     }
@@ -368,20 +417,17 @@ function Console({route, systemId, endpoint, drafts, busy, setBusy}) {
   return <div className="console-grid">
     <div>
       <form onSubmit={send}>
-        <div className="console-title"><h3>Request Payload</h3><button type="button" className="link-button" onClick={() => {
-          drafts.delete(route); setBody(sample); input.current.focus();
+        <div className="console-title"><h3>Request Body</h3><button type="button" className="link-button" onClick={() => {
+          drafts.delete(draftKey); setBody(sample); input.current.focus();
         }}>還原範例</button></div>
-        <textarea id="request-body" ref={input} className="code-input" rows="7" spellCheck={false} aria-label="Request Payload"
-          value={body} onChange={event => { drafts.set(route, event.target.value); setBody(event.target.value); }}/>
+        <textarea id="request-body" ref={input} className="code-input" rows="7" spellCheck={false} aria-label="Request Body"
+          value={body} onChange={event => { drafts.set(draftKey, event.target.value); setBody(event.target.value); }}/>
         {endpoint.auth && <AuthField auth={endpoint.auth} value={credential} onChange={event => setCredential(event.target.value)}/>}
         <div className="send-row"><button className="button primary" disabled={busy}>送出請求</button></div>
       </form>
       {sent && <section className="sent-request">
         <h3 id="sent-request-title">Provider Request</h3>
         <pre className="response-editor" tabIndex="0" aria-labelledby="sent-request-title">{sent.provider}</pre>
-        <details><summary>瀏覽器送往 Builder 的測試 Request</summary>
-          <pre className="response-editor" tabIndex="0">{sent.builder}</pre>
-        </details>
         <h3 id="sent-curl-title">直連 Provider 的 cURL（Bash）</h3>
         <pre className="response-editor" tabIndex="0" aria-labelledby="sent-curl-title">{sent.curl}</pre>
       </section>}
@@ -399,7 +445,7 @@ function Console({route, systemId, endpoint, drafts, busy, setBusy}) {
 function OperationDialog({system, initialOperation, drafts, onClose}) {
   const [operation, setOperation] = useState(initialOperation);
   const [busy, setBusy] = useState(false);
-  const route = "/api/systems/" + system.system_id + "/test/" + operation;
+  const draftKey = system.system_id + "/" + operation;
   const endpoint = system.provider.apis[operation];
   return <Dialog id="operation-dialog" title={system.system_name} subtitle={system.provider.system_name} wide busy={busy} onClose={onClose}>
     <section id="workbench" aria-label="System 操作區">
@@ -410,7 +456,7 @@ function OperationDialog({system, initialOperation, drafts, onClose}) {
       <div className="operation-body">
         <p className="instructions">{endpoint.description}</p>
         <div className="endpoint"><span className="method">POST</span><code>{endpoint.url}</code></div>
-        <Console key={route} route={route} systemId={system.system_id} endpoint={endpoint} drafts={drafts} busy={busy} setBusy={setBusy}/>
+        <Console key={draftKey} draftKey={draftKey} systemId={system.system_id} endpoint={endpoint} drafts={drafts} busy={busy} setBusy={setBusy}/>
       </div>
     </section>
   </Dialog>;
@@ -463,7 +509,6 @@ function App() {
       return {...current, [collection]: next};
     });
     setMessage(label + "「" + item.system_name + "」。");
-    close();
   }
 
   return <>
@@ -521,7 +566,7 @@ function App() {
       </section>}
     </main>
     {dialog?.kind === "provider" && <ProviderDialog provider={dialog.item} demo={catalog.demo_template} onClose={close}
-      onSave={item => save(item, "providers", "id", "已儲存")}/>}
+      onSave={item => { save(item, "providers", "id", "已儲存"); close(); }}/>}
     {dialog?.kind === "system" && <SystemDialog system={dialog.item} providers={providers} workspaceId={workspaceId} onClose={close}
       onSave={item => save(item, "systems", "system_id", "已套用")}/>}
     {dialog?.kind === "operation" && <OperationDialog system={dialog.item} initialOperation={dialog.operation} drafts={drafts.current} onClose={close}/>}

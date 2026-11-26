@@ -28,7 +28,7 @@
         <section class="panel guide-section" id="start">
           <h2>快速上架</h2>
           <ol>
-            <li>啟動自己的服務，準備 Builder 後端可連線的 <code>init</code>、<code>ingestion</code> 和 <code>inference</code> URL。若服務與 Builder 跑在不同機器或容器，請填 Builder 所在環境可以解析的位址。</li>
+            <li>啟動自己的服務。<code>init</code> URL 須能從 Builder 後端連線，<code>ingestion</code> 和 <code>inference</code> URL 須能從使用者瀏覽器連線。</li>
             <li>進入 <strong>Provider → Provide Retrieval System Template</strong>，填寫服務名稱、三支 API 的 URL 與 Auth、兩支業務 API 的說明和 JSON Sample，以及 Config Schema。從右側預覽 User 建立 System 時會看到的欄位。</li>
             <li>按 <strong>上架服務</strong>，切到 <strong>User → Create Retrieval System</strong>，選擇新範本並建立 System。確認 Init 成功後，從 System 圖卡測試 <strong>Ingest</strong> 和 <strong>Inference</strong>。</li>
           </ol>
@@ -44,8 +44,8 @@
                 <tr><th scope="row">Init URL</th><td>建立或重新套用 System 設定時呼叫的完整 HTTP／HTTPS URL。</td></tr>
                 <tr><th scope="row">Ingestion／Inference URL</th><td>Builder 測試與業務呼叫端直連使用的完整 HTTP／HTTPS URL。路徑由 Provider 自訂。</td></tr>
                 <tr><th scope="row">Init Auth</th><td>填 Header 名稱及 Builder 程序的環境變數名稱，例如 <code>Authorization</code> 和 <code>PROVIDER_INIT_AUTH</code>。環境變數的值須包含完整 Header 值，例如 <code>Bearer &lt;token&gt;</code>。若 Init 無需認證，兩欄皆留空。</td></tr>
-                <tr><th scope="row">Ingestion／Inference Auth</th><td>填 Header 名稱及選填的格式提示，例如 <code>Authorization</code>、<code>Bearer</code>。User 送出請求時輸入完整值，包含必要的前綴。若 API 無需認證，將對應 Auth 欄位留空。</td></tr>
-                <tr><th scope="row">使用說明與 JSON Sample</th><td>Ingestion 與 Inference 各填一組。說明應寫清楚支援的操作、必填欄位及結果。Sample 會預填 User 的 Request Body，直接寫業務 JSON。</td></tr>
+                <tr><th scope="row">Ingestion／Inference Auth</th><td>填 Header 名稱及選填的格式提示，例如 <code>Authorization</code>、<code>Bearer</code>。User 送出請求時輸入完整值，包含必要的前綴。格式提示會原樣顯示。請填格式或公開的示範憑證。若 API 無需認證，將對應 Auth 欄位留空。</td></tr>
+                <tr><th scope="row">使用說明與 JSON Sample</th><td>Ingestion 與 Inference 各填一組。說明應寫清楚支援的操作、必填欄位及結果。Sample 填寫業務 JSON。畫面會以此預填 Request Body 的 <code>payload</code>，並帶入目前的 <code>system_id</code>。</td></tr>
                 <tr><th scope="row">Config Schema</th><td>定義 User 建立 System 時可設定的參數。User 填入的值在 Init 時放進 <code>parameters</code>，由 Provider 依 System ID 保存。</td></tr>
               </tbody>
             </table>
@@ -70,10 +70,13 @@
           </div>
           <h3>Init</h3>
           <p>Init 收到的是完整的新設定。請先驗證參數，準備好資源後才切換生效設定，並回 <code>200</code> 或 <code>204</code>。建立索引、切換資源或更新設定失敗時，回傳錯誤並保留原本可用的設定和資源。使用相同 <code>system_id</code> 進行 Edit Config 或重試時，Provider 需妥善處理重複初始化與同一 System 的並行更新。</p>
+          <p>建立與編輯都會跳出 Init 回應視窗，呈現 Provider 的 HTTP 狀態和 JSON 或純文字回應。回 <code>204</code> 時顯示空白回應。請在 Body 只放可提供給操作人的資訊。</p>
           <pre><code data-example="init">{
   "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
   "parameters": {"collection": "product_docs", "top_k": 5}
 }</code></pre>
+          <h3>瀏覽器直連與 CORS</h3>
+          <p>操作頁直接從瀏覽器呼叫業務 API。若 API 和 Builder UI 不同來源，Provider 需接受 <code>OPTIONS</code> 預檢，允許 Builder UI 的 Origin、<code>POST</code>、<code>Content-Type</code> 和業務 Auth Header，並在成功和錯誤回應上都加上 <code>Access-Control-Allow-Origin</code>。Builder 使用 HTTPS 時，業務 API URL 也使用 HTTPS。</p>
           <h3>Ingestion</h3>
           <p>依 <code>payload</code> 執行 Provider 支援的資料操作。需要支援上傳、覆寫、列出或刪除時，可由 Provider 定義 <code>action</code>、文件 ID 與回應格式。若有非同步工作，也可定義如何取得工作 ID 與查詢狀態。</p>
           <h3>Inference</h3>
@@ -91,18 +94,11 @@
           <ol>
             <li><strong>上架 Template</strong> 會驗證設定格式並儲存範本。到建立 System 時才會實際呼叫 Init，因此範本上架成功後仍須做連線驗收。</li>
             <li><strong>建立或編輯 System</strong> 時，Builder 驗證參數並直接呼叫 Provider Init。有成功回應才會套用設定。Edit Config 沿用原本的 <code>system_id</code>。Provider 明確回報失敗時顯示錯誤。Builder 未取得結果時會提示結果未確認，允許用同一個 ID 與設定重試。</li>
-            <li><strong>從 Builder 測試</strong> 時，使用者輸入業務 Payload 和完整 Auth 值。Builder 後端補上 <code>system_id</code>，將範本指定的 Auth Header 原值傳給 Provider。Provider 驗證呼叫端是否有權操作該 System，並管理各 System 的設定與資料隔離。</li>
+            <li><strong>從 Builder 測試</strong> 時，操作頁預填 <code>{system_id, payload}</code>。使用者可編輯 Body 並輸入完整 Auth 值，由瀏覽器直接送到 Provider URL。Provider 驗證呼叫端是否有權操作該 System，並管理各 System 的設定與資料隔離。</li>
             <li><strong>業務程式直連</strong> 時，使用 Provider 的 URL、<code>{system_id, payload}</code> 及 Auth 即可。<strong>Export YAML</strong> 提供兩支業務 API 的呼叫資訊，適用於已初始化的 System。</li>
             <li><strong>更新 Template</strong> 後，新建的 System 採用最新內容。既有 System 會沿用建立時的 API 和 Schema。</li>
           </ol>
-          <h3>對照兩段 Ingestion 請求</h3>
-          <p>Builder 測試頁輸入的 Payload</p>
-          <pre><code data-example="user-ingestion">{
-  "action": "upsert",
-  "document_id": "warranty-01",
-  "text": "產品保固一年。"
-}</code></pre>
-          <p>Provider 實際收到的 JSON Body</p>
+          <h3>Ingestion Request Body 範例</h3>
           <pre><code data-example="provider-ingestion">{
   "system_id": "7b38858b-6f26-4647-9dfb-84044000413a",
   "payload": {
@@ -155,15 +151,15 @@
           <h2>驗收與排查</h2>
           <p>可以用 Builder 內建的 <strong>Mock Retrieval Service</strong> 範本驗證。從 repo 根目錄啟動 Mock，再在 User 頁用該範本建立 System。</p>
           <pre><code>python router_method/mock_retrieval_service.py</code></pre>
-          <p>送出 Ingest 或 Inference 後，可比較 <strong>Provider Request</strong> 與 Mock 的 <code>"see payload"</code>，另可展開瀏覽器送往 Builder 的測試請求。<strong>直連 Provider 的 cURL（Bash）</strong> 會帶上 System ID。請把 <code>[已遮蔽]</code> 換成完整的 Auth Header 值。</p>
-          <p>Builder 測試頁以 <code>Retrieval-Response-Source</code> 標示回應來源。<code>provider</code> 代表收到 Provider 的 HTTP 回應。<code>builder</code> 代表 Builder 端的驗證、System 查找或連線錯誤。</p>
+          <p>建立時填寫 <strong>Domain name</strong>，在 Init 回應視窗可看到 Mock 接到的設定。Mock 的三支 API 都需要 Authorization。Init 由 Builder 帶入內建測試憑證，業務請求請填提示中的 <code>Bearer mock-token</code>。</p>
+          <p>送出 Ingest 或 Inference 後，可比較 <strong>Provider Request</strong> 與 Mock 的 <code>"see payload"</code>。回應也會顯示 Init 保存的 <code>domain_name</code>。<strong>直連 Provider 的 cURL（Bash）</strong> 會帶上 System ID，請把 <code>[已遮蔽]</code> 換成完整的 Auth Header 值。</p>
           <div class="guide-table-wrap">
             <table>
               <thead><tr><th scope="col">狀況</th><th scope="col">檢查項目</th></tr></thead>
               <tbody>
                 <tr><th scope="row"><code>400</code> 或表單驗證失敗</th><td>檢查 Schema、必填參數與業務 JSON。若訊息指出 Init Secret 缺少，請確認 Builder 後端環境已設定對應變數。</td></tr>
                 <tr><th scope="row">Provider 回 <code>401</code>／<code>403</code></th><td>確認 Auth Header 名稱、完整值及權限是否符合 Provider 的要求。</td></tr>
-                <tr><th scope="row"><code>409</code></th><td>System 正在處理請求或套用設定，等當前操作完成後再試。</td></tr>
+                <tr><th scope="row">瀏覽器連線失敗</th><td>確認 Provider URL 可從瀏覽器連線，並檢查 CORS 預檢、回應 Header 及 HTTPS 設定。</td></tr>
                 <tr><th scope="row">Builder 回 <code>502</code></th><td>若收到 Init HTTP 錯誤，檢查 Provider 的設定驗證及資源初始化。若結果未確認，檢查 Provider URL 和連線，使用同一個 ID 及設定重試。</td></tr>
               </tbody>
             </table>

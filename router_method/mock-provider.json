@@ -3,24 +3,51 @@
   "apis": {
     "init": {
       "url": "http://127.0.0.1:8766/init",
-      "auth": null
+      "auth": {
+        "header": "Authorization",
+        "secret_ref": "BUILDER_MOCK_INIT_AUTH"
+      }
     },
     "ingestion": {
       "url": "http://127.0.0.1:8766/ingestion",
-      "auth": null,
-      "description": "送出業務 Payload 後，Mock 會回傳成功訊息及實際收到的 system_id 和 payload（see payload）。",
-      "sample": { "documents": [{ "text": "這是一筆測試文件。" }] }
+      "auth": {
+        "header": "Authorization",
+        "scheme": "Bearer mock-token"
+      },
+      "description": "直接送出含 system_id 和 payload 的 JSON。Mock 回傳已儲存的 domain_name 與實際收到的 Request Body（see payload）。",
+      "sample": {
+        "documents": [
+          {
+            "text": "這是一筆測試文件。"
+          }
+        ]
+      }
     },
     "inference": {
       "url": "http://127.0.0.1:8766/inference",
-      "auth": null,
-      "description": "送出業務 Payload 後，Mock 會回傳成功訊息及實際收到的 system_id 和 payload（see payload）。",
-      "sample": { "query": "測試查詢" }
+      "auth": {
+        "header": "Authorization",
+        "scheme": "Bearer mock-token"
+      },
+      "description": "直接送出含 system_id 和 payload 的 JSON。Mock 回傳已儲存的 domain_name 與實際收到的 Request Body（see payload）。",
+      "sample": {
+        "query": "測試查詢"
+      }
     }
   },
   "config_schema": {
     "type": "object",
-    "properties": {},
-    "additionalProperties": false
+    "properties": {
+      "domain_name": {
+        "type": "string",
+        "title": "Domain name",
+        "description": "供 Mock 依 System ID 保存的網域名稱。",
+        "default": "example.com"
+      }
+    },
+    "additionalProperties": false,
+    "required": [
+      "domain_name"
+    ]
   }
 }
