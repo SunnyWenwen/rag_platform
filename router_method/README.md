@@ -3,7 +3,7 @@
 Builder 提供 Provider Template 上架、Workspace 內的 Retrieval System 管理，以及 Ingestion／Inference 測試。Provider 負責每個 System 的設定、認證、資源與資料生命週期。呼叫端可直接使用 Provider API，執行時只需帶 `system_id`、業務 `payload` 及 Provider 要求的 Auth。
 
 - [Provider 與 User 流程圖](architecture.md)
-- [Provider 使用說明書](provider-guide.html)
+- [Provider 接入指南（HTML）](provider-guide.html)
 - [Config Schema Meta Schema](config-schema.meta.schema.json)
 - [示範 Provider System Description](demo-provider.json)
 - [Mock Provider 範本](mock-provider.json)

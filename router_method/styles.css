@@ -153,6 +153,8 @@ dialog::backdrop { background: #1a203b65; backdrop-filter: blur(3px); }
 .guide-nav a:hover { background: var(--accent-soft); }
 .guide-section { padding: clamp(16px, 3vw, 26px); margin-bottom: 14px; scroll-margin-top: 16px; line-height: 1.65; }
 .guide-section h2 { font-size: 1.22rem; margin-bottom: 9px; }
+.guide-diagram { display: block; margin: 14px 0; }
+.guide-diagram img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; }
 .guide-section h3 { margin-top: 16px; }
 .guide-section p + p, .guide-section h3 + p { margin-top: 6px; }
 .guide-section ol, .guide-section ul { padding-inline-start: 24px; }

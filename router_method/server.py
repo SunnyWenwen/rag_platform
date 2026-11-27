@@ -39,6 +39,10 @@ PROVIDER_CONFIG_ROUTE = re.compile(r"/api/providers/(demo|mock-retrieval|[a-f0-9
 STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/provider-guide": ("provider-guide.html", "text/html; charset=utf-8"),
+    "/diagrams/provider-01-prepare-apis.png": ("diagrams/provider-01-prepare-apis.png", "image/png"),
+    "/diagrams/provider-02-publish-template.png": ("diagrams/provider-02-publish-template.png", "image/png"),
+    "/diagrams/provider-03-create-system-and-init.png": ("diagrams/provider-03-create-system-and-init.png", "image/png"),
+    "/diagrams/provider-04-test-ingestion-inference.png": ("diagrams/provider-04-test-ingestion-inference.png", "image/png"),
     "/app.js": ("dist/app.js", "text/javascript; charset=utf-8"),
     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
     "/config-schema.meta.schema.json": ("config-schema.meta.schema.json", "application/schema+json"),
